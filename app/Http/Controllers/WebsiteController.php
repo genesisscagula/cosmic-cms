@@ -1,0 +1,210 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Website;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Illuminate\Support\Str;
+use ZipArchive;
+
+class WebsiteController extends Controller
+{
+	public function index()
+	{
+	    // Kuhaon ang mga websites nga gipanag-iya sa kasamtangang user
+	    $websites = \App\Models\Website::where('user_id', auth()->id())->get();
+
+	    return \Inertia\Inertia::render('Dashboard', [
+	        'websites' => $websites
+	    ]);
+	}
+
+    public function store(Request $request)
+	{
+	    $request->validate([
+	        'name' => 'required|string|max:255',
+	        'domain' => 'nullable|url',
+	        'theme_settings' => 'nullable|array', // I-validate ang array input
+	    ]);
+
+	    auth()->user()->websites()->create([
+	        'name' => $request->name,
+	        'domain' => $request->domain,
+	        'api_token' => Str::random(60),
+	        // Gamita ang gipasa nga settings, kon wala, gamita ang default array
+	        'theme_settings' => $request->input('theme_settings', [
+	            'primary_color' => '#10b981', 
+	            'layout' => 'default'
+	        ])
+	    ]);
+
+	    return back();
+	}
+
+	public function saveFooter(Request $request, Website $website)
+	{
+	    // 1. Log ang raw request data
+	    \Log::info('Raw Request Footer:', $request->all());
+
+	    $request->validate([
+	        'footer_block' => 'required|array'
+	    ]);
+
+	    // 2. I-try gamit ang fill() ug save() imbes update()
+	    $website->global_footer = $request->footer_block;
+	    $saved = $website->save();
+
+	    \Log::info('Did save trigger?', [$saved]);
+	    
+	    return response()->json(['status' => 'success', 'data' => $website->global_footer]);
+	}
+
+    public function downloadBridge()
+    {
+        $zipName = 'cosmic-client-bridge.zip';
+        $storageDir = storage_path('app');
+        $zipPath = $storageDir . '/' . $zipName;
+        
+        $tempDir = $storageDir . '/temp_bridge';
+        if (!is_dir($tempDir)) {
+            mkdir($tempDir, 0755, true);
+        }
+
+        // Kani ang advanced, dynamic template rendering script sa client side
+        $indexPhp = '<?php
+		define("CMS_API_URL", "' . url('/api/v1/sync') . '");
+
+		if (file_exists("config.php")) {
+		    include "config.php";
+		    
+		    if (file_exists("content.json")) {
+		        $data = json_decode(file_get_contents("content.json"), true);
+		        $pages = $data[\'pages\'] ?? [];
+		        
+		        // 1. Router Logic: Tan-awon unsa nga slug ang gi-request (Default kay ang unang page)
+		        $currentSlug = $_GET[\'page\'] ?? ($pages[0][\'slug\'] ?? \'home\');
+		        
+		        // Find current page data
+		        $currentPage = null;
+		        foreach ($pages as $p) {
+		            if ($p[\'slug\'] === $currentSlug) {
+		                $currentPage = $p;
+		                break;
+		            }
+		        }
+		        
+		        // HTML Frontend Layout Template View
+		        echo "<!DOCTYPE html>
+		        <html lang=\"en\">
+		        <head>
+		            <meta charset=\"UTF-8\">
+		            <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
+		            <title>" . htmlspecialchars($data[\'website_name\'] ?? \'Cosmic Site\') . "</title>
+		            <script src=\"https://cdn.tailwindcss.com\"></script>
+		        </head>
+		        <body class=\"bg-slate-50 text-slate-900 font-sans\">";
+		        
+		        // HEADER / DYNAMIC NAVIGATION BAR
+		        echo "<header class=\"bg-white shadow-sm border-b border-slate-200 sticky top-0 z-50\">
+		            <div class=\"max-w-6xl mx-auto px-4 py-4 flex justify-between items-center\">
+		                <div class=\"font-bold text-xl text-indigo-600\">🚀 " . htmlspecialchars($data[\'website_name\']) . "</div>
+		                <nav class=\"flex space-x-2\">";
+		                foreach ($pages as $p) {
+		                    $activeClass = ($p[\'slug\'] === $currentSlug) ? "bg-indigo-600 text-white" : "text-slate-600 hover:bg-slate-100";
+		                    echo "<a href=\"?page=" . $p[\'slug\'] . "\" class=\"px-3 py-1.5 rounded-md text-sm font-medium transition {$activeClass}\">" . htmlspecialchars($p[\'title\']) . "</a>";
+		                }
+		                echo "<a href=\"?sync=true\" class=\"ml-4 px-3 py-1.5 bg-emerald-600 text-white rounded-md text-sm font-medium hover:bg-emerald-700 transition\">🔄 Sync</a>
+		                </nav>
+		            </div>
+		        </header>";
+		        
+		        // DYNAMIC BLOCK COMPILER ENGINE
+		        if ($currentPage) {
+		            $blocks = $currentPage[\'blocks\'] ?? [];
+		            foreach ($blocks as $block) {
+		                if ($block[\'type\'] === \'hero\') {
+		                    echo "<section class=\"py-20 text-center text-white shadow-inner\" style=\"background-color: {$block[\'bg_color\']};\">
+		                        <div class=\"max-w-3xl mx-auto px-4\">
+		                            <h1 class=\"text-4xl md:text-5xl font-extrabold tracking-tight mb-4\">" . htmlspecialchars($block[\'heading\']) . "</h1>
+		                            <p class=\"text-lg md:text-xl text-indigo-200\">" . htmlspecialchars($block[\'subheading\']) . "</p>
+		                        </div>
+		                    </section>";
+		                }
+		                if ($block[\'type\'] === \'content\') {
+		                    echo "<section class=\"py-16 max-w-3xl mx-auto px-4\">
+		                        <div class=\"bg-white p-8 rounded-xl shadow-sm border border-slate-100\">
+		                            <p class=\"text-lg leading-relaxed text-slate-700\">" . htmlspecialchars($block[\'text\']) . "</p>
+		                        </div>
+		                    </section>";
+		                }
+		            }
+		        } else {
+		            echo "<div class=\"text-center py-20\"><h1 class=\"text-2xl font-bold text-red-500\">404 - Page Not Found</h1></div>";
+		        }
+		        
+		        echo "<footer class=\"bg-slate-800 text-slate-400 py-8 text-center text-sm border-t border-slate-700 mt-20\"><p>&copy; " . date(\'Y\') . " Powered by Cosmic Headless CMS Pipeline</p></footer></body></html>";
+		        
+		    } else {
+		        echo "<h1>Connected to CMS!</h1><p>Palihug i-click ang sync button sa ibas para i-pull ang structural file packet.</p>";
+		        echo "<br><a href=\"?sync=true\" style=\"padding:10px 20px; background:#10b981; color:#fff; text-decoration:none; border-radius:5px;\">🔄 Sync Content Now</a>";
+		    }
+		} else {
+		    // Installer Form View
+		    echo "
+		    <div style=\"max-width:400px; margin:50px auto; font-family:sans-serif; padding:20px; border:1px solid #ccc; border-radius:8px;\">
+		        <h2>Cosmic CMS Client Bridge 🚀</h2>
+		        <p style=\"font-size:13px; color:#666;\">I-paste ang token gikan sa imong Cosmic Dashboard aron ma-sync ang mga pages ug blocks.</p>
+		        <form method=\"POST\">
+		            <input type=\"text\" name=\"api_token\" placeholder=\"Paste CMS API Token\" style=\"width:100%; padding:8px; margin-bottom:10px;\" required><br>
+		            <button type=\"submit\" style=\"width:100%; padding:10px; background:#4f46e5; color:white; border:none; border-radius:4px; cursor:pointer;\">Save & Initialize</button>
+		        </form>
+		    </div>";
+		}
+
+		if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["api_token"])) {
+		    $configContent = "<?php\ndefine(\"API_TOKEN\", \"" . addslashes($_POST["api_token"]) . "\");\n";
+		    file_put_contents("config.php", $configContent);
+		    header("Location: index.php?sync=true");
+		    exit;
+		}
+
+		if (isset($_GET["sync"]) && $_GET["sync"] == "true" && defined("API_TOKEN")) {
+		    $ch = curl_init(CMS_API_URL);
+		    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+		        "X-Cosmic-Token: " . API_TOKEN,
+		        "Accept: application/json"
+		    ]);
+		    $response = curl_exec($ch);
+		    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		    curl_close($ch);
+		    
+		    if ($httpCode == 200 && $response) {
+		        file_put_contents("content.json", $response);
+		        echo "<script>alert(\"Sync Complete! Data updated successfully.\"); window.location.href=\"index.php\";</script>";
+		    } else {
+		        echo "<script>alert(\"Sync Failed! Palihug i-verify imong API Token.\"); window.location.href=\"index.php\";</script>";
+		    }
+		}
+		?>';
+
+        file_put_contents($tempDir . '/index.php', $indexPhp);
+
+        if (file_exists($zipPath)) {
+            unlink($zipPath);
+        }
+        
+        $cmd = "powershell -Command \"Compress-Archive -Path '{$tempDir}/*' -DestinationPath '{$zipPath}' -Force\"";
+        exec($cmd);
+
+        unlink($tempDir . '/index.php');
+        rmdir($tempDir);
+
+        if (file_exists($zipPath)) {
+            return response()->download($zipPath)->deleteFileAfterSend(true);
+        }
+
+        return back()->with('error', 'Failed to generate ZIP file.');
+    }
+}
