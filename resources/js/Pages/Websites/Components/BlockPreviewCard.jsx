@@ -4,12 +4,12 @@ export default function BlockPreviewCard({
     buttonLabel,
     payload,
     buttonClass,
-    preview
+    preview: Preview,
 }) {
 
     return (
         <div className="border border-slate-800 bg-slate-950 p-6 rounded-2xl space-y-4">
-            {preview}
+            <Preview />
             <h4 className="text-lg font-bold text-white">{title}</h4>
             <button 
                 onClick={() => onAdd(payload)}

@@ -23,6 +23,11 @@ import {
     HeroCenteredCTASchema
 } from "./Blocks/Hero/HeroCenteredCTA";
 
+import {
+    ServicesBentoBlock,
+    ServicesBentoSchema
+} from "./Blocks/Services/ServicesBentoBlock";
+
 export const BlockRegistry = {
 
     hero_headline: {
@@ -56,6 +61,14 @@ export const BlockRegistry = {
 	    schema: ServicesCardsSchema
 
 	},
+
+    services_bento: {
+
+        component: ServicesBentoBlock,
+
+        schema: ServicesBentoSchema
+
+    },
 
 	hero_centered_cta: {
 
