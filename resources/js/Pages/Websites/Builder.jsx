@@ -46,14 +46,25 @@ export default function Builder({ page, website }) {
         setData('global_footer', { ...data.global_footer, ...updatedFields });
     };
 
-    const addBlock = (newBlock) => {
-        setData('blocks', [...data.blocks, newBlock]);
+    const replaceBlocks = (newBlocks) => {
+
+        setData("blocks", newBlocks);
+
         setIsModalOpen(false);
+
         setAiResult(null);
+
     };
 
     const removeBlock = (index) => {
-        setData('blocks', data.blocks.filter((_, i) => i !== index));
+
+        const updatedBlocks = data.blocks.filter((_, i) => i !== index);
+
+        console.log("Before:", data.blocks.length);
+        console.log("After:", updatedBlocks.length);
+
+        setData("blocks", updatedBlocks);
+
     };
 
     const generateWithAI = async (prompt) => {
@@ -71,34 +82,22 @@ export default function Builder({ page, website }) {
     const handleSubmit = async (e) => {
         e.preventDefault();
 
-        // 1. I-save una ang global_footer via axios
         try {
             await axios.post(route('websites.global-footer.save', page.website_id), {
                 footer_block: data.global_footer
             });
-        } catch (error) {
-            console.error("Failed to save footer:", error);
-            alert("Error sa pag-save sa footer!");
-            return; 
-        }
 
-        // 2. I-save ang global_theme settings sa websites table (Pinaagi sa bag-ong API route)
-        try {
             await axios.post(route('websites.update-theme', page.website_id), {
-                theme_settings: globalSelections // Kini dapat { primary: 'emerald', ... }
+                theme_settings: globalSelections
             });
-        } catch (error) {
-            console.error("Failed to save theme:", error);
-        }
 
-        // 3. Unya i-submit ang page builder data via Inertia
-        post(route('pages.builder.update', page.id), {
-            data: {
-                ...data,
-                global_header: data.global_header,
-                global_footer: data.global_footer 
-            }
-        });
+            post(route('pages.builder.update', page.id), {
+                preserveScroll: true,
+            });
+
+        } catch (error) {
+            console.error(error);
+        }
     };
 
     const moveBlock = (index, direction) => {
@@ -428,7 +427,7 @@ export default function Builder({ page, website }) {
             <AddSectionModal
                 open={isModalOpen}
                 onClose={() => setIsModalOpen(false)}
-                onAdd={addBlock}
+                onAdd={replaceBlocks}
             />
 
             {/* AI MODAL INJECTOR CONFIG */}

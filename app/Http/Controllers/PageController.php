@@ -71,24 +71,28 @@ class PageController extends Controller
         ]);
     }
 
-    public function updateBlocks(\Illuminate\Http\Request $request, \App\Models\Page $page)
+   public function updateBlocks(\Illuminate\Http\Request $request, \App\Models\Page $page)
     {
         if ($page->website->user_id !== auth()->id()) {
             abort(403);
         }
 
-        $request->validate([
-            'blocks' => 'required|array',
-            'global_header' => 'nullable|array' // I-validate ang global_header
+        $validated = $request->validate([
+            'blocks' => 'nullable|array',
+            'global_header' => 'nullable|array',
         ]);
 
-        // 1. I-update ang blocks sa page
-        $page->update(['blocks' => $request->blocks]);
+        // Save page blocks
+        $page->blocks = $validated['blocks'];
+        $page->save();
 
-        // 2. I-update ang global_header sa website table
-        $page->website->update(['global_header' => $request->global_header]);
+        // Save global header
+        if (isset($validated['global_header'])) {
+            $page->website->global_header = $validated['global_header'];
+            $page->website->save();
+        }
 
-        $liveDomain = rtrim($page->website->domain, '/'); 
+        $liveDomain = rtrim($page->website->domain, '/');
 
         if (!empty($liveDomain)) {
             $ch = curl_init($liveDomain . '/index.php?webhook=true');
@@ -98,7 +102,7 @@ class PageController extends Controller
             curl_close($ch);
         }
 
-        return back();
+        return redirect()->back()->with('success', 'Page updated successfully.');
     }
 
     /**

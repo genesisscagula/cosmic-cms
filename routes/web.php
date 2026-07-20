@@ -9,6 +9,7 @@ use Inertia\Inertia;
 use Illuminate\Http\Request;
 use App\Models\Website;
 use App\Helpers\CmsHtmlCompiler;
+use App\Http\Controllers\AI\AIController;
 
 // Welcome Page
 Route::get('/', function () {
@@ -144,6 +145,8 @@ Route::get('/debug-db-all-blocks', function () {
     $blocks = \DB::table('pages')->get();
     return response()->json($blocks);
 });
+
+Route::post('/ai/generate-page', [AIController::class, 'generatePage']);
 
 
 require __DIR__.'/auth.php';

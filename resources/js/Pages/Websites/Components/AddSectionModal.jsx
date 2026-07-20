@@ -1,3 +1,6 @@
+import axios from "axios";
+import { useState } from "react";
+
 import BlockPreviewCard from "./BlockPreviewCard";
 
 import HeroHeadlinePreview from "./Previews/HeroHeadlinePreview";
@@ -107,9 +110,66 @@ export default function AddSectionModal({
     onAdd
 }) {
 
+    const [prompt, setPrompt] = useState("");
+    const [showConfirm, setShowConfirm] = useState(false);
+
     const aiResult = {};
 
-    const generateWithAI = () => {};
+    const generateWithAI = () => {
+
+        if (!prompt.trim()) {
+            alert("Please enter a prompt first.");
+            return;
+        }
+
+        setShowConfirm(true);
+
+    };
+
+    const executeGenerate  = async () => {
+
+        if (!prompt.trim()) {
+            alert("Please enter a prompt first.");
+            return;
+        }
+
+        try {
+
+            const response = await axios.post("/ai/generate-page", {
+                prompt
+            });
+
+            console.log("AI Response:", response.data);
+
+            if (response.data?.blocks?.length) {
+
+                response.data.blocks.forEach(block => {
+                    onAdd(response.data.blocks);
+                });
+
+                setPrompt("");
+                onClose();
+
+            } else {
+
+                alert("AI did not return any blocks.");
+
+            }
+
+        } catch (error) {
+
+            console.error("AI Generate Error:", error);
+
+            if (error.response) {
+                console.error(error.response.data);
+                alert("Server Error: " + error.response.status);
+            } else {
+                alert("Unable to connect to AI endpoint.");
+            }
+
+        }
+
+    };
 
 
 
@@ -117,42 +177,289 @@ export default function AddSectionModal({
 
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-            <div className="bg-slate-900 border border-slate-700 p-8 rounded-3xl w-full max-w-5xl shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto">
-                <div className="flex justify-between items-center mb-8">
-                    <h2 className="text-2xl font-extrabold text-white flex items-center gap-2">✨ AI Layout Injector</h2>
-                    <button  onClick={onClose} className="text-slate-400 hover:text-white text-2xl">✕</button>
+
+    <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-6xl shadow-2xl text-slate-100 max-h-[92vh] overflow-y-auto">
+
+        {/* Header */}
+
+        <div className="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-8 py-6 z-20">
+
+            <div className="flex items-start justify-between">
+
+                <div>
+
+                    <h2 className="text-3xl font-black text-white flex items-center gap-3">
+
+                        ✨ AI Page Generator
+
+                    </h2>
+
+                    <p className="text-slate-400 mt-2 max-w-2xl leading-7">
+
+                        Describe the page you want to build and let Cosmic AI
+                        generate a complete layout using your professional block
+                        library.
+
+                    </p>
+
                 </div>
 
-                <div className="space-y-4 mb-8">
-                    <input 
-                        type="text" 
-                        placeholder="Describe the block you want to generate..."
-                        className="w-full bg-slate-950 border border-slate-700 p-4 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition"
-                        onKeyDown={(e) => e.key === 'Enter' && generateWithAI(e.target.value)}
-                    />
-                </div>
+                <button
+                    onClick={onClose}
+                    className="text-slate-500 hover:text-white text-3xl transition"
+                >
+                    ✕
 
-                <div className="border-t border-slate-800 pt-8">
-                    <h3 className="text-sm font-semibold tracking-wider text-slate-400 uppercase mb-6">Select Available Layout Options</h3>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                </button>
 
-                        {BlockRegistry.map((block) => (
-                            <BlockPreviewCard
-                                key={block.type}
-                                onAdd={onAdd}
-                                title={block.title}
-                                buttonLabel={block.buttonLabel}
-                                buttonClass={block.buttonClass}
-                                preview={block.preview}
-                                payload={block.payload}
-                            />
-                        ))}          
-                        
-                    </div>
-                </div>
             </div>
+
         </div>
+
+        <div className="p-8">
+
+            {/* Prompt */}
+
+            <div className="space-y-5">
+
+                <textarea
+
+                    value={prompt}
+
+                    onChange={(e) => setPrompt(e.target.value)}
+
+                    rows={4}
+
+                    placeholder={`Example:
+
+                Create an About Us page for a Dental Clinic
+
+                Modern SaaS landing page with pricing and testimonials
+
+                Construction company homepage with hero, services and contact CTA.`}
+
+                    className="w-full resize-none rounded-2xl bg-slate-950 border border-slate-700 p-5 text-white placeholder-slate-500 leading-7 focus:outline-none focus:border-violet-500 transition"
+
+                    onKeyDown={(e) => {
+
+                        if (e.key === "Enter" && !e.shiftKey) {
+
+                            e.preventDefault();
+
+                            generateWithAI();
+
+                        }
+
+                    }}
+
+                />
+
+                {/* Quick Prompts */}
+
+                <div>
+
+                    <p className="text-xs uppercase tracking-[0.3em] text-slate-500 mb-3">
+
+                        Quick Ideas
+
+                    </p>
+
+                    <div className="flex flex-wrap gap-3">
+
+                        {[
+                            "🏥 Dental Clinic",
+                            "🍽 Restaurant",
+                            "🏗 Construction",
+                            "💻 SaaS Startup",
+                            "🏡 Real Estate",
+                            "🏋 Fitness Gym",
+                            "⚖ Law Firm",
+                            "☕ Coffee Shop"
+                        ].map((item) => (
+
+                            <button
+
+                                key={item}
+
+                                className="px-4 py-2 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm transition"
+
+                            >
+
+                                {item}
+
+                            </button>
+
+                        ))}
+
+                    </div>
+
+                </div>
+
+                {/* AI Options */}
+
+                <div className="flex flex-wrap gap-6 text-sm text-slate-400">
+
+                    <label className="flex items-center gap-2">
+
+                        <input
+                            type="checkbox"
+                            checked
+                            readOnly
+                            className="accent-violet-500"
+                        />
+
+                        Generate Layout
+
+                    </label>
+
+                    <label className="flex items-center gap-2">
+
+                        <input
+                            type="checkbox"
+                            checked
+                            readOnly
+                            className="accent-violet-500"
+                        />
+
+                        Generate Content
+
+                    </label>
+
+                    <label className="flex items-center gap-2">
+
+                        <input
+                            type="checkbox"
+                            checked
+                            readOnly
+                            className="accent-violet-500"
+                        />
+
+                        Match Website Theme
+
+                    </label>
+
+                </div>
+
+                {/* Generate */}
+
+                <button
+
+                    onClick={generateWithAI}
+
+                    className="w-full py-4 rounded-2xl font-bold text-lg bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 hover:opacity-95 transition shadow-xl"
+
+                >
+
+                    ✨ Generate Page
+
+                </button>
+
+            </div>
+
+            {/* Divider */}
+
+            <div className="flex items-center gap-6 my-12">
+
+                <div className="flex-1 border-t border-slate-800" />
+
+                <span className="text-xs uppercase tracking-[0.35em] text-slate-500">
+
+                    Or Browse Professional Blocks
+
+                </span>
+
+                <div className="flex-1 border-t border-slate-800" />
+
+            </div>
+
+            {/* Registry */}
+
+            <div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+
+                    {BlockRegistry.map((block) => (
+
+                        <BlockPreviewCard
+
+                            key={block.type}
+
+                            onAdd={onAdd}
+
+                            title={block.title}
+
+                            buttonLabel={block.buttonLabel}
+
+                            buttonClass={block.buttonClass}
+
+                            preview={block.preview}
+
+                            payload={block.payload}
+
+                        />
+
+                    ))}
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+    {
+    showConfirm && (
+
+            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[999]">
+
+                <div className="bg-slate-900 rounded-2xl border border-slate-700 p-8 w-full max-w-md">
+
+                    <h3 className="text-2xl font-bold text-white mb-4">
+                        Replace Current Page?
+                    </h3>
+
+                    <p className="text-slate-300 leading-7">
+
+                        Generating a new AI page will replace all existing blocks.
+
+                        <br /><br />
+
+                        Your Header, Footer and Theme settings will remain unchanged.
+
+                    </p>
+
+                    <div className="flex justify-end gap-3 mt-8">
+
+                        <button
+                            onClick={() => setShowConfirm(false)}
+                            className="px-5 py-3 rounded-xl bg-slate-700 hover:bg-slate-600"
+                        >
+                            Cancel
+                        </button>
+
+                        <button
+                            onClick={() => {
+
+                                setShowConfirm(false);
+
+                                executeGenerate();
+
+                            }}
+                            className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold"
+                        >
+                            ✨ Replace & Generate
+                        </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        )
+    }
+
+</div>
     );
 }
 
