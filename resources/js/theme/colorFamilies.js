@@ -215,5 +215,33 @@ export const colorFamilies = {
         card: 'bg-[#F8F8F7]',
         border: 'border-stone-200',
         glow: 'from-indigo-400 via-violet-400'
-    }
+    },
+    light:{
+        bg:"bg-white",
+        card:"bg-slate-50",
+        text:"text-slate-900",
+        sub:"text-slate-600",
+        border:"border-slate-200"
+    },
+    soft:{
+        bg:"bg-slate-50",
+        card:"bg-white",
+        text:"text-slate-900",
+        sub:"text-slate-600",
+        border:"border-slate-200"
+    },
+    sky:{
+        bg:"bg-sky-50",
+        card:"bg-white",
+        text:"text-slate-900",
+        sub:"text-slate-600",
+        border:"border-sky-100"
+    },
+    cream:{
+        bg:"bg-orange-50",
+        card:"bg-white",
+        text:"text-slate-900",
+        sub:"text-slate-600",
+        border:"border-orange-100"
+    },
 };

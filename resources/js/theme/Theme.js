@@ -1,24 +1,33 @@
 import { colorFamilies } from "./colorFamilies";
 
-
 export function getEffectiveTheme(theme, globalTheme) {
 
-    // If block has its own theme
+    // Block wants the site's primary color
+    if (theme === "primary") {
+        return colorFamilies[globalTheme.primary] || colorFamilies.emerald;
+    }
+
+    // White section
+    if (theme === "white") {
+        return colorFamilies.white;
+    }
+
+    // Surface section
+    if (theme === "surface") {
+        return colorFamilies.stone;
+    }
+
+    // Accent (for now use the site's primary color)
+    if (theme === "accent") {
+        return colorFamilies[globalTheme.primary] || colorFamilies.emerald;
+    }
+
+    // If theme is already a real color family
     if (theme && colorFamilies[theme]) {
         return colorFamilies[theme];
     }
 
-    // If builder passes global theme object directly
-    if (globalTheme && typeof globalTheme === "object" && globalTheme.bg) {
-        return globalTheme;
-    }
-
-    // If builder passes theme key
-    if (typeof globalTheme === "string" && colorFamilies[globalTheme]) {
-        return colorFamilies[globalTheme];
-    }
-
-    // Default theme
-    return colorFamilies.dark || Object.values(colorFamilies)[0];
+    // Fallback
+    return colorFamilies[globalTheme.primary] || colorFamilies.emerald;
 
 }

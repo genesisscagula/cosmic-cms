@@ -14,6 +14,7 @@ import ServicesBentoPreview from "./Previews/ServicesBentoPreview";
 export const BlockRegistry = [
     {
         type: "hero_headline",
+        theme:"auto",
         title: "Hero",
         buttonLabel: "Install",
         buttonClass: "bg-rose-600 hover:bg-rose-500",
@@ -32,6 +33,7 @@ export const BlockRegistry = [
 
     {
         type: "services_cards",
+        theme:"auto",
         title: "Services Grid",
         buttonLabel: "Install Grid",
         buttonClass: "bg-blue-600 hover:bg-blue-500",
@@ -45,6 +47,7 @@ export const BlockRegistry = [
 
     {
         type: "feature_image_left",
+        theme:"auto",
         title: "Feature Image Left",
         buttonLabel: "Install Feature Block",
         buttonClass: "bg-blue-600 hover:bg-blue-500",
@@ -62,6 +65,7 @@ export const BlockRegistry = [
 
     {
         type: "feature_image_right",
+        theme:"auto",
         title: "Feature Image Right",
         buttonLabel: "Install Reverse Block",
         buttonClass: "bg-emerald-600 hover:bg-emerald-500",
@@ -79,6 +83,7 @@ export const BlockRegistry = [
 
     {
         type: "hero_centered_cta",
+        theme:"auto",
         title: "Hero: Accent Focus",
         buttonLabel: "Install Accent Focus",
         buttonClass: "bg-emerald-600 hover:bg-emerald-500",
@@ -92,6 +97,7 @@ export const BlockRegistry = [
 
     {
         type: "services_bento",
+        theme:"auto",
         title: "Services Bento",
         buttonLabel: "Install Bento",
         buttonClass: "bg-violet-600 hover:bg-violet-500",
@@ -107,7 +113,8 @@ export const BlockRegistry = [
 export default function AddSectionModal({
     open,
     onClose,
-    onAdd
+    onAdd,
+    onReplace
 }) {
 
     const [prompt, setPrompt] = useState("");
@@ -135,19 +142,30 @@ export default function AddSectionModal({
 
         try {
 
-            const response = await axios.post("/ai/generate-page", {
+            // STEP 1
+            const sectionResponse = await axios.post("/ai/select-sections", {
                 prompt
             });
 
-            console.log("AI Response:", response.data);
+            const sections = sectionResponse.data.sections;
 
-            if (response.data?.blocks?.length) {
+            console.log("Selected Sections:", sections);
 
-                response.data.blocks.forEach(block => {
-                    onAdd(response.data.blocks);
-                });
+            // STEP 2
+            const contentResponse = await axios.post("/ai/generate-content", {
+                prompt,
+                sections
+            });
+
+            console.log("Generated Content:", contentResponse.data);
+
+            // STEP 3
+            if (contentResponse.data?.blocks?.length) {
+
+                onReplace(contentResponse.data.blocks);
 
                 setPrompt("");
+
                 onClose();
 
             } else {
@@ -158,13 +176,10 @@ export default function AddSectionModal({
 
         } catch (error) {
 
-            console.error("AI Generate Error:", error);
+            if(error.response){
 
-            if (error.response) {
                 console.error(error.response.data);
-                alert("Server Error: " + error.response.status);
-            } else {
-                alert("Unable to connect to AI endpoint.");
+
             }
 
         }
@@ -381,7 +396,6 @@ export default function AddSectionModal({
                     {BlockRegistry.map((block) => (
 
                         <BlockPreviewCard
-
                             key={block.type}
 
                             onAdd={onAdd}
@@ -395,7 +409,6 @@ export default function AddSectionModal({
                             preview={block.preview}
 
                             payload={block.payload}
-
                         />
 
                     ))}

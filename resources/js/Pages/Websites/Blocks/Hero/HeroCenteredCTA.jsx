@@ -87,7 +87,10 @@ export const HeroCenteredCTASchema = {
 
 export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
 
-    const theme = getEffectiveTheme(block.theme, globalTheme);
+    const theme = getEffectiveTheme(
+        block.resolvedTheme,
+        globalTheme
+    );
 
     const data = {
         ...HeroCenteredCTASchema.defaults,
@@ -99,6 +102,36 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
         <section
             className={`w-full py-24 px-7 md:px-8 text-center ${theme.bg} relative overflow-hidden border-b ${theme.border} transition-colors duration-500`}
         >
+
+            <div className="absolute
+                inset-0
+                overflow-hidden">
+
+                <div
+                    className="
+                    absolute
+                    top-0
+                    left-0
+                    w-80
+                    h-80
+                    rounded-full
+                    bg-primary-400/20
+                    blur-[130px]"
+                />
+
+                <div
+                    className="
+                    absolute
+                    bottom-0
+                    right-0
+                    w-80
+                    h-80
+                    rounded-full
+                    bg-primary-300/20
+                    blur-[130px]"
+                />
+
+            </div>
 
             <div className="max-w-4xl mx-auto space-y-6 relative z-10 flex flex-col items-center">
 

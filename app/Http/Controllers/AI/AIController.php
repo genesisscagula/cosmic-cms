@@ -4,10 +4,11 @@ namespace App\Http\Controllers\AI;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
+use App\AI\Planners\SectionPlanner;
 
 class AIController extends Controller
 {
-    public function generatePage(Request $request)
+    public function generateContent(Request $request)
     {
         return response()->json([
 
@@ -17,6 +18,8 @@ class AIController extends Controller
 
                     "type" => "hero_headline",
 
+                    "theme" => "primary",
+ 
                     "subtitle" => "WELCOME TO OUR CLINIC",
 
                     "heading" => "Healthy Smiles For The Whole Family",
@@ -37,6 +40,8 @@ class AIController extends Controller
 
                     "type" => "feature_image_left",
 
+                    "theme" => "light",
+
                     "category" => "ABOUT US",
 
                     "heading" => "Trusted Dental Professionals",
@@ -54,6 +59,8 @@ class AIController extends Controller
                 [
 
                     "type" => "services_bento",
+
+                    "theme" => "soft",
 
                     "tagline" => "OUR SERVICES",
 
@@ -101,6 +108,8 @@ class AIController extends Controller
 
                     "type" => "feature_image_right",
 
+                     "theme" => "light",
+
                     "category" => "WHY CHOOSE US",
 
                     "heading" => "Comfort Meets Modern Technology",
@@ -119,6 +128,8 @@ class AIController extends Controller
 
                     "type" => "hero_centered_cta",
 
+                    "theme" => "primary",
+
                     "tagline" => "READY TO SMILE?",
 
                     "heading" => "Schedule Your First Visit Today"
@@ -129,4 +140,19 @@ class AIController extends Controller
 
         ]);
     }
+
+    public function selectSections(Request $request)
+    {
+        $planner = new SectionPlanner();
+
+        $sections = $planner->plan(
+            $request->input('prompt')
+        );
+
+        return response()->json([
+            "sections" => $sections
+        ]);
+    }
+
+    
 }

@@ -89,7 +89,10 @@ export const HeroHeadlineSchema = {
 
 export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) {
 
-    const theme = getEffectiveTheme(block.theme, globalTheme);
+    const theme = getEffectiveTheme(
+        block.resolvedTheme,
+        globalTheme
+    );
 
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
@@ -100,22 +103,13 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
         ...block
     };
 
-    const primaryBtn = {
-        bg: "bg-white",
-        text: "text-slate-900"
-    };
-
+    // Primary CTA always follows the website accent color
     const primaryTheme = colorFamilies[globalTheme.primary];
 
-    const coloredBtn = {
+    const buttonStyle = {
         bg: primaryTheme?.bg || "bg-indigo-600",
         text: primaryTheme?.text || "text-white"
     };
-
-    const activeStyle =
-        (block.theme === "secondary" || block.theme === "tertiary")
-            ? coloredBtn
-            : primaryBtn;
 
     return (
         <section
@@ -151,10 +145,12 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
 
                 <div className="mt-12 flex gap-4">
 
+                    {/* Primary CTA */}
+
                     <EditableButton
                         label={data.btn1_label}
                         url={data.btn1_url}
-                        className={`px-8 py-4 rounded-full font-bold transition !opacity-100 ${activeStyle.bg} ${activeStyle.text}`}
+                        className={`px-8 py-4 rounded-full font-bold transition !opacity-100 ${buttonStyle.bg} ${buttonStyle.text}`}
                         onSave={(label, url) =>
                             onUpdate({
                                 btn1_label: label,
@@ -162,6 +158,8 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
                             })
                         }
                     />
+
+                    {/* Secondary CTA */}
 
                     <EditableButton
                         label={data.btn2_label}

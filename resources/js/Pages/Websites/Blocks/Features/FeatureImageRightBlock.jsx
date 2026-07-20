@@ -93,7 +93,10 @@ export const FeatureImageRightSchema = {
 
 export function FeatureImageRightBlock({ block, blockIndex, onUpdate, globalTheme }) {
 
-    const theme = getEffectiveTheme(block.theme, globalTheme);
+    const theme = getEffectiveTheme(
+        block.resolvedTheme,
+        globalTheme
+    );
 
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
@@ -108,6 +111,21 @@ export function FeatureImageRightBlock({ block, blockIndex, onUpdate, globalThem
         <section
             className={`relative py-32 px-7 overflow-hidden ${theme.bg} transition-colors duration-500`}
         >
+
+            {/* Background Glow */}
+            <div
+                className="
+                    absolute
+                    top-10
+                    right-[-180px]
+                    w-[450px]
+                    h-[450px]
+                    rounded-full
+                    bg-blue-500/10
+                    blur-[170px]
+                    pointer-events-none
+                "
+            />
 
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row-reverse items-center justify-between gap-20">
 

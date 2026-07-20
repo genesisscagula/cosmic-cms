@@ -149,5 +149,10 @@ Route::get('/debug-db-all-blocks', function () {
 Route::post('/ai/generate-page', [AIController::class, 'generatePage']);
 
 
+Route::post('/ai/select-sections', [AIController::class, 'selectSections']);
+
+Route::post('/ai/generate-content', [AIController::class, 'generateContent']);
+
+
 require __DIR__.'/auth.php';
 

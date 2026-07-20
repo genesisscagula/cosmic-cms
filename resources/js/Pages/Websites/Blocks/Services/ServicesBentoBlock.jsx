@@ -145,7 +145,10 @@ export const ServicesBentoSchema = {
 
 export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
 
-    const theme = getEffectiveTheme(block.theme, globalTheme);
+    const theme = getEffectiveTheme(
+        block.resolvedTheme,
+        globalTheme
+    );
 
     const data = {
         ...ServicesBentoSchema.defaults,
