@@ -175,6 +175,24 @@ export default function Builder({ page, website }) {
 
     };
 
+    const duplicateBlock = (index) => {
+
+        const blocks = [...data.blocks];
+
+        const duplicated = structuredClone
+            ? structuredClone(blocks[index])
+            : JSON.parse(JSON.stringify(blocks[index]));
+
+        // keep auto as default if missing
+        duplicated.theme = duplicated.theme || "auto";
+
+        // insert directly below current block
+        blocks.splice(index + 1, 0, duplicated);
+
+        setData("blocks", blocks);
+
+    };
+
 
     const renderBlock = (block, index) => {
 
@@ -344,6 +362,7 @@ export default function Builder({ page, website }) {
                                     {/* Duplicate */}
 
                                     <button
+                                        onClick={() => duplicateBlock(index)}
                                         className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 transition"
                                     >
                                         ⧉

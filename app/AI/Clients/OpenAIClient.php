@@ -34,8 +34,6 @@ class OpenAIClient
 
             ],
 
-            "temperature"=>0.8
-
         ]);
 
         return $response->choices[0]->message->content;

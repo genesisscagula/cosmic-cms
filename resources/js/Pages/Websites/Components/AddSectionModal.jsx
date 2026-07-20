@@ -122,6 +122,10 @@ export default function AddSectionModal({
 
     const aiResult = {};
 
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [aiStage, setAiStage] = useState("Planning your page...");
+    const [progress, setProgress] = useState(0);
+
     const generateWithAI = () => {
 
         if (!prompt.trim()) {
@@ -133,42 +137,64 @@ export default function AddSectionModal({
 
     };
 
-    const executeGenerate  = async () => {
+    const executeGenerate = async () => {
 
         if (!prompt.trim()) {
             alert("Please enter a prompt first.");
             return;
         }
 
+        setIsGenerating(true);
+        setProgress(5);
+        setAiStage("🧠 Understanding your request...");
+
         try {
 
-            // STEP 1
+            // STEP 1 - Planner
             const sectionResponse = await axios.post("/ai/select-sections", {
                 prompt
             });
+
+            setProgress(35);
+            setAiStage("📐 Choosing the best layout...");
 
             const sections = sectionResponse.data.sections;
 
             console.log("Selected Sections:", sections);
 
-            // STEP 2
+            // STEP 2 - Content
+            setProgress(55);
+            setAiStage("✍ Writing professional content...");
+
             const contentResponse = await axios.post("/ai/generate-content", {
                 prompt,
                 sections
             });
 
-            console.log("Generated Content:", contentResponse.data);
+            // STEP 3 - Build Page
+            setProgress(80);
+            setAiStage("🎨 Building your page...");
 
-            // STEP 3
             if (contentResponse.data?.blocks?.length) {
 
                 onReplace(contentResponse.data.blocks);
 
-                setPrompt("");
+                setProgress(100);
+                setAiStage("🚀 Finalizing your page...");
 
-                onClose();
+                setTimeout(() => {
+
+                    setPrompt("");
+
+                    setIsGenerating(false);
+
+                    onClose();
+
+                }, 700);
 
             } else {
+
+                setIsGenerating(false);
 
                 alert("AI did not return any blocks.");
 
@@ -176,11 +202,14 @@ export default function AddSectionModal({
 
         } catch (error) {
 
-            if(error.response){
+            console.log("===== AI ERROR =====");
+            console.log(error);
+            console.log(error.response);
+            console.log(error.response?.data);
 
-                console.error(error.response.data);
+            setIsGenerating(false);
 
-            }
+            alert("Check browser console.");
 
         }
 
@@ -421,7 +450,7 @@ export default function AddSectionModal({
 
     </div>
     {
-    showConfirm && (
+        showConfirm && (
 
             <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[999]">
 
@@ -432,13 +461,9 @@ export default function AddSectionModal({
                     </h3>
 
                     <p className="text-slate-300 leading-7">
-
                         Generating a new AI page will replace all existing blocks.
-
                         <br /><br />
-
                         Your Header, Footer and Theme settings will remain unchanged.
-
                     </p>
 
                     <div className="flex justify-end gap-3 mt-8">
@@ -452,16 +477,88 @@ export default function AddSectionModal({
 
                         <button
                             onClick={() => {
-
                                 setShowConfirm(false);
-
                                 executeGenerate();
-
                             }}
                             className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold"
                         >
                             ✨ Replace & Generate
                         </button>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        )
+    }
+    {
+        isGenerating && (
+
+            <div className="fixed inset-0 z-[99999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center">
+
+                <div className="w-full max-w-lg px-10">
+
+                    <div className="flex justify-center">
+
+                        <div className="relative flex justify-center">
+
+                            <div className="absolute w-44 h-44 rounded-full bg-violet-500/20 blur-3xl animate-pulse" />
+
+                            <div className="w-28 h-28 rounded-full border-[5px] border-violet-500 border-t-cyan-400 border-r-indigo-400 animate-spin" />
+
+                            <div className="absolute inset-0 flex items-center justify-center">
+
+                                <svg
+                                    className="w-10 h-10 text-cyan-300 animate-pulse"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    viewBox="0 0 24 24"
+                                >
+                                    <path d="M12 2v4M12 18v4M2 12h4M18 12h4M5 5l3 3M16 16l3 3M19 5l-3 3M8 16l-3 3"/>
+                                </svg>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <h2 className="mt-8 text-center text-4xl font-black text-white">
+
+                        Cosmic AI
+
+                    </h2>
+
+                    <p className="mt-4 text-center text-slate-300">
+
+                        {aiStage}
+
+                    </p>
+
+                    <div className="mt-10 h-3 rounded-full bg-slate-800 overflow-hidden">
+
+                        <div
+
+                            className="h-full bg-gradient-to-r from-violet-500 via-indigo-500 to-cyan-500 transition-all duration-700"
+
+                            style={{
+
+                                width: `${progress}%`
+
+                            }}
+
+                        />
+
+                    </div>
+
+                    <div className="mt-4 flex justify-between text-sm text-slate-400">
+
+                        <span>Generating...</span>
+
+                        <span>{progress}%</span>
 
                     </div>
 
