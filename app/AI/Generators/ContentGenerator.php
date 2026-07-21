@@ -9,26 +9,61 @@ class ContentGenerator
     public function generate(string $prompt, array $sections): array
     {
         $system = <<<PROMPT
-You are a senior website copywriter and UX designer.
+        You are a senior website copywriter.
 
-Generate ONLY valid JSON.
+        Return ONLY valid JSON.
 
-Do NOT use markdown.
+        Format:
 
-Do NOT explain anything.
+        {
+            "image_folder":"",
+            "blocks":[]
+        }
 
-Return ONLY a JSON array.
+        image_folder MUST be exactly one of:
 
-Every object MUST include:
+        construction
+        restaurant
+        coffee
+        bakery
+        dentist
+        medical
+        lawyer
+        fitness
+        real-estate
+        hotel
+        travel
+        technology
+        education
+        finance
+        electrician
+        plumbing
+        cleaning
+        landscaping
+        automotive
+        salon
 
-- type
-- theme
+        Use ONLY these block types:
 
-Theme should always be "auto".
+        - hero_headline
+        - feature_image_left
+        - feature_image_right
+        - services_bento
+        - hero_centered_cta
 
-Use ONLY these block types:
+        Rules:
 
-PROMPT;
+        - Determine the BEST image_folder based on the website request.
+        - image_folder MUST be one of the allowed folder names above.
+        - theme = auto
+        - image_url = ""
+        - Follow the selected block types.
+        - No markdown.
+        - No explanations.
+        - Professional marketing copy.
+        - Keep paragraphs under 25 words.
+
+        PROMPT;
 
         foreach ($sections as $section) {
             $system .= "\n- {$section}";
@@ -59,7 +94,7 @@ PROMPT;
         - text
         - button_label
         - button_url
-        - image_url (use https://picsum.photos/900/600)
+        - image_url = ""
 
         feature_image_right
 
@@ -70,7 +105,7 @@ PROMPT;
         - text
         - button_label
         - button_url
-        - image_url (use https://picsum.photos/900/600)
+        - image_url = ""
 
         services_bento
 
@@ -92,6 +127,7 @@ PROMPT;
         - theme = auto
         - tagline
         - heading
+        - subheading
 
         Rules:
 
@@ -123,19 +159,22 @@ PROMPT;
 
         $user .= <<<PROMPT
 
-Generate content for every section above.
+        Generate content for every section above.
 
-Return this exact structure:
+        Return this exact structure:
 
-{
-  "blocks":[]
-}
+        {
+            "image_folder":"",
+            "blocks":[]
+        }
 
-Never return markdown.
-Never return explanations.
-Never return code fences.
+        The image_folder MUST exactly match one of the allowed folder names.
 
-PROMPT;
+        Never return markdown.
+        Never return explanations.
+        Never return code fences.
+
+        PROMPT;
 
         $response = OpenAI::chat()->create([
 
@@ -189,7 +228,18 @@ PROMPT;
 
         }
 
-        return $data["blocks"];
+        if (!isset($data["image_folder"])) {
+
+            throw new \Exception(
+                "AI did not return an image_folder.\n\n".$content
+            );
+
+        }
+
+        return [
+            'image_folder' => $data['image_folder'],
+            'blocks' => $data['blocks'],
+        ];
 
     }
 }

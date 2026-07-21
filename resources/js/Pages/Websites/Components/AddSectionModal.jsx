@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useState } from "react";
+import { useRef } from "react";
 
 import BlockPreviewCard from "./BlockPreviewCard";
 
@@ -137,6 +138,47 @@ export default function AddSectionModal({
 
     };
 
+    const progressRef = useRef(0);
+
+    const random = (min, max) =>
+        Math.floor(Math.random() * (max - min + 1)) + min;
+
+    const sleep = (ms) =>
+        new Promise(resolve => setTimeout(resolve, ms));
+
+    const animateProgress = async (target) => {
+
+        while (progressRef.current < target) {
+
+            progressRef.current += random(1, 3);
+
+            if (progressRef.current > target) {
+                progressRef.current = target;
+            }
+
+            setProgress(progressRef.current);
+
+            await sleep(random(40, 80));
+
+        }
+
+    };
+
+    const nextStage = async (
+        stage,
+        target,
+        minimumTime = 500
+    ) => {
+
+        setAiStage(stage);
+
+        await Promise.all([
+            animateProgress(target),
+            sleep(minimumTime)
+        ]);
+
+    };
+
     const executeGenerate = async () => {
 
         if (!prompt.trim()) {
@@ -145,52 +187,102 @@ export default function AddSectionModal({
         }
 
         setIsGenerating(true);
-        setProgress(5);
-        setAiStage("🧠 Understanding your request...");
+
+        progressRef.current = 0;
+
+        setProgress(0);
 
         try {
 
-            // STEP 1 - Planner
-            const sectionResponse = await axios.post("/ai/select-sections", {
-                prompt
-            });
+            // =========================================
+            // STEP 1
+            // =========================================
 
-            setProgress(35);
-            setAiStage("📐 Choosing the best layout...");
+            await nextStage(
+                "🧠 Understanding your request...",
+                random(5,10),
+                700
+            );
+
+            const sectionResponse = await axios.post(
+                "/ai/select-sections",
+                {
+                    prompt
+                }
+            );
 
             const sections = sectionResponse.data.sections;
 
-            console.log("Selected Sections:", sections);
+            // =========================================
+            // STEP 2
+            // =========================================
 
-            // STEP 2 - Content
-            setProgress(55);
+            await nextStage(
+                "📐 Choosing the best layout...",
+                random(18,30),
+                700
+            );
+
+            // =========================================
+            // STEP 3
+            // =========================================
+
+            await nextStage(
+                "🎨 Selecting the best design blocks...",
+                random(38,48),
+                600
+            );
+
+            // =========================================
+            // STEP 4
+            // =========================================
+
             setAiStage("✍ Writing professional content...");
 
-            const contentResponse = await axios.post("/ai/generate-content", {
-                prompt,
-                sections
-            });
+            await animateProgress(90);
 
-            // STEP 3 - Build Page
-            setProgress(80);
-            setAiStage("🎨 Building your page...");
+            const contentResponse = await axios.post(
+                "/ai/generate-content",
+                {
+                    prompt,
+                    sections
+                }
+            );
+
+
+            // =========================================
+            // STEP 5
+            // =========================================
+
+            await nextStage(
+                "🖼 Matching industry images...",
+                random(92,96),
+                500
+            );
+
+            await nextStage(
+                "🚀 Building your page...",
+                99,
+                500
+            );
 
             if (contentResponse.data?.blocks?.length) {
 
                 onReplace(contentResponse.data.blocks);
 
+                progressRef.current = 100;
+
                 setProgress(100);
-                setAiStage("🚀 Finalizing your page...");
 
-                setTimeout(() => {
+                setAiStage("✅ Done!");
 
-                    setPrompt("");
+                await sleep(700);
 
-                    setIsGenerating(false);
+                setPrompt("");
 
-                    onClose();
+                setIsGenerating(false);
 
-                }, 700);
+                onClose();
 
             } else {
 
@@ -202,10 +294,7 @@ export default function AddSectionModal({
 
         } catch (error) {
 
-            console.log("===== AI ERROR =====");
             console.log(error);
-            console.log(error.response);
-            console.log(error.response?.data);
 
             setIsGenerating(false);
 

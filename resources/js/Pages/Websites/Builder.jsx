@@ -49,10 +49,14 @@ export default function Builder({ page, website }) {
     };
 
     const replaceBlocks = (newBlocks) => {
-        console.log("newBlocks:", newBlocks);
-        console.log("isArray:", Array.isArray(newBlocks));
 
-        setData("blocks", newBlocks);
+        setData(
+            "blocks",
+            newBlocks.map(block => ({
+                ...block,
+                _renderKey: crypto.randomUUID()
+            }))
+        );
 
         setIsModalOpen(false);
     };
@@ -221,7 +225,7 @@ export default function Builder({ page, website }) {
 
             return (
                 <Component
-                    key={index}
+                    key={block._renderKey || index}
                     {...blockProps}
                 />
             );
@@ -305,7 +309,7 @@ export default function Builder({ page, website }) {
                     {data.blocks.map((block, index) => (
 
                         <div
-                            key={index}
+                            key={block._renderKey || index}
                             className="relative group w-full transition-all duration-300"
                         >
 
