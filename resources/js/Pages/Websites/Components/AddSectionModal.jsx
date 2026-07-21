@@ -11,6 +11,7 @@ import FeatureRightPreview from "./Previews/FeatureRightPreview";
 import HeroCenteredPreview from "./Previews/HeroCenteredPreview";
 import ServicesBentoPreview from "./Previews/ServicesBentoPreview";
 import ProcessTimelinePreview from "./Previews/ProcessTimelinePreview";
+import TestimonialsCarouselPreview from "./Previews/TestimonialsCarouselPreview";
 
 
 export const BlockRegistry = [
@@ -122,6 +123,20 @@ export const BlockRegistry = [
             category: "HOW IT WORKS",
             heading: "Our Simple Process",
             text: "We follow a proven workflow to deliver quality results from consultation to completion."
+        }
+    },
+    {
+        type: "testimonials_carousel",
+        theme: "auto",
+        title: "Testimonials",
+        buttonLabel: "Install Testimonials",
+        buttonClass: "bg-amber-600 hover:bg-amber-500",
+        preview: TestimonialsCarouselPreview,
+        payload: {
+            type: "testimonials_carousel",
+            tagline: "CLIENT TESTIMONIALS",
+            heading: "Trusted By Businesses Around The World",
+            text: "See what our satisfied clients say about working with our team."
         }
     },
 ];
@@ -263,6 +278,9 @@ export default function AddSectionModal({
                     sections
                 }
             );
+
+
+            console.log(contentResponse.data.blocks);
 
 
             // =========================================

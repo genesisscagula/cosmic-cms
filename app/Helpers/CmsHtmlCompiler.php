@@ -78,32 +78,52 @@ class CmsHtmlCompiler
     
         // 2. Mapping
 
-        $map = [
-            'secondary' => 'white',
-            'tertiary'  => 'stone'
-        ];
 
-        foreach ($blocks as $block) {
-            $type = $block['type'] ?? '';
+        foreach ($blocks as $index => $block) {
 
-            // 3. Logic nga naay safety check
-            $blockTheme = $block['theme'] ?? 'primary'; 
 
-            if (array_key_exists($blockTheme, $map)) {
-                $selectedThemeName = $map[$blockTheme];
-            } else {
-                // Gamita direkta ang $primaryColor nga gipasa gikan sa controller
-                // Kung wala gyud ni, default lang sa 'espresso'
-                $selectedThemeName = $primaryColor;
+            $pattern = [
+                "primary",
+                "white",
+                "surface",
+                "white"
+            ];
+
+            $blockTheme = $block['theme'] ?? "auto";
+
+            if ($blockTheme === "auto") {
+                $blockTheme = $pattern[$index % count($pattern)];
             }
 
-            // 4. Tawaga ang function
+            switch ($blockTheme) {
+
+                case "primary":
+                    $selectedThemeName = $primaryColor;
+                    break;
+
+                case "white":
+                    $selectedThemeName = "white";
+                    break;
+
+                case "surface":
+                    $selectedThemeName = "stone";
+                    break;
+
+                default:
+                    $selectedThemeName = $primaryColor;
+                    break;
+            }
+
             $theme = self::getTheme($selectedThemeName);
+
+
+            $type = $block['type'] ?? '';
+
 
             $stoneTheme = self::getTheme('stone');
 
             switch ($type) {
-                case 'modern_hero':
+                case 'hero_centered_cta':
                 $tagline = e($block['tagline'] ?? 'LOREM IPSUM DOLOR');
                 $heading = e($block['heading'] ?? '');
                 $subheading = e($block['subheading'] ?? $block['text'] ?? '');
@@ -129,7 +149,10 @@ class CmsHtmlCompiler
                 </section>";
 
                 break;
-                case 'services_grid':
+
+
+
+                case 'services_cards':
                 $tagline = e($block['tagline'] ?? 'WHAT WE OFFER');
                 $heading = e($block['heading'] ?? 'Solutions Designed To Help Your Business Grow');
                 $description = e($block['description'] ?? 'We combine strategy, design, and technology to create digital experiences that help businesses grow with confidence.');
@@ -200,69 +223,73 @@ class CmsHtmlCompiler
                 </section>";
                 break;
 
+
                 case 'glassmorphism_header':
-                    $logo = e($block['logo_text'] ?? 'DesignKaBai');
-                    $ctaLabel = e($block['cta_label'] ?? 'Get Started');
-                    $menuItems = $block['menu'] ?? [];
+                $logo = e($block['logo_text'] ?? 'DesignKaBai');
+                $ctaLabel = e($block['cta_label'] ?? 'Get Started');
+                $menuItems = $block['menu'] ?? [];
 
-                    // Header always white
-                    $headerBg = 'bg-white';
-                    $headerBorder = 'border-slate-200';
-                    $headerText = 'text-slate-900';
-                    $menuText = 'text-slate-600';
+                // Header always white
+                $headerBg = 'bg-white';
+                $headerBorder = 'border-slate-200';
+                $headerText = 'text-slate-900';
+                $menuText = 'text-slate-600';
 
-                    // CTA Button follows PRIMARY THEME
-                    $buttonBg = $theme['bg'];
-                    $buttonText = $theme['text'];
+                // CTA Button follows PRIMARY THEME
+                $buttonBg = $theme['bg'];
+                $buttonText = $theme['text'];
 
-                    $navHtml = "";
+                $navHtml = "";
 
-                    foreach ($menuItems as $item) {
-                        $url = e($item['url'] ?? '#');
-                        $label = e($item['label'] ?? '');
+                foreach ($menuItems as $item) {
+                    $url = e($item['url'] ?? '#');
+                    $label = e($item['label'] ?? '');
 
-                        $navHtml .= "
-                            <li>
-                                <a href='{$url}' class='{$menuText} hover:text-slate-900 transition'>
-                                    {$label}
-                                </a>
-                            </li>
-                        ";
-                    }
-
-                    $html .= "
-                    <header class='w-full {$headerBg} py-6 px-[8%] flex justify-between items-center border-b {$headerBorder} sticky top-0 z-50 shadow-sm'>
-                        <div class='text-xl font-extrabold tracking-wide {$headerText}'>
-                            {$logo}
-                        </div>
-
-                        <nav class='flex items-center gap-10'>
-                            <ul class='flex list-none gap-[40px] m-0 p-0'>
-                                {$navHtml}
-                            </ul>
-
-                            <a
-                                href='#'
-                                class='{$buttonBg} {$buttonText} px-[22px] py-[10px] rounded-full text-sm font-semibold hover:opacity-90 transition'
-                            >
-                                {$ctaLabel}
+                    $navHtml .= "
+                        <li>
+                            <a href='{$url}' class='{$menuText} hover:text-slate-900 transition'>
+                                {$label}
                             </a>
-                        </nav>
-                    </header>";
-                    break;
+                        </li>
+                    ";
+                }
+
+                $html .= "
+                <header class='w-full {$headerBg} py-6 px-[8%] flex justify-between items-center border-b {$headerBorder} sticky top-0 z-50 shadow-sm'>
+                    <div class='text-xl font-extrabold tracking-wide {$headerText}'>
+                        {$logo}
+                    </div>
+
+                    <nav class='flex items-center gap-10'>
+                        <ul class='flex list-none gap-[40px] m-0 p-0'>
+                            {$navHtml}
+                        </ul>
+
+                        <a
+                            href='#'
+                            class='{$buttonBg} {$buttonText} px-[22px] py-[10px] rounded-full text-sm font-semibold hover:opacity-90 transition'
+                        >
+                            {$ctaLabel}
+                        </a>
+                    </nav>
+                </header>";
+                break;
 
                 case 'minimal_footer':
-                    $brand = e($block['logo_text'] ?? 'CosmicCMS');
-                    $copy = e($block['copyright'] ?? '© ' . date('Y') . '. All rights reserved.');
-                    $stoneTheme = self::getTheme('stone'); // Hardcoded stone theme
-                    
-                    $html .= "
-                    <footer class='w-full {$stoneTheme['bg']} {$stoneTheme['sub']} py-12 px-8 flex justify-between items-center border-t {$stoneTheme['border']}'>
-                        <div class='font-bold text-lg {$stoneTheme['text']}'>{$brand}</div>
-                        <div class='text-sm'>{$copy}</div>
-                    </footer>";
-                    break;
-                case 'feature_block':
+                $brand = e($block['logo_text'] ?? 'CosmicCMS');
+                $copy = e($block['copyright'] ?? '© ' . date('Y') . '. All rights reserved.');
+                $stoneTheme = self::getTheme('stone'); // Hardcoded stone theme
+                
+                $html .= "
+                <footer class='w-full {$stoneTheme['bg']} {$stoneTheme['sub']} py-12 px-8 flex justify-between items-center border-t {$stoneTheme['border']}'>
+                    <div class='font-bold text-lg {$stoneTheme['text']}'>{$brand}</div>
+                    <div class='text-sm'>{$copy}</div>
+                </footer>";
+                break;
+
+
+
+                case 'feature_image_left':
                 $category = e($block['category'] ?? 'CATEGORY');
                 $heading = e($block['heading'] ?? 'Heading Title');
                 $text = e($block['text'] ?? 'Add your description here...');
@@ -295,7 +322,10 @@ class CmsHtmlCompiler
                     </div>
                 </section>";
                 break;
-                case 'feature_block_reverse':
+
+
+
+                case 'feature_image_right':
                 $category = e($block['category'] ?? 'CATEGORY');
                 $heading = e($block['heading'] ?? 'Heading Title');
                 $text = e($block['text'] ?? 'Add your description here...');
@@ -328,19 +358,25 @@ class CmsHtmlCompiler
                     </div>
                 </section>";
                 break;
-                case 'hero_modern':
+
+
+
+                case 'hero_headline':
                 $subtitle = e($block['subtitle'] ?? 'WELCOME TO THE FUTURE');
                 $heading = e($block['heading'] ?? 'Build Better Digital Reality.');
                 $text = e($block['text'] ?? 'Focus sa logic, biya-i ang manual coding. Ang imong website, automated na sa atong custom CMS logic.');
                 
-                // Kuhaa ang theme base sa configuration
-                $currentTheme = self::getTheme($block['theme'] ?? 'white');
-                $globalPrimary = self::getTheme($globalTheme['primary'] ?? 'emerald');
-
                 // Button Logic
-                $isSpecial = ($block['theme'] === 'secondary' || $block['theme'] === 'tertiary');
-                $btnBg = $isSpecial ? ($globalPrimary['bg'] ?? 'bg-indigo-600') : 'bg-white';
-                $btnText = $isSpecial ? ($globalPrimary['text'] ?? 'text-white') : 'text-slate-900';
+                $isLight = in_array($selectedThemeName, ['white', 'stone']);
+
+                $btnBg = $isLight
+                    ? self::getTheme($primaryColor)['bg']
+                    : 'bg-white';
+
+                $btnText = $isLight
+                    ? self::getTheme($primaryColor)['text']
+                    : 'text-slate-900';
+
 
                 $html .= "
                 <section class='relative w-full py-24 px-[8%] {$theme['bg']} overflow-hidden transition-colors duration-500'>
@@ -361,6 +397,153 @@ class CmsHtmlCompiler
                         </div>
                     </div>
                 </section>";
+                break;
+
+
+
+                case 'services_bento':
+
+                $tagline = e($block['tagline'] ?? 'OUR SERVICES');
+                $heading = e($block['heading'] ?? 'Solutions Built Around Your Business');
+                $description = e($block['description'] ?? 'Helping businesses grow through strategy, design and technology.');
+
+                $services = $block['services'] ?? [];
+
+                $html .= "
+                <section class='relative py-32 px-7 overflow-hidden {$theme['bg']} transition-colors duration-500'>
+                    <div class='max-w-7xl mx-auto'>
+
+                        <div class='max-w-3xl mb-20'>
+
+                            <span class='block text-xs font-semibold uppercase tracking-[0.35em] {$theme['sub']}'>
+                                {$tagline}
+                            </span>
+
+                            <h2 class='mt-5 text-5xl md:text-6xl font-bold tracking-tight leading-tight {$theme['text']}'>
+                                {$heading}
+                            </h2>
+
+                            <p class='mt-6 text-lg leading-8 {$theme['sub']}'>
+                                {$description}
+                            </p>
+
+                        </div>
+
+                        <div class='space-y-6'>
+                ";
+
+                foreach ($services as $service) {
+
+                    $icon  = e($service['icon'] ?? '⚡');
+                    $title = e($service['title'] ?? 'Service Title');
+                    $desc  = e($service['desc'] ?? 'Service description.');
+
+                    $html .= "
+                        <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-8 flex flex-col md:flex-row md:items-center gap-8 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1'>
+
+                            <div class='w-20 h-20 rounded-3xl bg-white/5 border {$theme['border']} flex items-center justify-center text-4xl shrink-0'>
+                                {$icon}
+                            </div>
+
+                            <div class='flex-grow'>
+
+                                <h3 class='text-3xl font-bold {$theme['text']}'>
+                                    {$title}
+                                </h3>
+
+                                <p class='mt-3 text-lg leading-8 {$theme['sub']}'>
+                                    {$desc}
+                                </p>
+
+                            </div>
+
+                            <div class='shrink-0'>
+                                <span class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']}'>
+                                    Learn More →
+                                </span>
+                            </div>
+
+                        </div>
+                    ";
+
+                }
+
+                $html .= "
+                        </div>
+
+                    </div>
+
+                </section>";
+
+                break;
+
+
+                case 'process_timeline':
+
+                $category = e($block['category'] ?? 'HOW IT WORKS');
+                $heading  = e($block['heading'] ?? 'Our Simple Process');
+                $text     = e($block['text'] ?? 'We follow a proven workflow to deliver consistent quality.');
+
+                $steps = $block['steps'] ?? [];
+
+                $html .= "
+                <section class='relative py-32 px-7 overflow-hidden {$theme['bg']} transition-colors duration-500'>
+
+                    <div class='absolute top-0 right-[-180px] w-[420px] h-[420px] rounded-full bg-blue-500/10 blur-[170px] pointer-events-none'></div>
+
+                    <div class='max-w-7xl mx-auto'>
+
+                        <div class='text-center max-w-3xl mx-auto mb-20 space-y-6'>
+
+                            <span class='block text-xs font-semibold uppercase tracking-[0.30em] {$theme['sub']}'>
+                                {$category}
+                            </span>
+
+                            <h2 class='block text-5xl md:text-6xl font-bold leading-tight tracking-tight {$theme['text']}'>
+                                {$heading}
+                            </h2>
+
+                            <p class='block text-lg leading-8 {$theme['sub']}'>
+                                {$text}
+                            </p>
+
+                        </div>
+
+                        <div class='grid md:grid-cols-4 gap-10'>
+                ";
+
+                foreach ($steps as $step) {
+
+                    $number = e($step['number'] ?? '01');
+                    $title  = e($step['title'] ?? 'Step');
+                    $desc   = e($step['text'] ?? '');
+
+                    $html .= "
+                        <div class='relative rounded-3xl {$theme['card']} p-8 border {$theme['border']}'>
+
+                            <div class='text-5xl font-bold opacity-20 mb-6 {$theme['text']}'>
+                                {$number}
+                            </div>
+
+                            <h3 class='text-2xl font-bold mb-4 {$theme['text']}'>
+                                {$title}
+                            </h3>
+
+                            <p class='leading-7 {$theme['sub']}'>
+                                {$desc}
+                            </p>
+
+                        </div>
+                    ";
+                }
+
+                $html .= "
+                        </div>
+
+                    </div>
+
+                </section>";
+
                 break;
             }
         }

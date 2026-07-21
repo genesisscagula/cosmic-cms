@@ -33,6 +33,12 @@ import {
     ProcessTimelineSchema
 } from "./Blocks/Stats/ProcessTimelineBlock";
 
+
+import {
+    TestimonialsCarouselBlock,
+    TestimonialsCarouselSchema
+} from "./Blocks/Testimonials/TestimonialsCarouselBlock";
+
 export const BlockRegistry = {
 
     hero_headline: {
@@ -88,6 +94,14 @@ export const BlockRegistry = {
         component: ProcessTimelineBlock,
 
         schema: ProcessTimelineSchema
+
+    },
+
+    testimonials_carousel: {
+
+        component: TestimonialsCarouselBlock,
+
+        schema: TestimonialsCarouselSchema
 
     },
 

@@ -48,7 +48,9 @@ class ContentGenerator
         - hero_headline
         - feature_image_left
         - feature_image_right
+        - services_cards
         - services_bento
+        - process_timeline
         - hero_centered_cta
 
         Rules:
@@ -121,6 +123,19 @@ class ContentGenerator
         - title
         - desc
 
+        services_cards
+
+        - type = services_cards
+        - theme = auto
+        - tagline
+        - heading
+        - description
+        - cards (array of exactly 3 items)
+
+        Each card contains:
+        - title
+        - desc
+
         hero_centered_cta
 
         - type = hero_centered_cta
@@ -128,6 +143,20 @@ class ContentGenerator
         - tagline
         - heading
         - subheading
+
+        process_timeline
+
+        - type = process_timeline
+        - theme = auto
+        - category
+        - heading
+        - text
+        - steps (array of exactly 4 items)
+
+        Each step contains:
+        - number
+        - title
+        - text
 
         Rules:
 

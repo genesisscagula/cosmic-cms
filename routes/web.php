@@ -10,6 +10,30 @@ use Illuminate\Http\Request;
 use App\Models\Website;
 use App\Helpers\CmsHtmlCompiler;
 use App\Http\Controllers\AI\AIController;
+use App\Models\Page;
+
+
+Route::get('/debug-compiler/{page}', function ($pageId) {
+
+    $page = Page::findOrFail($pageId);
+
+    $blocks = is_array($page->blocks)
+        ? $page->blocks
+        : json_decode($page->blocks, true);
+
+    dd([
+        'page_id' => $page->id,
+        'slug' => $page->slug,
+        'blocks_count' => count($blocks),
+        'blocks' => $blocks,
+        'compiled_html' => CmsHtmlCompiler::compile(
+            $blocks,
+            'espresso'
+        )
+    ]);
+
+});
+
 
 // Welcome Page
 Route::get('/', function () {
