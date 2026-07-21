@@ -106,9 +106,16 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
     // Primary CTA always follows the website accent color
     const primaryTheme = colorFamilies[globalTheme.primary];
 
-    const buttonStyle = {
-        bg: primaryTheme?.bg || "bg-indigo-600",
-        text: primaryTheme?.text || "text-white"
+    const isPrimarySection = block.resolvedTheme === "primary";
+
+    const buttonStyle = isPrimarySection
+    ? {
+        bg: "bg-white",
+        text: "text-slate-950"
+    }
+    : {
+        bg: primaryTheme.bg,
+        text: primaryTheme.text
     };
 
     return (
@@ -143,14 +150,21 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
                     />
                 </div>
 
-                <div className="mt-12 flex gap-4">
+                <div className="mt-12 flex flex-wrap items-center gap-4">
 
                     {/* Primary CTA */}
-
                     <EditableButton
                         label={data.btn1_label}
                         url={data.btn1_url}
-                        className={`px-8 py-4 rounded-full font-bold transition !opacity-100 ${buttonStyle.bg} ${buttonStyle.text}`}
+                        className={`
+                            inline-flex items-center justify-center
+                            min-h-[52px] px-8
+                            rounded-full
+                            font-bold
+                            transition-all duration-200
+                            ${buttonStyle.bg}
+                            ${buttonStyle.text}
+                        `}
                         onSave={(label, url) =>
                             onUpdate({
                                 btn1_label: label,
@@ -160,11 +174,19 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
                     />
 
                     {/* Secondary CTA */}
-
                     <EditableButton
                         label={data.btn2_label}
                         url={data.btn2_url}
-                        className={`border px-8 py-4 rounded-full font-bold transition ${theme.border || "border-slate-700"} ${theme.text}`}
+                        className={`
+                            inline-flex items-center justify-center
+                            min-h-[52px] px-8
+                            rounded-full
+                            border
+                            font-bold
+                            transition-all duration-200
+                            ${theme.border || "border-slate-700"}
+                            ${theme.text}
+                        `}
                         onSave={(label, url) =>
                             onUpdate({
                                 btn2_label: label,

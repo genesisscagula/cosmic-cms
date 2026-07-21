@@ -28,6 +28,11 @@ import {
     ServicesBentoSchema
 } from "./Blocks/Services/ServicesBentoBlock";
 
+import {
+    ProcessTimelineBlock,
+    ProcessTimelineSchema
+} from "./Blocks/Stats/ProcessTimelineBlock";
+
 export const BlockRegistry = {
 
     hero_headline: {
@@ -77,5 +82,13 @@ export const BlockRegistry = {
 	    schema: HeroCenteredCTASchema
 
 	},
+
+    process_timeline: {
+
+        component: ProcessTimelineBlock,
+
+        schema: ProcessTimelineSchema
+
+    },
 
 };

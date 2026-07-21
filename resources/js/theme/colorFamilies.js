@@ -244,4 +244,20 @@ export const colorFamilies = {
         sub:"text-slate-600",
         border:"border-orange-100"
     },
+    ocean: {
+        bg: 'bg-[#24598F]',
+        text: 'text-blue-50',
+        sub: 'text-blue-200',
+        card: 'bg-[#2C6AA8]',
+        border: 'border-blue-900',
+        glow: 'from-sky-500 via-cyan-500'
+    },
+    slate: {
+        bg: 'bg-[#475569]',
+        text: 'text-slate-50',
+        sub: 'text-slate-200',
+        card: 'bg-[#334155]',
+        border: 'border-slate-800',
+        glow: 'from-slate-500 via-blue-500'
+    },
 };

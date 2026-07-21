@@ -10,6 +10,7 @@ import FeatureLeftPreview from "./Previews/FeatureLeftPreview";
 import FeatureRightPreview from "./Previews/FeatureRightPreview";
 import HeroCenteredPreview from "./Previews/HeroCenteredPreview";
 import ServicesBentoPreview from "./Previews/ServicesBentoPreview";
+import ProcessTimelinePreview from "./Previews/ProcessTimelinePreview";
 
 
 export const BlockRegistry = [
@@ -107,6 +108,20 @@ export const BlockRegistry = [
             type: "services_bento",
             heading: "Solutions Built Around Your Business",
             tagline: "OUR SERVICES"
+        }
+    },
+    {
+        type: "process_timeline",
+        theme: "auto",
+        title: "Process Timeline",
+        buttonLabel: "Install Timeline",
+        buttonClass: "bg-cyan-600 hover:bg-cyan-500",
+        preview: ProcessTimelinePreview,
+        payload: {
+            type: "process_timeline",
+            category: "HOW IT WORKS",
+            heading: "Our Simple Process",
+            text: "We follow a proven workflow to deliver quality results from consultation to completion."
         }
     },
 ];
@@ -311,7 +326,28 @@ export default function AddSectionModal({
     return (
         <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
 
-    <div className="bg-slate-900 border border-slate-700 rounded-3xl w-full max-w-6xl shadow-2xl text-slate-100 max-h-[92vh] overflow-y-auto">
+            <div
+            className="
+                bg-slate-900
+                border border-slate-700
+                rounded-3xl
+                w-full
+                max-w-6xl
+                shadow-2xl
+                text-slate-100
+                max-h-[92vh]
+                overflow-y-auto
+
+                [&::-webkit-scrollbar]:w-2
+                [&::-webkit-scrollbar-track]:bg-transparent
+
+                [&::-webkit-scrollbar-thumb]:rounded-full
+                [&::-webkit-scrollbar-thumb]:bg-slate-700
+                hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70
+
+                [&::-webkit-scrollbar-corner]:bg-transparent
+            "
+        >
 
         {/* Header */}
 
@@ -361,7 +397,7 @@ export default function AddSectionModal({
 
                     onChange={(e) => setPrompt(e.target.value)}
 
-                    rows={4}
+                    rows={7}
 
                     placeholder={`Example:
 

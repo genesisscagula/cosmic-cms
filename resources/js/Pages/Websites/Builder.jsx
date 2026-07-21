@@ -5,6 +5,8 @@ import axios from 'axios';
 
 import AddSectionModal from "./Components/AddSectionModal";
 
+import ThemeSelector from "./Theme/ThemeSelector";
+
 import { BlockRegistry } from "./BlockRegistry";
 import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
 
@@ -480,7 +482,7 @@ export default function Builder({ page, website }) {
                         <div className="flex flex-wrap items-center justify-between gap-5">
 
                             {/* Theme */}
-                            <div className="flex items-center gap-3 min-w-[260px]">
+                            {/*<div className="flex items-center gap-3 min-w-[260px]">
                                 <span className="text-xs font-bold uppercase tracking-wider text-slate-500">
                                     🎨 Theme
                                 </span>
@@ -516,7 +518,19 @@ export default function Builder({ page, website }) {
                                     <option value="plum">Royal Plum</option>
                                     <option value="olive">Olive Grove</option>
                                 </select>
-                            </div>
+                            </div>*/}
+
+                            <ThemeSelector
+                                value={globalSelections.primary}
+                                onChange={(theme) => {
+
+                                    setGlobalSelections(prev => ({
+                                        ...prev,
+                                        primary: theme
+                                    }));
+
+                                }}
+                            />
 
                             {/* AI */}
                             <button
