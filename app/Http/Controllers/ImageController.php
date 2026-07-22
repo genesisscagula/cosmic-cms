@@ -13,7 +13,7 @@ class ImageController extends Controller
     public function uploadImage(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif,webp|max:2048',
+            'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,avif|max:4096',
             'website_id' => 'required'
         ]);
 
@@ -27,31 +27,65 @@ class ImageController extends Controller
 
     public function update(Request $request)
 	{
-	    $request->validate([
-	        'website_id' => 'required',
-	        'block_index' => 'required|integer',
-	        'image' => 'required|image'
-	    ]);
+	    try {
 
-	    $website = \App\Models\Website::find($request->website_id);
-	    // 1. Upload
-	    $path = $request->file('image')->store("websites/{$website->id}", 'public');
-	    $imageUrl = asset('storage/' . $path);
+	        $request->validate([
+	            'website_id' => 'required|integer|exists:websites,id',
+	            'block_index' => 'required|integer',
 
-	    // 2. Update JSON
-	    $blocks = json_decode($website->blocks, true);
-	    $blocks[$request->block_index]['image_url'] = $imageUrl;
-	    $website->update(['blocks' => json_encode($blocks)]);
+	            // Allow all common image formats including AVIF
+	            'image' => 'required|file|mimes:jpeg,jpg,png,gif,webp,avif|max:4096',
+	        ]);
 
-	    // 3. Return URL
-	    return response()->json(['url' => $imageUrl]);
+	        $website = Website::findOrFail($request->website_id);
+
+	        if (!$request->hasFile('image')) {
+	            return response()->json([
+	                'message' => 'No image uploaded.'
+	            ], 422);
+	        }
+
+	        $file = $request->file('image');
+
+	        if (!$file->isValid()) {
+	            return response()->json([
+	                'message' => 'Uploaded file is invalid.'
+	            ], 422);
+	        }
+
+	        $path = $file->store(
+	            "websites/{$website->id}",
+	            'public'
+	        );
+
+	        return response()->json([
+	            'success' => true,
+	            'url' => asset('storage/' . $path)
+	        ]);
+
+	    } catch (\Illuminate\Validation\ValidationException $e) {
+
+	        return response()->json([
+	            'message' => 'Validation failed.',
+	            'errors' => $e->errors()
+	        ], 422);
+
+	    } catch (\Throwable $e) {
+
+	        return response()->json([
+	            'message' => $e->getMessage(),
+	            'line' => $e->getLine(),
+	            'file' => basename($e->getFile())
+	        ], 500);
+
+	    }
 	}
 
 	public function uploadBlockImage(Request $request)
 	{
 	    $request->validate([
 	        'website_id' => 'required',
-	        'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048'
+	        'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,avif|max:4096'
 	    ]);
 
 	    // Upload ra gyud ni siya

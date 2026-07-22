@@ -2,62 +2,49 @@
 
 namespace App\Http\Controllers\AI;
 
-use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
-use App\AI\Planners\SectionPlanner;
 use App\AI\Generators\ContentGenerator;
 use App\AI\Generators\ImageGenerator;
-
+use App\AI\Layouts\LayoutEngine;
+use App\Http\Controllers\Controller;
+use Illuminate\Http\Request;
 
 class AIController extends Controller
 {
-
     public function generateContent(Request $request)
     {
         $generator = new ContentGenerator();
         $imageGenerator = new ImageGenerator();
 
-        $content = $generator->generate(
-            $request->prompt,
-            $request->sections
+        $sections = LayoutEngine::random(
+            strtolower($request->input('image_folder', 'default'))
         );
 
-        $imageFolder = $content['image_folder'];
-        $blocks = $content['blocks'];
+        $content = $generator->generate(
+            $request->prompt,
+            $sections
+        );
 
-        // Generate local images
-        foreach ($blocks as &$block) {
+        foreach ($content['blocks'] as &$block) {
 
-            if (isset($block['image_url'])) {
-
-                $block['image_url'] = $imageGenerator->generate(
-                    $imageFolder,
-                    $block
-                );
-
+            if (!isset($block['image_url'])) {
+                continue;
             }
 
+            $block['image_url'] = $imageGenerator->generate(
+                $content['image_folder'],
+                $block
+            );
         }
 
-        return response()->json([
-            "image_folder" => $imageFolder,
-            "blocks" => $blocks
-        ]);
+        return response()->json($content);
     }
-
 
     public function selectSections(Request $request)
     {
-        $planner = new SectionPlanner();
-
-        $sections = $planner->plan(
-            $request->input('prompt')
-        );
-
         return response()->json([
-            "sections" => $sections
+            'sections' => LayoutEngine::random(
+                strtolower($request->input('image_folder', 'default'))
+            )
         ]);
     }
-
-    
 }

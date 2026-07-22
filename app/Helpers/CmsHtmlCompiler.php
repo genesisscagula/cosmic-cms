@@ -545,6 +545,104 @@ class CmsHtmlCompiler
                 </section>";
 
                 break;
+
+
+                case 'testimonials_carousel':
+
+                $tagline = e($block['tagline'] ?? 'CLIENT TESTIMONIALS');
+                $heading = e($block['heading'] ?? 'Trusted By Businesses Around The World');
+                $text    = e($block['text'] ?? 'See what our satisfied clients say about working with our team.');
+
+                $testimonials = $block['testimonials'] ?? [];
+
+                $html .= "
+                <section class='relative py-32 px-7 overflow-hidden {$theme['bg']} transition-colors duration-500'>
+
+                    <div class='max-w-7xl mx-auto'>
+
+                        <div class='text-center max-w-3xl mx-auto mb-20'>
+
+                            <span class='block text-xs font-semibold uppercase tracking-[0.35em] {$theme['sub']}'>
+                                {$tagline}
+                            </span>
+
+                            <h2 class='block mt-5 text-5xl md:text-6xl font-bold leading-tight tracking-tight {$theme['text']}'>
+                                {$heading}
+                            </h2>
+
+                            <p class='block mt-6 text-lg leading-8 {$theme['sub']}'>
+                                {$text}
+                            </p>
+
+                        </div>
+
+                        <div class='grid md:grid-cols-3 gap-8'>
+                ";
+
+                foreach ($testimonials as $item) {
+
+                    $avatar = $item['avatar'] ?? '';
+
+                    if (!$avatar) {
+                        $avatar = asset('storage/cms-images/avatars/avatar-1.jpg');
+                    } elseif (!preg_match('/^https?:\/\//', $avatar)) {
+                        $avatar = asset(ltrim($avatar, '/'));
+                    }
+
+                    $avatar = e($avatar);
+                    
+                    $name    = e($item['name'] ?? 'John Smith');
+                    $company = e($item['company'] ?? 'Company');
+                    $quote   = e($item['quote'] ?? '');
+                    $rating  = (int)($item['rating'] ?? 5);
+
+                    $stars = str_repeat('★', max(0, min($rating, 5)));
+
+                    $html .= "
+                        <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl'>
+
+                            <div class='text-yellow-400 text-xl mb-6'>
+                                {$stars}
+                            </div>
+
+                            <p class='italic leading-8 {$theme['sub']}'>
+                                {$quote}
+                            </p>
+
+                            <div class='flex items-center gap-4 mt-8'>
+
+                                <img
+                                    src='{$avatar}'
+                                    alt='{$name}'
+                                    class='w-14 h-14 rounded-full object-cover'
+                                >
+
+                                <div>
+
+                                    <h3 class='font-bold {$theme['text']}'>
+                                        {$name}
+                                    </h3>
+
+                                    <p class='text-sm {$theme['sub']}'>
+                                        {$company}
+                                    </p>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                    ";
+                }
+
+                $html .= "
+                        </div>
+
+                    </div>
+
+                </section>";
+
+                break;
             }
         }
         return $html;

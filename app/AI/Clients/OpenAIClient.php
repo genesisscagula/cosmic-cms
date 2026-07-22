@@ -6,30 +6,25 @@ use OpenAI\Laravel\Facades\OpenAI;
 
 class OpenAIClient
 {
-
-    public function chat($system,$user)
+    public function chat($system, $user)
     {
-
         $response = OpenAI::chat()->create([
 
-            "model"=>env("OPENAI_MODEL","gpt-5"),
+            "model" => env("OPENAI_MODEL", "gpt-5-mini"),
 
-            "messages"=>[
+            // Uncomment only if your API/model supports it.
+            // "temperature" => 0.8,
+
+            "messages" => [
 
                 [
-
-                    "role"=>"system",
-
-                    "content"=>$system
-
+                    "role" => "system",
+                    "content" => $system
                 ],
 
                 [
-
-                    "role"=>"user",
-
-                    "content"=>$user
-
+                    "role" => "user",
+                    "content" => $user
                 ]
 
             ],
@@ -37,7 +32,5 @@ class OpenAIClient
         ]);
 
         return $response->choices[0]->message->content;
-
     }
-
 }

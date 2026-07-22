@@ -18,7 +18,7 @@ export const ServicesCardsSchema = {
     purpose: "Display company services using a responsive card grid.",
 
     description:
-        "Section containing a heading, description and multiple service cards with title and description.",
+        "Section containing a heading, description and multiple service cards with icon, title and description.",
 
     tags: [
         "services",
@@ -41,16 +41,19 @@ export const ServicesCardsSchema = {
         cards: [
 
             {
+                icon: "💻",
                 title: "Website Development",
                 desc: "Modern, fast, and scalable websites tailored for your business."
             },
 
             {
+                icon: "🎨",
                 title: "UI / UX Design",
                 desc: "Beautiful user experiences focused on clarity and conversion."
             },
 
             {
+                icon: "🚀",
                 title: "Digital Strategy",
                 desc: "Helping businesses grow through thoughtful digital solutions."
             }
@@ -86,6 +89,12 @@ export const ServicesCardsSchema = {
             fields: [
 
                 {
+                    key: "icon",
+                    type: "text",
+                    label: "Icon (Emoji)"
+                },
+
+                {
                     key: "title",
                     type: "text",
                     label: "Title"
@@ -118,8 +127,6 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
     };
 
     const cardData = data.cards;
-
-    const icons = ['⚡', '💻', '🚀', '📈', '🛡️', '💡', '🎯', '✨'];
 
     const updateCard = (cardIndex, field, newValue) => {
 
@@ -184,6 +191,8 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
                             className={`${theme.card} border ${theme.border} rounded-3xl p-8 h-full flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl`}
                         >
 
+                            {/* Icon */}
+
                             <div
                                 className={`
                                     w-16
@@ -199,8 +208,18 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
                                     mb-6
                                 `}
                             >
-                                {icons[i % icons.length]}
+
+                                <EditableText
+                                    value={card.icon || "✨"}
+                                    className="text-2xl leading-none"
+                                    onSave={(val) =>
+                                        updateCard(i, "icon", val)
+                                    }
+                                />
+
                             </div>
+
+                            {/* Title */}
 
                             <EditableText
                                 value={card.title}
@@ -213,6 +232,8 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
                             <div
                                 className={`w-14 h-px mt-5 mb-5 ${theme.border} border-t`}
                             />
+
+                            {/* Description */}
 
                             <EditableText
                                 value={card.desc}

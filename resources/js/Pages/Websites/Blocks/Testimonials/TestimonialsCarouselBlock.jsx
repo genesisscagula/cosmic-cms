@@ -259,6 +259,7 @@ export function TestimonialsCarouselBlock({
 								    websiteId={websiteId}
 								    blockIndex={blockIndex}
 								    src={item.avatar}
+								    showOverlay={false}
 								    className="w-14 h-14 rounded-full object-cover"
 								    onSave={(url) =>
 								        updateTestimonial(index, "avatar", url)

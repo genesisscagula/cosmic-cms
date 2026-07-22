@@ -1,0 +1,29 @@
+<?php
+
+namespace App\AI\Schemas;
+
+class SchemaManager
+{
+    public static function map(): array
+    {
+        return [
+
+            'hero_headline' => 'heroHeadlineSchema',
+
+            'feature_image_left' => 'featureImageLeftSchema',
+
+            'feature_image_right' => 'featureImageRightSchema',
+
+            'services_cards' => 'servicesCardsSchema',
+
+            'services_bento' => 'servicesBentoSchema',
+
+            'process_timeline' => 'processTimelineSchema',
+
+            'testimonials_carousel' => 'testimonialsSchema',
+
+            'hero_centered_cta' => 'heroCtaSchema',
+
+        ];
+    }
+}

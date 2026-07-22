@@ -1,17 +1,45 @@
 <?php
 
 namespace App\AI\Generators;
+use App\AI\Schemas\SchemaManager;
 
 use OpenAI\Laravel\Facades\OpenAI;
 
 class ContentGenerator
 {
+
+    private const IMAGE_FOLDERS = [
+        'construction',
+        'restaurant',
+        'coffee',
+        'bakery',
+        'dentist',
+        'medical',
+        'lawyer',
+        'fitness',
+        'real-estate',
+        'hotel',
+        'travel',
+        'technology',
+        'education',
+        'finance',
+        'electrician',
+        'plumbing',
+        'cleaning',
+        'landscaping',
+        'automotive',
+        'salon',
+    ];
+
+
     public function generate(string $prompt, array $sections): array
     {
+
+
         $system = <<<PROMPT
         You are a senior website copywriter.
 
-        Return ONLY valid JSON.
+        Generate professional marketing copy.
 
         Format:
 
@@ -22,156 +50,33 @@ class ContentGenerator
 
         image_folder MUST be exactly one of:
 
-        construction
-        restaurant
-        coffee
-        bakery
-        dentist
-        medical
-        lawyer
-        fitness
-        real-estate
-        hotel
-        travel
-        technology
-        education
-        finance
-        electrician
-        plumbing
-        cleaning
-        landscaping
-        automotive
-        salon
-
-        Use ONLY these block types:
-
-        - hero_headline
-        - feature_image_left
-        - feature_image_right
-        - services_cards
-        - services_bento
-        - process_timeline
-        - hero_centered_cta
-
-        Rules:
-
-        - Determine the BEST image_folder based on the website request.
-        - image_folder MUST be one of the allowed folder names above.
-        - theme = auto
-        - image_url = ""
-        - Follow the selected block types.
-        - No markdown.
-        - No explanations.
-        - Professional marketing copy.
-        - Keep paragraphs under 25 words.
-
         PROMPT;
 
+        $system .= implode("\n", self::IMAGE_FOLDERS);
+
+
+        $schemaMap = SchemaManager::map();
+
         foreach ($sections as $section) {
-            $system .= "\n- {$section}";
+
+            if (!isset($schemaMap[$section])) {
+                continue;
+            }
+
+            $method = $schemaMap[$section];
+
+            $system .= $this->$method();
+
         }
 
-        $system .= <<<SCHEMA
-
-        Required fields for each block.
-
-        hero_headline
-
-        - type = hero_headline
-        - theme = auto
-        - subtitle
-        - heading
-        - text
-        - btn1_label
-        - btn1_url
-        - btn2_label
-        - btn2_url
-
-        feature_image_left
-
-        - type = feature_image_left
-        - theme = auto
-        - category
-        - heading
-        - text
-        - button_label
-        - button_url
-        - image_url = ""
-
-        feature_image_right
-
-        - type = feature_image_right
-        - theme = auto
-        - category
-        - heading
-        - text
-        - button_label
-        - button_url
-        - image_url = ""
-
-        services_bento
-
-        - type = services_bento
-        - theme = auto
-        - tagline
-        - heading
-        - description
-        - services (array of exactly 3 items)
-
-        Each service contains:
-        - icon (emoji)
-        - title
-        - desc
-
-        services_cards
-
-        - type = services_cards
-        - theme = auto
-        - tagline
-        - heading
-        - description
-        - cards (array of exactly 3 items)
-
-        Each card contains:
-        - title
-        - desc
-
-        hero_centered_cta
-
-        - type = hero_centered_cta
-        - theme = auto
-        - tagline
-        - heading
-        - subheading
-
-        process_timeline
-
-        - type = process_timeline
-        - theme = auto
-        - category
-        - heading
-        - text
-        - steps (array of exactly 4 items)
-
-        Each step contains:
-        - number
-        - title
-        - text
-
-        Rules:
+        $system .= <<<RULES
 
         - Return ONLY valid JSON.
-        - Follow the exact response structure requested.
-        - Do NOT invent new block types.
-        - Include ONLY the selected sections.
-        - Every block must contain all required fields.
         - Theme must always be "auto".
-        - Use concise, professional marketing copy.
-        - Keep paragraphs under 35 words.
-        - CTA labels should be short and action-oriented.
-        - Use https://picsum.photos/900/600 for all placeholder images.
+        - Every block must contain all required fields.
 
-        SCHEMA;
+        RULES;
+
 
         $user = <<<PROMPT
         Website Request
@@ -186,22 +91,19 @@ class ContentGenerator
             $user .= "\n- {$section}";
         }
 
+
         $user .= <<<PROMPT
 
-        Generate content for every section above.
+        Generate professional content for each selected section.
 
-        Return this exact structure:
+        Return ONLY this JSON structure:
 
         {
             "image_folder":"",
             "blocks":[]
         }
 
-        The image_folder MUST exactly match one of the allowed folder names.
-
-        Never return markdown.
-        Never return explanations.
-        Never return code fences.
+        One block per selected section.
 
         PROMPT;
 
@@ -270,5 +172,183 @@ class ContentGenerator
             'blocks' => $data['blocks'],
         ];
 
+    }
+
+    private function heroHeadlineSchema(): string
+    {
+        return <<<TXT
+
+    hero_headline
+
+    - type = hero_headline
+    - theme = auto
+    - subtitle
+    - heading
+    - text
+    - btn1_label
+    - btn1_url
+    - btn2_label
+    - btn2_url
+
+    TXT;
+    }
+
+    private function featureImageLeftSchema(): string
+    {
+        return <<<TXT
+
+    feature_image_left
+
+    - type = feature_image_left
+    - theme = auto
+    - category
+    - heading
+    - text
+    - button_label
+    - button_url
+    - image_url = ""
+
+    TXT;
+    }
+
+    private function featureImageRightSchema(): string
+    {
+        return <<<TXT
+
+    feature_image_right
+
+    - type = feature_image_right
+    - theme = auto
+    - category
+    - heading
+    - text
+    - button_label
+    - button_url
+    - image_url = ""
+
+    TXT;
+    }
+
+    private function servicesBentoSchema(): string
+    {
+        return <<<TXT
+
+    services_bento
+
+    - type = services_bento
+    - theme = auto
+    - tagline
+    - heading
+    - description
+    - services (array of exactly 3 items)
+
+    Each service contains:
+
+    - icon (emoji)
+    - title
+    - desc
+
+    TXT;
+    }
+
+    private function servicesCardsSchema(): string
+    {
+        return <<<TXT
+
+    services_cards
+
+    - type = services_cards
+    - theme = auto
+    - tagline
+    - heading
+    - description
+    - cards (array of exactly 3 items)
+
+    Each card contains:
+
+    - icon (emoji)
+    - title
+    - desc
+
+    Requirements:
+
+    - Generate exactly 3 cards.
+    - Choose an emoji that best represents the service.
+    - Do not repeat the same emoji.
+
+    TXT;
+    }
+
+    private function heroCtaSchema(): string
+    {
+        return <<<TXT
+
+    hero_centered_cta
+
+    - type = hero_centered_cta
+    - theme = auto
+    - tagline
+    - heading
+    - subheading
+
+    TXT;
+    }
+
+    private function processTimelineSchema(): string
+    {
+        return <<<TXT
+
+    process_timeline
+
+    - type = process_timeline
+    - theme = auto
+    - category
+    - heading
+    - text
+    - steps (array of exactly 4 items)
+
+    Each step contains:
+
+    - number
+    - title
+    - text
+
+    TXT;
+    }
+
+    private function testimonialsSchema(): string
+    {
+        return <<<TXT
+
+    testimonials_carousel
+
+    - type = testimonials_carousel
+    - theme = auto
+    - tagline
+    - heading
+    - text
+    - testimonials (array of exactly 3 items)
+
+    Each testimonial contains:
+
+    - avatar
+    - name
+    - company
+    - quote
+    - rating
+
+    Requirements:
+
+    - Generate exactly 3 testimonials.
+    - Rating must always be 5.
+    - Avatar must use:
+      /storage/cms-images/avatars/avatar-1.jpg
+      /storage/cms-images/avatars/avatar-2.jpg
+      /storage/cms-images/avatars/avatar-3.jpg
+    - Quotes should be realistic and industry-specific.
+    - Company should match the business niche.
+    - Name should be a realistic full name.
+
+    TXT;
     }
 }
