@@ -1,15 +1,21 @@
-import { useState, useEffect } from "react";
+import {
+    useState,
+    useEffect,
+    forwardRef,
+    useImperativeHandle
+} from "react";
+
 import { createPortal } from "react-dom";
 import axios from "axios";
 
-export function EditableImage({
+export const EditableImage = forwardRef(({
     websiteId,
     blockIndex,
     onSave,
     className,
     src,
     showOverlay = true
-}) {
+}, ref) => {
 
     const [isEditing, setIsEditing] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -97,15 +103,30 @@ export function EditableImage({
 
     };
 
+    useImperativeHandle(ref, () => ({
+
+        openEditor() {
+            setIsEditing(true);
+        }
+
+    }));
+
     return (
         <>
             <div
-                className="relative group cursor-pointer"
+                className={`group cursor-pointer ${className}`}
                 onClick={() => setIsEditing(true)}
             >
                 <img
                     src={preview}
-                    className={`${className} transition duration-300 group-hover:brightness-90`}
+                    className="
+                        w-full
+                        h-full
+                        object-cover
+                        transition
+                        duration-300
+                        group-hover:brightness-90
+                    "
                     alt="Editable"
                 />
 
@@ -232,6 +253,7 @@ export function EditableImage({
                                 <label className="block">
 
                                     <input
+                                        id={`hero-bg-${blockIndex}`}
                                         type="file"
                                         accept="image/*"
                                         className="hidden"
@@ -295,4 +317,4 @@ export function EditableImage({
         </>
     );
 
-}
+});

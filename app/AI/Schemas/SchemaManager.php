@@ -10,6 +10,8 @@ class SchemaManager
 
             'hero_headline' => 'heroHeadlineSchema',
 
+            'hero_background_image' => 'heroBackgroundImageSchema',
+
             'feature_image_left' => 'featureImageLeftSchema',
 
             'feature_image_right' => 'featureImageRightSchema',
@@ -23,6 +25,8 @@ class SchemaManager
             'testimonials_carousel' => 'testimonialsSchema',
 
             'hero_centered_cta' => 'heroCtaSchema',
+
+            'pricing_cards' => 'pricingCardsSchema',
 
         ];
     }

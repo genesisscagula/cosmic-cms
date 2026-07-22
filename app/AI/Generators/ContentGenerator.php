@@ -351,4 +351,57 @@ class ContentGenerator
 
     TXT;
     }
+
+
+    private function heroBackgroundImageSchema(): string
+    {
+        return <<<TXT
+
+    hero_background_image
+
+    - type = hero_background_image
+    - theme = auto
+    - category
+    - tagline
+    - heading
+    - text
+    - button_label
+    - button_url
+    - backgroundImage
+    - overlayOpacity
+    - textAlign
+    - height
+
+    TXT;
+    }
+
+    private function pricingCardsSchema(): string
+    {
+        return <<<TXT
+
+    pricing_cards
+
+    - type = pricing_cards
+    - theme = auto
+    - category
+    - tagline
+    - heading
+    - text
+    - plans (array of exactly 3 items)
+
+    Each plan contains:
+
+    - badge
+    - featured
+    - title
+    - price
+    - period
+    - description
+    - button_label
+    - button_url
+    - features (array of exactly 5 items)
+
+    TXT;
+    }
+
 }

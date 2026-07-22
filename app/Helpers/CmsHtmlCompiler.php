@@ -643,6 +643,222 @@ class CmsHtmlCompiler
                 </section>";
 
                 break;
+
+
+                case 'hero_background_image':
+
+                $tagline = e($block['tagline'] ?? 'WELCOME TO OUR COMPANY');
+                $heading = e($block['heading'] ?? 'Build Beautiful Websites With Confidence');
+                $text = e($block['text'] ?? 'Create modern, responsive websites using reusable blocks, AI-generated content, and powerful customization tools.');
+
+                $backgroundImage = e($block['backgroundImage'] ?? '');
+                $buttonLabel = e($block['button_label'] ?? 'Get Started');
+                $buttonUrl = e($block['button_url'] ?? '#');
+
+                $overlayOpacity = intval($block['overlayOpacity'] ?? 50);
+                $textAlign = $block['textAlign'] ?? 'center';
+                $height = $block['height'] ?? 'screen';
+
+                // Button Logic
+                $isLight = in_array($selectedThemeName, ['white', 'stone']);
+
+                $btnBg = $isLight
+                    ? self::getTheme($primaryColor)['bg']
+                    : 'bg-white';
+
+                $btnText = $isLight
+                    ? self::getTheme($primaryColor)['text']
+                    : 'text-slate-900';
+
+                // Alignment
+                $alignment = match ($textAlign) {
+                    'left' => 'items-start text-left',
+                    'right' => 'items-end text-right',
+                    default => 'items-center text-center',
+                };
+
+                // Height
+                $heroHeight = match ($height) {
+                    'medium' => 'min-h-[500px]',
+                    'large' => 'min-h-[650px]',
+                    default => 'min-h-screen',
+                };
+
+                $backgroundStyle = $backgroundImage
+                    ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
+                    : '';
+
+                $html .= "
+                <section
+                    class='relative overflow-hidden flex {$heroHeight}'
+                    style=\"{$backgroundStyle}\"
+                >
+
+                    <div
+                        class='absolute inset-0 bg-black'
+                        style='opacity:" . ($overlayOpacity / 100) . ";'>
+                    </div>
+
+                    <div class='relative z-10 w-full max-w-7xl mx-auto px-[8%] py-24 flex flex-col justify-center {$alignment}'>
+
+                        <span class='text-sm uppercase tracking-[0.35em] font-semibold text-white/80 block'>
+                            {$tagline}
+                        </span>
+
+                        <h1 class='mt-6 text-6xl md:text-7xl font-black leading-tight text-white block'>
+                            {$heading}
+                        </h1>
+
+                        <div class='mt-8 max-w-2xl text-xl leading-8 text-white/80'>
+                            {$text}
+                        </div>
+
+                        <div class='mt-12'>
+                            <a
+                                href='{$buttonUrl}'
+                                class='inline-flex items-center justify-center min-h-[52px] px-8 rounded-full font-bold transition {$btnBg} {$btnText}'
+                            >
+                                {$buttonLabel}
+                            </a>
+                        </div>
+
+                    </div>
+
+                </section>";
+
+                break;
+
+
+                case 'pricing_cards':
+
+                $tagline = e($block['tagline'] ?? 'SIMPLE PRICING');
+                $heading = e($block['heading'] ?? 'Choose The Perfect Plan');
+                $text = e($block['text'] ?? 'Flexible pricing options designed for individuals, growing businesses, and enterprise teams.');
+
+                // Button Logic
+                $isLight = in_array($selectedThemeName, ['white', 'stone']);
+
+                $btnBg = $isLight
+                    ? self::getTheme($primaryColor)['bg']
+                    : 'bg-white';
+
+                $btnText = $isLight
+                    ? self::getTheme($primaryColor)['text']
+                    : 'text-slate-900';
+
+                $html .= "
+                <section class='relative py-28 px-[8%] {$theme['bg']} transition-colors duration-500'>
+
+                    <div class='max-w-7xl mx-auto'>
+
+                        <div class='text-center max-w-3xl mx-auto mb-20'>
+
+                            <span class='block text-xs font-semibold uppercase tracking-[0.35em] {$theme['sub']}'>
+                                {$tagline}
+                            </span>
+
+                            <h2 class='block mt-5 text-5xl md:text-6xl font-bold leading-tight tracking-tight {$theme['text']}'>
+                                {$heading}
+                            </h2>
+
+                            <div class='mt-6 text-lg leading-8 {$theme['sub']}'>
+                                {$text}
+                            </div>
+
+                        </div>
+
+                        <div class='grid md:grid-cols-3 gap-8'>
+                ";
+
+                foreach (($block['plans'] ?? []) as $plan) {
+
+                    $featured = !empty($plan['featured']);
+
+                    $html .= "
+                        <div class='relative rounded-3xl border {$theme['border']} {$theme['card']} p-10 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl " .
+                        ($featured ? "scale-105 ring-2 ring-primary" : "") .
+                        "'>";
+
+                    if (!empty($plan['badge'])) {
+
+                        $html .= "
+                            <div class='absolute -top-4 left-1/2 -translate-x-1/2'>
+                                <span class='px-4 py-2 rounded-full bg-primary text-white text-xs font-semibold uppercase tracking-widest'>
+                                    " . e($plan['badge']) . "
+                                </span>
+                            </div>";
+                    }
+
+                    $html .= "
+
+                            <h3 class='text-2xl font-bold {$theme['text']}'>
+                                " . e($plan['title']) . "
+                            </h3>
+
+                            <div class='mt-6 flex items-end gap-2'>
+
+                                <span class='text-5xl font-bold {$theme['text']}'>
+                                    " . e($plan['price']) . "
+                                </span>
+
+                                <span class='mb-2 {$theme['sub']}'>
+                                    " . e($plan['period']) . "
+                                </span>
+
+                            </div>
+
+                            <div class='mt-6 leading-8 {$theme['sub']}'>
+                                " . e($plan['description']) . "
+                            </div>
+
+                            <div class='mt-10 space-y-4'>
+                    ";
+
+                    foreach (($plan['features'] ?? []) as $feature) {
+
+                        $featureText = is_array($feature)
+                            ? ($feature['text'] ?? '')
+                            : $feature;
+
+                        $html .= "
+                            <div class='flex items-center gap-3'>
+
+                                <svg class='w-5 h-5 {$theme['text']}' fill='none' stroke='currentColor' stroke-width='2.5' viewBox='0 0 24 24'>
+                                    <path stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7'/>
+                                </svg>
+
+                                <span class='{$theme['text']}'>
+                                    " . e($featureText) . "
+                                </span>
+
+                            </div>";
+                    }
+
+                    $html .= "
+                            </div>
+
+                            <div class='mt-10'>
+
+                                <a
+                                    href='" . e($plan['button_url'] ?? '#') . "'
+                                    class='w-full inline-flex items-center justify-center min-h-[52px] px-8 rounded-full font-bold transition {$btnBg} {$btnText}'
+                                >
+                                    " . e($plan['button_label'] ?? 'Get Started') . "
+                                </a>
+
+                            </div>
+
+                        </div>";
+                }
+
+                $html .= "
+                        </div>
+
+                    </div>
+
+                </section>";
+
+                break;
             }
         }
         return $html;

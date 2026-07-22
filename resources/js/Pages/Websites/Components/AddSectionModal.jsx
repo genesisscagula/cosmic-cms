@@ -12,6 +12,8 @@ import HeroCenteredPreview from "./Previews/HeroCenteredPreview";
 import ServicesBentoPreview from "./Previews/ServicesBentoPreview";
 import ProcessTimelinePreview from "./Previews/ProcessTimelinePreview";
 import TestimonialsCarouselPreview from "./Previews/TestimonialsCarouselPreview";
+import PricingCardsPreview from "./Previews/PricingCardsPreview";
+import HeroBackgroundImagePreview from "./Previews/HeroBackgroundImagePreview";
 
 
 export const BlockRegistry = [
@@ -137,6 +139,41 @@ export const BlockRegistry = [
             tagline: "CLIENT TESTIMONIALS",
             heading: "Trusted By Businesses Around The World",
             text: "See what our satisfied clients say about working with our team."
+        }
+    },
+    {
+        type: "pricing_cards",
+        theme: "auto",
+        title: "Pricing Cards",
+        buttonLabel: "Install Pricing Cards",
+        buttonClass: "bg-emerald-600 hover:bg-emerald-500",
+        preview: PricingCardsPreview,
+        payload: {
+            type: "pricing_cards",
+            tagline: "SIMPLE PRICING",
+            heading: "Choose The Perfect Plan",
+            text: "Flexible pricing options designed for individuals, growing businesses, and enterprise teams."
+        }
+    },
+
+    {
+    type: "hero_background_image",
+        theme: "auto",
+        title: "Hero Background Image",
+        buttonLabel: "Install Hero Background",
+        buttonClass: "bg-emerald-600 hover:bg-emerald-500",
+        preview: HeroBackgroundImagePreview,
+        payload: {
+            type: "hero_background_image",
+            tagline: "WELCOME TO OUR COMPANY",
+            heading: "Build Beautiful Websites With Confidence",
+            text: "Create modern, responsive websites using reusable blocks, AI-generated content, and powerful customization tools.",
+            button_label: "Get Started",
+            button_url: "#",
+            backgroundImage: "",
+            overlayOpacity: 50,
+            textAlign: "center",
+            height: "screen"
         }
     },
 ];

@@ -39,6 +39,17 @@ import {
     TestimonialsCarouselSchema
 } from "./Blocks/Testimonials/TestimonialsCarouselBlock";
 
+
+import {
+    PricingCardsBlock,
+    PricingCardsSchema
+} from "./Blocks/Pricing/PricingCardsBlock";
+
+import {
+    HeroBackgroundImageBlock,
+    HeroBackgroundImageSchema
+} from "./Blocks/Hero/HeroBackgroundImageBlock";
+
 export const BlockRegistry = {
 
     hero_headline: {
@@ -46,6 +57,22 @@ export const BlockRegistry = {
         component: HeroHeadlineBlock,
 
         schema: HeroHeadlineSchema
+
+    },
+
+    hero_background_image: {
+
+        component: HeroBackgroundImageBlock,
+
+        schema: HeroBackgroundImageSchema
+
+    },
+
+    pricing_cards: {
+
+        component: PricingCardsBlock,
+
+        schema: PricingCardsSchema
 
     },
 
