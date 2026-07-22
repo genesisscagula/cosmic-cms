@@ -367,10 +367,10 @@ class ContentGenerator
     - text
     - button_label
     - button_url
-    - backgroundImage
-    - overlayOpacity
-    - textAlign
-    - height
+    - image_url = ""
+    - overlayOpacity = 50
+    - textAlign = center
+    - height = xl
 
     TXT;
     }

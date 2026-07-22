@@ -44,7 +44,7 @@ export const HeroBackgroundImageSchema = {
 
         button_url: "#",
 
-        backgroundImage: "/storage/cms-images/background/background-1.avif",
+        image_url: "/storage/cms-images/background/background-1.avif",
 
         overlayOpacity: 50,
 
@@ -82,7 +82,7 @@ export const HeroBackgroundImageSchema = {
 
         {
             type: "image",
-            name: "backgroundImage",
+            name: "image_url",
             label: "Background Image"
         },
 
@@ -141,9 +141,9 @@ export function HeroBackgroundImageBlock({
         ...block
     };
 
-    if (data.backgroundImage === null) {
-        data.backgroundImage =
-            HeroBackgroundImageSchema.defaults.backgroundImage;
+    if (!data.image_url) {
+        data.image_url =
+            HeroBackgroundImageSchema.defaults.image_url;
     }
 
 
@@ -180,7 +180,6 @@ export function HeroBackgroundImageBlock({
         props.page?.website_id ||
         props.website?.id;
 
-    console.log(data.backgroundImage);
 
     return (
 
@@ -190,6 +189,11 @@ export function HeroBackgroundImageBlock({
                 overflow-hidden
                 flex
                 items-center
+
+                min-h-[80vh]
+                md:min-h-[85vh]
+                lg:min-h-[90vh]
+
                 ${heroHeight[data.height]}
             `}
             onClick={() => {
@@ -197,7 +201,6 @@ export function HeroBackgroundImageBlock({
                     .getElementById(`hero-bg-${blockIndex}`)
                     ?.click();
             }}
-
         >
 
             {/* Background Image */}
@@ -206,12 +209,19 @@ export function HeroBackgroundImageBlock({
             ref={imageRef}
             websiteId={websiteId}
             blockIndex={blockIndex}
-            src={data.backgroundImage}
+            src={data.image_url}
             showOverlay={false}
-            className="absolute inset-0 z-20"
+            className="
+                absolute
+                inset-0
+                w-full
+                h-full
+                overflow-hidden
+                z-20
+            "
             onSave={(value) =>
                 onUpdate({
-                    backgroundImage: value
+                    image_url: value
                 })
             }
         />

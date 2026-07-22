@@ -225,46 +225,63 @@ export function TestimonialsCarouselBlock({
 
                         <div
                             key={index}
-                            className={`${theme.card} border ${theme.border} rounded-3xl p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl`}
+                            className={`
+                                ${theme.card}
+                                border
+                                ${theme.border}
+                                rounded-3xl
+                                p-8
+
+                                aspect-square
+                                flex
+                                flex-col
+
+                                transition-all
+                                duration-300
+                                hover:-translate-y-2
+                                hover:shadow-2xl
+                            `}
                         >
 
                             {/* Stars */}
 
                             <div className="text-yellow-400 text-xl mb-6">
-
                                 {"★".repeat(item.rating)}
-
                             </div>
 
                             {/* Quote */}
 
-                            <EditableText
-                                value={item.quote}
-                                isTextArea={true}
-                                className={`block italic leading-8 ${theme.sub}`}
-                                onSave={(val) =>
-                                    updateTestimonial(
-                                        index,
-                                        "quote",
-                                        val
-                                    )
-                                }
-                            />
+                            <div className="flex-1 overflow-hidden">
+
+                                <EditableText
+                                    value={item.quote}
+                                    isTextArea={true}
+                                    className={`block italic leading-8 ${theme.sub}`}
+                                    onSave={(val) =>
+                                        updateTestimonial(
+                                            index,
+                                            "quote",
+                                            val
+                                        )
+                                    }
+                                />
+
+                            </div>
 
                             {/* Author */}
 
                             <div className="flex items-center gap-4 mt-8">
 
                                 <EditableImage
-								    websiteId={websiteId}
-								    blockIndex={blockIndex}
-								    src={item.avatar}
-								    showOverlay={false}
-								    className="w-14 h-14 rounded-full object-cover"
-								    onSave={(url) =>
-								        updateTestimonial(index, "avatar", url)
-								    }
-								/>
+                                    websiteId={websiteId}
+                                    blockIndex={blockIndex}
+                                    src={item.avatar}
+                                    showOverlay={false}
+                                    className="w-14 h-14 rounded-full overflow-hidden flex-shrink-0"
+                                    onSave={(url) =>
+                                        updateTestimonial(index, "avatar", url)
+                                    }
+                                />
 
                                 <div>
 
@@ -272,11 +289,7 @@ export function TestimonialsCarouselBlock({
                                         value={item.name}
                                         className={`block font-bold ${theme.text}`}
                                         onSave={(val) =>
-                                            updateTestimonial(
-                                                index,
-                                                "name",
-                                                val
-                                            )
+                                            updateTestimonial(index, "name", val)
                                         }
                                     />
 
@@ -284,11 +297,7 @@ export function TestimonialsCarouselBlock({
                                         value={item.company}
                                         className={`block text-sm ${theme.sub}`}
                                         onSave={(val) =>
-                                            updateTestimonial(
-                                                index,
-                                                "company",
-                                                val
-                                            )
+                                            updateTestimonial(index, "company", val)
                                         }
                                     />
 
