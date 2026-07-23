@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { getEffectiveTheme } from './GeneratedBlocks';
+import { getEffectiveTheme } from '../../theme/Theme';
 
 function EditableText({ value, onSave, className }) {
     const [isEditing, setIsEditing] = useState(false);

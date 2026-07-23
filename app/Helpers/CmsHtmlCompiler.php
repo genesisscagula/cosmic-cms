@@ -4,72 +4,33 @@ namespace App\Helpers;
 
 class CmsHtmlCompiler
 {
+    private static ?array $themeCatalog = null;
+
+    private static function themeCatalog(): array
+    {
+        if (self::$themeCatalog !== null) {
+            return self::$themeCatalog;
+        }
+
+        $catalog = json_decode(
+            file_get_contents(resource_path('theme/theme-families.json')),
+            true
+        );
+
+        return self::$themeCatalog = is_array($catalog) ? $catalog : [];
+    }
+
     private static function getTheme($key)
     {
-        $themes = [
-        // Primary (Dark/Bold)
-        'emerald'    => ['bg' => 'bg-[#0B5D4B]', 'text' => 'text-emerald-50', 'sub' => 'text-emerald-200', 'card' => 'bg-[#14735D]', 'border' => 'border-emerald-900'],
-        'coffee'     => ['bg' => 'bg-[#4A2A14]', 'text' => 'text-amber-50', 'sub' => 'text-amber-200', 'card' => 'bg-[#5A341A]', 'border' => 'border-amber-900'],
-        'rose'       => ['bg' => 'bg-[#A13D63]', 'text' => 'text-rose-50', 'sub' => 'text-rose-200', 'card' => 'bg-[#8C3156]', 'border' => 'border-rose-900'],
-        'dark'       => ['bg' => 'bg-[#1F2937]', 'text' => 'text-slate-50', 'sub' => 'text-slate-400', 'card' => 'bg-[#374151]', 'border' => 'border-slate-700'],
-        'ocean'      => ['bg' => 'bg-[#24598F]', 'text' => 'text-blue-50', 'sub' => 'text-blue-200', 'card' => 'bg-[#2C6AA8]', 'border' => 'border-blue-900'],
-        'indigo'     => ['bg' => 'bg-[#4F46A5]', 'text' => 'text-indigo-50', 'sub' => 'text-indigo-200', 'card' => 'bg-[#5B55B8]', 'border' => 'border-indigo-900'],
-        'amber'      => ['bg' => 'bg-[#A16207]', 'text' => 'text-amber-50', 'sub' => 'text-amber-200', 'card' => 'bg-[#B7791F]', 'border' => 'border-amber-900'],
-        'charcoal'   => ['bg' => 'bg-[#3A3A3A]', 'text' => 'text-slate-50', 'sub' => 'text-slate-400', 'card' => 'bg-[#4A4A4A]', 'border' => 'border-slate-700'],
-        'violet'     => ['bg' => 'bg-[#5B3FA3]', 'text' => 'text-violet-50', 'sub' => 'text-violet-200', 'card' => 'bg-[#6C4DB6]', 'border' => 'border-violet-900'],
-        'teal'       => ['bg' => 'bg-[#186B66]', 'text' => 'text-teal-50', 'sub' => 'text-teal-200', 'card' => 'bg-[#217C76]', 'border' => 'border-teal-900'],
-        'ruby'       => ['bg' => 'bg-[#A12649]', 'text' => 'text-rose-50', 'sub' => 'text-rose-200', 'card' => 'bg-[#8C1E3F]', 'border' => 'border-rose-900'],
-        'forest'     => ['bg' => 'bg-[#2E5E3E]', 'text' => 'text-emerald-50', 'sub' => 'text-emerald-200', 'card' => 'bg-[#3A714C]', 'border' => 'border-emerald-900'],
-        'midnight'   => ['bg' => 'bg-[#243447]', 'text' => 'text-slate-100', 'sub' => 'text-slate-400', 'card' => 'bg-[#30475E]', 'border' => 'border-slate-700'],
-        'obsidian'   => ['bg' => 'bg-[#171717]', 'text' => 'text-neutral-100', 'sub' => 'text-neutral-400', 'card' => 'bg-[#262626]', 'border' => 'border-neutral-800'],
-        'navy'       => ['bg' => 'bg-[#214B7A]', 'text' => 'text-blue-50', 'sub' => 'text-blue-200', 'card' => 'bg-[#295C95]', 'border' => 'border-blue-900'],
-        'void'       => ['bg' => 'bg-[#111827]', 'text' => 'text-slate-50', 'sub' => 'text-slate-400', 'card' => 'bg-[#1F2937]', 'border' => 'border-slate-800'],
-        'espresso'   => ['bg' => 'bg-[#4B2E1E]', 'text' => 'text-orange-50', 'sub' => 'text-orange-200', 'card' => 'bg-[#5B3825]', 'border' => 'border-orange-900'],
-        'terracotta' => ['bg' => 'bg-[#A04A2C]', 'text' => 'text-orange-50', 'sub' => 'text-orange-200', 'card' => 'bg-[#B25A39]', 'border' => 'border-orange-800'],
-        'asphalt'    => ['bg' => 'bg-[#2A2A2A]', 'text' => 'text-slate-200', 'sub' => 'text-slate-500', 'card' => 'bg-[#3A3A3A]', 'border' => 'border-slate-700'],
-        'sapphire' => [
-            'bg' => 'bg-[#0F4C81]',
-            'text' => 'text-blue-50',
-            'sub' => 'text-blue-200',
-            'card' => 'bg-[#1B5FA7]',
-            'border' => 'border-blue-900'
-        ],
+        $catalog = self::themeCatalog();
+        $themes = $catalog['families'] ?? [];
+        $compilerThemeIds = $catalog['compilerThemeIds'] ?? [];
 
-        'plum' => [
-            'bg' => 'bg-[#5B214A]',
-            'text' => 'text-fuchsia-50',
-            'sub' => 'text-fuchsia-200',
-            'card' => 'bg-[#6E2959]',
-            'border' => 'border-fuchsia-900'
-        ],
+        if (in_array($key, $compilerThemeIds, true) && isset($themes[$key])) {
+            return $themes[$key];
+        }
 
-        'olive' => [
-            'bg' => 'bg-[#4D5D2D]',
-            'text' => 'text-lime-50',
-            'sub' => 'text-lime-200',
-            'card' => 'bg-[#5E7037]',
-            'border' => 'border-lime-900'
-        ],
-        
-        // Light Colors
-        'stone' => [
-            'bg' => 'bg-[#F7F7F5]',
-            'text' => 'text-slate-800',
-            'sub' => 'text-slate-500',
-            'card' => 'bg-white',
-            'border' => 'border-stone-200'
-        ],
-
-        'white' => [
-            'bg' => 'bg-[#FEFEFD]',
-            'text' => 'text-slate-900',
-            'sub' => 'text-slate-600',
-            'card' => 'bg-[#F8F8F7]',
-            'border' => 'border-stone-200'
-        ],
-
-        ];
-        return $themes[$key] ?? $themes['amber'];
+        return $themes['amber'];
     }
 
    public static function compile(array $blocks, string $primaryColor = null): string

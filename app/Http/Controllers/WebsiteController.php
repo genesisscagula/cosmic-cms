@@ -15,9 +15,9 @@ class WebsiteController extends Controller
 	    // Kuhaon ang mga websites nga gipanag-iya sa kasamtangang user
 	    $websites = \App\Models\Website::where('user_id', auth()->id())->get();
 
-	    return \Inertia\Inertia::render('Dashboard', [
-	        'websites' => $websites
-	    ]);
+	    return \Inertia\Inertia::render('Dashboard/Dashboard', [
+		    'websites' => $websites
+		]);
 	}
 
     public function store(Request $request)

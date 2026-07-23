@@ -1,23 +1,8 @@
 import React from 'react';
 import { EditableText } from "./Blocks/Shared/EditableText";
+import themeCatalog from "../../../theme/theme-families.json";
 
-export const themeConfig = {
-    // Existing
-    dark: { bg: 'bg-[#0b0f19]', text: 'text-white', sub: 'text-[#94a3b8]', card: 'bg-[#111827]', border: 'border-slate-800' },
-    midnight: { bg: 'bg-[#1e293b]', text: 'text-slate-100', sub: 'text-slate-300', card: 'bg-[#334155]', border: 'border-slate-600' },
-    charcoal: { bg: 'bg-[#1a1a1a]', text: 'text-gray-100', sub: 'text-gray-400', card: 'bg-[#262626]', border: 'border-gray-700' },
-    'slate-light': { bg: 'bg-[#475569]', text: 'text-white', sub: 'text-slate-200', card: 'bg-[#64748b]', border: 'border-slate-500' },
-    white: { bg: 'bg-white', text: 'text-slate-900', sub: 'text-slate-600', card: 'bg-slate-50', border: 'border-slate-200' },
-    stone: { bg: 'bg-[#f8fafc]', text: 'text-slate-800', sub: 'text-slate-500', card: 'bg-white', border: 'border-slate-200' },
-    sky: { bg: 'bg-[#f0f9ff]', text: 'text-slate-900', sub: 'text-slate-600', card: 'bg-white', border: 'border-blue-100' },
-    'slate-950': { bg: 'bg-[#0f172a]', text: 'text-white', sub: 'text-slate-400', card: 'bg-[#1e293b]', border: 'border-slate-700' },
-    
-    // New Color Families
-    emerald: { bg: 'bg-[#064e3b]', text: 'text-emerald-50', sub: 'text-emerald-200', card: 'bg-[#065f46]', border: 'border-emerald-800' },
-    rose: { bg: 'bg-[#881337]', text: 'text-rose-50', sub: 'text-rose-200', card: 'bg-[#9f1239]', border: 'border-rose-900' },
-    violet: { bg: 'bg-[#2e1065]', text: 'text-violet-50', sub: 'text-violet-200', card: 'bg-[#4c1d95]', border: 'border-violet-800' },
-    coffee: { bg: 'bg-[#422006]', text: 'text-amber-50', sub: 'text-amber-200', card: 'bg-[#78350f]', border: 'border-amber-900' },
-};
+export const themeConfig = themeCatalog.legacyFooterFamilies;
 
 
 export function MinimalFooter({ block, onUpdate }) {
