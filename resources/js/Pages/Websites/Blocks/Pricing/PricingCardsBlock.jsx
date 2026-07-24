@@ -310,14 +310,14 @@ export function PricingCardsBlock({
     return (
 
         <section
-            className={`relative py-28 px-7 ${theme.bg} transition-colors duration-500`}
+            className={`relative px-6 py-20 sm:px-8 lg:py-24 ${theme.bg} transition-colors duration-500`}
         >
 
             <div className="max-w-7xl mx-auto">
 
                 {/* Header */}
 
-                <div className="text-center max-w-3xl mx-auto mb-20">
+                <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-14">
 
                     <EditableText
                         value={data.tagline}
@@ -354,7 +354,7 @@ export function PricingCardsBlock({
 
                 {/* Plans */}
 
-                <div className="grid md:grid-cols-3 gap-8">
+                <div className="grid gap-6 md:grid-cols-3 lg:gap-7">
 
                     {data.plans.map((plan, index) => (
 
@@ -366,20 +366,21 @@ export function PricingCardsBlock({
                                 border
                                 ${theme.border}
                                 ${theme.card}
-                                p-10
+                                p-7
+                                lg:p-8
                                 transition-all
                                 duration-300
                                 hover:-translate-y-2
                                 hover:shadow-2xl
-                                ${plan.featured ? "scale-105 ring-2 ring-primary" : ""}
+                                ${plan.featured ? "scale-105 ring-2 ring-white/40" : ""}
                             `}
                         >
 
                             {plan.badge && (
 
-                                <div className="absolute -top-4 left-1/2 -translate-x-1/2">
+                            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
 
-                                    <span className="px-4 py-2 rounded-full bg-primary text-white text-xs font-semibold uppercase tracking-widest">
+                                    <span className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 ${primaryTheme.bg} ${primaryTheme.text} text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm`}>
 
                                         <EditableText
                                             value={plan.badge}
@@ -404,11 +405,11 @@ export function PricingCardsBlock({
                                 }
                             />
 
-                            <div className="mt-6 flex items-end gap-2">
+                            <div className="mt-5 flex items-end gap-2">
 
                                 <EditableText
                                     value={plan.price}
-                                    className={`block text-5xl font-bold ${theme.text}`}
+                                className={`block text-4xl font-bold sm:text-5xl ${theme.text}`}
                                     onSave={(val) =>
                                         updatePlan(index, "price", val)
                                     }
@@ -427,7 +428,7 @@ export function PricingCardsBlock({
                             <EditableText
                                 value={plan.description}
                                 isTextArea={true}
-                                className={`block mt-6 leading-8 ${theme.sub}`}
+                            className={`block mt-5 leading-7 ${theme.sub}`}
                                 onSave={(val) =>
                                     updatePlan(index, "description", val)
                                 }
@@ -435,7 +436,7 @@ export function PricingCardsBlock({
 
                             {/* Features */}
 
-                            <div className="mt-10 space-y-4">
+                            <div className="mt-7 space-y-3">
 
                                 {plan.features.map((feature, featureIndex) => (
 
@@ -478,7 +479,7 @@ export function PricingCardsBlock({
 
                             {/* Button */}
 
-                            <div className="mt-10">
+                            <div className="mt-8">
 
                                 <EditableButton
 								    label={plan.button_label}

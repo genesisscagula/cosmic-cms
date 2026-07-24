@@ -7,6 +7,7 @@ import WebsiteWorkspaceHeader from './Components/WebsiteWorkspaceHeader';
 import NewPagePanel from './Components/NewPagePanel';
 import PageList from './Components/PageList';
 import PageEmptyState from './Components/PageEmptyState';
+import WebsiteLaunchGuide from './Components/WebsiteLaunchGuide';
 
 const WebsiteWorkspaceShell = ({ children }) => <>{children}</>;
 
@@ -176,6 +177,8 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
             <div className="min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-6xl space-y-7">
                     <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} themeSummary={themeSummary} onNewPage={() => setIsNewPageOpen(true)} />
+
+                    <WebsiteLaunchGuide pages={pages || []} onNewPage={() => setIsNewPageOpen(true)} />
 
                     <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
                         <div><p className="text-sm font-semibold text-white">Website shell</p><p className="mt-1 text-sm text-slate-400">Configure the shared header and footer used across this website.</p></div>

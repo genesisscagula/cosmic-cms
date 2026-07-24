@@ -1,7 +1,9 @@
 import { useState } from "react";
+import themeMetadata from "../../Websites/Theme/ThemeMetadata";
 
 function TemplatePreview({ template, large = false }) {
-    return <div className={`relative overflow-hidden rounded-xl border border-white/10 bg-gradient-to-br ${template.thumbnail} ${large ? "h-32" : "h-24"}`}><div className="absolute inset-x-4 top-4 h-2 rounded-full bg-white/40" /><div className="absolute inset-x-4 top-8 h-7 rounded-md bg-white/25" /><div className="absolute inset-x-4 top-[4.25rem] grid grid-cols-3 gap-1.5"><span className="h-8 rounded bg-white/20" /><span className="h-8 rounded bg-white/20" /><span className="h-8 rounded bg-white/20" /></div></div>;
+    const theme = themeMetadata.find((item) => item.id === template.themeId) || themeMetadata.find((item) => item.id === "slate");
+    return <div className={`relative overflow-hidden rounded-xl border border-white/10 ${large ? "h-32" : "h-24"}`} style={{ background: `linear-gradient(135deg, ${theme.colors[0]}, ${theme.colors[1]})` }}><div className="absolute inset-x-4 top-4 h-2 rounded-full bg-white/40" /><div className="absolute inset-x-4 top-8 h-7 rounded-md bg-white/25" /><div className="absolute inset-x-4 top-[4.25rem] grid grid-cols-3 gap-1.5"><span className="h-8 rounded bg-white/20" /><span className="h-8 rounded bg-white/20" /><span className="h-8 rounded bg-white/20" /></div></div>;
 }
 
 export function FeaturedTemplateCard({ template, onPreview, onUse }) {

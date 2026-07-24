@@ -7,28 +7,28 @@ use App\Models\Page;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\DB;
+use App\Services\PagePublisher;
+use Throwable;
 
 class PageController extends Controller
 {
     public function index(Website $website)
     {
-        if ($website->user_id !== auth()->id()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorize('view', $website);
 
         return \Inertia\Inertia::render('Websites/Index', [
             'website' => $website,
             'pages' => $website->pages()->latest()->get(),
             // DIRETSO KORREKTE HANDSHAKE PACKET NGADTO SA REACT
-            'globalHeaderBlock' => $website->global_header 
+            'globalHeaderBlock' => $website->global_header,
+            'globalFooterBlock' => $website->global_footer,
         ]);
     }
 
     public function store(Request $request, Website $website)
     {
-        if ($website->user_id !== auth()->id()) {
-            abort(403, 'Unauthorized action.');
-        }
+        $this->authorize('update', $website);
 
         $request->validate([
             'title' => 'required|string|max:255',
@@ -36,24 +36,13 @@ class PageController extends Controller
 
         $slug = \Illuminate\Support\Str::slug($request->title);
 
-        $dummyBlocks = [
-            [
-                'type' => 'hero',
-                'heading' => 'Welcome to ' . $request->title,
-                'subheading' => 'Custom crafted solutions via Cosmic CMS for ' . $website->name,
-                'bg_color' => '#1e1b4b'
-            ],
-            [
-                'type' => 'content',
-                'text' => 'Kani nga content gikan ni sa imong Headless CMS database. Dynamic kini nga gi-compile ug gi-sopsop pinaagi sa JSON API bridge handshake.'
-            ]
-        ];
-
         $website->pages()->create([
             'title' => $request->title,
             'slug' => $slug,
-            'status' => 'published',
-            'blocks' => $dummyBlocks
+            'status' => 'draft',
+            // A new page starts as an honest blank canvas. The Builder guides
+            // customers to add sections or generate a real layout with AI.
+            'blocks' => []
         ]);
 
         return back();
@@ -61,9 +50,7 @@ class PageController extends Controller
 
     public function builder(\App\Models\Page $page)
     {
-        if ($page->website->user_id !== auth()->id()) {
-            abort(403);
-        }
+        $this->authorize('view', $page->website);
 
         return \Inertia\Inertia::render('Websites/Builder', [
             'page' => $page,
@@ -73,48 +60,114 @@ class PageController extends Controller
 
    public function updateBlocks(\Illuminate\Http\Request $request, \App\Models\Page $page)
     {
-        if ($page->website->user_id !== auth()->id()) {
-            abort(403);
-        }
+        $this->authorize('update', $page->website);
 
         $validated = $request->validate([
             'blocks' => 'nullable|array',
             'global_header' => 'nullable|array',
         ]);
 
-        // Save page blocks
-        $page->blocks = $validated['blocks'];
-        $page->save();
+        DB::transaction(function () use ($page, $validated) {
+            $page->blocks = $validated['blocks'];
+            $page->save();
 
-        // Save global header
-        if (isset($validated['global_header'])) {
-            $page->website->global_header = $validated['global_header'];
-            $page->website->save();
-        }
-
-        $liveDomain = rtrim($page->website->domain, '/');
-
-        if (!empty($liveDomain)) {
-            $ch = curl_init($liveDomain . '/index.php?webhook=true');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-            curl_exec($ch);
-            curl_close($ch);
-        }
+            if (array_key_exists('global_header', $validated)) {
+                $page->website->global_header = $validated['global_header'];
+                $page->website->save();
+            }
+        });
 
         return redirect()->back()->with('success', 'Page updated successfully.');
+    }
+
+    public function saveBuilder(Request $request, Page $page)
+    {
+        $this->authorize('update', $page->website);
+
+        $validated = $request->validate([
+            'blocks' => ['nullable', 'array'],
+            'global_header' => ['nullable', 'array'],
+            'global_footer' => ['nullable', 'array'],
+            'theme_settings' => ['nullable', 'array'],
+        ]);
+
+        $website = $page->website;
+
+        DB::transaction(function () use ($page, $website, $validated) {
+            $page->blocks = $validated['blocks'] ?? [];
+            $page->save();
+
+            if (array_key_exists('global_header', $validated)) {
+                $website->global_header = $validated['global_header'];
+            }
+
+            if (array_key_exists('global_footer', $validated)) {
+                $website->global_footer = $validated['global_footer'];
+            }
+
+            if (array_key_exists('theme_settings', $validated)) {
+                $website->theme_settings = $validated['theme_settings'];
+            }
+
+            $website->save();
+        });
+
+        return response()->json([
+            'status' => 'success',
+            'message' => 'Builder changes saved successfully.',
+        ]);
+    }
+
+    public function publish(Request $request, Page $page, PagePublisher $publisher)
+    {
+        $this->authorize('update', $page->website);
+
+        $website = $page->website;
+
+        try {
+            $html = $publisher->publish($page, $website);
+
+            DB::transaction(function () use ($page, $website, $html) {
+                $publishedAt = now();
+
+                $page->published_blocks = $page->blocks ?? [];
+                $page->published_html = $html;
+                $page->status = 'published';
+                $page->published_at ??= $publishedAt;
+                $page->last_published_at = $publishedAt;
+                $page->publish_error = null;
+                $page->save();
+
+                $website->published_theme_settings = $website->theme_settings;
+                $website->published_global_header = $website->global_header;
+                $website->published_global_footer = $website->global_footer;
+                $website->save();
+            });
+        } catch (Throwable $exception) {
+            report($exception);
+
+            $page->publish_error = 'Publishing failed. Your previous live version is still available.';
+            $page->save();
+
+            return response()->json([
+                'message' => $page->publish_error,
+                'status' => $page->status,
+            ], 502);
+        }
+
+        return response()->json([
+            'status' => 'published',
+            'published_at' => $page->published_at?->toISOString(),
+            'last_published_at' => $page->last_published_at?->toISOString(),
+        ]);
     }
 
     /**
      * I-save ang Global Header Shell gikan sa Axios call sa UI Matrix.
      */
-    public function saveGlobalHeader(Request $request, $websiteId)
+    public function saveGlobalHeader(Request $request, Website $website)
     {
-        $website = Website::findOrFail($websiteId);
-
-        if ($website->user_id !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
+        $this->authorize('update', $website);
 
         $request->validate([
             'header_block' => 'nullable|array'
@@ -132,13 +185,9 @@ class PageController extends Controller
     }
 
 
-    public function saveFooter(Request $request, $websiteId)
+    public function saveFooter(Request $request, Website $website)
     {
-        $website = Website::findOrFail($websiteId);
-
-        if ($website->user_id !== auth()->id()) {
-            return response()->json(['message' => 'Unauthorized action.'], 403);
-        }
+        $this->authorize('update', $website);
 
         $request->validate([
             'footer_block' => 'nullable|array'
@@ -157,39 +206,7 @@ class PageController extends Controller
 
     public function update(Request $request, Page $page)
     {
-
-        dd($request->all());
-
-        // 1. Siguraduhon nato nga limpyo ug validated ang arrays nga gikan sa useForm sa React
-        $request->validate([
-            'blocks' => 'nullable|array',
-            'global_header' => 'nullable|array'
-        ]);
-
-        // 2. I-update ang inner layout blocks sa database page column (Naka cast ni as array/json sa Model)
-        $page->update([
-            'blocks' => $request->blocks
-        ]);
-
-        // 3. I-update ang Global Header diretso sa website configuration data packet
-        if ($request->has('global_header')) {
-            $page->website->update([
-                'global_header' => $request->global_header
-            ]);
-        }
-
-        // 4. Trigger Webhook para sa imuhang live raw HTML/CSS/JS site para mo pull sa pinaka-fresh nga data
-        $liveDomain = rtrim($page->website->domain, '/'); 
-        if (!empty($liveDomain)) {
-            $ch = curl_init($liveDomain . '/index.php?webhook=true');
-            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 5);
-            curl_exec($ch);
-            curl_close($ch);
-        }
-
-        // 5. I-redirect balik sa active workspace react stage
-        return back();
+        return $this->updateBlocks($request, $page);
     }
 
 
@@ -315,9 +332,13 @@ class PageController extends Controller
     }
 
     // Sa imong Controller update-theme function
-    public function updateTheme(Request $request, $id) {
-        $website = Website::find($id);
-        // Direkta na i-save ang array, ang Laravel/Model ang bahala sa JSON
+    public function updateTheme(Request $request, Website $website) {
+        $this->authorize('update', $website);
+
+        $request->validate([
+            'theme_settings' => ['nullable', 'array'],
+        ]);
+
         $website->theme_settings = $request->input('theme_settings');
         $website->save();
         

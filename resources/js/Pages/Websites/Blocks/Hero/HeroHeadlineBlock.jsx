@@ -120,7 +120,7 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
 
     return (
         <section
-            className={`relative w-full py-24 px-[8%] ${theme.bg} overflow-hidden transition-colors duration-500`}
+            className={`relative w-full px-6 py-20 sm:px-[8%] sm:py-24 ${theme.bg} overflow-hidden transition-colors duration-500`}
         >
 
             {/* Background */}
@@ -134,7 +134,7 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
                     onSave={(val) => onUpdate({ subtitle: val })}
                 />
 
-                <h1 className="text-6xl md:text-8xl font-extrabold mt-6 leading-[1.1]">
+                <h1 className="mt-6 text-4xl font-extrabold leading-[1.1] sm:text-5xl md:text-8xl">
                     <EditableText
                         value={data.heading}
                         className={`block ${theme.text}`}
@@ -142,7 +142,7 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
                     />
                 </h1>
 
-                <div className="mt-8 text-xl max-w-2xl">
+                <div className="mt-6 max-w-2xl text-base sm:mt-8 sm:text-xl">
                     <EditableText
                         value={data.text}
                         className={`block ${theme.sub}`}
@@ -150,14 +150,14 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
                     />
                 </div>
 
-                <div className="mt-12 flex flex-wrap items-center gap-4">
+                <div className="mt-8 flex flex-col items-stretch gap-3 sm:mt-12 sm:flex-row sm:items-center sm:gap-4">
 
                     {/* Primary CTA */}
                     <EditableButton
                         label={data.btn1_label}
                         url={data.btn1_url}
                         className={`
-                            inline-flex items-center justify-center
+                            inline-flex w-full items-center justify-center sm:w-auto
                             min-h-[52px] px-8
                             rounded-full
                             font-bold
@@ -178,7 +178,7 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
                         label={data.btn2_label}
                         url={data.btn2_url}
                         className={`
-                            inline-flex items-center justify-center
+                            inline-flex w-full items-center justify-center sm:w-auto
                             min-h-[52px] px-8
                             rounded-full
                             border

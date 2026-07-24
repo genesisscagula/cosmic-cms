@@ -191,7 +191,7 @@ export const BlockRegistry = [
             text: "Create modern, responsive websites using reusable blocks, AI-generated content, and powerful customization tools.",
             button_label: "Get Started",
             button_url: "#",
-            backgroundImage: "",
+            image_url: "/storage/cms-images/background/background-1.avif",
             overlayOpacity: 50,
             textAlign: "center",
             height: "screen"

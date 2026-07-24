@@ -402,7 +402,7 @@ class ContentGenerator
     - image_url = ""
     - overlayOpacity = 50
     - textAlign = center
-    - height = xl
+    - height = screen
 
     TXT;
     }

@@ -190,7 +190,8 @@ export function HeroBackgroundImageBlock({
                 flex
                 items-center
 
-                min-h-[80vh]
+                min-h-[72svh]
+                sm:min-h-[80vh]
                 md:min-h-[85vh]
                 lg:min-h-[90vh]
 
@@ -260,7 +261,10 @@ export function HeroBackgroundImageBlock({
                 min-h-inherit
                 max-w-7xl
                 mx-auto
-                px-[8%]
+                px-6
+                sm:px-[8%]
+                py-20
+                sm:py-24
                 flex
                 flex-col
                 justify-center
@@ -293,10 +297,12 @@ export function HeroBackgroundImageBlock({
                     value={data.heading}
                     className="
                         mt-6
-                        text-6xl
+                        text-4xl
+                        sm:text-5xl
                         md:text-7xl
                         font-black
                         leading-tight
+                        break-words
                         text-white
                     "
                     onSave={(val) =>
@@ -310,10 +316,13 @@ export function HeroBackgroundImageBlock({
                     value={data.text}
                     isTextArea={true}
                     className="
-                        mt-8
+                        mt-6
+                        sm:mt-8
                         max-w-2xl
-                        text-xl
-                        leading-8
+                        text-base
+                        sm:text-xl
+                        leading-7
+                        sm:leading-8
                         text-white/80
                     "
                     onSave={(val) =>
@@ -323,13 +332,15 @@ export function HeroBackgroundImageBlock({
                     }
                 />
 
-                <div className="mt-12">
+                <div className="mt-8 sm:mt-12">
 
                     <EditableButton
                         label={data.button_label}
                         url={data.button_url}
                         className={`
                             inline-flex
+                            w-full
+                            sm:w-auto
                             items-center
                             justify-center
                             min-h-[52px]

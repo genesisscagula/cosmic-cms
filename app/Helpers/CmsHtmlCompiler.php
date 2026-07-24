@@ -33,6 +33,23 @@ class CmsHtmlCompiler
         return $themes['amber'];
     }
 
+    /**
+     * Static sites live outside Laravel's public directory, so relative CMS
+     * storage paths must resolve back to the CMS asset host.
+     */
+    private static function staticAssetUrl(?string $url): string
+    {
+        $url = trim((string) $url);
+
+        if ($url === '' || preg_match('/^(?:https?:)?\/\//i', $url) || str_starts_with($url, 'data:')) {
+            return $url;
+        }
+
+        $baseUrl = rtrim((string) config('services.cosmic.asset_base_url', config('app.url')), '/');
+
+        return $baseUrl . '/' . ltrim($url, '/');
+    }
+
    public static function compile(array $blocks, string $primaryColor = null): string
     {
         $html = "";
@@ -216,19 +233,19 @@ class CmsHtmlCompiler
                 }
 
                 $html .= "
-                <header class='w-full {$headerBg} py-6 px-[8%] flex justify-between items-center border-b {$headerBorder} sticky top-0 z-50 shadow-sm'>
+                <header class='w-full {$headerBg} flex flex-wrap items-center justify-between gap-4 border-b {$headerBorder} px-6 py-4 sm:px-[8%] sm:py-6 sticky top-0 z-50 shadow-sm'>
                     <div class='text-xl font-extrabold tracking-wide {$headerText}'>
                         {$logo}
                     </div>
 
-                    <nav class='flex items-center gap-10'>
-                        <ul class='flex list-none gap-[40px] m-0 p-0'>
+                    <nav class='flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-start sm:gap-10'>
+                        <ul class='flex flex-wrap list-none gap-x-4 gap-y-2 sm:gap-x-[40px] m-0 p-0'>
                             {$navHtml}
                         </ul>
 
                         <a
                             href='#'
-                            class='{$buttonBg} {$buttonText} px-[22px] py-[10px] rounded-full text-sm font-semibold hover:opacity-90 transition'
+                            class='{$buttonBg} {$buttonText} shrink-0 px-[22px] py-[10px] rounded-full text-sm font-semibold hover:opacity-90 transition'
                         >
                             {$ctaLabel}
                         </a>
@@ -242,9 +259,9 @@ class CmsHtmlCompiler
                 $stoneTheme = self::getTheme('stone'); // Hardcoded stone theme
                 
                 $html .= "
-                <footer class='w-full {$stoneTheme['bg']} {$stoneTheme['sub']} py-12 px-8 flex justify-between items-center border-t {$stoneTheme['border']}'>
+                <footer class='w-full {$stoneTheme['bg']} {$stoneTheme['sub']} flex flex-col items-start gap-3 border-t {$stoneTheme['border']} px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-12'>
                     <div class='font-bold text-lg {$stoneTheme['text']}'>{$brand}</div>
-                    <div class='text-sm'>{$copy}</div>
+                    <div class='text-sm sm:whitespace-nowrap'>{$copy}</div>
                 </footer>";
                 break;
 
@@ -256,7 +273,7 @@ class CmsHtmlCompiler
                 $text = e($block['text'] ?? 'Add your description here...');
                 $btnLabel = e($block['button_label'] ?? 'Read More');
                 $btnUrl = e($block['button_url'] ?? '#');
-                $imageUrl = e($block['image_url'] ?? 'https://picsum.photos/800/600');
+                $imageUrl = e(self::staticAssetUrl($block['image_url'] ?? 'https://picsum.photos/800/600'));
 
                 $html .= "
                 <section class='relative py-32 px-7 overflow-hidden {$theme['bg']} transition-colors duration-500'>
@@ -292,7 +309,7 @@ class CmsHtmlCompiler
                 $text = e($block['text'] ?? 'Add your description here...');
                 $btnLabel = e($block['button_label'] ?? 'Read More');
                 $btnUrl = e($block['button_url'] ?? '#');
-                $imageUrl = e($block['image_url'] ?? 'https://picsum.photos/800/600');
+                $imageUrl = e(self::staticAssetUrl($block['image_url'] ?? 'https://picsum.photos/800/600'));
 
                 $html .= "
                 <section class='relative py-32 px-7 overflow-hidden {$theme['bg']} transition-colors duration-500'>
@@ -337,22 +354,20 @@ class CmsHtmlCompiler
                 $btnText = $isLight
                     ? self::getTheme($primaryColor)['text']
                     : 'text-slate-900';
-
-
                 $html .= "
-                <section class='relative w-full py-24 px-[8%] {$theme['bg']} overflow-hidden transition-colors duration-500'>
+                <section class='relative w-full px-6 py-20 sm:px-[8%] sm:py-24 {$theme['bg']} overflow-hidden transition-colors duration-500'>
                     <div class='absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-indigo-500 to-transparent opacity-30 blur-[120px] rounded-full'></div>
                     
                     <div class='relative z-10 max-w-4xl'>
                         <span class='font-bold tracking-widest uppercase text-sm block {$theme['sub']}'>{$subtitle}</span>
-                        <h1 class='text-6xl md:text-8xl font-extrabold mt-6 leading-[1.1] block {$theme['text']}'>{$heading}</h1>
-                        <div class='mt-8 text-xl max-w-2xl {$theme['sub']}'>{$text}</div>
+                        <h1 class='mt-6 text-4xl font-extrabold leading-[1.1] sm:text-5xl md:text-8xl block {$theme['text']}'>{$heading}</h1>
+                        <div class='mt-6 max-w-2xl text-base sm:mt-8 sm:text-xl {$theme['sub']}'>{$text}</div>
 
-                        <div class='mt-12 flex gap-4'>
-                            <a href='#' class='px-8 py-4 rounded-full font-bold transition !opacity-100 {$btnBg} {$btnText}'>
+                        <div class='mt-8 flex flex-col items-stretch gap-3 sm:mt-12 sm:flex-row sm:items-center sm:gap-4'>
+                            <a href='#' class='w-full rounded-full px-8 py-4 text-center font-bold transition !opacity-100 sm:w-auto {$btnBg} {$btnText}'>
                                 " . e($block['btn1_label'] ?? 'Get Started') . "
                             </a>
-                            <a href='#' class='border px-8 py-4 rounded-full font-bold transition {$theme['border']} {$theme['text']}'>
+                            <a href='#' class='w-full rounded-full border px-8 py-4 text-center font-bold transition sm:w-auto {$theme['border']} {$theme['text']}'>
                                 " . e($block['btn2_label'] ?? 'View Docs') . "
                             </a>
                         </div>
@@ -607,12 +622,10 @@ class CmsHtmlCompiler
                     $avatar = $item['avatar'] ?? '';
 
                     if (!$avatar) {
-                        $avatar = asset('storage/cms-images/avatars/avatar-1.jpg');
-                    } elseif (!preg_match('/^https?:\/\//', $avatar)) {
-                        $avatar = asset(ltrim($avatar, '/'));
-                    }
+                    $avatar = '/storage/cms-images/avatars/avatar-1.jpg';
+                }
 
-                    $avatar = e($avatar);
+                    $avatar = e(self::staticAssetUrl($avatar));
                     
                     $name    = e($item['name'] ?? 'John Smith');
                     $company = e($item['company'] ?? 'Company');
@@ -674,11 +687,18 @@ class CmsHtmlCompiler
                 $heading = e($block['heading'] ?? 'Build Beautiful Websites With Confidence');
                 $text = e($block['text'] ?? 'Create modern, responsive websites using reusable blocks, AI-generated content, and powerful customization tools.');
 
-                $backgroundImage = e($block['backgroundImage'] ?? '');
+                // The Builder and AI schema use image_url. Keep the old
+                // backgroundImage field as a compatibility fallback for
+                // pages created before the block contract was unified.
+                $backgroundImage = e(self::staticAssetUrl($block['image_url'] ?? $block['backgroundImage'] ?? ''));
                 $buttonLabel = e($block['button_label'] ?? 'Get Started');
                 $buttonUrl = e($block['button_url'] ?? '#');
 
-                $overlayOpacity = intval($block['overlayOpacity'] ?? 50);
+                $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 50)));
+                // Match HeroBackgroundImageBlock: the overlay uses the
+                // website primary theme at overlayOpacity / 60.
+                $overlayStrength = min(1, $overlayOpacity / 60);
+                $primaryOverlayTheme = self::getTheme($primaryColor);
                 $textAlign = $block['textAlign'] ?? 'center';
                 $height = $block['height'] ?? 'screen';
 
@@ -704,6 +724,8 @@ class CmsHtmlCompiler
                 $heroHeight = match ($height) {
                     'medium' => 'min-h-[500px]',
                     'large' => 'min-h-[650px]',
+                    // Legacy AI output used xl; the Builder renders it at 90vh.
+                    'xl' => 'min-h-[90vh]',
                     default => 'min-h-screen',
                 };
 
@@ -718,28 +740,28 @@ class CmsHtmlCompiler
                 >
 
                     <div
-                        class='absolute inset-0 bg-black'
-                        style='opacity:" . ($overlayOpacity / 100) . ";'>
+                        class='absolute inset-0 {$primaryOverlayTheme['bg']}'
+                        style='opacity:{$overlayStrength};'>
                     </div>
 
-                    <div class='relative z-10 w-full max-w-7xl mx-auto px-[8%] py-24 flex flex-col justify-center {$alignment}'>
+                    <div class='relative z-10 w-full max-w-7xl mx-auto px-6 py-20 sm:px-[8%] sm:py-24 flex flex-col justify-center {$alignment}'>
 
                         <span class='text-sm uppercase tracking-[0.35em] font-semibold text-white/80 block'>
                             {$tagline}
                         </span>
 
-                        <h1 class='mt-6 text-6xl md:text-7xl font-black leading-tight text-white block'>
+                        <h1 class='mt-6 text-4xl sm:text-5xl md:text-7xl font-black leading-tight break-words text-white block'>
                             {$heading}
                         </h1>
 
-                        <div class='mt-8 max-w-2xl text-xl leading-8 text-white/80'>
+                        <div class='mt-6 max-w-2xl text-base leading-7 sm:mt-8 sm:text-xl sm:leading-8 text-white/80'>
                             {$text}
                         </div>
 
-                        <div class='mt-12'>
+                        <div class='mt-8 sm:mt-12'>
                             <a
                                 href='{$buttonUrl}'
-                                class='inline-flex items-center justify-center min-h-[52px] px-8 rounded-full font-bold transition {$btnBg} {$btnText}'
+                                class='inline-flex w-full items-center justify-center min-h-[52px] rounded-full px-8 font-bold transition sm:w-auto {$btnBg} {$btnText}'
                             >
                                 {$buttonLabel}
                             </a>
@@ -769,12 +791,14 @@ class CmsHtmlCompiler
                     ? self::getTheme($primaryColor)['text']
                     : 'text-slate-900';
 
+                $primaryTheme = self::getTheme($primaryColor);
+
                 $html .= "
-                <section class='relative py-28 px-[8%] {$theme['bg']} transition-colors duration-500'>
+                <section class='relative px-6 py-20 sm:px-8 lg:py-24 {$theme['bg']} transition-colors duration-500'>
 
                     <div class='max-w-7xl mx-auto'>
 
-                        <div class='text-center max-w-3xl mx-auto mb-20'>
+                        <div class='text-center max-w-3xl mx-auto mb-12 sm:mb-14'>
 
                             <span class='block text-xs font-semibold uppercase tracking-[0.35em] {$theme['sub']}'>
                                 {$tagline}
@@ -790,7 +814,7 @@ class CmsHtmlCompiler
 
                         </div>
 
-                        <div class='grid md:grid-cols-3 gap-8'>
+                        <div class='grid gap-6 md:grid-cols-3 lg:gap-7'>
                 ";
 
                 foreach (($block['plans'] ?? []) as $plan) {
@@ -798,15 +822,15 @@ class CmsHtmlCompiler
                     $featured = !empty($plan['featured']);
 
                     $html .= "
-                        <div class='relative rounded-3xl border {$theme['border']} {$theme['card']} p-10 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl " .
-                        ($featured ? "scale-105 ring-2 ring-primary" : "") .
+                        <div class='relative rounded-3xl border {$theme['border']} {$theme['card']} p-7 lg:p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl " .
+                        ($featured ? "scale-105 ring-2 ring-white/40" : "") .
                         "'>";
 
                     if (!empty($plan['badge'])) {
 
                         $html .= "
-                            <div class='absolute -top-4 left-1/2 -translate-x-1/2'>
-                                <span class='px-4 py-2 rounded-full bg-primary text-white text-xs font-semibold uppercase tracking-widest'>
+                            <div class='absolute -top-3 left-1/2 z-10 -translate-x-1/2'>
+                                <span class='inline-flex whitespace-nowrap rounded-full px-3 py-1.5 {$primaryTheme['bg']} {$primaryTheme['text']} text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm'>
                                     " . e($plan['badge']) . "
                                 </span>
                             </div>";
@@ -818,9 +842,9 @@ class CmsHtmlCompiler
                                 " . e($plan['title']) . "
                             </h3>
 
-                            <div class='mt-6 flex items-end gap-2'>
+                            <div class='mt-5 flex items-end gap-2'>
 
-                                <span class='text-5xl font-bold {$theme['text']}'>
+                                <span class='text-4xl font-bold sm:text-5xl {$theme['text']}'>
                                     " . e($plan['price']) . "
                                 </span>
 
@@ -830,11 +854,11 @@ class CmsHtmlCompiler
 
                             </div>
 
-                            <div class='mt-6 leading-8 {$theme['sub']}'>
+                            <div class='mt-5 leading-7 {$theme['sub']}'>
                                 " . e($plan['description']) . "
                             </div>
 
-                            <div class='mt-10 space-y-4'>
+                            <div class='mt-7 space-y-3'>
                     ";
 
                     foreach (($plan['features'] ?? []) as $feature) {
@@ -860,7 +884,7 @@ class CmsHtmlCompiler
                     $html .= "
                             </div>
 
-                            <div class='mt-10'>
+                            <div class='mt-8'>
 
                                 <a
                                     href='" . e($plan['button_url'] ?? '#') . "'

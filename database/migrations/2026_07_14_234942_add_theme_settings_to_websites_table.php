@@ -11,6 +11,10 @@ return new class extends Migration
      */
     public function up()
     {
+        if (Schema::hasColumn('websites', 'theme_settings')) {
+            return;
+        }
+
         Schema::table('websites', function (Blueprint $table) {
             // I-save nato ang object { primary, secondary, etc. }
             $table->json('theme_settings')->nullable()->after('domain');

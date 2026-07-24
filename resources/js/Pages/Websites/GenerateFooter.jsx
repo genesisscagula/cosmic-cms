@@ -13,7 +13,7 @@ export function MinimalFooter({ block, onUpdate }) {
     const sub = 'text-slate-500';
 
     return (
-        <footer className={`w-full ${bg} py-12 px-8 flex justify-between items-center border-t border-slate-200 transition-colors duration-500`}>
+        <footer className={`w-full ${bg} flex flex-col items-start gap-3 border-t border-slate-200 px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-12 transition-colors duration-500`}>
             <div className="w-auto flex-shrink-0">
                 <EditableText 
                     value={block.logo_text || 'CosmicCMS'} 
@@ -24,7 +24,7 @@ export function MinimalFooter({ block, onUpdate }) {
             <div className="text-sm min-w-0">
                 <EditableText 
                     value={block.copyright || '© 2026. All rights reserved.'} 
-                    className={`cursor-pointer ${sub} transition whitespace-nowrap`}
+                    className={`cursor-pointer ${sub} transition sm:whitespace-nowrap`}
                     onSave={(val) => onUpdate({ copyright: val })}
                 />
             </div>

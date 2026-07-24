@@ -16,8 +16,13 @@ return new class extends Migration
             $table->foreignId('website_id')->constrained()->onDelete('cascade');
             $table->string('title');
             $table->string('slug');
-            $table->string('status')->default('published'); // <--- KANI NGA LINYA ANG WA MA-INJECT, BAY!
+            $table->string('status')->default('draft');
             $table->json('blocks')->nullable();
+            $table->json('published_blocks')->nullable();
+            $table->longText('published_html')->nullable();
+            $table->timestamp('published_at')->nullable();
+            $table->timestamp('last_published_at')->nullable();
+            $table->text('publish_error')->nullable();
             $table->timestamps();
         });
     }

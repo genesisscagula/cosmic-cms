@@ -8,17 +8,17 @@ export default function Welcome() {
 
             <Head title="Cosmic CMS | AI Website Builder" />
 
-            <div className="relative min-h-screen overflow-hidden bg-white text-slate-900">
+            <div className="relative min-h-screen overflow-hidden bg-[#09090b] text-slate-100">
 
                 {/* Background */}
 
                 <div className="absolute inset-0 -z-10">
 
-                    <div className="absolute top-[-180px] left-1/2 -translate-x-1/2 h-[520px] w-[900px] rounded-full bg-emerald-400/15 blur-3xl"></div>
+                    <div className="absolute top-[-180px] left-1/2 h-[520px] w-[900px] -translate-x-1/2 rounded-full bg-violet-500/20 blur-3xl"></div>
 
-                    <div className="absolute right-[-150px] top-40 h-[400px] w-[400px] rounded-full bg-cyan-400/10 blur-3xl"></div>
+                    <div className="absolute right-[-150px] top-40 h-[400px] w-[400px] rounded-full bg-cyan-400/15 blur-3xl"></div>
 
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.08),transparent_55%)]"></div>
+                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.12),transparent_52%)]"></div>
 
                 </div>
 
@@ -26,7 +26,7 @@ export default function Welcome() {
                     Header
                 ========================== */}
 
-                <header className="sticky top-0 z-50 border-b border-slate-200/70 bg-white/80 backdrop-blur-xl">
+                <header className="sticky top-0 z-50 border-b border-white/10 bg-[#09090b]/85 backdrop-blur-xl">
 
                     <div className="mx-auto flex h-20 max-w-7xl items-center justify-between px-6 lg:px-8">
 
@@ -34,7 +34,7 @@ export default function Welcome() {
 
                         <Link href="/" className="flex items-center gap-3">
 
-                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-lg font-black text-white shadow-lg shadow-emerald-500/25">
+                            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 text-lg font-black text-white shadow-lg shadow-violet-500/25">
 
                                 ✦
 
@@ -42,13 +42,13 @@ export default function Welcome() {
 
                             <div>
 
-                                <h1 className="text-xl font-black tracking-tight">
+                                <h1 className="text-xl font-black tracking-tight text-white">
 
-                                    Cosmic <span className="text-emerald-600">CMS</span>
+                                    Cosmic <span className="text-violet-300">CMS</span>
 
                                 </h1>
 
-                                <p className="-mt-1 text-xs font-medium text-slate-500">
+                                <p className="-mt-1 text-xs font-medium text-slate-400">
 
                                     AI Website Builder
 
@@ -64,28 +64,28 @@ export default function Welcome() {
 
                             <Link
                                 href="#features"
-                                className="text-sm font-semibold text-slate-600 transition hover:text-emerald-600"
+                                className="text-sm font-semibold text-slate-400 transition hover:text-emerald-300"
                             >
                                 Features
                             </Link>
 
                             <Link
                                 href="#blocks"
-                                className="text-sm font-semibold text-slate-600 transition hover:text-emerald-600"
+                                className="text-sm font-semibold text-slate-400 transition hover:text-emerald-300"
                             >
                                 Blocks
                             </Link>
 
                             <Link
                                 href="#pricing"
-                                className="text-sm font-semibold text-slate-600 transition hover:text-emerald-600"
+                                className="text-sm font-semibold text-slate-400 transition hover:text-emerald-300"
                             >
                                 Pricing
                             </Link>
 
                             <Link
                                 href="#docs"
-                                className="text-sm font-semibold text-slate-600 transition hover:text-emerald-600"
+                                className="text-sm font-semibold text-slate-400 transition hover:text-emerald-300"
                             >
                                 Documentation
                             </Link>
@@ -98,14 +98,14 @@ export default function Welcome() {
 
                             <Link
                                 href="/login"
-                                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-700 transition hover:bg-slate-100"
+                                className="rounded-xl px-5 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-white/5 hover:text-white"
                             >
                                 Login
                             </Link>
 
                             <Link
                                 href="/register"
-                                className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-emerald-500/30 transition hover:scale-105"
+                                className="rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-300 px-6 py-2.5 text-sm font-bold text-slate-950 shadow-lg shadow-emerald-400/20 transition hover:scale-105"
                             >
                                 Start Free
                             </Link>
@@ -118,17 +118,17 @@ export default function Welcome() {
 
                 <main className="relative">
 
-                    <section className="mx-auto max-w-7xl px-6 pt-24 pb-20 lg:px-8">
+                    <section className="mx-auto max-w-7xl px-6 pb-16 pt-20 lg:px-8">
 
                         <div className="mx-auto max-w-4xl text-center">
 
                             {/* Badge */}
 
-                            <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-5 py-2">
+                            <div className="mt-12 mb-8 inline-flex items-center gap-2 rounded-full border border-emerald-300/25 bg-emerald-400/10 px-5 py-2">
 
                                 <span className="h-2 w-2 rounded-full bg-emerald-500"></span>
 
-                                <span className="text-sm font-semibold text-emerald-700">
+                                <span className="text-sm font-semibold text-emerald-200">
                                     AI Powered Website Builder
                                 </span>
 
@@ -136,11 +136,11 @@ export default function Welcome() {
 
                             {/* Heading */}
 
-                            <h1 className="text-5xl font-black tracking-tight text-slate-900 sm:text-6xl lg:text-7xl leading-tight">
+                            <h1 className="text-5xl font-black leading-tight tracking-tight text-white sm:text-6xl lg:text-7xl">
 
                                 Build Professional Websites
 
-                                <span className="block bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 bg-clip-text text-transparent">
+                                <span className="block text-emerald-300">
 
                                     10× Faster
 
@@ -150,7 +150,7 @@ export default function Welcome() {
 
                             {/* Description */}
 
-                            <p className="mx-auto mt-8 max-w-2xl text-lg leading-8 text-slate-600">
+                            <p className="mx-auto mt-8 max-w-2xl text-lg leading-8 text-slate-300">
 
                                 Create stunning websites using reusable blocks,
                                 AI-generated content, dynamic themes, and one-click
@@ -166,7 +166,7 @@ export default function Welcome() {
 
                                 <Link
                                     href="/register"
-                                    className="rounded-xl bg-gradient-to-r from-emerald-500 to-teal-600 px-8 py-4 text-lg font-bold text-white shadow-xl shadow-emerald-500/30 transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
+                                    className="rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-300 px-8 py-4 text-lg font-bold text-slate-950 shadow-xl shadow-emerald-400/20 transition duration-300 hover:-translate-y-1 hover:shadow-2xl"
                                 >
 
                                     Start Building Free
@@ -175,7 +175,7 @@ export default function Welcome() {
 
                                 <Link
                                     href="#demo"
-                                    className="rounded-xl border border-slate-300 bg-white px-8 py-4 text-lg font-bold text-slate-800 transition duration-300 hover:border-emerald-500 hover:text-emerald-600"
+                                    className="rounded-xl border border-white/15 bg-white/5 px-8 py-4 text-lg font-bold text-white transition duration-300 hover:border-cyan-300/50 hover:bg-white/10 hover:text-cyan-200"
                                 >
 
                                     Live Demo
@@ -211,7 +211,7 @@ export default function Welcome() {
                         Dashboard Showcase
                     ========================== */}
 
-                    <section className="pb-32 px-6 lg:px-8">
+                    <section className="px-6 pb-24 lg:px-8">
 
                         <div className="mx-auto max-w-7xl">
 
@@ -219,15 +219,15 @@ export default function Welcome() {
 
                                 {/* Glow */}
 
-                                <div className="absolute -inset-10 rounded-[40px] bg-gradient-to-r from-emerald-400/20 via-cyan-400/20 to-blue-400/20 blur-3xl"></div>
+                                <div className="absolute -inset-10 rounded-[40px] bg-gradient-to-r from-emerald-400/20 via-cyan-400/20 to-violet-400/20 blur-3xl"></div>
 
                                 {/* Browser */}
 
-                                <div className="relative overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
+                                <div className="relative overflow-hidden rounded-3xl border border-white/10 bg-[#11141b] shadow-2xl shadow-black/50">
 
                                     {/* Browser Top */}
 
-                                    <div className="flex items-center justify-between border-b border-slate-200 bg-slate-50 px-6 py-4">
+                                    <div className="flex items-center justify-between border-b border-white/10 bg-[#171a22] px-6 py-4">
 
                                         <div className="flex items-center gap-2">
 
@@ -239,7 +239,7 @@ export default function Welcome() {
 
                                         </div>
 
-                                        <div className="rounded-full bg-white px-6 py-2 text-xs text-slate-500 border border-slate-200">
+                                        <div className="rounded-full border border-white/10 bg-[#0d0f14] px-6 py-2 text-xs text-slate-500">
 
                                             https://preview.cosmiccms.dev
 
@@ -255,17 +255,17 @@ export default function Welcome() {
 
                                         {/* Sidebar */}
 
-                                        <aside className="border-r border-slate-200 bg-slate-50 p-6">
+                                        <aside className="border-r border-white/10 bg-[#12151d] p-6">
 
                                             <div className="mb-8 flex items-center gap-3">
 
-                                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600"></div>
+                                                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400"></div>
 
                                                 <div>
 
-                                                    <div className="h-3 w-20 rounded bg-slate-300"></div>
+                                                    <div className="h-3 w-20 rounded bg-slate-600"></div>
 
-                                                    <div className="mt-2 h-2 w-14 rounded bg-slate-200"></div>
+                                                    <div className="mt-2 h-2 w-14 rounded bg-slate-700"></div>
 
                                                 </div>
 
@@ -287,8 +287,8 @@ export default function Welcome() {
                                                         key={item}
                                                         className={`rounded-xl px-4 py-3 ${
                                                             item === "Hero"
-                                                                ? "bg-emerald-500 text-white"
-                                                                : "bg-white text-slate-600 border border-slate-200"
+                                                                ? "bg-gradient-to-r from-violet-500 to-indigo-500 text-white shadow-lg shadow-violet-500/20"
+                                                                : "border border-white/10 bg-white/[0.03] text-slate-400"
                                                         }`}
                                                     >
 
@@ -304,21 +304,21 @@ export default function Welcome() {
 
                                         {/* Canvas */}
 
-                                        <div className="bg-slate-100 p-8">
+                                        <div className="bg-[#0d1017] p-8">
 
-                                            <div className="rounded-2xl border border-slate-200 bg-white p-8 shadow-sm">
+                                            <div className="rounded-2xl border border-white/10 bg-[#171b25] p-8 shadow-sm">
 
                                                 {/* Hero */}
 
                                                 <div className="mb-10">
 
-                                                    <div className="h-3 w-28 rounded bg-emerald-200"></div>
+                                                    <div className="h-3 w-28 rounded bg-emerald-300/70"></div>
 
-                                                    <div className="mt-4 h-8 w-2/3 rounded bg-slate-300"></div>
+                                                    <div className="mt-4 h-8 w-2/3 rounded bg-slate-500"></div>
 
-                                                    <div className="mt-3 h-4 w-full rounded bg-slate-200"></div>
+                                                    <div className="mt-3 h-4 w-full rounded bg-slate-700"></div>
 
-                                                    <div className="mt-2 h-4 w-5/6 rounded bg-slate-200"></div>
+                                                    <div className="mt-2 h-4 w-5/6 rounded bg-slate-700"></div>
 
                                                 </div>
 
@@ -330,16 +330,16 @@ export default function Welcome() {
 
                                                         <div
                                                             key={card}
-                                                            className="rounded-2xl border border-slate-200 p-6"
+                                                            className="rounded-2xl border border-white/10 bg-[#11141b] p-6"
                                                         >
 
-                                                            <div className="h-12 w-12 rounded-xl bg-emerald-100"></div>
+                                                            <div className="h-12 w-12 rounded-xl bg-emerald-400/15"></div>
 
-                                                            <div className="mt-5 h-4 w-24 rounded bg-slate-300"></div>
+                                                            <div className="mt-5 h-4 w-24 rounded bg-slate-600"></div>
 
-                                                            <div className="mt-3 h-3 w-full rounded bg-slate-200"></div>
+                                                            <div className="mt-3 h-3 w-full rounded bg-slate-700"></div>
 
-                                                            <div className="mt-2 h-3 w-5/6 rounded bg-slate-200"></div>
+                                                            <div className="mt-2 h-3 w-5/6 rounded bg-slate-700"></div>
 
                                                         </div>
 
@@ -349,9 +349,9 @@ export default function Welcome() {
 
                                                 {/* Bottom */}
 
-                                                <div className="mt-10 rounded-2xl border border-dashed border-emerald-300 bg-emerald-50 p-8 text-center">
+                                                <div className="mt-10 rounded-2xl border border-dashed border-emerald-300/50 bg-emerald-400/[0.06] p-8 text-center">
 
-                                                    <p className="text-lg font-bold text-emerald-700">
+                                                    <p className="text-lg font-bold text-emerald-200">
 
                                                         Drag • Drop • AI Generate • Publish
 
@@ -378,7 +378,7 @@ export default function Welcome() {
                         Trusted By
                     ========================== */}
 
-                    <section className="py-24 border-y border-slate-200 bg-slate-50/70">
+                    <section className="border-y border-white/10 bg-[#0d0f14] py-20">
 
                         <div className="mx-auto max-w-7xl px-6 lg:px-8">
 
@@ -409,7 +409,7 @@ export default function Welcome() {
 
                                     <div
                                         key={logo}
-                                        className="flex h-16 items-center justify-center rounded-xl border border-slate-200 bg-white font-bold tracking-widest text-slate-400 transition hover:-translate-y-1 hover:border-emerald-300 hover:text-emerald-600"
+                                        className="flex h-16 items-center justify-center rounded-xl border border-slate-800 bg-[#14171e] font-bold tracking-widest text-slate-400 transition hover:-translate-y-1 hover:border-emerald-300/40 hover:text-emerald-200"
                                     >
 
                                         {logo}
@@ -445,16 +445,16 @@ export default function Welcome() {
 
                                     <div
                                         key={item.title}
-                                        className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm transition hover:-translate-y-1 hover:shadow-xl"
+                                        className="rounded-2xl border border-slate-800 bg-gradient-to-b from-[#171b24] to-[#11141a] p-8 text-center shadow-sm transition hover:-translate-y-1 hover:border-violet-300/30 hover:shadow-xl"
                                     >
 
-                                        <div className="text-4xl font-black text-emerald-600">
+                                        <div className="text-4xl font-black text-emerald-300">
 
                                             {item.number}
 
                                         </div>
 
-                                        <div className="mt-3 text-sm font-semibold uppercase tracking-wider text-slate-500">
+                                        <div className="mt-3 text-sm font-semibold uppercase tracking-wider text-slate-400">
 
                                             {item.title}
 
@@ -477,7 +477,7 @@ export default function Welcome() {
 
                     <section
                         id="features"
-                        className="py-32 bg-white"
+                        className="bg-[#09090b] py-24"
                     >
 
                         <div className="mx-auto max-w-7xl px-6 lg:px-8">
@@ -486,22 +486,22 @@ export default function Welcome() {
 
                             <div className="mx-auto max-w-3xl text-center">
 
-                                <span className="inline-flex rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-semibold text-emerald-700">
+                                <span className="inline-flex rounded-full border border-emerald-300/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200">
 
                                     Why Cosmic CMS
 
                                 </span>
 
-                                <h2 className="mt-6 text-5xl font-black tracking-tight text-slate-900">
+                                <h2 className="mt-6 text-5xl font-black tracking-tight text-white">
 
                                     Everything You Need
-                                    <span className="block text-emerald-600">
+                                    <span className="block bg-gradient-to-r from-emerald-300 via-cyan-300 to-violet-300 bg-clip-text text-transparent">
                                         To Build Modern Websites
                                     </span>
 
                                 </h2>
 
-                                <p className="mt-6 text-lg leading-8 text-slate-600">
+                                <p className="mt-6 text-lg leading-8 text-slate-300">
 
                                     Designed for freelancers, agencies, and developers who
                                     want to build faster without sacrificing flexibility.
@@ -516,21 +516,21 @@ export default function Welcome() {
 
                                 {/* AI */}
 
-                                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-emerald-50 to-white p-8 shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-2xl">
+                                <div className="rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(52,211,153,0.18),transparent_38%),linear-gradient(145deg,#151c22,#10141a)] p-8 shadow-sm transition duration-300 hover:-translate-y-2 hover:border-emerald-300/40 hover:shadow-2xl hover:shadow-emerald-950/30">
 
-                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-500 text-3xl text-white">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-400 to-emerald-500 text-3xl text-slate-950 shadow-lg shadow-emerald-400/20">
 
                                         🤖
 
                                     </div>
 
-                                    <h3 className="mt-8 text-2xl font-black">
+                                    <h3 className="mt-8 text-2xl font-black text-white">
 
                                         AI Content
 
                                     </h3>
 
-                                    <p className="mt-4 leading-7 text-slate-600">
+                                    <p className="mt-4 leading-7 text-slate-300">
 
                                         Generate headlines, descriptions,
                                         testimonials and marketing copy in seconds.
@@ -541,21 +541,21 @@ export default function Welcome() {
 
                                 {/* Themes */}
 
-                                <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-2xl">
+                                <div className="rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(34,211,238,0.16),transparent_38%),linear-gradient(145deg,#151b25,#10141a)] p-8 shadow-sm transition duration-300 hover:-translate-y-2 hover:border-cyan-300/40 hover:shadow-2xl hover:shadow-cyan-950/30">
 
-                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-cyan-500 text-3xl text-white">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-cyan-300 to-sky-500 text-3xl text-slate-950 shadow-lg shadow-cyan-400/20">
 
                                         🎨
 
                                     </div>
 
-                                    <h3 className="mt-8 text-2xl font-black">
+                                    <h3 className="mt-8 text-2xl font-black text-white">
 
                                         Dynamic Themes
 
                                     </h3>
 
-                                    <p className="mt-4 leading-7 text-slate-600">
+                                    <p className="mt-4 leading-7 text-slate-300">
 
                                         Switch colors, branding and styling with a single click.
 
@@ -565,21 +565,21 @@ export default function Welcome() {
 
                                 {/* Blocks */}
 
-                                <div className="rounded-3xl border border-slate-200 bg-white p-8 shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-2xl">
+                                <div className="rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(139,92,246,0.18),transparent_38%),linear-gradient(145deg,#19162a,#10141a)] p-8 shadow-sm transition duration-300 hover:-translate-y-2 hover:border-violet-300/40 hover:shadow-2xl hover:shadow-violet-950/30">
 
-                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-violet-500 text-3xl text-white">
+                                    <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-400 to-indigo-500 text-3xl text-white shadow-lg shadow-violet-400/20">
 
                                         🧩
 
                                     </div>
 
-                                    <h3 className="mt-8 text-2xl font-black">
+                                    <h3 className="mt-8 text-2xl font-black text-white">
 
                                         Reusable Blocks
 
                                     </h3>
 
-                                    <p className="mt-4 leading-7 text-slate-600">
+                                    <p className="mt-4 leading-7 text-slate-300">
 
                                         Build pages using production-ready components that can
                                         be reused across unlimited projects.
@@ -590,9 +590,9 @@ export default function Welcome() {
 
                                 {/* Export */}
 
-                                <div className="lg:col-span-2 rounded-3xl border border-slate-200 bg-slate-900 p-10 text-white shadow-xl">
+                                <div className="lg:col-span-2 rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top_right,rgba(34,211,238,0.16),transparent_35%),linear-gradient(145deg,#131c2d,#0d111a)] p-10 text-white shadow-xl shadow-black/30">
 
-                                    <span className="rounded-full bg-white/10 px-4 py-2 text-sm font-semibold">
+                                    <span className="rounded-full border border-cyan-200/15 bg-cyan-300/10 px-4 py-2 text-sm font-semibold text-cyan-100">
 
                                         One Click Deploy
 
@@ -604,7 +604,7 @@ export default function Welcome() {
 
                                     </h3>
 
-                                    <p className="mt-6 max-w-2xl text-slate-300 leading-8">
+                                    <p className="mt-6 max-w-2xl leading-8 text-slate-300">
 
                                         Export your entire website as optimized static HTML files
                                         ready to deploy anywhere.
@@ -619,19 +619,19 @@ export default function Welcome() {
 
                                     <div className="mt-10 flex gap-4">
 
-                                        <div className="rounded-xl bg-white/10 px-5 py-3">
+                                        <div className="rounded-xl border border-white/10 bg-white/10 px-5 py-3">
 
                                             HTML
 
                                         </div>
 
-                                        <div className="rounded-xl bg-white/10 px-5 py-3">
+                                        <div className="rounded-xl border border-white/10 bg-white/10 px-5 py-3">
 
                                             CSS
 
                                         </div>
 
-                                        <div className="rounded-xl bg-white/10 px-5 py-3">
+                                        <div className="rounded-xl border border-white/10 bg-white/10 px-5 py-3">
 
                                             Assets
 
@@ -643,21 +643,21 @@ export default function Welcome() {
 
                                 {/* Performance */}
 
-                                <div className="rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-50 to-white p-8 shadow-sm transition duration-300 hover:-translate-y-2 hover:shadow-2xl">
+                                <div className="rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_top_left,rgba(251,191,36,0.15),transparent_38%),linear-gradient(145deg,#201b16,#10141a)] p-8 shadow-sm transition duration-300 hover:-translate-y-2 hover:border-amber-300/40 hover:shadow-2xl hover:shadow-amber-950/30">
 
-                                    <div className="text-5xl font-black text-emerald-600">
+                                    <div className="text-5xl font-black text-amber-300">
 
                                         ⚡
 
                                     </div>
 
-                                    <h3 className="mt-6 text-2xl font-black">
+                                    <h3 className="mt-6 text-2xl font-black text-white">
 
                                         Lightning Fast
 
                                     </h3>
 
-                                    <p className="mt-4 leading-7 text-slate-600">
+                                    <p className="mt-4 leading-7 text-slate-300">
 
                                         Static websites load instantly,
                                         improve SEO,
@@ -673,13 +673,62 @@ export default function Welcome() {
 
                     </section>
 
+                    <section className="border-t border-white/10 px-6 py-20 lg:px-8">
+
+                        <div className="mx-auto max-w-7xl">
+
+                            <div className="relative overflow-hidden rounded-3xl border border-slate-800 bg-[radial-gradient(circle_at_20%_20%,rgba(52,211,153,0.18),transparent_32%),radial-gradient(circle_at_80%_30%,rgba(34,211,238,0.14),transparent_30%),linear-gradient(145deg,#151c24,#0d1118)] px-6 py-14 text-center shadow-2xl shadow-black/30 sm:px-10 sm:py-20">
+
+                                <div className="absolute -bottom-24 left-1/2 h-48 w-[32rem] -translate-x-1/2 rounded-full bg-emerald-400/10 blur-3xl"></div>
+
+                                <div className="relative">
+
+                                    <span className="inline-flex rounded-full border border-emerald-300/25 bg-emerald-400/10 px-4 py-2 text-sm font-semibold text-emerald-200">
+                                        Ready when you are
+                                    </span>
+
+                                    <h2 className="mx-auto mt-6 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-5xl">
+                                        Build your next website
+                                        <span className="block text-emerald-300">without the usual chaos.</span>
+                                    </h2>
+
+                                    <p className="mx-auto mt-6 max-w-2xl text-lg leading-8 text-slate-300">
+                                        Create, customize, generate content, and publish from one focused Cosmic CMS workspace.
+                                    </p>
+
+                                    <div className="mt-10 flex flex-col justify-center gap-4 sm:flex-row">
+
+                                        <Link
+                                            href="/register"
+                                            className="rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-300 px-8 py-4 text-lg font-bold text-slate-950 shadow-xl shadow-emerald-400/20 transition duration-300 hover:-translate-y-1"
+                                        >
+                                            Start Building Free
+                                        </Link>
+
+                                        <Link
+                                            href="#features"
+                                            className="rounded-xl border border-white/15 bg-white/5 px-8 py-4 text-lg font-bold text-white transition duration-300 hover:border-cyan-300/50 hover:bg-white/10 hover:text-cyan-200"
+                                        >
+                                            Explore Features
+                                        </Link>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </section>
+
                 </main>
 
                 {/* =========================
                     Footer
                 ========================== */}
 
-                <footer className="border-t border-slate-200 bg-slate-950 text-slate-300">
+                <footer className="border-t border-white/10 bg-[#07080c] text-slate-300">
 
                     <div className="mx-auto max-w-7xl px-6 py-20 lg:px-8">
 
@@ -691,7 +740,7 @@ export default function Welcome() {
 
                                 <Link href="/" className="flex items-center gap-3">
 
-                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500 to-teal-600 text-xl font-black text-white">
+                                    <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 text-xl font-black text-white shadow-lg shadow-violet-500/20">
 
                                         ✦
 
@@ -701,7 +750,7 @@ export default function Welcome() {
 
                                         <h3 className="text-2xl font-black text-white">
 
-                                            Cosmic <span className="text-emerald-400">CMS</span>
+                                            Cosmic <span className="text-violet-300">CMS</span>
 
                                         </h3>
 
@@ -731,7 +780,7 @@ export default function Welcome() {
                                         <a
                                             key={item}
                                             href="#"
-                                            className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-800 bg-slate-900 transition hover:border-emerald-500 hover:bg-emerald-500 hover:text-white"
+                                            className="flex h-11 w-11 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] transition hover:border-emerald-300/50 hover:bg-emerald-400 hover:text-slate-950"
                                         >
 
                                             {item}
@@ -844,7 +893,7 @@ export default function Welcome() {
 
                         {/* Bottom */}
 
-                        <div className="mt-20 flex flex-col items-center justify-between gap-6 border-t border-slate-800 pt-8 text-sm text-slate-500 md:flex-row">
+                        <div className="mt-20 flex flex-col items-center justify-between gap-6 border-t border-white/10 pt-8 text-sm text-slate-500 md:flex-row">
 
                             <p>
 

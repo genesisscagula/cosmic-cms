@@ -32,12 +32,29 @@ class WebsiteController extends Controller
 	        'name' => $request->name,
 	        'domain' => $request->domain,
 	        'api_token' => Str::random(60),
-	        // Gamita ang gipasa nga settings, kon wala, gamita ang default array
+	        // Keep the current named theme contract for new websites.
 	        'theme_settings' => $request->input('theme_settings', [
-	            'primary_color' => '#10b981', 
-	            'layout' => 'default'
-	        ])
-	    ]);
+	            'primary' => 'emerald',
+	            'secondary' => 'white',
+	            'tertiary' => 'stone',
+	            'auto' => true,
+	        ]),
+	        'global_header' => [
+	            'type' => 'glassmorphism_header',
+	            'logo_text' => $request->name,
+	            'cta_label' => 'Get Started',
+	            'menu' => [
+	                ['label' => 'Home', 'url' => '#'],
+	                ['label' => 'About', 'url' => '#'],
+	                ['label' => 'Services', 'url' => '#'],
+	            ],
+	        ],
+	        'global_footer' => [
+	            'type' => 'minimal_footer',
+	            'logo_text' => $request->name,
+	            'copyright' => '© ' . now()->year . '. All rights reserved.',
+	        ],
+	]);
 
 	    return redirect()->route('pages.index', $website);
 	}

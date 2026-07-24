@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 
@@ -15,14 +15,23 @@ import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 
 export default function Builder({ page, website }) {
     const { props } = usePage();
-
+    const defaultHeader = {
+        type: 'glassmorphism_header',
+        logo_text: website?.name || 'Your Website',
+        cta_label: 'Get Started',
+        menu: [
+            { label: 'Home', url: '#' },
+            { label: 'About', url: '#' },
+            { label: 'Services', url: '#' },
+        ],
+    };
     // Gi-apil na ang global_header sa form state
-    const { data, setData, post, processing, isDirty } = useForm({
+    const { data, setData, setDefaults, isDirty } = useForm({
         blocks: page.blocks || [],
-        global_header: props.globalHeaderBlock || page.website?.global_header || null,
+        global_header: props.globalHeaderBlock || page.website?.global_header || defaultHeader,
         global_footer: props.globalFooterBlock || page.website?.global_footer || { 
             type: 'minimal_footer', 
-            logo_text: 'CosmicCMS', 
+            logo_text: website?.name || 'Your Website', 
             copyright: '© 2026. All rights reserved.' 
         }
     });
@@ -32,6 +41,28 @@ export default function Builder({ page, website }) {
     const [aiLoading, setAiLoading] = useState(false);
 
     const [themeMenu, setThemeMenu] = useState(null);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isPublishing, setIsPublishing] = useState(false);
+    const [saveError, setSaveError] = useState('');
+    const [hasUnsavedTheme, setHasUnsavedTheme] = useState(false);
+    const [pageStatus, setPageStatus] = useState(page.status || 'draft');
+    const [publishError, setPublishError] = useState(page.publish_error || '');
+    const hasUnsavedChanges = isDirty || hasUnsavedTheme;
+
+    useEffect(() => {
+        const warnBeforeLeaving = (event) => {
+            if (!hasUnsavedChanges || isSaving || isPublishing) {
+                return;
+            }
+
+            event.preventDefault();
+            event.returnValue = '';
+        };
+
+        window.addEventListener('beforeunload', warnBeforeLeaving);
+
+        return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
+    }, [hasUnsavedChanges, isPublishing, isSaving]);
 
     // Update logic para sa mga blocks
     const updateBlockContent = (index, updatedFields) => {
@@ -100,24 +131,61 @@ export default function Builder({ page, website }) {
         }
     };
 
-    const handleSubmit = async (e) => {
-        e.preventDefault();
+    const saveDraft = async () => {
+        setIsSaving(true);
+        setSaveError('');
 
         try {
-            await axios.post(route('websites.global-footer.save', page.website_id), {
-                footer_block: data.global_footer
+            await axios.post(route('pages.builder.save', page.id), {
+                blocks: data.blocks,
+                global_header: data.global_header,
+                global_footer: data.global_footer,
+                theme_settings: globalSelections,
             });
 
-            await axios.post(route('websites.update-theme', page.website_id), {
-                theme_settings: globalSelections
-            });
-
-            post(route('pages.builder.update', page.id), {
-                preserveScroll: true,
-            });
-
+            setDefaults();
+            setHasUnsavedTheme(false);
+            return true;
         } catch (error) {
             console.error(error);
+            setSaveError(
+                error.response?.data?.message ||
+                'Unable to save your changes. Please try again.'
+            );
+            return false;
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSubmit = async (e) => {
+        e.preventDefault();
+        await saveDraft();
+    };
+
+    const handlePublish = async () => {
+        setPublishError('');
+
+        if (hasUnsavedChanges) {
+            const saved = await saveDraft();
+
+            if (!saved) {
+                return;
+            }
+        }
+
+        setIsPublishing(true);
+
+        try {
+            const response = await axios.post(route('pages.publish', page.id));
+            setPageStatus(response.data.status || 'published');
+        } catch (error) {
+            setPublishError(
+                error.response?.data?.message ||
+                'Publishing failed. Your previous live version is still available.'
+            );
+        } finally {
+            setIsPublishing(false);
         }
     };
 
@@ -293,6 +361,11 @@ export default function Builder({ page, website }) {
                     <div className="mx-auto flex min-h-16 max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
                         <Link
                             href={route('pages.index', website.id)}
+                            onClick={(event) => {
+                                if (hasUnsavedChanges && !window.confirm('You have unsaved changes. Leave the Builder without saving them?')) {
+                                    event.preventDefault();
+                                }
+                            }}
                             className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
                         >
                             <span aria-hidden="true">←</span>
@@ -308,15 +381,24 @@ export default function Builder({ page, website }) {
                         </div>
 
                         <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
-                            <span className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium sm:inline-flex ${processing ? 'border-amber-400/30 bg-amber-400/10 text-amber-200' : isDirty ? 'border-violet-400/30 bg-violet-400/10 text-violet-200' : 'border-white/10 bg-white/[0.04] text-slate-400'}`}>
-                                <span className={`h-1.5 w-1.5 rounded-full ${processing ? 'bg-amber-300 animate-pulse' : isDirty ? 'bg-violet-300' : 'bg-emerald-300'}`} />
-                                {processing ? 'Saving' : isDirty ? 'Changes ready' : 'Saved'}
+                            <span title={publishError || saveError || undefined} className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium sm:inline-flex ${isPublishing ? 'border-sky-400/30 bg-sky-400/10 text-sky-200' : publishError ? 'border-red-400/30 bg-red-400/10 text-red-200' : pageStatus === 'published' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-amber-400/30 bg-amber-400/10 text-amber-200'}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${isPublishing ? 'bg-sky-300 animate-pulse' : publishError ? 'bg-red-300' : pageStatus === 'published' ? 'bg-emerald-300' : 'bg-amber-300'}`} />
+                                {isPublishing ? 'Publishing...' : publishError ? 'Publish Failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
                             </span>
+                            {hasUnsavedChanges && !isSaving && !isPublishing && (
+                                <span className="hidden items-center gap-1.5 rounded-full border border-amber-400/30 bg-amber-400/10 px-2.5 py-1 text-[11px] font-medium text-amber-100 lg:inline-flex">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-300" />
+                                    Unsaved changes
+                                </span>
+                            )}
                             <span className="hidden rounded-lg border border-white/10 px-2.5 py-1 text-[11px] font-medium text-slate-400 md:inline-flex">{data.blocks.length} blocks</span>
                             <ThemeSelector
                                 compact
                                 value={globalSelections.primary}
-                                onChange={(theme) => setGlobalSelections(prev => ({ ...prev, primary: theme }))}
+                                onChange={(theme) => {
+                                    setGlobalSelections(prev => ({ ...prev, primary: theme }));
+                                    setHasUnsavedTheme(true);
+                                }}
                             />
                             <button
                                 type="button"
@@ -328,12 +410,20 @@ export default function Builder({ page, website }) {
                             <form onSubmit={handleSubmit}>
                                 <button
                                     type="submit"
-                                    disabled={processing}
-                                    className="inline-flex h-9 items-center rounded-lg bg-emerald-500 px-3 text-xs font-bold text-white transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                    disabled={isSaving || isPublishing}
+                                    className="inline-flex h-9 items-center rounded-lg border border-white/15 bg-white/[0.08] px-3 text-xs font-bold text-white transition hover:bg-white/[0.14] focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    {processing ? 'Saving…' : 'Publish'}
+                                    {isSaving ? 'Saving…' : 'Save Draft'}
                                 </button>
                             </form>
+                            <button
+                                type="button"
+                                onClick={handlePublish}
+                                disabled={isSaving || isPublishing}
+                                className="inline-flex h-9 items-center rounded-lg bg-emerald-500 px-3 text-xs font-bold text-white transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                {isPublishing ? 'Publishing...' : 'Publish'}
+                            </button>
                         </div>
                     </div>
                 </header>
@@ -518,6 +608,19 @@ export default function Builder({ page, website }) {
 
                     ))}
 
+                    {data.blocks.length === 0 && (
+                        <section className="flex min-h-[300px] items-center justify-center border-y border-slate-200 bg-slate-100 px-6 py-12 text-center">
+                            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white/75 px-6 py-7 shadow-sm">
+                                <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-lg text-white" aria-hidden="true">+</span>
+                                <h2 className="mt-4 text-lg font-semibold text-slate-900">Start building this page</h2>
+                                <p className="mt-2 text-sm leading-6 text-slate-500">Generate a complete layout with AI or add a section manually. Your global header and footer are already in place.</p>
+                                <button type="button" onClick={() => setIsModalOpen(true)} className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400">
+                                    Generate or add a section
+                                </button>
+                            </div>
+                        </section>
+                    )}
+
                     {/* FOOTER RENDERER */}
                     {data.global_footer && (
                         <div className="relative group w-full mt-auto">
@@ -593,6 +696,8 @@ export default function Builder({ page, website }) {
                                         primary: theme
                                     }));
 
+                                    setHasUnsavedTheme(true);
+
                                 }}
                             />
 
@@ -620,12 +725,12 @@ export default function Builder({ page, website }) {
                             <form onSubmit={handleSubmit}>
                                 <button
                                     type="submit"
-                                    disabled={processing}
+                                    disabled={isSaving || isPublishing}
                                     className="px-8 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold shadow-lg transition disabled:opacity-50"
                                 >
-                                    {processing
+                                    {isSaving
                                         ? "Saving..."
-                                        : "💾 Publish"}
+                                        : "Save Draft"}
                                 </button>
                             </form>
 

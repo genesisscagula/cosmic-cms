@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Auth\Access\AuthorizationException;
 use Illuminate\Support\Facades\Storage;
 use App\Models\Website; // Siguroha nga sakto ang namespace sa imong Model
 use Intervention\Image\Facades\Image; // Import ni sa taas sa imong controller
@@ -24,7 +25,7 @@ class ImageController extends Controller
         $path = $request->file('image')->store("websites/{$websiteId}", 'public');
 
         return response()->json([
-            'url' => asset('storage/' . $path)
+            'url' => rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path
         ]);
     }
 
@@ -64,8 +65,12 @@ class ImageController extends Controller
 
 	        return response()->json([
 	            'success' => true,
-	            'url' => asset('storage/' . $path)
+	            'url' => rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path
 	        ]);
+
+	    } catch (AuthorizationException $e) {
+
+	        throw $e;
 
 	    } catch (\Illuminate\Validation\ValidationException $e) {
 
@@ -97,7 +102,7 @@ class ImageController extends Controller
 
 	    // Upload ra gyud ni siya
 	    $path = $request->file('image')->store("websites/{$website->id}", 'public');
-	    $imageUrl = asset('storage/' . $path);
+	    $imageUrl = rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path;
 
 	    // I-return lang ang URL
 	    return response()->json(['url' => $imageUrl]);

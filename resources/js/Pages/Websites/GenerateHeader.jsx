@@ -50,14 +50,14 @@ export function DarkCyanHeader({ block, onUpdate }) {
     };
 
     return (
-        <header className={`w-full ${theme} py-5 px-8 flex justify-between items-center border-b transition-colors duration-500`}>
+        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-4 border-b px-6 py-4 sm:px-8 sm:py-5 transition-colors duration-500`}>
             <EditableText 
                 value={block.logo_text || 'AkongLogo'} 
                 className={`text-2xl font-bold ${accent} cursor-pointer`}
                 onSave={(val) => onUpdate({ logo_text: val })}
             />
-            <nav>
-                <ul className="flex list-none gap-[30px] items-center">
+            <nav className="w-full sm:w-auto">
+                <ul className="flex flex-wrap list-none items-center gap-x-5 gap-y-2 sm:gap-x-[30px]">
                     {menuItems.map((item, i) => (
                         <li key={i}>
                             <EditableText 
@@ -95,14 +95,14 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme }) {
     };
 
     return (
-        <header className={`w-full ${theme} py-6 px-[8%] flex justify-between items-center border-b border-slate-200`}>
+        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-6 py-4 sm:px-[8%] sm:py-6`}>
             <EditableText 
                 value={block.logo_text || 'DesignKaBai'} 
                 className={`text-xl font-extrabold tracking-wide ${textColor} cursor-pointer`}
                 onSave={(val) => onUpdate({ logo_text: val })}
             />
-            <nav className="flex items-center gap-10">
-                <ul className="flex list-none gap-[40px]">
+            <nav className="flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-start sm:gap-10">
+                <ul className="flex flex-wrap list-none gap-x-4 gap-y-2 sm:gap-x-[40px]">
                     {menuItems.map((item, i) => (
                         <li key={i}>
                             <EditableText 
@@ -119,6 +119,7 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme }) {
                         ${primaryTheme.text}
                         px-[22px]
                         py-[10px]
+                        shrink-0
                         rounded-full
                         text-sm
                         font-semibold
