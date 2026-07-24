@@ -316,6 +316,38 @@ class ContentGenerator
     TXT;
     }
 
+    private function statsModernSchema(): string
+    {
+        return <<<TXT
+
+    stats_modern
+
+    - type = stats_modern
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - metrics (array of exactly 4 items)
+
+    Each metric contains:
+
+    - value
+    - label
+    - description
+
+    Requirements:
+
+    - Generate exactly 4 metrics.
+    - Values must be concise, such as 15+, 250+, 98%, 24/7, or 10k+.
+    - Labels must be short.
+    - Descriptions must be one concise sentence.
+    - Match the requested business niche.
+    - Do not present regulated, medical, financial, legal, safety, or performance claims as verified facts unless the request provides them.
+    - Do not include markdown.
+
+    TXT;
+    }
+
     private function testimonialsSchema(): string
     {
         return <<<TXT
@@ -400,6 +432,19 @@ class ContentGenerator
     - button_label
     - button_url
     - features (array of exactly 5 items)
+
+    Each feature contains:
+
+    - text
+
+    Requirements:
+
+    - Generate exactly 3 plans.
+    - Generate exactly 5 meaningful, niche-specific features for each plan.
+    - Each feature must be an object with a text key; do not return feature strings.
+    - Do not use placeholders such as "Click to add text", "Feature 1", or "Lorem ipsum".
+    - featured must be a boolean, not a string.
+    - button_label must be concise and button_url must be a valid URL or #.
 
     TXT;
     }

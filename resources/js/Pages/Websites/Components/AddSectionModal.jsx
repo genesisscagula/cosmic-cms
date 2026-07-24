@@ -307,7 +307,7 @@ export default function AddSectionModal({
                 }
             );
 
-            const sections = sectionResponse.data.sections;
+            const { sections, image_folder: imageFolder } = sectionResponse.data;
 
             // =========================================
             // STEP 2
@@ -341,7 +341,8 @@ export default function AddSectionModal({
                 "/ai/generate-content",
                 {
                     prompt,
-                    sections
+                    sections,
+                    image_folder: imageFolder
                 }
             );
 
@@ -397,7 +398,10 @@ export default function AddSectionModal({
 
             setIsGenerating(false);
 
-            alert("Check browser console.");
+            alert(
+                error.response?.data?.message ||
+                "Cosmic AI could not generate the page. Please try again."
+            );
 
         }
 

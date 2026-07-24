@@ -14,10 +14,13 @@ class ImageController extends Controller
     {
         $request->validate([
             'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,avif|max:4096',
-            'website_id' => 'required'
+            'website_id' => 'required|integer|exists:websites,id'
         ]);
 
-        $websiteId = $request->website_id;
+        $website = Website::findOrFail($request->website_id);
+        $this->authorize('update', $website);
+
+        $websiteId = $website->id;
         $path = $request->file('image')->store("websites/{$websiteId}", 'public');
 
         return response()->json([
@@ -38,6 +41,7 @@ class ImageController extends Controller
 	        ]);
 
 	        $website = Website::findOrFail($request->website_id);
+	        $this->authorize('update', $website);
 
 	        if (!$request->hasFile('image')) {
 	            return response()->json([
@@ -84,12 +88,15 @@ class ImageController extends Controller
 	public function uploadBlockImage(Request $request)
 	{
 	    $request->validate([
-	        'website_id' => 'required',
+	        'website_id' => 'required|integer|exists:websites,id',
 	        'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,avif|max:4096'
 	    ]);
 
+	    $website = Website::findOrFail($request->website_id);
+	    $this->authorize('update', $website);
+
 	    // Upload ra gyud ni siya
-	    $path = $request->file('image')->store("websites/{$request->website_id}", 'public');
+	    $path = $request->file('image')->store("websites/{$website->id}", 'public');
 	    $imageUrl = asset('storage/' . $path);
 
 	    // I-return lang ang URL

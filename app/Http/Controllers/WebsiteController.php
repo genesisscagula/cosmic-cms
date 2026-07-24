@@ -44,18 +44,14 @@ class WebsiteController extends Controller
 
 	public function saveFooter(Request $request, Website $website)
 	{
-	    // 1. Log ang raw request data
-	    \Log::info('Raw Request Footer:', $request->all());
+	    $this->authorize('update', $website);
 
 	    $request->validate([
 	        'footer_block' => 'required|array'
 	    ]);
 
-	    // 2. I-try gamit ang fill() ug save() imbes update()
 	    $website->global_footer = $request->footer_block;
-	    $saved = $website->save();
-
-	    \Log::info('Did save trigger?', [$saved]);
+	    $website->save();
 	    
 	    return response()->json(['status' => 'success', 'data' => $website->global_footer]);
 	}

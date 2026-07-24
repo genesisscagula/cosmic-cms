@@ -22,6 +22,8 @@ class SchemaManager
 
             'process_timeline' => 'processTimelineSchema',
 
+            'stats_modern' => 'statsModernSchema',
+
             'testimonials_carousel' => 'testimonialsSchema',
 
             'hero_centered_cta' => 'heroCtaSchema',

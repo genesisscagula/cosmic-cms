@@ -240,9 +240,27 @@ export function PricingCardsBlock({
         globalTheme
     );
 
+    const plans = Array.isArray(block.plans)
+        ? block.plans
+        : PricingCardsSchema.defaults.plans;
+
     const data = {
         ...PricingCardsSchema.defaults,
-        ...block
+        ...block,
+        plans: plans.map((plan) => {
+            if (!plan || typeof plan !== "object") {
+                return plan;
+            }
+
+            return {
+                ...plan,
+                features: Array.isArray(plan.features)
+                    ? plan.features.map((feature) => (
+                        typeof feature === "string" ? { text: feature } : feature
+                    ))
+                    : plan.features
+            };
+        })
     };
 
     const primaryTheme = colorFamilies[globalTheme.primary];
