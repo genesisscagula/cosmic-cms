@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use App\Models\Website;
 use App\Helpers\CmsHtmlCompiler;
+use App\Services\PagePublisher;
 
 if (! function_exists('cosmicWebsiteForBridge')) {
     function cosmicWebsiteForBridge(Request $request): Website|\Illuminate\Http\JsonResponse
@@ -55,25 +56,5 @@ Route::get('/v1/published-package', function (Request $request) {
         return $website;
     }
 
-    $theme = $website->published_theme_settings ?? $website->theme_settings ?? [];
-    $primaryColor = $theme['primary'] ?? 'emerald';
-    $header = $website->published_global_header ?? $website->global_header;
-    $footer = $website->published_global_footer ?? $website->global_footer;
-
-    return response()->json([
-        'status' => 'success',
-        'website_name' => $website->name,
-        'global_header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor) : '',
-        'global_footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor) : '',
-        'pages' => $website->pages()
-            ->where('status', 'published')
-            ->orderBy('id')
-            ->get(['title', 'slug', 'published_html', 'published_blocks', 'blocks'])
-            ->map(fn ($page) => [
-                'title' => $page->title,
-                'slug' => $page->slug,
-                'html' => $page->published_html
-                    ?? CmsHtmlCompiler::compile($page->published_blocks ?? $page->blocks ?? [], $primaryColor),
-            ]),
-    ]);
+    return response()->json(app(PagePublisher::class)->publishedPackage($website));
 });

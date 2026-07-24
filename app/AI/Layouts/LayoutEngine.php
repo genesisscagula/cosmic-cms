@@ -10,6 +10,8 @@ class LayoutEngine
 
             'restaurant' => require __DIR__.'/RestaurantLayouts.php',
 
+            'automotive' => require __DIR__.'/AutomotiveLayouts.php',
+
             default => require __DIR__.'/DefaultLayouts.php',
 
         };

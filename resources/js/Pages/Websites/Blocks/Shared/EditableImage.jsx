@@ -7,6 +7,7 @@ import {
 
 import { createPortal } from "react-dom";
 import axios from "axios";
+import { showCosmicNotification } from "../../../../Components/CosmicNotification";
 
 export const EditableImage = forwardRef(({
     websiteId,
@@ -91,10 +92,11 @@ export const EditableImage = forwardRef(({
 
             console.log(error.response?.data);
 
-            alert(
-                error.response?.data?.message ??
-                "Upload failed."
-            );
+            showCosmicNotification({
+                title: "Upload failed",
+                message: error.response?.data?.message ?? "The image could not be uploaded. Please try again.",
+                tone: "error",
+            });
 
         } finally {
 

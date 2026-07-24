@@ -2,6 +2,7 @@ import React, { useState , useEffect } from 'react';
 import { usePage } from '@inertiajs/react';
 
 import axios from 'axios';
+import { showCosmicNotification } from '../../Components/CosmicNotification';
 import { colorFamilies } from "../../theme/colorFamilies";
 
 export const getEffectiveTheme = (blockTheme, globalSelections) => {
@@ -387,7 +388,7 @@ export function EditableImage({ websiteId, blockIndex, onSave, className, src })
             setSelectedFile(null);
         } catch (error) {
             console.error("Error saving:", error);
-            alert('Failed to save to server.');
+            showCosmicNotification({ title: 'Unable to save image', message: 'The image could not be saved. Please try again.', tone: 'error' });
         } finally {
             setUploading(false);
         }
@@ -598,7 +599,7 @@ export const HeroHeadlineSchema = {
         heading: "Build Better Digital Reality.",
 
         text:
-            "Focus sa logic...",
+            "Create a polished website with reusable sections and complete editorial control.",
 
         btn1_label: "Get Started",
 

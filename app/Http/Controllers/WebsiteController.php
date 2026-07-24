@@ -3,7 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Models\Website;
+use App\Services\DeploymentConnectorArchive;
+use App\Services\PagePublisher;
+use App\Services\WebsiteTemplateCatalog;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use ZipArchive;
@@ -20,21 +25,28 @@ class WebsiteController extends Controller
 		]);
 	}
 
-    public function store(Request $request)
+    public function store(Request $request, WebsiteTemplateCatalog $templates)
 	{
 	    $request->validate([
 	        'name' => 'required|string|max:255',
 	        'domain' => 'nullable|url',
 	        'theme_settings' => 'nullable|array', // I-validate ang array input
+	        'template' => 'nullable|string',
 	    ]);
 
-	    $website = auth()->user()->websites()->create([
+	    $template = $request->input('template');
+
+	    if ($template && ! $templates->supports($template)) {
+	        return back()->withErrors(['template' => 'The selected website template is not available.']);
+	    }
+
+	    $defaults = [
 	        'name' => $request->name,
 	        'domain' => $request->domain,
 	        'api_token' => Str::random(60),
 	        // Keep the current named theme contract for new websites.
 	        'theme_settings' => $request->input('theme_settings', [
-	            'primary' => 'emerald',
+                'primary' => 'midnight',
 	            'secondary' => 'white',
 	            'tertiary' => 'stone',
 	            'auto' => true,
@@ -43,8 +55,9 @@ class WebsiteController extends Controller
 	            'type' => 'glassmorphism_header',
 	            'logo_text' => $request->name,
 	            'cta_label' => 'Get Started',
+	            'cta_url' => '#',
 	            'menu' => [
-	                ['label' => 'Home', 'url' => '#'],
+	                ['label' => 'Home', 'url' => 'home'],
 	                ['label' => 'About', 'url' => '#'],
 	                ['label' => 'Services', 'url' => '#'],
 	            ],
@@ -54,10 +67,156 @@ class WebsiteController extends Controller
 	            'logo_text' => $request->name,
 	            'copyright' => '© ' . now()->year . '. All rights reserved.',
 	        ],
-	]);
+	    ];
+
+	    $website = DB::transaction(function () use ($request, $template, $templates, $defaults) {
+	        $templateAttributes = $template
+	            ? $templates->websiteAttributes($template, $request->name)
+	            : [];
+
+	        $website = auth()->user()->websites()->create([
+	            ...$defaults,
+	            ...$templateAttributes,
+	        ]);
+
+	        if ($template) {
+	            foreach ($templates->pages($template) as $page) {
+	                $website->pages()->create($page);
+	            }
+	        }
+
+	        return $website;
+	    });
 
 	    return redirect()->route('pages.index', $website);
 	}
+
+    public function destroy(Website $website)
+    {
+        $this->authorize('delete', $website);
+
+        $website->delete();
+
+        // Inertia must follow a DELETE response with a GET request. A 302 can
+        // preserve the original DELETE method and incorrectly hit /dashboard.
+        return redirect()->route('dashboard', [], 303)->with('success', 'Website deleted.');
+    }
+
+    public function downloadDeploymentConnector(Website $website, DeploymentConnectorArchive $connector)
+    {
+        $this->authorize('update', $website);
+
+        if (! filter_var($website->domain, FILTER_VALIDATE_URL)) {
+            return back()->withErrors(['domain' => 'Add a valid website domain before downloading its deployment connector.']);
+        }
+
+        if (! $website->deployment_secret) {
+            $website->deployment_secret = Str::random(64);
+            $website->save();
+        }
+
+        $archivePath = $connector->create($website);
+
+        return response()
+            ->download($archivePath, 'cosmic-sync-' . Str::slug($website->name) . '.zip')
+            ->deleteFileAfterSend(true);
+    }
+
+    public function verifyDeploymentConnector(Website $website)
+    {
+        $this->authorize('update', $website);
+
+        if (! filter_var($website->domain, FILTER_VALIDATE_URL)) {
+            return response()->json(['message' => 'Add a valid website domain before connecting a live site.'], 422);
+        }
+
+        if (! $website->deployment_secret) {
+            return response()->json(['message' => 'Download and install this website\'s deployment connector before connecting it.'], 422);
+        }
+
+        $endpoint = rtrim($website->domain, '/') . '/cosmic-sync/sync.php?action=verify';
+
+        try {
+            $response = Http::timeout(10)
+                ->acceptJson()
+                ->withHeaders(['X-Cosmic-Sync-Secret' => $website->deployment_secret])
+                ->get($endpoint);
+
+            if (! $response->successful() || $response->json('status') !== 'success') {
+                $website->update([
+                    'deployment_verified_at' => null,
+                    'deployment_error' => 'The deployment connector could not be verified at the configured domain.',
+                ]);
+
+                return response()->json(['message' => $website->deployment_error], 422);
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            $website->update([
+                'deployment_verified_at' => null,
+                'deployment_error' => 'The deployment connector could not be reached. Check the domain, Apache, and connector folder.',
+            ]);
+
+            return response()->json(['message' => $website->deployment_error], 422);
+        }
+
+        $website->update([
+            'deployment_verified_at' => now(),
+            'deployment_error' => null,
+        ]);
+
+        return response()->json([
+            'status' => 'connected',
+            'message' => 'Live site connector verified successfully.',
+        ]);
+    }
+
+    public function pushLiveUpdate(Website $website, PagePublisher $publisher)
+    {
+        $this->authorize('update', $website);
+
+        if (! $website->deployment_verified_at || ! $website->deployment_secret) {
+            return response()->json(['message' => 'Connect and verify the live site connector before pushing an update.'], 422);
+        }
+
+        $package = $publisher->publishedPackage($website);
+
+        if ($package['pages'] === []) {
+            return response()->json(['message' => 'Publish at least one page before pushing a live update.'], 422);
+        }
+
+        $endpoint = rtrim((string) $website->domain, '/') . '/cosmic-sync/sync.php?action=receive_package';
+
+        try {
+            $response = Http::timeout(20)
+                ->acceptJson()
+                ->withHeaders(['X-Cosmic-Sync-Secret' => $website->deployment_secret])
+                ->post($endpoint, $package);
+
+            if (! $response->successful() || $response->json('status') !== 'success') {
+                $website->update(['deployment_error' => 'The live site did not accept this update. Your existing live files were not changed.']);
+
+                return response()->json(['message' => $website->deployment_error], 422);
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+            $website->update(['deployment_error' => 'The live site could not be reached. Your existing live files were not changed.']);
+
+            return response()->json(['message' => $website->deployment_error], 422);
+        }
+
+        $website->update([
+            'last_deployed_at' => now(),
+            'deployment_error' => null,
+        ]);
+
+        return response()->json([
+            'status' => 'deployed',
+            'message' => 'Published pages were pushed to the live site.',
+            'files' => $response->json('files', []),
+        ]);
+    }
 
 	public function saveFooter(Request $request, Website $website)
 	{
@@ -159,7 +318,7 @@ class WebsiteController extends Controller
 		        echo "<footer class=\"bg-slate-800 text-slate-400 py-8 text-center text-sm border-t border-slate-700 mt-20\"><p>&copy; " . date(\'Y\') . " Powered by Cosmic Headless CMS Pipeline</p></footer></body></html>";
 		        
 		    } else {
-		        echo "<h1>Connected to CMS!</h1><p>Palihug i-click ang sync button sa ibas para i-pull ang structural file packet.</p>";
+		        echo "<h1>Connected to CMS!</h1><p>Use the sync button below to pull the latest website data.</p>";
 		        echo "<br><a href=\"?sync=true\" style=\"padding:10px 20px; background:#10b981; color:#fff; text-decoration:none; border-radius:5px;\">🔄 Sync Content Now</a>";
 		    }
 		} else {
@@ -167,7 +326,7 @@ class WebsiteController extends Controller
 		    echo "
 		    <div style=\"max-width:400px; margin:50px auto; font-family:sans-serif; padding:20px; border:1px solid #ccc; border-radius:8px;\">
 		        <h2>Cosmic CMS Client Bridge 🚀</h2>
-		        <p style=\"font-size:13px; color:#666;\">I-paste ang token gikan sa imong Cosmic Dashboard aron ma-sync ang mga pages ug blocks.</p>
+		        <p style=\"font-size:13px; color:#666;\">Paste the token from your Cosmic Dashboard to sync pages and blocks.</p>
 		        <form method=\"POST\">
 		            <input type=\"text\" name=\"api_token\" placeholder=\"Paste CMS API Token\" style=\"width:100%; padding:8px; margin-bottom:10px;\" required><br>
 		            <button type=\"submit\" style=\"width:100%; padding:10px; background:#4f46e5; color:white; border:none; border-radius:4px; cursor:pointer;\">Save & Initialize</button>
@@ -197,7 +356,7 @@ class WebsiteController extends Controller
 		        file_put_contents("content.json", $response);
 		        echo "<script>alert(\"Sync Complete! Data updated successfully.\"); window.location.href=\"index.php\";</script>";
 		    } else {
-		        echo "<script>alert(\"Sync Failed! Palihug i-verify imong API Token.\"); window.location.href=\"index.php\";</script>";
+		        echo "<script>alert(\"Sync failed. Please verify your API token.\"); window.location.href=\"index.php\";</script>";
 		    }
 		}
 		?>';

@@ -203,8 +203,9 @@ class CmsHtmlCompiler
 
 
                 case 'glassmorphism_header':
-                $logo = e($block['logo_text'] ?? 'DesignKaBai');
+                $logo = e($block['logo_text'] ?? 'Your Website');
                 $ctaLabel = e($block['cta_label'] ?? 'Get Started');
+                $ctaUrl = e($block['cta_url'] ?? '#');
                 $menuItems = $block['menu'] ?? [];
 
                 // Header always white
@@ -244,7 +245,7 @@ class CmsHtmlCompiler
                         </ul>
 
                         <a
-                            href='#'
+                            href='{$ctaUrl}'
                             class='{$buttonBg} {$buttonText} shrink-0 px-[22px] py-[10px] rounded-full text-sm font-semibold hover:opacity-90 transition'
                         >
                             {$ctaLabel}
@@ -342,7 +343,7 @@ class CmsHtmlCompiler
                 case 'hero_headline':
                 $subtitle = e($block['subtitle'] ?? 'WELCOME TO THE FUTURE');
                 $heading = e($block['heading'] ?? 'Build Better Digital Reality.');
-                $text = e($block['text'] ?? 'Focus sa logic, biya-i ang manual coding. Ang imong website, automated na sa atong custom CMS logic.');
+                $text = e($block['text'] ?? 'Create a polished website with reusable sections and complete editorial control.');
                 
                 // Button Logic
                 $isLight = in_array($selectedThemeName, ['white', 'stone']);
@@ -635,9 +636,9 @@ class CmsHtmlCompiler
                     $stars = str_repeat('★', max(0, min($rating, 5)));
 
                     $html .= "
-                        <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl'>
+                        <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl'>
 
-                            <div class='text-yellow-400 text-xl mb-6'>
+                            <div class='mb-5 text-xl text-yellow-400'>
                                 {$stars}
                             </div>
 
@@ -645,7 +646,7 @@ class CmsHtmlCompiler
                                 {$quote}
                             </p>
 
-                            <div class='flex items-center gap-4 mt-8'>
+                            <div class='mt-6 flex items-center gap-4'>
 
                                 <img
                                     src='{$avatar}'

@@ -1,12 +1,17 @@
 import { useEffect, useRef } from "react";
 import { useForm } from "@inertiajs/react";
 
-export default function NewWebsiteModal({ open, onClose }) {
+export default function NewWebsiteModal({ open, onClose, template = null }) {
     const nameInput = useRef(null);
     const { data, setData, post, processing, errors, reset, clearErrors } = useForm({
         name: "",
         domain: "",
+        template: null,
     });
+
+    useEffect(() => {
+        if (open) setData("template", template?.slug || null);
+    }, [open, template, setData]);
 
     useEffect(() => {
         if (!open) return undefined;
@@ -47,7 +52,7 @@ export default function NewWebsiteModal({ open, onClose }) {
                     <div>
                         <p className="text-xs font-semibold uppercase tracking-[0.16em] text-violet-300">Workspace</p>
                         <h2 id="new-website-title" className="mt-2 text-xl font-semibold tracking-tight text-white">Create a website</h2>
-                        <p className="mt-2 text-sm leading-6 text-slate-400">Start with a name and an optional live domain. You can add pages next.</p>
+                        <p className="mt-2 text-sm leading-6 text-slate-400">{template ? `Start with the ${template.name} starter and make it your own.` : "Start with a name and an optional live domain. You can add pages next."}</p>
                     </div>
                     <button type="button" onClick={closeModal} disabled={processing} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Close">×</button>
                 </div>
@@ -64,6 +69,8 @@ export default function NewWebsiteModal({ open, onClose }) {
                         <input id="website-domain" type="url" value={data.domain} onChange={(event) => setData("domain", event.target.value)} disabled={processing} placeholder="https://example.com" className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/25 px-3 text-sm text-white outline-none transition placeholder:text-slate-500 hover:border-white/20 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60" />
                         {errors.domain && <p className="mt-2 text-xs font-medium text-red-300" role="alert">{errors.domain}</p>}
                     </div>
+
+                    {errors.template && <p className="text-xs font-medium text-red-300" role="alert">{errors.template}</p>}
 
                     <div className="flex flex-col-reverse gap-2 border-t border-white/10 pt-5 sm:flex-row sm:justify-end">
                         <button type="button" onClick={closeModal} disabled={processing} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>

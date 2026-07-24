@@ -11,6 +11,10 @@ class Website extends Model
         'name',
         'domain',
         'api_token',
+        'deployment_secret',
+        'deployment_verified_at',
+        'last_deployed_at',
+        'deployment_error',
         'theme_settings',
         'global_header',
         'global_footer',
@@ -27,6 +31,9 @@ class Website extends Model
         'published_theme_settings' => 'array',
         'published_global_header' => 'array',
         'published_global_footer' => 'array',
+        'deployment_secret' => 'encrypted',
+        'deployment_verified_at' => 'datetime',
+        'last_deployed_at' => 'datetime',
     ];
 
     public function user()

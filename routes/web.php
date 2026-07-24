@@ -24,6 +24,10 @@ Route::get('/', function () {
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
     Route::post('/websites', [WebsiteController::class, 'store'])->name('websites.store');
+    Route::delete('/websites/{website}', [WebsiteController::class, 'destroy'])->name('websites.destroy');
+    Route::get('/websites/{website}/deployment-connector', [WebsiteController::class, 'downloadDeploymentConnector'])->name('websites.deployment-connector.download');
+    Route::post('/websites/{website}/deployment-connector/verify', [WebsiteController::class, 'verifyDeploymentConnector'])->name('websites.deployment-connector.verify');
+    Route::post('/websites/{website}/deployment-connector/push', [WebsiteController::class, 'pushLiveUpdate'])->name('websites.deployment-connector.push');
     Route::get('/download-bridge', [WebsiteController::class, 'downloadBridge'])->name('bridge.download');
 
     Route::get('/websites/{website}/pages', [PageController::class, 'index'])->name('pages.index');

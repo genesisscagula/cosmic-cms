@@ -230,11 +230,7 @@ export function TestimonialsCarouselBlock({
                                 border
                                 ${theme.border}
                                 rounded-3xl
-                                p-8
-
-                                aspect-square
-                                flex
-                                flex-col
+                                p-7
 
                                 transition-all
                                 duration-300
@@ -245,13 +241,13 @@ export function TestimonialsCarouselBlock({
 
                             {/* Stars */}
 
-                            <div className="text-yellow-400 text-xl mb-6">
+                            <div className="mb-5 text-xl text-yellow-400">
                                 {"★".repeat(item.rating)}
                             </div>
 
                             {/* Quote */}
 
-                            <div className="flex-1 overflow-hidden">
+                            <div>
 
                                 <EditableText
                                     value={item.quote}
@@ -270,7 +266,7 @@ export function TestimonialsCarouselBlock({
 
                             {/* Author */}
 
-                            <div className="flex items-center gap-4 mt-8">
+                            <div className="mt-6 flex items-center gap-4">
 
                                 <EditableImage
                                     websiteId={websiteId}

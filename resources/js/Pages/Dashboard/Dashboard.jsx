@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { router } from "@inertiajs/react";
+import { useEffect, useState } from "react";
 import Navigation from "./Components/Navigation";
 import Home from "./Tabs/Home";
 import Websites from "./Tabs/Websites";
@@ -21,6 +22,12 @@ const tabs = {
 export default function Dashboard({ websites }) {
     const [activeTab, setActiveTab] = useState("home");
     const ActiveTab = tabs[activeTab];
+
+    useEffect(() => {
+        // Browser Back can restore an older Inertia history snapshot. Refresh
+        // only the real website collection so a newly created site is visible.
+        router.reload({ only: ["websites"], preserveScroll: true, preserveState: true });
+    }, []);
 
     return (
         <div className="min-h-screen bg-[#0a0a0b] text-slate-100 md:flex">

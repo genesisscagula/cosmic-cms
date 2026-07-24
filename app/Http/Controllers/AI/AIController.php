@@ -94,6 +94,26 @@ class AIController extends Controller
             }
         }
 
+        $automotiveKeywords = [
+            'automotive',
+            'car dealership',
+            'car dealer',
+            'auto repair',
+            'mechanic',
+            'garage',
+            'car service',
+            'vehicle',
+            'car wash',
+            'detailing',
+            'tire shop',
+        ];
+
+        foreach ($automotiveKeywords as $keyword) {
+            if (str_contains($normalizedPrompt, $keyword)) {
+                return 'automotive';
+            }
+        }
+
         return 'default';
     }
 }

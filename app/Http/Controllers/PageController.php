@@ -180,7 +180,7 @@ class PageController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Global Header configuration synchronized completely, Bai!'
+            'message' => 'Global header saved successfully.'
         ]);
     }
 
@@ -200,7 +200,7 @@ class PageController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Global Footer configuration synchronized completely, Bai!'
+            'message' => 'Global footer saved successfully.'
         ]);
     }
 

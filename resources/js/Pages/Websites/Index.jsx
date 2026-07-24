@@ -8,8 +8,18 @@ import NewPagePanel from './Components/NewPagePanel';
 import PageList from './Components/PageList';
 import PageEmptyState from './Components/PageEmptyState';
 import WebsiteLaunchGuide from './Components/WebsiteLaunchGuide';
+import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 
 const WebsiteWorkspaceShell = ({ children }) => <>{children}</>;
+const legacyHeaderLogoSamples = new Set(['AkongLogo', 'DesignKaBai', 'CosmicCMS']);
+
+const replaceLegacyHeaderLogo = (header, websiteName) => {
+    if (!header || !legacyHeaderLogoSamples.has((header.logo_text || '').trim())) {
+        return header;
+    }
+
+    return { ...header, logo_text: websiteName };
+};
 
 export default function Index({ website, pages, globalHeaderBlock, globalFooterBlock }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -18,8 +28,9 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
 
     const [isHeaderModalOpen, setIsHeaderModalOpen] = useState(false);
     const [isNewPageOpen, setIsNewPageOpen] = useState(false);
-    const [savedHeader, setSavedHeader] = useState(globalHeaderBlock || null);
+    const [savedHeader, setSavedHeader] = useState(() => replaceLegacyHeaderLogo(globalHeaderBlock, website.name));
     const [isSaving, setIsSaving] = useState(false);
+    const [isPushingLive, setIsPushingLive] = useState(false);
     // 2. Add state para sa footer modal[cite: 2]
     const [isFooterModalOpen, setIsFooterModalOpen] = useState(false);
     
@@ -37,8 +48,8 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
 
     // KINI ANG MO-SYNC SA STATE ARON DILI MO-EMPTY INIG OPEN SA MODAL O HUMAN SA RELOAD
     useEffect(() => {
-        setSavedHeader(globalHeaderBlock || null);
-    }, [globalHeaderBlock]);
+        setSavedHeader(replaceLegacyHeaderLogo(globalHeaderBlock, website.name));
+    }, [globalHeaderBlock, website.name]);
 
 
     useEffect(() => {
@@ -103,20 +114,29 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
         setSavedHeader(prev => ({ ...prev, ...updatedFields }));
     };
 
+    const updateHeaderMenuItem = (index, field, value) => {
+        setSavedHeader((currentHeader) => {
+            const menu = Array.isArray(currentHeader?.menu) ? [...currentHeader.menu] : [];
+            menu[index] = { ...menu[index], [field]: value };
+
+            return { ...currentHeader, menu };
+        });
+    };
+
+    const publishedPageTargets = pages
+        .filter((page) => page.status === 'published')
+        .map((page) => ({ title: page.title, slug: page.slug }));
+
     const saveHeaderToDatabase = async () => {
         setIsSaving(true);
         
-        // I-LOG NATO ARON MAKITA ANG VALUE SULOD SA CONSOLE
-        console.log("Checking target website ID packet, bai:", website);
-        console.log("Axios Target URL:", `/websites/${website?.id}/global-header/save`);
-
         try {
             const response = await axios.post(`/websites/${website.id}/global-header/save`, {
                 header_block: savedHeader
             });
             
             if (response.data.status === 'success') {
-                alert('Global Header updated and synchronized completely, Bai!');
+                showCosmicNotification({ title: 'Header saved', message: 'Your global header has been updated.', tone: 'success' });
                 router.reload({ 
                     only: ['globalHeaderBlock'],
                     onSuccess: () => {
@@ -126,7 +146,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
             }
         } catch (error) {
             console.error("Full Axios Error Context:", error.response || error);
-            alert('Failed to synchronize global configuration matrix.');
+            showCosmicNotification({ title: 'Unable to save header', message: 'Please try saving the global header again.', tone: 'error' });
         } finally {
             setIsSaving(false);
         }
@@ -140,7 +160,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
             });
             
             if (response.data.status === 'success') {
-                alert('Footer updated and synchronized completely, Bai!');
+                showCosmicNotification({ title: 'Footer saved', message: 'Your global footer has been updated.', tone: 'success' });
                 router.reload({ 
                     only: ['globalFooterBlock'],
                     onSuccess: () => {
@@ -150,9 +170,24 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
             }
         } catch (error) {
             console.error("Full Axios Error Context:", error.response || error);
-            alert('Failed to synchronize global footer configuration.');
+            showCosmicNotification({ title: 'Unable to save footer', message: 'Please try saving the global footer again.', tone: 'error' });
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const pushLiveUpdate = async () => {
+        if (!await confirmCosmicAction({ title: 'Push live update?', message: `All published pages for ${website.name} will be sent to the connected live site.`, confirmLabel: 'Push update', tone: 'info' })) return;
+
+        setIsPushingLive(true);
+
+        try {
+            const response = await axios.post(route('websites.deployment-connector.push', website.id));
+            showCosmicNotification({ title: 'Live site updated', message: response.data.message, tone: 'success' });
+        } catch (error) {
+            showCosmicNotification({ title: 'Live update failed', message: error.response?.data?.message || 'The live update could not be pushed.', tone: 'error' });
+        } finally {
+            setIsPushingLive(false);
         }
     };
 
@@ -176,13 +211,13 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
 
             <div className="min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-6xl space-y-7">
-                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} themeSummary={themeSummary} onNewPage={() => setIsNewPageOpen(true)} />
+                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} themeSummary={themeSummary} onNewPage={() => setIsNewPageOpen(true)} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} />
 
                     <WebsiteLaunchGuide pages={pages || []} onNewPage={() => setIsNewPageOpen(true)} />
 
                     <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
                         <div><p className="text-sm font-semibold text-white">Website shell</p><p className="mt-1 text-sm text-slate-400">Configure the shared header and footer used across this website.</p></div>
-                        <div className="mt-4 flex gap-2 sm:mt-0"><button type="button" onClick={() => { setSavedHeader(globalHeaderBlock || null); setIsHeaderModalOpen(true); }} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Header</button><button type="button" onClick={() => setIsFooterModalOpen(true)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Footer</button></div>
+                        <div className="mt-4 flex gap-2 sm:mt-0"><button type="button" onClick={() => { setSavedHeader(replaceLegacyHeaderLogo(globalHeaderBlock, website.name)); setIsHeaderModalOpen(true); }} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Header</button><button type="button" onClick={() => setIsFooterModalOpen(true)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Footer</button></div>
                     </section>
 
                     <section><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-white">Pages</p><p className="mt-1 text-sm text-slate-400">Open a page in Builder to edit its blocks and layout.</p></div><span className="text-xs text-slate-500">{pages?.length || 0} total</span></div>{pages?.length ? <PageList pages={pages} /> : <PageEmptyState onNewPage={() => setIsNewPageOpen(true)} />}</section>
@@ -192,7 +227,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                     {/* INPUT FORM PANEL */}
                     <div className="hidden p-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
                         <h3 className="text-lg font-medium text-gray-900 mb-1">Create New Dynamic Page</h3>
-                        <p className="text-xs text-gray-500 mb-4">I-add ang ngalan sa page (e.g., Home, About Us) aron automatic mag-generate og dynamic route packet.</p>
+                        <p className="text-xs text-gray-500 mb-4">Enter a page name, such as Home or About Us, to create its page route.</p>
                         
                         <form onSubmit={handleSubmit} className="flex gap-4 items-end max-w-xl">
                             <div className="flex-1">
@@ -227,7 +262,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                                 </div>
                                 <h3 className="text-lg font-bold mt-1 text-white">Website Shell: Global Header & Footer</h3>
                                 <p className="text-xs text-slate-400 max-w-xl mt-0.5">
-                                    I-configure ang AI generated layouts, brand logos, ug custom footers nga mo-salida sa tibuok system.
+                                    Configure shared layouts, brand details, and footer content for the full website.
                                 </p>
                             </div>
                             <div className="flex gap-3 w-full md:w-auto shrink-0">
@@ -311,7 +346,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
             {isHeaderModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
                     <button type="button" aria-label="Close header dialog" onClick={() => !isSaving && setIsHeaderModalOpen(false)} className="absolute inset-0 cursor-default" />
-                    <div role="dialog" aria-modal="true" aria-labelledby="edit-header-title" className="relative max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6">
+                    <div role="dialog" aria-modal="true" aria-labelledby="edit-header-title" className="relative h-[min(88dvh,900px)] max-h-[calc(100dvh-2rem)] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
                         <div className="mb-5 flex items-start justify-between gap-4">
                             <div>
                                 <h2 id="edit-header-title" className="text-xl font-semibold text-white">Edit global header</h2>
@@ -335,6 +370,82 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                             )}
                         </div>
 
+                        {savedHeader && (
+                            <div className="mb-6 border-t border-white/10 pt-5">
+                                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                                    <div>
+                                        <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Menu links</h3>
+                                        <p className="mt-1 text-xs leading-5 text-slate-400">
+                                            Use the exact published page slug for static links. <span className="text-slate-300">home</span> opens the homepage; <span className="text-slate-300">about</span> becomes <span className="text-slate-300">about.html</span> after Push live update.
+                                        </p>
+                                    </div>
+                                    <p className="text-[11px] text-slate-500">External URLs and #section anchors stay unchanged.</p>
+                                </div>
+
+                                <datalist id="published-page-slugs">
+                                    {publishedPageTargets.map((page) => (
+                                        <option key={page.slug} value={page.slug}>{page.title}</option>
+                                    ))}
+                                </datalist>
+
+                                <div className="mt-3 space-y-2">
+                                    {(savedHeader.menu || []).map((item, index) => (
+                                        <div key={`${item.label || 'menu'}-${index}`} className="grid grid-cols-1 gap-2 rounded-lg border border-white/10 bg-white/[0.025] p-2.5 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                                            <label className="min-w-0">
+                                                <span className="mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">Menu label</span>
+                                                <input
+                                                    type="text"
+                                                    value={item.label || ''}
+                                                    onChange={(event) => updateHeaderMenuItem(index, 'label', event.target.value)}
+                                                    className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
+                                                />
+                                            </label>
+                                            <label className="min-w-0">
+                                                <span className="mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">Link target</span>
+                                                <input
+                                                    type="text"
+                                                    list="published-page-slugs"
+                                                    value={item.url || ''}
+                                                    onChange={(event) => updateHeaderMenuItem(index, 'url', event.target.value)}
+                                                    placeholder="home, about, #contact, or https://..."
+                                                    className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
+                                                />
+                                            </label>
+                                        </div>
+                                    ))}
+                                </div>
+
+                                {savedHeader.type === 'glassmorphism_header' && (
+                                    <div className="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-violet-400/15 bg-violet-400/[0.035] p-2.5 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
+                                        <label className="min-w-0">
+                                            <span className="mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-violet-200/70">CTA label</span>
+                                            <input
+                                                type="text"
+                                                value={savedHeader.cta_label || 'Get Started'}
+                                                onChange={(event) => updateHeaderContent({ cta_label: event.target.value })}
+                                                className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
+                                            />
+                                        </label>
+                                        <label className="min-w-0">
+                                            <span className="mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-violet-200/70">CTA link target</span>
+                                            <input
+                                                type="text"
+                                                list="published-page-slugs"
+                                                value={savedHeader.cta_url || '#'}
+                                                onChange={(event) => updateHeaderContent({ cta_url: event.target.value })}
+                                                placeholder="contact, #contact, or https://..."
+                                                className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
+                                            />
+                                        </label>
+                                    </div>
+                                )}
+
+                                {publishedPageTargets.length === 0 && (
+                                    <p className="mt-3 text-xs text-amber-200/80">Publish a page before its slug can be included in a live static navigation link.</p>
+                                )}
+                            </div>
+                        )}
+
                         {/* BLUEPRINTS ARCHIVE */}
                         <div className="border-t border-white/10 pt-5">
                             <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Header layouts</h3>
@@ -350,8 +461,8 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                                         type="button"
                                         onClick={() => updateHeaderContent({
                                             type: 'dark_cyan_header',
-                                            logo_text: 'AkongLogo',
-                                            menu: [{ label: 'Home', url: '#' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }]
+                                            logo_text: website.name,
+                                            menu: [{ label: 'Home', url: 'home' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }]
                                         })}
                                         className="w-full rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >
@@ -369,9 +480,10 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                                         type="button"
                                         onClick={() => updateHeaderContent({
                                             type: 'glassmorphism_header',
-                                            logo_text: 'DesignKaBai',
+                                            logo_text: website.name,
                                             cta_label: 'Get Started',
-                                            menu: [{ label: 'Home', url: '#' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }, { label: 'Blog', url: '#' }]
+	                                            cta_url: '#',
+                                            menu: [{ label: 'Home', url: 'home' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }, { label: 'Blog', url: '#' }]
                                         })}
                                         className="w-full rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >

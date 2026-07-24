@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
+import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 
 import AddSectionModal from "./Components/AddSectionModal";
 
@@ -19,6 +20,7 @@ export default function Builder({ page, website }) {
         type: 'glassmorphism_header',
         logo_text: website?.name || 'Your Website',
         cta_label: 'Get Started',
+        cta_url: '#',
         menu: [
             { label: 'Home', url: '#' },
             { label: 'About', url: '#' },
@@ -125,7 +127,7 @@ export default function Builder({ page, website }) {
             const response = await axios.post('/ai/generate', { prompt });
             setAiResult(response.data);
         } catch (error) {
-            alert('Error generating AI block.');
+            showCosmicNotification({ title: 'Generation failed', message: 'Cosmic AI could not generate this block. Please try again.', tone: 'error' });
         } finally {
             setAiLoading(false);
         }
@@ -361,9 +363,19 @@ export default function Builder({ page, website }) {
                     <div className="mx-auto flex min-h-16 max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
                         <Link
                             href={route('pages.index', website.id)}
-                            onClick={(event) => {
-                                if (hasUnsavedChanges && !window.confirm('You have unsaved changes. Leave the Builder without saving them?')) {
-                                    event.preventDefault();
+                            onClick={async (event) => {
+                                if (!hasUnsavedChanges) return;
+
+                                event.preventDefault();
+                                const shouldLeave = await confirmCosmicAction({
+                                    title: 'Leave without saving?',
+                                    message: 'You have unsaved Builder changes. They will be lost if you leave this page.',
+                                    confirmLabel: 'Leave Builder',
+                                    tone: 'error',
+                                });
+
+                                if (shouldLeave) {
+                                    window.location.assign(route('pages.index', website.id));
                                 }
                             }}
                             className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
@@ -413,7 +425,7 @@ export default function Builder({ page, website }) {
                                     disabled={isSaving || isPublishing}
                                     className="inline-flex h-9 items-center rounded-lg border border-white/15 bg-white/[0.08] px-3 text-xs font-bold text-white transition hover:bg-white/[0.14] focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    {isSaving ? 'Saving…' : 'Save Draft'}
+                                    {isSaving ? 'Saving…' : 'Save changes'}
                                 </button>
                             </form>
                             <button
@@ -422,7 +434,7 @@ export default function Builder({ page, website }) {
                                 disabled={isSaving || isPublishing}
                                 className="inline-flex h-9 items-center rounded-lg bg-emerald-500 px-3 text-xs font-bold text-white transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                {isPublishing ? 'Publishing...' : 'Publish'}
+                                {isPublishing ? 'Publishing...' : 'Publish page'}
                             </button>
                         </div>
                     </div>

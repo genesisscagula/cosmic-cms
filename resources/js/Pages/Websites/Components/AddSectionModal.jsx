@@ -1,6 +1,7 @@
 import axios from "axios";
 import { useState } from "react";
 import { useRef } from "react";
+import { showCosmicNotification } from "../../../Components/CosmicNotification";
 
 import BlockPreviewCard from "./BlockPreviewCard";
 
@@ -29,7 +30,7 @@ export const BlockRegistry = [
             type: "hero_headline",
             subtitle: "WELCOME TO THE FUTURE",
             heading: "Build Better Digital Reality.",
-            text: "Focus sa logic, biya-i ang manual coding. Ang imong website, automated na sa atong custom CMS logic.",
+            text: "Build a polished website faster with reusable sections and complete editorial control.",
             btn1_label: "Get Started",
             btn1_url: "#",
             btn2_label: "View Docs",
@@ -226,7 +227,7 @@ export default function AddSectionModal({
     const generateWithAI = () => {
 
         if (!prompt.trim()) {
-            alert("Please enter a prompt first.");
+            showCosmicNotification({ title: "Prompt required", message: "Describe the website or section you want to generate first.", tone: "info" });
             return;
         }
 
@@ -278,7 +279,7 @@ export default function AddSectionModal({
     const executeGenerate = async () => {
 
         if (!prompt.trim()) {
-            alert("Please enter a prompt first.");
+            showCosmicNotification({ title: "Prompt required", message: "Describe the website or section you want to generate first.", tone: "info" });
             return;
         }
 
@@ -388,7 +389,7 @@ export default function AddSectionModal({
 
                 setIsGenerating(false);
 
-                alert("AI did not return any blocks.");
+                showCosmicNotification({ title: "No sections generated", message: "Cosmic AI did not return any usable sections. Please try a more specific prompt.", tone: "error" });
 
             }
 
@@ -398,10 +399,11 @@ export default function AddSectionModal({
 
             setIsGenerating(false);
 
-            alert(
-                error.response?.data?.message ||
-                "Cosmic AI could not generate the page. Please try again."
-            );
+            showCosmicNotification({
+                title: "Generation failed",
+                message: error.response?.data?.message || "Cosmic AI could not generate the page. Please try again.",
+                tone: "error",
+            });
 
         }
 

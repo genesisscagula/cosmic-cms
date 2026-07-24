@@ -2,7 +2,7 @@ import { useState } from "react";
 
 const statusStyles = { Published: "border-emerald-400/20 bg-emerald-400/10 text-emerald-300", Draft: "border-amber-300/20 bg-amber-300/10 text-amber-200" };
 
-export default function WebsiteCard({ website, onEdit, onDuplicate, onDelete }) {
+export default function WebsiteCard({ website, onEdit, onDuplicate, onDelete, onDownloadConnector, onConnectLiveSite, onPushLiveUpdate }) {
     const [menuOpen, setMenuOpen] = useState(false);
 
     return (
@@ -15,7 +15,7 @@ export default function WebsiteCard({ website, onEdit, onDuplicate, onDelete }) 
 
             <dl className="mt-4 grid grid-cols-2 gap-4 border-t border-white/10 pt-3 text-sm"><div><dt className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">Theme</dt><dd className="mt-1 text-sm text-slate-300">{website.theme}</dd></div><div><dt className="text-[10px] font-medium uppercase tracking-[0.14em] text-slate-500">Last edited</dt><dd className="mt-1 text-sm text-slate-300">{website.lastEdited}</dd></div></dl>
 
-            {menuOpen && <div className="absolute right-4 top-14 z-10 w-36 rounded-xl border border-white/10 bg-[#1a1a1d] p-1 shadow-2xl shadow-black/40"><button type="button" onClick={() => { onDuplicate(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-200 transition hover:bg-white/10 focus:bg-white/10 focus:outline-none">Duplicate</button><button type="button" onClick={() => { onDelete(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-red-300 transition hover:bg-red-400/10 focus:bg-red-400/10 focus:outline-none">Delete</button></div>}
+            {menuOpen && <div className="absolute right-4 top-14 z-10 w-48 rounded-xl border border-white/10 bg-[#1a1a1d] p-1 shadow-2xl shadow-black/40"><button type="button" onClick={() => { onDownloadConnector(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-200 transition hover:bg-white/10 focus:bg-white/10 focus:outline-none">Download connector</button><button type="button" onClick={() => { onConnectLiveSite(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-200 transition hover:bg-white/10 focus:bg-white/10 focus:outline-none">Connect live site</button><button type="button" onClick={() => { onPushLiveUpdate(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-emerald-200 transition hover:bg-emerald-400/10 focus:bg-emerald-400/10 focus:outline-none">Push live update</button><button type="button" onClick={() => { onDuplicate(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-200 transition hover:bg-white/10 focus:bg-white/10 focus:outline-none">Duplicate</button><button type="button" onClick={() => { onDelete(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-red-300 transition hover:bg-red-400/10 focus:bg-red-400/10 focus:outline-none">Delete</button></div>}
         </article>
     );
 }

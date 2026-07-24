@@ -83,7 +83,7 @@ class PagePublishingTest extends TestCase
         $this->assertSame('Draft copy updated', $page->fresh()->blocks[0]['heading']);
     }
 
-    public function test_publish_creates_a_live_snapshot_after_successful_deployment(): void
+    public function test_publish_creates_a_live_snapshot_without_running_the_manual_static_sync(): void
     {
         $user = $this->verifiedUser();
         [$website, $page] = $this->websiteWithPage($user);
@@ -167,7 +167,7 @@ class PagePublishingTest extends TestCase
             ->assertJsonPath('pages.0.html', '<section>Published HTML</section>');
     }
 
-    public function test_publish_marks_the_page_live_only_after_static_sync_confirms_success(): void
+    public function test_publish_does_not_call_a_configured_manual_static_sync_receiver(): void
     {
         $user = $this->verifiedUser();
         [$website, $page] = $this->websiteWithPage($user);
@@ -182,10 +182,10 @@ class PagePublishingTest extends TestCase
             ->assertJsonPath('status', 'published');
 
         $this->assertSame('published', $page->fresh()->status);
-        Http::assertSent(fn ($request) => $request->hasHeader('X-Cosmic-Sync-Secret', 'test-sync-secret'));
+        Http::assertNothingSent();
     }
 
-    public function test_publish_failure_does_not_mark_the_page_live_when_static_sync_rejects_it(): void
+    public function test_publish_succeeds_even_when_the_manual_static_sync_receiver_is_unavailable(): void
     {
         $user = $this->verifiedUser();
         [$website, $page] = $this->websiteWithPage($user);
@@ -196,13 +196,14 @@ class PagePublishingTest extends TestCase
 
         $this->actingAs($user)
             ->postJson(route('pages.publish', $page))
-            ->assertStatus(502)
-            ->assertJsonPath('status', 'draft');
+            ->assertOk()
+            ->assertJsonPath('status', 'published');
 
         $page->refresh();
-        $this->assertSame('draft', $page->status);
-        $this->assertNull($page->published_blocks);
-        $this->assertNotNull($page->publish_error);
+        $this->assertSame('published', $page->status);
+        $this->assertNotNull($page->published_blocks);
+        $this->assertNull($page->publish_error);
+        Http::assertNothingSent();
     }
 
     private function verifiedUser(): User

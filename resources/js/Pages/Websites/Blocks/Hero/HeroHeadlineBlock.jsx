@@ -35,7 +35,7 @@ export const HeroHeadlineSchema = {
         heading: "Build Better Digital Reality.",
 
         text:
-            "Focus sa logic...",
+            "Create a polished website with reusable sections and complete editorial control.",
 
         btn1_label: "Get Started",
 
