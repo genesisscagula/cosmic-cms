@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 
 import themeMetadata from "./ThemeMetadata";
 import ThemeGrid from "./ThemeGrid";
@@ -51,9 +52,9 @@ export default function ThemeModal({
         theme => theme.id === selectedTheme
     );
 
-    return (
+    return createPortal(
 
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6">
 
             {/* Overlay */}
             <button
@@ -65,15 +66,19 @@ export default function ThemeModal({
 
             {/* Modal */}
             <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="theme-modal-title"
                 className="
                     relative
                     w-full
                     max-w-6xl
-                    max-h-[90vh]
+                    h-[min(88dvh,760px)]
+                    max-h-[calc(100dvh-1.5rem)]
                     bg-slate-950
                     border
                     border-slate-700
-                    rounded-3xl
+                    rounded-2xl
                     shadow-2xl
                     overflow-hidden
                     flex
@@ -85,8 +90,10 @@ export default function ThemeModal({
                 {/* Header */}
                 <div
                     className="
-                        px-8
-                        py-6
+                        shrink-0
+                        px-4
+                        py-4
+                        sm:px-6
                         border-b
                         border-slate-800
                         bg-slate-900
@@ -104,13 +111,13 @@ export default function ThemeModal({
                                 🎨
                             </span>
 
-                            <h2 className="text-2xl font-extrabold text-white">
+                            <h2 id="theme-modal-title" className="text-xl font-extrabold text-white sm:text-2xl">
                                 Design Assistant
                             </h2>
 
                         </div>
 
-                        <p className="text-sm text-slate-400 mt-2">
+                        <p className="mt-1 text-sm text-slate-400 sm:mt-2">
                             Choose a theme or let Cosmic AI help find the perfect style.
                         </p>
 
@@ -120,8 +127,8 @@ export default function ThemeModal({
                         type="button"
                         onClick={onClose}
                         className="
-                            w-11
-                            h-11
+                            w-9
+                            h-9
                             rounded-xl
                             flex
                             items-center
@@ -131,6 +138,9 @@ export default function ThemeModal({
                             hover:text-white
                             hover:bg-slate-800
                             transition
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-violet-400
                         "
                     >
                         ✕
@@ -140,7 +150,7 @@ export default function ThemeModal({
 
 
                 {/* Scrollable Content */}
-                <div className=" overflow-y-auto
+                <div className="min-h-0 flex-1 overflow-y-auto
                     [&::-webkit-scrollbar]:w-2
                     [&::-webkit-scrollbar-track]:bg-transparent
                     [&::-webkit-scrollbar-thumb]:rounded-full
@@ -150,8 +160,10 @@ export default function ThemeModal({
                     {/* AI Advisor */}
                     <div
                         className="
-                            px-8
-                            py-8
+                            px-4
+                            py-5
+                            sm:px-6
+                            sm:py-6
                             border-b
                             border-slate-800
                             bg-slate-900/60
@@ -160,7 +172,7 @@ export default function ThemeModal({
 
                         <div className="max-w-4xl mx-auto">
 
-                            <div className="text-center mb-6">
+                            <div className="mb-5 text-center">
 
                                 <div
                                     className="
@@ -174,7 +186,7 @@ export default function ThemeModal({
                                     ✨ AI Theme Advisor
                                 </div>
 
-                                <h3 className="text-2xl font-extrabold text-white mt-3">
+                                <h3 className="mt-2 text-xl font-extrabold text-white sm:mt-3 sm:text-2xl">
                                     What style are you looking for?
                                 </h3>
 
@@ -195,7 +207,9 @@ export default function ThemeModal({
                                     shadow-xl
                                     p-2
                                     flex
+                                    flex-col
                                     gap-2
+                                    sm:flex-row
                                     focus-within:border-violet-500
                                     focus-within:ring-2
                                     focus-within:ring-violet-500/10
@@ -263,7 +277,7 @@ export default function ThemeModal({
 
 
                     {/* Explore Themes */}
-                    <div className="p-8 bg-slate-950">
+                    <div className="bg-slate-950 p-4 sm:p-6">
 
                         <div
                             className="
@@ -358,8 +372,10 @@ export default function ThemeModal({
                 {/* Footer */}
                 <div
                     className="
-                        px-8
+                        shrink-0
+                        px-4
                         py-4
+                        sm:px-6
                         border-t
                         border-slate-800
                         bg-slate-900
@@ -369,15 +385,15 @@ export default function ThemeModal({
                     "
                 >
 
-                    <div className="flex items-center gap-3">
+                    <div className="flex min-w-0 items-center gap-3">
 
-                        <span className="text-xs text-slate-500">
+                        <span className="hidden text-xs text-slate-500 sm:inline">
                             SELECTED THEME
                         </span>
 
                         {selectedThemeData?.colors && (
 
-                            <div className="flex gap-1">
+                            <div className="hidden gap-1 sm:flex">
 
                                 {selectedThemeData.colors.map(
                                     (color, index) => (
@@ -403,7 +419,7 @@ export default function ThemeModal({
 
                         )}
 
-                        <span className="text-sm font-bold text-white">
+                        <span className="truncate text-sm font-bold text-white">
                             {selectedThemeData?.name || selectedTheme}
                         </span>
 
@@ -413,9 +429,10 @@ export default function ThemeModal({
                         type="button"
                         onClick={onClose}
                         className="
-                            px-7
+                            shrink-0
+                            px-5
                             py-2.5
-                            rounded-xl
+                            rounded-lg
                             bg-gradient-to-r
                             from-violet-600
                             to-blue-600
@@ -426,6 +443,9 @@ export default function ThemeModal({
                             hover:from-violet-500
                             hover:to-blue-500
                             transition
+                            focus:outline-none
+                            focus:ring-2
+                            focus:ring-violet-300
                         "
                     >
                         Done
@@ -435,7 +455,7 @@ export default function ThemeModal({
 
             </div>
 
-        </div>
-
+        </div>,
+        document.body
     );
 }

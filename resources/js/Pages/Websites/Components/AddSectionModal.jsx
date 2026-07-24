@@ -11,6 +11,7 @@ import FeatureRightPreview from "./Previews/FeatureRightPreview";
 import HeroCenteredPreview from "./Previews/HeroCenteredPreview";
 import ServicesBentoPreview from "./Previews/ServicesBentoPreview";
 import ProcessTimelinePreview from "./Previews/ProcessTimelinePreview";
+import StatsModernPreview from "./Previews/StatsModernPreview";
 import TestimonialsCarouselPreview from "./Previews/TestimonialsCarouselPreview";
 import PricingCardsPreview from "./Previews/PricingCardsPreview";
 import HeroBackgroundImagePreview from "./Previews/HeroBackgroundImagePreview";
@@ -128,6 +129,26 @@ export const BlockRegistry = [
         }
     },
     {
+        type: "stats_modern",
+        theme: "auto",
+        title: "Modern Stats",
+        buttonLabel: "Add Stats",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: StatsModernPreview,
+        payload: {
+            type: "stats_modern",
+            eyebrow: "Why choose us",
+            heading: "Experience you can count on",
+            text: "Clear results, dependable service, and a team committed to every project.",
+            metrics: [
+                { value: "15+", label: "Years of experience", description: "Serving customers with proven expertise." },
+                { value: "250+", label: "Projects completed", description: "Delivered across a wide range of needs." },
+                { value: "98%", label: "Client satisfaction", description: "Built through reliable service and support." },
+                { value: "24/7", label: "Responsive support", description: "Help is available whenever it matters." }
+            ]
+        }
+    },
+    {
         type: "testimonials_carousel",
         theme: "auto",
         title: "Testimonials",
@@ -178,6 +199,13 @@ export const BlockRegistry = [
     },
 ];
 
+const generationProgressSteps = [
+    { label: "Understand brief", threshold: 10 },
+    { label: "Plan sections", threshold: 30 },
+    { label: "Create content", threshold: 90 },
+    { label: "Build page", threshold: 100 },
+];
+
 export default function AddSectionModal({
     open,
     onClose,
@@ -187,6 +215,7 @@ export default function AddSectionModal({
 
     const [prompt, setPrompt] = useState("");
     const [showConfirm, setShowConfirm] = useState(false);
+    const [isBlockLibraryOpen, setIsBlockLibraryOpen] = useState(false);
 
     const aiResult = {};
 
@@ -379,40 +408,36 @@ export default function AddSectionModal({
     if (!open) return null;
 
     return (
-        <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-3 backdrop-blur-sm sm:p-6">
 
             <div
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-section-modal-title"
             className="
-                bg-slate-900
-                border border-slate-700
-                rounded-3xl
+                flex flex-col
+                bg-[#111114]
+                border border-white/10
+                rounded-2xl
                 w-full
-                max-w-6xl
-                shadow-2xl
+                max-w-5xl
+                h-[min(88dvh,820px)]
+                max-h-[calc(100dvh-1.5rem)]
+                shadow-2xl shadow-black/50
                 text-slate-100
-                max-h-[92vh]
-                overflow-y-auto
-
-                [&::-webkit-scrollbar]:w-2
-                [&::-webkit-scrollbar-track]:bg-transparent
-
-                [&::-webkit-scrollbar-thumb]:rounded-full
-                [&::-webkit-scrollbar-thumb]:bg-slate-700
-                hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70
-
-                [&::-webkit-scrollbar-corner]:bg-transparent
+                overflow-hidden
             "
         >
 
         {/* Header */}
 
-        <div className="sticky top-0 bg-slate-900/95 backdrop-blur border-b border-slate-800 px-8 py-6 z-20">
+        <div className="shrink-0 border-b border-white/10 bg-[#151519] px-4 py-4 sm:px-6">
 
             <div className="flex items-start justify-between">
 
                 <div>
 
-                    <h2 className="text-3xl font-black text-white flex items-center gap-3">
+                    <h2 id="add-section-modal-title" className="flex items-center gap-2 text-xl font-bold text-white sm:text-2xl">
 
                         ✨ AI Page Generator
 
@@ -430,7 +455,9 @@ export default function AddSectionModal({
 
                 <button
                     onClick={onClose}
-                    className="text-slate-500 hover:text-white text-3xl transition"
+                    type="button"
+                    aria-label="Close Add Section"
+                    className="flex h-9 w-9 items-center justify-center rounded-lg text-xl text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
                 >
                     ✕
 
@@ -440,7 +467,12 @@ export default function AddSectionModal({
 
         </div>
 
-        <div className="p-8">
+        <div className="min-h-0 flex-1 overflow-y-auto p-4 sm:p-6
+            [&::-webkit-scrollbar]:w-2
+            [&::-webkit-scrollbar-track]:bg-transparent
+            [&::-webkit-scrollbar-thumb]:rounded-full
+            [&::-webkit-scrollbar-thumb]:bg-slate-700
+            hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
 
             {/* Prompt */}
 
@@ -452,17 +484,12 @@ export default function AddSectionModal({
 
                     onChange={(e) => setPrompt(e.target.value)}
 
-                    rows={7}
+                    rows={4}
 
-                    placeholder={`Example:
+                    placeholder="Describe the page you want, such as: a modern dental clinic About page with services, testimonials, and a booking CTA."
 
-                Create an About Us page for a Dental Clinic
-
-                Modern SaaS landing page with pricing and testimonials
-
-                Construction company homepage with hero, services and contact CTA.`}
-
-                    className="w-full resize-none rounded-2xl bg-slate-950 border border-slate-700 p-5 text-white placeholder-slate-500 leading-7 focus:outline-none focus:border-violet-500 transition"
+                    aria-label="Describe the page to generate"
+                    className="w-full resize-none rounded-xl border border-white/10 bg-black/30 p-4 text-sm leading-6 text-white placeholder:text-slate-500 transition focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20"
 
                     onKeyDown={(e) => {
 
@@ -482,13 +509,13 @@ export default function AddSectionModal({
 
                 <div>
 
-                    <p className="text-xs uppercase tracking-[0.3em] text-slate-500 mb-3">
+                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500">
 
                         Quick Ideas
 
                     </p>
 
-                    <div className="flex flex-wrap gap-3">
+                    <div className="flex flex-wrap gap-2">
 
                         {[
                             "🏥 Dental Clinic",
@@ -504,8 +531,10 @@ export default function AddSectionModal({
                             <button
 
                                 key={item}
+                                type="button"
+                                onClick={() => setPrompt(item)}
 
-                                className="px-4 py-2 rounded-full bg-slate-800 hover:bg-slate-700 border border-slate-700 text-sm transition"
+                                className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 text-xs text-slate-300 transition hover:border-violet-400/40 hover:bg-violet-400/10 hover:text-violet-100 focus:outline-none focus:ring-2 focus:ring-violet-400"
 
                             >
 
@@ -521,41 +550,44 @@ export default function AddSectionModal({
 
                 {/* AI Options */}
 
-                <div className="flex flex-wrap gap-6 text-sm text-slate-400">
+                <div className="grid grid-cols-1 gap-2 text-sm sm:grid-cols-3">
 
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-300">
 
                         <input
                             type="checkbox"
                             checked
                             readOnly
-                            className="accent-violet-500"
+                            aria-label="Generate Layout enabled"
+                            className="h-3.5 w-3.5 accent-violet-500"
                         />
 
                         Generate Layout
 
                     </label>
 
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-300">
 
                         <input
                             type="checkbox"
                             checked
                             readOnly
-                            className="accent-violet-500"
+                            aria-label="Generate Content enabled"
+                            className="h-3.5 w-3.5 accent-violet-500"
                         />
 
                         Generate Content
 
                     </label>
 
-                    <label className="flex items-center gap-2">
+                    <label className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-3 py-2 text-xs font-medium text-slate-300">
 
                         <input
                             type="checkbox"
                             checked
                             readOnly
-                            className="accent-violet-500"
+                            aria-label="Match Website Theme enabled"
+                            className="h-3.5 w-3.5 accent-violet-500"
                         />
 
                         Match Website Theme
@@ -570,7 +602,7 @@ export default function AddSectionModal({
 
                     onClick={generateWithAI}
 
-                    className="w-full py-4 rounded-2xl font-bold text-lg bg-gradient-to-r from-violet-600 via-indigo-600 to-blue-600 hover:opacity-95 transition shadow-xl"
+                    className="hidden"
 
                 >
 
@@ -580,9 +612,40 @@ export default function AddSectionModal({
 
             </div>
 
+            <div className="mt-6 border-t border-white/10 pt-5">
+                <button
+                    type="button"
+                    onClick={() => setIsBlockLibraryOpen(!isBlockLibraryOpen)}
+                    aria-expanded={isBlockLibraryOpen}
+                    className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-violet-400"
+                >
+                    <span>
+                        <span className="block text-sm font-semibold text-white">Browse Blocks</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">Add a professional section manually.</span>
+                    </span>
+                    <span className="text-lg text-slate-400" aria-hidden="true">{isBlockLibraryOpen ? '−' : '+'}</span>
+                </button>
+            </div>
+
+            {isBlockLibraryOpen && (
+                <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2">
+                    {BlockRegistry.map((block) => (
+                        <BlockPreviewCard
+                            key={block.type}
+                            onAdd={onAdd}
+                            title={block.title}
+                            buttonLabel={block.buttonLabel}
+                            buttonClass={block.buttonClass}
+                            preview={block.preview}
+                            payload={block.payload}
+                        />
+                    ))}
+                </div>
+            )}
+
             {/* Divider */}
 
-            <div className="flex items-center gap-6 my-12">
+            <div className="hidden flex items-center gap-6 my-12">
 
                 <div className="flex-1 border-t border-slate-800" />
 
@@ -598,7 +661,7 @@ export default function AddSectionModal({
 
             {/* Registry */}
 
-            <div>
+            <div className="hidden">
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
 
@@ -628,39 +691,63 @@ export default function AddSectionModal({
 
         </div>
 
+        <div className="shrink-0 border-t border-white/10 bg-[#151519] px-4 py-3 sm:px-6">
+            <button
+                type="button"
+                onClick={generateWithAI}
+                disabled={isGenerating || !prompt.trim()}
+                className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-violet-950/30 transition hover:from-violet-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-violet-300 disabled:cursor-not-allowed disabled:opacity-50"
+            >
+                {isGenerating ? 'Preparing generation...' : 'Generate Page'}
+            </button>
+        </div>
+
     </div>
     {
         showConfirm && (
 
-            <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-[999]">
+            <div className="fixed inset-0 z-[999] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
 
-                <div className="bg-slate-900 rounded-2xl border border-slate-700 p-8 w-full max-w-md">
+                <div role="alertdialog" aria-modal="true" aria-labelledby="replace-page-title" className="w-full max-w-md rounded-2xl border border-white/10 bg-[#151519] p-5 shadow-2xl shadow-black/50 sm:p-6">
 
-                    <h3 className="text-2xl font-bold text-white mb-4">
+                    <div className="mb-4 flex h-10 w-10 items-center justify-center rounded-xl border border-amber-400/20 bg-amber-400/10 text-lg text-amber-200">!</div>
+                    <h3 id="replace-page-title" className="text-xl font-bold text-white">
                         Replace Current Page?
                     </h3>
 
-                    <p className="text-slate-300 leading-7">
-                        Generating a new AI page will replace all existing blocks.
-                        <br /><br />
-                        Your Header, Footer and Theme settings will remain unchanged.
-                    </p>
+                    <p className="mt-2 text-sm leading-6 text-slate-400">This action replaces the page's current content with the generated layout.</p>
 
-                    <div className="flex justify-end gap-3 mt-8">
+                    <div className="mt-5 rounded-xl border border-red-400/15 bg-red-400/[0.06] p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-red-200">Will be replaced</p>
+                        <p className="mt-1 text-sm font-medium text-slate-200">All current page blocks and their content</p>
+                    </div>
+
+                    <div className="mt-3 rounded-xl border border-emerald-400/15 bg-emerald-400/[0.05] p-3">
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-emerald-200">Will be preserved</p>
+                        <ul className="mt-2 space-y-1.5 text-sm text-slate-300">
+                            <li className="flex items-center gap-2"><span className="text-emerald-300" aria-hidden="true">✓</span> Global header</li>
+                            <li className="flex items-center gap-2"><span className="text-emerald-300" aria-hidden="true">✓</span> Global footer</li>
+                            <li className="flex items-center gap-2"><span className="text-emerald-300" aria-hidden="true">✓</span> Website theme settings</li>
+                        </ul>
+                    </div>
+
+                    <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
 
                         <button
+                            type="button"
                             onClick={() => setShowConfirm(false)}
-                            className="px-5 py-3 rounded-xl bg-slate-700 hover:bg-slate-600"
+                            className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
                         >
                             Cancel
                         </button>
 
                         <button
+                            type="button"
                             onClick={() => {
                                 setShowConfirm(false);
                                 executeGenerate();
                             }}
-                            className="px-5 py-3 rounded-xl bg-violet-600 hover:bg-violet-500 font-bold"
+                            className="rounded-lg bg-violet-600 px-4 py-2.5 text-sm font-bold text-white transition hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-300"
                         >
                             ✨ Replace & Generate
                         </button>
@@ -676,22 +763,22 @@ export default function AddSectionModal({
     {
         isGenerating && (
 
-            <div className="fixed inset-0 z-[99999] bg-slate-950/90 backdrop-blur-md flex items-center justify-center">
+            <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black/80 p-4 backdrop-blur-md">
 
-                <div className="w-full max-w-lg px-10">
+                <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#151519]/95 px-5 py-7 shadow-2xl shadow-black/60 sm:px-8 sm:py-8">
 
                     <div className="flex justify-center">
 
                         <div className="relative flex justify-center">
 
-                            <div className="absolute w-44 h-44 rounded-full bg-violet-500/20 blur-3xl animate-pulse" />
+                            <div className="absolute h-36 w-36 rounded-full bg-violet-500/20 blur-3xl animate-pulse" />
 
-                            <div className="w-28 h-28 rounded-full border-[5px] border-violet-500 border-t-cyan-400 border-r-indigo-400 animate-spin" />
+                            <div className="h-20 w-20 rounded-full border-4 border-violet-500 border-t-cyan-400 border-r-indigo-400 animate-spin" />
 
                             <div className="absolute inset-0 flex items-center justify-center">
 
                                 <svg
-                                    className="w-10 h-10 text-cyan-300 animate-pulse"
+                                    className="h-8 w-8 animate-pulse text-cyan-300"
                                     fill="none"
                                     stroke="currentColor"
                                     strokeWidth="2"
@@ -706,19 +793,37 @@ export default function AddSectionModal({
 
                     </div>
 
-                    <h2 className="mt-8 text-center text-4xl font-black text-white">
+                    <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-300">Cosmic AI</p>
+                    <h2 className="mt-2 text-center text-2xl font-bold text-white sm:text-3xl">
 
-                        Cosmic AI
+                        Building your page
 
                     </h2>
 
-                    <p className="mt-4 text-center text-slate-300">
+                    <p className="mt-3 text-center text-sm text-slate-300" aria-live="polite">
 
-                        {aiStage}
+                        {aiStage || "Generating your page..."}
 
                     </p>
 
-                    <div className="mt-10 h-3 rounded-full bg-slate-800 overflow-hidden">
+                    <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                        {generationProgressSteps.map((step, index) => {
+                            const previousThreshold = index === 0 ? 0 : generationProgressSteps[index - 1].threshold;
+                            const isComplete = progress >= step.threshold;
+                            const isCurrent = !isComplete && progress >= previousThreshold;
+
+                            return (
+                                <div key={step.label} className={`rounded-lg border px-2.5 py-2 ${isComplete ? 'border-emerald-400/25 bg-emerald-400/[0.08]' : isCurrent ? 'border-violet-400/35 bg-violet-400/[0.1]' : 'border-white/10 bg-white/[0.02]'}`}>
+                                    <div className={`flex items-center gap-1.5 text-[10px] font-semibold ${isComplete ? 'text-emerald-200' : isCurrent ? 'text-violet-200' : 'text-slate-500'}`}>
+                                        <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[9px] ${isComplete ? 'bg-emerald-400 text-slate-950' : isCurrent ? 'bg-violet-400 text-white' : 'bg-white/10 text-slate-500'}`}>{isComplete ? '✓' : index + 1}</span>
+                                        <span className="truncate">{step.label}</span>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </div>
+
+                    <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
 
                         <div
 
@@ -734,7 +839,7 @@ export default function AddSectionModal({
 
                     </div>
 
-                    <div className="mt-4 flex justify-between text-sm text-slate-400">
+                    <div className="mt-3 flex justify-between text-xs text-slate-400">
 
                         <span>Generating...</span>
 

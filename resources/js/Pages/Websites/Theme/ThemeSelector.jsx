@@ -5,7 +5,8 @@ import themeMetadata from "./ThemeMetadata";
 
 export default function ThemeSelector({
     value,
-    onChange
+    onChange,
+    compact = false,
 }) {
 
     const [open, setOpen] = useState(false);
@@ -20,36 +21,28 @@ export default function ThemeSelector({
             <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="
-                    min-w-[260px]
-                    flex
-                    items-center
-                    justify-between
-                    gap-4
-                    bg-slate-100
-                    hover:bg-slate-200
-                    border
-                    border-slate-300
-                    rounded-xl
-                    px-4
-                    py-2.5
-                    transition
-                "
+                aria-label={`Choose theme: ${currentTheme?.name || value}`}
+                className={compact
+                    ? "flex h-10 w-40 items-center justify-between gap-2 rounded-lg border border-slate-300 bg-slate-100 px-3 text-left transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                    : "min-w-[260px] flex items-center justify-between gap-4 rounded-xl border border-slate-300 bg-slate-100 px-4 py-2.5 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                }
             >
 
-                <div className="flex items-center gap-3">
+                <div className={`flex min-w-0 items-center ${compact ? 'gap-2' : 'gap-3'}`}>
 
                     <span>
                         🎨
                     </span>
 
-                    <div className="text-left">
+                    <div className="min-w-0 text-left">
 
-                        <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
-                            Theme
-                        </div>
+                        {!compact && (
+                            <div className="text-[9px] uppercase tracking-wider text-slate-400 font-bold">
+                                Theme
+                            </div>
+                        )}
 
-                        <div className="font-semibold text-slate-700">
+                        <div className={`truncate font-semibold text-slate-700 ${compact ? 'text-xs' : ''}`}>
                             {currentTheme?.name || value}
                         </div>
 

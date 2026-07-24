@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 
 import AddSectionModal from "./Components/AddSectionModal";
@@ -18,7 +17,7 @@ export default function Builder({ page, website }) {
     const { props } = usePage();
 
     // Gi-apil na ang global_header sa form state
-    const { data, setData, post, processing } = useForm({
+    const { data, setData, post, processing, isDirty } = useForm({
         blocks: page.blocks || [],
         global_header: props.globalHeaderBlock || page.website?.global_header || null,
         global_footer: props.globalFooterBlock || page.website?.global_footer || { 
@@ -287,10 +286,61 @@ export default function Builder({ page, website }) {
     };
     
     return (
-        <AuthenticatedLayout>
-            <Head title="Page Builder" />
-            <div className="w-full min-h-screen bg-slate-50 flex flex-col justify-between pt-0 pb-12">
-                <div className="w-full flex flex-col items-stretch">
+        <>
+            <Head title={`Builder — ${page.title}`} />
+            <div className="min-h-screen bg-[#09090b] text-slate-100">
+                <header className="sticky top-0 z-[60] border-b border-white/10 bg-[#0d0d10]/95 backdrop-blur-xl">
+                    <div className="mx-auto flex min-h-16 max-w-[1600px] flex-wrap items-center gap-3 px-4 py-3 sm:px-6">
+                        <Link
+                            href={route('pages.index', website.id)}
+                            className="inline-flex items-center gap-2 rounded-lg px-2 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
+                        >
+                            <span aria-hidden="true">←</span>
+                            <span className="hidden sm:inline">Back to Pages</span>
+                        </Link>
+
+                        <div className="min-w-0 border-l border-white/10 pl-3 sm:pl-4">
+                            <p className="truncate text-xs font-medium text-slate-400">{website.name || 'Cosmic CMS'}</p>
+                            <div className="flex min-w-0 items-center gap-2">
+                                <span className="truncate text-sm font-semibold text-white">{page.title || 'Untitled page'}</span>
+                                <span className="hidden text-xs text-slate-500 sm:inline">/{page.slug}</span>
+                            </div>
+                        </div>
+
+                        <div className="ml-auto flex flex-wrap items-center justify-end gap-2">
+                            <span className={`hidden items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] font-medium sm:inline-flex ${processing ? 'border-amber-400/30 bg-amber-400/10 text-amber-200' : isDirty ? 'border-violet-400/30 bg-violet-400/10 text-violet-200' : 'border-white/10 bg-white/[0.04] text-slate-400'}`}>
+                                <span className={`h-1.5 w-1.5 rounded-full ${processing ? 'bg-amber-300 animate-pulse' : isDirty ? 'bg-violet-300' : 'bg-emerald-300'}`} />
+                                {processing ? 'Saving' : isDirty ? 'Changes ready' : 'Saved'}
+                            </span>
+                            <span className="hidden rounded-lg border border-white/10 px-2.5 py-1 text-[11px] font-medium text-slate-400 md:inline-flex">{data.blocks.length} blocks</span>
+                            <ThemeSelector
+                                compact
+                                value={globalSelections.primary}
+                                onChange={(theme) => setGlobalSelections(prev => ({ ...prev, primary: theme }))}
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setIsModalOpen(true)}
+                                className="inline-flex h-9 items-center rounded-lg border border-violet-400/30 bg-violet-500/15 px-3 text-xs font-semibold text-violet-100 transition hover:bg-violet-500/25 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                            >
+                                <span className="mr-1" aria-hidden="true">+</span> Add Section
+                            </button>
+                            <form onSubmit={handleSubmit}>
+                                <button
+                                    type="submit"
+                                    disabled={processing}
+                                    className="inline-flex h-9 items-center rounded-lg bg-emerald-500 px-3 text-xs font-bold text-white transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {processing ? 'Saving…' : 'Publish'}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </header>
+
+                <main className="px-4 py-5 sm:px-6 sm:py-8">
+                    <div className="mx-auto w-full max-w-[1560px] overflow-visible rounded-xl border border-white/10 bg-white shadow-2xl shadow-black/30 lg:w-[min(86vw,1560px)]">
+                        <div className="w-full overflow-hidden rounded-[11px] flex flex-col items-stretch">
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}
                     {data.global_header && (
@@ -312,12 +362,12 @@ export default function Builder({ page, website }) {
 
                         <div
                             key={block._renderKey || index}
-                            className="relative group w-full transition-all duration-300"
+                            className="relative group w-full transition-all duration-300 focus-within:z-20"
                         >
 
                             {/* Hover Toolbar */}
 
-                            <div className="absolute top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-300 z-50">
+                            <div className="absolute top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all duration-300 z-50">
 
                                 <div className="flex items-center gap-2 rounded-full bg-slate-900/90 backdrop-blur-xl border border-slate-700 shadow-2xl px-3 py-2">
 
@@ -348,9 +398,11 @@ export default function Builder({ page, website }) {
                                     {/* Move Up */}
 
                                     <button
+                                        type="button"
+                                        aria-label="Move block up"
                                         onClick={() => moveBlock(index,"up")}
                                         disabled={index===0}
-                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 disabled:opacity-30 transition"
+                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 disabled:opacity-30 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >
                                         ↑
                                     </button>
@@ -358,9 +410,11 @@ export default function Builder({ page, website }) {
                                     {/* Move Down */}
 
                                     <button
+                                        type="button"
+                                        aria-label="Move block down"
                                         onClick={() => moveBlock(index,"down")}
                                         disabled={index===data.blocks.length-1}
-                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 disabled:opacity-30 transition"
+                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 disabled:opacity-30 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >
                                         ↓
                                     </button>
@@ -368,8 +422,10 @@ export default function Builder({ page, website }) {
                                     {/* Duplicate */}
 
                                     <button
+                                        type="button"
+                                        aria-label="Duplicate block"
                                         onClick={() => duplicateBlock(index)}
-                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 transition"
+                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >
                                         ⧉
                                     </button>
@@ -377,10 +433,12 @@ export default function Builder({ page, website }) {
                                     {/* Theme */}
 
                                     <button
+                                        type="button"
+                                        aria-label="Change block theme"
                                         onClick={() =>
                                             setThemeMenu(themeMenu === index ? null : index)
                                         }
-                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 transition"
+                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >
                                         🎨
                                     </button>
@@ -401,6 +459,7 @@ export default function Builder({ page, website }) {
                                                 <button
 
                                                     key={value}
+                                                    type="button"
 
                                                     onClick={() => {
 
@@ -417,7 +476,7 @@ export default function Builder({ page, website }) {
 
                                                     }}
 
-                                                    className="w-full text-left px-4 py-3 hover:bg-slate-800 text-sm text-slate-200 transition"
+                                                    className="w-full text-left px-4 py-3 hover:bg-slate-800 text-sm text-slate-200 transition focus:outline-none focus:bg-slate-800"
 
                                                 >
 
@@ -435,8 +494,10 @@ export default function Builder({ page, website }) {
                                     {/* Delete */}
 
                                     <button
+                                        type="button"
+                                        aria-label="Delete block"
                                         onClick={() => removeBlock(index)}
-                                        className="w-8 h-8 rounded-lg hover:bg-red-500/20 text-red-400 transition"
+                                        className="w-8 h-8 rounded-lg hover:bg-red-500/20 text-red-400 transition focus:outline-none focus:ring-2 focus:ring-red-400"
                                     >
                                         🗑
                                     </button>
@@ -475,7 +536,10 @@ export default function Builder({ page, website }) {
                 </div>
 
 
-                <div className="max-w-7xl w-full mx-auto px-6 mt-10">
+                    </div>
+                </main>
+
+                <div className="hidden max-w-7xl w-full mx-auto px-6 mt-10">
 
                     <div className="bg-white border border-slate-200 rounded-2xl shadow-lg px-6 py-5">
 
@@ -583,6 +647,6 @@ export default function Builder({ page, website }) {
 
             {/* AI MODAL INJECTOR CONFIG */}
             
-        </AuthenticatedLayout>
+        </>
     );
 }

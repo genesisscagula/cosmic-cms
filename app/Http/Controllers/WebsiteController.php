@@ -28,7 +28,7 @@ class WebsiteController extends Controller
 	        'theme_settings' => 'nullable|array', // I-validate ang array input
 	    ]);
 
-	    auth()->user()->websites()->create([
+	    $website = auth()->user()->websites()->create([
 	        'name' => $request->name,
 	        'domain' => $request->domain,
 	        'api_token' => Str::random(60),
@@ -39,7 +39,7 @@ class WebsiteController extends Controller
 	        ])
 	    ]);
 
-	    return back();
+	    return redirect()->route('pages.index', $website);
 	}
 
 	public function saveFooter(Request $request, Website $website)

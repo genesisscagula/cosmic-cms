@@ -508,6 +508,68 @@ class CmsHtmlCompiler
                 break;
 
 
+                case 'stats_modern':
+
+                $eyebrow = e($block['eyebrow'] ?? 'Why choose us');
+                $heading = e($block['heading'] ?? 'Experience you can count on');
+                $text = e($block['text'] ?? 'Clear results, dependable service, and a team committed to every project.');
+                $metrics = is_array($block['metrics'] ?? null) ? array_slice($block['metrics'], 0, 4) : [];
+
+                if (empty($metrics)) {
+                    $metrics = [
+                        ['value' => '15+', 'label' => 'Years of experience', 'description' => 'Serving customers with proven expertise.'],
+                        ['value' => '250+', 'label' => 'Projects completed', 'description' => 'Delivered across a wide range of needs.'],
+                        ['value' => '98%', 'label' => 'Client satisfaction', 'description' => 'Built through reliable service and support.'],
+                        ['value' => '24/7', 'label' => 'Responsive support', 'description' => 'Help is available whenever it matters.'],
+                    ];
+                }
+
+                $html .= "
+                <section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']} transition-colors duration-500'>
+                    <div class='mx-auto max-w-7xl'>
+                        <div class='mb-10 max-w-2xl space-y-4 sm:mb-12'>";
+
+                if ($eyebrow !== '') {
+                    $html .= "<span class='block text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</span>";
+                }
+
+                $html .= "
+                            <h2 class='block text-3xl font-bold tracking-tight sm:text-4xl {$theme['text']}'>{$heading}</h2>";
+
+                if ($text !== '') {
+                    $html .= "<p class='block max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p>";
+                }
+
+                $html .= "
+                        </div>
+                        <div class='grid grid-cols-1 border-y {$theme['border']} sm:grid-cols-2 lg:grid-cols-4'>";
+
+                foreach ($metrics as $index => $metric) {
+                    $value = e($metric['value'] ?? '');
+                    $label = e($metric['label'] ?? '');
+                    $description = e($metric['description'] ?? '');
+                    $lastBorder = $index === count($metrics) - 1 ? 'sm:last:border-r-0' : '';
+
+                    $html .= "
+                            <article class='min-w-0 border-b p-6 last:border-b-0 sm:border-b-0 sm:border-r {$lastBorder} lg:p-7 {$theme['border']}'>
+                                <div class='block text-4xl font-bold tracking-tight sm:text-5xl {$theme['text']}'>{$value}</div>
+                                <h3 class='mt-3 block text-sm font-semibold {$theme['text']}'>{$label}</h3>";
+
+                    if ($description !== '') {
+                        $html .= "<p class='mt-2 block text-sm leading-6 {$theme['sub']}'>{$description}</p>";
+                    }
+
+                    $html .= "</article>";
+                }
+
+                $html .= "
+                        </div>
+                    </div>
+                </section>";
+
+                break;
+
+
                 case 'testimonials_carousel':
 
                 $tagline = e($block['tagline'] ?? 'CLIENT TESTIMONIALS');

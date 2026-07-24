@@ -1,9 +1,14 @@
 import { useState, useEffect } from 'react';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
 import { Head, useForm, Link, router } from '@inertiajs/react';
 import axios from 'axios';
 import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
 import { MinimalFooter, DetailedFooter } from './GenerateFooter';
+import WebsiteWorkspaceHeader from './Components/WebsiteWorkspaceHeader';
+import NewPagePanel from './Components/NewPagePanel';
+import PageList from './Components/PageList';
+import PageEmptyState from './Components/PageEmptyState';
+
+const WebsiteWorkspaceShell = ({ children }) => <>{children}</>;
 
 export default function Index({ website, pages, globalHeaderBlock, globalFooterBlock }) {
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -11,6 +16,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
     });
 
     const [isHeaderModalOpen, setIsHeaderModalOpen] = useState(false);
+    const [isNewPageOpen, setIsNewPageOpen] = useState(false);
     const [savedHeader, setSavedHeader] = useState(globalHeaderBlock || null);
     const [isSaving, setIsSaving] = useState(false);
     // 2. Add state para sa footer modal[cite: 2]
@@ -41,12 +47,56 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
         }
     }, [globalFooterBlock]);
 
+    useEffect(() => {
+        if (!isHeaderModalOpen && !isFooterModalOpen) return undefined;
+
+        const handleKeyDown = (event) => {
+            if (event.key !== 'Escape' || isSaving) return;
+            setIsHeaderModalOpen(false);
+            setIsFooterModalOpen(false);
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+        return () => window.removeEventListener('keydown', handleKeyDown);
+    }, [isHeaderModalOpen, isFooterModalOpen, isSaving]);
+
     const handleSubmit = (e) => {
         e.preventDefault();
         post(route('pages.store', website.id), {
-            onSuccess: () => reset(),
+            onSuccess: () => {
+                reset();
+                setIsNewPageOpen(false);
+            },
         });
     };
+
+    const defaultTheme = {
+        primary: 'emerald',
+        secondary: 'white',
+        tertiary: 'stone',
+    };
+    let savedThemeSettings = {};
+
+    if (typeof website.theme_settings === 'string') {
+        try {
+            savedThemeSettings = JSON.parse(website.theme_settings);
+        } catch {
+            savedThemeSettings = {};
+        }
+    } else if (website.theme_settings && typeof website.theme_settings === 'object') {
+        savedThemeSettings = website.theme_settings;
+    }
+
+    if (!savedThemeSettings || typeof savedThemeSettings !== 'object' || Array.isArray(savedThemeSettings)) {
+        savedThemeSettings = {};
+    }
+
+    const globalTheme = {
+        ...defaultTheme,
+        ...savedThemeSettings,
+        primary: savedThemeSettings.primary || savedThemeSettings.primary_color || defaultTheme.primary,
+    };
+    const themeSummary = globalTheme.primary;
 
     const updateHeaderContent = (updatedFields) => {
         setSavedHeader(prev => ({ ...prev, ...updatedFields }));
@@ -106,7 +156,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
     };
 
     return (
-        <AuthenticatedLayout
+        <WebsiteWorkspaceShell
             header={
                 <div className="flex justify-between items-center">
                     <div className="flex items-center space-x-3">
@@ -123,11 +173,21 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
         >
             <Head title={`Manage Pages - ${website.name}`} />
 
-            <div className="py-12">
-                <div className="mx-auto max-w-7xl sm:px-6 lg:px-8 space-y-6">
+            <div className="min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
+                <div className="mx-auto max-w-6xl space-y-7">
+                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} themeSummary={themeSummary} onNewPage={() => setIsNewPageOpen(true)} />
+
+                    <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
+                        <div><p className="text-sm font-semibold text-white">Website shell</p><p className="mt-1 text-sm text-slate-400">Configure the shared header and footer used across this website.</p></div>
+                        <div className="mt-4 flex gap-2 sm:mt-0"><button type="button" onClick={() => { setSavedHeader(globalHeaderBlock || null); setIsHeaderModalOpen(true); }} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Header</button><button type="button" onClick={() => setIsFooterModalOpen(true)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Footer</button></div>
+                    </section>
+
+                    <section><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-white">Pages</p><p className="mt-1 text-sm text-slate-400">Open a page in Builder to edit its blocks and layout.</p></div><span className="text-xs text-slate-500">{pages?.length || 0} total</span></div>{pages?.length ? <PageList pages={pages} /> : <PageEmptyState onNewPage={() => setIsNewPageOpen(true)} />}</section>
+
+                    <NewPagePanel open={isNewPageOpen} onClose={() => setIsNewPageOpen(false)} data={data} setData={setData} errors={errors} processing={processing} onSubmit={handleSubmit} />
                     
                     {/* INPUT FORM PANEL */}
-                    <div className="p-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
+                    <div className="hidden p-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
                         <h3 className="text-lg font-medium text-gray-900 mb-1">Create New Dynamic Page</h3>
                         <p className="text-xs text-gray-500 mb-4">I-add ang ngalan sa page (e.g., Home, About Us) aron automatic mag-generate og dynamic route packet.</p>
                         
@@ -155,7 +215,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                     </div>
 
                     {/* GLOBAL ELEMENTS CONFIGURATION PANEL */}
-                    <div className="p-6 bg-slate-900 overflow-hidden shadow-xl sm:rounded-lg border border-slate-800 text-white">
+                    <div className="hidden p-6 bg-slate-900 overflow-hidden shadow-xl sm:rounded-lg border border-slate-800 text-white">
                         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <div>
                                 <div className="flex items-center gap-2">
@@ -191,7 +251,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                     </div>
 
                     {/* PAGES ARCHITECTURE LIST */}
-                    <div className="p-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
+                    <div className="hidden p-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
                         <h3 className="text-lg font-medium text-gray-900 mb-4">Website Pages Architecture</h3>
                         
                         {!pages || pages.length === 0 ? (
@@ -246,41 +306,42 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
 
             {/* GLOBAL HEADER MODAL POPUP SYSTEM */}
             {isHeaderModalOpen && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl w-full max-w-4xl shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto font-sans">
-                        <div className="flex justify-between items-center mb-6">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+                    <button type="button" aria-label="Close header dialog" onClick={() => !isSaving && setIsHeaderModalOpen(false)} className="absolute inset-0 cursor-default" />
+                    <div role="dialog" aria-modal="true" aria-labelledby="edit-header-title" className="relative max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6">
+                        <div className="mb-5 flex items-start justify-between gap-4">
                             <div>
-                                <h2 className="text-xl font-extrabold text-white">⚙️ Global Header Architecture Controller</h2>
-                                <p className="text-xs text-slate-400 mt-1">Pili ug i-edit ang layout nga gamiton sa tibuok website configuration.</p>
+                                <h2 id="edit-header-title" className="text-xl font-semibold text-white">Edit global header</h2>
+                                <p className="mt-1 text-sm text-slate-400">Choose the header used across this website.</p>
                             </div>
-                            <button onClick={() => setIsHeaderModalOpen(false)} className="text-slate-400 hover:text-white">✕</button>
+                            <button type="button" disabled={isSaving} onClick={() => setIsHeaderModalOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Close">×</button>
                         </div>
 
                         {/* LIVE PREVIEW FIELD */}
-                        <div className="mb-8 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Live Structural Frame Preview</h3>
+                        <div className="mb-6 rounded-xl border border-white/10 bg-black/20 p-3">
+                            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</h3>
                             {savedHeader ? (
                                 <div className="w-full">
                                     {savedHeader.type === 'dark_cyan_header' && <DarkCyanHeader block={savedHeader} onUpdate={updateHeaderContent} />}
-                                    {savedHeader.type === 'glassmorphism_header' && <GlassmorphismHeader block={savedHeader} onUpdate={updateHeaderContent} />}
+                                    {savedHeader.type === 'glassmorphism_header' && <GlassmorphismHeader block={savedHeader} onUpdate={updateHeaderContent} globalTheme={globalTheme} />}
                                 </div>
                             ) : (
-                                <div className="text-center py-8 text-sm text-slate-500">
-                                    No header setup currently active. Select a blueprint option down below to initialize.
+                                <div className="py-7 text-center text-sm text-slate-500">
+                                    Choose a header layout to preview it here.
                                 </div>
                             )}
                         </div>
 
                         {/* BLUEPRINTS ARCHIVE */}
-                        <div className="border-t border-slate-800 pt-6">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Available Layout Architecture Options</h3>
+                        <div className="border-t border-white/10 pt-5">
+                            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Header layouts</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 
                                 {/* TEMPLATE INJECT BUTTON 1 */}
-                                <div className="border border-slate-800 bg-slate-950/30 p-4 rounded-xl flex flex-col justify-between space-y-3">
+                                <div className={`flex flex-col justify-between space-y-3 rounded-xl border p-4 transition ${savedHeader?.type === 'dark_cyan_header' ? 'border-violet-400/70 bg-violet-400/[0.07] ring-1 ring-violet-400/30' : 'border-white/10 bg-white/[0.03] hover:border-white/20'}`}>
                                     <div>
-                                        <h4 className="text-sm font-bold text-white">Dark Cyan minimal Navigation</h4>
-                                        <p className="text-xs text-slate-400 mt-1">Clean slate framework utilizing teal neon elements and standard static navigation trees.</p>
+                                        <h4 className="text-sm font-semibold text-white">Minimal navigation</h4>
+                                        <p className="mt-1 text-xs leading-5 text-slate-400">A simple logo and navigation layout.</p>
                                     </div>
                                     <button 
                                         type="button"
@@ -289,17 +350,17 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                                             logo_text: 'AkongLogo',
                                             menu: [{ label: 'Home', url: '#' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }]
                                         })}
-                                        className="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-xs py-2 rounded-md font-bold transition"
+                                        className="w-full rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >
-                                        🛠️ Apply/Switch to Layout
+                                        {savedHeader?.type === 'dark_cyan_header' ? 'Selected' : 'Use layout'}
                                     </button>
                                 </div>
 
                                 {/* TEMPLATE INJECT BUTTON 2 */}
-                                <div className="border border-slate-800 bg-slate-950/30 p-4 rounded-xl flex flex-col justify-between space-y-3">
+                                <div className={`flex flex-col justify-between space-y-3 rounded-xl border p-4 transition ${savedHeader?.type === 'glassmorphism_header' ? 'border-violet-400/70 bg-violet-400/[0.07] ring-1 ring-violet-400/30' : 'border-white/10 bg-white/[0.03] hover:border-white/20'}`}>
                                     <div>
-                                        <h4 className="text-sm font-bold text-white">Glassmorphism tracking Shell</h4>
-                                        <p className="text-xs text-slate-400 mt-1">Sophisticated responsive system that packages customizable high-conversion Action Links.</p>
+                                        <h4 className="text-sm font-semibold text-white">CTA navigation</h4>
+                                        <p className="mt-1 text-xs leading-5 text-slate-400">Navigation with a highlighted call-to-action.</p>
                                     </div>
                                     <button 
                                         type="button"
@@ -309,9 +370,9 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                                             cta_label: 'Get Started',
                                             menu: [{ label: 'Home', url: '#' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }, { label: 'Blog', url: '#' }]
                                         })}
-                                        className="w-full bg-rose-600 hover:bg-rose-500 text-white text-xs py-2 rounded-md font-bold transition"
+                                        className="w-full rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >
-                                        🛠️ Apply/Switch to Layout
+                                        {savedHeader?.type === 'glassmorphism_header' ? 'Selected' : 'Use layout'}
                                     </button>
                                 </div>
 
@@ -319,11 +380,11 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                         </div>
 
                         {/* MASTER SUBMIT CONTROL SYSTEM PANEL */}
-                        <div className="mt-8 border-t border-slate-800 pt-4 flex justify-end gap-3">
+                        <div className="mt-6 flex justify-end gap-2 border-t border-white/10 pt-4">
                             <button 
                                 type="button" 
                                 onClick={() => setIsHeaderModalOpen(false)}
-                                className="px-4 py-2 bg-slate-800 text-slate-300 rounded-xl text-xs font-semibold"
+                                className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
                             >
                                 Cancel
                             </button>
@@ -331,9 +392,9 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                                 type="button"
                                 onClick={saveHeaderToDatabase}
                                 disabled={isSaving || !savedHeader}
-                                className="px-6 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white rounded-xl text-xs font-bold transition shadow-lg shadow-emerald-900/40"
+                                className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                             >
-                                {isSaving ? 'Synchronizing Node...' : '💾 Save Shell configuration'}
+                                {isSaving ? 'Saving...' : 'Save header'}
                             </button>
                         </div>
 
@@ -344,41 +405,42 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
 
             {/* GLOBAL FOOTER MODAL POPUP SYSTEM */}
             {isFooterModalOpen && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-                    <div className="bg-slate-900 border border-slate-800 p-6 md:p-8 rounded-2xl w-full max-w-4xl shadow-2xl text-slate-100 max-h-[90vh] overflow-y-auto font-sans">
-                        <div className="flex justify-between items-center mb-6">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+                    <button type="button" aria-label="Close footer dialog" onClick={() => !isSaving && setIsFooterModalOpen(false)} className="absolute inset-0 cursor-default" />
+                    <div role="dialog" aria-modal="true" aria-labelledby="edit-footer-title" className="relative max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6">
+                        <div className="mb-5 flex items-start justify-between gap-4">
                             <div>
-                                <h2 className="text-xl font-extrabold text-white">⚙️ Global Footer Architecture Controller</h2>
-                                <p className="text-xs text-slate-400 mt-1">Pili ug i-edit ang footer layout para sa tibuok website.</p>
+                                <h2 id="edit-footer-title" className="text-xl font-semibold text-white">Edit global footer</h2>
+                                <p className="mt-1 text-sm text-slate-400">Choose the footer used across this website.</p>
                             </div>
-                            <button onClick={() => setIsFooterModalOpen(false)} className="text-slate-400 hover:text-white">✕</button>
+                            <button type="button" disabled={isSaving} onClick={() => setIsFooterModalOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Close">×</button>
                         </div>
 
                         {/* LIVE PREVIEW FIELD */}
-                        <div className="mb-8 bg-slate-950 p-4 rounded-xl border border-slate-800">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">Live Structural Frame Preview</h3>
+                        <div className="mb-6 rounded-xl border border-white/10 bg-black/20 p-3">
+                            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</h3>
                             {savedFooter ? (
                                 <div className="w-full">
                                     {savedFooter.type === 'minimal_footer' && <MinimalFooter block={savedFooter} onUpdate={updateFooterContent} />}
                                     {savedFooter.type === 'detailed_footer' && <DetailedFooter block={savedFooter} onUpdate={updateFooterContent} />}
                                 </div>
                             ) : (
-                                <div className="text-center py-8 text-sm text-slate-500">
-                                    No footer setup active. Select a blueprint below to initialize.
+                                <div className="py-7 text-center text-sm text-slate-500">
+                                    Choose a footer layout to preview it here.
                                 </div>
                             )}
                         </div>
 
                         {/* BLUEPRINTS ARCHIVE */}
-                        <div className="border-t border-slate-800 pt-6">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4">Available Layout Architecture Options</h3>
+                        <div className="border-t border-white/10 pt-5">
+                            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Footer layouts</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 
                                 {/* TEMPLATE 1: MINIMAL */}
-                                <div className="border border-slate-800 bg-slate-950/30 p-4 rounded-xl flex flex-col justify-between space-y-3">
+                                <div className={`flex flex-col justify-between space-y-3 rounded-xl border p-4 transition ${savedFooter?.type === 'minimal_footer' ? 'border-violet-400/70 bg-violet-400/[0.07] ring-1 ring-violet-400/30' : 'border-white/10 bg-white/[0.03] hover:border-white/20'}`}>
                                     <div>
-                                        <h4 className="text-sm font-bold text-white">Minimal Footer</h4>
-                                        <p className="text-xs text-slate-400 mt-1">Simple, clean layout focused on essential navigation and branding.</p>
+                                        <h4 className="text-sm font-semibold text-white">Minimal footer</h4>
+                                        <p className="mt-1 text-xs leading-5 text-slate-400">A compact footer with brand and copyright.</p>
                                     </div>
                                     <button 
                                         type="button"
@@ -386,24 +448,24 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                                             type: 'minimal_footer', 
                                             copyright: '© 2026. All rights reserved.' // I-usab ni
                                         })}
-                                        className="w-full bg-cyan-600 hover:bg-cyan-500 text-white text-xs py-2 rounded-md font-bold transition"
+                                        className="w-full rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >
-                                        🛠️ Apply/Switch to Layout
+                                        {savedFooter?.type === 'minimal_footer' ? 'Selected' : 'Use layout'}
                                     </button>
                                 </div>
 
                                 {/* TEMPLATE 2: DETAILED */}
-                                <div className="border border-slate-800 bg-slate-950/30 p-4 rounded-xl flex flex-col justify-between space-y-3">
+                                <div className={`flex flex-col justify-between space-y-3 rounded-xl border p-4 transition ${savedFooter?.type === 'detailed_footer' ? 'border-violet-400/70 bg-violet-400/[0.07] ring-1 ring-violet-400/30' : 'border-white/10 bg-white/[0.03] hover:border-white/20'}`}>
                                     <div>
-                                        <h4 className="text-sm font-bold text-white">Detailed Footer</h4>
-                                        <p className="text-xs text-slate-400 mt-1">Comprehensive footer with multi-column links and newsletter subscription.</p>
+                                        <h4 className="text-sm font-semibold text-white">Detailed footer</h4>
+                                        <p className="mt-1 text-xs leading-5 text-slate-400">A footer with additional navigation links.</p>
                                     </div>
                                     <button 
                                         type="button"
                                         onClick={() => updateFooterContent({ type: 'detailed_footer', description: 'Sample description' })}
-                                        className="w-full bg-rose-600 hover:bg-rose-500 text-white text-xs py-2 rounded-md font-bold transition"
+                                        className="w-full rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >
-                                        🛠️ Apply/Switch to Layout
+                                        {savedFooter?.type === 'detailed_footer' ? 'Selected' : 'Use layout'}
                                     </button>
                                 </div>
 
@@ -411,15 +473,15 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                         </div>
 
                         {/* MASTER SUBMIT */}
-                        <div className="mt-8 border-t border-slate-800 pt-4 flex justify-end gap-3">
-                            <button onClick={() => setIsFooterModalOpen(false)} className="px-4 py-2 bg-slate-800 rounded-xl text-xs font-semibold">Cancel</button>
-                            <button onClick={saveFooterToDatabase} className="px-6 py-2 bg-emerald-600 rounded-xl text-xs font-bold transition">
-                                💾 Save Footer configuration
+                        <div className="mt-6 flex justify-end gap-2 border-t border-white/10 pt-4">
+                            <button type="button" disabled={isSaving} onClick={() => setIsFooterModalOpen(false)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
+                            <button type="button" disabled={isSaving || !savedFooter} onClick={saveFooterToDatabase} className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50">
+                                {isSaving ? 'Saving...' : 'Save footer'}
                             </button>
                         </div>
                     </div>
                 </div>
             )}
-        </AuthenticatedLayout>
+        </WebsiteWorkspaceShell>
     );
 }

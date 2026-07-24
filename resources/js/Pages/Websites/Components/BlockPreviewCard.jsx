@@ -8,18 +8,20 @@ export default function BlockPreviewCard({
 }) {
 
     return (
-        <div className="border border-slate-800 bg-slate-950 p-6 rounded-2xl space-y-4">
+        <div className="space-y-3 rounded-xl border border-white/10 bg-black/20 p-4 transition hover:border-violet-400/30 hover:bg-white/[0.03]">
             <Preview />
 
-            <h4 className="text-lg font-bold text-white">
+            <h4 className="text-sm font-semibold text-white">
                 {title}
             </h4>
 
             <button
+                type="button"
+                aria-label={`Add ${title} block`}
                 onClick={() => {
                     onAdd(payload);
                 }}
-                className={`w-full ${buttonClass} text-white py-3 rounded-xl font-bold transition`}
+                className={`w-full ${buttonClass} rounded-lg py-2 text-xs font-bold text-white transition focus:outline-none focus:ring-2 focus:ring-violet-300`}
             >
                 {buttonLabel}
             </button>

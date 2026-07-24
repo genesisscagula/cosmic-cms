@@ -14,7 +14,8 @@ export const EditableImage = forwardRef(({
     onSave,
     className,
     src,
-    showOverlay = true
+    showOverlay = true,
+    isBackground = false
 }, ref) => {
 
     const [isEditing, setIsEditing] = useState(false);
@@ -114,7 +115,7 @@ export const EditableImage = forwardRef(({
     return (
         <>
             <div
-                className={`group cursor-pointer ${className}`}
+                className={`${isBackground ? '' : 'relative'} group cursor-pointer ${className}`}
                 onClick={() => setIsEditing(true)}
             >
                 <img

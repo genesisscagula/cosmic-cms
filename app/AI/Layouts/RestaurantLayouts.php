@@ -10,6 +10,7 @@ return [
         "testimonials_carousel",
         "hero_centered_cta",
         "pricing_cards",
+        "stats_modern",
     ],
 
     [
@@ -19,6 +20,7 @@ return [
         "testimonials_carousel",
         "hero_centered_cta",
         "pricing_cards",
+        "stats_modern",
     ],
 
 ];

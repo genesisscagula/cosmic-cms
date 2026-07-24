@@ -1,10 +1,11 @@
 import { colorFamilies } from "./colorFamilies";
 
 export function getEffectiveTheme(theme, globalTheme) {
+    const primary = globalTheme?.primary || 'emerald';
 
     // Block wants the site's primary color
     if (theme === "primary") {
-        return colorFamilies[globalTheme.primary] || colorFamilies.emerald;
+        return colorFamilies[primary] || colorFamilies.emerald;
     }
 
     // White section
@@ -19,7 +20,7 @@ export function getEffectiveTheme(theme, globalTheme) {
 
     // Accent (for now use the site's primary color)
     if (theme === "accent") {
-        return colorFamilies[globalTheme.primary] || colorFamilies.emerald;
+        return colorFamilies[primary] || colorFamilies.emerald;
     }
 
     // If theme is already a real color family
@@ -28,6 +29,6 @@ export function getEffectiveTheme(theme, globalTheme) {
     }
 
     // Fallback
-    return colorFamilies[globalTheme.primary] || colorFamilies.emerald;
+    return colorFamilies[primary] || colorFamilies.emerald;
 
 }

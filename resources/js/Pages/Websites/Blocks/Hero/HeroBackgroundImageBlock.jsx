@@ -211,6 +211,7 @@ export function HeroBackgroundImageBlock({
             blockIndex={blockIndex}
             src={data.image_url}
             showOverlay={false}
+            isBackground
             className="
                 absolute
                 inset-0

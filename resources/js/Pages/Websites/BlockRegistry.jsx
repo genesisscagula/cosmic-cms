@@ -33,6 +33,11 @@ import {
     ProcessTimelineSchema
 } from "./Blocks/Stats/ProcessTimelineBlock";
 
+import {
+    StatsModernBlock,
+    StatsModernSchema
+} from "./Blocks/Stats/StatsModernBlock";
+
 
 import {
     TestimonialsCarouselBlock,
@@ -121,6 +126,14 @@ export const BlockRegistry = {
         component: ProcessTimelineBlock,
 
         schema: ProcessTimelineSchema
+
+    },
+
+    stats_modern: {
+
+        component: StatsModernBlock,
+
+        schema: StatsModernSchema
 
     },
 
