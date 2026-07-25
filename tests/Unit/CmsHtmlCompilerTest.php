@@ -10,9 +10,12 @@ class CmsHtmlCompilerTest extends TestCase
 {
     private const ACTIVE_BLOCK_TYPES = [
         'hero_headline',
+        'hero_floating_cards',
         'hero_background_image',
         'hero_editorial_overlay',
         'hero_split_image',
+        'hero_video_style',
+        'hero_video_background',
         'image_cta_banner',
         'hero_centered_cta',
         'feature_image_left',
@@ -43,6 +46,49 @@ class CmsHtmlCompilerTest extends TestCase
         ], 'emerald');
 
         $this->assertStringContainsString("background-image:url('{$imageUrl}')", $html);
+    }
+
+    public function test_hero_video_background_uses_a_poster_fallback_and_compiles_youtube_as_a_background_embed(): void
+    {
+        $html = CmsHtmlCompiler::compile([
+            [
+                'type' => 'hero_video_background',
+                'video_url' => 'https://www.youtube.com/watch?v=dQw4w9WgXcQ',
+                'poster_image_url' => '',
+            ],
+        ], 'emerald');
+
+        $this->assertStringContainsString('https://www.youtube-nocookie.com/embed/dQw4w9WgXcQ', $html);
+        $this->assertStringContainsString('https://cms.example.test/storage/cms-images/background/background-1.avif', $html);
+    }
+
+    public function test_hero_video_background_compiles_vimeo_as_a_background_embed(): void
+    {
+        $html = CmsHtmlCompiler::compile([
+            [
+                'type' => 'hero_video_background',
+                'video_url' => 'https://vimeo.com/76979871',
+            ],
+        ], 'emerald');
+
+        $this->assertStringContainsString('https://player.vimeo.com/video/76979871', $html);
+    }
+
+    public function test_global_header_uses_an_uploaded_logo_image_when_available(): void
+    {
+        $logoUrl = 'storage/websites/1/logos/brand-mark.png';
+
+        $html = CmsHtmlCompiler::compile([
+            [
+                'type' => 'glassmorphism_header',
+                'logo_text' => 'North Star Studio',
+                'logo_image_url' => $logoUrl,
+                'menu' => [],
+            ],
+        ], 'emerald');
+
+        $this->assertStringContainsString('src=\'https://cms.example.test/storage/websites/1/logos/brand-mark.png\'', $html);
+        $this->assertStringContainsString('alt=\'North Star Studio\'', $html);
     }
 
     public function test_hero_editorial_overlay_uses_the_builder_image_url_contract(): void

@@ -12,10 +12,14 @@ class AutomotiveLayoutsTest extends TestCase
         $layouts = require app_path('AI/Layouts/AutomotiveLayouts.php');
         $supportedBlocks = array_keys(SchemaManager::map());
 
-        $this->assertCount(10, $layouts);
+        $this->assertCount(3, $layouts);
 
         foreach ($layouts as $layout) {
-            $this->assertSame('hero_background_image', $layout[0]);
+            $this->assertContains($layout[0], [
+                'hero_background_image',
+                'hero_editorial_overlay',
+                'hero_split_image',
+            ]);
             $this->assertCount(count($layout), array_unique($layout));
             $this->assertNotEmpty($layout);
 

@@ -30,6 +30,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
     const [isNewPageOpen, setIsNewPageOpen] = useState(false);
     const [savedHeader, setSavedHeader] = useState(() => replaceLegacyHeaderLogo(globalHeaderBlock, website.name));
     const [isSaving, setIsSaving] = useState(false);
+    const [isLogoUploading, setIsLogoUploading] = useState(false);
     const [isPushingLive, setIsPushingLive] = useState(false);
     // 2. Add state para sa footer modal[cite: 2]
     const [isFooterModalOpen, setIsFooterModalOpen] = useState(false);
@@ -121,6 +122,41 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
 
             return { ...currentHeader, menu };
         });
+    };
+
+    const uploadHeaderLogo = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+
+        if (!file) return;
+
+        const allowedTypes = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            showCosmicNotification({ title: 'Unsupported logo format', message: 'Upload an SVG, PNG, JPG, or WebP logo.', tone: 'error' });
+            return;
+        }
+
+        if (file.size > 2 * 1024 * 1024) {
+            showCosmicNotification({ title: 'Logo is too large', message: 'Choose a logo smaller than 2 MB.', tone: 'error' });
+            return;
+        }
+
+        setIsLogoUploading(true);
+
+        try {
+            const formData = new FormData();
+            formData.append('website_id', website.id);
+            formData.append('image', file);
+
+            const response = await axios.post(route('websites.logo.upload'), formData);
+            updateHeaderContent({ logo_image_url: response.data.url });
+            showCosmicNotification({ title: 'Logo uploaded', message: 'Save the header to use this logo across the website.', tone: 'success' });
+        } catch (error) {
+            const message = error.response?.data?.message || 'Please try uploading the logo again.';
+            showCosmicNotification({ title: 'Unable to upload logo', message, tone: 'error' });
+        } finally {
+            setIsLogoUploading(false);
+        }
     };
 
     const publishedPageTargets = pages
@@ -372,6 +408,55 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
 
                         {savedHeader && (
                             <div className="mb-6 border-t border-white/10 pt-5">
+                                <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.025] p-3.5">
+                                    <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Brand</h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-400">Logo text appears when no logo image has been uploaded.</p>
+
+                                    <label className="mt-3 block">
+                                        <span className="mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">Logo text</span>
+                                        <input
+                                            type="text"
+                                            value={savedHeader.logo_text || ''}
+                                            onChange={(event) => updateHeaderContent({ logo_text: event.target.value })}
+                                            placeholder={website.name}
+                                            className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
+                                        />
+                                    </label>
+
+                                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                                        <div>
+                                            <p className="text-xs font-medium text-slate-200">Logo image <span className="font-normal text-slate-500">(optional)</span></p>
+                                            <p className="mt-1 text-xs text-slate-500">SVG, PNG, JPG, or WebP. Up to 2 MB. Your logo keeps its original brand colors.</p>
+                                        </div>
+                                        <label className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus-within:ring-2 focus-within:ring-violet-400">
+                                            <span>{isLogoUploading ? 'Uploading...' : 'Upload logo'}</span>
+                                            <input
+                                                type="file"
+                                                accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp"
+                                                onChange={uploadHeaderLogo}
+                                                disabled={isLogoUploading || isSaving}
+                                                className="sr-only"
+                                            />
+                                        </label>
+                                    </div>
+
+                                    {savedHeader.logo_image_url && (
+                                        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-white/10 bg-black/20 p-2.5">
+                                            <div className="flex h-11 min-w-24 items-center rounded-md bg-white px-3">
+                                                <img src={savedHeader.logo_image_url} alt="Uploaded website logo" className="max-h-7 max-w-40 object-contain" />
+                                            </div>
+                                            <button
+                                                type="button"
+                                                onClick={() => updateHeaderContent({ logo_image_url: null })}
+                                                disabled={isSaving || isLogoUploading}
+                                                className="text-xs font-medium text-slate-400 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
+                                            >
+                                                Use logo text instead
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+
                                 <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
                                     <div>
                                         <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Menu links</h3>
@@ -506,7 +591,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                             <button 
                                 type="button"
                                 onClick={saveHeaderToDatabase}
-                                disabled={isSaving || !savedHeader}
+                                disabled={isSaving || isLogoUploading || !savedHeader}
                                 className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                             >
                                 {isSaving ? 'Saving...' : 'Save header'}

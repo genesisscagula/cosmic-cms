@@ -32,6 +32,17 @@ class AIController extends Controller
 
             foreach ($content['blocks'] as &$block) {
 
+                // Video heroes use a poster image instead of the standard image_url
+                // contract. Give them the same local image selection treatment.
+                if (($block['type'] ?? null) === 'hero_video_background') {
+                    $block['poster_image_url'] = $imageGenerator->generate(
+                        $validated['image_folder'] ?? $content['image_folder'],
+                        $block
+                    );
+
+                    continue;
+                }
+
                 if (!isset($block['image_url'])) {
                     continue;
                 }
@@ -75,42 +86,47 @@ class AIController extends Controller
             ? mb_strtolower($normalizedPrompt, 'UTF-8')
             : strtolower($normalizedPrompt);
 
-        $restaurantKeywords = [
-            'restaurant',
-            'dining',
-            'cafe',
-            'café',
-            'food',
-            'pizza',
-            'pasta',
-            'catering',
-            'bakery',
-            'coffee shop',
+        $industryKeywords = [
+            'bakery' => ['bakery', 'pastry', 'pastries', 'bread', 'cake', 'cakes', 'dessert', 'desserts'],
+            'coffee' => ['coffee', 'coffee shop', 'cafe', 'café', 'espresso', 'roastery'],
+            'hotel' => ['hotel', 'resort', 'accommodation', 'lodging', 'boutique hotel'],
+            'travel' => ['travel', 'tour', 'tourism', 'vacation', 'holiday', 'destination'],
+            'restaurant' => ['restaurant', 'dining', 'food', 'pizza', 'pasta', 'catering', 'bistro'],
+            'dentist' => ['dentist', 'dental', 'orthodontist', 'orthodontic', 'teeth whitening'],
+            'medical' => ['medical', 'healthcare', 'health care', 'clinic', 'doctor', 'physician', 'wellness center'],
+            'fitness' => ['fitness', 'gym', 'personal trainer', 'workout', 'crossfit', 'yoga studio'],
+            'cleaning' => ['cleaning', 'house cleaning', 'commercial cleaning', 'janitorial', 'maid service'],
+            'landscaping' => ['landscaping', 'landscape', 'lawn care', 'garden design', 'tree service'],
+            'lawyer' => ['lawyer', 'law firm', 'attorney', 'legal services', 'legal counsel'],
+            'finance' => ['finance', 'financial advisor', 'accounting', 'accountant', 'bookkeeping', 'wealth management'],
+            'real-estate' => ['real estate', 'realtor', 'property listing', 'property management', 'realty'],
+            'technology' => ['technology', 'software', 'saas', 'tech startup', 'it services', 'web development'],
+            'education' => ['education', 'school', 'academy', 'tutoring', 'training center', 'online course'],
+            'salon' => ['salon', 'beauty', 'hair stylist', 'barber', 'spa', 'nail studio'],
+            'roofing' => ['roofing', 'roofer', 'roof repair', 'roof replacement'],
+            'electrician' => ['electrician', 'electrical', 'wiring', 'electric service'],
+            'plumbing' => ['plumbing', 'plumber', 'drain cleaning', 'water heater', 'pipe repair'],
+            'construction' => ['construction', 'contractor', 'home builder', 'renovation', 'remodeling', 'remodelling'],
+            'automotive' => [
+                'automotive',
+                'car dealership',
+                'car dealer',
+                'auto repair',
+                'mechanic',
+                'garage',
+                'car service',
+                'vehicle',
+                'car wash',
+                'detailing',
+                'tire shop',
+            ],
         ];
 
-        foreach ($restaurantKeywords as $keyword) {
-            if (str_contains($normalizedPrompt, $keyword)) {
-                return 'restaurant';
-            }
-        }
-
-        $automotiveKeywords = [
-            'automotive',
-            'car dealership',
-            'car dealer',
-            'auto repair',
-            'mechanic',
-            'garage',
-            'car service',
-            'vehicle',
-            'car wash',
-            'detailing',
-            'tire shop',
-        ];
-
-        foreach ($automotiveKeywords as $keyword) {
-            if (str_contains($normalizedPrompt, $keyword)) {
-                return 'automotive';
+        foreach ($industryKeywords as $folder => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($normalizedPrompt, $keyword)) {
+                    return $folder;
+                }
             }
         }
 

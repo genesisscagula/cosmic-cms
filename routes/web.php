@@ -49,6 +49,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Keep the existing browser-session image URLs while protecting the writes.
     Route::post('/api/upload-block-image', [ImageController::class, 'uploadImage']);
+    Route::post('/api/upload-logo', [ImageController::class, 'uploadLogo'])->name('websites.logo.upload');
     Route::post('/api/update-block-data', [ImageController::class, 'update']);
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

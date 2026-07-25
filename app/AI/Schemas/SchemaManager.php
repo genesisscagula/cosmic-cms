@@ -10,6 +10,12 @@ class SchemaManager
 
             'hero_headline' => 'heroHeadlineSchema',
 
+            'hero_floating_cards' => 'heroFloatingCardsSchema',
+
+            'hero_video_background' => 'heroVideoBackgroundSchema',
+
+            'hero_video_style' => 'heroVideoStyleSchema',
+
             'hero_background_image' => 'heroBackgroundImageSchema',
 
             'hero_editorial_overlay' => 'heroEditorialOverlaySchema',

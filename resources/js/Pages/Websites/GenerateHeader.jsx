@@ -48,14 +48,19 @@ export function DarkCyanHeader({ block, onUpdate }) {
         updatedMenu[idx].label = newLabel;
         onUpdate({ menu: updatedMenu });
     };
+    const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
 
     return (
         <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-4 border-b px-6 py-4 sm:px-8 sm:py-5 lg:flex-nowrap transition-colors duration-500`}>
-            <EditableText 
-                value={block.logo_text || 'Your Website'} 
-                className={`text-2xl font-bold ${accent} cursor-pointer`}
-                onSave={(val) => onUpdate({ logo_text: val })}
-            />
+            {logoImageUrl ? (
+                <img src={logoImageUrl} alt={block.logo_text || 'Website logo'} className="h-9 w-auto max-w-[200px] object-contain" />
+            ) : (
+                <EditableText 
+                    value={block.logo_text || 'Your Website'} 
+                    className={`text-2xl font-bold ${accent} cursor-pointer`}
+                    onSave={(val) => onUpdate({ logo_text: val })}
+                />
+            )}
             <nav className="w-full lg:w-auto">
                 <ul className="flex flex-wrap list-none items-center gap-x-5 gap-y-2 whitespace-nowrap sm:gap-x-[30px] lg:flex-nowrap">
                     {menuItems.map((item, i) => (
@@ -93,14 +98,19 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme }) {
         updatedMenu[idx].label = newLabel;
         onUpdate({ menu: updatedMenu });
     };
+    const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
 
     return (
         <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-6 py-4 sm:px-[8%] sm:py-6 lg:flex-nowrap`}>
-            <EditableText 
-                value={block.logo_text || 'Your Website'} 
-                className={`text-xl font-extrabold tracking-wide ${textColor} cursor-pointer`}
-                onSave={(val) => onUpdate({ logo_text: val })}
-            />
+            {logoImageUrl ? (
+                <img src={logoImageUrl} alt={block.logo_text || 'Website logo'} className="h-9 w-auto max-w-[200px] object-contain" />
+            ) : (
+                <EditableText 
+                    value={block.logo_text || 'Your Website'} 
+                    className={`text-xl font-extrabold tracking-wide ${textColor} cursor-pointer`}
+                    onSave={(val) => onUpdate({ logo_text: val })}
+                />
+            )}
             <nav className="flex w-full items-center justify-between gap-4 lg:w-auto lg:justify-start lg:gap-10">
                 <ul className="flex flex-wrap list-none gap-x-4 gap-y-2 whitespace-nowrap sm:gap-x-[40px] lg:flex-nowrap">
                     {menuItems.map((item, i) => (

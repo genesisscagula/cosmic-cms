@@ -1,0 +1,29 @@
+<?php
+
+return [
+    [
+        'hero_split_image',
+        'services_cards',
+        'feature_image_left',
+        'stats_modern',
+        'testimonials_carousel',
+        'image_cta_banner',
+    ],
+    [
+        'hero_editorial_overlay',
+        'services_bento',
+        'feature_image_right',
+        'process_timeline',
+        'testimonials_carousel',
+        'image_cta_banner',
+        'stats_modern',
+    ],
+    [
+        'hero_background_image',
+        'feature_image_left',
+        'services_cards',
+        'stats_modern',
+        'process_timeline',
+        'image_cta_banner',
+    ],
+];

@@ -539,4 +539,129 @@ class ContentGenerator
     TXT;
     }
 
+
+    private function heroFloatingCardsSchema(): string
+    {
+        return <<<TXT
+
+        hero_floating_cards
+
+        - type = hero_floating_cards
+        - theme = auto
+        - tagline
+        - heading
+        - text
+        - primary_label
+        - primary_url
+        - secondary_label
+        - secondary_url
+        - image_url = ""
+        - image_badge
+        - card_one_value
+        - card_one_label
+        - card_two_title
+        - card_two_text
+
+        Requirements:
+
+        - Write a concise uppercase-style tagline suitable for the requested business.
+        - Write a confident hero heading and helpful supporting text.
+        - Use a clear primary action and a useful secondary action.
+        - Keep button labels concise and actionable.
+        - image_badge must be a short trust, service, or location-related phrase.
+        - card_one_value must be a concise value such as 15+, 250+, 98%, 24/7, or 10k+.
+        - card_one_label must briefly explain the value.
+        - card_two_title must be a short business benefit or trust statement.
+        - card_two_text must be one concise supporting sentence.
+        - Do not present medical, legal, financial, safety, customer, performance, or business statistics as verified facts unless they are supplied in the website request.
+        - When no verified statistic is provided, use a broadly applicable non-regulated value or phrase.
+        - Do not use markdown.
+        - Do not return placeholder copy.
+        - Button URLs must be valid URLs or #.
+        - image_url must remain an empty string so the existing image-selection flow can assign the image.
+
+        TXT;
+    }
+
+
+    private function heroVideoStyleSchema(): string
+    {
+        return <<<TXT
+
+        hero_video_style
+
+        - type = hero_video_style
+        - theme = auto
+        - tagline
+        - heading
+        - text
+        - primary_label
+        - primary_url
+        - video_label
+        - video_url
+        - play_label
+        - image_badge
+        - image_url = ""
+
+        Requirements:
+
+        - Write a concise, business-relevant tagline.
+        - Write a confident hero heading and helpful supporting text.
+        - Use a clear primary action.
+        - video_label must be a short action such as Watch our story, See how it works, or View the experience.
+        - video_url must be # unless a specific public video URL is included in the website request.
+        - play_label must clearly describe the video action.
+        - image_badge must be a short supporting phrase related to the business, service, story, project, or experience.
+        - Keep all labels concise and actionable.
+        - Do not make unverified customer, medical, financial, legal, safety, or performance claims.
+        - Do not use markdown.
+        - Do not return placeholder copy.
+        - Button URLs must be valid URLs or #.
+        - image_url must remain an empty string so the existing image-selection flow can assign the image.
+
+        TXT;
+    }
+
+
+    private function heroVideoBackgroundSchema(): string
+    {
+        return <<<TXT
+
+        hero_video_background
+
+        - type = hero_video_background
+        - theme = auto
+        - tagline
+        - heading
+        - text
+        - primary_label
+        - primary_url
+        - secondary_label
+        - secondary_url
+        - video_url = "/storage/cms-videos/hero-placeholder.mp4"
+        - poster_image_url = ""
+        - video_badge
+        - scroll_label
+
+        Requirements:
+
+        - Write a concise, cinematic tagline relevant to the requested business.
+        - Write a strong hero heading suitable for display over a full-width background video.
+        - Keep the heading concise enough to remain readable over moving footage.
+        - Write one concise supporting paragraph.
+        - Use a clear primary action and a useful secondary action.
+        - Keep both button labels short and actionable.
+        - video_badge must be a short supporting phrase about the business, experience, location, service, or project.
+        - scroll_label must be one or two short words such as Explore, Discover, View more, or Learn more.
+        - video_url must always be exactly /storage/cms-videos/hero-placeholder.mp4.
+        - Do not invent an external video URL.
+        - Do not make unverified customer, medical, legal, financial, safety, or performance claims.
+        - Do not use markdown.
+        - Do not return placeholder copy.
+        - Button URLs must be valid URLs or #.
+        - poster_image_url must remain an empty string so the existing image-selection flow can assign the poster image.
+
+        TXT;
+    }
+
 }

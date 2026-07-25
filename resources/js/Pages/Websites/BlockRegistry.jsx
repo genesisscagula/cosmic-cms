@@ -70,6 +70,21 @@ import {
     ImageCtaBannerSchema
 } from "./Blocks/Hero/ImageCtaBannerBlock";
 
+import {
+    HeroFloatingCardsBlock,
+    HeroFloatingCardsSchema
+} from "./Blocks/Hero/HeroFloatingCardsBlock";
+
+import {
+    HeroVideoStyleBlock,
+    HeroVideoStyleSchema
+} from "./Blocks/Hero/HeroVideoStyleBlock";
+
+import {
+    HeroVideoBackgroundBlock,
+    HeroVideoBackgroundSchema
+} from "./Blocks/Hero/HeroVideoBackgroundBlock";
+
 export const BlockRegistry = {
 
     hero_headline: {
@@ -77,6 +92,30 @@ export const BlockRegistry = {
         component: HeroHeadlineBlock,
 
         schema: HeroHeadlineSchema
+
+    },
+
+    hero_video_background: {
+
+        component: HeroVideoBackgroundBlock,
+
+        schema: HeroVideoBackgroundSchema
+
+    },
+
+    hero_video_style: {
+
+        component: HeroVideoStyleBlock,
+
+        schema: HeroVideoStyleSchema
+
+    },
+
+    hero_floating_cards: {
+
+        component: HeroFloatingCardsBlock,
+
+        schema: HeroFloatingCardsSchema
 
     },
 

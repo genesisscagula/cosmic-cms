@@ -19,6 +19,9 @@ import HeroBackgroundImagePreview from "./Previews/HeroBackgroundImagePreview";
 import HeroEditorialOverlayPreview from "./Previews/HeroEditorialOverlayPreview";
 import HeroSplitImagePreview from "./Previews/HeroSplitImagePreview";
 import ImageCtaBannerPreview from "./Previews/ImageCtaBannerPreview";
+import HeroFloatingCardsPreview from "./Previews/HeroFloatingCardsPreview";
+import HeroVideoStylePreview from "./Previews/HeroVideoStylePreview";
+import HeroVideoBackgroundPreview from "./Previews/HeroVideoBackgroundPreview";
 
 
 export const BlockRegistry = [
@@ -39,6 +42,79 @@ export const BlockRegistry = [
             btn2_label: "View Docs",
             btn2_url: "#"
         }
+    },
+
+    {
+        type: "hero_video_background",
+        theme: "auto",
+        title: "Hero Video Background",
+        buttonLabel: "Add Video Background",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: HeroVideoBackgroundPreview,
+        payload: {
+            type: "hero_video_background",
+            theme: "auto",
+            tagline: "STEP INTO THE EXPERIENCE",
+            heading: "Make every first impression unforgettable.",
+            text: "Introduce your business through motion, strong storytelling, and a clear next step for every visitor.",
+            primary_label: "Get started",
+            primary_url: "#",
+            secondary_label: "Explore more",
+            secondary_url: "#",
+            video_url: "/storage/cms-videos/hero-placeholder.mp4",
+            poster_image_url: "/storage/cms-images/background/background-1.avif",
+            video_badge: "Discover what makes us different",
+            scroll_label: "Explore",
+        },
+    },
+
+    {
+    type: "hero_video_style",
+        theme: "auto",
+        title: "Hero Video Style",
+        buttonLabel: "Add Video Hero",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: HeroVideoStylePreview,
+        payload: {
+            type: "hero_video_style",
+            theme: "auto",
+            tagline: "SEE WHAT SETS US APART",
+            heading: "A clear vision for what comes next.",
+            text: "Introduce your business with a strong message, a compelling visual, and a simple path for visitors to learn more.",
+            primary_label: "Get started",
+            primary_url: "#",
+            video_label: "Watch our story",
+            video_url: "#",
+            play_label: "Play video",
+            image_badge: "Discover our approach",
+            image_url: "/storage/cms-images/background/background-1.avif",
+        },
+    },
+
+    {
+    type: "hero_floating_cards",
+        theme: "auto",
+        title: "Hero Floating Cards",
+        buttonLabel: "Add Floating Hero",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: HeroFloatingCardsPreview,
+        payload: {
+            type: "hero_floating_cards",
+            theme: "auto",
+            tagline: "BUILT AROUND YOUR NEXT STEP",
+            heading: "A better way to move your business forward.",
+            text: "Present your strongest message, highlight what makes your business different, and help visitors take action with confidence.",
+            primary_label: "Get started",
+            primary_url: "#",
+            secondary_label: "Explore services",
+            secondary_url: "#",
+            image_url: "/storage/cms-images/background/background-1.avif",
+            image_badge: "Professional service you can rely on",
+            card_one_value: "15+",
+            card_one_label: "Years of experience",
+            card_two_title: "Trusted expertise",
+            card_two_text: "Thoughtful service, clear communication, and dependable results.",
+        },
     },
 
     {

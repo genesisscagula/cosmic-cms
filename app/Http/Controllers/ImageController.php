@@ -10,6 +10,35 @@ use Intervention\Image\Facades\Image; // Import ni sa taas sa imong controller
 
 class ImageController extends Controller
 {
+    public function uploadLogo(Request $request)
+    {
+        $request->validate([
+            'website_id' => ['required', 'integer', 'exists:websites,id'],
+            'image' => ['required', 'file', 'mimes:jpeg,jpg,png,webp,svg', 'max:2048'],
+        ]);
+
+        $website = Website::findOrFail($request->integer('website_id'));
+        $this->authorize('update', $website);
+
+        $file = $request->file('image');
+
+        if (strtolower($file->getClientOriginalExtension()) === 'svg') {
+            $svg = file_get_contents($file->getRealPath());
+
+            if ($svg === false || preg_match('/<\s*(?:script|iframe|object|embed|foreignObject)\b|\son\w+\s*=|(?:href|xlink:href)\s*=\s*[\'\"]\s*(?:https?:|javascript:|data:)/i', $svg)) {
+                return response()->json([
+                    'message' => 'The SVG contains unsupported active or external content.',
+                ], 422);
+            }
+        }
+
+        $path = $file->store("websites/{$website->id}/logos", 'public');
+
+        return response()->json([
+            'url' => rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path,
+        ]);
+    }
+
     // Function para sa pag-upload sa file
     public function uploadImage(Request $request)
     {

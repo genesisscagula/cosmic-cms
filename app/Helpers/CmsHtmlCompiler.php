@@ -50,6 +50,51 @@ class CmsHtmlCompiler
         return $baseUrl . '/' . ltrim($url, '/');
     }
 
+    /**
+     * Convert supported public video links into privacy-friendly background embeds.
+     * Self-hosted video URLs intentionally return null and continue through <video>.
+     */
+    private static function backgroundVideoEmbedUrl(string $url): ?string
+    {
+        $url = trim($url);
+
+        if ($url === '' || str_starts_with($url, '/')) {
+            return null;
+        }
+
+        $host = strtolower((string) parse_url($url, PHP_URL_HOST));
+        $host = preg_replace('/^www\./', '', $host) ?? $host;
+        $path = (string) parse_url($url, PHP_URL_PATH);
+        $videoId = null;
+
+        if ($host === 'youtu.be') {
+            $videoId = trim($path, '/');
+        } elseif ($host === 'youtube.com' || $host === 'm.youtube.com') {
+            parse_str((string) parse_url($url, PHP_URL_QUERY), $query);
+            $videoId = $query['v'] ?? null;
+
+            if (!$videoId && preg_match('#/(?:embed|shorts)/([^/?]+)#', $path, $matches)) {
+                $videoId = $matches[1];
+            }
+        }
+
+        if (!empty($videoId) && preg_match('/^[A-Za-z0-9_-]{6,}$/', (string) $videoId)) {
+            $videoId = rawurlencode($videoId);
+
+            return "https://www.youtube-nocookie.com/embed/{$videoId}?autoplay=1&mute=1&loop=1&playlist={$videoId}&controls=0&playsinline=1&rel=0&modestbranding=1";
+        }
+
+        if ($host === 'vimeo.com' || str_ends_with($host, '.vimeo.com')) {
+            if (preg_match('#/(\d+)#', $path, $matches)) {
+                $videoId = $matches[1];
+
+                return "https://player.vimeo.com/video/{$videoId}?autoplay=1&muted=1&loop=1&background=1&title=0&byline=0&portrait=0";
+            }
+        }
+
+        return null;
+    }
+
    public static function compile(array $blocks, string $primaryColor = null): string
     {
         $html = "";
@@ -203,7 +248,11 @@ class CmsHtmlCompiler
 
 
                 case 'glassmorphism_header':
-                $logo = e($block['logo_text'] ?? 'Your Website');
+                $logoText = e($block['logo_text'] ?? 'Your Website');
+                $logoImageUrl = e(self::staticAssetUrl($block['logo_image_url'] ?? ''));
+                $logo = $logoImageUrl !== ''
+                    ? "<img src='{$logoImageUrl}' alt='{$logoText}' class='h-9 w-auto max-w-[200px] object-contain'>"
+                    : $logoText;
                 $ctaLabel = e($block['cta_label'] ?? 'Get Started');
                 $ctaUrl = e($block['cta_url'] ?? '#');
                 $menuItems = $block['menu'] ?? [];
@@ -1018,6 +1067,581 @@ class CmsHtmlCompiler
                 }
 
                 $html .= "
+                        </div>
+
+                    </div>
+
+                </section>";
+
+                break;
+
+
+                case 'hero_floating_cards':
+
+                $tagline = e(
+                    $block['tagline'] ??
+                    'BUILT AROUND YOUR NEXT STEP'
+                );
+
+                $heading = e(
+                    $block['heading'] ??
+                    'A better way to move your business forward.'
+                );
+
+                $text = e(
+                    $block['text'] ??
+                    'Present your strongest message, highlight what makes your business different, and help visitors take action with confidence.'
+                );
+
+                $primaryLabel = e(
+                    $block['primary_label'] ??
+                    'Get started'
+                );
+
+                $primaryUrl = e(
+                    $block['primary_url'] ??
+                    '#'
+                );
+
+                $secondaryLabel = e(
+                    $block['secondary_label'] ??
+                    'Explore services'
+                );
+
+                $secondaryUrl = e(
+                    $block['secondary_url'] ??
+                    '#'
+                );
+
+                $imageUrl = e(
+                    self::staticAssetUrl(
+                        $block['image_url'] ??
+                        'https://picsum.photos/1000/800'
+                    )
+                );
+
+                $imageBadge = e(
+                    $block['image_badge'] ??
+                    'Professional service you can rely on'
+                );
+
+                $cardOneValue = e(
+                    $block['card_one_value'] ??
+                    '15+'
+                );
+
+                $cardOneLabel = e(
+                    $block['card_one_label'] ??
+                    'Years of experience'
+                );
+
+                $cardTwoTitle = e(
+                    $block['card_two_title'] ??
+                    'Trusted expertise'
+                );
+
+                $cardTwoText = e(
+                    $block['card_two_text'] ??
+                    'Thoughtful service, clear communication, and dependable results.'
+                );
+
+                $isLight = in_array(
+                    $selectedThemeName,
+                    ['white', 'stone'],
+                    true
+                );
+
+                $primaryTheme = self::getTheme($primaryColor);
+
+                $primaryButtonBg = $isLight
+                    ? $primaryTheme['bg']
+                    : 'bg-white';
+
+                $primaryButtonText = $isLight
+                    ? $primaryTheme['text']
+                    : 'text-slate-950';
+
+                $html .= "
+                <section class='relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']} transition-colors duration-500'>
+
+                    <div class='pointer-events-none absolute -left-40 top-10 h-96 w-96 rounded-full {$primaryTheme['bg']} opacity-[0.08] blur-[130px]'></div>
+
+                    <div class='pointer-events-none absolute -right-44 bottom-0 h-96 w-96 rounded-full {$primaryTheme['bg']} opacity-[0.06] blur-[140px]'></div>
+
+                    <div class='relative mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20'>
+
+                        <div class='max-w-2xl'>
+
+                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$theme['sub']}'>
+                                {$tagline}
+                            </span>
+
+                            <h1 class='mt-5 block text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
+                                {$heading}
+                            </h1>
+
+                            <p class='mt-6 block max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>
+                                {$text}
+                            </p>
+
+                            <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
+
+                                <a
+                                    href='{$primaryUrl}'
+                                    class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold transition hover:opacity-90 {$primaryButtonBg} {$primaryButtonText}'
+                                >
+                                    {$primaryLabel}
+                                </a>
+
+                                <a
+                                    href='{$secondaryUrl}'
+                                    class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold transition hover:opacity-80 {$theme['border']} {$theme['text']}'
+                                >
+                                    {$secondaryLabel}
+                                </a>
+
+                            </div>
+
+                        </div>
+
+                        <div class='relative mx-auto w-full max-w-2xl pb-16 pt-4 sm:px-8 lg:pb-10'>
+
+                            <div class='relative overflow-hidden rounded-[2rem] border shadow-2xl {$theme['border']}'>
+
+                                <img
+                                    src='{$imageUrl}'
+                                    alt='{$heading}'
+                                    class='aspect-[4/3] w-full object-cover'
+                                >
+
+                                <div class='absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent'></div>
+
+                                <span class='absolute bottom-5 left-5 max-w-[calc(100%-2.5rem)] rounded-full bg-slate-950/80 px-4 py-2 text-xs font-semibold text-white backdrop-blur'>
+                                    {$imageBadge}
+                                </span>
+
+                            </div>
+
+                            <div class='absolute -bottom-1 left-0 w-[170px] rounded-2xl border p-4 shadow-xl backdrop-blur sm:left-1 sm:w-[190px] {$theme['card']} {$theme['border']}'>
+
+                                <div class='block text-3xl font-black tracking-tight {$theme['text']}'>
+                                    {$cardOneValue}
+                                </div>
+
+                                <div class='mt-1 block text-xs font-semibold leading-5 {$theme['sub']}'>
+                                    {$cardOneLabel}
+                                </div>
+
+                            </div>
+
+                            <div class='absolute -right-1 top-0 w-[205px] rounded-2xl border p-4 shadow-xl backdrop-blur sm:right-0 sm:w-[225px] {$theme['card']} {$theme['border']}'>
+
+                                <div class='mb-3 flex h-9 w-9 items-center justify-center rounded-xl {$primaryTheme['bg']} {$primaryTheme['text']}'>
+                                    ✓
+                                </div>
+
+                                <h3 class='block text-sm font-bold {$theme['text']}'>
+                                    {$cardTwoTitle}
+                                </h3>
+
+                                <p class='mt-1.5 block text-xs leading-5 {$theme['sub']}'>
+                                    {$cardTwoText}
+                                </p>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </section>";
+
+                break;
+
+
+                case 'hero_video_style':
+
+                $tagline = e(
+                    $block['tagline'] ??
+                    'SEE WHAT SETS US APART'
+                );
+
+                $heading = e(
+                    $block['heading'] ??
+                    'A clear vision for what comes next.'
+                );
+
+                $text = e(
+                    $block['text'] ??
+                    'Introduce your business with a strong message, a compelling visual, and a simple path for visitors to learn more.'
+                );
+
+                $primaryLabel = e(
+                    $block['primary_label'] ??
+                    'Get started'
+                );
+
+                $primaryUrl = e(
+                    $block['primary_url'] ??
+                    '#'
+                );
+
+                $videoLabel = e(
+                    $block['video_label'] ??
+                    'Watch our story'
+                );
+
+                $videoUrl = e(
+                    $block['video_url'] ??
+                    '#'
+                );
+
+                $playLabel = e(
+                    $block['play_label'] ??
+                    'Play video'
+                );
+
+                $imageBadge = e(
+                    $block['image_badge'] ??
+                    'Discover our approach'
+                );
+
+                $imageUrl = e(
+                    self::staticAssetUrl(
+                        $block['image_url'] ??
+                        'https://picsum.photos/1200/675'
+                    )
+                );
+
+                $isLight = in_array(
+                    $selectedThemeName,
+                    ['white', 'stone'],
+                    true
+                );
+
+                $primaryTheme = self::getTheme(
+                    $primaryColor
+                );
+
+                $primaryButtonBg = $isLight
+                    ? $primaryTheme['bg']
+                    : 'bg-white';
+
+                $primaryButtonText = $isLight
+                    ? $primaryTheme['text']
+                    : 'text-slate-950';
+
+                $html .= "
+                <section class='relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']} transition-colors duration-500'>
+
+                    <div class='pointer-events-none absolute -left-36 top-10 h-96 w-96 rounded-full {$primaryTheme['bg']} opacity-[0.08] blur-[130px]'></div>
+
+                    <div class='pointer-events-none absolute -right-36 bottom-0 h-96 w-96 rounded-full {$primaryTheme['bg']} opacity-[0.06] blur-[140px]'></div>
+
+                    <div class='relative mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20'>
+
+                        <div class='max-w-2xl'>
+
+                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$theme['sub']}'>
+                                {$tagline}
+                            </span>
+
+                            <h1 class='mt-5 block text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
+                                {$heading}
+                            </h1>
+
+                            <p class='mt-6 block max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>
+                                {$text}
+                            </p>
+
+                            <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
+
+                                <a
+                                    href='{$primaryUrl}'
+                                    class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold transition hover:opacity-90 {$primaryButtonBg} {$primaryButtonText}'
+                                >
+                                    {$primaryLabel}
+                                </a>
+
+                                <a
+                                    href='{$videoUrl}'
+                                    target='_blank'
+                                    rel='noreferrer'
+                                    class='inline-flex min-h-[50px] items-center justify-center gap-3 rounded-full border px-7 font-bold transition hover:opacity-80 {$theme['border']} {$theme['text']}'
+                                >
+                                    <span aria-hidden='true'>▶</span>
+                                    {$videoLabel}
+                                </a>
+
+                            </div>
+
+                            <div class='mt-8 flex items-center gap-3 border-t pt-5 {$theme['border']}'>
+
+                                <div class='flex h-9 w-9 shrink-0 items-center justify-center rounded-full {$primaryTheme['bg']} {$primaryTheme['text']}'>
+                                    ▶
+                                </div>
+
+                                <div class='text-sm font-semibold {$theme['sub']}'>
+                                    {$playLabel}
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                        <div class='relative mx-auto w-full max-w-2xl pb-10 sm:px-6 lg:pb-0'>
+
+                            <div class='group relative overflow-hidden rounded-[2rem] border shadow-2xl {$theme['border']}'>
+
+                                <img
+                                    src='{$imageUrl}'
+                                    alt='{$heading}'
+                                    class='aspect-video w-full object-cover transition duration-500 group-hover:scale-[1.03]'
+                                >
+
+                                <div class='pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-slate-950/10'></div>
+
+                                <a
+                                    href='{$videoUrl}'
+                                    target='_blank'
+                                    rel='noreferrer'
+                                    aria-label='{$playLabel}'
+                                    class='absolute inset-0 flex items-center justify-center'
+                                >
+                                    <span class='flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/30 bg-white text-2xl text-slate-950 shadow-2xl transition duration-300 group-hover:scale-110 sm:h-24 sm:w-24'>
+                                        ▶
+                                    </span>
+                                </a>
+
+                                <div class='pointer-events-none absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4'>
+
+                                    <div class='block max-w-[70%] text-sm font-semibold text-white sm:text-base'>
+                                        {$imageBadge}
+                                    </div>
+
+                                    <span class='rounded-full border border-white/20 bg-slate-950/60 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.18em] text-white backdrop-blur'>
+                                        Video
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                            <div class='absolute -bottom-3 right-0 rounded-2xl border px-5 py-4 shadow-xl backdrop-blur sm:right-2 {$theme['card']} {$theme['border']}'>
+
+                                <div class='flex items-center gap-3'>
+
+                                    <div class='flex h-9 w-9 items-center justify-center rounded-full {$primaryTheme['bg']} {$primaryTheme['text']}'>
+                                        ▶
+                                    </div>
+
+                                    <div>
+
+                                        <div class='block text-sm font-bold {$theme['text']}'>
+                                            {$videoLabel}
+                                        </div>
+
+                                        <div class='mt-0.5 block text-xs {$theme['sub']}'>
+                                            {$playLabel}
+                                        </div>
+
+                                    </div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                </section>";
+
+                break;
+
+
+                case 'hero_video_background':
+
+                $tagline = e(
+                    $block['tagline'] ??
+                    'STEP INTO THE EXPERIENCE'
+                );
+
+                $heading = e(
+                    $block['heading'] ??
+                    'Make every first impression unforgettable.'
+                );
+
+                $text = e(
+                    $block['text'] ??
+                    'Introduce your business through motion, strong storytelling, and a clear next step for every visitor.'
+                );
+
+                $primaryLabel = e(
+                    $block['primary_label'] ??
+                    'Get started'
+                );
+
+                $primaryUrl = e(
+                    $block['primary_url'] ??
+                    '#'
+                );
+
+                $secondaryLabel = e(
+                    $block['secondary_label'] ??
+                    'Explore more'
+                );
+
+                $secondaryUrl = e(
+                    $block['secondary_url'] ??
+                    '#'
+                );
+
+                $rawVideoUrl = trim((string) ($block['video_url'] ?? '')) ?: '/storage/cms-videos/hero-placeholder.mp4';
+                $backgroundVideoEmbedUrl = self::backgroundVideoEmbedUrl($rawVideoUrl);
+                $videoUrl = e(self::staticAssetUrl($rawVideoUrl));
+
+                $posterImageUrl = e(
+                    self::staticAssetUrl(
+                        trim((string) ($block['poster_image_url'] ?? '')) ?: '/storage/cms-images/background/background-1.avif'
+                    )
+                );
+
+                $videoBadge = e(
+                    $block['video_badge'] ??
+                    'Discover what makes us different'
+                );
+
+                $scrollLabel = e(
+                    $block['scroll_label'] ??
+                    'Explore'
+                );
+
+                $primaryTheme = self::getTheme(
+                    $primaryColor
+                );
+
+                $backgroundMedia = $backgroundVideoEmbedUrl
+                    ? "<div class='absolute inset-0 overflow-hidden'>
+                            <iframe
+                                src='" . e($backgroundVideoEmbedUrl) . "'
+                                title='Background video'
+                                allow='autoplay; fullscreen; picture-in-picture'
+                                class='pointer-events-none absolute left-1/2 top-1/2 h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0'
+                            ></iframe>
+                        </div>"
+                    : "<video
+                            autoplay
+                            muted
+                            loop
+                            playsinline
+                            preload='metadata'
+                            poster='{$posterImageUrl}'
+                            class='h-full w-full object-cover'
+                        >
+                            <source
+                                src='{$videoUrl}'
+                                type='video/mp4'
+                            >
+                        </video>";
+
+                $html .= "
+                <section class='relative isolate min-h-[680px] overflow-hidden {$theme['bg']}'>
+
+                    <div class='absolute inset-0'>
+
+                        {$backgroundMedia}
+
+                        <div class='absolute inset-0 bg-slate-950/65'></div>
+
+                        <div class='absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/65 to-slate-950/20'></div>
+
+                        <div class='absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20'></div>
+
+                    </div>
+
+                    <div class='pointer-events-none absolute -left-40 top-16 h-96 w-96 rounded-full {$primaryTheme['bg']} opacity-[0.18] blur-[150px]'></div>
+
+                    <div class='relative z-10 mx-auto flex min-h-[680px] max-w-7xl items-center px-7 py-24 sm:px-10 lg:px-12'>
+
+                        <div class='max-w-3xl'>
+
+                            <span class='block text-xs font-semibold uppercase tracking-[0.34em] text-white/70'>
+                                {$tagline}
+                            </span>
+
+                            <h1 class='mt-6 block text-5xl font-black leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-8xl'>
+                                {$heading}
+                            </h1>
+
+                            <p class='mt-7 block max-w-2xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8'>
+                                {$text}
+                            </p>
+
+                            <div class='mt-9 flex flex-col gap-3 sm:flex-row sm:items-center'>
+
+                                <a
+                                    href='{$primaryUrl}'
+                                    class='inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-xl transition hover:-translate-y-0.5 hover:opacity-90 {$primaryTheme['bg']} {$primaryTheme['text']}'
+                                >
+                                    {$primaryLabel}
+                                </a>
+
+                                <a
+                                    href='{$secondaryUrl}'
+                                    class='inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/30 bg-white/10 px-8 font-bold text-white backdrop-blur transition hover:bg-white/20'
+                                >
+                                    {$secondaryLabel}
+                                </a>
+
+                            </div>
+
+                            <div class='mt-10 flex items-center gap-3'>
+
+                                <div class='flex items-center gap-3 rounded-full border border-white/15 bg-slate-950/35 px-4 py-2.5 backdrop-blur'>
+
+                                    <span class='flex h-8 w-8 items-center justify-center rounded-full {$primaryTheme['bg']} {$primaryTheme['text']}'>
+                                        ▶
+                                    </span>
+
+                                    <span class='text-sm font-semibold text-white'>
+                                        {$videoBadge}
+                                    </span>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+
+                    <div class='absolute bottom-0 left-0 right-0 z-10'>
+
+                        <div class='mx-auto flex max-w-7xl items-end justify-between gap-6 px-7 pb-7 sm:px-10 lg:px-12'>
+
+                            <div class='flex items-center gap-3 text-white/70'>
+
+                                <span class='flex h-9 w-6 items-start justify-center rounded-full border border-white/30 p-1.5'>
+                                    <span class='h-1.5 w-1.5 rounded-full bg-white'></span>
+                                </span>
+
+                                <span class='text-xs font-semibold uppercase tracking-[0.24em]'>
+                                    {$scrollLabel}
+                                </span>
+
+                            </div>
+
+                            <div class='hidden w-48 overflow-hidden rounded-2xl border border-white/20 bg-slate-950/35 shadow-2xl backdrop-blur sm:block'>
+
+                                <img
+                                    src='{$posterImageUrl}'
+                                    alt='{$heading}'
+                                    class='aspect-video w-full object-cover opacity-80'
+                                >
+
+                            </div>
+
                         </div>
 
                     </div>
