@@ -55,6 +55,11 @@ import {
     HeroBackgroundImageSchema
 } from "./Blocks/Hero/HeroBackgroundImageBlock";
 
+import {
+    HeroEditorialOverlayBlock,
+    HeroEditorialOverlaySchema
+} from "./Blocks/Hero/HeroEditorialOverlayBlock";
+
 export const BlockRegistry = {
 
     hero_headline: {
@@ -70,6 +75,14 @@ export const BlockRegistry = {
         component: HeroBackgroundImageBlock,
 
         schema: HeroBackgroundImageSchema
+
+    },
+
+    hero_editorial_overlay: {
+
+        component: HeroEditorialOverlayBlock,
+
+        schema: HeroEditorialOverlaySchema
 
     },
 

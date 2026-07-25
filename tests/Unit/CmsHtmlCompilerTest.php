@@ -11,6 +11,7 @@ class CmsHtmlCompilerTest extends TestCase
     private const ACTIVE_BLOCK_TYPES = [
         'hero_headline',
         'hero_background_image',
+        'hero_editorial_overlay',
         'hero_centered_cta',
         'feature_image_left',
         'feature_image_right',
@@ -40,6 +41,24 @@ class CmsHtmlCompilerTest extends TestCase
         ], 'emerald');
 
         $this->assertStringContainsString("background-image:url('{$imageUrl}')", $html);
+    }
+
+    public function test_hero_editorial_overlay_uses_the_builder_image_url_contract(): void
+    {
+        $imageUrl = 'https://images.example.test/editorial-hero.jpg';
+
+        $html = CmsHtmlCompiler::compile([
+            [
+                'type' => 'hero_editorial_overlay',
+                'image_url' => $imageUrl,
+                'primary_label' => 'Start',
+                'secondary_label' => 'Learn more',
+            ],
+        ], 'violet');
+
+        $this->assertStringContainsString("background-image:url('{$imageUrl}')", $html);
+        $this->assertStringContainsString('Start', $html);
+        $this->assertStringContainsString('Learn more', $html);
     }
 
     public function test_hero_background_image_keeps_the_legacy_background_image_fallback(): void

@@ -774,6 +774,46 @@ class CmsHtmlCompiler
 
                 break;
 
+                case 'hero_editorial_overlay':
+
+                $tagline = e($block['tagline'] ?? 'BUILT FOR WHAT COMES NEXT');
+                $heading = e($block['heading'] ?? 'A stronger first impression starts here.');
+                $text = e($block['text'] ?? 'Bring your story, services, and next step into focus with a confident, image-led introduction.');
+                $primaryLabel = e($block['primary_label'] ?? 'Start a project');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'Explore services');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $backgroundImage = e(self::staticAssetUrl($block['image_url'] ?? ''));
+                $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 72)));
+                $heroHeight = match ($block['height'] ?? 'large') {
+                    'medium' => 'min-h-[520px]',
+                    'screen' => 'min-h-[72svh] sm:min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh]',
+                    default => 'min-h-[650px]',
+                };
+                $primaryTheme = self::getTheme($primaryColor);
+                $backgroundStyle = $backgroundImage
+                    ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
+                    : '';
+
+                $html .= "
+                <section class='relative flex overflow-hidden {$heroHeight}' style=\"{$backgroundStyle}\">
+                    <div class='absolute inset-0 bg-slate-950' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/40 to-transparent'></div>
+                    <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center px-6 py-20 sm:px-[8%] sm:py-24'>
+                        <div class='max-w-3xl'>
+                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] text-white/75'>{$tagline}</span>
+                            <h1 class='mt-5 text-5xl font-black leading-[1.03] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
+                            <div class='mt-6 max-w-2xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8'>{$text}</div>
+                            <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
+                                <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
+                                <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border border-white/40 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a>
+                            </div>
+                        </div>
+                    </div>
+                </section>";
+
+                break;
+
 
                 case 'pricing_cards':
 

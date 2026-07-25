@@ -136,7 +136,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
             });
             
             if (response.data.status === 'success') {
-                showCosmicNotification({ title: 'Header saved', message: 'Your global header has been updated.', tone: 'success' });
+                showCosmicNotification({ title: 'Header saved', message: 'Publish any page before using Push live update to send this header to the live site.', tone: 'success' });
                 router.reload({ 
                     only: ['globalHeaderBlock'],
                     onSuccess: () => {
@@ -160,7 +160,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
             });
             
             if (response.data.status === 'success') {
-                showCosmicNotification({ title: 'Footer saved', message: 'Your global footer has been updated.', tone: 'success' });
+                showCosmicNotification({ title: 'Footer saved', message: 'Publish any page before using Push live update to send this footer to the live site.', tone: 'success' });
                 router.reload({ 
                     only: ['globalFooterBlock'],
                     onSuccess: () => {
@@ -350,7 +350,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                         <div className="mb-5 flex items-start justify-between gap-4">
                             <div>
                                 <h2 id="edit-header-title" className="text-xl font-semibold text-white">Edit global header</h2>
-                                <p className="mt-1 text-sm text-slate-400">Choose the header used across this website.</p>
+                                <p className="mt-1 text-sm text-slate-400">Choose the header used across this website. Publish a page when you are ready to send changes live.</p>
                             </div>
                             <button type="button" disabled={isSaving} onClick={() => setIsHeaderModalOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Close">×</button>
                         </div>
@@ -376,7 +376,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
                                     <div>
                                         <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Menu links</h3>
                                         <p className="mt-1 text-xs leading-5 text-slate-400">
-                                            Use the exact published page slug for static links. <span className="text-slate-300">home</span> opens the homepage; <span className="text-slate-300">about</span> becomes <span className="text-slate-300">about.html</span> after Push live update.
+                                            Use the exact published page slug for static links. <span className="text-slate-300">home</span> opens the homepage; <span className="text-slate-300">about</span> becomes <span className="text-slate-300">/about</span> after Push live update.
                                         </p>
                                     </div>
                                     <p className="text-[11px] text-slate-500">External URLs and #section anchors stay unchanged.</p>

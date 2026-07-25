@@ -126,45 +126,9 @@ class WebsiteController extends Controller
     {
         $this->authorize('update', $website);
 
-        if (! filter_var($website->domain, FILTER_VALIDATE_URL)) {
-            return response()->json(['message' => 'Add a valid website domain before connecting a live site.'], 422);
+        if ($error = $this->verifyConnector($website)) {
+            return response()->json(['message' => $error], 422);
         }
-
-        if (! $website->deployment_secret) {
-            return response()->json(['message' => 'Download and install this website\'s deployment connector before connecting it.'], 422);
-        }
-
-        $endpoint = rtrim($website->domain, '/') . '/cosmic-sync/sync.php?action=verify';
-
-        try {
-            $response = Http::timeout(10)
-                ->acceptJson()
-                ->withHeaders(['X-Cosmic-Sync-Secret' => $website->deployment_secret])
-                ->get($endpoint);
-
-            if (! $response->successful() || $response->json('status') !== 'success') {
-                $website->update([
-                    'deployment_verified_at' => null,
-                    'deployment_error' => 'The deployment connector could not be verified at the configured domain.',
-                ]);
-
-                return response()->json(['message' => $website->deployment_error], 422);
-            }
-        } catch (\Throwable $exception) {
-            report($exception);
-
-            $website->update([
-                'deployment_verified_at' => null,
-                'deployment_error' => 'The deployment connector could not be reached. Check the domain, Apache, and connector folder.',
-            ]);
-
-            return response()->json(['message' => $website->deployment_error], 422);
-        }
-
-        $website->update([
-            'deployment_verified_at' => now(),
-            'deployment_error' => null,
-        ]);
 
         return response()->json([
             'status' => 'connected',
@@ -176,8 +140,10 @@ class WebsiteController extends Controller
     {
         $this->authorize('update', $website);
 
-        if (! $website->deployment_verified_at || ! $website->deployment_secret) {
-            return response()->json(['message' => 'Connect and verify the live site connector before pushing an update.'], 422);
+        if (! $website->deployment_verified_at && $this->verifyConnector($website)) {
+            return response()->json([
+                'message' => $website->deployment_error ?? 'The live site connector could not be verified before pushing this update.',
+            ], 422);
         }
 
         $package = $publisher->publishedPackage($website);
@@ -216,6 +182,57 @@ class WebsiteController extends Controller
             'message' => 'Published pages were pushed to the live site.',
             'files' => $response->json('files', []),
         ]);
+    }
+
+    /**
+     * Verify the installed connector before an explicit connection or a live
+     * push. Returning an error message keeps both flows consistent.
+     */
+    private function verifyConnector(Website $website): ?string
+    {
+        if (! filter_var($website->domain, FILTER_VALIDATE_URL)) {
+            return 'Add a valid website domain before connecting a live site.';
+        }
+
+        if (! $website->deployment_secret) {
+            return 'Download and install this website\'s deployment connector before connecting it.';
+        }
+
+        $endpoint = rtrim((string) $website->domain, '/') . '/cosmic-sync/sync.php?action=verify';
+
+        try {
+            $response = Http::timeout(10)
+                ->acceptJson()
+                ->withHeaders(['X-Cosmic-Sync-Secret' => $website->deployment_secret])
+                ->get($endpoint);
+
+            if (! $response->successful() || $response->json('status') !== 'success') {
+                $error = 'The deployment connector could not be verified at the configured domain.';
+                $website->update([
+                    'deployment_verified_at' => null,
+                    'deployment_error' => $error,
+                ]);
+
+                return $error;
+            }
+        } catch (\Throwable $exception) {
+            report($exception);
+
+            $error = 'The deployment connector could not be reached. Check the domain, Apache, and connector folder.';
+            $website->update([
+                'deployment_verified_at' => null,
+                'deployment_error' => $error,
+            ]);
+
+            return $error;
+        }
+
+        $website->update([
+            'deployment_verified_at' => now(),
+            'deployment_error' => null,
+        ]);
+
+        return null;
     }
 
 	public function saveFooter(Request $request, Website $website)

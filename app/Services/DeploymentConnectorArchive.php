@@ -37,6 +37,7 @@ class DeploymentConnectorArchive
         $zip->addFromString('cosmic-sync/config.php', "<?php\n\nreturn " . var_export(['sync_secret' => $secret], true) . ";\n");
         $zip->addFromString('cosmic-sync/sync.php', $this->receiverScript());
         $zip->addFromString('cosmic-sync/.htaccess', "Options -Indexes\n\n<Files \"config.php\">\n    Require all denied\n</Files>\n");
+        $zip->addFromString('.htaccess', $this->cleanUrlHtaccess());
         $zip->addFromString('cosmic-sync/README.txt', $this->readme($website));
         $zip->close();
 
@@ -50,15 +51,51 @@ class DeploymentConnectorArchive
         return <<<TEXT
 Cosmic CMS Deployment Connector
 
-1. Extract the cosmic-sync folder into your website root.
+1. Extract this ZIP directly into your website root. It creates:
+   - cosmic-sync/ (the protected connector)
+   - .htaccess (clean URLs for compiled static pages)
 2. Do not rename config.php or sync.php.
 3. Your expected verification endpoint is:
    {$domain}/cosmic-sync/sync.php?action=verify
 4. Return to Cosmic CMS and choose Connect live site.
+5. After your first successful Push live update, Apache clean URLs are enabled automatically:
+   /about-us serves about-us.html and requests for /about-us.html redirect to /about-us.
 
 The connector accepts only requests with its unique Cosmic deployment secret.
 Do not expose config.php or share the connector archive publicly.
+
+If your website already has a root .htaccess file, keep its existing rules and
+merge the Cosmic CMS clean-URL block instead of overwriting it.
 TEXT;
+    }
+
+    private function cleanUrlHtaccess(): string
+    {
+        return <<<'HTACCESS'
+# Cosmic CMS clean static URLs
+# This managed block is added by cosmic-sync. Keep it if you want extensionless page URLs.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Keep the homepage at the root URL.
+    RewriteCond %{THE_REQUEST} \s/+index\.html[\s?] [NC]
+    RewriteRule ^index\.html$ ./ [R=301,L,NE]
+
+    # Redirect direct .html requests to their public extensionless URL.
+    RewriteCond %{THE_REQUEST} \s/+(.+?)\.html[\s?] [NC]
+    RewriteRule ^(.+)\.html$ /$1 [R=301,L,NE]
+
+    # Keep real files, directories, and the deployment connector untouched.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    RewriteRule ^cosmic-sync(?:/|$) - [L]
+
+    # Serve a matching compiled HTML page for an extensionless request.
+    RewriteCond %{REQUEST_FILENAME}.html -f
+    RewriteRule ^(.+?)/?$ $1.html [L]
+</IfModule>
+HTACCESS;
     }
 
     private function receiverScript(): string
@@ -117,6 +154,53 @@ function cosmicDocument(array $page, array $package): string
     return "<!DOCTYPE html>\n<html lang='en'>\n<head>\n<meta charset='UTF-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n<title>{$title}</title>\n<script src='https://cdn.tailwindcss.com'></script>\n</head>\n<body class='bg-[#0b0f19] text-slate-100 min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}\n</body>\n</html>";
 }
 
+function cosmicCleanUrlRules(): string
+{
+    return <<<'HTACCESS'
+# Cosmic CMS clean static URLs
+# This managed block is added by cosmic-sync. Keep it if you want extensionless page URLs.
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+
+    # Keep the homepage at the root URL.
+    RewriteCond %{THE_REQUEST} \s/+index\.html[\s?] [NC]
+    RewriteRule ^index\.html$ ./ [R=301,L,NE]
+
+    # Redirect direct .html requests to their public extensionless URL.
+    RewriteCond %{THE_REQUEST} \s/+(.+?)\.html[\s?] [NC]
+    RewriteRule ^(.+)\.html$ /$1 [R=301,L,NE]
+
+    # Keep real files, directories, and the deployment connector untouched.
+    RewriteCond %{REQUEST_FILENAME} -f [OR]
+    RewriteCond %{REQUEST_FILENAME} -d
+    RewriteRule ^ - [L]
+    RewriteRule ^cosmic-sync(?:/|$) - [L]
+
+    # Serve a matching compiled HTML page for an extensionless request.
+    RewriteCond %{REQUEST_FILENAME}.html -f
+    RewriteRule ^(.+?)/?$ $1.html [L]
+</IfModule>
+HTACCESS;
+}
+
+function cosmicInstallCleanUrlRules(string $siteRoot): bool
+{
+    $path = $siteRoot . DIRECTORY_SEPARATOR . '.htaccess';
+    $rules = cosmicCleanUrlRules();
+
+    if (file_exists($path)) {
+        $existing = file_get_contents($path);
+
+        if ($existing === false || str_contains($existing, '# Cosmic CMS clean static URLs')) {
+            return $existing !== false;
+        }
+
+        return file_put_contents($path, "\n\n" . $rules . "\n", FILE_APPEND | LOCK_EX) !== false;
+    }
+
+    return file_put_contents($path, $rules . "\n", LOCK_EX) !== false;
+}
+
 function cosmicWritePackage(array $package): array
 {
     if (($package['status'] ?? null) !== 'success' || ! is_array($package['pages'] ?? null)) {
@@ -140,6 +224,10 @@ function cosmicWritePackage(array $package): array
         }
 
         $writtenFiles[] = basename($path);
+    }
+
+    if (! cosmicInstallCleanUrlRules($siteRoot)) {
+        throw new RuntimeException('Unable to install Apache clean URL rules.');
     }
 
     return $writtenFiles;

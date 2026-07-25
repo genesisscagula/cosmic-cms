@@ -95,6 +95,10 @@ class PageController extends Controller
 
         DB::transaction(function () use ($page, $website, $validated) {
             $page->blocks = $validated['blocks'] ?? [];
+            // Saving starts a new editable draft. The published snapshot remains
+            // untouched until the customer explicitly publishes again.
+            $page->status = 'draft';
+            $page->publish_error = null;
             $page->save();
 
             if (array_key_exists('global_header', $validated)) {
@@ -114,7 +118,8 @@ class PageController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Builder changes saved successfully.',
+            'page_status' => 'draft',
+            'message' => 'Draft saved successfully.',
         ]);
     }
 
@@ -180,7 +185,7 @@ class PageController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Global header saved successfully.'
+            'message' => 'Global header saved. Publish a page before pushing it live.'
         ]);
     }
 
@@ -200,7 +205,7 @@ class PageController extends Controller
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Global footer saved successfully.'
+            'message' => 'Global footer saved. Publish a page before pushing it live.'
         ]);
     }
 

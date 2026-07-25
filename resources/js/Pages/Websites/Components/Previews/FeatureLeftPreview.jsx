@@ -1,15 +1,16 @@
 export default function FeatureLeftPreview() {
     return (
-        <div className="h-40 bg-slate-900 rounded-xl border border-slate-800 flex overflow-hidden">
-            {/* Left: Image Box */}
-            <div className="w-1/2 h-full bg-slate-800 border-r border-slate-700 flex items-center justify-center">
-                <span className="text-slate-600 text-[10px] uppercase font-bold">Image</span>
+        <div className="flex h-40 overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-3">
+            <div className="w-1/2 rounded-lg bg-slate-800">
+                <div className="h-full w-full bg-gradient-to-br from-slate-700 via-slate-800 to-slate-900" />
             </div>
-            {/* Right: Text Lines */}
-            <div className="w-1/2 p-3 space-y-2 flex flex-col justify-center">
-                <div className="h-2 w-16 bg-slate-700 rounded-full"></div>
-                <div className="h-3 w-full bg-slate-600 rounded-full"></div>
-                <div className="h-2 w-3/4 bg-slate-700 rounded-full"></div>
+            <div className="flex w-1/2 flex-col justify-center px-4">
+                <div className="h-1.5 w-10 rounded bg-violet-400/70" />
+                <div className="mt-3 h-3 w-full rounded bg-slate-200" />
+                <div className="mt-1.5 h-3 w-4/5 rounded bg-slate-200" />
+                <div className="mt-3 h-1.5 w-full rounded bg-slate-600" />
+                <div className="mt-1.5 h-1.5 w-2/3 rounded bg-slate-700" />
+                <div className="mt-4 h-1.5 w-12 rounded bg-slate-300" />
             </div>
         </div>
     );

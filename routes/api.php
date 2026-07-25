@@ -37,7 +37,10 @@ Route::get('/v1/sync', function (Request $request) {
         'global_header' => $website->published_global_header ?? $website->global_header,
         'global_footer' => $website->published_global_footer ?? $website->global_footer,
         'pages' => $website->pages()
-            ->where('status', 'published')
+            ->where(function ($query) {
+                $query->where('status', 'published')
+                    ->orWhereNotNull('published_blocks');
+            })
             ->get(['title', 'slug', 'blocks', 'published_blocks'])
             ->map(fn ($page) => [
                 'title' => $page->title,

@@ -1,49 +1,23 @@
 export default function TestimonialsCarouselPreview() {
     return (
-        <div className="h-40 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-center overflow-hidden">
-
-            <div className="w-full px-5 scale-90">
-
-                <div className="bg-slate-800 rounded-xl p-4">
-
-                    {/* Stars */}
-
-                    <div className="flex gap-1 mb-3 text-yellow-400 text-[10px]">
-                        ★★★★★
-                    </div>
-
-                    {/* Quote */}
-
-                    <div className="space-y-2 mb-5">
-
-                        <div className="h-2 bg-slate-700 rounded w-full"></div>
-
-                        <div className="h-2 bg-slate-700 rounded w-5/6"></div>
-
-                        <div className="h-2 bg-slate-700 rounded w-4/6"></div>
-
-                    </div>
-
-                    {/* Author */}
-
-                    <div className="flex items-center gap-3">
-
-                        <div className="w-8 h-8 rounded-full bg-slate-600"></div>
-
-                        <div className="flex-1">
-
-                            <div className="h-2 bg-slate-600 rounded w-24 mb-2"></div>
-
-                            <div className="h-2 bg-slate-700 rounded w-16"></div>
-
-                        </div>
-
-                    </div>
-
-                </div>
-
+        <div className="h-40 overflow-hidden rounded-xl border border-slate-800 bg-slate-950 p-4">
+            <div className="mx-auto mb-4 flex w-1/2 flex-col items-center gap-1.5">
+                <div className="h-1.5 w-12 rounded bg-slate-600" />
+                <div className="h-2 w-full rounded bg-slate-100" />
             </div>
-
+            <div className="grid grid-cols-3 gap-2">
+                {[1, 2, 3].map((card) => (
+                    <div key={card} className="rounded-lg bg-slate-800 p-2.5">
+                        <div className="text-[8px] tracking-[0.08em] text-amber-300">★★★★★</div>
+                        <div className="mt-3 h-1.5 w-full rounded bg-slate-600" />
+                        <div className="mt-1.5 h-1.5 w-4/5 rounded bg-slate-600" />
+                        <div className="mt-4 flex items-center gap-1.5">
+                            <div className="h-4 w-4 rounded-full bg-slate-500" />
+                            <div className="h-1.5 w-8 rounded bg-slate-500" />
+                        </div>
+                    </div>
+                ))}
+            </div>
         </div>
     );
 }

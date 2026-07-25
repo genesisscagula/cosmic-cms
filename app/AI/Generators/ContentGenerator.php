@@ -449,4 +449,35 @@ class ContentGenerator
     TXT;
     }
 
+    private function heroEditorialOverlaySchema(): string
+    {
+        return <<<TXT
+
+    hero_editorial_overlay
+
+    - type = hero_editorial_overlay
+    - theme = auto
+    - category
+    - tagline
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - image_url = ""
+    - overlayOpacity = 72
+    - height = screen
+
+    Requirements:
+
+    - Write a concise editorial eyebrow, a confident headline, and supporting text for the business prompt.
+    - Use a clear primary action and a useful secondary action.
+    - Keep button labels short and actionable.
+    - Do not use markdown or placeholder copy.
+    - image_url must remain an empty string so the existing image-selection flow can provide the background image.
+
+    TXT;
+    }
+
 }

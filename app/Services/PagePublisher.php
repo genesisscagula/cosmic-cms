@@ -23,7 +23,9 @@ class PagePublisher
 
     /**
      * Build the approved website package consumed by the deployment connector.
-     * Draft content never enters this payload.
+     * Editable draft content never enters this payload. A page with an existing
+     * published snapshot stays in the package while the customer prepares its
+     * next draft revision.
      */
     public function publishedPackage(Website $website): array
     {
@@ -32,7 +34,11 @@ class PagePublisher
         $header = $website->published_global_header ?? $website->global_header;
         $footer = $website->published_global_footer ?? $website->global_footer;
         $pages = $website->pages()
-            ->where('status', 'published')
+            ->where(function ($query) {
+                $query->where('status', 'published')
+                    ->orWhereNotNull('published_html')
+                    ->orWhereNotNull('published_blocks');
+            })
             ->orderBy('id')
             ->get(['title', 'slug', 'published_html', 'published_blocks', 'blocks']);
 
@@ -93,7 +99,7 @@ class PagePublisher
                 return $item;
             }
 
-            $item['url'] = in_array($slug, ['', 'home'], true) ? './' : $slug . '.html';
+            $item['url'] = in_array($slug, ['', 'home'], true) ? './' : $slug;
 
             return $item;
         }, $header['menu']);
@@ -119,6 +125,6 @@ class PagePublisher
             return preg_match('/^[a-z0-9-]+$/', $slug) ? '#' : $target;
         }
 
-        return in_array($slug, ['', 'home'], true) ? './' : $slug . '.html';
+        return in_array($slug, ['', 'home'], true) ? './' : $slug;
     }
 }

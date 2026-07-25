@@ -16,6 +16,7 @@ import StatsModernPreview from "./Previews/StatsModernPreview";
 import TestimonialsCarouselPreview from "./Previews/TestimonialsCarouselPreview";
 import PricingCardsPreview from "./Previews/PricingCardsPreview";
 import HeroBackgroundImagePreview from "./Previews/HeroBackgroundImagePreview";
+import HeroEditorialOverlayPreview from "./Previews/HeroEditorialOverlayPreview";
 
 
 export const BlockRegistry = [
@@ -198,6 +199,28 @@ export const BlockRegistry = [
             height: "screen"
         }
     },
+
+    {
+        type: "hero_editorial_overlay",
+        theme: "auto",
+        title: "Hero Editorial Overlay",
+        buttonLabel: "Add Hero",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: HeroEditorialOverlayPreview,
+        payload: {
+            type: "hero_editorial_overlay",
+            tagline: "BUILT FOR WHAT COMES NEXT",
+            heading: "A stronger first impression starts here.",
+            text: "Bring your story, services, and next step into focus with a confident, image-led introduction.",
+            primary_label: "Start a project",
+            primary_url: "#",
+            secondary_label: "Explore services",
+            secondary_url: "#",
+            image_url: "/storage/cms-images/background/background-1.avif",
+            overlayOpacity: 72,
+            height: "screen",
+        },
+    },
 ];
 
 const generationProgressSteps = [
@@ -211,7 +234,8 @@ export default function AddSectionModal({
     open,
     onClose,
     onAdd,
-    onReplace
+    onReplace,
+    hasBlocks = false,
 }) {
 
     const [prompt, setPrompt] = useState("");
@@ -228,6 +252,11 @@ export default function AddSectionModal({
 
         if (!prompt.trim()) {
             showCosmicNotification({ title: "Prompt required", message: "Describe the website or section you want to generate first.", tone: "info" });
+            return;
+        }
+
+        if (!hasBlocks) {
+            executeGenerate();
             return;
         }
 
@@ -451,9 +480,9 @@ export default function AddSectionModal({
 
                     <p className="text-slate-400 mt-2 max-w-2xl leading-7">
 
-                        Describe the page you want to build and let Cosmic AI
-                        generate a complete layout using your professional block
-                        library.
+                        Describe your business and goals. Cosmic AI plans a tailored
+                        page, selects the right sections, and writes content that
+                        matches your brand and website theme.
 
                     </p>
 

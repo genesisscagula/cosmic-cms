@@ -96,6 +96,36 @@ class DeploymentConnectorTest extends TestCase
             && str_contains($request->url(), 'receive_package'));
     }
 
+    public function test_a_live_push_verifies_an_installed_connector_when_it_has_not_been_connected_yet(): void
+    {
+        [$user, $website] = $this->websiteWithConnector();
+        $website->pages()->create([
+            'title' => 'Home',
+            'slug' => 'home',
+            'status' => 'published',
+            'published_blocks' => [['type' => 'hero', 'heading' => 'Published content']],
+            'published_html' => '<section>Published content</section>',
+        ]);
+
+        Http::fake([
+            'http://localhost/test-cms/cosmic-sync/sync.php?action=verify' => Http::response([
+                'status' => 'success',
+            ]),
+            'http://localhost/test-cms/cosmic-sync/sync.php?action=receive_package' => Http::response([
+                'status' => 'success',
+                'files' => ['index.html'],
+            ]),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('websites.deployment-connector.push', $website))
+            ->assertOk()
+            ->assertJsonPath('status', 'deployed');
+
+        $this->assertNotNull($website->fresh()->deployment_verified_at);
+        Http::assertSentCount(2);
+    }
+
     public function test_published_package_converts_known_menu_slugs_to_static_page_links(): void
     {
         [, $website] = $this->websiteWithConnector();
@@ -119,10 +149,46 @@ class DeploymentConnectorTest extends TestCase
         $package = app(PagePublisher::class)->publishedPackage($website->fresh());
 
         $this->assertStringContainsString("href='./'", $package['global_header']);
-        $this->assertStringContainsString("href='about.html'", $package['global_header']);
+        $this->assertStringContainsString("href='about'", $package['global_header']);
         $this->assertStringContainsString('Contact us', $package['global_header']);
         $this->assertStringContainsString("href='#'", $package['global_header']);
         $this->assertStringContainsString("href='https://instagram.com/cosmic'", $package['global_header']);
+    }
+
+    public function test_a_push_uses_the_published_website_shell_when_new_shell_changes_are_still_drafts(): void
+    {
+        [$user, $website] = $this->websiteWithConnector();
+        $website->update([
+            'deployment_verified_at' => now(),
+            'global_header' => ['type' => 'glassmorphism_header', 'logo_text' => 'New header'],
+            'published_global_header' => ['type' => 'glassmorphism_header', 'logo_text' => 'Published header'],
+        ]);
+        $website->pages()->create([
+            'title' => 'Home',
+            'slug' => 'home',
+            'status' => 'published',
+            'published_html' => '<section>Published page</section>',
+        ]);
+
+        Http::fake([
+            'http://localhost/test-cms/cosmic-sync/sync.php?action=receive_package' => Http::response([
+                'status' => 'success',
+                'files' => ['index.html'],
+            ]),
+        ]);
+
+        $this->actingAs($user)
+            ->postJson(route('websites.deployment-connector.push', $website))
+            ->assertOk()
+            ->assertJsonPath('status', 'deployed');
+
+        Http::assertSent(function ($request) {
+            $package = $request->data();
+
+            return str_contains($request->url(), 'receive_package')
+                && str_contains($package['global_header'], 'Published header')
+                && ! str_contains($package['global_header'], 'New header');
+        });
     }
 
     private function websiteWithConnector(): array

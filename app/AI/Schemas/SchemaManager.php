@@ -12,6 +12,8 @@ class SchemaManager
 
             'hero_background_image' => 'heroBackgroundImageSchema',
 
+            'hero_editorial_overlay' => 'heroEditorialOverlaySchema',
+
             'feature_image_left' => 'featureImageLeftSchema',
 
             'feature_image_right' => 'featureImageRightSchema',

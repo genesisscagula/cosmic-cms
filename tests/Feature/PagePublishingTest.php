@@ -69,7 +69,8 @@ class PagePublishingTest extends TestCase
 
         $this->actingAs($user)
             ->postJson(route('pages.builder.save', $page), $payload)
-            ->assertOk();
+            ->assertOk()
+            ->assertJsonPath('page_status', 'draft');
 
         $page->refresh();
 
@@ -132,11 +133,11 @@ class PagePublishingTest extends TestCase
         $this->actingAs($user)
             ->postJson(route('pages.publish', $page))
             ->assertStatus(502)
-            ->assertJsonPath('status', 'published');
+            ->assertJsonPath('status', 'draft');
 
         $page->refresh();
 
-        $this->assertSame('published', $page->status);
+        $this->assertSame('draft', $page->status);
         $this->assertSame($payload['blocks'], $page->blocks);
         $this->assertSame($liveBlocks, $page->published_blocks);
         $this->assertNotNull($page->publish_error);

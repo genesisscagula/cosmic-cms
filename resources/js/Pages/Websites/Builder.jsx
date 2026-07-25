@@ -138,13 +138,15 @@ export default function Builder({ page, website }) {
         setSaveError('');
 
         try {
-            await axios.post(route('pages.builder.save', page.id), {
+            const response = await axios.post(route('pages.builder.save', page.id), {
                 blocks: data.blocks,
                 global_header: data.global_header,
                 global_footer: data.global_footer,
                 theme_settings: globalSelections,
             });
 
+            setPageStatus(response.data.page_status || 'draft');
+            setPublishError('');
             setDefaults();
             setHasUnsavedTheme(false);
             return true;
@@ -417,7 +419,10 @@ export default function Builder({ page, website }) {
                                 onClick={() => setIsModalOpen(true)}
                                 className="inline-flex h-9 items-center rounded-lg border border-violet-400/30 bg-violet-500/15 px-3 text-xs font-semibold text-violet-100 transition hover:bg-violet-500/25 focus:outline-none focus:ring-2 focus:ring-violet-400"
                             >
-                                <span className="mr-1" aria-hidden="true">+</span> Add Section
+                                <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="mr-1.5 h-3.5 w-3.5">
+                                    <path d="M10 2.5c.28 3.92 1.68 5.32 5.6 5.6-3.92.28-5.32 1.68-5.6 5.6-.28-3.92-1.68-5.32-5.6-5.6 3.92-.28 5.32-1.68 5.6-5.6Zm5.25 9.75c.1 1.4.6 1.9 2 2-1.4.1-1.9.6-2 2-.1-1.4-.6-1.9-2-2 1.4-.1 1.9-.6 2-2Z" />
+                                </svg>
+                                Generate with AI
                             </button>
                             <form onSubmit={handleSubmit}>
                                 <button
@@ -425,7 +430,7 @@ export default function Builder({ page, website }) {
                                     disabled={isSaving || isPublishing}
                                     className="inline-flex h-9 items-center rounded-lg border border-white/15 bg-white/[0.08] px-3 text-xs font-bold text-white transition hover:bg-white/[0.14] focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
-                                    {isSaving ? 'Saving…' : 'Save changes'}
+                                    {isSaving ? 'Saving draft…' : 'Save as draft'}
                                 </button>
                             </form>
                             <button
@@ -760,6 +765,7 @@ export default function Builder({ page, website }) {
                 onClose={() => setIsModalOpen(false)}
                 onAdd={addBlock}
                 onReplace={replaceBlocks}
+                hasBlocks={(data.blocks?.length ?? 0) > 0}
             />
 
             {/* AI MODAL INJECTOR CONFIG */}
