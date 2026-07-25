@@ -60,6 +60,16 @@ import {
     HeroEditorialOverlaySchema
 } from "./Blocks/Hero/HeroEditorialOverlayBlock";
 
+import {
+    HeroSplitImageBlock,
+    HeroSplitImageSchema
+} from "./Blocks/Hero/HeroSplitImageBlock";
+
+import {
+    ImageCtaBannerBlock,
+    ImageCtaBannerSchema
+} from "./Blocks/Hero/ImageCtaBannerBlock";
+
 export const BlockRegistry = {
 
     hero_headline: {
@@ -83,6 +93,22 @@ export const BlockRegistry = {
         component: HeroEditorialOverlayBlock,
 
         schema: HeroEditorialOverlaySchema
+
+    },
+
+    hero_split_image: {
+
+        component: HeroSplitImageBlock,
+
+        schema: HeroSplitImageSchema
+
+    },
+
+    image_cta_banner: {
+
+        component: ImageCtaBannerBlock,
+
+        schema: ImageCtaBannerSchema
 
     },
 

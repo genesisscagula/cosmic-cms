@@ -61,6 +61,29 @@ class PagePublishingTest extends TestCase
         $this->assertSame('North Star Studio', $website->global_footer['logo_text']);
     }
 
+    public function test_saved_global_shell_changes_are_ready_for_the_next_manual_live_push(): void
+    {
+        $user = $this->verifiedUser();
+        $website = $this->website($user);
+        $header = ['type' => 'glassmorphism_header', 'logo_text' => 'Updated Header'];
+        $footer = ['type' => 'minimal_footer', 'logo_text' => 'Updated Footer'];
+
+        $this->actingAs($user)
+            ->postJson(route('websites.global-header.save', $website), ['header_block' => $header])
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->postJson(route('websites.global-footer.save', $website), ['footer_block' => $footer])
+            ->assertOk();
+
+        $website->refresh();
+
+        $this->assertSame($header, $website->global_header);
+        $this->assertSame($header, $website->published_global_header);
+        $this->assertSame($footer, $website->global_footer);
+        $this->assertSame($footer, $website->published_global_footer);
+    }
+
     public function test_save_draft_persists_editable_state_without_publishing(): void
     {
         $user = $this->verifiedUser();

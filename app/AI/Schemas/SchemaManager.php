@@ -14,6 +14,10 @@ class SchemaManager
 
             'hero_editorial_overlay' => 'heroEditorialOverlaySchema',
 
+            'hero_split_image' => 'heroSplitImageSchema',
+
+            'image_cta_banner' => 'imageCtaBannerSchema',
+
             'feature_image_left' => 'featureImageLeftSchema',
 
             'feature_image_right' => 'featureImageRightSchema',

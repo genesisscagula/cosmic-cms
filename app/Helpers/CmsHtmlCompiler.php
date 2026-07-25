@@ -797,9 +797,9 @@ class CmsHtmlCompiler
 
                 $html .= "
                 <section class='relative flex overflow-hidden {$heroHeight}' style=\"{$backgroundStyle}\">
-                    <div class='absolute inset-0 bg-slate-950' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 {$primaryTheme['bg']}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
                     <div class='absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/40 to-transparent'></div>
-                    <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center px-6 py-20 sm:px-[8%] sm:py-24'>
+                    <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24'>
                         <div class='max-w-3xl'>
                             <span class='block text-xs font-semibold uppercase tracking-[0.3em] text-white/75'>{$tagline}</span>
                             <h1 class='mt-5 text-5xl font-black leading-[1.03] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
@@ -807,6 +807,84 @@ class CmsHtmlCompiler
                             <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
                                 <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
                                 <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border border-white/40 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a>
+                            </div>
+                        </div>
+                    </div>
+                </section>";
+
+                break;
+
+                case 'hero_split_image':
+
+                $tagline = e($block['tagline'] ?? "BUILT FOR WHAT'S NEXT");
+                $heading = e($block['heading'] ?? 'Make a stronger first impression.');
+                $text = e($block['text'] ?? 'Tell your story clearly, show what makes your business different, and guide visitors toward the next step.');
+                $primaryLabel = e($block['primary_label'] ?? 'Get started');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'Learn more');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $trustLine = e($block['trust_line'] ?? 'Trusted by customers who value quality work.');
+                $imageBadge = e($block['image_badge'] ?? 'Serving your community');
+                $imageUrl = e(self::staticAssetUrl($block['image_url'] ?? ''));
+                $primaryTheme = self::getTheme($primaryColor);
+                $isPrimarySection = ($block['resolvedTheme'] ?? null) === 'primary';
+                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $imageStyle = $imageUrl
+                    ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;"
+                    : '';
+
+                $html .= "
+                <section class='relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']}'>
+                    <div class='relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-20'>
+                        <div class='order-2 max-w-2xl lg:order-1'>
+                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$theme['sub']}'>{$tagline}</span>
+                            <h1 class='mt-5 text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1>
+                            <div class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</div>
+                            <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
+                                <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a>
+                                <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a>
+                            </div>
+                            <p class='mt-8 border-t pt-5 text-sm {$theme['border']} {$theme['sub']}'>{$trustLine}</p>
+                        </div>
+                        <div class='order-1 lg:order-2'>
+                            <div class='relative aspect-[4/3] overflow-hidden rounded-[2rem] border shadow-2xl {$theme['border']}' style=\"{$imageStyle}\">
+                                <span class='absolute bottom-5 left-5 rounded-full bg-slate-950/80 px-4 py-2 text-xs font-semibold text-white'>{$imageBadge}</span>
+                            </div>
+                        </div>
+                    </div>
+                </section>";
+
+                break;
+
+                case 'image_cta_banner':
+
+                $eyebrow = e($block['eyebrow'] ?? 'READY WHEN YOU ARE');
+                $heading = e($block['heading'] ?? 'Let’s make your next step simple.');
+                $text = e($block['text'] ?? 'Talk with our team and get a clear plan for moving forward.');
+                $primaryLabel = e($block['primary_label'] ?? 'Get started');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'Learn more');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $backgroundImage = e(self::staticAssetUrl($block['image_url'] ?? ''));
+                $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 76)));
+                $primaryTheme = self::getTheme($primaryColor);
+                $backgroundStyle = $backgroundImage
+                    ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
+                    : '';
+
+                $html .= "
+                <section class='relative flex min-h-[420px] overflow-hidden sm:min-h-[460px] lg:min-h-[500px]' style=\"{$backgroundStyle}\">
+                    <div class='absolute inset-0 {$primaryTheme['bg']}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-950/25 to-slate-950/15'></div>
+                    <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20'>
+                        <div class='max-w-3xl'>
+                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] text-white/75'>{$eyebrow}</span>
+                            <h2 class='mt-4 text-4xl font-black leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl'>{$heading}</h2>
+                            <div class='mx-auto mt-5 max-w-2xl text-base leading-7 text-white/85 sm:text-lg sm:leading-8'>{$text}</div>
+                            <div class='mt-7 flex flex-col justify-center gap-3 sm:flex-row sm:items-center'>
+                                <a href='{$primaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full bg-white px-7 font-bold text-slate-950'>{$primaryLabel}</a>
+                                <a href='{$secondaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full border border-white/45 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a>
                             </div>
                         </div>
                     </div>

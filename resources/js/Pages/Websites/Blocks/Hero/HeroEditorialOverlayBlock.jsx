@@ -53,13 +53,13 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
                 onSave={(image_url) => onUpdate({ image_url })}
             />
             <div
-                className="absolute inset-0 z-10 bg-slate-950"
+                className={`absolute inset-0 z-10 ${primaryTheme.bg}`}
                 style={{ opacity: Math.max(0, Math.min(100, Number(data.overlayOpacity) || 72)) / 100 }}
                 onClick={() => imageRef.current?.openEditor()}
             />
             <div className="absolute inset-0 z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/40 to-transparent" />
 
-            <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center px-6 py-20 sm:px-[8%] sm:py-24">
+            <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24">
                 <div className="max-w-3xl">
                     <EditableText
                         value={data.tagline}

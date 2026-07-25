@@ -480,4 +480,63 @@ class ContentGenerator
     TXT;
     }
 
+    private function heroSplitImageSchema(): string
+    {
+        return <<<TXT
+
+    hero_split_image
+
+    - type = hero_split_image
+    - theme = auto
+    - tagline
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - trust_line
+    - image_badge
+    - image_url = ""
+
+    Requirements:
+
+    - Write a concise eyebrow, confident heading, and helpful supporting text.
+    - Use a clear primary action and a useful secondary action.
+    - Keep trust_line factual and broadly applicable when exact customer proof is unavailable.
+    - Keep image_badge short and location or service relevant.
+    - Do not use markdown or placeholder copy.
+    - image_url must remain an empty string so the existing image-selection flow can provide the image.
+
+    TXT;
+    }
+
+    private function imageCtaBannerSchema(): string
+    {
+        return <<<TXT
+
+    image_cta_banner
+
+    - type = image_cta_banner
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - image_url = ""
+    - overlayOpacity = 76
+
+    Requirements:
+
+    - Keep the headline concise because this is a compact mid-page call to action.
+    - Use a direct primary action and an optional helpful secondary action.
+    - Do not use markdown or placeholder copy.
+    - image_url must remain an empty string so the existing image-selection flow can provide the image.
+
+    TXT;
+    }
+
 }

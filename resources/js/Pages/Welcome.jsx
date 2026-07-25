@@ -70,10 +70,10 @@ export default function Welcome() {
                             </Link>
 
                             <Link
-                                href="#blocks"
+                                href="#features"
                                 className="text-sm font-semibold text-slate-400 transition hover:text-emerald-300"
                             >
-                                Blocks
+                                AI Workflow
                             </Link>
 
                             <Link
@@ -152,11 +152,9 @@ export default function Welcome() {
 
                             <p className="mx-auto mt-8 max-w-2xl text-lg leading-8 text-slate-300">
 
-                                Create stunning websites using reusable blocks,
-                                AI-generated content, dynamic themes, and one-click
-                                static export.
-
-                                Built for freelancers, agencies, and modern developers.
+                                Describe your business, then let Cosmic AI plan the right page,
+                                write tailored content, and give you a polished website you can
+                                edit before you publish.
 
                             </p>
 
@@ -353,7 +351,7 @@ export default function Welcome() {
 
                                                     <p className="text-lg font-bold text-emerald-200">
 
-                                                        Drag • Drop • AI Generate • Publish
+                                                        Describe • Generate • Edit • Publish
 
                                                     </p>
 
@@ -426,16 +424,16 @@ export default function Welcome() {
 
                                 {[
                                     {
-                                        number: "100+",
-                                        title: "Reusable Blocks"
+                                        number: "1 Prompt",
+                                        title: "AI-Planned Page"
+                                    },
+                                    {
+                                        number: "Edit",
+                                        title: "Every Section"
                                     },
                                     {
                                         number: "1 Click",
-                                        title: "Static Export"
-                                    },
-                                    {
-                                        number: "AI",
-                                        title: "Content Generator"
+                                        title: "Publish-Ready HTML"
                                     },
                                     {
                                         number: "∞",
@@ -526,14 +524,14 @@ export default function Welcome() {
 
                                     <h3 className="mt-8 text-2xl font-black text-white">
 
-                                        AI Content
+                                        AI Page Generation
 
                                     </h3>
 
                                     <p className="mt-4 leading-7 text-slate-300">
 
-                                        Generate headlines, descriptions,
-                                        testimonials and marketing copy in seconds.
+                                        Describe the business once. Cosmic AI plans the page,
+                                        selects the right sections, and writes the starting content.
 
                                     </p>
 
@@ -575,14 +573,14 @@ export default function Welcome() {
 
                                     <h3 className="mt-8 text-2xl font-black text-white">
 
-                                        Reusable Blocks
+                                        Editable Website Sections
 
                                     </h3>
 
                                     <p className="mt-4 leading-7 text-slate-300">
 
-                                        Build pages using production-ready components that can
-                                        be reused across unlimited projects.
+                                        Start with a polished AI-generated page, then edit text,
+                                        images, calls to action, and every supported section safely.
 
                                     </p>
 
@@ -766,10 +764,8 @@ export default function Welcome() {
 
                                 <p className="mt-6 max-w-sm leading-7 text-slate-400">
 
-                                    Build modern websites using reusable blocks,
-                                    AI-generated content,
-                                    dynamic themes,
-                                    and one-click static export.
+                                    Describe your business, generate a polished starting page,
+                                    edit with confidence, and publish fast static websites.
 
                                 </p>
 
@@ -807,7 +803,7 @@ export default function Welcome() {
 
                                     <li><Link href="#" className="hover:text-white">Features</Link></li>
 
-                                    <li><Link href="#" className="hover:text-white">Blocks</Link></li>
+                                    <li><Link href="#features" className="hover:text-white">AI workflow</Link></li>
 
                                     <li><Link href="#" className="hover:text-white">Themes</Link></li>
 

@@ -12,6 +12,8 @@ class CmsHtmlCompilerTest extends TestCase
         'hero_headline',
         'hero_background_image',
         'hero_editorial_overlay',
+        'hero_split_image',
+        'image_cta_banner',
         'hero_centered_cta',
         'feature_image_left',
         'feature_image_right',
@@ -59,6 +61,54 @@ class CmsHtmlCompilerTest extends TestCase
         $this->assertStringContainsString("background-image:url('{$imageUrl}')", $html);
         $this->assertStringContainsString('Start', $html);
         $this->assertStringContainsString('Learn more', $html);
+    }
+
+    public function test_hero_split_image_uses_the_builder_image_url_contract(): void
+    {
+        $imageUrl = 'https://images.example.test/split-hero.jpg';
+
+        $html = CmsHtmlCompiler::compile([
+            [
+                'type' => 'hero_split_image',
+                'image_url' => $imageUrl,
+                'primary_label' => 'Start now',
+                'secondary_label' => 'See services',
+            ],
+        ], 'emerald');
+
+        $this->assertStringContainsString("background-image:url('{$imageUrl}')", $html);
+        $this->assertStringContainsString('Start now', $html);
+        $this->assertStringContainsString('See services', $html);
+    }
+
+    public function test_primary_hero_split_image_uses_a_white_primary_button(): void
+    {
+        $html = CmsHtmlCompiler::compile([
+            [
+                'type' => 'hero_split_image',
+                'resolvedTheme' => 'primary',
+            ],
+        ], 'midnight');
+
+        $this->assertStringContainsString('bg-white text-slate-950', $html);
+    }
+
+    public function test_image_cta_banner_uses_the_builder_image_url_contract(): void
+    {
+        $imageUrl = 'https://images.example.test/cta-banner.jpg';
+
+        $html = CmsHtmlCompiler::compile([
+            [
+                'type' => 'image_cta_banner',
+                'image_url' => $imageUrl,
+                'primary_label' => 'Book now',
+                'secondary_label' => 'View menu',
+            ],
+        ], 'emerald');
+
+        $this->assertStringContainsString("background-image:url('{$imageUrl}')", $html);
+        $this->assertStringContainsString('Book now', $html);
+        $this->assertStringContainsString('View menu', $html);
     }
 
     public function test_hero_background_image_keeps_the_legacy_background_image_fallback(): void

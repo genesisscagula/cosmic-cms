@@ -244,6 +244,7 @@ class WebsiteController extends Controller
 	    ]);
 
 	    $website->global_footer = $request->footer_block;
+	    $website->published_global_footer = $request->footer_block;
 	    $website->save();
 	    
 	    return response()->json(['status' => 'success', 'data' => $website->global_footer]);

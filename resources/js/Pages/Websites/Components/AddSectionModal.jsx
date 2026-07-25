@@ -17,6 +17,8 @@ import TestimonialsCarouselPreview from "./Previews/TestimonialsCarouselPreview"
 import PricingCardsPreview from "./Previews/PricingCardsPreview";
 import HeroBackgroundImagePreview from "./Previews/HeroBackgroundImagePreview";
 import HeroEditorialOverlayPreview from "./Previews/HeroEditorialOverlayPreview";
+import HeroSplitImagePreview from "./Previews/HeroSplitImagePreview";
+import ImageCtaBannerPreview from "./Previews/ImageCtaBannerPreview";
 
 
 export const BlockRegistry = [
@@ -219,6 +221,49 @@ export const BlockRegistry = [
             image_url: "/storage/cms-images/background/background-1.avif",
             overlayOpacity: 72,
             height: "screen",
+        },
+    },
+
+    {
+        type: "hero_split_image",
+        theme: "auto",
+        title: "Hero Split Image",
+        buttonLabel: "Add Split Hero",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: HeroSplitImagePreview,
+        payload: {
+            type: "hero_split_image",
+            tagline: "BUILT FOR WHAT'S NEXT",
+            heading: "Make a stronger first impression.",
+            text: "Tell your story clearly, show what makes your business different, and guide visitors toward the next step.",
+            primary_label: "Get started",
+            primary_url: "#",
+            secondary_label: "Learn more",
+            secondary_url: "#",
+            trust_line: "Trusted by customers who value quality work.",
+            image_badge: "Serving your community",
+            image_url: "/storage/cms-images/background/background-1.avif",
+        },
+    },
+
+    {
+        type: "image_cta_banner",
+        theme: "auto",
+        title: "Image CTA Banner",
+        buttonLabel: "Add CTA Banner",
+        buttonClass: "bg-emerald-600 hover:bg-emerald-500",
+        preview: ImageCtaBannerPreview,
+        payload: {
+            type: "image_cta_banner",
+            eyebrow: "READY WHEN YOU ARE",
+            heading: "Let’s make your next step simple.",
+            text: "Talk with our team and get a clear plan for moving forward.",
+            primary_label: "Get started",
+            primary_url: "#",
+            secondary_label: "Learn more",
+            secondary_url: "#",
+            image_url: "/storage/cms-images/background/background-1.avif",
+            overlayOpacity: 76,
         },
     },
 ];

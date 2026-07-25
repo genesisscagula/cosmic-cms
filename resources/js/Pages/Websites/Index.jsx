@@ -136,7 +136,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
             });
             
             if (response.data.status === 'success') {
-                showCosmicNotification({ title: 'Header saved', message: 'Publish any page before using Push live update to send this header to the live site.', tone: 'success' });
+                showCosmicNotification({ title: 'Header saved', message: 'Use Push live update when you are ready to send this header to the live site.', tone: 'success' });
                 router.reload({ 
                     only: ['globalHeaderBlock'],
                     onSuccess: () => {
@@ -160,7 +160,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
             });
             
             if (response.data.status === 'success') {
-                showCosmicNotification({ title: 'Footer saved', message: 'Publish any page before using Push live update to send this footer to the live site.', tone: 'success' });
+                showCosmicNotification({ title: 'Footer saved', message: 'Use Push live update when you are ready to send this footer to the live site.', tone: 'success' });
                 router.reload({ 
                     only: ['globalFooterBlock'],
                     onSuccess: () => {

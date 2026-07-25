@@ -178,14 +178,17 @@ class PageController extends Controller
             'header_block' => 'nullable|array'
         ]);
 
-        // Gi-save ang block layout properties ngadto sa Database matrix
+        // The global shell has its own explicit save action. Keep its
+        // deployment snapshot aligned so the next manual Push live update
+        // exports the header the customer just approved.
         $website->update([
-            'global_header' => $request->input('header_block')
+            'global_header' => $request->input('header_block'),
+            'published_global_header' => $request->input('header_block'),
         ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Global header saved. Publish a page before pushing it live.'
+            'message' => 'Global header saved. Push a live update when you are ready to publish it.'
         ]);
     }
 
@@ -198,14 +201,16 @@ class PageController extends Controller
             'footer_block' => 'nullable|array'
         ]);
 
-        // I-update ang global_footer column sa database matrix
+        // Footer changes follow the same explicit global-shell workflow as
+        // headers: save now, then deploy only when Push live update is used.
         $website->update([
-            'global_footer' => $request->input('footer_block')
+            'global_footer' => $request->input('footer_block'),
+            'published_global_footer' => $request->input('footer_block'),
         ]);
 
         return response()->json([
             'status' => 'success',
-            'message' => 'Global footer saved. Publish a page before pushing it live.'
+            'message' => 'Global footer saved. Push a live update when you are ready to publish it.'
         ]);
     }
 
