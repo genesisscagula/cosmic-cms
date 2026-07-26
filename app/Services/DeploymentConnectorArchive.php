@@ -38,6 +38,8 @@ class DeploymentConnectorArchive
         $zip->addFromString('cosmic-sync/config.php', "<?php\n\nreturn " . var_export([
             'sync_secret' => $secret,
             'contact_email' => $recipient,
+            'cms_url' => rtrim(url('/'), '/'),
+            'website_id' => $website->id,
         ], true) . ";\n");
         $zip->addFromString('cosmic-sync/sync.php', $this->receiverScript());
         $zip->addFromString('cosmic-sync/contact.php', $this->contactReceiverScript());
@@ -71,8 +73,9 @@ The connector accepts only requests with its unique Cosmic deployment secret.
 Do not expose config.php or share the connector archive publicly.
 
 Published contact forms submit to cosmic-sync/contact.php. Each valid inquiry is
-stored privately on the live site and emailed to the website owner's account when
-the server's PHP mail service is configured.
+stored privately on the live site, forwarded to the Cosmic CMS Inquiry Inbox when
+the CMS is reachable, and emailed to the website owner's account when the server's
+PHP mail service is configured.
 
 If your website already has a root .htaccess file, keep its existing rules and
 merge the Cosmic CMS clean-URL block instead of overwriting it.
@@ -132,6 +135,37 @@ function contactValue(string $key, int $limit): string
     return mb_substr($value, 0, $limit);
 }
 
+function forwardSubmissionToCosmic(array $config, array $submission): void
+{
+    $cmsUrl = rtrim((string) ($config['cms_url'] ?? ''), '/');
+    $websiteId = (int) ($config['website_id'] ?? 0);
+    $secret = (string) ($config['sync_secret'] ?? '');
+
+    if ($cmsUrl === '' || $websiteId < 1 || $secret === '' || ! function_exists('curl_init')) {
+        return;
+    }
+
+    $request = curl_init($cmsUrl . '/api/v1/websites/' . $websiteId . '/contact-submissions');
+
+    if ($request === false) {
+        return;
+    }
+
+    curl_setopt_array($request, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode($submission, JSON_UNESCAPED_SLASHES),
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'X-Cosmic-Sync-Secret: ' . $secret,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 3,
+        CURLOPT_TIMEOUT => 5,
+    ]);
+    curl_exec($request);
+    curl_close($request);
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     contactResponse(['status' => 'error', 'message' => 'Method not allowed.'], 405);
 }
@@ -145,6 +179,23 @@ $name = contactValue('name', 120);
 $email = contactValue('email', 254);
 $phone = contactValue('phone', 80);
 $message = contactValue('message', 4000);
+$fields = [];
+
+foreach ($_POST as $key => $value) {
+    if ($key === 'company' || ! is_string($key) || ! preg_match('/^[a-z][a-z0-9_]{0,63}$/', $key)) {
+        continue;
+    }
+
+    if (is_array($value)) {
+        $items = array_values(array_filter(array_map(static function ($item): string {
+            return mb_substr(trim(strip_tags((string) $item)), 0, 1000);
+        }, $value)));
+        $fields[$key] = $items;
+        continue;
+    }
+
+    $fields[$key] = contactValue($key, $key === 'message' ? 4000 : 1000);
+}
 
 if ($name === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL) || $message === '') {
     contactResponse(['status' => 'error', 'message' => 'Please provide your name, a valid email address, and a message.'], 422);
@@ -171,6 +222,7 @@ $submission = [
     'email' => $email,
     'phone' => $phone,
     'message' => $message,
+    'fields' => $fields,
 ];
 
 $filename = $submissionDirectory . '/' . gmdate('Ymd-His') . '-' . bin2hex(random_bytes(6)) . '.json';
@@ -183,8 +235,18 @@ $configPath = __DIR__ . '/config.php';
 $config = is_file($configPath) ? require $configPath : [];
 $recipient = (string) ($config['contact_email'] ?? '');
 
+// The local JSON copy remains the durable fallback if the CMS is temporarily
+// unreachable. Forwarding is best-effort and never makes the visitor retry.
+forwardSubmissionToCosmic($config, $submission);
+
 if (filter_var($recipient, FILTER_VALIDATE_EMAIL) && function_exists('mail')) {
-    $body = "Name: {$name}\nEmail: {$email}\nPhone: {$phone}\n\nMessage:\n{$message}\n";
+    $lines = [];
+    foreach ($fields as $key => $value) {
+        $label = ucwords(str_replace('_', ' ', $key));
+        $displayValue = is_array($value) ? implode(', ', $value) : $value;
+        $lines[] = "{$label}: {$displayValue}";
+    }
+    $body = implode("\n", $lines) . "\n";
     @mail($recipient, 'New website inquiry', $body, "Reply-To: {$email}\r\nContent-Type: text/plain; charset=UTF-8");
 }
 

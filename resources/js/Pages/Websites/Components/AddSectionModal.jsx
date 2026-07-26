@@ -361,6 +361,12 @@ export const BlockRegistry = [
             phone: "+1 (555) 010-0200",
             address: "Available by appointment",
             submit_label: "Send inquiry",
+            fields: [
+                { id: "name", name: "name", type: "text", label: "Name", placeholder: "Your name", required: true },
+                { id: "email", name: "email", type: "email", label: "Email", placeholder: "you@example.com", required: true },
+                { id: "phone", name: "phone", type: "tel", label: "Phone", placeholder: "Your phone number", required: false },
+                { id: "message", name: "message", type: "textarea", label: "How can we help?", placeholder: "Tell us a little about your project", required: true },
+            ],
         },
     },
 ];

@@ -51,4 +51,9 @@ class Website extends Model
     {
         return $this->hasMany(GlobalElements::class);
     }
+
+    public function contactSubmissions()
+    {
+        return $this->hasMany(ContactSubmission::class);
+    }
 }

@@ -21,7 +21,7 @@ const replaceLegacyHeaderLogo = (header, websiteName) => {
     return { ...header, logo_text: websiteName };
 };
 
-export default function Index({ website, pages, globalHeaderBlock, globalFooterBlock }) {
+export default function Index({ website, pages, inquiryCount = 0, globalHeaderBlock, globalFooterBlock }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         title: '',
     });
@@ -247,7 +247,7 @@ export default function Index({ website, pages, globalHeaderBlock, globalFooterB
 
             <div className="min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-6xl space-y-7">
-                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} themeSummary={themeSummary} onNewPage={() => setIsNewPageOpen(true)} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} />
+                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={inquiryCount} themeSummary={themeSummary} onNewPage={() => setIsNewPageOpen(true)} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} />
 
                     <WebsiteLaunchGuide pages={pages || []} onNewPage={() => setIsNewPageOpen(true)} />
 

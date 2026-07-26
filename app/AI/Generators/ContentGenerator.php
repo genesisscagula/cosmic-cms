@@ -679,6 +679,17 @@ class ContentGenerator
     - phone
     - address
     - submit_label
+    - fields (array of 3 to 7 items)
+
+    Each field contains:
+
+    - id
+    - name
+    - type
+    - label
+    - placeholder
+    - required (boolean)
+    - options (array; only for select and radio fields)
 
     Requirements:
 
@@ -687,6 +698,14 @@ class ContentGenerator
     - Use a generic, safe phone number when the request does not provide one.
     - Do not invent an exact street address; use a general appointment or service-area phrase instead.
     - submit_label must be a short action such as Send inquiry, Request a quote, or Get in touch.
+    - Always include these usable inquiry fields: name (text), email (email), and message (textarea).
+    - You may add one to four useful business-specific fields such as phone, preferred_service, budget_range, appointment_date, or consent.
+    - type must be exactly one of: text, email, tel, textarea, select, radio, checkbox, date.
+    - name must be a unique lowercase snake_case key using only letters, numbers, and underscores.
+    - checkbox can be a single acknowledgement/consent or a short multi-choice list.
+    - select, radio, and multi-choice checkbox fields must contain 2 to 6 short, useful options.
+    - Keep labels and placeholders concise and customer-friendly.
+    - Do not request passwords, payment data, government IDs, medical history, or other sensitive personal information.
     - Do not use markdown or placeholder copy.
 
     TXT;

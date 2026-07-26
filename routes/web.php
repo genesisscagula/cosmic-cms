@@ -6,6 +6,7 @@ use App\Http\Controllers\ImageController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WebsiteController;
+use App\Http\Controllers\ContactSubmissionController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -31,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/download-bridge', [WebsiteController::class, 'downloadBridge'])->name('bridge.download');
 
     Route::get('/websites/{website}/pages', [PageController::class, 'index'])->name('pages.index');
+    Route::get('/websites/{website}/inquiries', [ContactSubmissionController::class, 'index'])->name('websites.inquiries.index');
     Route::post('/websites/{website}/pages', [PageController::class, 'store'])->name('pages.store');
     Route::get('/pages/{page}/builder', [PageController::class, 'builder'])->name('pages.builder');
 

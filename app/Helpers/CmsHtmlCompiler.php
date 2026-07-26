@@ -95,6 +95,106 @@ class CmsHtmlCompiler
         return null;
     }
 
+    /**
+     * Keep published contact forms compatible with older fixed-field blocks while
+     * allowing the Builder and AI to provide a safe, structured field list.
+     */
+    private static function contactFields(mixed $fields): array
+    {
+        $defaults = [
+            ['id' => 'name', 'name' => 'name', 'type' => 'text', 'label' => 'Name', 'placeholder' => 'Your name', 'required' => true],
+            ['id' => 'email', 'name' => 'email', 'type' => 'email', 'label' => 'Email', 'placeholder' => 'you@example.com', 'required' => true],
+            ['id' => 'phone', 'name' => 'phone', 'type' => 'tel', 'label' => 'Phone', 'placeholder' => 'Your phone number', 'required' => false],
+            ['id' => 'message', 'name' => 'message', 'type' => 'textarea', 'label' => 'How can we help?', 'placeholder' => 'Tell us a little about your project', 'required' => true],
+        ];
+
+        $source = is_array($fields) && $fields !== [] ? $fields : $defaults;
+        $allowedTypes = ['text', 'email', 'tel', 'textarea', 'select', 'radio', 'checkbox', 'date'];
+        $normalized = [];
+
+        foreach (array_slice($source, 0, 8) as $index => $field) {
+            if (! is_array($field)) {
+                continue;
+            }
+
+            $type = in_array($field['type'] ?? null, $allowedTypes, true) ? $field['type'] : 'text';
+            $label = trim((string) ($field['label'] ?? 'Field ' . ($index + 1)));
+            $name = strtolower((string) preg_replace('/[^a-z0-9]+/i', '_', (string) ($field['name'] ?? $label)));
+            $name = trim($name, '_') ?: 'field_' . ($index + 1);
+            $name = substr($name, 0, 64);
+            $options = is_array($field['options'] ?? null)
+                ? array_values(array_filter(array_map(static fn ($option) => trim(strip_tags((string) $option)), $field['options']), static fn ($option) => $option !== ''))
+                : [];
+
+            $normalized[] = [
+                'name' => $name,
+                'type' => $type,
+                'label' => $label,
+                'placeholder' => trim((string) ($field['placeholder'] ?? '')),
+                'required' => (bool) ($field['required'] ?? false),
+                'options' => array_slice($options, 0, 8),
+            ];
+        }
+
+        return $normalized ?: $defaults;
+    }
+
+    private static function contactFieldsMarkup(array $fields, array $theme, string $inputClasses): string
+    {
+        $markup = '';
+
+        foreach ($fields as $field) {
+            $name = e($field['name']);
+            $label = e($field['label']);
+            $placeholder = e($field['placeholder']);
+            $required = $field['required'] ? ' required' : '';
+            $requiredMark = $field['required'] ? "<span class='ml-1 text-rose-400'>*</span>" : '';
+
+            if ($field['type'] === 'textarea') {
+                $markup .= "<label class='block text-sm font-semibold {$theme['text']}'>{$label}{$requiredMark}<textarea name='{$name}'{$required} class='mt-2 min-h-32 w-full resize-y rounded-xl border px-4 py-3 text-sm outline-none {$inputClasses}' placeholder='{$placeholder}'></textarea></label>";
+                continue;
+            }
+
+            if ($field['type'] === 'select') {
+                $options = "<option value='' disabled selected>" . e($field['placeholder'] ?: 'Select an option') . '</option>';
+                foreach ($field['options'] ?: ['Option one', 'Option two'] as $option) {
+                    $option = e($option);
+                    $options .= "<option value='{$option}'>{$option}</option>";
+                }
+                $markup .= "<label class='block text-sm font-semibold {$theme['text']}'>{$label}{$requiredMark}<select name='{$name}'{$required} style='color-scheme: dark' class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}'>{$options}</select></label>";
+                continue;
+            }
+
+            if ($field['type'] === 'radio') {
+                $options = '';
+                foreach ($field['options'] ?: ['Option one', 'Option two'] as $option) {
+                    $option = e($option);
+                    $options .= "<label class='inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium {$theme['border']}'><input type='radio' name='{$name}' value='{$option}'{$required}>{$option}</label>";
+                }
+                $markup .= "<fieldset class='text-sm font-semibold {$theme['text']}'><legend>{$label}{$requiredMark}</legend><div class='mt-3 flex flex-wrap gap-3'>{$options}</div></fieldset>";
+                continue;
+            }
+
+            if ($field['type'] === 'checkbox') {
+                if ($field['options']) {
+                    $options = '';
+                    foreach ($field['options'] as $option) {
+                        $option = e($option);
+                        $options .= "<label class='flex items-center gap-2 text-sm font-medium {$theme['sub']}'><input class='h-4 w-4 rounded border-slate-400 text-violet-500' type='checkbox' name='{$name}[]' value='{$option}'>{$option}</label>";
+                    }
+                    $markup .= "<fieldset class='text-sm font-semibold {$theme['text']}'><legend>{$label}{$requiredMark}</legend><div class='mt-3 space-y-2'>{$options}</div></fieldset>";
+                    continue;
+                }
+                $markup .= "<label class='flex items-start gap-3 text-sm font-medium {$theme['text']}'><input class='mt-1 h-4 w-4 rounded border-slate-400 text-violet-500' type='checkbox' name='{$name}' value='yes'{$required}><span>{$label}{$requiredMark}</span></label>";
+                continue;
+            }
+
+            $markup .= "<label class='block text-sm font-semibold {$theme['text']}'>{$label}{$requiredMark}<input name='{$name}' type='{$field['type']}'{$required} class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}' placeholder='{$placeholder}'></label>";
+        }
+
+        return $markup;
+    }
+
    public static function compile(array $blocks, string $primaryColor = null): string
     {
         $html = "";
@@ -192,6 +292,7 @@ class CmsHtmlCompiler
                 $inputClasses = $blockTheme === 'primary'
                     ? "border-white/20 bg-slate-950/20 placeholder:text-white/40 focus:border-white/60 {$theme['text']}"
                     : "bg-transparent {$theme['border']} {$theme['text']}";
+                $formFields = self::contactFieldsMarkup(self::contactFields($block['fields'] ?? null), $theme, $inputClasses);
 
                 $html .= "
                 <section class='relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']}'>
@@ -208,12 +309,7 @@ class CmsHtmlCompiler
                             </div>
                         </div>
                         <form action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form class='rounded-[2rem] border p-5 shadow-2xl sm:p-8 {$theme['card']} {$theme['border']}'>
-                            <div class='grid gap-5 sm:grid-cols-2'>
-                                <label class='text-sm font-semibold {$theme['text']}'>Name<input name='name' required class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}' placeholder='Your name'></label>
-                                <label class='text-sm font-semibold {$theme['text']}'>Email<input name='email' type='email' required class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}' placeholder='you@example.com'></label>
-                            </div>
-                            <label class='mt-5 block text-sm font-semibold {$theme['text']}'>Phone <span class='{$theme['sub']}'>(optional)</span><input name='phone' type='tel' class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}' placeholder='Your phone number'></label>
-                            <label class='mt-5 block text-sm font-semibold {$theme['text']}'>How can we help?<textarea name='message' required class='mt-2 min-h-32 w-full resize-y rounded-xl border px-4 py-3 text-sm outline-none {$inputClasses}' placeholder='Tell us a little about your project'></textarea></label>
+                            <div class='space-y-5'>{$formFields}</div>
                             <label class='hidden' aria-hidden='true'>Company<input name='company' tabindex='-1' autocomplete='off'></label>
                             <button type='submit' class='mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 text-sm font-bold {$buttonClasses}'>{$submitLabel}</button>
                             <p data-cosmic-contact-status aria-live='polite' class='mt-3 text-center text-xs {$theme['sub']}'>We’ll use your details only to respond to your inquiry.</p>

@@ -1,6 +1,6 @@
 import { Link } from "@inertiajs/react";
 
-export default function WebsiteWorkspaceHeader({ website, pageCount, themeSummary, onNewPage, onPushLive, pushingLive }) {
+export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCount = 0, themeSummary, onNewPage, onPushLive, pushingLive }) {
     return (
         <header className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
             <div>
@@ -18,6 +18,9 @@ export default function WebsiteWorkspaceHeader({ website, pageCount, themeSummar
                 </p>
             </div>
             <div className="flex flex-wrap gap-2">
+                <Link href={route("websites.inquiries.index", website.id)} className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">
+                    Inquiries{inquiryCount ? ` (${inquiryCount})` : ""}
+                </Link>
                 <button type="button" onClick={onPushLive} disabled={pushingLive} className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/20 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50">
                     {pushingLive ? "Pushing live…" : "Push live update"}
                 </button>

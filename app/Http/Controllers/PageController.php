@@ -20,6 +20,7 @@ class PageController extends Controller
         return \Inertia\Inertia::render('Websites/Index', [
             'website' => $website,
             'pages' => $website->pages()->latest()->get(),
+            'inquiryCount' => $website->contactSubmissions()->count(),
             // DIRETSO KORREKTE HANDSHAKE PACKET NGADTO SA REACT
             'globalHeaderBlock' => $website->global_header,
             'globalFooterBlock' => $website->global_footer,

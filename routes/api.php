@@ -5,6 +5,10 @@ use Illuminate\Support\Facades\Route;
 use App\Models\Website;
 use App\Helpers\CmsHtmlCompiler;
 use App\Services\PagePublisher;
+use App\Http\Controllers\ContactSubmissionController;
+
+Route::post('/v1/websites/{website}/contact-submissions', [ContactSubmissionController::class, 'storeFromConnector'])
+    ->name('api.websites.contact-submissions.store');
 
 if (! function_exists('cosmicWebsiteForBridge')) {
     function cosmicWebsiteForBridge(Request $request): Website|\Illuminate\Http\JsonResponse
