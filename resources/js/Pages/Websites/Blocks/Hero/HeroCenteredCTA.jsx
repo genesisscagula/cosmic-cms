@@ -2,8 +2,6 @@ import { usePage } from "@inertiajs/react";
 
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
-import { EditableImage } from "../Shared/EditableImage";
-
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
@@ -97,47 +95,35 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
         ...block
     };
 
+    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
+    const isPrimarySection = block.resolvedTheme === "primary";
+    const primaryButtonStyle = isPrimarySection
+        ? "bg-white text-slate-950"
+        : `${primaryTheme.bg} ${primaryTheme.text}`;
+
     return (
 
         <section
-            className={`w-full py-24 px-7 md:px-8 text-center ${theme.bg} relative overflow-hidden border-b ${theme.border} transition-colors duration-500`}
+            className={`relative flex min-h-[500px] w-full items-center overflow-hidden border-b px-7 py-20 text-center sm:min-h-[560px] sm:px-10 sm:py-24 lg:min-h-[620px] lg:px-12 lg:py-28 ${theme.bg} ${theme.border} transition-colors duration-500`}
         >
 
             <div className="absolute
                 inset-0
                 overflow-hidden">
 
-                <div
-                    className="
-                    absolute
-                    top-0
-                    left-0
-                    w-80
-                    h-80
-                    rounded-full
-                    bg-primary-400/20
-                    blur-[130px]"
-                />
+                <div className={`absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full opacity-[0.13] blur-[140px] ${primaryTheme.bg}`} />
 
-                <div
-                    className="
-                    absolute
-                    bottom-0
-                    right-0
-                    w-80
-                    h-80
-                    rounded-full
-                    bg-primary-300/20
-                    blur-[130px]"
-                />
+                <div className={`absolute -bottom-40 -right-32 h-[32rem] w-[32rem] rounded-full opacity-[0.1] blur-[150px] ${primaryTheme.bg}`} />
+
+                <div className={`absolute inset-x-[12%] top-0 border-t ${theme.border} opacity-70`} />
 
             </div>
 
-            <div className="max-w-4xl mx-auto space-y-6 relative z-10 flex flex-col items-center">
+            <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center space-y-7">
 
                 <EditableText
                     value={data.tagline}
-                    className={`text-xs font-bold ${theme.text} tracking-widest uppercase block opacity-80`}
+                    className={`block text-xs font-semibold uppercase tracking-[0.32em] ${theme.sub}`}
                     onSave={(val) =>
                         onUpdate({
                             tagline: val
@@ -147,7 +133,7 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
 
                 <EditableText
                     value={data.heading}
-                    className={`text-4xl md:text-5xl font-extrabold ${theme.text} leading-tight block`}
+                    className={`block max-w-5xl text-5xl font-black leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl ${theme.text}`}
                     onSave={(val) =>
                         onUpdate({
                             heading: val
@@ -158,7 +144,7 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
                 <EditableText
                     value={data.subheading}
                     isTextArea={true}
-                    className={`text-base md:text-lg ${theme.sub} max-w-2xl mx-auto leading-relaxed block`}
+                    className={`mx-auto block max-w-3xl text-base leading-7 sm:text-lg sm:leading-8 ${theme.sub}`}
                     onSave={(val) =>
                         onUpdate({
                             subheading: val,
@@ -170,7 +156,7 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
                 <EditableButton
                     label={data.button_label}
                     url={data.button_url}
-                    className={`inline-block ${theme.text} ${theme.bg} border ${theme.border} px-8 py-3 rounded-full font-bold shadow-lg hover:opacity-90 transition`}
+                    className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-lg transition hover:opacity-90 ${primaryButtonStyle}`}
                     onSave={(label, url) =>
                         onUpdate({
                             button_label: label,

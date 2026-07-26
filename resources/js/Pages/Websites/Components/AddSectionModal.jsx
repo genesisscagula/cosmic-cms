@@ -22,6 +22,7 @@ import ImageCtaBannerPreview from "./Previews/ImageCtaBannerPreview";
 import HeroFloatingCardsPreview from "./Previews/HeroFloatingCardsPreview";
 import HeroVideoStylePreview from "./Previews/HeroVideoStylePreview";
 import HeroVideoBackgroundPreview from "./Previews/HeroVideoBackgroundPreview";
+import ContactFormPreview from "./Previews/ContactFormPreview";
 
 
 export const BlockRegistry = [
@@ -342,6 +343,26 @@ export const BlockRegistry = [
             overlayOpacity: 76,
         },
     },
+
+    {
+        type: "contact_form_modern",
+        theme: "auto",
+        title: "Contact Form",
+        buttonLabel: "Choose contact form",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: ContactFormPreview,
+        payload: {
+            type: "contact_form_modern",
+            theme: "auto",
+            eyebrow: "START A CONVERSATION",
+            heading: "Let’s talk about what’s next.",
+            text: "Tell us a little about your goals and our team will help you find the right next step.",
+            email: "hello@example.com",
+            phone: "+1 (555) 010-0200",
+            address: "Available by appointment",
+            submit_label: "Send inquiry",
+        },
+    },
 ];
 
 const generationProgressSteps = [
@@ -351,17 +372,36 @@ const generationProgressSteps = [
     { label: "Build page", threshold: 100 },
 ];
 
+const sectionCategories = [
+    { id: "hero", icon: "✦", title: "Hero", description: "Create a strong first impression." },
+    { id: "services", icon: "▦", title: "Services", description: "Show what your business offers." },
+    { id: "feature", icon: "◆", title: "Features", description: "Explain what makes you different." },
+    { id: "pricing", icon: "₱", title: "Pricing", description: "Display packages and plans." },
+    { id: "testimonials", icon: "★", title: "Testimonials", description: "Build trust with social proof." },
+    { id: "process", icon: "→", title: "Process", description: "Show customers what happens next." },
+    { id: "stats", icon: "#", title: "Stats", description: "Highlight measurable proof." },
+    { id: "cta", icon: "↗", title: "Call to action", description: "Guide visitors to take the next step." },
+    { id: "contact", icon: "✉", title: "Contact", description: "Give visitors a clear way to reach you." },
+];
+
 export default function AddSectionModal({
     open,
     onClose,
     onAdd,
     onReplace,
     hasBlocks = false,
+    hasWebsiteContent = false,
+    websiteContext = "",
 }) {
 
     const [prompt, setPrompt] = useState("");
     const [showConfirm, setShowConfirm] = useState(false);
     const [isBlockLibraryOpen, setIsBlockLibraryOpen] = useState(false);
+    const [selectedSectionCategory, setSelectedSectionCategory] = useState(null);
+    const [sectionInstruction, setSectionInstruction] = useState("");
+    const [selectedSpecificBlock, setSelectedSpecificBlock] = useState(null);
+    const [specificLayoutInstruction, setSpecificLayoutInstruction] = useState("");
+    const [generationTarget, setGenerationTarget] = useState("page");
 
     const aiResult = {};
 
@@ -561,6 +601,130 @@ export default function AddSectionModal({
 
 
 
+    const generateSectionWithAI = async () => {
+        const category = sectionCategories.find((item) => item.id === selectedSectionCategory);
+
+        if (!category) {
+            showCosmicNotification({ title: "Choose a section", message: "Select the kind of section you want to add first.", tone: "info" });
+            return;
+        }
+
+        if (!hasWebsiteContent && !sectionInstruction.trim()) {
+            showCosmicNotification({ title: "Tell us about the business", message: "Add a short business brief so Cosmic AI can create a useful first section.", tone: "info" });
+            return;
+        }
+
+        const sectionPrompt = [
+            websiteContext || "Create professional website content.",
+            sectionInstruction.trim()
+                ? `Section request: ${sectionInstruction.trim()}`
+                : `Create a ${category.title.toLowerCase()} section that fits the existing website.`,
+        ].join("\n\n");
+
+        setGenerationTarget("section");
+        setIsGenerating(true);
+        progressRef.current = 0;
+        setProgress(0);
+
+        try {
+            await nextStage("Understanding this section...", random(12, 22), 450);
+
+            const selectionResponse = await axios.post("/ai/select-section", {
+                category: category.id,
+                prompt: sectionPrompt,
+            });
+
+            const { section, image_folder: imageFolder } = selectionResponse.data;
+
+            await nextStage("Choosing a compatible layout...", random(34, 48), 450);
+            await nextStage("Writing content for your website...", 82, 600);
+
+            const contentResponse = await axios.post("/ai/generate-content", {
+                prompt: sectionPrompt,
+                sections: [section],
+                image_folder: imageFolder,
+            });
+
+            const generatedBlock = contentResponse.data?.blocks?.[0];
+
+            if (!generatedBlock) {
+                throw new Error("No usable section was returned.");
+            }
+
+            await nextStage("Adding your new section...", 100, 350);
+            onAdd(generatedBlock);
+            setSectionInstruction("");
+            setSelectedSectionCategory(null);
+            showCosmicNotification({ title: "Section added", message: `${category.title} was created and added to your page.`, tone: "success" });
+        } catch (error) {
+            console.log(error);
+            showCosmicNotification({
+                title: "Section generation failed",
+                message: error.response?.data?.message || error.message || "Cosmic AI could not create this section. Please try again.",
+                tone: "error",
+            });
+        } finally {
+            setIsGenerating(false);
+            setGenerationTarget("page");
+        }
+    };
+
+    const generateSpecificLayoutWithAI = async () => {
+        if (!selectedSpecificBlock) {
+            return;
+        }
+
+        if (!hasWebsiteContent && !specificLayoutInstruction.trim()) {
+            showCosmicNotification({ title: "Tell us about the business", message: "Add a short business brief so Cosmic AI can create useful first content.", tone: "info" });
+            return;
+        }
+
+        const contentPrompt = [
+            websiteContext || "Create professional website content.",
+            specificLayoutInstruction.trim()
+                ? `Section request: ${specificLayoutInstruction.trim()}`
+                : `Create content for a ${selectedSpecificBlock.title} section that fits the existing website.`,
+        ].join("\n\n");
+
+        setGenerationTarget("specific-layout");
+        setIsGenerating(true);
+        progressRef.current = 0;
+        setProgress(0);
+
+        try {
+            await nextStage("Using your selected layout...", random(18, 32), 400);
+            setAiStage("Getting content from AI...");
+            await animateProgress(82);
+
+            const contentResponse = await axios.post("/ai/generate-content", {
+                prompt: contentPrompt,
+                sections: [selectedSpecificBlock.type],
+            });
+
+            const generatedBlock = contentResponse.data?.blocks?.[0];
+
+            if (!generatedBlock) {
+                throw new Error("No usable section was returned.");
+            }
+
+            await nextStage("Adding your selected layout...", 100, 350);
+            onAdd(generatedBlock);
+            setSpecificLayoutInstruction("");
+            setSelectedSpecificBlock(null);
+            showCosmicNotification({ title: "Section added", message: `${selectedSpecificBlock.title} was filled with AI-generated content.`, tone: "success" });
+        } catch (error) {
+            console.log(error);
+            showCosmicNotification({
+                title: "Content generation failed",
+                message: error.response?.data?.message || error.message || "Cosmic AI could not create content for this layout. Please try again.",
+                tone: "error",
+            });
+        } finally {
+            setIsGenerating(false);
+            setGenerationTarget("page");
+        }
+    };
+
     if (!open) return null;
 
     return (
@@ -758,7 +922,9 @@ export default function AddSectionModal({
 
                     onClick={generateWithAI}
 
-                    className="hidden"
+                    type="button"
+                    disabled={isGenerating || !prompt.trim()}
+                    className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-violet-950/30 transition hover:from-violet-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-violet-300 disabled:cursor-not-allowed disabled:opacity-50"
 
                 >
 
@@ -769,6 +935,63 @@ export default function AddSectionModal({
             </div>
 
             <div className="mt-6 border-t border-white/10 pt-5">
+                <div className="mb-4 flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
+                    <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">Add a section with AI</p>
+                        <h3 className="mt-1 text-base font-semibold text-white">Choose what this page needs</h3>
+                        <p className="mt-1 text-xs leading-5 text-slate-400">Cosmic chooses a compatible layout variation, then writes content for it.</p>
+                    </div>
+                    <span className="text-xs text-slate-500">PHP chooses layout · AI writes content</span>
+                </div>
+
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
+                    {sectionCategories.map((category) => {
+                        const selected = selectedSectionCategory === category.id;
+
+                        return (
+                            <button
+                                key={category.id}
+                                type="button"
+                                onClick={() => setSelectedSectionCategory(category.id)}
+                                aria-pressed={selected}
+                                className={`rounded-xl border p-3 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 ${selected ? "border-violet-400/70 bg-violet-400/[0.10] shadow-[0_0_0_1px_rgba(167,139,250,0.15)]" : "border-white/10 bg-white/[0.025] hover:border-white/25 hover:bg-white/[0.05]"}`}
+                            >
+                                <span className={`flex h-7 w-7 items-center justify-center rounded-lg text-sm ${selected ? "bg-violet-400/15 text-violet-200" : "bg-white/[0.06] text-slate-300"}`} aria-hidden="true">{category.icon}</span>
+                                <span className="mt-3 block text-sm font-semibold text-white">{category.title}</span>
+                                <span className="mt-1 block text-xs leading-4 text-slate-400">{category.description}</span>
+                            </button>
+                        );
+                    })}
+                </div>
+
+                {selectedSectionCategory && (
+                    <div className="mt-3 rounded-xl border border-violet-400/20 bg-violet-400/[0.045] p-3 sm:p-4">
+                        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
+                            <label className="min-w-0 flex-1">
+                                <span className="text-xs font-semibold text-white">What should this section communicate?</span>
+                                <textarea
+                                    value={sectionInstruction}
+                                    onChange={(event) => setSectionInstruction(event.target.value)}
+                                    rows={2}
+                                    placeholder={hasWebsiteContent ? "Optional: e.g. Highlight family rooms, pools, and airport access." : "Describe the business, audience, services, and what this section should highlight."}
+                                    className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 text-sm leading-5 text-white placeholder:text-slate-500 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20"
+                                />
+                                {!hasWebsiteContent && <span className="mt-1.5 block text-[11px] text-amber-200">A short business brief is needed for this website's first AI section.</span>}
+                            </label>
+                            <button
+                                type="button"
+                                onClick={generateSectionWithAI}
+                                disabled={isGenerating}
+                                className="inline-flex h-10 shrink-0 items-center justify-center rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white transition hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-300 disabled:cursor-not-allowed disabled:opacity-50"
+                            >
+                                Generate section
+                            </button>
+                        </div>
+                    </div>
+                )}
+            </div>
+
+            <div className="mt-5">
                 <button
                     type="button"
                     onClick={() => setIsBlockLibraryOpen(!isBlockLibraryOpen)}
@@ -776,8 +999,8 @@ export default function AddSectionModal({
                     className="flex w-full items-center justify-between rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-left transition hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-violet-400"
                 >
                     <span>
-                        <span className="block text-sm font-semibold text-white">Browse Blocks</span>
-                        <span className="mt-0.5 block text-xs text-slate-500">Add a professional section manually.</span>
+                        <span className="block text-sm font-semibold text-white">Choose a specific layout</span>
+                        <span className="mt-0.5 block text-xs text-slate-500">Use this only when you want a particular section design.</span>
                     </span>
                     <span className="text-lg text-slate-400" aria-hidden="true">{isBlockLibraryOpen ? '−' : '+'}</span>
                 </button>
@@ -788,14 +1011,77 @@ export default function AddSectionModal({
                     {BlockRegistry.map((block) => (
                         <BlockPreviewCard
                             key={block.type}
-                            onAdd={onAdd}
+                            onAdd={() => {
+                                setSelectedSpecificBlock(block);
+                                setSpecificLayoutInstruction("");
+                            }}
                             title={block.title}
-                            buttonLabel={block.buttonLabel}
-                            buttonClass={block.buttonClass}
+                            buttonLabel="Choose this layout"
+                            buttonClass="bg-violet-600 hover:bg-violet-500"
                             preview={block.preview}
                             payload={block.payload}
                         />
                     ))}
+                </div>
+            )}
+
+            {selectedSpecificBlock && (
+                <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 sm:p-6">
+                    <button
+                        type="button"
+                        onClick={() => setSelectedSpecificBlock(null)}
+                        className="absolute inset-0 bg-black/75 backdrop-blur-sm"
+                        aria-label="Close selected layout dialog"
+                    />
+                    <div role="dialog" aria-modal="true" aria-labelledby="selected-layout-title" className="relative z-10 w-full max-w-lg rounded-2xl border border-violet-400/25 bg-[#18181b] p-5 shadow-2xl shadow-black/60 sm:p-6">
+                    <div className="flex items-start justify-between gap-4">
+                        <div>
+                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-300">Selected layout</p>
+                            <h4 id="selected-layout-title" className="mt-1 text-lg font-semibold text-white">{selectedSpecificBlock.title}</h4>
+                            <p className="mt-1.5 text-sm leading-6 text-slate-400">Cosmic AI will keep this layout and generate content tailored to your website.</p>
+                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedSpecificBlock(null)}
+                            className="rounded-lg p-1 text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                            aria-label="Clear selected layout"
+                        >
+                            ×
+                        </button>
+                    </div>
+
+                    <label className="mt-5 block">
+                        <span className="text-sm font-semibold text-white">What should this section communicate?</span>
+                        <textarea
+                            value={specificLayoutInstruction}
+                            onChange={(event) => setSpecificLayoutInstruction(event.target.value)}
+                            rows={4}
+                            autoFocus
+                            placeholder={hasWebsiteContent ? "Optional: e.g. Focus on ocean-view rooms and family amenities." : "Describe the business, audience, and what this section should highlight."}
+                            className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/25 px-3.5 py-3 text-sm leading-6 text-white placeholder:text-slate-500 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20"
+                        />
+                        {!hasWebsiteContent && <span className="mt-1.5 block text-[11px] text-amber-200">A short business brief is needed for this website's first AI section.</span>}
+                    </label>
+
+                    <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                        <button
+                            type="button"
+                            onClick={() => setSelectedSpecificBlock(null)}
+                            disabled={isGenerating}
+                            className="inline-flex h-10 items-center justify-center rounded-lg px-4 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            Cancel
+                        </button>
+                        <button
+                            type="button"
+                            onClick={generateSpecificLayoutWithAI}
+                            disabled={isGenerating}
+                            className="inline-flex h-10 items-center justify-center rounded-lg bg-violet-600 px-4 text-sm font-semibold text-white transition hover:bg-violet-500 focus:outline-none focus:ring-2 focus:ring-violet-300 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                            {isGenerating ? "Getting content from AI..." : "Generate with this layout"}
+                        </button>
+                    </div>
+                </div>
                 </div>
             )}
 
@@ -845,17 +1131,6 @@ export default function AddSectionModal({
 
             </div>
 
-        </div>
-
-        <div className="shrink-0 border-t border-white/10 bg-[#151519] px-4 py-3 sm:px-6">
-            <button
-                type="button"
-                onClick={generateWithAI}
-                disabled={isGenerating || !prompt.trim()}
-                className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-violet-950/30 transition hover:from-violet-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-violet-300 disabled:cursor-not-allowed disabled:opacity-50"
-            >
-                {isGenerating ? 'Preparing generation...' : 'Generate Page'}
-            </button>
         </div>
 
     </div>
@@ -952,13 +1227,13 @@ export default function AddSectionModal({
                     <p className="mt-6 text-center text-[10px] font-semibold uppercase tracking-[0.22em] text-violet-300">Cosmic AI</p>
                     <h2 className="mt-2 text-center text-2xl font-bold text-white sm:text-3xl">
 
-                        Building your page
+                        {generationTarget === "page" ? "Building your page" : "Creating your section"}
 
                     </h2>
 
                     <p className="mt-3 text-center text-sm text-slate-300" aria-live="polite">
 
-                        {aiStage || "Generating your page..."}
+                        {aiStage || (generationTarget === "page" ? "Generating your page..." : "Getting content from AI...")}
 
                     </p>
 

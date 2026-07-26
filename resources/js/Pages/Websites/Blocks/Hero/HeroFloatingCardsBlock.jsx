@@ -151,7 +151,7 @@ export function HeroFloatingCardsBlock({
                             }
                         />
 
-                        <div className="absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent" />
+                        <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent" />
 
                         <EditableText
                             value={data.image_badge}

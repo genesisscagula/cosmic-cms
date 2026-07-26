@@ -16,6 +16,7 @@ class DeploymentConnectorArchive
         }
 
         $secret = $website->deployment_secret;
+        $recipient = $website->contact_email ?: $website->user?->email;
 
         if (! is_string($secret) || $secret === '') {
             throw new RuntimeException('A deployment secret is required before creating the connector.');
@@ -34,9 +35,14 @@ class DeploymentConnectorArchive
             throw new RuntimeException('The deployment connector archive could not be created.');
         }
 
-        $zip->addFromString('cosmic-sync/config.php', "<?php\n\nreturn " . var_export(['sync_secret' => $secret], true) . ";\n");
+        $zip->addFromString('cosmic-sync/config.php', "<?php\n\nreturn " . var_export([
+            'sync_secret' => $secret,
+            'contact_email' => $recipient,
+        ], true) . ";\n");
         $zip->addFromString('cosmic-sync/sync.php', $this->receiverScript());
-        $zip->addFromString('cosmic-sync/.htaccess', "Options -Indexes\n\n<Files \"config.php\">\n    Require all denied\n</Files>\n");
+        $zip->addFromString('cosmic-sync/contact.php', $this->contactReceiverScript());
+        $zip->addFromString('cosmic-sync/.htaccess', "Options -Indexes\n\n<FilesMatch \"^(config\\.php|.*\\.(log|json))$\">\n    Require all denied\n</FilesMatch>\n");
+        $zip->addFromString('cosmic-sync/submissions/.htaccess', "Require all denied\n");
         $zip->addFromString('.htaccess', $this->cleanUrlHtaccess());
         $zip->addFromString('cosmic-sync/README.txt', $this->readme($website));
         $zip->close();
@@ -52,7 +58,7 @@ class DeploymentConnectorArchive
 Cosmic CMS Deployment Connector
 
 1. Extract this ZIP directly into your website root. It creates:
-   - cosmic-sync/ (the protected connector)
+   - cosmic-sync/ (the protected connector and contact receiver)
    - .htaccess (clean URLs for compiled static pages)
 2. Do not rename config.php or sync.php.
 3. Your expected verification endpoint is:
@@ -63,6 +69,10 @@ Cosmic CMS Deployment Connector
 
 The connector accepts only requests with its unique Cosmic deployment secret.
 Do not expose config.php or share the connector archive publicly.
+
+Published contact forms submit to cosmic-sync/contact.php. Each valid inquiry is
+stored privately on the live site and emailed to the website owner's account when
+the server's PHP mail service is configured.
 
 If your website already has a root .htaccess file, keep its existing rules and
 merge the Cosmic CMS clean-URL block instead of overwriting it.
@@ -96,6 +106,90 @@ TEXT;
     RewriteRule ^(.+?)/?$ $1.html [L]
 </IfModule>
 HTACCESS;
+    }
+
+    private function contactReceiverScript(): string
+    {
+        return <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+function contactResponse(array $payload, int $status = 200): never
+{
+    http_response_code($status);
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store');
+    echo json_encode($payload);
+    exit;
+}
+
+function contactValue(string $key, int $limit): string
+{
+    $value = trim((string) ($_POST[$key] ?? ''));
+    $value = trim(strip_tags($value));
+
+    return mb_substr($value, 0, $limit);
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    contactResponse(['status' => 'error', 'message' => 'Method not allowed.'], 405);
+}
+
+if (contactValue('company', 120) !== '') {
+    // Honeypot: acknowledge automated submissions without retaining their data.
+    contactResponse(['status' => 'success', 'message' => 'Thanks for your inquiry.']);
+}
+
+$name = contactValue('name', 120);
+$email = contactValue('email', 254);
+$phone = contactValue('phone', 80);
+$message = contactValue('message', 4000);
+
+if ($name === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL) || $message === '') {
+    contactResponse(['status' => 'error', 'message' => 'Please provide your name, a valid email address, and a message.'], 422);
+}
+
+$submissionDirectory = __DIR__ . '/submissions';
+
+if (! is_dir($submissionDirectory) && ! mkdir($submissionDirectory, 0750, true) && ! is_dir($submissionDirectory)) {
+    contactResponse(['status' => 'error', 'message' => 'Your inquiry could not be saved. Please try again later.'], 500);
+}
+
+$ip = (string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown');
+$rateFile = $submissionDirectory . '/.rate-' . hash('sha256', $ip);
+
+if (is_file($rateFile) && (time() - (int) filemtime($rateFile)) < 20) {
+    contactResponse(['status' => 'error', 'message' => 'Please wait a moment before sending another inquiry.'], 429);
+}
+
+@touch($rateFile);
+
+$submission = [
+    'received_at' => gmdate(DATE_ATOM),
+    'name' => $name,
+    'email' => $email,
+    'phone' => $phone,
+    'message' => $message,
+];
+
+$filename = $submissionDirectory . '/' . gmdate('Ymd-His') . '-' . bin2hex(random_bytes(6)) . '.json';
+
+if (file_put_contents($filename, json_encode($submission, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), LOCK_EX) === false) {
+    contactResponse(['status' => 'error', 'message' => 'Your inquiry could not be saved. Please try again later.'], 500);
+}
+
+$configPath = __DIR__ . '/config.php';
+$config = is_file($configPath) ? require $configPath : [];
+$recipient = (string) ($config['contact_email'] ?? '');
+
+if (filter_var($recipient, FILTER_VALIDATE_EMAIL) && function_exists('mail')) {
+    $body = "Name: {$name}\nEmail: {$email}\nPhone: {$phone}\n\nMessage:\n{$message}\n";
+    @mail($recipient, 'New website inquiry', $body, "Reply-To: {$email}\r\nContent-Type: text/plain; charset=UTF-8");
+}
+
+contactResponse(['status' => 'success', 'message' => 'Thanks — your inquiry has been received. We will be in touch soon.']);
+PHP;
     }
 
     private function receiverScript(): string
@@ -151,7 +245,7 @@ function cosmicDocument(array $page, array $package): string
     $footer = $package['global_footer'] ?? '';
     $body = trim((string) ($page['html'] ?? ''));
 
-    return "<!DOCTYPE html>\n<html lang='en'>\n<head>\n<meta charset='UTF-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n<title>{$title}</title>\n<script src='https://cdn.tailwindcss.com'></script>\n</head>\n<body class='bg-[#0b0f19] text-slate-100 min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}\n</body>\n</html>";
+    return "<!DOCTYPE html>\n<html lang='en'>\n<head>\n<meta charset='UTF-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n<title>{$title}</title>\n<link rel='preconnect' href='https://fonts.bunny.net'>\n<link href='https://fonts.bunny.net/css?family=figtree:400,500,600,700,800,900&display=swap' rel='stylesheet'>\n<script src='https://cdn.tailwindcss.com'></script>\n<style>html { font-family: Figtree, ui-sans-serif, system-ui, sans-serif; }</style>\n</head>\n<body class='bg-[#0b0f19] text-slate-100 min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}\n</body>\n</html>";
 }
 
 function cosmicCleanUrlRules(): string

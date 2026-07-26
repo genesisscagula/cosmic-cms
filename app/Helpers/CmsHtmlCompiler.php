@@ -152,24 +152,114 @@ class CmsHtmlCompiler
                 $subheading = e($block['subheading'] ?? $block['text'] ?? '');
                 $btnLabel = e($block['button_label'] ?? 'Get Started');
                 $btnUrl = e($block['button_url'] ?? '#');
-
+                $buttonClasses = $blockTheme === 'primary'
+                    ? 'bg-white text-slate-950'
+                    : "{$theme['card']} {$theme['text']}";
                 $html .= "
-                <section class='w-full py-24 px-7 md:px-8 text-center {$theme['bg']} relative overflow-hidden border-b {$theme['border']} transition-colors duration-500'>
-                    <div class='max-w-4xl mx-auto space-y-6 relative z-10 flex flex-col items-center'>
-                        <span class='text-xs font-bold tracking-widest uppercase block opacity-80 {$theme['text']}'>
+                <section class='relative flex min-h-[500px] w-full items-center overflow-hidden border-b px-7 py-20 text-center sm:min-h-[560px] sm:px-10 sm:py-24 lg:min-h-[620px] lg:px-12 lg:py-28 {$theme['bg']} {$theme['border']}'>
+                    <div class='pointer-events-none absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full {$theme['card']} opacity-[0.14] blur-[140px]'></div>
+                    <div class='pointer-events-none absolute -bottom-40 -right-32 h-[32rem] w-[32rem] rounded-full {$theme['card']} opacity-[0.1] blur-[150px]'></div>
+                    <div class='pointer-events-none absolute inset-x-[12%] top-0 border-t {$theme['border']} opacity-70'></div>
+                    <div class='relative z-10 mx-auto flex max-w-5xl flex-col items-center space-y-7'>
+                        <span class='block text-xs font-semibold uppercase tracking-[0.32em] {$theme['sub']}'>
                             {$tagline}
                         </span>
-                        <h1 class='text-4xl md:text-5xl font-extrabold leading-tight {$theme['text']}'>
+                        <h1 class='block max-w-5xl text-5xl font-black leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
                             {$heading}
                         </h1>
-                        <p class='text-base md:text-lg {$theme['sub']} max-w-2xl mx-auto leading-relaxed'>
+                        <p class='mx-auto max-w-3xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>
                             {$subheading}
                         </p>
-                        <a href='{$btnUrl}' class='inline-block {$theme['text']} {$theme['bg']} border {$theme['border']} px-8 py-3 rounded-full font-bold shadow-lg hover:opacity-90 transition'>
+                        <a href='{$btnUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-lg transition hover:opacity-90 {$buttonClasses}'>
                             {$btnLabel}
                         </a>
                     </div>
                 </section>";
+
+                break;
+
+                case 'contact_form_modern':
+                $eyebrow = e($block['eyebrow'] ?? 'START A CONVERSATION');
+                $heading = e($block['heading'] ?? 'Let’s talk about what’s next.');
+                $text = e($block['text'] ?? 'Tell us a little about your goals and our team will help you find the right next step.');
+                $email = e($block['email'] ?? 'hello@example.com');
+                $phone = e($block['phone'] ?? '+1 (555) 010-0200');
+                $address = e($block['address'] ?? 'Available by appointment');
+                $submitLabel = e($block['submit_label'] ?? 'Send inquiry');
+                $buttonClasses = $blockTheme === 'primary'
+                    ? 'bg-white text-slate-950'
+                    : "{$theme['card']} {$theme['text']}";
+                $inputClasses = $blockTheme === 'primary'
+                    ? "border-white/20 bg-slate-950/20 placeholder:text-white/40 focus:border-white/60 {$theme['text']}"
+                    : "bg-transparent {$theme['border']} {$theme['text']}";
+
+                $html .= "
+                <section class='relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']}'>
+                    <div class='pointer-events-none absolute -left-32 top-1/2 h-80 w-80 -translate-y-1/2 rounded-full {$theme['card']} opacity-[0.1] blur-[120px]'></div>
+                    <div class='relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.88fr_1.12fr] lg:items-start lg:gap-20'>
+                        <div class='max-w-xl pt-2'>
+                            <p class='text-xs font-semibold uppercase tracking-[0.3em] {$theme['sub']}'>{$eyebrow}</p>
+                            <h2 class='mt-5 text-4xl font-black leading-[1.06] tracking-tight sm:text-5xl lg:text-6xl {$theme['text']}'>{$heading}</h2>
+                            <p class='mt-5 text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p>
+                            <div class='mt-9 space-y-4 border-t pt-7 {$theme['border']}'>
+                                <div><p class='text-xs font-semibold uppercase tracking-[0.18em] {$theme['sub']}'>Email</p><p class='mt-1 text-base font-semibold {$theme['text']}'>{$email}</p></div>
+                                <div><p class='text-xs font-semibold uppercase tracking-[0.18em] {$theme['sub']}'>Phone</p><p class='mt-1 text-base font-semibold {$theme['text']}'>{$phone}</p></div>
+                                <div><p class='text-xs font-semibold uppercase tracking-[0.18em] {$theme['sub']}'>Visit</p><p class='mt-1 text-base font-semibold {$theme['text']}'>{$address}</p></div>
+                            </div>
+                        </div>
+                        <form action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form class='rounded-[2rem] border p-5 shadow-2xl sm:p-8 {$theme['card']} {$theme['border']}'>
+                            <div class='grid gap-5 sm:grid-cols-2'>
+                                <label class='text-sm font-semibold {$theme['text']}'>Name<input name='name' required class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}' placeholder='Your name'></label>
+                                <label class='text-sm font-semibold {$theme['text']}'>Email<input name='email' type='email' required class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}' placeholder='you@example.com'></label>
+                            </div>
+                            <label class='mt-5 block text-sm font-semibold {$theme['text']}'>Phone <span class='{$theme['sub']}'>(optional)</span><input name='phone' type='tel' class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}' placeholder='Your phone number'></label>
+                            <label class='mt-5 block text-sm font-semibold {$theme['text']}'>How can we help?<textarea name='message' required class='mt-2 min-h-32 w-full resize-y rounded-xl border px-4 py-3 text-sm outline-none {$inputClasses}' placeholder='Tell us a little about your project'></textarea></label>
+                            <label class='hidden' aria-hidden='true'>Company<input name='company' tabindex='-1' autocomplete='off'></label>
+                            <button type='submit' class='mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 text-sm font-bold {$buttonClasses}'>{$submitLabel}</button>
+                            <p data-cosmic-contact-status aria-live='polite' class='mt-3 text-center text-xs {$theme['sub']}'>We’ll use your details only to respond to your inquiry.</p>
+                        </form>
+                    </div>
+                </section>";
+
+                $html .= <<<'HTML'
+                <script>
+                document.querySelectorAll('[data-cosmic-contact-form]').forEach(function (form) {
+                    form.addEventListener('submit', async function (event) {
+                        event.preventDefault();
+                        var button = form.querySelector('button[type="submit"]');
+                        var status = form.querySelector('[data-cosmic-contact-status]');
+                        var originalLabel = button.textContent;
+
+                        button.disabled = true;
+                        button.classList.add('opacity-70', 'cursor-wait');
+                        button.textContent = 'Sending…';
+                        status.textContent = 'Sending your inquiry…';
+
+                        try {
+                            var response = await fetch(form.action, {
+                                method: 'POST',
+                                body: new FormData(form),
+                                headers: { 'Accept': 'application/json' },
+                            });
+                            var result = await response.json();
+
+                            if (!response.ok || result.status !== 'success') {
+                                throw new Error(result.message || 'Your inquiry could not be sent.');
+                            }
+
+                            form.reset();
+                            status.textContent = result.message;
+                        } catch (error) {
+                            status.textContent = error.message || 'Your inquiry could not be sent. Please try again.';
+                        } finally {
+                            button.disabled = false;
+                            button.classList.remove('opacity-70', 'cursor-wait');
+                            button.textContent = originalLabel;
+                        }
+                    });
+                });
+                </script>
+HTML;
 
                 break;
 
@@ -1306,12 +1396,38 @@ class CmsHtmlCompiler
                     'Discover our approach'
                 );
 
+                $rawImageUrl = trim((string) ($block['image_url'] ?? ''));
                 $imageUrl = e(
                     self::staticAssetUrl(
-                        $block['image_url'] ??
-                        'https://picsum.photos/1200/675'
+                        $rawImageUrl !== ''
+                            ? $rawImageUrl
+                            : 'https://picsum.photos/1200/675'
                     )
                 );
+
+                $rawVideoUrl = trim((string) ($block['video_url'] ?? ''));
+                $videoEmbedUrl = $rawVideoUrl !== '' && $rawVideoUrl !== '#'
+                    ? self::backgroundVideoEmbedUrl($rawVideoUrl)
+                    : null;
+                $staticVideoUrl = e(self::staticAssetUrl($rawVideoUrl));
+
+                // Published pages do not include Builder editing dialogs. A valid
+                // source plays directly inside the visual; otherwise its image is
+                // retained as a safe fallback.
+                $videoMedia = $videoEmbedUrl
+                    ? "<div class='relative w-full' style='aspect-ratio: 16 / 9;'>
+                            <iframe
+                                src='" . e($videoEmbedUrl) . "'
+                                title='Video preview'
+                                allow='autoplay; fullscreen; picture-in-picture'
+                                class='absolute inset-0 h-full w-full border-0 pointer-events-none'
+                            ></iframe>
+                        </div>"
+                    : ($rawVideoUrl !== '' && $rawVideoUrl !== '#'
+                        ? "<video autoplay muted loop playsinline preload='metadata' poster='{$imageUrl}' class='w-full object-cover' style='aspect-ratio: 16 / 9;'>
+                                <source src='{$staticVideoUrl}' type='video/mp4'>
+                            </video>"
+                        : "<img src='{$imageUrl}' alt='{$heading}' class='w-full object-cover transition duration-500 group-hover:scale-[1.03]' style='aspect-ratio: 16 / 9;'>");
 
                 $isLight = in_array(
                     $selectedThemeName,
@@ -1393,11 +1509,7 @@ class CmsHtmlCompiler
 
                             <div class='group relative overflow-hidden rounded-[2rem] border shadow-2xl {$theme['border']}'>
 
-                                <img
-                                    src='{$imageUrl}'
-                                    alt='{$heading}'
-                                    class='aspect-video w-full object-cover transition duration-500 group-hover:scale-[1.03]'
-                                >
+                                {$videoMedia}
 
                                 <div class='pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-slate-950/10'></div>
 

@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     Route::post('/ai/generate', [\App\Http\Controllers\AIChatController::class, 'generate'])->name('ai.generate');
     Route::post('/ai/select-sections', [AIController::class, 'selectSections'])->name('ai.select-sections');
+    Route::post('/ai/select-section', [AIController::class, 'selectSection'])->name('ai.select-section');
     Route::post('/ai/generate-content', [AIController::class, 'generateContent'])->name('ai.generate-content');
 
     // Keep the existing browser-session image URLs while protecting the writes.

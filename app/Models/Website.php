@@ -10,6 +10,7 @@ class Website extends Model
     protected $fillable = [
         'name',
         'domain',
+        'contact_email',
         'api_token',
         'deployment_secret',
         'deployment_verified_at',

@@ -1,26 +1,23 @@
 export default function HeroBackgroundImagePreview() {
     return (
-        <div className="relative h-40 rounded-xl overflow-hidden border border-slate-700 bg-slate-800">
+        <div
+            className="relative h-40 overflow-hidden rounded-xl border border-slate-700 bg-slate-900"
+            style={{
+                backgroundImage: "url('/storage/cms-images/background/background-1.avif')",
+                backgroundPosition: "center",
+                backgroundSize: "cover",
+            }}
+        >
+            <div className="absolute inset-0 bg-gradient-to-b from-slate-950/45 via-slate-950/60 to-slate-950/85" />
 
-            {/* Background */}
-            <div className="absolute inset-0 bg-slate-700"></div>
-
-            {/* Overlay */}
-            <div className="absolute inset-0 bg-black/50"></div>
-
-            {/* Content */}
-            <div className="relative z-10 h-full flex flex-col items-center justify-center px-4 text-center">
-
-                <div className="h-2 w-16 bg-slate-400 rounded-full mb-2"></div>
-
-                <div className="h-3 w-32 bg-white rounded-full mb-2"></div>
-
-                <div className="h-2 w-24 bg-slate-300 rounded-full mb-4"></div>
-
-                <div className="h-6 w-20 rounded-full bg-emerald-500"></div>
-
+            <div className="relative z-10 flex h-full flex-col items-center justify-center px-5 text-center">
+                <div className="h-1.5 w-20 rounded-full bg-white/70" />
+                <div className="mt-3 h-3 w-3/4 rounded-full bg-white" />
+                <div className="mt-1.5 h-3 w-1/2 rounded-full bg-white" />
+                <div className="mt-3 h-1.5 w-3/5 rounded-full bg-white/60" />
+                <div className="mt-1.5 h-1.5 w-2/5 rounded-full bg-white/45" />
+                <div className="mt-4 h-5 w-20 rounded-full bg-white shadow-lg" />
             </div>
-
         </div>
     );
 }

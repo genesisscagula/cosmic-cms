@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import { usePage } from "@inertiajs/react";
 
 import { EditableButton } from "../Shared/EditableButton";
@@ -28,6 +30,98 @@ export const HeroVideoStyleSchema = {
     },
 };
 
+function getVideoEmbedUrl(videoUrl) {
+    if (!videoUrl || videoUrl === "#" || videoUrl.startsWith("/")) {
+        return null;
+    }
+
+    try {
+        const parsedUrl = new URL(videoUrl);
+        const host = parsedUrl.hostname.toLowerCase().replace(/^www\./, "");
+        let videoId = null;
+
+        if (host === "youtu.be") {
+            videoId = parsedUrl.pathname.split("/").filter(Boolean)[0];
+        } else if (host === "youtube.com" || host === "m.youtube.com") {
+            videoId = parsedUrl.searchParams.get("v") || parsedUrl.pathname.match(/\/(?:embed|shorts)\/([^/?]+)/)?.[1];
+        }
+
+        if (videoId && /^[A-Za-z0-9_-]{6,}$/.test(videoId)) {
+            return `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&mute=1&loop=1&playlist=${videoId}&controls=1&playsinline=1&rel=0&modestbranding=1`;
+        }
+
+        if (host === "vimeo.com" || host.endsWith(".vimeo.com")) {
+            const videoId = parsedUrl.pathname.match(/\/(\d+)/)?.[1];
+
+            if (videoId) {
+                return `https://player.vimeo.com/video/${videoId}?autoplay=1&muted=1&loop=1&title=0&byline=0&portrait=0`;
+            }
+        }
+    } catch {
+        // Direct video URLs are rendered by the native video element.
+    }
+
+    return null;
+}
+
+function hasVideoUrl(videoUrl) {
+    return Boolean(videoUrl && videoUrl !== "#");
+}
+
+function VideoSourceDialog({ value, posterImageUrl, onSave, onClose }) {
+    const [videoUrl, setVideoUrl] = useState(value === "#" ? "" : value || "");
+    const previewUrl = videoUrl.trim();
+    const embedUrl = getVideoEmbedUrl(previewUrl);
+
+    useEffect(() => {
+        setVideoUrl(value === "#" ? "" : value || "");
+    }, [value]);
+
+    return createPortal(
+        <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" onMouseDown={onClose}>
+            <div role="dialog" aria-modal="true" aria-labelledby="video-style-dialog-title" className="w-full max-w-3xl overflow-hidden rounded-2xl border border-white/10 bg-[#17181c] text-left shadow-2xl" onMouseDown={(event) => event.stopPropagation()}>
+                <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-6">
+                    <div>
+                        <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-300">Video media</p>
+                        <h3 id="video-style-dialog-title" className="mt-1 text-lg font-semibold text-white">Preview and edit video</h3>
+                    </div>
+                    <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-slate-400 transition hover:bg-white/10 hover:text-white" aria-label="Close video dialog">×</button>
+                </div>
+
+                <div className="space-y-4 p-5 sm:p-6">
+                    <label className="block">
+                        <span className="text-xs font-medium text-slate-300">Video URL</span>
+                        <input autoFocus type="url" value={videoUrl} onChange={(event) => setVideoUrl(event.target.value)} placeholder="https://www.youtube.com/watch?v=..." className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20" />
+                    </label>
+
+                    <div className="aspect-video overflow-hidden rounded-xl border border-white/10 bg-black">
+                        {embedUrl ? (
+                            <iframe key={embedUrl} src={embedUrl} title="Video preview" allow="autoplay; fullscreen; picture-in-picture" className="h-full w-full border-0" />
+                        ) : hasVideoUrl(previewUrl) ? (
+                            <video key={previewUrl} autoPlay muted loop controls playsInline poster={posterImageUrl} className="h-full w-full object-cover">
+                                <source src={previewUrl} type="video/mp4" />
+                            </video>
+                        ) : (
+                            <div className="relative flex h-full items-center justify-center">
+                                <img src={posterImageUrl} alt="Video placeholder" className="absolute inset-0 h-full w-full object-cover opacity-45" />
+                                <p className="relative rounded-full border border-white/15 bg-black/45 px-4 py-2 text-sm text-slate-200">Paste a YouTube, Vimeo, or direct MP4 link to preview it here.</p>
+                            </div>
+                        )}
+                    </div>
+
+                    <p className="text-xs leading-5 text-slate-500">The published site plays a valid video automatically. This editor is only shown inside the Builder.</p>
+
+                    <div className="flex justify-end gap-3">
+                        <button type="button" onClick={onClose} className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">Cancel</button>
+                        <button type="button" onClick={() => { onSave(previewUrl || "#"); onClose(); }} className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200">Save video</button>
+                    </div>
+                </div>
+            </div>
+        </div>,
+        document.body
+    );
+}
+
 export function HeroVideoStyleBlock({
     block,
     blockIndex,
@@ -47,6 +141,8 @@ export function HeroVideoStyleBlock({
         ...HeroVideoStyleSchema.defaults,
         ...block,
     };
+
+    const [isVideoDialogOpen, setIsVideoDialogOpen] = useState(false);
 
     const { props } = usePage();
 
@@ -68,6 +164,7 @@ export function HeroVideoStyleBlock({
           };
 
     return (
+        <>
         <section
             className={`relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 ${theme.bg} transition-colors duration-500`}
         >
@@ -171,19 +268,18 @@ export function HeroVideoStyleBlock({
 
                         <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-slate-950/10" />
 
-                        <a
-                            href={data.video_url || "#"}
-                            target="_blank"
-                            rel="noreferrer"
+                        <button
+                            type="button"
+                            onClick={() => setIsVideoDialogOpen(true)}
                             aria-label={data.play_label}
-                            className="absolute inset-0 flex items-center justify-center"
+                            className="absolute left-1/2 top-1/2 z-20 flex -translate-x-1/2 -translate-y-1/2 items-center justify-center"
                         >
                             <span
                                 className={`flex h-20 w-20 items-center justify-center rounded-full border-4 border-white/30 bg-white text-2xl text-slate-950 shadow-2xl transition duration-300 group-hover:scale-110 sm:h-24 sm:w-24`}
                             >
                                 ▶
                             </span>
-                        </a>
+                        </button>
 
                         <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4">
                             <EditableText
@@ -236,5 +332,14 @@ export function HeroVideoStyleBlock({
                 </div>
             </div>
         </section>
+        {isVideoDialogOpen && (
+            <VideoSourceDialog
+                value={data.video_url}
+                posterImageUrl={data.image_url}
+                onSave={(video_url) => onUpdate({ video_url })}
+                onClose={() => setIsVideoDialogOpen(false)}
+            />
+        )}
+        </>
     );
 }

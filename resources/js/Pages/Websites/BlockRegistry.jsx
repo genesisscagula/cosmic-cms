@@ -85,6 +85,11 @@ import {
     HeroVideoBackgroundSchema
 } from "./Blocks/Hero/HeroVideoBackgroundBlock";
 
+import {
+    ContactFormModernBlock,
+    ContactFormModernSchema
+} from "./Blocks/Contact/ContactFormModernBlock";
+
 export const BlockRegistry = {
 
     hero_headline: {
@@ -220,6 +225,14 @@ export const BlockRegistry = {
         component: TestimonialsCarouselBlock,
 
         schema: TestimonialsCarouselSchema
+
+    },
+
+    contact_form_modern: {
+
+        component: ContactFormModernBlock,
+
+        schema: ContactFormModernSchema
 
     },
 

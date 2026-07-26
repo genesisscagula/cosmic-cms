@@ -42,6 +42,8 @@ class SchemaManager
 
             'pricing_cards' => 'pricingCardsSchema',
 
+            'contact_form_modern' => 'contactFormModernSchema',
+
         ];
     }
 }

@@ -14,7 +14,7 @@ import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 
 
 
-export default function Builder({ page, website }) {
+export default function Builder({ page, website, hasWebsiteContent = false, websiteContext = "" }) {
     const { props } = usePage();
     const defaultHeader = {
         type: 'glassmorphism_header',
@@ -766,6 +766,8 @@ export default function Builder({ page, website }) {
                 onAdd={addBlock}
                 onReplace={replaceBlocks}
                 hasBlocks={(data.blocks?.length ?? 0) > 0}
+                hasWebsiteContent={hasWebsiteContent}
+                websiteContext={websiteContext}
             />
 
             {/* AI MODAL INJECTOR CONFIG */}

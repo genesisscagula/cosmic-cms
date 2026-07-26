@@ -52,9 +52,42 @@ class PageController extends Controller
     {
         $this->authorize('view', $page->website);
 
+        $website = $page->website;
+        $websiteMessaging = $website->pages()
+            ->get(['title', 'blocks'])
+            ->flatMap(function (Page $websitePage) {
+                return collect($websitePage->blocks ?? [])
+                    ->map(function ($block) {
+                        if (!is_array($block)) {
+                            return null;
+                        }
+
+                        return collect([
+                            $block['tagline'] ?? null,
+                            $block['eyebrow'] ?? null,
+                            $block['heading'] ?? null,
+                            $block['text'] ?? null,
+                            $block['description'] ?? null,
+                        ])
+                            ->filter(fn ($value) => is_string($value) && trim($value) !== '')
+                            ->implode(' ');
+                    })
+                    ->filter();
+            })
+            ->take(8)
+            ->implode(' ');
+
+        $websiteContext = trim(sprintf(
+            'Website: %s. %s',
+            $website->name,
+            $websiteMessaging !== '' ? "Existing website messaging: {$websiteMessaging}" : ''
+        ));
+
         return \Inertia\Inertia::render('Websites/Builder', [
             'page' => $page,
-            'website' => $page->website,
+            'website' => $website,
+            'hasWebsiteContent' => $websiteMessaging !== '',
+            'websiteContext' => $websiteContext,
         ]);
     }
 

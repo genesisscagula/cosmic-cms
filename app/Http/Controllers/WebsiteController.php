@@ -43,6 +43,9 @@ class WebsiteController extends Controller
 	    $defaults = [
 	        'name' => $request->name,
 	        'domain' => $request->domain,
+	        // Until a dedicated website settings screen is added, new live-form
+	        // inquiries go to the account that created the website.
+	        'contact_email' => $request->user()->email,
 	        'api_token' => Str::random(60),
 	        // Keep the current named theme contract for new websites.
 	        'theme_settings' => $request->input('theme_settings', [

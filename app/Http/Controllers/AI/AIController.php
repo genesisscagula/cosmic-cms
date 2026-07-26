@@ -74,7 +74,22 @@ class AIController extends Controller
         $imageFolder = $this->resolveLayoutFolder($validated['prompt']);
 
         return response()->json([
-            'sections' => LayoutEngine::random($imageFolder),
+            'sections' => LayoutEngine::random($imageFolder, $validated['prompt']),
+            'image_folder' => $imageFolder,
+        ]);
+    }
+
+    public function selectSection(Request $request)
+    {
+        $validated = $request->validate([
+            'category' => ['required', 'string', 'in:hero,services,feature,pricing,testimonials,process,stats,cta,contact'],
+            'prompt' => ['required', 'string'],
+        ]);
+
+        $imageFolder = $this->resolveLayoutFolder($validated['prompt']);
+
+        return response()->json([
+            'section' => LayoutEngine::randomSection($validated['category'], $validated['prompt']),
             'image_folder' => $imageFolder,
         ]);
     }

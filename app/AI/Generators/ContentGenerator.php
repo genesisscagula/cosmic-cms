@@ -664,4 +664,32 @@ class ContentGenerator
         TXT;
     }
 
+    private function contactFormModernSchema(): string
+    {
+        return <<<TXT
+
+    contact_form_modern
+
+    - type = contact_form_modern
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - email
+    - phone
+    - address
+    - submit_label
+
+    Requirements:
+
+    - Write inviting, concise contact-section copy that matches the requested business.
+    - Use hello@example.com when the request does not provide a real email address.
+    - Use a generic, safe phone number when the request does not provide one.
+    - Do not invent an exact street address; use a general appointment or service-area phrase instead.
+    - submit_label must be a short action such as Send inquiry, Request a quote, or Get in touch.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
 }

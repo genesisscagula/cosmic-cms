@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { createPortal } from "react-dom";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
@@ -19,7 +20,7 @@ export function EditableText({ value, onSave, className, isTextArea = false }) {
             </div>
 
             {/* OVERLAY MODAL: Fixed portal para dili ma-distort ang layout */}
-            {isEditing && (
+            {isEditing && createPortal(
                 <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
                     <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl text-slate-100 font-sans space-y-4">
                         <div className="flex justify-between items-center border-b border-slate-800 pb-2">
@@ -71,7 +72,7 @@ export function EditableText({ value, onSave, className, isTextArea = false }) {
                         </div>
                     </div>
                 </div>
-            )}
+            , document.body)}
         </>
     );
 }
