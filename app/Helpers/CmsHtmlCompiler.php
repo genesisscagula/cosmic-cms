@@ -139,7 +139,7 @@ class CmsHtmlCompiler
         return $normalized ?: $defaults;
     }
 
-    private static function contactFieldsMarkup(array $fields, array $theme, string $inputClasses): string
+    private static function contactFieldsMarkup(array $fields, array $theme, string $inputClasses, string $nativeColorScheme): string
     {
         $markup = '';
 
@@ -156,12 +156,12 @@ class CmsHtmlCompiler
             }
 
             if ($field['type'] === 'select') {
-                $options = "<option value='' disabled selected>" . e($field['placeholder'] ?: 'Select an option') . '</option>';
+                $options = "<option value='' disabled selected style='background-color:#334b67;color:#cbd5e1'>" . e($field['placeholder'] ?: 'Select an option') . '</option>';
                 foreach ($field['options'] ?: ['Option one', 'Option two'] as $option) {
                     $option = e($option);
-                    $options .= "<option value='{$option}'>{$option}</option>";
+                    $options .= "<option value='{$option}' style='background-color:#334b67;color:#f8fafc'>{$option}</option>";
                 }
-                $markup .= "<label class='block text-sm font-semibold {$theme['text']}'>{$label}{$requiredMark}<select name='{$name}'{$required} style='color-scheme: dark' class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}'>{$options}</select></label>";
+                $markup .= "<label class='block text-sm font-semibold {$theme['text']}'>{$label}{$requiredMark}<select name='{$name}'{$required} style='color-scheme:{$nativeColorScheme};background-color:#334b67;color:#f8fafc' class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}'>{$options}</select></label>";
                 continue;
             }
 
@@ -189,7 +189,9 @@ class CmsHtmlCompiler
                 continue;
             }
 
-            $markup .= "<label class='block text-sm font-semibold {$theme['text']}'>{$label}{$requiredMark}<input name='{$name}' type='{$field['type']}'{$required} class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}' placeholder='{$placeholder}'></label>";
+            $nativeControlStyle = $field['type'] === 'date' ? " style='color-scheme:{$nativeColorScheme}'" : '';
+            $nativeControlAction = $field['type'] === 'date' ? " onclick='if (this.showPicker) { this.showPicker(); }'" : '';
+            $markup .= "<label class='block text-sm font-semibold {$theme['text']}'>{$label}{$requiredMark}<input name='{$name}' type='{$field['type']}'{$required}{$nativeControlStyle}{$nativeControlAction} class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}' placeholder='{$placeholder}'></label>";
         }
 
         return $markup;
@@ -292,7 +294,16 @@ class CmsHtmlCompiler
                 $inputClasses = $blockTheme === 'primary'
                     ? "border-white/20 bg-slate-950/20 placeholder:text-white/40 focus:border-white/60 {$theme['text']}"
                     : "bg-transparent {$theme['border']} {$theme['text']}";
-                $formFields = self::contactFieldsMarkup(self::contactFields($block['fields'] ?? null), $theme, $inputClasses);
+                // Keep native form controls legible against the resolved block surface.
+                // Primary is the dark theme slot; white and surface use light controls.
+                $nativeColorScheme = $blockTheme === 'primary' ? 'dark' : 'light';
+                // Use one explicit icon in the static export while the entire
+                // date field remains the click target for the native picker.
+                $calendarIconStroke = $nativeColorScheme === 'dark' ? '%23ffffff' : '%230f172a';
+                $calendarIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='{$calendarIconStroke}' stroke-width='2'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M16 3v4M8 3v4M3 10h18'/%3E%3C/svg%3E";
+                $contactNativeControlStyles = "[data-cosmic-contact-form][data-cosmic-contact-scheme='{$nativeColorScheme}'] input[type=date]{color-scheme:{$nativeColorScheme};cursor:pointer;background-image:url(\"{$calendarIcon}\");background-position:right 1rem center;background-repeat:no-repeat;background-size:1rem;padding-right:3rem}";
+                $contactNativeControlStyles .= "[data-cosmic-contact-form][data-cosmic-contact-scheme='{$nativeColorScheme}'] input[type=date]::-webkit-calendar-picker-indicator{opacity:0}";
+                $formFields = self::contactFieldsMarkup(self::contactFields($block['fields'] ?? null), $theme, $inputClasses, $nativeColorScheme);
 
                 $html .= "
                 <section class='relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']}'>
@@ -308,7 +319,8 @@ class CmsHtmlCompiler
                                 <div><p class='text-xs font-semibold uppercase tracking-[0.18em] {$theme['sub']}'>Visit</p><p class='mt-1 text-base font-semibold {$theme['text']}'>{$address}</p></div>
                             </div>
                         </div>
-                        <form action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form class='rounded-[2rem] border p-5 shadow-2xl sm:p-8 {$theme['card']} {$theme['border']}'>
+                        <style>{$contactNativeControlStyles}</style>
+                        <form action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form data-cosmic-contact-scheme='{$nativeColorScheme}' class='rounded-[2rem] border p-5 shadow-2xl sm:p-8 {$theme['card']} {$theme['border']}'>
                             <div class='space-y-5'>{$formFields}</div>
                             <label class='hidden' aria-hidden='true'>Company<input name='company' tabindex='-1' autocomplete='off'></label>
                             <button type='submit' class='mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 text-sm font-bold {$buttonClasses}'>{$submitLabel}</button>
@@ -337,7 +349,14 @@ class CmsHtmlCompiler
                                 body: new FormData(form),
                                 headers: { 'Accept': 'application/json' },
                             });
-                            var result = await response.json();
+                            var responseText = await response.text();
+                            var result;
+
+                            try {
+                                result = JSON.parse(responseText);
+                            } catch (parseError) {
+                                throw new Error('The contact connector did not return a valid response. Reinstall the latest connector, then try again.');
+                            }
 
                             if (!response.ok || result.status !== 'success') {
                                 throw new Error(result.message || 'Your inquiry could not be sent.');

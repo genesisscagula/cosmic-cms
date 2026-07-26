@@ -29,10 +29,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/websites/{website}/deployment-connector', [WebsiteController::class, 'downloadDeploymentConnector'])->name('websites.deployment-connector.download');
     Route::post('/websites/{website}/deployment-connector/verify', [WebsiteController::class, 'verifyDeploymentConnector'])->name('websites.deployment-connector.verify');
     Route::post('/websites/{website}/deployment-connector/push', [WebsiteController::class, 'pushLiveUpdate'])->name('websites.deployment-connector.push');
+    Route::put('/websites/{website}/settings', [WebsiteController::class, 'updateSettings'])->name('websites.settings.update');
     Route::get('/download-bridge', [WebsiteController::class, 'downloadBridge'])->name('bridge.download');
 
     Route::get('/websites/{website}/pages', [PageController::class, 'index'])->name('pages.index');
     Route::get('/websites/{website}/inquiries', [ContactSubmissionController::class, 'index'])->name('websites.inquiries.index');
+    Route::patch('/websites/{website}/inquiries/{submission}', [ContactSubmissionController::class, 'update'])->name('websites.inquiries.update');
     Route::post('/websites/{website}/pages', [PageController::class, 'store'])->name('pages.store');
     Route::get('/pages/{page}/builder', [PageController::class, 'builder'])->name('pages.builder');
 

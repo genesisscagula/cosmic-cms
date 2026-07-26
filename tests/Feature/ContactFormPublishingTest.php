@@ -20,6 +20,8 @@ class ContactFormPublishingTest extends TestCase
         $this->assertStringContainsString("name='message'", $html);
         $this->assertStringContainsString('data-cosmic-contact-form', $html);
         $this->assertStringContainsString('border-white/20', $html);
+        $this->assertStringContainsString('response.text()', $html);
+        $this->assertStringContainsString('did not return a valid response', $html);
     }
 
     public function test_a_published_contact_form_renders_supported_custom_fields(): void
@@ -37,5 +39,6 @@ class ContactFormPublishingTest extends TestCase
         $this->assertStringContainsString('Choose a service', $html);
         $this->assertStringContainsString('Consultation', $html);
         $this->assertStringContainsString("name='consent'", $html);
+        $this->assertStringContainsString('background-color:#334b67', $html);
     }
 }

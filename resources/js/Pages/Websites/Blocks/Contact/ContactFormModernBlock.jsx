@@ -60,7 +60,7 @@ export const ContactFormModernSchema = {
     },
 };
 
-function FormField({ field, inputClass, theme }) {
+function FormField({ field, inputClass, theme, nativeColorScheme }) {
     const label = <span>{field.label}{field.required ? <span className="ml-1 text-rose-400">*</span> : null}</span>;
     const options = field.options.length ? field.options : ["Option one", "Option two"];
 
@@ -68,7 +68,7 @@ function FormField({ field, inputClass, theme }) {
         return <label className={`block text-sm font-semibold ${theme.text}`}>{label}<textarea className={`mt-2 min-h-32 w-full resize-y rounded-xl border px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-violet-400/60 ${inputClass}`} placeholder={field.placeholder} required={field.required} /></label>;
     }
     if (field.type === "select") {
-        return <label className={`block text-sm font-semibold ${theme.text}`}>{label}<select style={{ colorScheme: "dark" }} className={`mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 focus:ring-violet-400/60 ${inputClass}`} defaultValue="" required={field.required}><option value="" disabled>{field.placeholder || "Select an option"}</option>{options.map((option) => <option className="bg-slate-900 text-white" key={option}>{option}</option>)}</select></label>;
+        return <label className={`block text-sm font-semibold ${theme.text}`}>{label}<select style={{ colorScheme: nativeColorScheme }} className={`mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 focus:ring-violet-400/60 ${inputClass}`} defaultValue="" required={field.required}><option value="" disabled>{field.placeholder || "Select an option"}</option>{options.map((option) => <option className="bg-slate-900 text-white" key={option}>{option}</option>)}</select></label>;
     }
     if (field.type === "radio") {
         return <fieldset className={`text-sm font-semibold ${theme.text}`}><legend>{label}</legend><div className="mt-3 flex flex-wrap gap-3">{options.map((option) => <label className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${theme.border}`} key={option}><input type="radio" name={field.name} required={field.required} />{option}</label>)}</div></fieldset>;
@@ -79,7 +79,7 @@ function FormField({ field, inputClass, theme }) {
         }
         return <label className={`flex items-start gap-3 text-sm font-medium ${theme.text}`}><input className="mt-1 h-4 w-4 rounded border-slate-400 text-violet-500 focus:ring-violet-400" type="checkbox" required={field.required} /><span>{field.label}{field.required ? <span className="ml-1 text-rose-400">*</span> : null}</span></label>;
     }
-    return <label className={`block text-sm font-semibold ${theme.text}`}>{label}<input type={field.type} style={field.type === "date" ? { colorScheme: "dark" } : undefined} className={`mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 focus:ring-violet-400/60 ${inputClass}`} placeholder={field.placeholder} required={field.required} /></label>;
+    return <label className={`block text-sm font-semibold ${theme.text}`}>{label}<input type={field.type} style={field.type === "date" ? { colorScheme: nativeColorScheme } : undefined} className={`mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 focus:ring-violet-400/60 ${inputClass}`} placeholder={field.placeholder} required={field.required} /></label>;
 }
 
 function FormFieldsEditor({ fields, onSave, onClose }) {
@@ -105,6 +105,8 @@ export function ContactFormModernBlock({ block, onUpdate, globalTheme }) {
     const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const isPrimarySection = block.resolvedTheme === "primary";
+    // Mirror the compiler: the primary slot is dark; white and surface slots are light.
+    const nativeColorScheme = isPrimarySection ? "dark" : "light";
     const buttonStyle = isPrimarySection ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const inputSurface = isPrimarySection ? "border-white/30 bg-slate-950/20 placeholder:text-white/50 focus:border-white/70" : `${theme.border} bg-transparent placeholder:opacity-70`;
     const inputClass = `h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 focus:ring-violet-400/60 ${inputSurface} ${theme.text}`;
@@ -112,7 +114,7 @@ export function ContactFormModernBlock({ block, onUpdate, globalTheme }) {
     return <section className={`relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 ${theme.bg} transition-colors duration-500`}>
         <div className={`pointer-events-none absolute -left-32 top-1/2 h-80 w-80 -translate-y-1/2 rounded-full opacity-[0.1] blur-[120px] ${primaryTheme.bg}`} />
         <div className="relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.88fr_1.12fr] lg:items-start lg:gap-20"><div className="max-w-xl pt-2"><EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[0.3em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} /><EditableText value={data.heading} className={`mt-5 block text-4xl font-black leading-[1.06] tracking-tight sm:text-5xl lg:text-6xl ${theme.text}`} onSave={(heading) => onUpdate({ heading })} /><EditableText value={data.text} isTextArea className={`mt-5 block text-base leading-7 sm:text-lg sm:leading-8 ${theme.sub}`} onSave={(text) => onUpdate({ text })} /><div className={`mt-9 space-y-4 border-t pt-7 ${theme.border}`}><div><p className={`text-xs font-semibold uppercase tracking-[0.18em] ${theme.sub}`}>Email</p><EditableText value={data.email} className={`mt-1 block text-base font-semibold ${theme.text}`} onSave={(email) => onUpdate({ email })} /></div><div><p className={`text-xs font-semibold uppercase tracking-[0.18em] ${theme.sub}`}>Phone</p><EditableText value={data.phone} className={`mt-1 block text-base font-semibold ${theme.text}`} onSave={(phone) => onUpdate({ phone })} /></div><div><p className={`text-xs font-semibold uppercase tracking-[0.18em] ${theme.sub}`}>Visit</p><EditableText value={data.address} className={`mt-1 block text-base font-semibold ${theme.text}`} onSave={(address) => onUpdate({ address })} /></div></div></div>
-            <form onSubmit={(event) => event.preventDefault()} className={`rounded-[2rem] border p-5 shadow-2xl sm:p-8 ${theme.card} ${theme.border}`}><div className="mb-5 flex items-center justify-between gap-4"><p className={`text-sm font-semibold ${theme.text}`}>Inquiry form</p><button type="button" onClick={() => setEditingFields(true)} className="rounded-lg border border-violet-400/60 px-3 py-1.5 text-xs font-bold text-violet-100 transition hover:bg-violet-500/15">Edit fields</button></div><div className="space-y-5">{fields.map((field) => <FormField key={field.id} field={field} inputClass={inputClass} theme={theme} />)}</div><button type="submit" className={`mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 text-sm font-bold transition hover:opacity-90 ${buttonStyle}`}><EditableText value={data.submit_label} className="block" onSave={(submit_label) => onUpdate({ submit_label })} /></button><p className={`mt-3 text-center text-xs ${theme.sub}`}>We'll use your details only to respond to your inquiry.</p></form>
+            <form onSubmit={(event) => event.preventDefault()} className={`rounded-[2rem] border p-5 shadow-2xl sm:p-8 ${theme.card} ${theme.border}`}><div className="mb-5 flex items-center justify-between gap-4"><p className={`text-sm font-semibold ${theme.text}`}>Inquiry form</p><button type="button" onClick={() => setEditingFields(true)} className="rounded-lg border border-violet-400/60 px-3 py-1.5 text-xs font-bold text-violet-100 transition hover:bg-violet-500/15">Edit fields</button></div><div className="space-y-5">{fields.map((field) => <FormField key={field.id} field={field} inputClass={inputClass} theme={theme} nativeColorScheme={nativeColorScheme} />)}</div><button type="submit" className={`mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 text-sm font-bold transition hover:opacity-90 ${buttonStyle}`}><EditableText value={data.submit_label} className="block" onSave={(submit_label) => onUpdate({ submit_label })} /></button><p className={`mt-3 text-center text-xs ${theme.sub}`}>We'll use your details only to respond to your inquiry.</p></form>
         </div>{editingFields ? <FormFieldsEditor fields={fields} onSave={(nextFields) => onUpdate({ fields: nextFields })} onClose={() => setEditingFields(false)} /> : null}
     </section>;
 }

@@ -8,6 +8,8 @@ import NewPagePanel from './Components/NewPagePanel';
 import PageList from './Components/PageList';
 import PageEmptyState from './Components/PageEmptyState';
 import WebsiteLaunchGuide from './Components/WebsiteLaunchGuide';
+import InquiryInboxModal from './Components/InquiryInboxModal';
+import WebsiteSettingsModal from './Components/WebsiteSettingsModal';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 
 const WebsiteWorkspaceShell = ({ children }) => <>{children}</>;
@@ -21,7 +23,7 @@ const replaceLegacyHeaderLogo = (header, websiteName) => {
     return { ...header, logo_text: websiteName };
 };
 
-export default function Index({ website, pages, inquiryCount = 0, globalHeaderBlock, globalFooterBlock }) {
+export default function Index({ website, pages, inquiryCount = 0, recentInquiries = [], globalHeaderBlock, globalFooterBlock }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         title: '',
     });
@@ -32,6 +34,9 @@ export default function Index({ website, pages, inquiryCount = 0, globalHeaderBl
     const [isSaving, setIsSaving] = useState(false);
     const [isLogoUploading, setIsLogoUploading] = useState(false);
     const [isPushingLive, setIsPushingLive] = useState(false);
+    const [isInquiryInboxOpen, setIsInquiryInboxOpen] = useState(false);
+    const [isWebsiteSettingsOpen, setIsWebsiteSettingsOpen] = useState(false);
+    const [visibleInquiryCount, setVisibleInquiryCount] = useState(inquiryCount);
     // 2. Add state para sa footer modal[cite: 2]
     const [isFooterModalOpen, setIsFooterModalOpen] = useState(false);
     
@@ -247,7 +252,7 @@ export default function Index({ website, pages, inquiryCount = 0, globalHeaderBl
 
             <div className="min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-6xl space-y-7">
-                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={inquiryCount} themeSummary={themeSummary} onNewPage={() => setIsNewPageOpen(true)} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} />
+                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={visibleInquiryCount} themeSummary={themeSummary} onNewPage={() => setIsNewPageOpen(true)} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} onOpenInquiries={() => setIsInquiryInboxOpen(true)} onOpenSettings={() => setIsWebsiteSettingsOpen(true)} />
 
                     <WebsiteLaunchGuide pages={pages || []} onNewPage={() => setIsNewPageOpen(true)} />
 
@@ -259,6 +264,8 @@ export default function Index({ website, pages, inquiryCount = 0, globalHeaderBl
                     <section><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-white">Pages</p><p className="mt-1 text-sm text-slate-400">Open a page in Builder to edit its blocks and layout.</p></div><span className="text-xs text-slate-500">{pages?.length || 0} total</span></div>{pages?.length ? <PageList pages={pages} /> : <PageEmptyState onNewPage={() => setIsNewPageOpen(true)} />}</section>
 
                     <NewPagePanel open={isNewPageOpen} onClose={() => setIsNewPageOpen(false)} data={data} setData={setData} errors={errors} processing={processing} onSubmit={handleSubmit} />
+                    {isInquiryInboxOpen ? <InquiryInboxModal website={website} submissions={recentInquiries} onClose={() => setIsInquiryInboxOpen(false)} onCountChange={(difference) => setVisibleInquiryCount((count) => Math.max(0, count + difference))} /> : null}
+                    {isWebsiteSettingsOpen ? <WebsiteSettingsModal website={website} onClose={() => setIsWebsiteSettingsOpen(false)} onSaved={() => { showCosmicNotification({ title: 'Website settings saved', message: 'Download a new connector if you changed the live URL or inquiry recipient email.', tone: 'success' }); router.reload(); }} /> : null}
                     
                     {/* INPUT FORM PANEL */}
                     <div className="hidden p-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">

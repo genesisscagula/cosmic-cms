@@ -50,4 +50,24 @@ class ContactSubmissionController extends Controller
             'submission_id' => $submission->id,
         ], 201);
     }
+
+    public function update(Request $request, Website $website, ContactSubmission $submission)
+    {
+        $this->authorize('update', $website);
+
+        abort_unless($submission->website_id === $website->id, 404);
+
+        $validated = $request->validate([
+            'status' => ['required', 'in:unread,read,archived'],
+        ]);
+
+        $status = $validated['status'];
+        $submission->update([
+            'status' => $status,
+            'read_at' => $status === 'unread' ? null : ($submission->read_at ?? now()),
+            'archived_at' => $status === 'archived' ? now() : null,
+        ]);
+
+        return response()->json(['submission' => $submission->fresh()]);
+    }
 }

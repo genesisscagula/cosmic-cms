@@ -105,6 +105,24 @@ class WebsiteController extends Controller
         return redirect()->route('dashboard', [], 303)->with('success', 'Website deleted.');
     }
 
+    public function updateSettings(Request $request, Website $website)
+    {
+        $this->authorize('update', $website);
+
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'domain' => ['nullable', 'url', 'max:2048'],
+            'contact_email' => ['nullable', 'email', 'max:254'],
+        ]);
+
+        $website->update($validated);
+
+        return response()->json([
+            'status' => 'success',
+            'website' => $website->fresh(),
+        ]);
+    }
+
     public function downloadDeploymentConnector(Website $website, DeploymentConnectorArchive $connector)
     {
         $this->authorize('update', $website);

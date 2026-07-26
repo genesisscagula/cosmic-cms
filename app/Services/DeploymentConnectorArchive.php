@@ -307,7 +307,7 @@ function cosmicDocument(array $page, array $package): string
     $footer = $package['global_footer'] ?? '';
     $body = trim((string) ($page['html'] ?? ''));
 
-    return "<!DOCTYPE html>\n<html lang='en'>\n<head>\n<meta charset='UTF-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n<title>{$title}</title>\n<link rel='preconnect' href='https://fonts.bunny.net'>\n<link href='https://fonts.bunny.net/css?family=figtree:400,500,600,700,800,900&display=swap' rel='stylesheet'>\n<script src='https://cdn.tailwindcss.com'></script>\n<style>html { font-family: Figtree, ui-sans-serif, system-ui, sans-serif; }</style>\n</head>\n<body class='bg-[#0b0f19] text-slate-100 min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}\n</body>\n</html>";
+    return "<!DOCTYPE html>\n<html lang='en'>\n<head>\n<meta charset='UTF-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n<title>{$title}</title>\n<link rel='preconnect' href='https://fonts.bunny.net'>\n<link href='https://fonts.bunny.net/css?family=figtree:400,500,600,700,800,900&display=swap' rel='stylesheet'>\n<script src='https://cdn.tailwindcss.com'></script>\n<style>html{font-family:Figtree,ui-sans-serif,system-ui,sans-serif}[data-cosmic-contact-form] select{color-scheme:dark;background-color:#334b67;color:#f8fafc}[data-cosmic-contact-form] select option{background-color:#334b67;color:#f8fafc}[data-cosmic-contact-form] input[type=date]{color-scheme:dark}</style>\n</head>\n<body class='bg-[#0b0f19] text-slate-100 min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}\n</body>\n</html>";
 }
 
 function cosmicCleanUrlRules(): string

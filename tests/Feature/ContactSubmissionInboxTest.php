@@ -69,4 +69,31 @@ class ContactSubmissionInboxTest extends TestCase
             ->get(route('websites.inquiries.index', $website))
             ->assertForbidden();
     }
+
+    public function test_an_owner_can_mark_an_inquiry_read_or_archive_it(): void
+    {
+        $owner = User::factory()->create(['email_verified_at' => now()]);
+        $website = $owner->websites()->create([
+            'name' => 'Inbox Actions',
+            'api_token' => Str::random(60),
+        ]);
+        $submission = $website->contactSubmissions()->create([
+            'name' => 'Mia Santos',
+            'email' => 'mia@example.com',
+            'message' => 'Please call me.',
+            'received_at' => now(),
+        ]);
+
+        $this->actingAs($owner)
+            ->patchJson(route('websites.inquiries.update', [$website, $submission]), ['status' => 'read'])
+            ->assertOk()
+            ->assertJsonPath('submission.status', 'read');
+
+        $this->actingAs($owner)
+            ->patchJson(route('websites.inquiries.update', [$website, $submission]), ['status' => 'archived'])
+            ->assertOk()
+            ->assertJsonPath('submission.status', 'archived');
+
+        $this->assertNotNull($submission->fresh()->archived_at);
+    }
 }

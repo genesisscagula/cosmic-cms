@@ -11,6 +11,7 @@ return [
         "hero_centered_cta",
         "pricing_cards",
         "stats_modern",
+        "contact_form_modern",
     ],
 
     [
@@ -21,6 +22,7 @@ return [
         "testimonials_carousel",
         "image_cta_banner",
         "pricing_cards",
+        "contact_form_modern",
     ],
 
     [
@@ -32,6 +34,7 @@ return [
         "testimonials_carousel",
         "image_cta_banner",
         "stats_modern",
+        "contact_form_modern",
     ],
 
 ];
