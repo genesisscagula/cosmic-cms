@@ -3,7 +3,43 @@ import themeMetadata from "../../Websites/Theme/ThemeMetadata";
 
 function TemplatePreview({ template, large = false }) {
     const theme = themeMetadata.find((item) => item.id === template.themeId) || themeMetadata.find((item) => item.id === "slate");
-    return <div className={`relative overflow-hidden rounded-xl border border-white/10 ${large ? "h-32" : "h-24"}`} style={{ background: `linear-gradient(135deg, ${theme.colors[0]}, ${theme.colors[1]})` }}><div className="absolute inset-x-4 top-4 h-2 rounded-full bg-white/40" /><div className="absolute inset-x-4 top-8 h-7 rounded-md bg-white/25" /><div className="absolute inset-x-4 top-[4.25rem] grid grid-cols-3 gap-1.5"><span className="h-8 rounded bg-white/20" /><span className="h-8 rounded bg-white/20" /><span className="h-8 rounded bg-white/20" /></div></div>;
+    const [primary, surface, text] = theme.colors;
+    const isBlank = template.id === "blank";
+
+    return (
+        <div
+            className={`relative overflow-hidden rounded-xl border border-white/10 ${large ? "h-32" : "h-24"}`}
+            style={{ backgroundColor: surface }}
+        >
+            <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/20" />
+            <div className="absolute inset-x-2.5 top-2.5 flex h-3 items-center gap-1 rounded-md bg-black/20 px-1.5">
+                <span className="h-1 w-1 rounded-full bg-white/50" />
+                <span className="h-1 w-1 rounded-full bg-white/35" />
+                <span className="h-1 w-1 rounded-full bg-white/20" />
+                <span className="ml-1 h-1 w-12 rounded-full bg-white/25" />
+            </div>
+
+            <div
+                className="absolute inset-x-2.5 top-7 rounded-lg p-2.5"
+                style={{ background: isBlank ? "rgba(15, 23, 42, 0.38)" : `linear-gradient(135deg, ${primary}, ${surface})` }}
+            >
+                <div className="h-1 w-8 rounded-full bg-white/65" />
+                <div className="mt-1.5 h-2.5 w-3/5 rounded-sm bg-white/90" />
+                <div className="mt-1 h-1 w-4/5 rounded-full bg-white/45" />
+                {!isBlank && <span className="mt-2 block h-2.5 w-9 rounded-sm bg-white/90" />}
+            </div>
+
+            <div className="absolute inset-x-2.5 bottom-2.5 grid grid-cols-3 gap-1.5">
+                {[0, 1, 2].map((item) => (
+                    <span
+                        key={item}
+                        className="h-4 rounded border border-white/10 bg-white/15"
+                        style={{ backgroundColor: item === 1 ? `${text}35` : undefined }}
+                    />
+                ))}
+            </div>
+        </div>
+    );
 }
 
 export function FeaturedTemplateCard({ template, onPreview, onUse }) {

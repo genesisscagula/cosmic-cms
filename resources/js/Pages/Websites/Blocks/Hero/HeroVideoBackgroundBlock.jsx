@@ -181,6 +181,11 @@ export function HeroVideoBackgroundBlock({
     const posterImageUrl = data.poster_image_url || HeroVideoBackgroundSchema.defaults.poster_image_url;
     const embeddedVideoUrl = getBackgroundVideoEmbedUrl(videoUrl);
     const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
+    const openVideoEditor = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsVideoEditorOpen(true);
+    };
 
     const { props } = usePage();
 
@@ -190,14 +195,7 @@ export function HeroVideoBackgroundBlock({
 
     return (
         <section
-            className={`relative isolate min-h-[680px] overflow-hidden ${theme.bg}`}
-            onClick={(event) => {
-                if (event.target.closest("button, input, textarea, a, .group/text, .group/btn, [data-editable-media]")) {
-                    return;
-                }
-
-                setIsVideoEditorOpen(true);
-            }}
+            className={`relative isolate min-h-[680px] cursor-pointer overflow-hidden ${theme.bg}`}
         >
             <div className="absolute inset-0">
                 {embeddedVideoUrl ? (
@@ -228,19 +226,31 @@ export function HeroVideoBackgroundBlock({
                     </video>
                 )}
 
-                <div className="absolute inset-0 bg-slate-950/65" />
+                {/* Keep the video readable while letting the website's active primary family tint the hero. */}
+                <div
+                    className={`absolute inset-0 ${primaryTheme.bg} opacity-[0.58]`}
+                />
 
-                <div className="absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/65 to-slate-950/20" />
+                <div
+                    className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/35 to-transparent"
+                />
 
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-slate-950/15" />
             </div>
+
+            <button
+                type="button"
+                aria-label="Edit background video"
+                onPointerDown={openVideoEditor}
+                className="absolute inset-0 z-[5] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300"
+            />
 
             <div
                 className={`pointer-events-none absolute -left-40 top-16 h-96 w-96 rounded-full ${primaryTheme.bg} opacity-[0.18] blur-[150px]`}
             />
 
-            <div className="relative z-10 mx-auto flex min-h-[680px] max-w-7xl items-center px-7 py-24 sm:px-10 lg:px-12">
-                <div className="max-w-3xl">
+            <div className="pointer-events-none relative z-10 mx-auto flex min-h-[680px] max-w-7xl items-center px-7 py-24 sm:px-10 lg:px-12">
+                <div className="pointer-events-auto max-w-3xl">
                     <EditableText
                         value={data.tagline}
                         className="block text-xs font-semibold uppercase tracking-[0.34em] text-white/70"
@@ -324,14 +334,13 @@ export function HeroVideoBackgroundBlock({
                         >
                             Edit video
                         </button>
-                        </div>
                     </div>
                 </div>
             </div>
 
-            <div className="absolute bottom-0 left-0 right-0 z-10">
+            <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10">
                 <div className="mx-auto flex max-w-7xl items-end justify-between gap-6 px-7 pb-7 sm:px-10 lg:px-12">
-                    <div className="flex items-center gap-3 text-white/70">
+                    <div className="pointer-events-auto flex items-center gap-3 text-white/70">
                         <span className="flex h-9 w-6 items-start justify-center rounded-full border border-white/30 p-1.5">
                             <span className="h-1.5 w-1.5 rounded-full bg-white" />
                         </span>
@@ -347,7 +356,7 @@ export function HeroVideoBackgroundBlock({
                         />
                     </div>
 
-                    <div data-editable-media className="hidden w-48 overflow-hidden rounded-2xl border border-white/20 bg-slate-950/35 shadow-2xl backdrop-blur sm:block">
+                    <div data-editable-media className="pointer-events-auto hidden w-48 overflow-hidden rounded-2xl border border-white/20 bg-slate-950/35 shadow-2xl backdrop-blur sm:block">
                         <EditableImage
                             websiteId={websiteId}
                             blockIndex={blockIndex}

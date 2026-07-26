@@ -1,148 +1,72 @@
 export default function ThemeCard({
     theme,
     selected,
-    onSelect
+    onSelect,
 }) {
+    const [primary, surface, text] = theme.colors;
 
     return (
-
         <button
             type="button"
             onClick={() => onSelect(theme.id)}
-            className={`
-                group
-                text-left
-                rounded-2xl
-                border
-                overflow-hidden
-                bg-slate-900
-                transition-all
-                duration-200
-
-                hover:-translate-y-1
-                hover:shadow-2xl
-                hover:shadow-black/30
-
-                ${
-                    selected
-                        ? `
-                            border-violet-500
-                            ring-2
-                            ring-violet-500/30
-                            shadow-xl
-                            shadow-violet-950/30
-                          `
-                        : `
-                            border-slate-800
-                            hover:border-slate-600
-                          `
-                }
-            `}
+            aria-pressed={selected}
+            className={`group relative overflow-hidden rounded-xl border text-left transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111113] ${
+                selected
+                    ? "border-violet-400/80 bg-violet-500/[0.07] shadow-[0_0_0_1px_rgba(167,139,250,0.22),0_16px_34px_rgba(0,0,0,0.28)]"
+                    : "border-white/10 bg-[#171719] hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.035]"
+            }`}
         >
-
-            {/* Website Mini Preview */}
-
             <div
-                className="
-                    h-28
-                    p-4
-                    relative
-                    overflow-hidden
-                "
-                style={{
-                    backgroundColor: theme.colors[0]
-                }}
+                className="relative h-28 overflow-hidden border-b border-black/15 p-3"
+                style={{ backgroundColor: primary }}
             >
-
-                
-
-
-                {/* Selected overlay */}
-
-                {selected && (
-
-                    <div
-                        className="
-                            absolute
-                            top-3
-                            right-3
-                            w-7
-                            h-7
-                            rounded-full
-                            bg-violet-600
-                            text-white
-                            flex
-                            items-center
-                            justify-center
-                            text-sm
-                            font-bold
-                            shadow-lg
-                        "
-                    >
-                        ✓
+                <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/25" />
+                <div className="relative rounded-md border border-white/15 bg-black/10 p-2.5 shadow-sm">
+                    <div className="h-1.5 w-12 rounded-full bg-white/70" />
+                    <div className="mt-2 h-4 w-4/5 rounded-sm bg-white/85" />
+                    <div className="mt-1.5 h-1.5 w-3/5 rounded-full bg-white/45" />
+                    <div className="mt-3 flex gap-1.5">
+                        <span className="h-4 w-8 rounded bg-white/90" />
+                        <span className="h-4 w-8 rounded border border-white/45" />
                     </div>
-
-                )}
-
-            </div>
-
-
-            {/* Theme Information */}
-
-            <div
-                className={`
-                    p-4
-                    border-t
-                    transition
-
-                    ${
-                        selected
-                            ? "bg-violet-950/20 border-violet-500/30"
-                            : "bg-slate-900 border-slate-800"
-                    }
-                `}
-            >
-
-                <div className="flex items-start justify-between gap-3">
-
-                    <div>
-
-                        <div className="font-bold text-white">
-                            {theme.name}
-                        </div>
-
-                        <div className="text-xs text-slate-500 mt-1">
-                            {theme.category}
-                        </div>
-
-                    </div>
-
-
-                    {selected && (
-
-                        <span
-                            className="
-                                text-[10px]
-                                uppercase
-                                tracking-wider
-                                font-bold
-                                text-violet-400
-                            "
-                        >
-                            Selected
-                        </span>
-
-                    )}
-
                 </div>
 
-
-                {/* Color Palette */}
-
-
+                {selected && (
+                    <span className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-violet-500 text-sm font-bold text-white shadow-lg shadow-violet-950/60">
+                        ✓
+                    </span>
+                )}
             </div>
 
-        </button>
+            <div className="p-3.5">
+                <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                        <div className="truncate text-sm font-semibold text-white">
+                            {theme.name}
+                        </div>
+                        <div className="mt-1 text-xs text-slate-400">
+                            {theme.category}
+                        </div>
+                    </div>
 
+                    {selected && (
+                        <span className="shrink-0 rounded-full bg-violet-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-violet-300">
+                            Active
+                        </span>
+                    )}
+                </div>
+
+                <div className="mt-3 flex items-center gap-1.5" aria-label={`${theme.name} color palette`}>
+                    {[primary, surface, text].map((color, index) => (
+                        <span
+                            key={`${color}-${index}`}
+                            className="h-2.5 w-2.5 rounded-full border border-white/15"
+                            style={{ backgroundColor: color }}
+                        />
+                    ))}
+                    <span className="ml-1 text-[10px] font-medium text-slate-500">Primary · Surface · Text</span>
+                </div>
+            </div>
+        </button>
     );
 }
