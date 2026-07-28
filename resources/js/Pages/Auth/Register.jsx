@@ -6,8 +6,14 @@ import { Link, useForm } from '@inertiajs/react';
 
 const fieldClass = 'mt-2 block w-full rounded-xl border-slate-700 bg-[#0f1013] px-3.5 py-3 text-sm text-white shadow-none placeholder:text-slate-600 focus:border-emerald-400 focus:ring-emerald-400';
 
-export default function Register() {
-    const { data, setData, post, processing, errors, reset } = useForm({ name: '', email: '', password: '', password_confirmation: '' });
+const planLabels = {
+    starter: 'Starter',
+    growth: 'Growth',
+    pro: 'Pro',
+};
+
+export default function Register({ trialToken = '', trialEmail = '', trialPlan = '' }) {
+    const { data, setData, post, processing, errors, reset } = useForm({ name: '', email: trialEmail, password: '', password_confirmation: '', trial_token: trialToken });
     const submit = (event) => {
         event.preventDefault();
         post(route('register'), { onFinish: () => reset('password', 'password_confirmation') });
@@ -16,6 +22,10 @@ export default function Register() {
     return (
         <GuestLayout title="Create your workspace" subtitle="Start with a website, then shape it in the Cosmic Builder.">
             <form onSubmit={submit} className="space-y-4">
+                {trialToken && <div className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3.5 py-3 text-sm leading-5 text-emerald-100">
+                    Your generated website draft will be added to this workspace after you create your account.
+                    {planLabels[trialPlan] && <span className="mt-1 block text-emerald-200">Selected plan: {planLabels[trialPlan]}.</span>}
+                </div>}
                 <div>
                     <InputLabel htmlFor="name" value="Your name" className="text-sm font-medium text-slate-200" />
                     <TextInput id="name" name="name" value={data.name} className={fieldClass} autoComplete="name" isFocused onChange={(event) => setData('name', event.target.value)} required />

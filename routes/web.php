@@ -8,6 +8,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WebsiteController;
 use App\Http\Controllers\ContactSubmissionController;
 use App\Http\Controllers\BlogPostController;
+use App\Http\Controllers\TrialGenerationController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -22,6 +23,12 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+Route::get('/start', [TrialGenerationController::class, 'create'])->name('start');
+Route::post('/start', [TrialGenerationController::class, 'store'])->middleware('throttle:6,1')->name('trial-generations.store');
+Route::post('/start/{trial:token}/plan', [TrialGenerationController::class, 'selectPlan'])
+    ->middleware('throttle:12,1')
+    ->name('trial-generations.plan.select');
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
