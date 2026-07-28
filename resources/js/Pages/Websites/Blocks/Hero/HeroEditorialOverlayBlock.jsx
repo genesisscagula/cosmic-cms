@@ -68,7 +68,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
                     />
                     <EditableText
                         value={data.heading}
-                        className="mt-5 block text-5xl font-black leading-[1.03] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl"
+                        className="mt-5 block text-5xl font-bold leading-[1.03] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl"
                         onSave={(heading) => onUpdate({ heading })}
                     />
                     <EditableText

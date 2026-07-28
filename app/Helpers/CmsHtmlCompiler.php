@@ -197,7 +197,25 @@ class CmsHtmlCompiler
         return $markup;
     }
 
-   public static function compile(array $blocks, string $primaryColor = null): string
+    /** Compile one published blog post into the same static visual system as the Builder. */
+    public static function compileBlogPost(array $post, string $primaryColor = null): string
+    {
+        $theme = self::getTheme($primaryColor ?: 'emerald');
+        $title = e($post['title'] ?? 'Untitled article');
+        $category = e($post['category'] ?? 'Article');
+        $excerpt = e($post['excerpt'] ?? '');
+        $content = trim((string) ($post['content'] ?? ''));
+        $content = $content !== '' ? nl2br(e($content)) : $excerpt;
+        $image = e(self::staticAssetUrl($post['image_url'] ?? '/storage/cms-images/background/background-1.avif'));
+        $tags = is_array($post['tags'] ?? null) ? array_slice($post['tags'], 0, 8) : [];
+        $tagMarkup = collect($tags)
+            ->map(fn ($tag) => "<span class='rounded-full border px-3 py-1 text-xs font-medium {$theme['border']} {$theme['sub']}'>" . e((string) $tag) . '</span>')
+            ->implode('');
+
+        return "<article class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-4xl'><a href='blog/' class='text-sm font-semibold {$theme['sub']} hover:underline'>← Back to articles</a><p class='mt-12 text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$category}</p><h1 class='mt-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl {$theme['text']}'>{$title}</h1><p class='mt-6 max-w-3xl text-lg leading-8 {$theme['sub']}'>{$excerpt}</p><img src='{$image}' alt='{$title}' class='mt-10 aspect-[16/8] w-full rounded-3xl object-cover'><div class='mt-8 flex flex-wrap gap-2'>{$tagMarkup}</div><div class='mt-10 max-w-3xl text-base leading-8 {$theme['sub']}'>{$content}</div></div></article>";
+    }
+
+   public static function compile(array $blocks, string $primaryColor = null, array $context = []): string
     {
         $html = "";
     
@@ -248,6 +266,108 @@ class CmsHtmlCompiler
             $stoneTheme = self::getTheme('stone');
 
             switch ($type) {
+                case 'newsletter_cta':
+                // Editorial newsletter callouts remain neutral so they pair
+                // with the white Blog Hub regardless of the website theme.
+                $eyebrow = e($block['eyebrow'] ?? 'Stay in the loop');
+                $heading = e($block['heading'] ?? 'Get weekly insights');
+                $text = e($block['text'] ?? 'Practical ideas, useful updates, and new resources delivered occasionally.');
+                $placeholder = e($block['placeholder'] ?? 'Your email address');
+                $buttonLabel = e($block['button_label'] ?? 'Subscribe');
+                $disclaimer = e($block['disclaimer'] ?? 'No spam. Unsubscribe anytime.');
+                $html .= "<section class='bg-[#fcfcfb] px-6 py-14 sm:px-8 lg:px-12 lg:py-20'><div class='mx-auto max-w-7xl'><div class='rounded-3xl border border-slate-800 bg-slate-950 px-6 py-10 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:px-10 lg:flex lg:items-center lg:justify-between lg:gap-12 lg:px-14 lg:py-12'><div class='max-w-2xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] text-violet-200'>{$eyebrow}</p><h2 class='mt-4 text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl'>{$heading}</h2><p class='mt-4 max-w-xl text-base leading-7 text-slate-300'>{$text}</p></div><form class='mt-8 w-full max-w-md lg:mt-0' onsubmit='return false'><div class='flex flex-col gap-3 sm:flex-row'><input type='email' aria-label='Email address' placeholder='{$placeholder}' class='min-h-[50px] flex-1 rounded-xl border border-white/15 bg-white/10 px-4 text-sm text-white placeholder:text-slate-400 outline-none'><button type='submit' class='min-h-[50px] rounded-xl bg-white px-6 text-sm font-bold text-slate-950'>{$buttonLabel}</button></div><p class='mt-3 text-xs text-slate-400'>{$disclaimer}</p></form></div></div></section>";
+                break;
+
+                case 'latest_resources':
+                $eyebrow = e($block['eyebrow'] ?? 'Keep exploring');
+                $heading = e($block['heading'] ?? 'Latest resources');
+                $text = e($block['text'] ?? 'Helpful next reads for visitors who want to learn more.');
+                $resources = is_array($block['resources'] ?? null) ? array_slice($block['resources'], 0, 2) : [
+                    ['eyebrow' => 'Guide', 'title' => 'A practical checklist for your next step', 'text' => 'A concise starting point for making a clearer, more confident decision.', 'cta_label' => 'Read the guide', 'cta_url' => '#'],
+                    ['eyebrow' => 'Resource', 'title' => 'Questions worth asking before you begin', 'text' => 'Use this focused resource to prepare for a better conversation with your team.', 'cta_label' => 'Explore resource', 'cta_url' => '#'],
+                ];
+                $resourceMarkup = '';
+                foreach ($resources as $resource) {
+                    if (!is_array($resource)) continue;
+                    $resourceMarkup .= "<article class='group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg sm:p-8'><p class='text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-700'>" . e($resource['eyebrow'] ?? 'Resource') . "</p><h3 class='mt-4 text-2xl font-bold leading-tight tracking-tight text-slate-900'>" . e($resource['title'] ?? '') . "</h3><p class='mt-4 text-sm leading-6 text-slate-600'>" . e($resource['text'] ?? '') . "</p><a href='" . e($resource['cta_url'] ?? '#') . "' class='mt-7 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 transition group-hover:decoration-slate-900'>" . e($resource['cta_label'] ?? 'Read more') . "</a></article>";
+                }
+                $html .= "<section class='bg-[#fcfcfb] px-6 py-16 sm:px-8 lg:px-12 lg:py-24'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] text-slate-500'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 text-slate-600'>{$text}</p></div><div class='mt-10 grid gap-5 md:grid-cols-2'>{$resourceMarkup}</div></div></section>";
+                break;
+
+                case 'blog_mini_hero':
+                $eyebrow = e($block['eyebrow'] ?? 'Latest insights');
+                $heading = e($block['heading'] ?? 'Ideas for building a better business');
+                $text = e($block['text'] ?? 'Practical notes, useful perspectives, and updates from our team.');
+                $html .= "<section class='relative overflow-hidden border-b px-6 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']} {$theme['border']}'><div class='pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full {$theme['card']} opacity-10 blur-3xl'></div><div class='relative mx-auto max-w-7xl'><div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h1 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h1><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$theme['sub']}'>{$text}</p></div></div></section>";
+                break;
+
+                case 'blog_hub':
+                // Editorial hubs are intentionally neutral. Unlike surrounding
+                // hero/supporting sections, their reading surface never inherits
+                // the website's primary color.
+                $theme = self::getTheme('white');
+                $eyebrow = e($block['eyebrow'] ?? 'Latest insights');
+                $heading = e($block['heading'] ?? 'Ideas for building a better business');
+                $text = e($block['text'] ?? 'Practical notes, useful perspectives, and updates from our team.');
+                $showIntro = ($block['show_intro'] ?? true) !== false;
+                $featured = is_array($block['featured'] ?? null) ? $block['featured'] : [];
+                $featuredCategory = e($featured['category'] ?? 'Featured article');
+                $featuredTitle = e($featured['title'] ?? 'A clearer way to plan your next project');
+                $featuredExcerpt = e($featured['excerpt'] ?? 'Thoughtful guidance for turning a good idea into a focused, useful website.');
+                $featuredImage = e(self::staticAssetUrl($featured['image_url'] ?? '/storage/cms-images/background/background-1.avif'));
+                $featuredCta = e($featured['cta_label'] ?? 'Read article');
+                $featuredUrl = e($featured['url'] ?? '#');
+                $posts = is_array($block['posts'] ?? null) ? array_slice($block['posts'], 0, 4) : [
+                    ['category' => 'Strategy', 'title' => 'Start with the problem worth solving', 'excerpt' => 'A simple framework for making your first website decisions clearer.', 'image_url' => '/storage/cms-images/background/background-2.avif'],
+                    ['category' => 'Design', 'title' => 'Consistency earns customer trust', 'excerpt' => 'A focused visual system helps every page feel more credible.', 'image_url' => '/storage/cms-images/background/background-3.avif'],
+                    ['category' => 'Updates', 'title' => 'What a publish-ready website needs', 'excerpt' => 'The details that help you go from draft to a confident launch.', 'image_url' => '/storage/cms-images/background/background-5.avif'],
+                    ['category' => 'Growth', 'title' => 'Make your next update easier to manage', 'excerpt' => 'Keep content and customer questions organized.', 'image_url' => '/storage/cms-images/background/background-1.avif'],
+                ];
+                // The deployment package provides only published database posts.
+                // Keep the starter cards for legacy/static previews with no context.
+                if (array_key_exists('blog_posts', $context)) {
+                    $contextPosts = is_array($context['blog_posts']) ? $context['blog_posts'] : [];
+                    $featuredIndex = null;
+
+                    foreach ($contextPosts as $index => $post) {
+                        if (is_array($post) && !empty($post['is_featured'])) {
+                            $featuredIndex = $index;
+                            break;
+                        }
+                    }
+
+                    if ($featuredIndex !== null) {
+                        $featured = $contextPosts[$featuredIndex];
+                        unset($contextPosts[$featuredIndex]);
+                    } else {
+                        $featured = array_shift($contextPosts);
+                    }
+
+                    $posts = array_slice(array_values($contextPosts), 0, 4);
+
+                    if (is_array($featured)) {
+                        $featuredCategory = e($featured['category'] ?? 'Featured article');
+                        $featuredTitle = e($featured['title'] ?? 'Untitled article');
+                        $featuredExcerpt = e($featured['excerpt'] ?? '');
+                        $featuredImage = e(self::staticAssetUrl($featured['image_url'] ?? '/storage/cms-images/background/background-1.avif'));
+                        $featuredCta = 'Read article';
+                        $featuredUrl = e($featured['url'] ?? '#');
+                    }
+                }
+
+                $postMarkup = '';
+                foreach ($posts as $post) {
+                    if (!is_array($post)) continue;
+                    $postUrl = e($post['url'] ?? '#');
+                    $postMarkup .= "<article class='overflow-hidden rounded-2xl border {$theme['border']} {$theme['card']}'><img src='" . e(self::staticAssetUrl($post['image_url'] ?? '/storage/cms-images/background/background-1.avif')) . "' alt='" . e($post['title'] ?? 'Article image') . "' class='h-44 w-full object-cover'><div class='p-5'><p class='text-[11px] font-semibold uppercase tracking-[0.2em] {$theme['sub']}'>" . e($post['category'] ?? 'Article') . "</p><h3 class='mt-3 text-lg font-bold leading-snug {$theme['text']}'>" . e($post['title'] ?? '') . "</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>" . e($post['excerpt'] ?? '') . "</p><a href='{$postUrl}' class='mt-4 inline-block text-sm font-semibold {$theme['text']} hover:underline'>Read article</a></div></article>";
+                }
+                $introMarkup = $showIntro
+                    ? "<div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 {$theme['sub']}'>{$text}</p></div>"
+                    : '';
+                $featuredSpacing = $showIntro ? 'mt-12' : '';
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$introMarkup}<article class='{$featuredSpacing} grid overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} md:grid-cols-2'><img src='{$featuredImage}' alt='{$featuredTitle}' class='min-h-[260px] h-full w-full object-cover'><div class='flex min-h-[260px] flex-col justify-center p-7 sm:p-10'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$featuredCategory}</p><h3 class='mt-4 text-3xl font-bold tracking-tight {$theme['text']}'>{$featuredTitle}</h3><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$featuredExcerpt}</p><a href='{$featuredUrl}' class='mt-7 text-sm font-semibold {$theme['text']} hover:underline'>{$featuredCta}</a></div></article><div class='mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>{$postMarkup}</div></div></section>";
+                break;
+
                 case 'hero_centered_cta':
                 $tagline = e($block['tagline'] ?? 'LOREM IPSUM DOLOR');
                 $heading = e($block['heading'] ?? '');
@@ -266,7 +386,7 @@ class CmsHtmlCompiler
                         <span class='block text-xs font-semibold uppercase tracking-[0.32em] {$theme['sub']}'>
                             {$tagline}
                         </span>
-                        <h1 class='block max-w-5xl text-5xl font-black leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
+                        <h1 class='block max-w-5xl text-5xl font-bold leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
                             {$heading}
                         </h1>
                         <p class='mx-auto max-w-3xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>
@@ -278,6 +398,141 @@ class CmsHtmlCompiler
                     </div>
                 </section>";
 
+                break;
+
+                case 'faq_accordion':
+                $eyebrow = e($block['eyebrow'] ?? 'Helpful answers');
+                $heading = e($block['heading'] ?? 'Questions, answered clearly');
+                $text = e($block['text'] ?? 'Everything visitors need to know before taking the next step.');
+                $faqs = is_array($block['faqs'] ?? null) ? array_slice($block['faqs'], 0, 8) : [];
+                if (empty($faqs)) {
+                    $faqs = [
+                        ['question' => 'What can I expect?', 'answer' => 'Clear communication, practical guidance, and a straightforward next step.'],
+                        ['question' => 'How do I get started?', 'answer' => 'Send an inquiry and we will help you choose the option that fits your needs.'],
+                        ['question' => 'Can I ask a specific question?', 'answer' => 'Absolutely. Share a little context and we will point you in the right direction.'],
+                        ['question' => 'When will I hear back?', 'answer' => 'We aim to respond as soon as we can with the details you need.'],
+                    ];
+                }
+                $faqMarkup = '';
+                foreach ($faqs as $faq) {
+                    $question = e($faq['question'] ?? 'Question');
+                    $answer = e($faq['answer'] ?? 'Answer');
+                    $faqMarkup .= "<details class='group border-b p-5 last:border-b-0 sm:p-6 {$theme['border']}'><summary class='flex cursor-pointer list-none items-center justify-between gap-5 text-base font-semibold {$theme['text']}'><span>{$question}</span><span class='text-xl transition group-open:rotate-45'>+</span></summary><p class='pt-4 text-sm leading-6 {$theme['sub']}'>{$answer}</p></details>";
+                }
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16'><div><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='overflow-hidden rounded-2xl border {$theme['border']} {$theme['card']}'>{$faqMarkup}</div></div></section>";
+                break;
+
+                case 'contact_details':
+                $eyebrow = e($block['eyebrow'] ?? 'Get in touch');
+                $heading = e($block['heading'] ?? 'A clear way to reach us');
+                $text = e($block['text'] ?? 'Share what you need and we will help you find the right next step.');
+                $details = [
+                    'Email' => e($block['email'] ?? 'hello@example.com'),
+                    'Phone' => e($block['phone'] ?? '+1 (555) 010-0200'),
+                    'Visit' => e($block['address'] ?? 'Serving clients by appointment'),
+                    'Hours' => e($block['hours'] ?? 'Monday to Friday, 9:00 AM to 5:00 PM'),
+                ];
+                $detailMarkup = '';
+                $detailIndex = 0;
+                foreach ($details as $label => $value) {
+                    $bottom = $detailIndex < 2 ? 'border-b' : '';
+                    $right = $detailIndex % 2 === 0 ? 'sm:border-r' : '';
+                    $detailMarkup .= "<div class='min-h-36 p-6 {$bottom} {$right} {$theme['border']}'><p class='text-xs font-semibold uppercase tracking-[0.18em] {$theme['sub']}'>{$label}</p><p class='mt-4 text-base font-semibold leading-6 {$theme['text']}'>{$value}</p></div>";
+                    $detailIndex++;
+                }
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-2 lg:gap-16'><div><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='grid overflow-hidden rounded-2xl border sm:grid-cols-2 {$theme['border']} {$theme['card']}'>{$detailMarkup}</div></div></section>";
+                break;
+
+                case 'location_map':
+                $eyebrow = e($block['eyebrow'] ?? 'Find us');
+                $heading = e($block['heading'] ?? 'Close when you need us');
+                $text = e($block['text'] ?? 'Visit by appointment or get in touch to confirm the best time.');
+                $locationName = e($block['location_name'] ?? 'Your business location');
+                $address = e($block['address'] ?? 'Serving your local area');
+                $serviceArea = e($block['service_area'] ?? 'Appointments and service visits available.');
+                $directionsLabel = e($block['directions_label'] ?? 'Get directions');
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16'><div><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='relative min-h-[22rem] overflow-hidden rounded-3xl border p-7 sm:p-9 {$theme['border']} {$theme['card']}'><div class='absolute inset-0 opacity-30 [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:2.5rem_2.5rem] {$theme['sub']}'></div><div class='relative flex min-h-[16rem] h-full flex-col justify-between'><div class='grid h-14 w-14 place-items-center rounded-full border-8 {$theme['border']} {$theme['bg']}'><span class='h-3 w-3 rounded-full bg-current {$theme['text']}'></span></div><div class='max-w-md rounded-2xl border p-5 backdrop-blur {$theme['border']} {$theme['card']}'><p class='text-lg font-semibold {$theme['text']}'>{$locationName}</p><p class='mt-2 text-sm leading-6 {$theme['sub']}'>{$address}</p><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$serviceArea}</p><span class='mt-5 inline-block text-sm font-semibold {$theme['text']}'>{$directionsLabel}</span></div></div></div></div></section>";
+                break;
+
+                case 'case_studies_grid':
+                $eyebrow = e($block['eyebrow'] ?? 'Selected work');
+                $heading = e($block['heading'] ?? 'Results that make the difference.');
+                $text = e($block['text'] ?? 'A closer look at practical work shaped around clear goals and useful outcomes.');
+                $studies = is_array($block['studies'] ?? null) ? array_slice($block['studies'], 0, 12) : [];
+                $studyFallbacks = [
+                    '/storage/cms-images/background/background-1.avif',
+                    '/storage/cms-images/background/background-2.avif',
+                    '/storage/cms-images/background/background-3.avif',
+                ];
+                if (empty($studies)) {
+                    $studies = [[
+                        'category' => 'Selected work',
+                        'title' => 'A clearer path forward',
+                        'summary' => 'A focused project built around useful decisions and a stronger customer experience.',
+                        'result' => 'Ready for the next step',
+                        'link_label' => 'View case study',
+                    ]];
+                }
+                $studyMarkup = '';
+                foreach ($studies as $index => $study) {
+                    $imageSource = trim((string) ($study['image_url'] ?? ''));
+                    if ($imageSource === '') {
+                        $imageSource = $studyFallbacks[$index % count($studyFallbacks)];
+                    }
+                    $imageUrl = e(self::staticAssetUrl($imageSource));
+                    $category = e($study['category'] ?? 'Selected work');
+                    $title = e($study['title'] ?? 'A clearer path forward');
+                    $summary = e($study['summary'] ?? 'A focused project built around useful decisions and a stronger customer experience.');
+                    $result = e($study['result'] ?? 'Ready for the next step');
+                    $linkLabel = e($study['link_label'] ?? 'View case study');
+                    $featured = $index === 0 ? 'lg:col-span-2 lg:grid lg:grid-cols-2' : '';
+                    $imageHeight = $index === 0 ? 'min-h-[18rem] lg:h-full' : 'aspect-[16/10]';
+                    $studyMarkup .= "<article class='group overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} {$featured}'><img src='{$imageUrl}' alt='' class='w-full object-cover {$imageHeight}'><div class='flex flex-col justify-center p-6 sm:p-8 " . ($index === 0 ? 'lg:p-10' : '') . "'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$category}</p><h3 class='mt-4 text-2xl font-bold leading-tight tracking-tight {$theme['text']}'>{$title}</h3><p class='mt-4 text-sm leading-6 {$theme['sub']}'>{$summary}</p><p class='mt-6 text-sm font-semibold {$theme['text']}'>{$result}</p><span class='mt-5 text-sm font-semibold {$theme['text']}'>{$linkLabel}</span></div></article>";
+                }
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='mb-10 max-w-2xl sm:mb-12'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='grid gap-5 lg:grid-cols-2'>{$studyMarkup}</div></div></section>";
+                break;
+
+                case 'jobs_list':
+                $eyebrow = e($block['eyebrow'] ?? 'Join our team');
+                $heading = e($block['heading'] ?? 'Do work that moves things forward.');
+                $text = e($block['text'] ?? 'We are looking for thoughtful people who care about good work and shared progress.');
+                $jobs = is_array($block['jobs'] ?? null) ? array_slice($block['jobs'], 0, 16) : [];
+                if (empty($jobs)) {
+                    $jobs = [['title' => 'Your next role', 'type' => 'Full-time', 'location' => 'By arrangement', 'description' => 'A meaningful opportunity for someone ready to contribute thoughtful work.', 'button_label' => 'View role']];
+                }
+                $jobMarkup = '';
+                foreach ($jobs as $index => $job) {
+                    $title = e($job['title'] ?? 'Your next role');
+                    $type = e($job['type'] ?? 'Full-time');
+                    $location = e($job['location'] ?? 'By arrangement');
+                    $description = e($job['description'] ?? 'A meaningful opportunity for someone ready to contribute thoughtful work.');
+                    $buttonLabel = e($job['button_label'] ?? 'View role');
+                    $topBorder = $index > 0 ? "border-t {$theme['border']}" : '';
+                    $jobMarkup .= "<article class='grid gap-5 p-6 sm:p-7 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-center {$topBorder}'><div><div class='flex flex-wrap items-center gap-3'><h3 class='text-xl font-bold {$theme['text']}'>{$title}</h3><span class='rounded-full border px-2.5 py-1 text-xs font-semibold {$theme['border']} {$theme['sub']}'>{$type}</span></div><p class='mt-2 text-sm font-medium {$theme['sub']}'>{$location}</p><p class='mt-3 max-w-2xl text-sm leading-6 {$theme['sub']}'>{$description}</p></div><span class='text-sm font-semibold {$theme['text']}'>{$buttonLabel}</span></article>";
+                }
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='mb-10 max-w-2xl sm:mb-12'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='overflow-hidden rounded-2xl border {$theme['border']} {$theme['card']}'>{$jobMarkup}</div></div></section>";
+                break;
+
+                case 'events_grid':
+                $eyebrow = e($block['eyebrow'] ?? 'Upcoming events');
+                $heading = e($block['heading'] ?? 'Useful conversations, coming up.');
+                $text = e($block['text'] ?? 'Join practical sessions, thoughtful gatherings, and opportunities to connect with our team.');
+                $events = is_array($block['events'] ?? null) ? array_slice($block['events'], 0, 12) : [];
+                if (empty($events)) {
+                    $events = [['month' => 'OCT', 'day' => '12', 'title' => 'A useful conversation for your next move', 'date' => 'October 12', 'location' => 'Online', 'description' => 'A focused session with useful ideas you can put into action right away.', 'button_label' => 'Learn more']];
+                }
+                $eventMarkup = '';
+                foreach ($events as $event) {
+                    $month = e($event['month'] ?? 'OCT');
+                    $day = e($event['day'] ?? '12');
+                    $title = e($event['title'] ?? 'A useful conversation for your next move');
+                    $date = e($event['date'] ?? 'Date to be announced');
+                    $location = e($event['location'] ?? 'By arrangement');
+                    $description = e($event['description'] ?? 'A focused session with useful ideas you can put into action right away.');
+                    $buttonLabel = e($event['button_label'] ?? 'Learn more');
+                    $eventMarkup .= "<article class='flex min-h-full flex-col rounded-2xl border p-6 {$theme['border']} {$theme['card']}'><div class='flex items-start gap-4'><div class='grid h-16 w-16 shrink-0 place-items-center rounded-xl border text-center {$theme['border']}'><span class='block text-[10px] font-bold tracking-[0.18em] {$theme['sub']}'>{$month}</span><span class='block text-2xl font-bold leading-none {$theme['text']}'>{$day}</span></div><div><p class='text-xs font-semibold {$theme['sub']}'>{$date}</p><p class='mt-1 text-xs {$theme['sub']}'>{$location}</p></div></div><h3 class='mt-7 text-xl font-bold leading-tight {$theme['text']}'>{$title}</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$description}</p><span class='mt-6 text-sm font-semibold {$theme['text']}'>{$buttonLabel}</span></article>";
+                }
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='mb-10 max-w-2xl sm:mb-12'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='grid gap-5 md:grid-cols-3'>{$eventMarkup}</div></div></section>";
                 break;
 
                 case 'contact_form_modern':
@@ -311,7 +566,7 @@ class CmsHtmlCompiler
                     <div class='relative mx-auto grid max-w-7xl gap-12 lg:grid-cols-[0.88fr_1.12fr] lg:items-start lg:gap-20'>
                         <div class='max-w-xl pt-2'>
                             <p class='text-xs font-semibold uppercase tracking-[0.3em] {$theme['sub']}'>{$eyebrow}</p>
-                            <h2 class='mt-5 text-4xl font-black leading-[1.06] tracking-tight sm:text-5xl lg:text-6xl {$theme['text']}'>{$heading}</h2>
+                            <h2 class='mt-5 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2>
                             <p class='mt-5 text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p>
                             <div class='mt-9 space-y-4 border-t pt-7 {$theme['border']}'>
                                 <div><p class='text-xs font-semibold uppercase tracking-[0.18em] {$theme['sub']}'>Email</p><p class='mt-1 text-base font-semibold {$theme['text']}'>{$email}</p></div>
@@ -437,7 +692,7 @@ HTML;
                             <span class='text-xs font-semibold tracking-[0.35em] uppercase {$theme['text']} opacity-70 block'>
                                 {$tagline}
                             </span>
-                            <h2 class='mt-5 text-5xl md:text-6xl font-bold tracking-tight leading-tight {$theme['text']}'>
+                            <h2 class='mt-5 text-4xl font-bold tracking-tight leading-[1.05] sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>
                                 {$heading}
                             </h2>
                             <p class='mt-6 text-lg leading-8 {$theme['sub']}'>
@@ -472,23 +727,72 @@ HTML;
                 $buttonBg = $theme['bg'];
                 $buttonText = $theme['text'];
 
-                $navHtml = "";
+                $renderMenu = function (array $items, int $depth = 0) use (&$renderMenu, $menuText): string {
+                    $itemsHtml = '';
 
-                foreach ($menuItems as $item) {
-                    $url = e($item['url'] ?? '#');
-                    $label = e($item['label'] ?? '');
+                    foreach ($items as $item) {
+                        if (! is_array($item)) continue;
+                        $url = e($item['url'] ?? '#');
+                        $label = e($item['label'] ?? '');
+                        $children = is_array($item['children'] ?? null) ? $item['children'] : [];
+                        $hasChildren = count($children) > 0;
+                        $dropdown = '';
 
-                    $navHtml .= "
-                        <li>
-                            <a href='{$url}' class='{$menuText} hover:text-slate-900 transition'>
-                                {$label}
-                            </a>
-                        </li>
-                    ";
-                }
+                        if ($hasChildren) {
+                            // The wrapper touches its parent. The inner padding creates visual
+                            // space without a hover gap that would close the submenu.
+                            $dropdownPosition = $depth > 0
+                                ? 'left-full top-0 pl-2'
+                                : 'left-0 top-full pt-2';
+                            $borderClass = $depth > 0 ? 'border-slate-300' : 'border-slate-200';
+                            $dropdown = "<div class='menu-dropdown absolute {$dropdownPosition} z-50 min-w-52'>"
+                                . "<ul class='list-none rounded-xl border {$borderClass} bg-white p-2 shadow-2xl ring-1 ring-slate-950/5'>"
+                                . $renderMenu($children, $depth + 1)
+                                . "</ul></div>";
+                        }
+
+                        $menuClass = $hasChildren ? "menu-node menu-depth-{$depth} relative" : 'menu-leaf';
+                        $itemsHtml .= "<li class='{$menuClass}'>"
+                            . "<a href='{$url}' class='{$menuText} flex items-center gap-1 whitespace-nowrap hover:text-slate-900 transition'>{$label}" . ($hasChildren ? "<span aria-hidden='true' class='text-xs'>⌄</span>" : '') . "</a>"
+                            . $dropdown
+                            . "</li>";
+                    }
+
+                    return $itemsHtml;
+                };
+
+                $navHtml = $renderMenu(is_array($menuItems) ? $menuItems : []);
 
                 $html .= "
-                <header class='w-full {$headerBg} flex flex-wrap items-center justify-between gap-4 border-b {$headerBorder} px-6 py-4 sm:px-[8%] sm:py-6 sticky top-0 z-50 shadow-sm'>
+                <style>
+                    .cosmic-static-header .menu-node > a > span[aria-hidden='true'] { display: none; }
+                    .cosmic-static-header .menu-node > a::after {
+                        content: '';
+                        width: .42rem;
+                        height: .42rem;
+                        margin-left: .15rem;
+                        border-right: 1.5px solid currentColor;
+                        border-bottom: 1.5px solid currentColor;
+                        transform: rotate(45deg) translateY(-2px);
+                        transition: transform .2s ease;
+                    }
+                    .cosmic-static-header .menu-node:hover > a::after,
+                    .cosmic-static-header .menu-node:focus-within > a::after {
+                        transform: rotate(225deg) translate(-1px, -1px);
+                    }
+                    .cosmic-static-header .menu-node > .menu-dropdown { display: none; }
+                    .cosmic-static-header .menu-node:hover > .menu-dropdown,
+                    .cosmic-static-header .menu-node:focus-within > .menu-dropdown { display: block; }
+                    .cosmic-static-header .menu-dropdown > ul > li > a {
+                        display: flex;
+                        padding: .55rem .75rem;
+                        border-radius: .5rem;
+                    }
+                    .cosmic-static-header .menu-dropdown > ul > li > a:hover {
+                        background: rgb(241 245 249);
+                    }
+                </style>
+                <header class='cosmic-static-header w-full {$headerBg} flex flex-wrap items-center justify-between gap-4 border-b {$headerBorder} px-6 py-4 sm:px-[8%] sm:py-6 sticky top-0 z-50 shadow-sm'>
                     <div class='text-xl font-extrabold tracking-wide {$headerText}'>
                         {$logo}
                     </div>
@@ -542,7 +846,7 @@ HTML;
                             <span class='block text-xs font-semibold uppercase tracking-[0.30em] {$theme['sub']}'>
                                 {$category}
                             </span>
-                            <h2 class='block text-5xl md:text-6xl font-bold leading-tight tracking-tight {$theme['text']}'>
+                            <h2 class='block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>
                                 {$heading}
                             </h2>
                             <p class='block text-lg leading-8 max-w-xl {$theme['sub']}'>
@@ -578,7 +882,7 @@ HTML;
                             <span class='block text-xs font-semibold uppercase tracking-[0.30em] {$theme['sub']}'>
                                 {$category}
                             </span>
-                            <h2 class='block text-5xl md:text-6xl font-bold leading-tight tracking-tight {$theme['text']}'>
+                            <h2 class='block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>
                                 {$heading}
                             </h2>
                             <p class='block text-lg leading-8 max-w-xl {$theme['sub']}'>
@@ -650,7 +954,7 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h2 class='mt-5 text-5xl md:text-6xl font-bold tracking-tight leading-tight {$theme['text']}'>
+                            <h2 class='mt-5 text-4xl font-bold tracking-tight leading-[1.05] sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>
                                 {$heading}
                             </h2>
 
@@ -730,7 +1034,7 @@ HTML;
                                 {$category}
                             </span>
 
-                            <h2 class='block text-5xl md:text-6xl font-bold leading-tight tracking-tight {$theme['text']}'>
+                            <h2 class='block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>
                                 {$heading}
                             </h2>
 
@@ -804,7 +1108,7 @@ HTML;
                 }
 
                 $html .= "
-                            <h2 class='block text-3xl font-bold tracking-tight sm:text-4xl {$theme['text']}'>{$heading}</h2>";
+                            <h2 class='block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2>";
 
                 if ($text !== '') {
                     $html .= "<p class='block max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p>";
@@ -822,7 +1126,7 @@ HTML;
 
                     $html .= "
                             <article class='min-w-0 border-b p-6 last:border-b-0 sm:border-b-0 sm:border-r {$lastBorder} lg:p-7 {$theme['border']}'>
-                                <div class='block text-4xl font-bold tracking-tight sm:text-5xl {$theme['text']}'>{$value}</div>
+                                <div class='block text-3xl font-bold tracking-tight sm:text-4xl {$theme['text']}'>{$value}</div>
                                 <h3 class='mt-3 block text-sm font-semibold {$theme['text']}'>{$label}</h3>";
 
                     if ($description !== '') {
@@ -830,6 +1134,67 @@ HTML;
                     }
 
                     $html .= "</article>";
+                }
+
+                $html .= "
+                        </div>
+                    </div>
+                </section>";
+
+                break;
+
+
+                case 'team_modern':
+
+                $eyebrow = e($block['eyebrow'] ?? 'Meet the team');
+                $heading = e($block['heading'] ?? 'The people behind the work');
+                $text = e($block['text'] ?? 'A dedicated team focused on thoughtful service, clear communication, and dependable results.');
+                $members = is_array($block['members'] ?? null) ? $block['members'] : [];
+
+                if (empty($members)) {
+                    $members = [
+                        ['name' => 'Alex Morgan', 'role' => 'Founder & Director', 'bio' => 'Guides the team with a practical, client-first approach.', 'image_url' => '/storage/cms-images/avatars/avatar-1.jpg'],
+                        ['name' => 'Jordan Lee', 'role' => 'Client Experience Lead', 'bio' => 'Keeps every project organized, responsive, and easy to navigate.', 'image_url' => '/storage/cms-images/avatars/avatar-2.jpg'],
+                        ['name' => 'Taylor Brooks', 'role' => 'Creative Lead', 'bio' => 'Turns clear ideas into useful, polished digital experiences.', 'image_url' => '/storage/cms-images/avatars/avatar-3.jpg'],
+                        ['name' => 'Casey Rivera', 'role' => 'Operations Manager', 'bio' => 'Makes sure quality and momentum stay consistent from start to finish.', 'image_url' => '/storage/cms-images/avatars/avatar-4.jpg'],
+                    ];
+                }
+
+                $html .= "
+                <section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']} transition-colors duration-500'>
+                    <div class='mx-auto max-w-7xl'>
+                        <div class='mb-10 max-w-2xl space-y-4 sm:mb-12'>";
+
+                if ($eyebrow !== '') {
+                    $html .= "<span class='block text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</span>";
+                }
+
+                $html .= "<h2 class='block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2>";
+
+                if ($text !== '') {
+                    $html .= "<p class='block max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p>";
+                }
+
+                $html .= "</div><div class='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4'>";
+
+                foreach ($members as $member) {
+                    $name = e($member['name'] ?? '');
+                    $role = e($member['role'] ?? '');
+                    $bio = e($member['bio'] ?? '');
+                    $imageUrl = self::staticAssetUrl($member['image_url'] ?? '');
+
+                    $html .= "
+                        <article class='overflow-hidden rounded-2xl border {$theme['border']} {$theme['card']}'>
+                            <img src='{$imageUrl}' alt='{$name}' class='aspect-[4/3] w-full object-cover' loading='lazy'>
+                            <div class='space-y-2 p-5'>
+                                <h3 class='block text-base font-semibold {$theme['text']}'>{$name}</h3>
+                                <p class='block text-sm font-medium {$theme['sub']}'>{$role}</p>";
+
+                    if ($bio !== '') {
+                        $html .= "<p class='block pt-1 text-sm leading-6 {$theme['sub']}'>{$bio}</p>";
+                    }
+
+                    $html .= "</div></article>";
                 }
 
                 $html .= "
@@ -859,7 +1224,7 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h2 class='block mt-5 text-5xl md:text-6xl font-bold leading-tight tracking-tight {$theme['text']}'>
+                            <h2 class='block mt-5 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>
                                 {$heading}
                             </h2>
 
@@ -1005,7 +1370,7 @@ HTML;
                             {$tagline}
                         </span>
 
-                        <h1 class='mt-6 text-4xl sm:text-5xl md:text-7xl font-black leading-tight break-words text-white block'>
+                        <h1 class='mt-6 text-4xl sm:text-5xl md:text-7xl font-bold leading-tight break-words text-white block'>
                             {$heading}
                         </h1>
 
@@ -1056,7 +1421,7 @@ HTML;
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24'>
                         <div class='max-w-3xl'>
                             <span class='block text-xs font-semibold uppercase tracking-[0.3em] text-white/75'>{$tagline}</span>
-                            <h1 class='mt-5 text-5xl font-black leading-[1.03] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
+                            <h1 class='mt-5 text-5xl font-bold leading-[1.03] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
                             <div class='mt-6 max-w-2xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8'>{$text}</div>
                             <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
                                 <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
@@ -1093,7 +1458,7 @@ HTML;
                     <div class='relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-20'>
                         <div class='order-2 max-w-2xl lg:order-1'>
                             <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$theme['sub']}'>{$tagline}</span>
-                            <h1 class='mt-5 text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1>
+                            <h1 class='mt-5 text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1>
                             <div class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</div>
                             <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
                                 <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a>
@@ -1134,7 +1499,7 @@ HTML;
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20'>
                         <div class='max-w-3xl'>
                             <span class='block text-xs font-semibold uppercase tracking-[0.3em] text-white/75'>{$eyebrow}</span>
-                            <h2 class='mt-4 text-4xl font-black leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl'>{$heading}</h2>
+                            <h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2>
                             <div class='mx-auto mt-5 max-w-2xl text-base leading-7 text-white/85 sm:text-lg sm:leading-8'>{$text}</div>
                             <div class='mt-7 flex flex-col justify-center gap-3 sm:flex-row sm:items-center'>
                                 <a href='{$primaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full bg-white px-7 font-bold text-slate-950'>{$primaryLabel}</a>
@@ -1177,7 +1542,7 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h2 class='block mt-5 text-5xl md:text-6xl font-bold leading-tight tracking-tight {$theme['text']}'>
+                            <h2 class='block mt-5 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>
                                 {$heading}
                             </h2>
 
@@ -1381,7 +1746,7 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h1 class='mt-5 block text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
+                            <h1 class='mt-5 block text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
                                 {$heading}
                             </h1>
 
@@ -1429,7 +1794,7 @@ HTML;
 
                             <div class='absolute -bottom-1 left-0 w-[170px] rounded-2xl border p-4 shadow-xl backdrop-blur sm:left-1 sm:w-[190px] {$theme['card']} {$theme['border']}'>
 
-                                <div class='block text-3xl font-black tracking-tight {$theme['text']}'>
+                                <div class='block text-3xl font-bold tracking-tight {$theme['text']}'>
                                     {$cardOneValue}
                                 </div>
 
@@ -1577,7 +1942,7 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h1 class='mt-5 block text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
+                            <h1 class='mt-5 block text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
                                 {$heading}
                             </h1>
 
@@ -1797,7 +2162,7 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h1 class='mt-6 block text-5xl font-black leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-8xl'>
+                            <h1 class='mt-6 block text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-8xl'>
                                 {$heading}
                             </h1>
 

@@ -300,7 +300,7 @@ export function HeroBackgroundImageBlock({
                         text-4xl
                         sm:text-5xl
                         md:text-7xl
-                        font-black
+                        font-bold
                         leading-tight
                         break-words
                         text-white

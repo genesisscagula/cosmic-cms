@@ -1,6 +1,6 @@
 import { Link } from "@inertiajs/react";
 
-export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCount = 0, themeSummary, onNewPage, onPushLive, pushingLive, onOpenInquiries, onOpenSettings }) {
+export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCount = 0, themeSummary, onNewPage, onPushLive, pushingLive, onOpenInquiries, onOpenProfile, onOpenSettings }) {
     return (
         <header className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-end">
             <div>
@@ -31,6 +31,8 @@ export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCoun
                         </span>
                     ) : null}
                 </button>
+                <span aria-hidden="true" className="text-slate-700">|</span>
+                <button type="button" onClick={onOpenProfile} className="font-medium text-slate-500 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 focus:ring-offset-[#0a0a0b]">Profile</button>
                 <span aria-hidden="true" className="text-slate-700">|</span>
                 <button type="button" onClick={onOpenSettings} className="font-medium text-slate-500 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 focus:ring-offset-[#0a0a0b]">Settings</button>
             </div>

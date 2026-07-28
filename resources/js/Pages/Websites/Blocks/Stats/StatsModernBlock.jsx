@@ -67,7 +67,7 @@ export function StatsModernBlock({ block, onUpdate, globalTheme }) {
                     )}
                     <EditableText
                         value={data.heading}
-                        className={`block text-3xl font-bold tracking-tight sm:text-4xl ${theme.text}`}
+                        className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
                         onSave={(heading) => onUpdate({ heading })}
                     />
                     {data.text && (
@@ -88,7 +88,7 @@ export function StatsModernBlock({ block, onUpdate, globalTheme }) {
                         >
                             <EditableText
                                 value={metric.value}
-                                className={`block text-4xl font-bold tracking-tight sm:text-5xl ${theme.text}`}
+                                className={`block text-3xl font-bold tracking-tight sm:text-4xl ${theme.text}`}
                                 onSave={(value) => updateMetric(index, "value", value)}
                             />
                             <EditableText

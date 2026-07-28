@@ -19,7 +19,7 @@ class PageController extends Controller
 
         return \Inertia\Inertia::render('Websites/Index', [
             'website' => $website,
-            'pages' => $website->pages()->latest()->get(),
+            'pages' => $website->pages()->orderBy('parent_id')->orderBy('sort_order')->orderBy('id')->get(),
             'inquiryCount' => $website->contactSubmissions()->whereNull('archived_at')->count(),
             'recentInquiries' => $website->contactSubmissions()
                 ->whereNull('archived_at')
@@ -38,20 +38,168 @@ class PageController extends Controller
 
         $request->validate([
             'title' => 'required|string|max:255',
+            'page_type' => 'nullable|in:standard,blog',
+            'parent_id' => 'nullable|integer',
         ]);
 
         $slug = \Illuminate\Support\Str::slug($request->title);
 
-        $website->pages()->create([
-            'title' => $request->title,
-            'slug' => $slug,
-            'status' => 'draft',
-            // A new page starts as an honest blank canvas. The Builder guides
-            // customers to add sections or generate a real layout with AI.
-            'blocks' => []
-        ]);
+        $pageType = $request->input('page_type', 'standard');
+
+        $parent = null;
+        if ($request->filled('parent_id')) {
+            $parent = $website->pages()->with('parent')->findOrFail($request->integer('parent_id'));
+            abort_if($parent->parent?->parent_id !== null, 422, 'Pages can only be nested three levels deep.');
+        }
+
+        DB::transaction(function () use ($website, $request, $slug, $pageType, $parent) {
+            $page = $website->pages()->create([
+                'title' => $request->title,
+                'slug' => $slug,
+                'parent_id' => $parent?->id,
+                'sort_order' => ((int) $website->pages()->where('parent_id', $parent?->id)->max('sort_order')) + 1,
+                'page_type' => $pageType,
+                'status' => 'draft',
+                // A Posts / updates page is a complete editorial starting
+                // point: a themed top banner, a deliberately neutral blog
+                // hub, and a few supporting sections. Real articles live in
+                // blog_posts, not inside page JSON.
+                'blocks' => $pageType === 'blog' ? $this->createBlogPageBlocks() : []
+            ]);
+
+            if ($pageType === 'blog') {
+                $this->createStarterBlogPosts($website, $page);
+            }
+        });
 
         return back();
+    }
+
+    public function destroy(Website $website, Page $page)
+    {
+        $this->authorize('update', $website);
+
+        abort_unless($page->website_id === $website->id, 404);
+
+        // Blog posts belong to their page. Remove posts for the whole branch
+        // before the database cascade removes child pages.
+        $pageIds = $this->descendantPageIds($website, $page);
+        $website->blogPosts()->whereIn('page_id', $pageIds)->delete();
+        $page->delete();
+
+        return response()->json([
+            'message' => 'Page deleted successfully.',
+        ]);
+    }
+
+    private function descendantPageIds(Website $website, Page $page): array
+    {
+        $allPages = $website->pages()->get(['id', 'parent_id']);
+        $ids = [$page->id];
+
+        do {
+            $before = count($ids);
+            foreach ($allPages as $candidate) {
+                if ($candidate->parent_id !== null && in_array($candidate->parent_id, $ids, true) && ! in_array($candidate->id, $ids, true)) {
+                    $ids[] = $candidate->id;
+                }
+            }
+        } while (count($ids) !== $before);
+
+        return $ids;
+    }
+
+    /**
+     * Give each Posts / updates page a useful, editable starting point.
+     * They deliberately remain drafts: nothing reaches a live website until
+     * the customer reviews and explicitly publishes it.
+     */
+    private function createStarterBlogPosts(Website $website, Page $page): void
+    {
+        $starters = [
+            [
+                'title' => 'A practical guide to getting started',
+                'category' => 'Featured',
+                'excerpt' => 'A useful first article that introduces your perspective and gives visitors a reason to explore more.',
+                'content' => 'Use this featured article to share a helpful point of view, introduce an important update, or explain the value your business brings to customers.',
+                'image_url' => '/storage/cms-images/background/background-1.avif',
+                'is_featured' => true,
+            ],
+            [
+                'title' => 'What customers should know first',
+                'category' => 'Insights',
+                'excerpt' => 'Answer a common question with a short, clear explanation your audience can trust.',
+                'content' => 'Start with the context your customer needs, then explain the practical next step in plain language.',
+                'image_url' => '/storage/cms-images/background/background-2.avif',
+            ],
+            [
+                'title' => 'A closer look at our approach',
+                'category' => 'How we work',
+                'excerpt' => 'Share the process, standards, or ideas behind the work you do every day.',
+                'content' => 'Describe your approach in a way that makes your service easier to understand and more credible.',
+                'image_url' => '/storage/cms-images/background/background-3.avif',
+            ],
+            [
+                'title' => 'Updates worth sharing',
+                'category' => 'Updates',
+                'excerpt' => 'Keep visitors informed with news, announcements, or practical changes from your team.',
+                'content' => 'Use this post for an announcement, a timely update, or an important piece of information for your customers.',
+                'image_url' => '/storage/cms-images/background/background-5.avif',
+            ],
+            [
+                'title' => 'Ideas for your next step',
+                'category' => 'Guides',
+                'excerpt' => 'Offer a focused recommendation that helps readers take action with confidence.',
+                'content' => 'Give readers a practical takeaway they can use right away, then invite them to contact you for help.',
+                'image_url' => '/storage/cms-images/background/background-1.avif',
+            ],
+        ];
+
+        foreach ($starters as $index => $starter) {
+            $website->blogPosts()->create([
+                ...$starter,
+                'page_id' => $page->id,
+                // blog_posts.slug is currently globally unique. A customer can
+                // create more than one Posts / updates page, so fixed starter
+                // titles must not reuse a slug left by an earlier blog hub.
+                'slug' => $this->uniqueBlogPostSlug(
+                    Str::slug($starter['title']) . '-' . ($index + 1)
+                ),
+                'tags' => [],
+                'status' => 'draft',
+            ]);
+        }
+    }
+
+    /**
+     * Keep seeded post slugs compatible with the existing global unique index.
+     */
+    private function uniqueBlogPostSlug(string $baseSlug): string
+    {
+        $slug = $baseSlug ?: 'post';
+        $suffix = 2;
+
+        while (\App\Models\BlogPost::where('slug', $slug)->exists()) {
+            $slug = "{$baseSlug}-{$suffix}";
+            $suffix++;
+        }
+
+        return $slug;
+    }
+
+    /**
+     * Keep a Posts / updates page focused and predictable. The primary mini
+     * hero introduces the page, BlogHub contains the featured post and four
+     * article cards, and the two blocks after it complete the editorial page.
+     */
+    private function createBlogPageBlocks(): array
+    {
+        return [
+            ['type' => 'blog_mini_hero', 'theme' => 'primary'],
+            ['type' => 'blog_hub', 'theme' => 'editorial', 'show_intro' => false],
+            ['type' => 'newsletter_cta', 'theme' => 'editorial'],
+            ['type' => 'latest_resources', 'theme' => 'editorial'],
+        ];
     }
 
     public function builder(\App\Models\Page $page)
@@ -83,15 +231,44 @@ class PageController extends Controller
             ->take(8)
             ->implode(' ');
 
-        $websiteContext = trim(sprintf(
-            'Website: %s. %s',
-            $website->name,
-            $websiteMessaging !== '' ? "Existing website messaging: {$websiteMessaging}" : ''
-        ));
+        $profileContext = array_filter([
+            $website->industry ? "Industry: {$website->industry}." : null,
+            $website->location ? "Location: {$website->location}." : null,
+            $website->business_description ? "Business description: {$website->business_description}" : null,
+        ]);
+
+        $websiteContext = trim(implode("\n", array_filter([
+            "Generate professional website content for the following business.",
+            "Business Name: {$website->name}",
+            ...$profileContext,
+            "Page: {$page->title}",
+            'Language: English.',
+            'Write naturally and professionally. Do not invent awards, certifications, employee names, years of experience, customer statistics, or other unverifiable facts.',
+            $websiteMessaging !== '' ? "Existing website messaging: {$websiteMessaging}" : null,
+        ])));
 
         return \Inertia\Inertia::render('Websites/Builder', [
             'page' => $page,
             'website' => $website,
+            'websitePages' => $website->pages()
+                ->orderBy('parent_id')
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get(['id', 'title', 'slug', 'parent_id'])
+                ->map(fn (Page $websitePage) => [
+                    'id' => $websitePage->id,
+                    'title' => $websitePage->title,
+                    'slug' => $websitePage->slug,
+                    'parent_id' => $websitePage->parent_id,
+                ])
+                ->values(),
+            'blogPosts' => $page->page_type === 'blog'
+                ? $website->blogPosts()
+                    ->where('page_id', $page->id)
+                    ->orderByDesc('is_featured')
+                    ->latest()
+                    ->get()
+                : [],
             'hasWebsiteContent' => $websiteMessaging !== '',
             'websiteContext' => $websiteContext,
         ]);

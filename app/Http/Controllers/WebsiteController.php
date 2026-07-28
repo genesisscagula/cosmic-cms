@@ -29,7 +29,10 @@ class WebsiteController extends Controller
 	{
 	    $request->validate([
 	        'name' => 'required|string|max:255',
-	        'domain' => 'nullable|url',
+	        'domain' => 'required|url',
+	        'industry' => 'required|string|max:120',
+	        'location' => 'required|string|max:255',
+	        'business_description' => 'required|string|max:2000',
 	        'theme_settings' => 'nullable|array', // I-validate ang array input
 	        'template' => 'nullable|string',
 	    ]);
@@ -43,6 +46,9 @@ class WebsiteController extends Controller
 	    $defaults = [
 	        'name' => $request->name,
 	        'domain' => $request->domain,
+	        'industry' => $request->input('industry'),
+	        'location' => $request->input('location'),
+	        'business_description' => $request->input('business_description'),
 	        // Until a dedicated website settings screen is added, new live-form
 	        // inquiries go to the account that created the website.
 	        'contact_email' => $request->user()->email,
@@ -113,6 +119,24 @@ class WebsiteController extends Controller
             'name' => ['required', 'string', 'max:255'],
             'domain' => ['nullable', 'url', 'max:2048'],
             'contact_email' => ['nullable', 'email', 'max:254'],
+        ]);
+
+        $website->update($validated);
+
+        return response()->json([
+            'status' => 'success',
+            'website' => $website->fresh(),
+        ]);
+    }
+
+    public function updateProfile(Request $request, Website $website)
+    {
+        $this->authorize('update', $website);
+
+        $validated = $request->validate([
+            'industry' => ['required', 'string', 'max:120'],
+            'location' => ['required', 'string', 'max:255'],
+            'business_description' => ['required', 'string', 'max:2000'],
         ]);
 
         $website->update($validated);

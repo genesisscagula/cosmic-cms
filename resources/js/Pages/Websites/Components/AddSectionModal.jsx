@@ -13,6 +13,7 @@ import HeroCenteredPreview from "./Previews/HeroCenteredPreview";
 import ServicesBentoPreview from "./Previews/ServicesBentoPreview";
 import ProcessTimelinePreview from "./Previews/ProcessTimelinePreview";
 import StatsModernPreview from "./Previews/StatsModernPreview";
+import TeamModernPreview from "./Previews/TeamModernPreview";
 import TestimonialsCarouselPreview from "./Previews/TestimonialsCarouselPreview";
 import PricingCardsPreview from "./Previews/PricingCardsPreview";
 import HeroBackgroundImagePreview from "./Previews/HeroBackgroundImagePreview";
@@ -23,6 +24,12 @@ import HeroFloatingCardsPreview from "./Previews/HeroFloatingCardsPreview";
 import HeroVideoStylePreview from "./Previews/HeroVideoStylePreview";
 import HeroVideoBackgroundPreview from "./Previews/HeroVideoBackgroundPreview";
 import ContactFormPreview from "./Previews/ContactFormPreview";
+import FaqAccordionPreview from "./Previews/FaqAccordionPreview";
+import ContactDetailsPreview from "./Previews/ContactDetailsPreview";
+import LocationMapPreview from "./Previews/LocationMapPreview";
+import CaseStudiesGridPreview from "./Previews/CaseStudiesGridPreview";
+import JobsListPreview from "./Previews/JobsListPreview";
+import EventsGridPreview from "./Previews/EventsGridPreview";
 
 
 export const BlockRegistry = [
@@ -230,6 +237,26 @@ export const BlockRegistry = [
         }
     },
     {
+        type: "team_modern",
+        theme: "auto",
+        title: "Team Modern",
+        buttonLabel: "Choose team layout",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: TeamModernPreview,
+        payload: {
+            type: "team_modern",
+            eyebrow: "Meet the team",
+            heading: "The people behind the work",
+            text: "A dedicated team focused on thoughtful service and dependable results.",
+            members: [
+                { name: "Alex Morgan", role: "Founder & Director", bio: "Guides the team with a client-first approach.", image_url: "/storage/cms-images/avatars/avatar-1.jpg" },
+                { name: "Jordan Lee", role: "Client Experience Lead", bio: "Keeps every project organized and responsive.", image_url: "/storage/cms-images/avatars/avatar-2.jpg" },
+                { name: "Taylor Brooks", role: "Creative Lead", bio: "Turns clear ideas into polished experiences.", image_url: "/storage/cms-images/avatars/avatar-3.jpg" },
+                { name: "Casey Rivera", role: "Operations Manager", bio: "Keeps quality consistent from start to finish.", image_url: "/storage/cms-images/avatars/avatar-4.jpg" }
+            ]
+        }
+    },
+    {
         type: "testimonials_carousel",
         theme: "auto",
         title: "Testimonials",
@@ -369,6 +396,89 @@ export const BlockRegistry = [
             ],
         },
     },
+    {
+        type: "faq_accordion",
+        theme: "auto",
+        title: "FAQ Accordion",
+        buttonLabel: "Choose FAQ layout",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: FaqAccordionPreview,
+        payload: {
+            type: "faq_accordion",
+            theme: "auto",
+            eyebrow: "HELPFUL ANSWERS",
+            heading: "Questions, answered clearly.",
+            text: "Everything visitors need to know before taking the next step.",
+            faqs: [
+                { question: "What services do you offer?", answer: "We provide clear, practical support tailored to your needs." },
+                { question: "How do I get started?", answer: "Reach out with a short note and we will help you choose the right next step." },
+                { question: "Can I request a consultation?", answer: "Yes. Use the contact details on this page to arrange a conversation." },
+                { question: "What should I prepare?", answer: "Share your goals, timeline, and any questions you would like us to cover." },
+            ],
+        },
+    },
+    {
+        type: "contact_details",
+        theme: "auto",
+        title: "Contact Details",
+        buttonLabel: "Choose contact details",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: ContactDetailsPreview,
+        payload: {
+            type: "contact_details",
+            theme: "auto",
+            eyebrow: "GET IN TOUCH",
+            heading: "Let’s start a conversation.",
+            text: "Reach out when you are ready to discuss your next project or question.",
+            email: "hello@example.com",
+            phone: "+1 (555) 010-0200",
+            address: "Available by appointment",
+            hours: "Monday to Friday, 9:00 AM to 5:00 PM",
+        },
+    },
+    {
+        type: "location_map",
+        theme: "auto",
+        title: "Location & Directions",
+        buttonLabel: "Choose location layout",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: LocationMapPreview,
+        payload: {
+            type: "location_map",
+            theme: "auto",
+            eyebrow: "FIND US",
+            heading: "Visit us when it works for you.",
+            text: "Plan your visit with clear location details and directions.",
+            location_name: "Our studio",
+            address: "Available by appointment",
+            directions_label: "Get directions",
+            directions_url: "#",
+        },
+    },
+    {
+        type: "case_studies_grid", theme: "auto", title: "Case Studies Grid", buttonLabel: "Choose case studies layout", buttonClass: "bg-violet-600 hover:bg-violet-500", preview: CaseStudiesGridPreview,
+        payload: { type: "case_studies_grid", theme: "auto", eyebrow: "SELECTED WORK", heading: "Results that make the difference.", text: "A closer look at focused work shaped around clear goals and practical outcomes.", studies: [
+            { category: "Strategy", title: "A clearer digital path", summary: "A focused engagement that turned a complex challenge into a practical next step.", result: "Built for measurable progress", image_url: "/storage/cms-images/background/background-1.avif", link_label: "View case study" },
+            { category: "Design", title: "An experience made simpler", summary: "A thoughtful redesign that made important information easier to find and act on.", result: "Clarity at every step", image_url: "/storage/cms-images/background/background-2.avif", link_label: "View case study" },
+            { category: "Growth", title: "A stronger launch foundation", summary: "A collaborative project built around the real customer journey.", result: "Ready to grow", image_url: "/storage/cms-images/background/background-3.avif", link_label: "View case study" },
+        ] },
+    },
+    {
+        type: "jobs_list", theme: "auto", title: "Jobs List", buttonLabel: "Choose careers layout", buttonClass: "bg-violet-600 hover:bg-violet-500", preview: JobsListPreview,
+        payload: { type: "jobs_list", theme: "auto", eyebrow: "JOIN OUR TEAM", heading: "Do work that moves things forward.", text: "We are looking for thoughtful people who care about good work and shared progress.", jobs: [
+            { title: "Senior designer", type: "Full-time", location: "New York, NY", description: "Help shape thoughtful digital experiences for ambitious teams and their customers.", button_label: "View role" },
+            { title: "Project manager", type: "Full-time", location: "Remote", description: "Keep client work organized, moving clearly, and grounded in practical next steps.", button_label: "View role" },
+            { title: "Growth strategist", type: "Flexible", location: "Hybrid", description: "Turn research and collaboration into clear opportunities for clients.", button_label: "View role" },
+        ] },
+    },
+    {
+        type: "events_grid", theme: "auto", title: "Events Grid", buttonLabel: "Choose events layout", buttonClass: "bg-violet-600 hover:bg-violet-500", preview: EventsGridPreview,
+        payload: { type: "events_grid", theme: "auto", eyebrow: "UPCOMING EVENTS", heading: "Useful conversations, coming up.", text: "Join practical sessions, thoughtful gatherings, and opportunities to connect with our team.", events: [
+            { month: "OCT", day: "12", title: "A practical session for your next move", date: "October 12 - 10:00 AM", location: "Online", description: "Useful ideas you can put into action right away.", button_label: "Reserve a place" },
+            { month: "NOV", day: "04", title: "Meet the people behind the work", date: "November 4 - 6:00 PM", location: "Our studio", description: "An informal evening to connect and exchange ideas.", button_label: "Save your seat" },
+            { month: "DEC", day: "08", title: "Plan a stronger year ahead", date: "December 8 - 1:00 PM", location: "Online", description: "A guided planning session for teams setting clearer priorities.", button_label: "Join the session" },
+        ] },
+    },
 ];
 
 const generationProgressSteps = [
@@ -386,6 +496,11 @@ const sectionCategories = [
     { id: "testimonials", icon: "★", title: "Testimonials", description: "Build trust with social proof." },
     { id: "process", icon: "→", title: "Process", description: "Show customers what happens next." },
     { id: "stats", icon: "#", title: "Stats", description: "Highlight measurable proof." },
+    { id: "faq", icon: "?", title: "FAQ", description: "Answer common visitor questions." },
+    { id: "team", icon: "â˜…", title: "Team", description: "Introduce the people behind your business." },
+    { id: "case_studies", icon: "▣", title: "Case studies", description: "Show selected work and meaningful outcomes." },
+    { id: "careers", icon: "◫", title: "Careers", description: "Share current opportunities with your team." },
+    { id: "events", icon: "◷", title: "Events", description: "Promote upcoming sessions and gatherings." },
     { id: "cta", icon: "↗", title: "Call to action", description: "Guide visitors to take the next step." },
     { id: "contact", icon: "✉", title: "Contact", description: "Give visitors a clear way to reach you." },
 ];
@@ -416,11 +531,6 @@ export default function AddSectionModal({
     const [progress, setProgress] = useState(0);
 
     const generateWithAI = () => {
-
-        if (!prompt.trim()) {
-            showCosmicNotification({ title: "Prompt required", message: "Describe the website or section you want to generate first.", tone: "info" });
-            return;
-        }
 
         if (!hasBlocks) {
             executeGenerate();
@@ -474,11 +584,6 @@ export default function AddSectionModal({
 
     const executeGenerate = async () => {
 
-        if (!prompt.trim()) {
-            showCosmicNotification({ title: "Prompt required", message: "Describe the website or section you want to generate first.", tone: "info" });
-            return;
-        }
-
         setIsGenerating(true);
 
         progressRef.current = 0;
@@ -497,10 +602,15 @@ export default function AddSectionModal({
                 700
             );
 
+            const generationPrompt = [
+                websiteContext || "Create professional website content.",
+                prompt.trim() ? `Page request: ${prompt.trim()}` : "Create content appropriate for this page and business.",
+            ].join("\n\n");
+
             const sectionResponse = await axios.post(
                 "/ai/select-sections",
                 {
-                    prompt
+                    prompt: generationPrompt
                 }
             );
 
@@ -537,7 +647,7 @@ export default function AddSectionModal({
             const contentResponse = await axios.post(
                 "/ai/generate-content",
                 {
-                    prompt,
+                    prompt: generationPrompt,
                     sections,
                     image_folder: imageFolder
                 }
@@ -615,11 +725,6 @@ export default function AddSectionModal({
             return;
         }
 
-        if (!hasWebsiteContent && !sectionInstruction.trim()) {
-            showCosmicNotification({ title: "Tell us about the business", message: "Add a short business brief so Cosmic AI can create a useful first section.", tone: "info" });
-            return;
-        }
-
         const sectionPrompt = [
             websiteContext || "Create professional website content.",
             sectionInstruction.trim()
@@ -677,11 +782,6 @@ export default function AddSectionModal({
 
     const generateSpecificLayoutWithAI = async () => {
         if (!selectedSpecificBlock) {
-            return;
-        }
-
-        if (!hasWebsiteContent && !specificLayoutInstruction.trim()) {
-            showCosmicNotification({ title: "Tell us about the business", message: "Add a short business brief so Cosmic AI can create useful first content.", tone: "info" });
             return;
         }
 
@@ -812,7 +912,7 @@ export default function AddSectionModal({
 
                     rows={4}
 
-                    placeholder="Describe the page you want, such as: a modern dental clinic About page with services, testimonials, and a booking CTA."
+                    placeholder="Optional: describe the page you want, such as an About page focused on services, testimonials, and booking."
 
                     aria-label="Describe the page to generate"
                     className="w-full resize-none rounded-xl border border-white/10 bg-black/30 p-4 text-sm leading-6 text-white placeholder:text-slate-500 transition focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20"
@@ -929,7 +1029,7 @@ export default function AddSectionModal({
                     onClick={generateWithAI}
 
                     type="button"
-                    disabled={isGenerating || !prompt.trim()}
+                    disabled={isGenerating}
                     className="flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-4 py-3 text-sm font-bold text-white shadow-lg shadow-violet-950/30 transition hover:from-violet-500 hover:to-indigo-500 focus:outline-none focus:ring-2 focus:ring-violet-300 disabled:cursor-not-allowed disabled:opacity-50"
 
                 >
@@ -974,15 +1074,14 @@ export default function AddSectionModal({
                     <div className="mt-3 rounded-xl border border-violet-400/20 bg-violet-400/[0.045] p-3 sm:p-4">
                         <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
                             <label className="min-w-0 flex-1">
-                                <span className="text-xs font-semibold text-white">What should this section communicate?</span>
+                                <span className="text-xs font-semibold text-white">What should this section communicate? <span className="font-normal text-slate-500">(optional)</span></span>
                                 <textarea
                                     value={sectionInstruction}
                                     onChange={(event) => setSectionInstruction(event.target.value)}
                                     rows={2}
-                                    placeholder={hasWebsiteContent ? "Optional: e.g. Highlight family rooms, pools, and airport access." : "Describe the business, audience, services, and what this section should highlight."}
+                                    placeholder="Optional: e.g. Highlight family rooms, pools, and airport access."
                                     className="mt-2 w-full resize-none rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 text-sm leading-5 text-white placeholder:text-slate-500 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20"
                                 />
-                                {!hasWebsiteContent && <span className="mt-1.5 block text-[11px] text-amber-200">A short business brief is needed for this website's first AI section.</span>}
                             </label>
                             <button
                                 type="button"
@@ -1057,16 +1156,15 @@ export default function AddSectionModal({
                     </div>
 
                     <label className="mt-5 block">
-                        <span className="text-sm font-semibold text-white">What should this section communicate?</span>
+                        <span className="text-sm font-semibold text-white">What should this section communicate? <span className="font-normal text-slate-500">(optional)</span></span>
                         <textarea
                             value={specificLayoutInstruction}
                             onChange={(event) => setSpecificLayoutInstruction(event.target.value)}
                             rows={4}
                             autoFocus
-                            placeholder={hasWebsiteContent ? "Optional: e.g. Focus on ocean-view rooms and family amenities." : "Describe the business, audience, and what this section should highlight."}
+                            placeholder="Optional: e.g. Focus on ocean-view rooms and family amenities."
                             className="mt-2 w-full resize-none rounded-xl border border-white/10 bg-black/25 px-3.5 py-3 text-sm leading-6 text-white placeholder:text-slate-500 focus:border-violet-400 focus:outline-none focus:ring-2 focus:ring-violet-400/20"
                         />
-                        {!hasWebsiteContent && <span className="mt-1.5 block text-[11px] text-amber-200">A short business brief is needed for this website's first AI section.</span>}
                     </label>
 
                     <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">

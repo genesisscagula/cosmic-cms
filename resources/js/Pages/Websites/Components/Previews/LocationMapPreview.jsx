@@ -1,0 +1,3 @@
+export default function LocationMapPreview() {
+    return <div className="relative h-full overflow-hidden rounded-xl border border-slate-700 bg-slate-950 p-4"><div className="absolute inset-0 opacity-30 [background-image:linear-gradient(#64748b_1px,transparent_1px),linear-gradient(90deg,#64748b_1px,transparent_1px)] [background-size:20px_20px]" /><div className="relative flex h-full flex-col justify-between"><div className="h-3 w-2/5 rounded bg-slate-100" /><div className="grid h-8 w-8 place-items-center rounded-full bg-violet-500 text-xs text-white">•</div><div className="rounded-lg border border-slate-700 bg-slate-900 p-2"><span className="mb-1 block h-2 w-3/4 rounded bg-slate-100" /><span className="block h-1.5 w-full rounded bg-slate-500" /></div></div></div>;
+}

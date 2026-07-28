@@ -63,7 +63,7 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
                     />
                     <EditableText
                         value={data.heading}
-                        className="mt-4 block text-4xl font-black leading-[1.08] tracking-tight text-white sm:text-5xl lg:text-6xl"
+                        className="mt-4 block text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.75rem]"
                         onSave={(heading) => onUpdate({ heading })}
                     />
                     <EditableText

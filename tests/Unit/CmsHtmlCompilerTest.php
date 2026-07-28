@@ -9,6 +9,7 @@ use Tests\TestCase;
 class CmsHtmlCompilerTest extends TestCase
 {
     private const ACTIVE_BLOCK_TYPES = [
+        'contact_form_modern',
         'hero_headline',
         'hero_floating_cards',
         'hero_background_image',
@@ -26,6 +27,7 @@ class CmsHtmlCompilerTest extends TestCase
         'testimonials_carousel',
         'pricing_cards',
         'stats_modern',
+        'team_modern',
     ];
     protected function setUp(): void
     {
@@ -89,6 +91,31 @@ class CmsHtmlCompilerTest extends TestCase
 
         $this->assertStringContainsString('src=\'https://cms.example.test/storage/websites/1/logos/brand-mark.png\'', $html);
         $this->assertStringContainsString('alt=\'North Star Studio\'', $html);
+    }
+
+    public function test_blog_hub_uses_static_asset_urls_for_default_and_published_card_images(): void
+    {
+        $defaultHtml = CmsHtmlCompiler::compile([['type' => 'blog_hub']], 'emerald');
+        $html = CmsHtmlCompiler::compile([
+            [
+                'type' => 'blog_hub',
+                'featured' => [
+                    'image_url' => '/storage/cms-images/background/background-1.avif',
+                ],
+            ],
+        ], 'emerald', [
+            'blog_posts' => [[
+                'title' => 'Published article',
+                'category' => 'Updates',
+                'excerpt' => 'A published card.',
+                'image_url' => '/storage/cms-images/background/background-2.avif',
+                'url' => 'journal/published-article',
+            ]],
+        ]);
+
+        $this->assertStringContainsString('https://cms.example.test/storage/cms-images/background/background-1.avif', $defaultHtml);
+        $this->assertStringContainsString('https://cms.example.test/storage/cms-images/background/background-2.avif', $html);
+        $this->assertStringContainsString("href='journal/published-article'", $html);
     }
 
     public function test_hero_editorial_overlay_uses_the_builder_image_url_contract(): void
@@ -242,6 +269,27 @@ class CmsHtmlCompilerTest extends TestCase
         $this->assertStringContainsString('bg-[#475569]', $html);
         $this->assertStringNotContainsString('bg-[#A16207]', $html);
     }
+
+      public function test_team_modern_compiles_the_editable_member_contract(): void
+      {
+          $html = CmsHtmlCompiler::compile([[
+              'type' => 'team_modern',
+              'heading' => 'Meet our specialists',
+              'members' => [
+                  ['name' => 'Avery Stone', 'role' => 'Studio Director', 'bio' => 'Keeps every client project moving clearly.', 'image_url' => '/storage/cms-images/avatars/avatar-1.jpg'],
+                  ['name' => 'Jordan Lee', 'role' => 'Project Lead', 'bio' => 'Keeps project details clear.', 'image_url' => '/storage/cms-images/avatars/avatar-2.jpg'],
+                  ['name' => 'Taylor Brooks', 'role' => 'Creative Lead', 'bio' => 'Shapes polished digital experiences.', 'image_url' => '/storage/cms-images/avatars/avatar-3.jpg'],
+                  ['name' => 'Casey Rivera', 'role' => 'Operations Manager', 'bio' => 'Keeps delivery moving smoothly.', 'image_url' => '/storage/cms-images/avatars/avatar-4.jpg'],
+                  ['name' => 'Morgan Chen', 'role' => 'Strategy Lead', 'bio' => 'Connects goals to a useful plan.', 'image_url' => '/storage/cms-images/avatars/avatar-5.jpg'],
+              ],
+          ]], 'emerald');
+
+          $this->assertStringContainsString('Meet our specialists', $html);
+          $this->assertStringContainsString('Avery Stone', $html);
+          $this->assertStringContainsString('Morgan Chen', $html);
+          $this->assertStringContainsString('https://cms.example.test/storage/cms-images/avatars/avatar-1.jpg', $html);
+          $this->assertStringContainsString("</div><div class='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4'>", $html);
+      }
 
     public function test_every_active_builder_block_has_ai_and_compiler_coverage(): void
     {

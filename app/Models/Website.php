@@ -10,6 +10,9 @@ class Website extends Model
     protected $fillable = [
         'name',
         'domain',
+        'industry',
+        'location',
+        'business_description',
         'contact_email',
         'api_token',
         'deployment_secret',
@@ -55,5 +58,10 @@ class Website extends Model
     public function contactSubmissions()
     {
         return $this->hasMany(ContactSubmission::class);
+    }
+
+    public function blogPosts()
+    {
+        return $this->hasMany(BlogPost::class);
     }
 }

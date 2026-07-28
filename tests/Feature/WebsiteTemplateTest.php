@@ -17,6 +17,9 @@ class WebsiteTemplateTest extends TestCase
         $response = $this->actingAs($user)->post(route('websites.store'), [
             'name' => 'North Star Studio',
             'domain' => 'https://northstar.example.test',
+            'industry' => 'technology',
+            'location' => 'New York, NY',
+            'business_description' => 'A practical digital studio for ambitious teams.',
             'template' => 'aurora-agency',
         ]);
 
@@ -38,10 +41,43 @@ class WebsiteTemplateTest extends TestCase
 
         $this->actingAs($user)->from(route('dashboard'))->post(route('websites.store'), [
             'name' => 'North Star Studio',
+            'domain' => 'https://northstar.example.test',
+            'industry' => 'technology',
+            'location' => 'New York, NY',
+            'business_description' => 'A practical digital studio for ambitious teams.',
             'template' => 'not-a-template',
         ])->assertRedirect(route('dashboard'))->assertSessionHasErrors('template');
 
         $this->assertSame(0, $user->websites()->count());
+    }
+
+    public function test_business_profile_is_saved_on_creation_and_can_be_updated(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        $this->actingAs($user)->post(route('websites.store'), [
+            'name' => 'BrightSmile Dental Clinic',
+            'domain' => 'https://brightsmile.example.test',
+            'industry' => 'Dental clinic',
+            'location' => 'Ormoc City, Leyte, Philippines',
+            'business_description' => 'Friendly dental care for families and working professionals.',
+        ])->assertRedirect();
+
+        $website = $user->websites()->firstOrFail();
+        $this->assertSame('Dental clinic', $website->industry);
+        $this->assertSame('Ormoc City, Leyte, Philippines', $website->location);
+
+        $this->actingAs($user)->putJson(route('websites.profile.update', $website), [
+            'industry' => 'Family dental clinic',
+            'location' => 'Ormoc City',
+            'business_description' => 'Comfortable preventive and restorative dental care.',
+        ])->assertOk();
+
+        $this->assertDatabaseHas('websites', [
+            'id' => $website->id,
+            'industry' => 'Family dental clinic',
+            'location' => 'Ormoc City',
+        ]);
     }
 
     public function test_midnight_studio_uses_the_midnight_theme(): void
@@ -50,6 +86,10 @@ class WebsiteTemplateTest extends TestCase
 
         $this->actingAs($user)->post(route('websites.store'), [
             'name' => 'Meridian',
+            'domain' => 'https://meridian.example.test',
+            'industry' => 'technology',
+            'location' => 'New York, NY',
+            'business_description' => 'A practical digital studio for ambitious teams.',
             'template' => 'midnight-studio',
         ])->assertRedirect();
 

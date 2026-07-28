@@ -348,6 +348,41 @@ class ContentGenerator
     TXT;
     }
 
+    private function teamModernSchema(): string
+    {
+        return <<<TXT
+
+    team_modern
+
+    - type = team_modern
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - members (array of exactly 4 items)
+
+    Each member contains:
+
+    - name
+    - role
+    - bio
+    - image_url
+
+    Requirements:
+
+    - Generate exactly 4 team members.
+    - Use realistic placeholder names and role titles appropriate to the requested business.
+    - Bios must be concise, professional, and avoid unverifiable personal history or credentials.
+    - Set image_url to these existing avatar paths in order:
+      /storage/cms-images/avatars/avatar-1.jpg
+      /storage/cms-images/avatars/avatar-2.jpg
+      /storage/cms-images/avatars/avatar-3.jpg
+      /storage/cms-images/avatars/avatar-4.jpg
+    - Do not include markdown.
+
+    TXT;
+    }
+
     private function testimonialsSchema(): string
     {
         return <<<TXT
@@ -706,6 +741,191 @@ class ContentGenerator
     - select, radio, and multi-choice checkbox fields must contain 2 to 6 short, useful options.
     - Keep labels and placeholders concise and customer-friendly.
     - Do not request passwords, payment data, government IDs, medical history, or other sensitive personal information.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+    private function faqAccordionSchema(): string
+    {
+        return <<<TXT
+
+    faq_accordion
+
+    - type = faq_accordion
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - faqs (array of exactly 4 items)
+
+    Each faq contains:
+
+    - question
+    - answer
+
+    Requirements:
+
+    - Write four concise, useful questions a prospective customer would genuinely ask.
+    - Answers must be one or two clear sentences, without markdown.
+    - Keep the questions relevant to the requested business, page, and service.
+    - Do not invent awards, certifications, guarantees, regulated claims, or exact business facts that were not supplied.
+    - Do not use placeholders such as FAQ 1, Click to add text, or Lorem ipsum.
+
+    TXT;
+    }
+
+    private function contactDetailsSchema(): string
+    {
+        return <<<TXT
+
+    contact_details
+
+    - type = contact_details
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - email
+    - phone
+    - address
+    - hours
+
+    Requirements:
+
+    - Write concise, trustworthy contact copy that matches the requested business.
+    - Use hello@example.com if no email address is supplied.
+    - Use a generic safe phone number if no real phone number is supplied.
+    - Do not invent a precise street address; use a service-area or appointment phrase when unavailable.
+    - Hours must be a simple availability range, not a verified claim.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+    private function locationMapSchema(): string
+    {
+        return <<<TXT
+
+    location_map
+
+    - type = location_map
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - location_name
+    - address
+    - service_area
+    - directions_label
+
+    Requirements:
+
+    - Write concise location and visit guidance matching the requested business.
+    - Do not invent a precise street address, map URL, landmark, or travel time when none was supplied.
+    - Use a general service-area or appointment phrase when exact location details are unavailable.
+    - directions_label must be a short action such as Get directions or Plan your visit.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+    private function caseStudiesGridSchema(): string
+    {
+        return <<<TXT
+
+    case_studies_grid
+
+    - type = case_studies_grid
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - studies (array of exactly 3 items)
+
+    Each study contains:
+
+    - category
+    - title
+    - summary
+    - result
+    - image_url
+    - link_label
+
+    Requirements:
+
+    - Write three credible examples of work relevant to the requested business and page.
+    - Keep titles, summaries, and outcomes concise and useful.
+    - Do not invent client names, revenue, rankings, exact performance results, awards, or other unverifiable claims.
+    - result should describe a practical outcome without presenting an unverified metric as fact.
+    - image_url must be an empty string so the existing image-selection flow can assign an image.
+    - link_label must be a short action such as View case study or Read the story.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+    private function jobsListSchema(): string
+    {
+        return <<<TXT
+
+    jobs_list
+
+    - type = jobs_list
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - jobs (array of exactly 4 items)
+
+    Each job contains:
+
+    - title
+    - type
+    - location
+    - description
+    - button_label
+
+    Requirements:
+
+    - Write four realistic, concise role summaries appropriate to the requested business.
+    - Do not imply that roles are currently open unless the owner confirms it; use broadly editable starter roles.
+    - type and location must remain concise and should use flexible wording such as Full-time, Hybrid, Remote, or By arrangement when details are unavailable.
+    - button_label must be a short action such as View role or Learn more.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+    private function eventsGridSchema(): string
+    {
+        return <<<TXT
+
+    events_grid
+
+    - type = events_grid
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - events (array of exactly 3 items)
+
+    Each event contains:
+
+    - month
+    - day
+    - title
+    - date
+    - location
+    - description
+    - button_label
+
+    Requirements:
+
+    - Write three concise, editable event ideas that fit the requested business.
+    - month must be a three-letter uppercase month abbreviation and day must be a one- or two-digit day.
+    - Do not invent confirmed event dates, venues, speakers, or attendance claims. Use clearly editable, general event details when no specifics are provided.
+    - button_label must be a short action such as Reserve a place, Save your seat, or Learn more.
     - Do not use markdown or placeholder copy.
 
     TXT;

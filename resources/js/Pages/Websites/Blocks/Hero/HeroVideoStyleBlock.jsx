@@ -188,7 +188,7 @@ export function HeroVideoStyleBlock({
 
                     <EditableText
                         value={data.heading}
-                        className={`mt-5 block text-5xl font-black leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl ${theme.text}`}
+                        className={`mt-5 block text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl ${theme.text}`}
                         onSave={(heading) =>
                             onUpdate({ heading })
                         }

@@ -36,6 +36,8 @@ class SchemaManager
 
             'stats_modern' => 'statsModernSchema',
 
+            'team_modern' => 'teamModernSchema',
+
             'testimonials_carousel' => 'testimonialsSchema',
 
             'hero_centered_cta' => 'heroCtaSchema',
@@ -43,6 +45,18 @@ class SchemaManager
             'pricing_cards' => 'pricingCardsSchema',
 
             'contact_form_modern' => 'contactFormModernSchema',
+
+            'faq_accordion' => 'faqAccordionSchema',
+
+            'contact_details' => 'contactDetailsSchema',
+
+            'location_map' => 'locationMapSchema',
+
+            'case_studies_grid' => 'caseStudiesGridSchema',
+
+            'jobs_list' => 'jobsListSchema',
+
+            'events_grid' => 'eventsGridSchema',
 
         ];
     }

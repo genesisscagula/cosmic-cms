@@ -10,6 +10,8 @@ import PageEmptyState from './Components/PageEmptyState';
 import WebsiteLaunchGuide from './Components/WebsiteLaunchGuide';
 import InquiryInboxModal from './Components/InquiryInboxModal';
 import WebsiteSettingsModal from './Components/WebsiteSettingsModal';
+import BusinessProfileModal from './Components/BusinessProfileModal';
+import HeaderMenuEditor from './Components/HeaderMenuEditor';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 
 const WebsiteWorkspaceShell = ({ children }) => <>{children}</>;
@@ -26,6 +28,8 @@ const replaceLegacyHeaderLogo = (header, websiteName) => {
 export default function Index({ website, pages, inquiryCount = 0, recentInquiries = [], globalHeaderBlock, globalFooterBlock }) {
     const { data, setData, post, processing, errors, reset } = useForm({
         title: '',
+        page_type: 'standard',
+        parent_id: null,
     });
 
     const [isHeaderModalOpen, setIsHeaderModalOpen] = useState(false);
@@ -36,6 +40,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
     const [isPushingLive, setIsPushingLive] = useState(false);
     const [isInquiryInboxOpen, setIsInquiryInboxOpen] = useState(false);
     const [isWebsiteSettingsOpen, setIsWebsiteSettingsOpen] = useState(false);
+    const [isBusinessProfileOpen, setIsBusinessProfileOpen] = useState(false);
     const [visibleInquiryCount, setVisibleInquiryCount] = useState(inquiryCount);
     // 2. Add state para sa footer modal[cite: 2]
     const [isFooterModalOpen, setIsFooterModalOpen] = useState(false);
@@ -83,9 +88,28 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
         post(route('pages.store', website.id), {
             onSuccess: () => {
                 reset();
+                setData({ title: '', page_type: 'standard', parent_id: null });
                 setIsNewPageOpen(false);
+                setNewPageParent(null);
             },
         });
+    };
+
+    const [newPageParent, setNewPageParent] = useState(null);
+
+    const openNewPage = (parent = null) => {
+        reset();
+        setData({ title: '', page_type: 'standard', parent_id: parent?.id ?? null });
+        setNewPageParent(parent);
+        setIsNewPageOpen(true);
+    };
+
+    const closeNewPage = () => {
+        if (processing) return;
+        setIsNewPageOpen(false);
+        setNewPageParent(null);
+        reset();
+        setData({ title: '', page_type: 'standard', parent_id: null });
     };
 
     const defaultTheme = {
@@ -120,14 +144,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
         setSavedHeader(prev => ({ ...prev, ...updatedFields }));
     };
 
-    const updateHeaderMenuItem = (index, field, value) => {
-        setSavedHeader((currentHeader) => {
-            const menu = Array.isArray(currentHeader?.menu) ? [...currentHeader.menu] : [];
-            menu[index] = { ...menu[index], [field]: value };
-
-            return { ...currentHeader, menu };
-        });
-    };
+    const updateHeaderMenu = (menu) => updateHeaderContent({ menu });
 
     const uploadHeaderLogo = async (event) => {
         const file = event.target.files?.[0];
@@ -232,6 +249,27 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
         }
     };
 
+    const deletePage = async (page) => {
+        const typeDescription = page.page_type === 'blog'
+            ? 'Its posts and updates will also be permanently deleted.'
+            : 'Its saved blocks and unpublished changes will be permanently deleted.';
+
+        if (!await confirmCosmicAction({
+            title: `Delete ${page.title || 'this page'}?`,
+            message: typeDescription,
+            confirmLabel: 'Delete page',
+            tone: 'danger',
+        })) return;
+
+        try {
+            await axios.delete(route('pages.destroy', [website.id, page.id]));
+            showCosmicNotification({ title: 'Page deleted', message: 'The page was removed from this website.', tone: 'success' });
+            router.reload({ only: ['pages'] });
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to delete page', message: error.response?.data?.message || 'Please try again.', tone: 'error' });
+        }
+    };
+
     return (
         <WebsiteWorkspaceShell
             header={
@@ -252,19 +290,20 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
             <div className="min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-6xl space-y-7">
-                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={visibleInquiryCount} themeSummary={themeSummary} onNewPage={() => setIsNewPageOpen(true)} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} onOpenInquiries={() => setIsInquiryInboxOpen(true)} onOpenSettings={() => setIsWebsiteSettingsOpen(true)} />
+                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={visibleInquiryCount} themeSummary={themeSummary} onNewPage={() => openNewPage()} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} onOpenInquiries={() => setIsInquiryInboxOpen(true)} onOpenProfile={() => setIsBusinessProfileOpen(true)} onOpenSettings={() => setIsWebsiteSettingsOpen(true)} />
 
-                    <WebsiteLaunchGuide pages={pages || []} onNewPage={() => setIsNewPageOpen(true)} />
+                    <WebsiteLaunchGuide pages={pages || []} onNewPage={() => openNewPage()} />
 
                     <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
                         <div><p className="text-sm font-semibold text-white">Website shell</p><p className="mt-1 text-sm text-slate-400">Configure the shared header and footer used across this website.</p></div>
                         <div className="mt-4 flex gap-2 sm:mt-0"><button type="button" onClick={() => { setSavedHeader(replaceLegacyHeaderLogo(globalHeaderBlock, website.name)); setIsHeaderModalOpen(true); }} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Header</button><button type="button" onClick={() => setIsFooterModalOpen(true)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Footer</button></div>
                     </section>
 
-                    <section><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-white">Pages</p><p className="mt-1 text-sm text-slate-400">Open a page in Builder to edit its blocks and layout.</p></div><span className="text-xs text-slate-500">{pages?.length || 0} total</span></div>{pages?.length ? <PageList pages={pages} /> : <PageEmptyState onNewPage={() => setIsNewPageOpen(true)} />}</section>
+                    <section><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-white">Pages</p><p className="mt-1 text-sm text-slate-400">Open a page in Builder to edit its blocks and layout.</p></div><span className="text-xs text-slate-500">{pages?.length || 0} total</span></div>{pages?.length ? <PageList pages={pages} onDelete={deletePage} onAddChild={openNewPage} /> : <PageEmptyState onNewPage={() => openNewPage()} />}</section>
 
-                    <NewPagePanel open={isNewPageOpen} onClose={() => setIsNewPageOpen(false)} data={data} setData={setData} errors={errors} processing={processing} onSubmit={handleSubmit} />
+                    <NewPagePanel open={isNewPageOpen} onClose={closeNewPage} data={data} setData={setData} errors={errors} processing={processing} onSubmit={handleSubmit} parentPage={newPageParent} />
                     {isInquiryInboxOpen ? <InquiryInboxModal website={website} submissions={recentInquiries} onClose={() => setIsInquiryInboxOpen(false)} onCountChange={(difference) => setVisibleInquiryCount((count) => Math.max(0, count + difference))} /> : null}
+                    {isBusinessProfileOpen ? <BusinessProfileModal website={website} onClose={() => setIsBusinessProfileOpen(false)} onSaved={() => { showCosmicNotification({ title: 'Business profile saved', message: 'Future AI drafts will use these details as context.', tone: 'success' }); router.reload(); }} /> : null}
                     {isWebsiteSettingsOpen ? <WebsiteSettingsModal website={website} onClose={() => setIsWebsiteSettingsOpen(false)} onSaved={() => { showCosmicNotification({ title: 'Website settings saved', message: 'Download a new connector if you changed the live URL or inquiry recipient email.', tone: 'success' }); router.reload(); }} /> : null}
                     
                     {/* INPUT FORM PANEL */}
@@ -403,8 +442,8 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                             <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</h3>
                             {savedHeader ? (
                                 <div className="w-full">
-                                    {savedHeader.type === 'dark_cyan_header' && <DarkCyanHeader block={savedHeader} onUpdate={updateHeaderContent} />}
-                                    {savedHeader.type === 'glassmorphism_header' && <GlassmorphismHeader block={savedHeader} onUpdate={updateHeaderContent} globalTheme={globalTheme} />}
+                                    {savedHeader.type === 'dark_cyan_header' && <DarkCyanHeader block={savedHeader} onUpdate={updateHeaderContent} pageTargets={publishedPageTargets} />}
+                                    {savedHeader.type === 'glassmorphism_header' && <GlassmorphismHeader block={savedHeader} onUpdate={updateHeaderContent} globalTheme={globalTheme} pageTargets={publishedPageTargets} />}
                                 </div>
                             ) : (
                                 <div className="py-7 text-center text-sm text-slate-500">
@@ -474,38 +513,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                                     <p className="text-[11px] text-slate-500">External URLs and #section anchors stay unchanged.</p>
                                 </div>
 
-                                <datalist id="published-page-slugs">
-                                    {publishedPageTargets.map((page) => (
-                                        <option key={page.slug} value={page.slug}>{page.title}</option>
-                                    ))}
-                                </datalist>
-
-                                <div className="mt-3 space-y-2">
-                                    {(savedHeader.menu || []).map((item, index) => (
-                                        <div key={`${item.label || 'menu'}-${index}`} className="grid grid-cols-1 gap-2 rounded-lg border border-white/10 bg-white/[0.025] p-2.5 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                                            <label className="min-w-0">
-                                                <span className="mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">Menu label</span>
-                                                <input
-                                                    type="text"
-                                                    value={item.label || ''}
-                                                    onChange={(event) => updateHeaderMenuItem(index, 'label', event.target.value)}
-                                                    className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
-                                                />
-                                            </label>
-                                            <label className="min-w-0">
-                                                <span className="mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">Link target</span>
-                                                <input
-                                                    type="text"
-                                                    list="published-page-slugs"
-                                                    value={item.url || ''}
-                                                    onChange={(event) => updateHeaderMenuItem(index, 'url', event.target.value)}
-                                                    placeholder="home, about, #contact, or https://..."
-                                                    className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
-                                                />
-                                            </label>
-                                        </div>
-                                    ))}
-                                </div>
+                                <HeaderMenuEditor menu={savedHeader.menu || []} onChange={updateHeaderMenu} targetOptions={publishedPageTargets} />
 
                                 {savedHeader.type === 'glassmorphism_header' && (
                                     <div className="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-violet-400/15 bg-violet-400/[0.035] p-2.5 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">

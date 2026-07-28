@@ -7,6 +7,7 @@ use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\WebsiteController;
 use App\Http\Controllers\ContactSubmissionController;
+use App\Http\Controllers\BlogPostController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -30,18 +31,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/websites/{website}/deployment-connector/verify', [WebsiteController::class, 'verifyDeploymentConnector'])->name('websites.deployment-connector.verify');
     Route::post('/websites/{website}/deployment-connector/push', [WebsiteController::class, 'pushLiveUpdate'])->name('websites.deployment-connector.push');
     Route::put('/websites/{website}/settings', [WebsiteController::class, 'updateSettings'])->name('websites.settings.update');
+    Route::put('/websites/{website}/profile', [WebsiteController::class, 'updateProfile'])->name('websites.profile.update');
     Route::get('/download-bridge', [WebsiteController::class, 'downloadBridge'])->name('bridge.download');
 
     Route::get('/websites/{website}/pages', [PageController::class, 'index'])->name('pages.index');
     Route::get('/websites/{website}/inquiries', [ContactSubmissionController::class, 'index'])->name('websites.inquiries.index');
     Route::patch('/websites/{website}/inquiries/{submission}', [ContactSubmissionController::class, 'update'])->name('websites.inquiries.update');
     Route::post('/websites/{website}/pages', [PageController::class, 'store'])->name('pages.store');
+    Route::delete('/websites/{website}/pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
     Route::get('/pages/{page}/builder', [PageController::class, 'builder'])->name('pages.builder');
 
     // The legacy endpoint remains for compatibility with older clients.
     Route::post('/pages/{page}/builder', [PageController::class, 'updateBlocks'])->name('pages.builder.update');
     Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder'])->name('pages.builder.save');
     Route::post('/pages/{page}/publish', [PageController::class, 'publish'])->name('pages.publish');
+    Route::post('/websites/{website}/pages/{page}/blog-posts', [BlogPostController::class, 'store'])->name('blog-posts.store');
+    Route::put('/websites/{website}/pages/{page}/blog-posts/{blogPost}', [BlogPostController::class, 'update'])->name('blog-posts.update');
+    Route::delete('/websites/{website}/pages/{page}/blog-posts/{blogPost}', [BlogPostController::class, 'destroy'])->name('blog-posts.destroy');
 
     Route::post('/websites/{website}/global-header/save', [PageController::class, 'saveGlobalHeader'])->name('websites.global-header.save');
     Route::post('/websites/{website}/global-footer/save', [WebsiteController::class, 'saveFooter'])->name('websites.global-footer.save');

@@ -331,7 +331,7 @@ export function PricingCardsBlock({
 
                     <EditableText
                         value={data.heading}
-                        className={`block mt-5 text-5xl md:text-6xl font-bold leading-tight tracking-tight ${theme.text}`}
+                        className={`block mt-5 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
                         onSave={(val) =>
                             onUpdate({
                                 heading: val

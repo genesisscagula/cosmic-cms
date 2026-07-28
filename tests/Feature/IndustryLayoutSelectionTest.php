@@ -104,4 +104,47 @@ class IndustryLayoutSelectionTest extends TestCase
                 ->assertJsonStructure(['sections']);
         }
     }
+
+    public function test_explicit_business_profile_industry_overrides_old_page_copy(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        $prompt = "Generate professional website content for the following business.\n"
+            . "Industry: Technology.\n"
+            . "Business description: Website development and digital marketing for eCommerce businesses.\n"
+            . "Existing website messaging: A boutique hotel with rooms and resort-style hospitality.";
+
+        $this->actingAs($user)
+            ->postJson(route('ai.select-sections'), ['prompt' => $prompt])
+            ->assertOk()
+            ->assertJsonPath('image_folder', 'technology');
+    }
+
+    public function test_technology_layouts_follow_the_explicit_page_intent(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        $response = $this->actingAs($user)->postJson(route('ai.select-sections'), [
+            'prompt' => "Industry: Technology.\nPage: Pricing\nBusiness description: Digital services for growing teams.",
+        ]);
+
+        $response
+            ->assertOk()
+            ->assertJsonPath('image_folder', 'technology');
+
+        $this->assertContains('pricing_cards', $response->json('sections'));
+    }
+
+    public function test_the_team_section_category_resolves_to_the_supported_team_block(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+
+        $this->actingAs($user)
+            ->postJson(route('ai.select-section'), [
+                'category' => 'team',
+                'prompt' => 'A trusted technology company with a small leadership team.',
+            ])
+            ->assertOk()
+            ->assertJsonPath('section', 'team_modern');
+    }
 }

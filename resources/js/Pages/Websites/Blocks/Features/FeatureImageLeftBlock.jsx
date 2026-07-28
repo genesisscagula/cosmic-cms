@@ -161,7 +161,7 @@ export function FeatureImageLeftBlock({ block, blockIndex, onUpdate, globalTheme
 
                     <EditableText
                         value={data.heading}
-                        className={`block text-5xl md:text-6xl font-bold leading-tight tracking-tight ${theme.text}`}
+                        className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
                         onSave={(val) =>
                             onUpdate({
                                 heading: val

@@ -261,7 +261,7 @@ export function HeroVideoBackgroundBlock({
 
                     <EditableText
                         value={data.heading}
-                        className="mt-6 block text-5xl font-black leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-8xl"
+                        className="mt-6 block text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-8xl"
                         onSave={(heading) =>
                             onUpdate({ heading })
                         }

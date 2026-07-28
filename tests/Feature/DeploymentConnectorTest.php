@@ -191,6 +191,49 @@ class DeploymentConnectorTest extends TestCase
         });
     }
 
+    public function test_published_blog_posts_are_exported_to_a_blog_directory_and_drafts_are_not(): void
+    {
+        [, $website] = $this->websiteWithConnector();
+        $blogPage = $website->pages()->create([
+            'title' => 'Journal',
+            'slug' => 'journal',
+            'page_type' => 'blog',
+            'status' => 'published',
+            'published_blocks' => [[
+                'type' => 'blog_hub',
+                'heading' => 'Latest from the journal',
+            ]],
+        ]);
+
+        $website->blogPosts()->create([
+            'page_id' => $blogPage->id,
+            'title' => 'Published article',
+            'slug' => 'published-article',
+            'excerpt' => 'A published excerpt.',
+            'content' => 'Published article content.',
+            'category' => 'Updates',
+            'status' => 'published',
+            'published_at' => now(),
+        ]);
+        $website->blogPosts()->create([
+            'page_id' => $blogPage->id,
+            'title' => 'Draft article',
+            'slug' => 'draft-article',
+            'excerpt' => 'A draft excerpt.',
+            'content' => 'Draft article content.',
+            'status' => 'draft',
+        ]);
+
+        $package = app(PagePublisher::class)->publishedPackage($website->fresh());
+        $paths = collect($package['pages'])->pluck('output_path')->filter()->values()->all();
+        $blogHub = collect($package['pages'])->firstWhere('output_path', 'journal/index.html');
+
+        $this->assertSame(['journal/index.html', 'journal/published-article.html'], $paths);
+        $this->assertStringContainsString("href='journal/published-article'", $blogHub['html']);
+        $this->assertStringContainsString('Published article', $blogHub['html']);
+        $this->assertStringNotContainsString('Draft article', $blogHub['html']);
+    }
+
     private function websiteWithConnector(): array
     {
         $user = User::factory()->create(['email_verified_at' => now()]);

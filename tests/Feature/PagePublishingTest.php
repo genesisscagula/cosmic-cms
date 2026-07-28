@@ -42,6 +42,33 @@ class PagePublishingTest extends TestCase
         $this->assertSame([], $website->pages()->where('title', 'About Us')->firstOrFail()->blocks);
     }
 
+    public function test_an_owner_can_delete_a_page_and_its_blog_posts(): void
+    {
+        $user = $this->verifiedUser();
+        $website = $this->website($user);
+        $page = $website->pages()->create([
+            'title' => 'News',
+            'slug' => 'news',
+            'page_type' => 'blog',
+            'status' => 'draft',
+            'blocks' => [['type' => 'blog_hub', 'theme' => 'auto']],
+        ]);
+        $post = $website->blogPosts()->create([
+            'page_id' => $page->id,
+            'title' => 'Opening update',
+            'slug' => 'opening-update',
+            'status' => 'draft',
+        ]);
+
+        $this->actingAs($user)
+            ->deleteJson(route('pages.destroy', [$website, $page]))
+            ->assertOk()
+            ->assertJsonPath('message', 'Page deleted successfully.');
+
+        $this->assertDatabaseMissing('pages', ['id' => $page->id]);
+        $this->assertDatabaseMissing('blog_posts', ['id' => $post->id]);
+    }
+
     public function test_new_websites_receive_an_editable_branded_shell(): void
     {
         $user = $this->verifiedUser();
@@ -50,6 +77,9 @@ class PagePublishingTest extends TestCase
             ->post(route('websites.store'), [
                 'name' => 'North Star Studio',
                 'domain' => 'https://northstar.example.test',
+                'industry' => 'technology',
+                'location' => 'New York, NY',
+                'business_description' => 'A digital studio building practical websites for ambitious teams.',
             ])
             ->assertRedirect();
 

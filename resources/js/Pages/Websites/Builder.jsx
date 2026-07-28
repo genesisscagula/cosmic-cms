@@ -14,7 +14,7 @@ import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 
 
 
-export default function Builder({ page, website, hasWebsiteContent = false, websiteContext = "" }) {
+export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [] }) {
     const { props } = usePage();
     const defaultHeader = {
         type: 'glassmorphism_header',
@@ -43,12 +43,14 @@ export default function Builder({ page, website, hasWebsiteContent = false, webs
     const [aiLoading, setAiLoading] = useState(false);
 
     const [themeMenu, setThemeMenu] = useState(null);
+    const [layoutMenu, setLayoutMenu] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [hasUnsavedTheme, setHasUnsavedTheme] = useState(false);
     const [pageStatus, setPageStatus] = useState(page.status || 'draft');
     const [publishError, setPublishError] = useState(page.publish_error || '');
+    const [blogPosts, setBlogPosts] = useState(initialBlogPosts);
     const hasUnsavedChanges = isDirty || hasUnsavedTheme;
 
     useEffect(() => {
@@ -270,6 +272,55 @@ export default function Builder({ page, website, hasWebsiteContent = false, webs
 
     };
 
+    const getCompatibleLayouts = (blockType) => {
+        const currentBlock = BlockRegistry[blockType];
+        const category = currentBlock?.schema?.category;
+
+        if (!category) {
+            return [];
+        }
+
+        return Object.entries(BlockRegistry)
+            .filter(([, registryItem]) => registryItem?.schema?.category === category)
+            .map(([type, registryItem]) => ({
+                type,
+                title: registryItem.schema?.title || type.replaceAll('_', ' '),
+            }));
+    };
+
+    const changeBlockLayout = (index, nextType) => {
+        const currentBlock = data.blocks[index];
+        const nextLayout = BlockRegistry[nextType];
+        const defaults = nextLayout?.schema?.defaults;
+
+        if (!currentBlock || !defaults || currentBlock.type === nextType) {
+            setLayoutMenu(null);
+            return;
+        }
+
+        // Keep only content keys that both layouts understand. This retains the
+        // shared copy/CTA fields without carrying incompatible layout-specific data.
+        const sharedContent = Object.keys(defaults).reduce((preserved, key) => {
+            if (key !== 'type' && key !== 'theme' && Object.hasOwn(currentBlock, key)) {
+                preserved[key] = currentBlock[key];
+            }
+
+            return preserved;
+        }, {});
+
+        const blocks = [...data.blocks];
+        blocks[index] = {
+            ...defaults,
+            ...sharedContent,
+            type: nextType,
+            theme: currentBlock.theme || 'auto',
+            _renderKey: crypto.randomUUID(),
+        };
+
+        setData('blocks', blocks);
+        setLayoutMenu(null);
+    };
+
 
     const renderBlock = (block, index) => {
 
@@ -286,7 +337,13 @@ export default function Builder({ page, website, hasWebsiteContent = false, webs
 
             onUpdate: (fields) => updateBlockContent(index, fields),
 
-            blockIndex: index
+            blockIndex: index,
+            blogPosts,
+            blogWebsiteId: website.id,
+            blogPageId: page.id,
+            onBlogPostCreated: (post) => setBlogPosts((currentPosts) => [post, ...currentPosts]),
+            onBlogPostUpdated: (post) => setBlogPosts((currentPosts) => currentPosts.map((currentPost) => currentPost.id === post.id ? post : currentPost)),
+            onBlogPostDeleted: (postId) => setBlogPosts((currentPosts) => currentPosts.filter((post) => post.id !== postId)),
 
         };
 
@@ -453,13 +510,14 @@ export default function Builder({ page, website, hasWebsiteContent = false, webs
                     {data.global_header && (
                         <div className="w-full bg-white z-40">
                             {data.global_header.type === 'dark_cyan_header' && (
-                                <DarkCyanHeader block={data.global_header} onUpdate={updateHeader} />
+                                <DarkCyanHeader block={data.global_header} onUpdate={updateHeader} pageTargets={websitePages} />
                             )}
                             {data.global_header.type === 'glassmorphism_header' && (
                                 <GlassmorphismHeader
                                     block={data.global_header}
                                     onUpdate={updateHeader}
                                     globalTheme={globalSelections}
+                                    pageTargets={websitePages}
                                 />
                             )}
                         </div>
@@ -537,14 +595,59 @@ export default function Builder({ page, website, hasWebsiteContent = false, webs
                                         ⧉
                                     </button>
 
+                                    {/* Change layout */}
+
+                                    <button
+                                        type="button"
+                                        aria-label={`Change ${BlockRegistry[block.type]?.schema?.category || 'block'} layout`}
+                                        title={getCompatibleLayouts(block.type).length > 1
+                                            ? `Change ${BlockRegistry[block.type]?.schema?.category || 'block'} layout`
+                                            : 'More layouts for this section will be available soon'}
+                                        disabled={getCompatibleLayouts(block.type).length < 2}
+                                        onClick={() => {
+                                            setThemeMenu(null);
+                                            setLayoutMenu(layoutMenu === index ? null : index);
+                                        }}
+                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 transition focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-30"
+                                    >
+                                        <span aria-hidden="true">&#8644;</span>
+                                    </button>
+
+                                    {layoutMenu === index && (
+                                        <div className="absolute top-12 right-10 z-50 w-64 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
+                                            <div className="border-b border-slate-700 px-4 py-3">
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Change layout</p>
+                                                <p className="mt-1 text-xs font-semibold text-white">{BlockRegistry[block.type]?.schema?.category || 'Section'} variations</p>
+                                            </div>
+
+                                            <div className="max-h-64 overflow-y-auto py-1 [scrollbar-color:rgb(100_116_139)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
+                                                {getCompatibleLayouts(block.type).map((layout) => (
+                                                    <button
+                                                        key={layout.type}
+                                                        type="button"
+                                                        disabled={layout.type === block.type}
+                                                        onClick={() => changeBlockLayout(index, layout.type)}
+                                                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm text-slate-200 transition hover:bg-slate-800 focus:outline-none focus:bg-slate-800 disabled:cursor-default disabled:bg-violet-500/10 disabled:text-white"
+                                                    >
+                                                        <span className="capitalize">{layout.title}</span>
+                                                        {layout.type === block.type && (
+                                                            <span className="text-[10px] font-bold uppercase tracking-wide text-violet-300">Current</span>
+                                                        )}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+
                                     {/* Theme */}
 
                                     <button
                                         type="button"
                                         aria-label="Change block theme"
-                                        onClick={() =>
-                                            setThemeMenu(themeMenu === index ? null : index)
-                                        }
+                                        onClick={() => {
+                                            setLayoutMenu(null);
+                                            setThemeMenu(themeMenu === index ? null : index);
+                                        }}
                                         className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
                                     >
                                         🎨

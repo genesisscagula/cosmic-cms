@@ -300,14 +300,50 @@ function cosmicFileName(string $slug): string
     return ($safeSlug ?: 'index') . '.html';
 }
 
+function cosmicOutputPath(array $page): string
+{
+    $requestedPath = trim((string) ($page['output_path'] ?? ''));
+
+    if ($requestedPath === '') {
+        return cosmicFileName((string) ($page['slug'] ?? ''));
+    }
+
+    $parts = array_values(array_filter(explode('/', str_replace('\\', '/', $requestedPath)), static fn ($part) => $part !== ''));
+
+    if ($parts === [] || count($parts) > 4) {
+        throw new RuntimeException('Published package contains an invalid output path.');
+    }
+
+    $safeParts = [];
+    foreach ($parts as $part) {
+        if ($part === '.' || $part === '..' || ! preg_match('/^[A-Za-z0-9_-]+(?:\.html)?$/', $part)) {
+            throw new RuntimeException('Published package contains an unsafe output path.');
+        }
+        $safeParts[] = $part;
+    }
+
+    $path = implode(DIRECTORY_SEPARATOR, $safeParts);
+    if (! str_ends_with(strtolower($path), '.html')) {
+        throw new RuntimeException('Published package output paths must be HTML files.');
+    }
+
+    return $path;
+}
+
 function cosmicDocument(array $page, array $package): string
 {
     $title = htmlspecialchars(($page['title'] ?? 'Live Website') . ' | ' . ($package['website_name'] ?? 'Cosmic CMS'), ENT_QUOTES, 'UTF-8');
     $header = $package['global_header'] ?? '';
     $footer = $package['global_footer'] ?? '';
     $body = trim((string) ($page['html'] ?? ''));
+    $outputPath = str_replace('\\', '/', (string) ($page['output_path'] ?? ''));
+    // Posts can live under any parent slug such as /blog or /news.
+    $outputDirectory = trim(str_replace('\\', '/', dirname($outputPath)), './');
+    $baseTag = $outputDirectory !== ''
+        ? "<base href='" . str_repeat('../', substr_count($outputDirectory, '/') + 1) . "'>\n"
+        : '';
 
-    return "<!DOCTYPE html>\n<html lang='en'>\n<head>\n<meta charset='UTF-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n<title>{$title}</title>\n<link rel='preconnect' href='https://fonts.bunny.net'>\n<link href='https://fonts.bunny.net/css?family=figtree:400,500,600,700,800,900&display=swap' rel='stylesheet'>\n<script src='https://cdn.tailwindcss.com'></script>\n<style>html{font-family:Figtree,ui-sans-serif,system-ui,sans-serif}[data-cosmic-contact-form] select{color-scheme:dark;background-color:#334b67;color:#f8fafc}[data-cosmic-contact-form] select option{background-color:#334b67;color:#f8fafc}[data-cosmic-contact-form] input[type=date]{color-scheme:dark}</style>\n</head>\n<body class='bg-[#0b0f19] text-slate-100 min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}\n</body>\n</html>";
+    return "<!DOCTYPE html>\n<html lang='en'>\n<head>\n<meta charset='UTF-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n{$baseTag}<title>{$title}</title>\n<link rel='preconnect' href='https://fonts.bunny.net'>\n<link href='https://fonts.bunny.net/css?family=figtree:400,500,600,700,800,900&display=swap' rel='stylesheet'>\n<script src='https://cdn.tailwindcss.com'></script>\n<style>html{font-family:Figtree,ui-sans-serif,system-ui,sans-serif}[data-cosmic-contact-form] select{color-scheme:dark;background-color:#334b67;color:#f8fafc}[data-cosmic-contact-form] select option{background-color:#334b67;color:#f8fafc}[data-cosmic-contact-form] input[type=date]{color-scheme:dark}</style>\n</head>\n<body class='bg-[#0b0f19] text-slate-100 min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}\n</body>\n</html>";
 }
 
 function cosmicCleanUrlRules(): string
@@ -371,7 +407,13 @@ function cosmicWritePackage(array $package): array
             throw new RuntimeException('Published package contains an invalid page.');
         }
 
-        $path = $siteRoot . DIRECTORY_SEPARATOR . cosmicFileName((string) $page['slug']);
+        $relativePath = cosmicOutputPath($page);
+        $path = $siteRoot . DIRECTORY_SEPARATOR . $relativePath;
+        $directory = dirname($path);
+
+        if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
+            throw new RuntimeException('Unable to create the published page directory.');
+        }
         $temporaryPath = $path . '.tmp';
 
         if (file_put_contents($temporaryPath, cosmicDocument($page, $package), LOCK_EX) === false || ! rename($temporaryPath, $path)) {
@@ -379,7 +421,7 @@ function cosmicWritePackage(array $package): array
             throw new RuntimeException('Unable to safely write the published page.');
         }
 
-        $writtenFiles[] = basename($path);
+        $writtenFiles[] = str_replace(DIRECTORY_SEPARATOR, '/', $relativePath);
     }
 
     if (! cosmicInstallCleanUrlRules($siteRoot)) {

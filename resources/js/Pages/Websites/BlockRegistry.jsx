@@ -38,6 +38,11 @@ import {
     StatsModernSchema
 } from "./Blocks/Stats/StatsModernBlock";
 
+import {
+    TeamModernBlock,
+    TeamModernSchema
+} from "./Blocks/Team/TeamModernBlock";
+
 
 import {
     TestimonialsCarouselBlock,
@@ -89,6 +94,16 @@ import {
     ContactFormModernBlock,
     ContactFormModernSchema
 } from "./Blocks/Contact/ContactFormModernBlock";
+import { FaqAccordionBlock, FaqAccordionSchema } from "./Blocks/FAQ/FaqAccordionBlock";
+import { ContactDetailsBlock, ContactDetailsSchema } from "./Blocks/Contact/ContactDetailsBlock";
+import { LocationMapBlock, LocationMapSchema } from "./Blocks/Contact/LocationMapBlock";
+import { CaseStudiesGridBlock, CaseStudiesGridSchema } from "./Blocks/Collections/CaseStudiesGridBlock";
+import { JobsListBlock, JobsListSchema } from "./Blocks/Collections/JobsListBlock";
+import { EventsGridBlock, EventsGridSchema } from "./Blocks/Collections/EventsGridBlock";
+import { BlogHubBlock, BlogHubSchema } from "./Blocks/Blog/BlogHubBlock";
+import { BlogMiniHeroBlock, BlogMiniHeroSchema } from "./Blocks/Blog/BlogMiniHeroBlock";
+import { NewsletterCtaBlock, NewsletterCtaSchema } from "./Blocks/Blog/NewsletterCtaBlock";
+import { LatestResourcesBlock, LatestResourcesSchema } from "./Blocks/Blog/LatestResourcesBlock";
 
 export const BlockRegistry = {
 
@@ -220,6 +235,14 @@ export const BlockRegistry = {
 
     },
 
+    team_modern: {
+
+        component: TeamModernBlock,
+
+        schema: TeamModernSchema
+
+    },
+
     testimonials_carousel: {
 
         component: TestimonialsCarouselBlock,
@@ -234,6 +257,56 @@ export const BlockRegistry = {
 
         schema: ContactFormModernSchema
 
+    },
+
+    faq_accordion: {
+        component: FaqAccordionBlock,
+        schema: FaqAccordionSchema,
+    },
+
+    contact_details: {
+        component: ContactDetailsBlock,
+        schema: ContactDetailsSchema,
+    },
+
+    location_map: {
+        component: LocationMapBlock,
+        schema: LocationMapSchema,
+    },
+
+    case_studies_grid: {
+        component: CaseStudiesGridBlock,
+        schema: CaseStudiesGridSchema,
+    },
+
+    jobs_list: {
+        component: JobsListBlock,
+        schema: JobsListSchema,
+    },
+
+    events_grid: {
+        component: EventsGridBlock,
+        schema: EventsGridSchema,
+    },
+
+    blog_hub: {
+        component: BlogHubBlock,
+        schema: BlogHubSchema,
+    },
+
+    blog_mini_hero: {
+        component: BlogMiniHeroBlock,
+        schema: BlogMiniHeroSchema,
+    },
+
+    newsletter_cta: {
+        component: NewsletterCtaBlock,
+        schema: NewsletterCtaSchema,
+    },
+
+    latest_resources: {
+        component: LatestResourcesBlock,
+        schema: LatestResourcesSchema,
     },
 
 };
