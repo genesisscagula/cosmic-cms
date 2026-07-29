@@ -251,15 +251,13 @@ export default function Start({ trial }) {
 
     const submit = (event) => {
         event.preventDefault();
-        setShowLoading(true);
-        post('/start', {
-            // Keep the progress experience visible while Inertia follows the
-            // successful redirect to the generated draft. `onFinish` also
-            // runs as soon as that redirect begins, which made the overlay
-            // flash briefly before the next page was ready.
-            onError: () => setShowLoading(false),
-        });
-    };
+    setShowLoading(true);
+    post('/start', {
+        // A successful Inertia redirect replaces this page. Closing the
+        // overlay in `onFinish` makes it flash away before that page renders.
+        onError: () => setShowLoading(false),
+    });
+};
 
     const isReady = trial?.status === 'ready';
     const isFailed = trial?.status === 'failed';
@@ -435,6 +433,7 @@ export default function Start({ trial }) {
                         blocks={trial.generated_blocks}
                         businessName={trial.business_name}
                         navigation={trial.navigation}
+                        globalTheme={trial.preview_theme}
                         trialToken={trial.token}
                         selectedPlan={selectedPlan}
                     />
@@ -444,14 +443,14 @@ export default function Start({ trial }) {
     );
 }
 
-const previewTheme = {
+const fallbackPreviewTheme = {
     primary: 'midnight',
     secondary: 'white',
     tertiary: 'stone',
     auto: true,
 };
 
-function DraftPreview({ blocks, businessName, navigation = [], trialToken, selectedPlan }) {
+function DraftPreview({ blocks, businessName, navigation = [], globalTheme = fallbackPreviewTheme, trialToken, selectedPlan }) {
     const menuItems = navigation.length ? navigation : ['Home', 'About', 'Services', 'Contact'];
 
     return (
@@ -481,7 +480,7 @@ function DraftPreview({ blocks, businessName, navigation = [], trialToken, selec
                             <Component
                                 block={{ ...block, resolvedTheme: block.resolvedTheme || 'auto' }}
                                 blockIndex={index}
-                                globalTheme={previewTheme}
+                                globalTheme={globalTheme}
                                 onUpdate={() => {}}
                             />
                         </div>

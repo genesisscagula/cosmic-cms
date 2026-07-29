@@ -45,5 +45,8 @@ return [
     | for a response. Full-page generation may require longer than 30 seconds.
     */
 
-    'request_timeout' => env('OPENAI_REQUEST_TIMEOUT', 90),
+    // Keep this below the local PHP request limit. A timeout must be returned
+    // to the controller so a trial can be marked as failed instead of leaving
+    // the public generation screen waiting for a request PHP has terminated.
+    'request_timeout' => env('OPENAI_REQUEST_TIMEOUT', 45),
 ];
