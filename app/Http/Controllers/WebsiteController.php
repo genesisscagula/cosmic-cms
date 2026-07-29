@@ -336,6 +336,8 @@ class WebsiteController extends Controller
 		            <meta charset=\"UTF-8\">
 		            <meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\">
 		            <title>" . htmlspecialchars($data[\'website_name\'] ?? \'Cosmic Site\') . "</title>
+		            <link rel=\"preconnect\" href=\"https://fonts.bunny.net\">
+		            <link href=\"https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap\" rel=\"stylesheet\">
 		            <script src=\"https://cdn.tailwindcss.com\"></script>
 		        </head>
 		        <body class=\"bg-slate-50 text-slate-900 font-sans\">";
@@ -387,7 +389,7 @@ class WebsiteController extends Controller
 		} else {
 		    // Installer Form View
 		    echo "
-		    <div style=\"max-width:400px; margin:50px auto; font-family:sans-serif; padding:20px; border:1px solid #ccc; border-radius:8px;\">
+		    <div style=\"max-width:400px; margin:50px auto; font-family:Manrope, sans-serif; padding:20px; border:1px solid #ccc; border-radius:8px;\">
 		        <h2>Cosmic CMS Client Bridge 🚀</h2>
 		        <p style=\"font-size:13px; color:#666;\">Paste the token from your Cosmic Dashboard to sync pages and blocks.</p>
 		        <form method=\"POST\">

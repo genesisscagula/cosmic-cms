@@ -27,6 +27,23 @@ class TrialGenerationController extends Controller
         'Salon & Beauty' => 'salon', 'Technology' => 'technology', 'Travel' => 'travel',
     ];
 
+    private const INDUSTRY_KEYWORDS = [
+        'Automotive' => ['automotive', 'car', 'auto repair', 'vehicle', 'garage', 'dealership'],
+        'Bakery' => ['bakery', 'baker', 'pastry', 'bread', 'cake'],
+        'Coffee Shop' => ['coffee shop', 'coffee', 'cafe', 'café'],
+        'Construction' => ['construction', 'contractor', 'renovation', 'builder'],
+        'Dental Clinic' => ['dental', 'dentist', 'dentistry', 'teeth', 'implant'],
+        'Fitness' => ['fitness', 'gym', 'workout', 'personal training'],
+        'Hotel & Resort' => ['hotel', 'resort', 'accommodation', 'rooms', 'hospitality'],
+        'Law Firm' => ['law firm', 'lawyer', 'attorney', 'legal'],
+        'Medical Clinic' => ['medical', 'clinic', 'healthcare', 'doctor'],
+        'Real Estate' => ['real estate', 'property', 'realtor', 'realty'],
+        'Restaurant' => ['restaurant', 'dining', 'food', 'pizza', 'pasta', 'catering'],
+        'Salon & Beauty' => ['salon', 'beauty', 'spa', 'hair'],
+        'Technology' => ['technology', 'software', 'saas', 'ecommerce', 'digital marketing', 'website development'],
+        'Travel' => ['travel', 'tour', 'tourism', 'holiday'],
+    ];
+
     public function create(Request $request)
     {
         $trial = null;
@@ -39,6 +56,7 @@ class TrialGenerationController extends Controller
                 'token' => $trial->token,
                 'business_name' => $trial->business_name,
                 'industry' => $trial->industry,
+                'navigation' => $this->navigationForIndustry($trial->industry),
                 'status' => $trial->status,
                 'sections' => $trial->sections,
                 'generated_blocks' => $trial->status === 'ready' && ! $trial->claimed_at
@@ -56,31 +74,25 @@ class TrialGenerationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'email' => ['required', 'email', 'max:254'],
-            'business_name' => ['required', 'string', 'max:255'],
-            'industry' => ['required', 'string', 'in:'.implode(',', array_keys(self::INDUSTRY_FOLDERS))],
-            'location' => ['required', 'string', 'max:255'],
-            'business_description' => ['required', 'string', 'max:2000'],
-            'prompt' => ['nullable', 'string', 'max:2000'],
+            'prompt' => ['required', 'string', 'min:20', 'max:2000'],
         ]);
 
-        $emailKey = 'trial-generation:email:'.sha1(Str::lower($validated['email']));
         $ipKey = 'trial-generation:ip:'.sha1((string) $request->ip());
-        if (RateLimiter::tooManyAttempts($emailKey, 1) || RateLimiter::tooManyAttempts($ipKey, 2)) {
-            return back()->withErrors(['email' => 'This email has already generated a draft today. Please check your inbox or try again tomorrow.']);
+        if (RateLimiter::tooManyAttempts($ipKey, 2)) {
+            return back()->withErrors(['prompt' => 'You have already generated two drafts today. Please try again tomorrow.']);
         }
 
-        RateLimiter::hit($emailKey, 86400);
         RateLimiter::hit($ipKey, 86400);
 
-        $prompt = $this->buildPrompt($validated);
-        $folder = self::INDUSTRY_FOLDERS[$validated['industry']];
+        $profile = $this->profileFromPrompt($validated['prompt']);
+        $prompt = $this->buildPrompt($profile);
+        $folder = self::INDUSTRY_FOLDERS[$profile['industry']];
         $sections = LayoutEngine::random($folder, $prompt);
 
         $trial = TrialGeneration::create([
-            ...$validated,
+            ...$profile,
             'token' => (string) Str::uuid(),
-            'prompt' => $validated['prompt'] ?: null,
+            'prompt' => $validated['prompt'],
             'sections' => $sections,
             'status' => 'generating',
             'ip_hash' => hash('sha256', (string) $request->ip()),
@@ -140,5 +152,46 @@ class TrialGenerationController extends Controller
             ."About the business: {$data['business_description']}\n"
             .($request !== '' ? "\nAdditional request: {$request}\n" : '')
             ."\nUse a clear, trustworthy tone. Do not invent awards, certifications, customer statistics, or other unverifiable claims.";
+    }
+
+    private function profileFromPrompt(string $prompt): array
+    {
+        $normalized = Str::lower($prompt);
+        $industry = 'Technology';
+
+        foreach (self::INDUSTRY_KEYWORDS as $candidate => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($normalized, $keyword)) {
+                    $industry = $candidate;
+                    break 2;
+                }
+            }
+        }
+
+        $businessName = 'Your new website';
+        if (preg_match('/\bfor\s+(?:an?\s+)?(.+?)(?:\s+in\s+[^,.]+|[,.])/i', $prompt, $matches)) {
+            $businessName = Str::of($matches[1])->squish()->limit(80, '')->toString();
+        }
+
+        return [
+            'email' => null,
+            'business_name' => $businessName,
+            'industry' => $industry,
+            'location' => 'Not specified',
+            'business_description' => $prompt,
+        ];
+    }
+
+    /**
+     * Navigation is preview-only for an unclaimed trial. It gives the visitor
+     * an industry-appropriate picture of the website without creating pages
+     * or promising those pages have already been generated.
+     */
+    private function navigationForIndustry(?string $industry): array
+    {
+        $menus = config('trial-navigation', []);
+        $folder = self::INDUSTRY_FOLDERS[$industry ?? ''] ?? 'default';
+
+        return $menus[$folder] ?? $menus['default'] ?? ['Home', 'About', 'Services', 'Contact'];
     }
 }

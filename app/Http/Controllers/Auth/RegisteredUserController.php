@@ -72,7 +72,7 @@ class RegisteredUserController extends Controller
                     ]);
                 }
 
-                if (Str::lower($trial->email) !== Str::lower($request->email)) {
+                if ($trial->email && Str::lower($trial->email) !== Str::lower($request->email)) {
                     throw ValidationException::withMessages([
                         'email' => 'Use the same email address used to create this draft.',
                     ]);

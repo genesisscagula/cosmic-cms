@@ -711,7 +711,7 @@ HTML;
                 $logoText = e($block['logo_text'] ?? 'Your Website');
                 $logoImageUrl = e(self::staticAssetUrl($block['logo_image_url'] ?? ''));
                 $logo = $logoImageUrl !== ''
-                    ? "<img src='{$logoImageUrl}' alt='{$logoText}' class='h-9 w-auto max-w-[200px] object-contain'>"
+                    ? "<img src='{$logoImageUrl}' alt='{$logoText}' class='h-14 w-auto max-w-[300px] object-contain'>"
                     : $logoText;
                 $ctaLabel = e($block['cta_label'] ?? 'Get Started');
                 $ctaUrl = e($block['cta_url'] ?? '#');
@@ -804,7 +804,7 @@ HTML;
 
                         <a
                             href='{$ctaUrl}'
-                            class='{$buttonBg} {$buttonText} shrink-0 px-[22px] py-[10px] rounded-full text-sm font-semibold hover:opacity-90 transition'
+                            class='{$buttonBg} {$buttonText} shrink-0 px-[40px] py-[16px] rounded-full text-sm font-semibold hover:opacity-90 transition'
                         >
                             {$ctaLabel}
                         </a>

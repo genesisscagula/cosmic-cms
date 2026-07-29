@@ -1,0 +1,19 @@
+.cosmic-start .cosmic-start-spinner {
+    border: 3px solid rgba(139, 92, 246, 0.22);
+    border-top-color: #8b5cf6;
+    border-right-color: #67e8f9;
+    border-bottom-color: #34d399;
+    animation: cosmic-start-spin 1s linear infinite;
+}
+
+@keyframes cosmic-start-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .cosmic-start .cosmic-start-spinner {
+        animation: none;
+    }
+}
