@@ -48,5 +48,5 @@ return [
     // Keep this below the local PHP request limit. A timeout must be returned
     // to the controller so a trial can be marked as failed instead of leaving
     // the public generation screen waiting for a request PHP has terminated.
-    'request_timeout' => env('OPENAI_REQUEST_TIMEOUT', 45),
+    'request_timeout' => env('OPENAI_REQUEST_TIMEOUT', 180),
 ];

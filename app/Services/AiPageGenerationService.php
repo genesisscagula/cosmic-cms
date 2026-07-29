@@ -1,270 +1,149 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Services;
 
-use App\Models\Page;
-use App\Models\TrialGeneration;
-use App\Models\Website;
-use App\Services\AiPageGenerationService;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Support\Str;
-use Inertia\Inertia;
-use OpenAI\Exceptions\TransporterException;
+use App\AI\Generators\ContentGenerator;
+use App\AI\Generators\ImageGenerator;
+use App\AI\Layouts\LayoutEngine;
 
-class TrialGenerationController extends Controller
+class AiPageGenerationService
 {
-    private const DEMO_WEBSITE_ID = 14;
+    public function generatePage(string $prompt): array
+    {
+        $selection = $this->selectSections($prompt);
 
-    private const PLANS = ['starter', 'growth', 'pro'];
-
-    private const INDUSTRY_FOLDERS = [
-        'Automotive' => 'automotive', 'Bakery' => 'bakery', 'Cleaning' => 'cleaning',
-        'Coffee Shop' => 'coffee', 'Construction' => 'construction', 'Dental Clinic' => 'dentist',
-        'Education' => 'education', 'Electrician' => 'electrician', 'Finance' => 'finance',
-        'Fitness' => 'fitness', 'Hotel & Resort' => 'hotel', 'Landscaping' => 'landscaping',
-        'Law Firm' => 'lawyer', 'Medical Clinic' => 'medical', 'Plumbing' => 'plumbing',
-        'Real Estate' => 'real-estate', 'Restaurant' => 'restaurant', 'Roofing' => 'roofing',
-        'Salon & Beauty' => 'salon', 'Technology' => 'technology', 'Travel' => 'travel',
-    ];
-
-    private const INDUSTRY_KEYWORDS = [
-        'Automotive' => ['automotive', 'car', 'auto repair', 'vehicle', 'garage', 'dealership'],
-        'Bakery' => ['bakery', 'baker', 'pastry', 'bread', 'cake'],
-        'Coffee Shop' => ['coffee shop', 'coffee', 'cafe', 'café'],
-        'Construction' => ['construction', 'contractor', 'renovation', 'builder'],
-        'Dental Clinic' => ['dental', 'dentist', 'dentistry', 'teeth', 'implant'],
-        'Fitness' => ['fitness', 'gym', 'workout', 'personal training'],
-        'Hotel & Resort' => ['hotel', 'resort', 'accommodation', 'rooms', 'hospitality'],
-        'Law Firm' => ['law firm', 'lawyer', 'attorney', 'legal'],
-        'Medical Clinic' => ['medical', 'clinic', 'healthcare', 'doctor'],
-        'Real Estate' => ['real estate', 'property', 'realtor', 'realty'],
-        'Restaurant' => ['restaurant', 'dining', 'food', 'pizza', 'pasta', 'catering'],
-        'Salon & Beauty' => ['salon', 'beauty', 'spa', 'hair'],
-        'Technology' => ['technology', 'software', 'saas', 'ecommerce', 'digital marketing', 'website development'],
-        'Travel' => ['travel', 'tour', 'tourism', 'holiday'],
-    ];
-
-    public function __construct(
-        private readonly AiPageGenerationService $pageGenerationService
-    ) {
+        return [
+            'sections' => $selection['sections'],
+            'image_folder' => $selection['image_folder'],
+            'blocks' => $this->generateBlocks(
+                $prompt,
+                $selection['sections'],
+                $selection['image_folder']
+            ),
+        ];
     }
 
-    public function create(Request $request)
+    public function generateBlocks(string $prompt, array $sections, ?string $imageFolder = null): array
     {
-        $trial = null;
-        if ($request->filled('trial')) {
-            $trial = TrialGeneration::where('token', $request->string('trial'))->first();
+        $generator = new ContentGenerator();
+        $imageGenerator = new ImageGenerator();
+        $resolvedImageFolder = $imageFolder ?: $this->resolveLayoutFolder($prompt);
+
+        $content = $generator->generate($prompt, $sections);
+        $blocks = $content['blocks'] ?? [];
+
+        foreach ($blocks as &$block) {
+            if (($block['type'] ?? null) === 'hero_video_background') {
+                $block['poster_image_url'] = $imageGenerator->generate(
+                    $resolvedImageFolder,
+                    $block
+                );
+
+                continue;
+            }
+
+            if (! array_key_exists('image_url', $block)) {
+                continue;
+            }
+
+            $block['image_url'] = $imageGenerator->generate(
+                $resolvedImageFolder,
+                $block
+            );
         }
 
-        return Inertia::render('Start', [
-            'trial' => $trial ? [
-                'token' => $trial->token,
-                'business_name' => $trial->business_name,
-                'industry' => $trial->industry,
-                'preview_theme' => $this->previewThemeForIndustry($trial->industry),
-                'navigation' => $this->navigationForIndustry($trial->industry),
-                'status' => $trial->status,
-                'sections' => $trial->sections,
-                'generated_blocks' => $trial->status === 'ready' && ! $trial->claimed_at
-                    ? $trial->generated_blocks
-                    : [],
-                'blocks_count' => is_array($trial->generated_blocks) ? count($trial->generated_blocks) : 0,
-                'error_message' => $trial->error_message,
-                'claimed_at' => $trial->claimed_at?->toIso8601String(),
-                'selected_plan' => $trial->selected_plan,
-            ] : null,
-            'industries' => array_keys(self::INDUSTRY_FOLDERS),
-        ]);
+        unset($block);
+
+        return $blocks;
     }
 
-    public function store(Request $request)
+    public function selectSections(string $prompt): array
     {
-        set_time_limit(240);
+        $imageFolder = $this->resolveLayoutFolder($prompt);
 
-        $validated = $request->validate([
-            'prompt' => ['required', 'string', 'min:20', 'max:2000'],
-        ]);
-
-        $ipKey = 'trial-generation:ip:'.sha1((string) $request->ip());
-        if (RateLimiter::tooManyAttempts($ipKey, 2)) {
-            return back()->withErrors([
-                'prompt' => 'You have already generated two drafts today. Please try again tomorrow.',
-            ]);
-        }
-
-        RateLimiter::hit($ipKey, 86400);
-
-        $profile = $this->profileFromPrompt($validated['prompt']);
-        $generationPrompt = $this->buildPrompt($profile);
-
-        $trial = TrialGeneration::create([
-            ...$profile,
-            'token' => (string) Str::uuid(),
-            'prompt' => $validated['prompt'],
-            'status' => 'generating',
-            'ip_hash' => hash('sha256', (string) $request->ip()),
-        ]);
-
-        try {
-            $generated = $this->pageGenerationService->generatePage($generationPrompt);
-
-            $page = DB::transaction(function () use ($trial, $profile, $generated) {
-                $website = Website::query()->findOrFail(self::DEMO_WEBSITE_ID);
-
-                $website->update([
-                    'industry' => self::INDUSTRY_FOLDERS[$profile['industry']] ?? 'default',
-                    'location' => $profile['location'],
-                    'business_description' => $profile['business_description'],
-                ]);
-
-                $page = $website->pages()->create([
-                    'title' => $profile['business_name'],
-                    'slug' => $this->uniqueDemoSlug($website, $profile['business_name']),
-                    'parent_id' => null,
-                    'sort_order' => ((int) $website->pages()->whereNull('parent_id')->max('sort_order')) + 1,
-                    'page_type' => 'standard',
-                    'blocks' => $generated['blocks'],
-                    'status' => 'draft',
-                ]);
-
-                $trial->update([
-                    'page_id' => $page->id,
-                    'sections' => $generated['sections'],
-                    'generated_blocks' => $generated['blocks'],
-                    'status' => 'ready',
-                    'error_message' => null,
-                ]);
-
-                return $page;
-            });
-
-            return redirect()->route('pages.builder', $page);
-        } catch (TransporterException $exception) {
-            Log::warning('Public trial generation unavailable', [
-                'trial' => $trial->id,
-                'message' => $exception->getMessage(),
-            ]);
-
-            RateLimiter::clear($ipKey);
-            $trial->update([
-                'status' => 'failed',
-                'error_message' => 'Cosmic AI took too long to respond. Please try again in a moment.',
-            ]);
-        } catch (\Throwable $exception) {
-            Log::error('Public trial generation failed', [
-                'trial' => $trial->id,
-                'message' => $exception->getMessage(),
-                'file' => $exception->getFile(),
-                'line' => $exception->getLine(),
-            ]);
-
-            RateLimiter::clear($ipKey);
-            $trial->update([
-                'status' => 'failed',
-                'error_message' => 'We could not generate this draft. Please try again later.',
-            ]);
-        }
-
-        return redirect()->route('start', ['trial' => $trial->token]);
+        return [
+            'sections' => LayoutEngine::random($imageFolder, $prompt),
+            'image_folder' => $imageFolder,
+        ];
     }
 
-    public function selectPlan(Request $request, TrialGeneration $trial)
+    public function selectSection(string $category, string $prompt): array
     {
-        abort_unless($trial->status === 'ready' && ! $trial->claimed_at, 404);
-
-        $validated = $request->validate([
-            'plan' => ['required', 'string', 'in:'.implode(',', self::PLANS)],
-        ]);
-
-        $trial->update([
-            'selected_plan' => $validated['plan'],
-            'plan_selected_at' => now(),
-        ]);
-
-        return redirect()->route('start', ['trial' => $trial->token]);
+        return [
+            'section' => LayoutEngine::randomSection($category, $prompt),
+            'image_folder' => $this->resolveLayoutFolder($prompt),
+        ];
     }
 
-    private function uniqueDemoSlug(Website $website, string $businessName): string
+    public function resolveLayoutFolder(string $prompt): string
     {
-        $base = Str::slug($businessName) ?: 'demo';
-        $slug = $base.'-'.Str::lower(Str::random(6));
+        $normalizedPrompt = trim($prompt);
+        $normalizedPrompt = function_exists('mb_strtolower')
+            ? mb_strtolower($normalizedPrompt, 'UTF-8')
+            : strtolower($normalizedPrompt);
 
-        while ($website->pages()->where('slug', $slug)->exists()) {
-            $slug = $base.'-'.Str::lower(Str::random(6));
-        }
+        $industryKeywords = $this->industryKeywords();
 
-        return $slug;
-    }
+        if (preg_match('/^industry:\s*([^\r\n.]+)/mi', $prompt, $matches) === 1) {
+            $profileIndustry = trim($matches[1]);
+            $profileIndustry = function_exists('mb_strtolower')
+                ? mb_strtolower($profileIndustry, 'UTF-8')
+                : strtolower($profileIndustry);
 
-    private function buildPrompt(array $data): string
-    {
-        $request = trim((string) ($data['prompt'] ?? ''));
-
-        return "Generate a professional website draft for the following business.\n\n"
-            ."Business Name: {$data['business_name']}\n"
-            ."Industry: {$data['industry']}\n"
-            ."Location: {$data['location']}\n"
-            ."About the business: {$data['business_description']}\n"
-            .($request !== '' ? "\nAdditional request: {$request}\n" : '')
-            ."\nUse a clear, trustworthy tone. Do not invent awards, certifications, customer statistics, or other unverifiable claims.";
-    }
-
-    private function profileFromPrompt(string $prompt): array
-    {
-        $normalized = Str::lower($prompt);
-        $industry = 'Technology';
-
-        foreach (self::INDUSTRY_KEYWORDS as $candidate => $keywords) {
-            foreach ($keywords as $keyword) {
-                if (str_contains($normalized, $keyword)) {
-                    $industry = $candidate;
-                    break 2;
+            foreach ($industryKeywords as $folder => $keywords) {
+                if ($profileIndustry === $folder || in_array($profileIndustry, $keywords, true)) {
+                    return $folder;
                 }
             }
         }
 
-        $businessName = 'Your new website';
-        if (preg_match('/\bfor\s+(?:an?\s+)?(.+?)(?:\s+in\s+[^,.]+|[,.])/i', $prompt, $matches)) {
-            $businessName = Str::of($matches[1])->squish()->limit(80, '')->toString();
+        foreach ($industryKeywords as $folder => $keywords) {
+            foreach ($keywords as $keyword) {
+                if (str_contains($normalizedPrompt, $keyword)) {
+                    return $folder;
+                }
+            }
         }
 
-        return [
-            'email' => null,
-            'business_name' => $businessName,
-            'industry' => $industry,
-            'location' => 'Not specified',
-            'business_description' => $prompt,
-        ];
+        return 'default';
     }
 
-    private function navigationForIndustry(?string $industry): array
+    private function industryKeywords(): array
     {
-        $menus = config('trial-navigation', []);
-        $folder = self::INDUSTRY_FOLDERS[$industry ?? ''] ?? 'default';
-
-        return $menus[$folder] ?? $menus['default'] ?? ['Home', 'About', 'Services', 'Contact'];
-    }
-
-    private function previewThemeForIndustry(?string $industry): array
-    {
-        $primary = match ($industry) {
-            'Restaurant', 'Coffee Shop', 'Bakery' => 'terracotta',
-            'Automotive', 'Construction', 'Electrician', 'Plumbing', 'Roofing' => 'asphalt',
-            'Fitness', 'Real Estate', 'Landscaping', 'Salon & Beauty', 'Cleaning' => 'emerald',
-            'Technology' => 'void',
-            'Hotel & Resort', 'Travel' => 'sapphire',
-            'Law Firm', 'Finance' => 'obsidian',
-            default => 'midnight',
-        };
-
         return [
-            'primary' => $primary,
-            'secondary' => 'white',
-            'tertiary' => 'stone',
-            'auto' => true,
+            'bakery' => ['bakery', 'pastry', 'pastries', 'bread', 'cake', 'cakes', 'dessert', 'desserts'],
+            'coffee' => ['coffee', 'coffee shop', 'cafe', 'café', 'espresso', 'roastery'],
+            'hotel' => ['hotel', 'resort', 'accommodation', 'lodging', 'boutique hotel'],
+            'travel' => ['travel', 'tour', 'tourism', 'vacation', 'holiday', 'destination'],
+            'restaurant' => ['restaurant', 'dining', 'food', 'pizza', 'pasta', 'catering', 'bistro'],
+            'dentist' => ['dentist', 'dental', 'orthodontist', 'orthodontic', 'teeth whitening'],
+            'medical' => ['medical', 'healthcare', 'health care', 'clinic', 'doctor', 'physician', 'wellness center'],
+            'fitness' => ['fitness', 'gym', 'personal trainer', 'workout', 'crossfit', 'yoga studio'],
+            'cleaning' => ['cleaning', 'house cleaning', 'commercial cleaning', 'janitorial', 'maid service'],
+            'landscaping' => ['landscaping', 'landscape', 'lawn care', 'garden design', 'tree service'],
+            'lawyer' => ['lawyer', 'law firm', 'attorney', 'legal services', 'legal counsel'],
+            'finance' => ['finance', 'financial advisor', 'accounting', 'accountant', 'bookkeeping', 'wealth management'],
+            'real-estate' => ['real estate', 'realtor', 'property listing', 'property management', 'realty'],
+            'technology' => ['technology', 'software', 'saas', 'tech startup', 'it services', 'web development'],
+            'education' => ['education', 'school', 'academy', 'tutoring', 'training center', 'online course'],
+            'salon' => ['salon', 'beauty', 'hair stylist', 'barber', 'spa', 'nail studio'],
+            'roofing' => ['roofing', 'roofer', 'roof repair', 'roof replacement'],
+            'electrician' => ['electrician', 'electrical', 'wiring', 'electric service'],
+            'plumbing' => ['plumbing', 'plumber', 'drain cleaning', 'water heater', 'pipe repair'],
+            'construction' => ['construction', 'contractor', 'home builder', 'renovation', 'remodeling', 'remodelling'],
+            'automotive' => [
+                'automotive',
+                'car dealership',
+                'car dealer',
+                'auto repair',
+                'mechanic',
+                'garage',
+                'car service',
+                'vehicle',
+                'car wash',
+                'detailing',
+                'tire shop',
+            ],
         ];
     }
 }

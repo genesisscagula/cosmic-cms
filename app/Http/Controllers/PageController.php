@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Website;
 use App\Models\Page;
+use App\Models\TrialGeneration;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
@@ -202,9 +203,14 @@ class PageController extends Controller
         ];
     }
 
-    public function builder(\App\Models\Page $page)
+    public function builder(Request $request, Page $page)
     {
-        $this->authorize('view', $page->website);
+        $trial = $this->resolveTrialAccess($request, $page);
+        $isTrialMode = $trial !== null;
+
+        if (! $isTrialMode) {
+            $this->authorize('view', $page->website);
+        }
 
         $website = $page->website;
         $websiteMessaging = $website->pages()
@@ -212,7 +218,7 @@ class PageController extends Controller
             ->flatMap(function (Page $websitePage) {
                 return collect($websitePage->blocks ?? [])
                     ->map(function ($block) {
-                        if (!is_array($block)) {
+                        if (! is_array($block)) {
                             return null;
                         }
 
@@ -238,7 +244,7 @@ class PageController extends Controller
         ]);
 
         $websiteContext = trim(implode("\n", array_filter([
-            "Generate professional website content for the following business.",
+            'Generate professional website content for the following business.',
             "Business Name: {$website->name}",
             ...$profileContext,
             "Page: {$page->title}",
@@ -247,30 +253,51 @@ class PageController extends Controller
             $websiteMessaging !== '' ? "Existing website messaging: {$websiteMessaging}" : null,
         ])));
 
-        return \Inertia\Inertia::render('Websites/Builder', [
+        return Inertia::render('Websites/Builder', [
             'page' => $page,
             'website' => $website,
-            'websitePages' => $website->pages()
-                ->orderBy('parent_id')
-                ->orderBy('sort_order')
-                ->orderBy('id')
-                ->get(['id', 'title', 'slug', 'parent_id'])
-                ->map(fn (Page $websitePage) => [
-                    'id' => $websitePage->id,
-                    'title' => $websitePage->title,
-                    'slug' => $websitePage->slug,
-                    'parent_id' => $websitePage->parent_id,
-                ])
-                ->values(),
-            'blogPosts' => $page->page_type === 'blog'
-                ? $website->blogPosts()
-                    ->where('page_id', $page->id)
-                    ->orderByDesc('is_featured')
-                    ->latest()
-                    ->get()
-                : [],
+            'websitePages' => $isTrialMode
+                ? [[
+                    'id' => $page->id,
+                    'title' => $page->title,
+                    'slug' => $page->slug,
+                    'parent_id' => $page->parent_id,
+                ]]
+                : $website->pages()
+                    ->orderBy('parent_id')
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get(['id', 'title', 'slug', 'parent_id'])
+                    ->map(fn (Page $websitePage) => [
+                        'id' => $websitePage->id,
+                        'title' => $websitePage->title,
+                        'slug' => $websitePage->slug,
+                        'parent_id' => $websitePage->parent_id,
+                    ])
+                    ->values(),
+            'blogPosts' => $isTrialMode
+                ? []
+                : ($page->page_type === 'blog'
+                    ? $website->blogPosts()
+                        ->where('page_id', $page->id)
+                        ->orderByDesc('is_featured')
+                        ->latest()
+                        ->get()
+                    : []),
             'hasWebsiteContent' => $websiteMessaging !== '',
             'websiteContext' => $websiteContext,
+            'trialMode' => $isTrialMode,
+            'trialToken' => $trial?->token,
+            'trialCapabilities' => [
+                'canNavigateAway' => ! $isTrialMode,
+                'canChangeTheme' => ! $isTrialMode,
+                'canGenerateAi' => ! $isTrialMode,
+                'canPublish' => ! $isTrialMode,
+                'canManageBlocks' => ! $isTrialMode,
+                'canEditGlobalShell' => ! $isTrialMode,
+                'canSave' => true,
+                'canPurchase' => $isTrialMode,
+            ],
         ]);
     }
 
@@ -298,24 +325,38 @@ class PageController extends Controller
 
     public function saveBuilder(Request $request, Page $page)
     {
-        $this->authorize('update', $page->website);
+        $trial = $this->resolveTrialAccess($request, $page);
 
-        $validated = $request->validate([
+        if ($trial === null) {
+            $this->authorize('update', $page->website);
+        }
+
+        $rules = [
             'blocks' => ['nullable', 'array'],
-            'global_header' => ['nullable', 'array'],
-            'global_footer' => ['nullable', 'array'],
-            'theme_settings' => ['nullable', 'array'],
-        ]);
+        ];
 
+        if ($trial === null) {
+            $rules['global_header'] = ['nullable', 'array'];
+            $rules['global_footer'] = ['nullable', 'array'];
+            $rules['theme_settings'] = ['nullable', 'array'];
+        }
+
+        $validated = $request->validate($rules);
         $website = $page->website;
 
-        DB::transaction(function () use ($page, $website, $validated) {
+        DB::transaction(function () use ($page, $website, $validated, $trial) {
             $page->blocks = $validated['blocks'] ?? [];
-            // Saving starts a new editable draft. The published snapshot remains
-            // untouched until the customer explicitly publishes again.
             $page->status = 'draft';
             $page->publish_error = null;
             $page->save();
+
+            if ($trial !== null) {
+                $trial->update([
+                    'generated_blocks' => $page->blocks,
+                ]);
+
+                return;
+            }
 
             if (array_key_exists('global_header', $validated)) {
                 $website->global_header = $validated['global_header'];
@@ -337,6 +378,29 @@ class PageController extends Controller
             'page_status' => 'draft',
             'message' => 'Draft saved successfully.',
         ]);
+    }
+
+    private function resolveTrialAccess(Request $request, Page $page): ?TrialGeneration
+    {
+        if ($request->user()) {
+            return null;
+        }
+
+        $token = trim((string) $request->query('token', $request->input('token', '')));
+
+        abort_if($token === '', 404);
+
+        $trial = TrialGeneration::query()
+            ->where('token', $token)
+            ->where('page_id', $page->id)
+            ->where('status', 'ready')
+            ->whereNull('claimed_at')
+            ->first();
+
+        abort_unless($trial, 404);
+        abort_if($trial->created_at->lt(now()->subHours(24)), 410, 'This trial link has expired.');
+
+        return $trial;
     }
 
     public function publish(Request $request, Page $page, PagePublisher $publisher)

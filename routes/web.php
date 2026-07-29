@@ -30,6 +30,14 @@ Route::post('/start/{trial:token}/plan', [TrialGenerationController::class, 'sel
     ->middleware('throttle:12,1')
     ->name('trial-generations.plan.select');
 
+
+// Token-aware Builder routes. Signed-in users keep normal policy checks;
+// logged-out visitors need a valid token that belongs to the requested page.
+Route::get('/pages/{page}/builder', [PageController::class, 'builder'])->name('pages.builder');
+Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder'])
+    ->middleware('throttle:60,1')
+    ->name('pages.builder.save');
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
     Route::post('/websites', [WebsiteController::class, 'store'])->name('websites.store');
@@ -46,11 +54,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::patch('/websites/{website}/inquiries/{submission}', [ContactSubmissionController::class, 'update'])->name('websites.inquiries.update');
     Route::post('/websites/{website}/pages', [PageController::class, 'store'])->name('pages.store');
     Route::delete('/websites/{website}/pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
-    Route::get('/pages/{page}/builder', [PageController::class, 'builder'])->name('pages.builder');
 
     // The legacy endpoint remains for compatibility with older clients.
     Route::post('/pages/{page}/builder', [PageController::class, 'updateBlocks'])->name('pages.builder.update');
-    Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder'])->name('pages.builder.save');
     Route::post('/pages/{page}/publish', [PageController::class, 'publish'])->name('pages.publish');
     Route::post('/websites/{website}/pages/{page}/blog-posts', [BlogPostController::class, 'store'])->name('blog-posts.store');
     Route::put('/websites/{website}/pages/{page}/blog-posts/{blogPost}', [BlogPostController::class, 'update'])->name('blog-posts.update');

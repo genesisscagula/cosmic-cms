@@ -8,6 +8,7 @@ class TrialGeneration extends Model
 {
     protected $fillable = [
         'token',
+        'page_id',
         'email',
         'business_name',
         'industry',
@@ -31,4 +32,9 @@ class TrialGeneration extends Model
         'claimed_at' => 'datetime',
         'plan_selected_at' => 'datetime',
     ];
+
+    public function page()
+    {
+        return $this->belongsTo(Page::class);
+    }
 }
