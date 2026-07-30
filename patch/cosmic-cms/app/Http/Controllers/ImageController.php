@@ -1,0 +1,139 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use Illuminate\Auth\Access\AuthorizationException;
+use Illuminate\Support\Facades\Storage;
+use App\Models\Website; // Siguroha nga sakto ang namespace sa imong Model
+use Intervention\Image\Facades\Image; // Import ni sa taas sa imong controller
+
+class ImageController extends Controller
+{
+    public function uploadLogo(Request $request)
+    {
+        $request->validate([
+            'website_id' => ['required', 'integer', 'exists:websites,id'],
+            'image' => ['required', 'file', 'mimes:jpeg,jpg,png,webp,svg', 'max:2048'],
+        ]);
+
+        $website = Website::findOrFail($request->integer('website_id'));
+        $this->authorize('update', $website);
+
+        $file = $request->file('image');
+
+        if (strtolower($file->getClientOriginalExtension()) === 'svg') {
+            $svg = file_get_contents($file->getRealPath());
+
+            if ($svg === false || preg_match('/<\s*(?:script|iframe|object|embed|foreignObject)\b|\son\w+\s*=|(?:href|xlink:href)\s*=\s*[\'\"]\s*(?:https?:|javascript:|data:)/i', $svg)) {
+                return response()->json([
+                    'message' => 'The SVG contains unsupported active or external content.',
+                ], 422);
+            }
+        }
+
+        $path = $file->store("websites/{$website->id}/logos", 'public');
+
+        return response()->json([
+            'url' => rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path,
+        ]);
+    }
+
+    // Function para sa pag-upload sa file
+    public function uploadImage(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,avif|max:4096',
+            'website_id' => 'required|integer|exists:websites,id'
+        ]);
+
+        $website = Website::findOrFail($request->website_id);
+        $this->authorize('update', $website);
+
+        $websiteId = $website->id;
+        $path = $request->file('image')->store("websites/{$websiteId}", 'public');
+
+        return response()->json([
+            'url' => rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path
+        ]);
+    }
+
+    public function update(Request $request)
+	{
+	    try {
+
+	        $request->validate([
+	            'website_id' => 'required|integer|exists:websites,id',
+	            'block_index' => 'required|integer',
+
+	            // Allow all common image formats including AVIF
+	            'image' => 'required|file|mimes:jpeg,jpg,png,gif,webp,avif|max:4096',
+	        ]);
+
+	        $website = Website::findOrFail($request->website_id);
+	        $this->authorize('update', $website);
+
+	        if (!$request->hasFile('image')) {
+	            return response()->json([
+	                'message' => 'No image uploaded.'
+	            ], 422);
+	        }
+
+	        $file = $request->file('image');
+
+	        if (!$file->isValid()) {
+	            return response()->json([
+	                'message' => 'Uploaded file is invalid.'
+	            ], 422);
+	        }
+
+	        $path = $file->store(
+	            "websites/{$website->id}",
+	            'public'
+	        );
+
+	        return response()->json([
+	            'success' => true,
+	            'url' => rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path
+	        ]);
+
+	    } catch (AuthorizationException $e) {
+
+	        throw $e;
+
+	    } catch (\Illuminate\Validation\ValidationException $e) {
+
+	        return response()->json([
+	            'message' => 'Validation failed.',
+	            'errors' => $e->errors()
+	        ], 422);
+
+	    } catch (\Throwable $e) {
+
+	        return response()->json([
+	            'message' => $e->getMessage(),
+	            'line' => $e->getLine(),
+	            'file' => basename($e->getFile())
+	        ], 500);
+
+	    }
+	}
+
+	public function uploadBlockImage(Request $request)
+	{
+	    $request->validate([
+	        'website_id' => 'required|integer|exists:websites,id',
+	        'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,avif|max:4096'
+	    ]);
+
+	    $website = Website::findOrFail($request->website_id);
+	    $this->authorize('update', $website);
+
+	    // Upload ra gyud ni siya
+	    $path = $request->file('image')->store("websites/{$website->id}", 'public');
+	    $imageUrl = rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path;
+
+	    // I-return lang ang URL
+	    return response()->json(['url' => $imageUrl]);
+	}
+}

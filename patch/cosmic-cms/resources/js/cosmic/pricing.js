@@ -1,0 +1,41 @@
+export const ACTION_PRICING = {
+    add_page: 3,
+    add_menu_item: 1,
+    generate_page: 5,
+    generate_website: 10,
+    ai_rewrite: 1,
+};
+
+export const BLOCK_PRICING = {
+    hero_headline: { category: 'core', credits: 1 },
+    hero_centered_cta: { category: 'core', credits: 1 },
+    feature_image_left: { category: 'core', credits: 1 },
+    feature_image_right: { category: 'core', credits: 1 },
+    services_cards: { category: 'core', credits: 1 },
+    services_bento: { category: 'core', credits: 2 },
+    stats_modern: { category: 'core', credits: 1 },
+    testimonials_carousel: { category: 'core', credits: 1 },
+    faq_accordion: { category: 'core', credits: 1 },
+    image_cta_banner: { category: 'core', credits: 1 },
+    pricing_cards: { category: 'core', credits: 2 },
+    team_modern: { category: 'core', credits: 1 },
+    contact_form_modern: { category: 'core', credits: 1 },
+    contact_details: { category: 'core', credits: 1 },
+    location_map: { category: 'core', credits: 1 },
+    hero_background_image: { category: 'growth', credits: 3 },
+    hero_editorial_overlay: { category: 'growth', credits: 3 },
+    hero_split_image: { category: 'growth', credits: 3 },
+    hero_floating_cards: { category: 'growth', credits: 4 },
+    process_timeline: { category: 'growth', credits: 3 },
+    case_studies_grid: { category: 'growth', credits: 3 },
+    jobs_list: { category: 'growth', credits: 2 },
+    events_grid: { category: 'growth', credits: 3 },
+    blog_mini_hero: { category: 'growth', credits: 2 },
+    blog_hub: { category: 'growth', credits: 3 },
+    newsletter_cta: { category: 'growth', credits: 2 },
+    latest_resources: { category: 'growth', credits: 3 },
+    hero_video_style: { category: 'signature', credits: 5 },
+    hero_video_background: { category: 'signature', credits: 5 },
+};
+
+export const getBlockPrice = (type) => BLOCK_PRICING[type] || { category: 'growth', credits: 2 };
