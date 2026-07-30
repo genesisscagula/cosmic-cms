@@ -59,6 +59,8 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
     const [themeMenu, setThemeMenu] = useState(null);
     const [layoutMenu, setLayoutMenu] = useState(null);
+    const [sparkCatalog, setSparkCatalog] = useState([]);
+    const [sparkInsertTarget, setSparkInsertTarget] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
     const [saveError, setSaveError] = useState('');
@@ -82,6 +84,14 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
         return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
     }, [hasUnsavedChanges, isPublishing, isSaving]);
+
+    useEffect(() => {
+        if (!capabilities.canManageBlocks) return;
+
+        axios.get('/sparks/catalog')
+            .then(({ data: responseData }) => setSparkCatalog(responseData.sparks || []))
+            .catch(() => setSparkCatalog([]));
+    }, [capabilities.canManageBlocks]);
 
     // Update logic para sa mga blocks
     const updateBlockContent = (index, updatedFields) => {
@@ -115,19 +125,26 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     };
 
     const addBlock = (block) => {
-
         const newBlock = {
             ...block,
-            theme: block.theme || "auto"
+            theme: block.theme || "auto",
+            _renderKey: crypto.randomUUID(),
         };
 
-        setData("blocks", [
-            ...data.blocks,
-            newBlock
-        ]);
+        const blocks = [...data.blocks];
 
+        if (sparkInsertTarget) {
+            const insertionIndex = sparkInsertTarget.position === 'above'
+                ? sparkInsertTarget.index
+                : sparkInsertTarget.index + 1;
+            blocks.splice(insertionIndex, 0, newBlock);
+        } else {
+            blocks.push(newBlock);
+        }
+
+        setData("blocks", blocks);
+        setSparkInsertTarget(null);
         setIsModalOpen(false);
-
     };
     const removeBlock = (index) => {
 
@@ -315,13 +332,19 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const getCompatibleLayouts = (blockType) => {
         const currentBlock = BlockRegistry[blockType];
         const category = currentBlock?.schema?.category;
+        const ownedKeys = new Set(
+            sparkCatalog.filter((spark) => spark.owned).map((spark) => spark.key)
+        );
 
         if (!category) {
             return [];
         }
 
         return Object.entries(BlockRegistry)
-            .filter(([, registryItem]) => registryItem?.schema?.category === category)
+            .filter(([type, registryItem]) =>
+                registryItem?.schema?.category === category &&
+                (type === blockType || ownedKeys.has(type))
+            )
             .map(([type, registryItem]) => ({
                 type,
                 title: registryItem.schema?.title || type.replaceAll('_', ' '),
@@ -502,7 +525,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                             </span>
                             <span className="h-4 w-px bg-white/10" aria-hidden="true" />
                             <span className="inline-flex h-8 items-center rounded-lg px-2.5 text-[11px] font-medium text-slate-400">
-                                {data.blocks.length} blocks
+                                {data.blocks.length} Sparks
                             </span>
                             {!trialMode && (
                                 <>
@@ -536,7 +559,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                     <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="mr-1.5 h-3.5 w-3.5">
                                         <path d="M10 2.5c.28 3.92 1.68 5.32 5.6 5.6-3.92.28-5.32 1.68-5.6 5.6-.28-3.92-1.68-5.32-5.6-5.6 3.92-.28 5.32-1.68 5.6-5.6Zm5.25 9.75c.1 1.4.6 1.9 2 2-1.4.1-1.9.6-2 2-.1-1.4-.6-1.9-2-2 1.4-.1 1.9-.6 2-2Z" />
                                     </svg>
-                                    <span className="hidden sm:inline">Generate</span>
+                                    <span className="hidden sm:inline">Add Spark</span>
                                 </button>
                             )}
 
@@ -580,7 +603,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                 {publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
                             </span>
                             <span className="text-slate-600">•</span>
-                            <span className="text-slate-500">{data.blocks.length} blocks</span>
+                            <span className="text-slate-500">{data.blocks.length} Sparks</span>
                             {hasUnsavedChanges && <span className="hidden text-amber-200 sm:inline">• Unsaved changes</span>}
                         </div>
                         {!trialMode && (
@@ -692,14 +715,14 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                         ⧉
                                     </button>
 
-                                    {/* Change layout */}
+                                    {/* Change Spark */}
 
                                     <button
                                         type="button"
-                                        aria-label={`Change ${BlockRegistry[block.type]?.schema?.category || 'block'} layout`}
+                                        aria-label={`Change ${BlockRegistry[block.type]?.schema?.category || 'section'} Spark`}
                                         title={getCompatibleLayouts(block.type).length > 1
-                                            ? `Change ${BlockRegistry[block.type]?.schema?.category || 'block'} layout`
-                                            : 'More layouts for this section will be available soon'}
+                                            ? `Change ${BlockRegistry[block.type]?.schema?.category || 'section'} Spark`
+                                            : 'Add another owned Spark in this category to enable changing'}
                                         disabled={getCompatibleLayouts(block.type).length < 2}
                                         onClick={() => {
                                             setThemeMenu(null);
@@ -713,8 +736,8 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                     {layoutMenu === index && (
                                         <div className="absolute top-12 right-10 z-50 w-64 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
                                             <div className="border-b border-slate-700 px-4 py-3">
-                                                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Change layout</p>
-                                                <p className="mt-1 text-xs font-semibold text-white">{BlockRegistry[block.type]?.schema?.category || 'Section'} variations</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Change Spark</p>
+                                                <p className="mt-1 text-xs font-semibold text-white">Owned {BlockRegistry[block.type]?.schema?.category || 'Section'} Sparks</p>
                                             </div>
 
                                             <div className="max-h-64 overflow-y-auto py-1 [scrollbar-color:rgb(100_116_139)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
@@ -735,6 +758,38 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Insert owned Spark above */}
+                                    <button
+                                        type="button"
+                                        aria-label="Insert Spark above"
+                                        title="Insert owned Spark above"
+                                        onClick={() => {
+                                            setThemeMenu(null);
+                                            setLayoutMenu(null);
+                                            setSparkInsertTarget({ index, position: 'above' });
+                                            setIsModalOpen(true);
+                                        }}
+                                        className="w-8 h-8 rounded-lg hover:bg-emerald-500/15 text-emerald-300 transition focus:outline-none focus:ring-2 focus:ring-emerald-400"
+                                    >
+                                        <span aria-hidden="true">↥</span>
+                                    </button>
+
+                                    {/* Insert owned Spark below */}
+                                    <button
+                                        type="button"
+                                        aria-label="Insert Spark below"
+                                        title="Insert owned Spark below"
+                                        onClick={() => {
+                                            setThemeMenu(null);
+                                            setLayoutMenu(null);
+                                            setSparkInsertTarget({ index, position: 'below' });
+                                            setIsModalOpen(true);
+                                        }}
+                                        className="w-8 h-8 rounded-lg hover:bg-violet-500/15 text-violet-300 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
+                                    >
+                                        <span aria-hidden="true">↧</span>
+                                    </button>
 
                                     {/* Theme */}
 
@@ -831,10 +886,10 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                             <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white/75 px-6 py-7 shadow-sm">
                                 <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-lg text-white" aria-hidden="true">+</span>
                                 <h2 className="mt-4 text-lg font-semibold text-slate-900">Start building this page</h2>
-                                <p className="mt-2 text-sm leading-6 text-slate-500">Generate a complete layout with AI or add a section manually. Your global header and footer are already in place.</p>
+                                <p className="mt-2 text-sm leading-6 text-slate-500">Add an owned Spark with quick content, or personalize it with Cosmic AI. Your global header and footer are already in place.</p>
                                 {capabilities.canGenerateAi && (
                                     <button type="button" onClick={() => setIsModalOpen(true)} className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400">
-                                        Generate or add a section
+                                        Add your first Spark
                                     </button>
                                 )}
                             </div>
@@ -927,7 +982,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                 onClick={() => setIsModalOpen(true)}
                                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:scale-[1.02] hover:shadow-xl transition text-white font-bold"
                             >
-                                ✨ Generate
+                                ✨ Add Spark
                             </button>
 
                             {/* Builder */}
@@ -966,7 +1021,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             {capabilities.canGenerateAi && (
                 <AddSectionModal
                     open={isModalOpen}
-                    onClose={() => setIsModalOpen(false)}
+                    onClose={() => { setIsModalOpen(false); setSparkInsertTarget(null); }}
                     onAdd={addBlock}
                     onReplace={replaceBlocks}
                     hasBlocks={(data.blocks?.length ?? 0) > 0}
@@ -974,6 +1029,9 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                     websiteContext={websiteContext}
                     websiteId={website?.id}
                     cosmicPricing={cosmicPricing}
+                    ownedOnly={Boolean(sparkInsertTarget)}
+                    contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : null}
+                    onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
                 />
             )}
 

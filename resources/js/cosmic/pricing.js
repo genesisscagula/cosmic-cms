@@ -3,7 +3,7 @@ export const ACTION_PRICING = {
     add_menu_item: 1,
     generate_page: 5,
     generate_website: 10,
-    ai_rewrite: 1,
+    ai_rewrite: 2,
 };
 
 export const BLOCK_PRICING = {

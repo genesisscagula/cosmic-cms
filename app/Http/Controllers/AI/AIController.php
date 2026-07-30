@@ -43,7 +43,7 @@ class AIController extends Controller
         $generationType = $validated['generation_type'] ?? (count($validated['sections']) > 1 ? 'page' : 'section');
         $cost = $generationType === 'page'
             ? ActionPricing::GENERATE_PAGE
-            : BlockPricingRegistry::estimate($validated['sections']);
+            : 2;
         $reference = 'ai-' . Str::uuid();
 
         $this->credits->consume(
@@ -56,6 +56,7 @@ class AIController extends Controller
                 'generation_type' => $generationType,
                 'sections' => $validated['sections'],
                 'estimated_cost' => $cost,
+                'pricing_rule' => $generationType === 'section' ? 'spark_ai_personalize' : 'generate_page',
             ],
         );
 

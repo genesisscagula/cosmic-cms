@@ -50,7 +50,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/credits/purchase', [CreditController::class, 'purchase'])->name('credits.purchase');
     Route::get('/cosmic-pricing', [CosmicPricingController::class, 'index'])->name('cosmic-pricing.index');
     Route::get('/sparks', [SparkController::class, 'index'])->name('sparks.index');
-    Route::post('/sparks/{spark}/unlock', [SparkController::class, 'unlock'])->name('sparks.unlock');
+    Route::get('/sparks/catalog', [SparkController::class, 'catalog'])->name('sparks.catalog');
+    Route::post('/sparks/{key}/unlock', [SparkController::class, 'unlockKey'])->name('sparks.unlock');
     Route::post('/websites', [WebsiteController::class, 'store'])->name('websites.store');
     Route::delete('/websites/{website}', [WebsiteController::class, 'destroy'])->name('websites.destroy');
     Route::get('/websites/{website}/deployment-connector', [WebsiteController::class, 'downloadDeploymentConnector'])->name('websites.deployment-connector.download');
