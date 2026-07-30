@@ -20,17 +20,17 @@ class ImageGenerator
             GLOB_BRACE
         );
 
-        // Fallback to construction if folder is empty or doesn't exist
+        // Fallback to the neutral default folder if the requested folder is empty or missing
         if (empty($images)) {
 
-            logger()->warning('[ImageGenerator] Folder empty, using construction', [
+            logger()->warning('[ImageGenerator] Folder empty, using default', [
                 'folder' => $imageFolder,
             ]);
 
-            $imageFolder = 'construction';
+            $imageFolder = 'default';
 
             $images = glob(
-                storage_path("app/public/cms-images/construction/*.{jpg,jpeg,png,webp,avif}"),
+                storage_path("app/public/cms-images/default/*.{jpg,jpeg,png,webp,avif}"),
                 GLOB_BRACE
             );
         }

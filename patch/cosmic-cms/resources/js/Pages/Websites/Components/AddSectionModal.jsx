@@ -28,13 +28,6 @@ function SparkVisual({ spark }) {
     return <Preview {...spark.registry.payload} />;
 }
 
-const previewTheme = {
-    primary: "emerald",
-    secondary: "white",
-    tertiary: "stone",
-    auto: true,
-};
-
 const generationSteps = [
     { label: "Understand brief", threshold: 18 },
     { label: "Plan sections", threshold: 42 },
@@ -42,7 +35,7 @@ const generationSteps = [
     { label: "Build page", threshold: 96 },
 ];
 
-function ActualSparkPreview({ spark, previewVariant = "white" }) {
+function ActualSparkPreview({ spark, previewVariant = "white", websiteTheme }) {
     const registryItem = BuilderBlockRegistry[spark.key];
     const Component = registryItem?.component;
 
@@ -63,7 +56,7 @@ function ActualSparkPreview({ spark, previewVariant = "white" }) {
         <Component
             block={block}
             blockIndex={0}
-            globalTheme={previewTheme}
+            globalTheme={websiteTheme}
             onUpdate={() => {}}
             blogPosts={[]}
             blogWebsiteId={null}
@@ -85,6 +78,7 @@ export default function AddSectionModal({
     ownedOnly = false,
     contextLabel = null,
     onOwnershipChanged = null,
+    websiteTheme = null,
 }) {
     const { setBalance } = useCreditBalance();
     const [tab, setTab] = useState("owned");
@@ -106,6 +100,7 @@ export default function AddSectionModal({
     const [personalizingSpark, setPersonalizingSpark] = useState(false);
     const [personalizeProgress, setPersonalizeProgress] = useState(0);
     const [personalizeStage, setPersonalizeStage] = useState("Understanding your Spark...");
+    const [previewCycleKey, setPreviewCycleKey] = useState(0);
 
 
     const previewVariants = ["white", "primary", "surface"];
@@ -118,16 +113,20 @@ export default function AddSectionModal({
             return undefined;
         }
 
-        const timer = window.setInterval(() => {
+        setPreviewVisible(true);
+        const displayTimer = window.setTimeout(() => {
             setPreviewVisible(false);
-            window.setTimeout(() => {
-                setPreviewVariantIndex((current) => (current + 1) % previewVariants.length);
-                setPreviewVisible(true);
-            }, 250);
-        }, 1800);
+        }, 2500);
+        const transitionTimer = window.setTimeout(() => {
+            setPreviewVariantIndex((current) => (current + 1) % previewVariants.length);
+            setPreviewVisible(true);
+        }, 3100);
 
-        return () => window.clearInterval(timer);
-    }, [previewSpark]);
+        return () => {
+            window.clearTimeout(displayTimer);
+            window.clearTimeout(transitionTimer);
+        };
+    }, [previewSpark, previewVariantIndex, previewCycleKey]);
 
     useEffect(() => {
         if (!personalizingSpark) {
@@ -228,12 +227,16 @@ export default function AddSectionModal({
 
         setGeneratingPage(true);
         try {
-            const { data: plan } = await axios.post("/ai/select-sections", { prompt });
+            const contextualPrompt = [
+                websiteContext || "Generate professional website content for this business.",
+                `User instruction: ${prompt}`,
+            ].join("\n\n");
+            const { data: plan } = await axios.post("/ai/select-sections", { prompt: contextualPrompt });
             const sections = plan.sections || [];
             if (!sections.length) throw new Error("Cosmic AI could not plan this page.");
 
             const { data } = await axios.post("/ai/generate-content", {
-                prompt,
+                prompt: contextualPrompt,
                 sections,
                 image_folder: plan.image_folder || null,
                 generation_type: "page",
@@ -342,11 +345,11 @@ export default function AddSectionModal({
                 </header>
                 <div className="min-h-0 flex-1 overflow-auto bg-[#e5e7eb] p-3 sm:p-6">
                     <div className="mx-auto min-h-[620px] max-w-[1440px] overflow-hidden rounded-2xl bg-white shadow-2xl">
-                        <div className={`pointer-events-none min-w-[1100px] origin-top-left transition-all duration-300 ${previewVisible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"}`}><ActualSparkPreview spark={previewSpark} previewVariant={previewVariant} /></div>
+                        <div className={`pointer-events-none min-w-[1100px] origin-top-left transition-all duration-[600ms] ease-in-out ${previewVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-0.5 scale-[0.985] opacity-0"}`}><ActualSparkPreview spark={previewSpark} previewVariant={previewVariant} websiteTheme={websiteTheme} /></div>
                     </div>
                 </div>
                 <footer className="flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400"><span className="rounded-full bg-violet-400/10 px-2.5 py-1 font-bold text-violet-200">AI Ready</span><span>Responsive Spark preview</span><div className="flex items-center gap-1.5">{previewVariants.map((variant, index) => <button key={variant} type="button" onClick={() => { setPreviewVariantIndex(index); setPreviewVisible(true); }} className={`rounded-full px-2.5 py-1 capitalize transition ${previewVariantIndex === index ? "bg-white text-slate-950" : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"}`}>{variant}</button>)}</div></div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400"><span className="rounded-full bg-violet-400/10 px-2.5 py-1 font-bold text-violet-200">AI Ready</span><span>Responsive Spark preview</span><div className="flex items-center gap-1.5">{previewVariants.map((variant, index) => <button key={variant} type="button" onClick={() => { setPreviewVariantIndex(index); setPreviewVisible(true); setPreviewCycleKey((current) => current + 1); }} className={`rounded-full px-2.5 py-1 capitalize transition ${previewVariantIndex === index ? "bg-white text-slate-950" : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"}`}>{variant}</button>)}</div></div>
                     <div className="flex gap-2"><button type="button" onClick={() => setPreviewSpark(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Close</button>{previewSpark.owned ? <button type="button" onClick={() => { setSelected(previewSpark); setPreviewSpark(null); }} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-950">Add to Page</button> : <button type="button" disabled={busyKey === previewSpark.key} onClick={() => unlock(previewSpark)} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busyKey === previewSpark.key ? "Adding..." : `Add to My Sparks · ⚡${previewSpark.credits}`}</button>}</div>
                 </footer>
             </section>

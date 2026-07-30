@@ -5,9 +5,31 @@ import '../../css/start.css';
 const fieldClass = 'mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20';
 
 const plans = [
-    { id: 'starter', name: 'Starter', price: '$49', summary: 'A focused first website.', features: ['Up to 5 pages', 'AI-generated starting draft', 'Visual Builder and publishing'] },
-    { id: 'growth', name: 'Growth', price: '$79', summary: 'For a growing business website.', features: ['Up to 10 pages', 'Forms, blog, and publishing', 'Priority launch support'], featured: true },
-    { id: 'pro', name: 'Pro', price: '$129', summary: 'For teams with more to publish.', features: ['Flexible page growth', 'Full Builder section library', 'Hands-on launch planning'] },
+    {
+        id: 'starter',
+        icon: '⭐',
+        name: 'Starter',
+        price: '$49',
+        summary: '500 Cosmic Credits / month',
+        features: ['🎁 100 FREE Welcome Credits', 'Standard Sparks Library', 'Standard AI Models'],
+    },
+    {
+        id: 'growth',
+        icon: '🚀',
+        name: 'Growth',
+        price: '$79',
+        summary: '1,500 Cosmic Credits / month',
+        features: ['Everything in Starter', 'Expanded Sparks Library', 'Priority AI Queue', 'Advanced Builder Tools', 'AI Blog Generation', 'Version History & Restore'],
+        featured: true,
+    },
+    {
+        id: 'pro',
+        icon: '👑',
+        name: 'Pro',
+        price: '$129',
+        summary: 'Includes 3,000 Cosmic Credits / month',
+        features: ['Member Pricing on Cosmic Credit Packs', 'Everything in Growth', 'Premium Sparks Library', 'Exclusive Sparks', 'Premium AI Models', 'Unlimited Workspaces', 'Team Collaboration', 'White Label Workspace', 'API Access', 'Early Access Features'],
+    },
 ];
 
 const quickIdeas = [
@@ -444,7 +466,7 @@ function PlanSelection({ selectedPlan, onSelect }) {
             <div className="flex flex-wrap items-end justify-between gap-2">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">Choose your launch plan</p>
-                    <h3 id="plan-selection-title" className="mt-2 text-lg font-semibold text-white">Select the workspace that fits your launch.</h3>
+                    <h3 id="plan-selection-title" className="mt-2 text-lg font-semibold text-white">Choose the Cosmic plan that fits your workflow.</h3>
                 </div>
                 <p className="text-xs text-slate-500">No payment on this page</p>
             </div>
@@ -464,7 +486,7 @@ function PlanSelection({ selectedPlan, onSelect }) {
                             {plan.featured && (
                                 <span className="absolute right-3 top-3 rounded-full bg-violet-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-200">Popular</span>
                             )}
-                            <span className="text-sm font-semibold text-white">{plan.name}</span>
+                            <span className="flex items-center gap-2 text-sm font-semibold text-white"><span aria-hidden="true">{plan.icon}</span>{plan.name}</span>
                             <span className="mt-1 block text-2xl font-semibold tracking-tight text-white">
                                 {plan.price}<span className="ml-1 text-xs font-medium text-slate-400">/ month</span>
                             </span>

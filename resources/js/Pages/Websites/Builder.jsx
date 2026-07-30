@@ -1029,6 +1029,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                     websiteContext={websiteContext}
                     websiteId={website?.id}
                     cosmicPricing={cosmicPricing}
+                    websiteTheme={globalSelections}
                     ownedOnly={Boolean(sparkInsertTarget)}
                     contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : null}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
