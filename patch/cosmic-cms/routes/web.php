@@ -45,6 +45,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
     Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
     Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
+    Route::post('/credits/purchase', [CreditController::class, 'purchase'])->name('credits.purchase');
     Route::get('/cosmic-pricing', [CosmicPricingController::class, 'index'])->name('cosmic-pricing.index');
     Route::post('/websites', [WebsiteController::class, 'store'])->name('websites.store');
     Route::delete('/websites/{website}', [WebsiteController::class, 'destroy'])->name('websites.destroy');

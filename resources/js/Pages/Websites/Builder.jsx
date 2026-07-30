@@ -3,6 +3,7 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadge';
+import { useCreditBalance } from '../../Components/CosmicCredits/CreditBalanceContext';
 
 import AddSectionModal from "./Components/AddSectionModal";
 
@@ -17,6 +18,7 @@ import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 
 export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialCapabilities = {}, cosmicPricing = {} }) {
     const { props } = usePage();
+    const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
     const capabilities = {
         canNavigateAway: !trialMode,
         canChangeTheme: !trialMode,
@@ -166,6 +168,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             });
 
             setPageStatus(response.data.page_status || 'draft');
+            setCreditBalance(response.data.credit_balance);
             setPublishError('');
             setDefaults();
             setHasUnsavedTheme(false);
@@ -210,6 +213,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
         try {
             const response = await axios.post(route('pages.publish', page.id));
             setPageStatus(response.data.status || 'published');
+            setCreditBalance(response.data.credit_balance);
             setPublishError('');
             showCosmicNotification({
                 title: 'Page published',
@@ -503,7 +507,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                 <>
                                     <span className="h-4 w-px bg-white/10" aria-hidden="true" />
                                     <CreditBalanceBadge
-                                        balance={cosmicPricing?.balance ?? props?.auth?.creditBalance ?? 0}
+                                        balance={creditBalance}
                                         className="h-8 border-0 bg-transparent px-2.5 hover:bg-white/[0.06]"
                                     />
                                 </>
@@ -580,7 +584,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                         </div>
                         {!trialMode && (
                             <CreditBalanceBadge
-                                balance={cosmicPricing?.balance ?? props?.auth?.creditBalance ?? 0}
+                                balance={creditBalance}
                                 className="h-7 shrink-0"
                             />
                         )}

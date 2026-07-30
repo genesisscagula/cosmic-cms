@@ -14,6 +14,8 @@ import BusinessProfileModal from './Components/BusinessProfileModal';
 import HeaderMenuEditor from './Components/HeaderMenuEditor';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 import CreditPrice from '../../Components/CosmicCredits/CreditPrice';
+import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadge';
+import { useCreditBalance } from '../../Components/CosmicCredits/CreditBalanceContext';
 import { ACTION_PRICING } from '../../cosmic/pricing';
 
 const WebsiteWorkspaceShell = ({ children }) => <>{children}</>;
@@ -30,7 +32,7 @@ const replaceLegacyHeaderLogo = (header, websiteName) => {
 
 export default function Index({ website, pages, inquiryCount = 0, recentInquiries = [], globalHeaderBlock, globalFooterBlock }) {
     const pageProps = usePage().props;
-    const creditBalance = Number(pageProps?.auth?.creditBalance ?? 0);
+    const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
     const { data, setData, post, processing, errors, reset } = useForm({
         title: '',
         page_type: 'standard',
@@ -97,6 +99,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                 setData({ title: '', page_type: 'standard', parent_id: null });
                 setIsNewPageOpen(false);
                 setNewPageParent(null);
+                setCreditBalance(Math.max(0, creditBalance - ACTION_PRICING.add_page));
             },
         });
     };
@@ -299,6 +302,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
             <div className="min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-6xl space-y-7">
+                    <div className="flex justify-end"><CreditBalanceBadge balance={creditBalance} /></div>
                     <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={visibleInquiryCount} themeSummary={themeSummary} onNewPage={() => openNewPage()} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} onOpenInquiries={() => setIsInquiryInboxOpen(true)} onOpenProfile={() => setIsBusinessProfileOpen(true)} onOpenSettings={() => setIsWebsiteSettingsOpen(true)} />
 
                     <WebsiteLaunchGuide pages={pages || []} onNewPage={() => openNewPage()} />

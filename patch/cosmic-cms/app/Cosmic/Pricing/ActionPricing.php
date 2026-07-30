@@ -4,11 +4,11 @@ namespace App\Cosmic\Pricing;
 
 class ActionPricing
 {
-    public const ADD_PAGE = 3;
-    public const ADD_MENU_ITEM = 1;
-    public const GENERATE_PAGE = 5;
-    public const GENERATE_WEBSITE = 10;
-    public const AI_REWRITE = 1;
+    public const ADD_PAGE = 30;
+    public const ADD_MENU_ITEM = 10;
+    public const GENERATE_PAGE = 50;
+    public const GENERATE_WEBSITE = 100;
+    public const AI_REWRITE = 10;
 
     public static function all(): array
     {

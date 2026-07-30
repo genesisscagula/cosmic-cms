@@ -5,6 +5,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import CosmicNotification from './Components/CosmicNotification';
+import { CreditBalanceProvider } from './Components/CosmicCredits/CreditBalanceContext';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -18,7 +19,7 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
 
-        root.render(<><App {...props} /><CosmicNotification /></>);
+        root.render(<CreditBalanceProvider><App {...props} /><CosmicNotification /></CreditBalanceProvider>);
     },
     progress: {
         color: '#4B5563',

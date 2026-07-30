@@ -4,6 +4,7 @@ import { useRef } from "react";
 import { showCosmicNotification } from "../../../Components/CosmicNotification";
 import { ACTION_PRICING, getBlockPrice } from "../../../cosmic/pricing";
 import CreditBalanceBadge from "../../../Components/CosmicCredits/CreditBalanceBadge";
+import { useCreditBalance } from "../../../Components/CosmicCredits/CreditBalanceContext";
 import CreditPrice from "../../../Components/CosmicCredits/CreditPrice";
 
 import BlockPreviewCard from "./BlockPreviewCard";
@@ -520,6 +521,7 @@ export default function AddSectionModal({
     cosmicPricing = {},
 }) {
 
+    const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
     const [prompt, setPrompt] = useState("");
     const [showConfirm, setShowConfirm] = useState(false);
     const [isBlockLibraryOpen, setIsBlockLibraryOpen] = useState(false);
@@ -661,6 +663,7 @@ export default function AddSectionModal({
             );
 
 
+            setCreditBalance(contentResponse.data.credit_balance);
             console.log(contentResponse.data.blocks);
 
 
@@ -765,6 +768,7 @@ export default function AddSectionModal({
                 website_id: websiteId,
             });
 
+            setCreditBalance(contentResponse.data.credit_balance);
             const generatedBlock = contentResponse.data?.blocks?.[0];
 
             if (!generatedBlock) {
@@ -818,6 +822,7 @@ export default function AddSectionModal({
                 website_id: websiteId,
             });
 
+            setCreditBalance(contentResponse.data.credit_balance);
             const generatedBlock = contentResponse.data?.blocks?.[0];
 
             if (!generatedBlock) {
@@ -891,7 +896,7 @@ export default function AddSectionModal({
                 </div>
 
                 <div className="flex items-center gap-2">
-                    <CreditBalanceBadge balance={cosmicPricing?.balance ?? 0} />
+                    <CreditBalanceBadge balance={creditBalance} />
                     <button
                         onClick={onClose}
                         type="button"

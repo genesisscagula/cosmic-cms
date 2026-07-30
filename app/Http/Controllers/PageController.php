@@ -392,10 +392,7 @@ class PageController extends Controller
             $this->authorize('update', $page->website);
         }
 
-        $rules = [
-            'blocks' => ['nullable', 'array'],
-        ];
-
+        $rules = ['blocks' => ['nullable', 'array']];
         if ($trial === null) {
             $rules['global_header'] = ['nullable', 'array'];
             $rules['global_footer'] = ['nullable', 'array'];
@@ -404,91 +401,30 @@ class PageController extends Controller
 
         $validated = $request->validate($rules);
         $website = $page->website;
-        $themeCost = 0;
-        $themeKey = null;
-        $themeReference = null;
 
-        if ($trial === null && array_key_exists('theme_settings', $validated)) {
-            $themeKey = (string) data_get($validated, 'theme_settings.primary', '');
-            $currentTheme = (string) data_get($website->theme_settings, 'primary', '');
-            $alreadyUnlocked = $themeKey !== '' && $request->user()->cosmicUnlocks()
-                ->where('unlock_type', 'theme')
-                ->where('unlock_key', $themeKey)
-                ->exists();
-
-            if ($themeKey !== '' && $themeKey !== $currentTheme && ! $alreadyUnlocked) {
-                $themeCost = ThemePricingRegistry::cost($themeKey);
-                $themeReference = 'theme-save-' . Str::uuid();
-                $credits->consume(
-                    $request->user(),
-                    $themeCost,
-                    'Unlock theme: ' . ThemePricingRegistry::get($themeKey)['label'],
-                    $website,
-                    $themeReference,
-                    ['theme' => $themeKey],
-                );
-            }
-        }
-
-        try {
-        DB::transaction(function () use ($page, $website, $validated, $trial, $request, $themeKey, $themeCost) {
+        DB::transaction(function () use ($page, $website, $validated, $trial) {
             $page->blocks = $validated['blocks'] ?? [];
             $page->status = 'draft';
             $page->publish_error = null;
             $page->save();
 
             if ($trial !== null) {
-                $trial->update([
-                    'generated_blocks' => $page->blocks,
-                ]);
-
+                $trial->update(['generated_blocks' => $page->blocks]);
                 return;
             }
 
-            if (array_key_exists('global_header', $validated)) {
-                $website->global_header = $validated['global_header'];
-            }
-
-            if (array_key_exists('global_footer', $validated)) {
-                $website->global_footer = $validated['global_footer'];
-            }
-
-            if (array_key_exists('theme_settings', $validated)) {
-                $website->theme_settings = $validated['theme_settings'];
-            }
-
+            if (array_key_exists('global_header', $validated)) $website->global_header = $validated['global_header'];
+            if (array_key_exists('global_footer', $validated)) $website->global_footer = $validated['global_footer'];
+            if (array_key_exists('theme_settings', $validated)) $website->theme_settings = $validated['theme_settings'];
             $website->save();
-
-            if ($trial === null && $themeKey) {
-                CosmicUnlock::firstOrCreate(
-                    [
-                        'user_id' => $request->user()->id,
-                        'unlock_type' => 'theme',
-                        'unlock_key' => $themeKey,
-                    ],
-                    ['credits_paid' => $themeCost],
-                );
-            }
         });
-        } catch (Throwable $exception) {
-            if ($themeCost > 0) {
-                $credits->refund(
-                    $request->user(),
-                    $themeCost,
-                    'Refund for failed theme save',
-                    $website,
-                    $themeReference . '-refund',
-                );
-            }
-            throw $exception;
-        }
 
         return response()->json([
             'status' => 'success',
-            'credits_spent' => $themeCost,
+            'credits_spent' => 0,
             'credit_balance' => $trial === null ? $credits->balance($request->user()) : null,
             'page_status' => 'draft',
-            'message' => 'Draft saved successfully.',
+            'message' => 'Draft saved successfully. Theme credits are only charged when publishing.',
         ]);
     }
 
@@ -515,18 +451,39 @@ class PageController extends Controller
         return $trial;
     }
 
-    public function publish(Request $request, Page $page, PagePublisher $publisher)
+    public function publish(Request $request, Page $page, PagePublisher $publisher, CreditService $credits)
     {
         $this->authorize('update', $page->website);
 
         $website = $page->website;
+        $themeKey = (string) data_get($website->theme_settings, 'primary', '');
+        $publishedThemeKey = (string) data_get($website->published_theme_settings, 'primary', '');
+        $themeCost = 0;
+        $themeReference = null;
+
+        $alreadyUnlocked = $themeKey !== '' && $request->user()->cosmicUnlocks()
+            ->where('unlock_type', 'theme')
+            ->where('unlock_key', $themeKey)
+            ->exists();
+
+        if ($themeKey !== '' && $themeKey !== $publishedThemeKey && ! $alreadyUnlocked) {
+            $themeCost = ThemePricingRegistry::cost($themeKey);
+            $themeReference = 'theme-publish-' . Str::uuid();
+            $credits->consume(
+                $request->user(),
+                $themeCost,
+                'Unlock theme on publish: ' . ThemePricingRegistry::get($themeKey)['label'],
+                $website,
+                $themeReference,
+                ['theme' => $themeKey],
+            );
+        }
 
         try {
             $html = $publisher->publish($page, $website);
 
-            DB::transaction(function () use ($page, $website, $html) {
+            DB::transaction(function () use ($page, $website, $html, $request, $themeKey, $themeCost) {
                 $publishedAt = now();
-
                 $page->published_blocks = $page->blocks ?? [];
                 $page->published_html = $html;
                 $page->status = 'published';
@@ -539,16 +496,27 @@ class PageController extends Controller
                 $website->published_global_header = $website->global_header;
                 $website->published_global_footer = $website->global_footer;
                 $website->save();
+
+                if ($themeKey !== '' && $themeCost > 0) {
+                    CosmicUnlock::firstOrCreate(
+                        ['user_id' => $request->user()->id, 'unlock_type' => 'theme', 'unlock_key' => $themeKey],
+                        ['credits_paid' => $themeCost],
+                    );
+                }
             });
         } catch (Throwable $exception) {
-            report($exception);
+            if ($themeCost > 0) {
+                $credits->refund($request->user(), $themeCost, 'Refund for failed theme publish', $website, $themeReference . '-refund');
+            }
 
+            report($exception);
             $page->publish_error = 'Publishing failed. Your previous live version is still available.';
             $page->save();
 
             return response()->json([
                 'message' => $page->publish_error,
                 'status' => $page->status,
+                'credit_balance' => $credits->balance($request->user()),
             ], 502);
         }
 
@@ -556,6 +524,8 @@ class PageController extends Controller
             'status' => 'published',
             'published_at' => $page->published_at?->toISOString(),
             'last_published_at' => $page->last_published_at?->toISOString(),
+            'credits_spent' => $themeCost,
+            'credit_balance' => $credits->balance($request->user()),
         ]);
     }
 
