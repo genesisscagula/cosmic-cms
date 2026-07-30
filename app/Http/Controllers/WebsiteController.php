@@ -15,13 +15,29 @@ use ZipArchive;
 
 class WebsiteController extends Controller
 {
-	public function index()
+	public function index(Request $request)
 	{
-	    // Kuhaon ang mga websites nga gipanag-iya sa kasamtangang user
-	    $websites = \App\Models\Website::where('user_id', auth()->id())->get();
+        $user = $request->user();
 
-	    return \Inertia\Inertia::render('Dashboard/Dashboard', [
-		    'websites' => $websites
+        if ($user->isClient()) {
+            return Inertia::render('Client/Dashboard', [
+                'websites' => Website::query()
+                    ->where('user_id', $user->id)
+                    ->latest('updated_at')
+                    ->get(),
+            ]);
+        }
+
+        $websites = $user->isPlatformOwner()
+            ? Website::query()
+                ->whereHas('workspace', fn ($query) => $query->where('owner_user_id', $user->id))
+                ->latest('updated_at')
+                ->get()
+            : Website::query()->where('user_id', $user->id)->latest('updated_at')->get();
+
+	    return Inertia::render('Dashboard/Dashboard', [
+		    'websites' => $websites,
+            'accessMode' => $user->isPlatformOwner() ? 'platform_owner' : 'customer',
 		]);
 	}
 
@@ -83,7 +99,11 @@ class WebsiteController extends Controller
 	            ? $templates->websiteAttributes($template, $request->name)
 	            : [];
 
-	        $website = auth()->user()->websites()->create([
+	        $workspace = $request->user()->ownedWorkspaces()->first();
+
+            $website = Website::create([
+                'user_id' => $request->user()->id,
+                'workspace_id' => $workspace?->id,
 	            ...$defaults,
 	            ...$templateAttributes,
 	        ]);

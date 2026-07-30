@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AI\Registries\IndustryMenuRegistry;
 use App\Models\Page;
 use App\Models\TrialGeneration;
 use App\Models\Website;
@@ -64,8 +65,11 @@ class TrialGenerationController extends Controller
                 'token' => $trial->token,
                 'business_name' => $trial->business_name,
                 'industry' => $trial->industry,
-                'preview_theme' => $this->previewThemeForIndustry($trial->industry),
-                'navigation' => $this->navigationForIndustry($trial->industry),
+                'preview_theme' => $trial->preview_theme ?? $this->previewThemeForIndustry($trial->industry),
+                'navigation' => collect($trial->menu_structure ?? IndustryMenuRegistry::for($trial->industry))
+                    ->pluck('title')
+                    ->values()
+                    ->all(),
                 'status' => $trial->status,
                 'sections' => $trial->sections,
                 'generated_blocks' => $trial->status === 'ready' && ! $trial->claimed_at
@@ -106,6 +110,8 @@ class TrialGenerationController extends Controller
             'prompt' => $validated['prompt'],
             'status' => 'generating',
             'ip_hash' => hash('sha256', (string) $request->ip()),
+            'menu_structure' => IndustryMenuRegistry::for($profile['industry']),
+            'preview_theme' => $this->previewThemeForIndustry($profile['industry']),
         ]);
 
         try {
@@ -241,14 +247,6 @@ class TrialGenerationController extends Controller
             'location' => 'Not specified',
             'business_description' => $prompt,
         ];
-    }
-
-    private function navigationForIndustry(?string $industry): array
-    {
-        $menus = config('trial-navigation', []);
-        $folder = self::INDUSTRY_FOLDERS[$industry ?? ''] ?? 'default';
-
-        return $menus[$folder] ?? $menus['default'] ?? ['Home', 'About', 'Services', 'Contact'];
     }
 
     private function previewThemeForIndustry(?string $industry): array

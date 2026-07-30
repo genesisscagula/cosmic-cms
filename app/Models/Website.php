@@ -8,6 +8,8 @@ class Website extends Model
 {
     // Gi-allow nato ang 'global_header' nga masulod sa mass assignment保護
     protected $fillable = [
+        'user_id',
+        'workspace_id',
         'name',
         'domain',
         'industry',
@@ -39,6 +41,11 @@ class Website extends Model
         'deployment_verified_at' => 'datetime',
         'last_deployed_at' => 'datetime',
     ];
+
+    public function workspace()
+    {
+        return $this->belongsTo(Workspace::class);
+    }
 
     public function user()
     {

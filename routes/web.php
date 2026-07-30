@@ -9,6 +9,7 @@ use App\Http\Controllers\WebsiteController;
 use App\Http\Controllers\ContactSubmissionController;
 use App\Http\Controllers\BlogPostController;
 use App\Http\Controllers\TrialGenerationController;
+use App\Http\Controllers\SalesController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -40,6 +41,7 @@ Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder']
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
+    Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
     Route::post('/websites', [WebsiteController::class, 'store'])->name('websites.store');
     Route::delete('/websites/{website}', [WebsiteController::class, 'destroy'])->name('websites.destroy');
     Route::get('/websites/{website}/deployment-connector', [WebsiteController::class, 'downloadDeploymentConnector'])->name('websites.deployment-connector.download');

@@ -10,6 +10,7 @@ use Illuminate\Notifications\Notifiable;
 
 use App\Models\Website;
 use App\Models\Page;
+use App\Models\Workspace;
 
 class User extends Authenticatable
 {
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'name',
         'email',
         'password',
+        'account_type',
     ];
 
     /**
@@ -34,6 +36,7 @@ class User extends Authenticatable
      */
     protected $hidden = [
         'password',
+        'account_type',
         'remember_token',
     ];
 
@@ -60,5 +63,28 @@ class User extends Authenticatable
     public function pages()
     {
         return $this->hasMany(Page::class);
+    }
+
+    public function ownedWorkspaces()
+    {
+        return $this->hasMany(Workspace::class, 'owner_user_id');
+    }
+
+    public function workspaces()
+    {
+        return $this->belongsToMany(Workspace::class, 'workspace_user')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function isPlatformOwner(): bool
+    {
+        return $this->account_type === 'platform_owner'
+            || strtolower((string) $this->email) === strtolower((string) config('cosmic.platform_owner_email'));
+    }
+
+    public function isClient(): bool
+    {
+        return $this->account_type === 'client';
     }
 }

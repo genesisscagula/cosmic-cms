@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers\Auth;
 
+use App\AI\Registries\IndustryMenuRegistry;
 use App\Http\Controllers\Controller;
 use App\Models\TrialGeneration;
 use App\Models\User;
+use App\Models\Website;
+use App\Models\Workspace;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -83,13 +86,55 @@ class RegisteredUserController extends Controller
                 'name' => $request->name,
                 'email' => $request->email,
                 'password' => Hash::make($request->password),
+                'account_type' => $trial ? 'client' : 'customer',
             ]);
 
             if (! $trial) {
+                $workspace = Workspace::create([
+                    'owner_user_id' => $user->id,
+                    'name' => $user->name.' Workspace',
+                    'slug' => Str::slug($user->name.' Workspace').'-'.$user->id,
+                ]);
+                $workspace->users()->attach($user->id, ['role' => 'owner']);
+
                 return [$user, null];
             }
 
-            $website = $user->websites()->create([
+            $menuStructure = $trial->menu_structure ?: IndustryMenuRegistry::for($trial->industry);
+
+            $platformOwner = User::query()
+                ->whereRaw('LOWER(email) = ?', [Str::lower((string) config('cosmic.platform_owner_email'))])
+                ->first();
+
+            $workspace = $platformOwner?->ownedWorkspaces()->firstOrCreate(
+                [],
+                [
+                    'name' => config('cosmic.agency_workspace_name'),
+                    'slug' => Str::slug((string) config('cosmic.agency_workspace_name')).'-'.$platformOwner?->id,
+                ]
+            );
+
+            if (! $workspace) {
+                // Development-safe fallback when the configured platform owner
+                // account has not been created yet.
+                $workspace = Workspace::create([
+                    'owner_user_id' => $user->id,
+                    'name' => $user->name.' Workspace',
+                    'slug' => Str::slug($user->name.' Workspace').'-'.$user->id,
+                ]);
+                $user->update(['account_type' => 'customer']);
+                $workspaceRole = 'owner';
+            } else {
+                $workspaceRole = 'client';
+            }
+
+            $workspace->users()->syncWithoutDetaching([
+                $user->id => ['role' => $workspaceRole],
+            ]);
+
+            $website = Website::create([
+                'user_id' => $user->id,
+                'workspace_id' => $workspace->id,
                 'name' => $trial->business_name,
                 // This is a valid placeholder only. It never becomes a live deployment target.
                 'domain' => 'https://'.(Str::slug($trial->business_name) ?: 'website').'.draft.cosmic.local',
@@ -98,7 +143,7 @@ class RegisteredUserController extends Controller
                 'business_description' => $trial->business_description,
                 'contact_email' => $user->email,
                 'api_token' => Str::random(60),
-                'theme_settings' => [
+                'theme_settings' => $trial->preview_theme ?? [
                     'primary' => 'midnight',
                     'secondary' => 'white',
                     'tertiary' => 'stone',
@@ -109,11 +154,13 @@ class RegisteredUserController extends Controller
                     'logo_text' => $trial->business_name,
                     'cta_label' => 'Get Started',
                     'cta_url' => '#',
-                    'menu' => [
-                        ['label' => 'Home', 'url' => 'home'],
-                        ['label' => 'About', 'url' => '#'],
-                        ['label' => 'Services', 'url' => '#'],
-                    ],
+                    'menu' => collect($menuStructure)
+                        ->map(fn (array $menuPage) => [
+                            'label' => $menuPage['title'],
+                            'url' => ($menuPage['is_home'] ?? false) ? 'home' : $menuPage['slug'],
+                        ])
+                        ->values()
+                        ->all(),
                 ],
                 'global_footer' => [
                     'type' => 'minimal_footer',
@@ -122,13 +169,21 @@ class RegisteredUserController extends Controller
                 ],
             ]);
 
-            $website->pages()->create([
-                'title' => 'Home',
-                'slug' => 'home',
-                'page_type' => 'standard',
-                'blocks' => $trial->generated_blocks,
-                'status' => 'draft',
-            ]);
+            foreach ($menuStructure as $index => $menuPage) {
+                $isHome = (bool) ($menuPage['is_home'] ?? $index === 0);
+
+                $website->pages()->create([
+                    'title' => $menuPage['title'],
+                    'slug' => $menuPage['slug'],
+                    'parent_id' => null,
+                    'sort_order' => $menuPage['sort_order'] ?? ($index + 1),
+                    'page_type' => $menuPage['page_type'] ?? 'standard',
+                    // The purchased draft keeps the generated homepage only.
+                    // All remaining industry pages start empty and ready to edit.
+                    'blocks' => $isHome ? ($trial->generated_blocks ?? []) : [],
+                    'status' => 'draft',
+                ]);
+            }
 
             $trial->update([
                 'claimed_at' => now(),

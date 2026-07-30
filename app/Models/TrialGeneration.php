@@ -17,6 +17,8 @@ class TrialGeneration extends Model
         'prompt',
         'sections',
         'generated_blocks',
+        'menu_structure',
+        'preview_theme',
         'status',
         'error_message',
         'ip_hash',
@@ -29,6 +31,8 @@ class TrialGeneration extends Model
     protected $casts = [
         'sections' => 'array',
         'generated_blocks' => 'array',
+        'menu_structure' => 'array',
+        'preview_theme' => 'array',
         'claimed_at' => 'datetime',
         'plan_selected_at' => 'datetime',
     ];

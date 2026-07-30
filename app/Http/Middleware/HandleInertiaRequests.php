@@ -33,6 +33,9 @@ class HandleInertiaRequests extends Middleware
             ...parent::share($request),
             'auth' => [
                 'user' => $request->user(),
+                'accountType' => $request->user()?->account_type,
+                'isPlatformOwner' => $request->user()?->isPlatformOwner() ?? false,
+                'isClient' => $request->user()?->isClient() ?? false,
             ],
         ];
     }

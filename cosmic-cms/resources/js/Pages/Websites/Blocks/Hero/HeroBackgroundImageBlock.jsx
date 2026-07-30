@@ -1,0 +1,371 @@
+import { usePage } from "@inertiajs/react";
+import { useRef } from "react";
+
+import { EditableButton } from "../Shared/EditableButton";
+import { EditableText } from "../Shared/EditableText";
+import { EditableImage } from "../Shared/EditableImage";
+
+import { getEffectiveTheme } from "../../../../theme/Theme";
+import { colorFamilies } from "../../../../theme/colorFamilies";
+
+
+
+
+export const HeroBackgroundImageSchema = {
+
+    type: "hero_background_image",
+
+    title: "Hero Background Image",
+
+    category: "Hero",
+
+    purpose: "Displays a full-width hero section with a background image, headline, description, and call-to-action.",
+
+    description: "Ideal for businesses that want to create a strong first impression using a high-quality background image with overlay content.",
+
+    tags: [
+        "hero",
+        "background",
+        "image",
+        "landing",
+        "banner",
+        "cta"
+    ],
+
+    defaults: {
+
+        tagline: "WELCOME TO OUR COMPANY",
+
+        heading: "Build Beautiful Websites With Confidence",
+
+        text: "Create modern, responsive websites using reusable blocks, AI-generated content, and powerful customization tools.",
+
+        button_label: "Get Started",
+
+        button_url: "#",
+
+        image_url: "/storage/cms-images/background/background-1.avif",
+
+        overlayOpacity: 50,
+
+        textAlign: "center",
+
+        height: "screen"
+
+    },
+
+    fields: [
+
+        {
+            type: "text",
+            name: "tagline",
+            label: "Tagline"
+        },
+
+        {
+            type: "textarea",
+            name: "heading",
+            label: "Heading"
+        },
+
+        {
+            type: "textarea",
+            name: "text",
+            label: "Description"
+        },
+
+        {
+            type: "button",
+            name: "button",
+            label: "Button"
+        },
+
+        {
+            type: "image",
+            name: "image_url",
+            label: "Background Image"
+        },
+
+        {
+            type: "range",
+            name: "overlayOpacity",
+            label: "Overlay Opacity",
+            min: 0,
+            max: 90,
+            step: 5
+        },
+
+        {
+            type: "select",
+            name: "textAlign",
+            label: "Text Alignment",
+            options: [
+                "left",
+                "center",
+                "right"
+            ]
+        },
+
+        {
+            type: "select",
+            name: "height",
+            label: "Hero Height",
+            options: [
+                "medium",
+                "large",
+                "screen"
+            ]
+        }
+
+    ]
+
+};
+
+
+export function HeroBackgroundImageBlock({
+    block,
+    blockIndex,
+    onUpdate,
+    globalTheme
+}) {
+
+    const imageRef = useRef(null);
+
+    const theme = getEffectiveTheme(
+        block.resolvedTheme,
+        globalTheme
+    );
+
+    const data = {
+        ...HeroBackgroundImageSchema.defaults,
+        ...block
+    };
+
+    if (!data.image_url) {
+        data.image_url =
+            HeroBackgroundImageSchema.defaults.image_url;
+    }
+
+
+
+    const primaryTheme = colorFamilies[globalTheme.primary];
+
+    const isPrimarySection = block.resolvedTheme === "primary";
+
+    const buttonStyle = isPrimarySection
+        ? {
+            bg: "bg-white",
+            text: "text-slate-950"
+        }
+        : {
+            bg: primaryTheme.bg,
+            text: primaryTheme.text
+        };
+
+    const heroHeight = {
+        medium: "min-h-[500px]",
+        large: "min-h-[650px]",
+        screen: "min-h-screen"
+    };
+
+    const alignment = {
+        left: "items-start text-left",
+        center: "items-center text-center",
+        right: "items-end text-right"
+    };
+
+    const { props } = usePage();
+
+    const websiteId =
+        props.page?.website_id ||
+        props.website?.id;
+
+
+    return (
+
+        <section
+            className={`
+                relative
+                overflow-hidden
+                flex
+                items-center
+
+                min-h-[72svh]
+                sm:min-h-[80vh]
+                md:min-h-[85vh]
+                lg:min-h-[90vh]
+
+                ${heroHeight[data.height]}
+            `}
+            onClick={() => {
+                document
+                    .getElementById(`hero-bg-${blockIndex}`)
+                    ?.click();
+            }}
+        >
+
+            {/* Background Image */}
+
+           <EditableImage
+            ref={imageRef}
+            websiteId={websiteId}
+            blockIndex={blockIndex}
+            src={data.image_url}
+            showOverlay={false}
+            isBackground
+            className="
+                absolute
+                inset-0
+                w-full
+                h-full
+                overflow-hidden
+                z-20
+            "
+            onSave={(value) =>
+                onUpdate({
+                    image_url: value
+                })
+            }
+        />
+
+            {/* Overlay */}
+
+            <div
+                className={`
+                    absolute
+                    inset-0
+                    z-[25]
+                    ${primaryTheme.bg}
+                    cursor-pointer
+                `}
+                style={{
+                    opacity: data.overlayOpacity / 60
+                }}
+                onClick={(e) => {
+
+                    e.stopPropagation();
+
+                    imageRef.current?.openEditor();
+
+                }}
+            />
+
+            {/* Content */}
+
+            <div
+            className={`
+                relative
+                z-[25]
+                w-full
+                h-full
+                min-h-inherit
+                max-w-7xl
+                mx-auto
+                px-6
+                sm:px-[8%]
+                py-20
+                sm:py-24
+                flex
+                flex-col
+                justify-center
+                ${alignment[data.textAlign]}
+            `}
+            onClick={() => {
+                document
+                    .getElementById(`hero-bg-${blockIndex}`)
+                    ?.click();
+            }}
+        >
+
+                <EditableText
+                    value={data.tagline}
+                    className="
+                        text-sm
+                        uppercase
+                        tracking-[0.35em]
+                        font-semibold
+                        text-white/80
+                    "
+                    onSave={(val) =>
+                        onUpdate({
+                            tagline: val
+                        })
+                    }
+                />
+
+                <EditableText
+                    value={data.heading}
+                    className="
+                        mt-6
+                        text-4xl
+                        sm:text-5xl
+                        md:text-7xl
+                        font-bold
+                        leading-tight
+                        break-words
+                        text-white
+                    "
+                    onSave={(val) =>
+                        onUpdate({
+                            heading: val
+                        })
+                    }
+                />
+
+                <EditableText
+                    value={data.text}
+                    isTextArea={true}
+                    className="
+                        mt-6
+                        sm:mt-8
+                        max-w-2xl
+                        text-base
+                        sm:text-xl
+                        leading-7
+                        sm:leading-8
+                        text-white/80
+                    "
+                    onSave={(val) =>
+                        onUpdate({
+                            text: val
+                        })
+                    }
+                />
+
+                <div className="mt-8 sm:mt-12">
+
+                    <EditableButton
+                        label={data.button_label}
+                        url={data.button_url}
+                        className={`
+                            inline-flex
+                            w-full
+                            sm:w-auto
+                            items-center
+                            justify-center
+                            min-h-[52px]
+                            px-8
+                            rounded-full
+                            font-bold
+                            transition-all
+                            duration-200
+                            ${buttonStyle.bg}
+                            ${buttonStyle.text}
+                        `}
+                        onSave={(label, url) =>
+                            onUpdate({
+                                button_label: label,
+                                button_url: url
+                            })
+                        }
+                    />
+
+                </div>
+
+            </div>
+
+        </section>
+
+    );
+
+}

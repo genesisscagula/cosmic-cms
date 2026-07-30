@@ -213,7 +213,21 @@ class PageController extends Controller
         }
 
         $website = $page->website;
-        $websiteMessaging = $website->pages()
+
+        // A public trial must render with the theme selected for that trial,
+        // never with the shared demo website's current theme. Clone the model
+        // so this request-only override cannot mutate Website #14.
+        if ($isTrialMode) {
+            $website = clone $website;
+            $website->setAttribute('theme_settings', $trial->preview_theme ?? [
+                'primary' => 'midnight',
+                'secondary' => 'white',
+                'tertiary' => 'stone',
+                'auto' => true,
+            ]);
+        }
+
+        $websiteMessaging = $page->website->pages()
             ->get(['title', 'blocks'])
             ->flatMap(function (Page $websitePage) {
                 return collect($websitePage->blocks ?? [])
@@ -257,12 +271,16 @@ class PageController extends Controller
             'page' => $page,
             'website' => $website,
             'websitePages' => $isTrialMode
-                ? [[
-                    'id' => $page->id,
-                    'title' => $page->title,
-                    'slug' => $page->slug,
-                    'parent_id' => $page->parent_id,
-                ]]
+                ? collect($trial->menu_structure ?? [])
+                    ->map(fn (array $menuPage, int $index) => [
+                        'id' => ($menuPage['is_home'] ?? false) ? $page->id : null,
+                        'title' => $menuPage['title'],
+                        'slug' => $menuPage['slug'],
+                        'parent_id' => null,
+                        'is_home' => (bool) ($menuPage['is_home'] ?? false),
+                        'sort_order' => $menuPage['sort_order'] ?? ($index + 1),
+                    ])
+                    ->values()
                 : $website->pages()
                     ->orderBy('parent_id')
                     ->orderBy('sort_order')
@@ -287,6 +305,22 @@ class PageController extends Controller
             'hasWebsiteContent' => $websiteMessaging !== '',
             'websiteContext' => $websiteContext,
             'trialMode' => $isTrialMode,
+            'globalHeaderBlock' => $isTrialMode
+                ? [
+                    'type' => 'glassmorphism_header',
+                    'logo_text' => $trial->business_name,
+                    'cta_label' => 'Get Started',
+                    'cta_url' => '#',
+                    'menu' => collect($trial->menu_structure ?? [])
+                        ->map(fn (array $menuPage) => [
+                            'label' => $menuPage['title'],
+                            'url' => ($menuPage['is_home'] ?? false) ? 'home' : $menuPage['slug'],
+                        ])
+                        ->values()
+                        ->all(),
+                ]
+                : $website->global_header,
+            'globalFooterBlock' => $website->global_footer,
             'trialToken' => $trial?->token,
             'trialCapabilities' => [
                 'canNavigateAway' => ! $isTrialMode,
