@@ -4,6 +4,7 @@ import { showCosmicNotification } from "../../../Components/CosmicNotification";
 import { useCreditBalance } from "../../../Components/CosmicCredits/CreditBalanceContext";
 import BlockPreviewCard from "./BlockPreviewCard";
 import { BlockRegistry } from "./SparkRegistry";
+import { BlockRegistry as BuilderBlockRegistry } from "../BlockRegistry";
 
 const categoryFor = (type) => {
     if (type.startsWith("hero_") || type === "image_cta_banner") return "Hero";
@@ -25,6 +26,53 @@ const categoryFor = (type) => {
 function SparkVisual({ spark }) {
     const Preview = spark.registry.preview;
     return <Preview {...spark.registry.payload} />;
+}
+
+const previewTheme = {
+    primary: "emerald",
+    secondary: "white",
+    tertiary: "stone",
+    auto: true,
+};
+
+const generationSteps = [
+    { label: "Understand brief", threshold: 18 },
+    { label: "Plan sections", threshold: 42 },
+    { label: "Create content", threshold: 72 },
+    { label: "Build page", threshold: 96 },
+];
+
+function ActualSparkPreview({ spark, previewVariant = "white" }) {
+    const registryItem = BuilderBlockRegistry[spark.key];
+    const Component = registryItem?.component;
+
+    if (!Component) {
+        return <SparkVisual spark={spark} />;
+    }
+
+    const defaults = registryItem.schema?.defaults || {};
+    const block = {
+        ...defaults,
+        ...structuredClone(spark.registry.payload || {}),
+        type: spark.key,
+        theme: previewVariant,
+        resolvedTheme: previewVariant,
+    };
+
+    return (
+        <Component
+            block={block}
+            blockIndex={0}
+            globalTheme={previewTheme}
+            onUpdate={() => {}}
+            blogPosts={[]}
+            blogWebsiteId={null}
+            blogPageId={null}
+            onBlogPostCreated={() => {}}
+            onBlogPostUpdated={() => {}}
+            onBlogPostDeleted={() => {}}
+        />
+    );
 }
 
 export default function AddSectionModal({
@@ -50,7 +98,91 @@ export default function AddSectionModal({
     const [instruction, setInstruction] = useState("");
     const [pagePrompt, setPagePrompt] = useState("");
     const [generatingPage, setGeneratingPage] = useState(false);
+    const [loadingProgress, setLoadingProgress] = useState(0);
+    const [loadingStage, setLoadingStage] = useState("Understanding your request...");
     const [previewSpark, setPreviewSpark] = useState(null);
+    const [previewVariantIndex, setPreviewVariantIndex] = useState(0);
+    const [previewVisible, setPreviewVisible] = useState(true);
+    const [personalizingSpark, setPersonalizingSpark] = useState(false);
+    const [personalizeProgress, setPersonalizeProgress] = useState(0);
+    const [personalizeStage, setPersonalizeStage] = useState("Understanding your Spark...");
+
+
+    const previewVariants = ["white", "primary", "surface"];
+    const previewVariant = previewVariants[previewVariantIndex];
+
+    useEffect(() => {
+        if (!previewSpark) {
+            setPreviewVariantIndex(0);
+            setPreviewVisible(true);
+            return undefined;
+        }
+
+        const timer = window.setInterval(() => {
+            setPreviewVisible(false);
+            window.setTimeout(() => {
+                setPreviewVariantIndex((current) => (current + 1) % previewVariants.length);
+                setPreviewVisible(true);
+            }, 250);
+        }, 1800);
+
+        return () => window.clearInterval(timer);
+    }, [previewSpark]);
+
+    useEffect(() => {
+        if (!personalizingSpark) {
+            setPersonalizeProgress(0);
+            setPersonalizeStage("Understanding your Spark...");
+            return undefined;
+        }
+
+        const stages = [
+            { at: 8, text: "Understanding your Spark..." },
+            { at: 30, text: "Personalizing the content..." },
+            { at: 58, text: "Applying your website style..." },
+            { at: 82, text: "Finishing your section..." },
+        ];
+
+        let progress = 4;
+        setPersonalizeProgress(progress);
+        const timer = window.setInterval(() => {
+            const increment = progress < 35 ? 3 : progress < 70 ? 2 : 1;
+            progress = Math.min(91, progress + increment);
+            setPersonalizeProgress(progress);
+            const current = [...stages].reverse().find((stage) => progress >= stage.at);
+            if (current) setPersonalizeStage(current.text);
+        }, 180);
+
+        return () => window.clearInterval(timer);
+    }, [personalizingSpark]);
+
+    useEffect(() => {
+        if (!generatingPage) {
+            setLoadingProgress(0);
+            setLoadingStage("Understanding your request...");
+            return undefined;
+        }
+
+        const stages = [
+            { at: 8, text: "Understanding your request..." },
+            { at: 24, text: "Planning the right Sparks..." },
+            { at: 48, text: "Choosing layouts and images..." },
+            { at: 68, text: "Creating your page content..." },
+            { at: 84, text: "Building your page..." },
+        ];
+
+        let progress = 4;
+        setLoadingProgress(progress);
+        const timer = window.setInterval(() => {
+            const increment = progress < 35 ? 3 : progress < 70 ? 2 : 1;
+            progress = Math.min(89, progress + increment);
+            setLoadingProgress(progress);
+            const current = [...stages].reverse().find((stage) => progress >= stage.at);
+            if (current) setLoadingStage(current.text);
+        }, 180);
+
+        return () => window.clearInterval(timer);
+    }, [generatingPage]);
 
     useEffect(() => {
         if (!open) return;
@@ -109,6 +241,9 @@ export default function AddSectionModal({
             });
 
             if (!data.blocks?.length) throw new Error("Cosmic AI did not return any sections.");
+            setLoadingStage("Your page is ready.");
+            setLoadingProgress(100);
+            await new Promise((resolve) => window.setTimeout(resolve, 450));
             setBalance(data.credit_balance);
             onReplace(data.blocks);
             setPagePrompt("");
@@ -127,6 +262,7 @@ export default function AddSectionModal({
             if (mode === "quick") {
                 onAdd(structuredClone(selected.registry.payload));
             } else {
+                setPersonalizingSpark(true);
                 const prompt = [
                     websiteContext || "Create professional website content.",
                     instruction.trim() || `Personalize this ${selected.name} section for the business.`,
@@ -139,6 +275,9 @@ export default function AddSectionModal({
                 });
                 const block = data.blocks?.[0];
                 if (!block) throw new Error("Cosmic AI did not return a section.");
+                setPersonalizeStage("Your Spark is ready.");
+                setPersonalizeProgress(100);
+                await new Promise((resolve) => window.setTimeout(resolve, 400));
                 setBalance(data.credit_balance);
                 onAdd(block);
             }
@@ -150,6 +289,7 @@ export default function AddSectionModal({
         } catch (error) {
             showCosmicNotification({ title: "Could not add Spark", message: error.response?.data?.message || error.message || "Please try again.", tone: "error" });
         } finally {
+            setPersonalizingSpark(false);
             setBusyKey(null);
         }
     };
@@ -163,18 +303,16 @@ export default function AddSectionModal({
                     <button onClick={onClose} className="rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white">✕</button>
                 </div>
                 {!ownedOnly && onReplace && <div className="mt-5 rounded-2xl border border-violet-400/20 bg-gradient-to-r from-violet-500/[0.08] to-indigo-500/[0.04] p-4 sm:p-5">
-                    <div className="flex flex-col gap-3 lg:flex-row lg:items-end">
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-3">
-                                <div>
-                                    <p className="text-sm font-bold text-white">✨ Generate with AI</p>
-                                    <p className="mt-0.5 text-xs text-slate-400">Describe the complete page you want. Cosmic AI will choose and build the Sparks.</p>
-                                </div>
-                                <span className="hidden rounded-full border border-violet-300/20 bg-violet-300/10 px-2.5 py-1 text-[10px] font-bold text-violet-200 sm:inline-flex">FULL PAGE</span>
-                            </div>
-                            <textarea value={pagePrompt} onChange={(event) => setPagePrompt(event.target.value.slice(0, 800))} rows={2} placeholder="Example: Create a modern dental clinic homepage with online booking, services, testimonials and a strong contact CTA..." className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white placeholder:text-slate-600 focus:border-violet-400 focus:outline-none" />
+                    <div className="flex items-start justify-between gap-3">
+                        <div>
+                            <p className="text-sm font-bold text-white">✨ Generate with AI</p>
+                            <p className="mt-1 text-xs text-slate-400">Describe the page you want to create. Cosmic AI will choose the best layout and build it for you.</p>
                         </div>
-                        <button type="button" disabled={!pagePrompt.trim() || generatingPage} onClick={generatePage} className="h-11 shrink-0 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 text-sm font-bold text-white shadow-lg transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-40">{generatingPage ? "Generating..." : "Generate Page"}</button>
+                        <span className="hidden rounded-full border border-violet-300/20 bg-violet-300/10 px-2.5 py-1 text-[10px] font-bold text-violet-200 sm:inline-flex">FULL PAGE</span>
+                    </div>
+                    <textarea value={pagePrompt} onChange={(event) => setPagePrompt(event.target.value.slice(0, 800))} rows={3} placeholder="Example: modern fitness studio about us page with trainers and programs" className="mt-3 w-full resize-none rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm leading-6 text-white placeholder:text-slate-600 focus:border-violet-400 focus:outline-none" />
+                    <div className="mt-3 flex justify-end">
+                        <button type="button" disabled={!pagePrompt.trim() || generatingPage} onClick={generatePage} className="h-11 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 text-sm font-bold text-white shadow-lg transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-40">{generatingPage ? "Generating..." : "Generate Page ✨"}</button>
                     </div>
                 </div>}
                 <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
@@ -204,13 +342,72 @@ export default function AddSectionModal({
                 </header>
                 <div className="min-h-0 flex-1 overflow-auto bg-[#e5e7eb] p-3 sm:p-6">
                     <div className="mx-auto min-h-[620px] max-w-[1440px] overflow-hidden rounded-2xl bg-white shadow-2xl">
-                        <div className="pointer-events-none min-w-[1100px] origin-top-left"><SparkVisual spark={previewSpark} /></div>
+                        <div className={`pointer-events-none min-w-[1100px] origin-top-left transition-all duration-300 ${previewVisible ? "translate-y-0 opacity-100" : "translate-y-1 opacity-0"}`}><ActualSparkPreview spark={previewSpark} previewVariant={previewVariant} /></div>
                     </div>
                 </div>
                 <footer className="flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-                    <div className="flex items-center gap-2 text-xs text-slate-400"><span className="rounded-full bg-violet-400/10 px-2.5 py-1 font-bold text-violet-200">AI Ready</span><span>Responsive Spark preview</span></div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400"><span className="rounded-full bg-violet-400/10 px-2.5 py-1 font-bold text-violet-200">AI Ready</span><span>Responsive Spark preview</span><div className="flex items-center gap-1.5">{previewVariants.map((variant, index) => <button key={variant} type="button" onClick={() => { setPreviewVariantIndex(index); setPreviewVisible(true); }} className={`rounded-full px-2.5 py-1 capitalize transition ${previewVariantIndex === index ? "bg-white text-slate-950" : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"}`}>{variant}</button>)}</div></div>
                     <div className="flex gap-2"><button type="button" onClick={() => setPreviewSpark(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Close</button>{previewSpark.owned ? <button type="button" onClick={() => { setSelected(previewSpark); setPreviewSpark(null); }} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-950">Add to Page</button> : <button type="button" disabled={busyKey === previewSpark.key} onClick={() => unlock(previewSpark)} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busyKey === previewSpark.key ? "Adding..." : `Add to My Sparks · ⚡${previewSpark.credits}`}</button>}</div>
                 </footer>
+            </section>
+        </div>}
+
+        {generatingPage && <div className="fixed inset-0 z-[980] grid place-items-center bg-black/80 px-4 backdrop-blur-md" role="status" aria-live="polite">
+            <section className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#151519]/98 px-5 py-7 text-center shadow-2xl shadow-black/70 sm:px-8 sm:py-8">
+                <div className="relative mx-auto h-16 w-16" aria-hidden="true">
+                    <div className="cosmic-loading-spinner absolute inset-0 rounded-full" />
+                    <div className="absolute inset-[3px] grid place-items-center rounded-full bg-[#17171d] text-xl text-cyan-300 shadow-lg shadow-violet-950/50">✦</div>
+                </div>
+                <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">Cosmic AI</p>
+                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-white">Building your page</h3>
+                <p className="mt-3 text-sm text-slate-300">{loadingStage}</p>
+                <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {generationSteps.map((step, index) => {
+                        const isComplete = loadingProgress >= step.threshold;
+                        const previousThreshold = index === 0 ? 0 : generationSteps[index - 1].threshold;
+                        const isCurrent = !isComplete && loadingProgress >= previousThreshold;
+                        return <div key={step.label} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[10px] font-medium sm:text-xs ${isComplete ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : isCurrent ? "border-violet-400/45 bg-violet-400/10 text-violet-100" : "border-white/10 bg-white/[0.02] text-slate-500"}`}>
+                            <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] ${isComplete ? "bg-emerald-400 text-emerald-950" : isCurrent ? "bg-violet-400 text-white" : "bg-white/10 text-slate-400"}`}>{isComplete ? "✓" : index + 1}</span>
+                            <span className="leading-4">{step.label}</span>
+                        </div>;
+                    })}
+                </div>
+                <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400 transition-[width] duration-200" style={{ width: `${loadingProgress}%` }} />
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs text-slate-500"><span>Generating...</span><span>{loadingProgress}%</span></div>
+            </section>
+        </div>}
+
+        {personalizingSpark && <div className="fixed inset-0 z-[990] grid place-items-center bg-black/80 px-4 backdrop-blur-md" role="status" aria-live="polite">
+            <section className="w-full max-w-xl rounded-3xl border border-white/10 bg-[#151519]/98 px-5 py-7 text-center shadow-2xl shadow-black/70 sm:px-8 sm:py-8">
+                <div className="relative mx-auto h-16 w-16" aria-hidden="true">
+                    <div className="cosmic-loading-spinner absolute inset-0 rounded-full" />
+                    <div className="absolute inset-[3px] grid place-items-center rounded-full bg-[#17171d] text-xl text-cyan-300 shadow-lg shadow-violet-950/50">✦</div>
+                </div>
+                <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">Cosmic AI</p>
+                <h3 className="mt-2 text-2xl font-semibold tracking-tight text-white">Personalizing your Spark</h3>
+                <p className="mt-3 text-sm text-slate-300">{personalizeStage}</p>
+                <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                    {[
+                        { label: "Understand Spark", threshold: 18 },
+                        { label: "Personalize content", threshold: 46 },
+                        { label: "Apply style", threshold: 74 },
+                        { label: "Finish section", threshold: 96 },
+                    ].map((step, index, steps) => {
+                        const isComplete = personalizeProgress >= step.threshold;
+                        const previousThreshold = index === 0 ? 0 : steps[index - 1].threshold;
+                        const isCurrent = !isComplete && personalizeProgress >= previousThreshold;
+                        return <div key={step.label} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[10px] font-medium sm:text-xs ${isComplete ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-200" : isCurrent ? "border-violet-400/45 bg-violet-400/10 text-violet-100" : "border-white/10 bg-white/[0.02] text-slate-500"}`}>
+                            <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] ${isComplete ? "bg-emerald-400 text-emerald-950" : isCurrent ? "bg-violet-400 text-white" : "bg-white/10 text-slate-400"}`}>{isComplete ? "✓" : index + 1}</span>
+                            <span className="leading-4">{step.label}</span>
+                        </div>;
+                    })}
+                </div>
+                <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
+                    <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400 transition-[width] duration-200" style={{ width: `${personalizeProgress}%` }} />
+                </div>
+                <div className="mt-3 flex items-center justify-between text-xs text-slate-500"><span>Personalizing...</span><span>{personalizeProgress}%</span></div>
             </section>
         </div>}
 
