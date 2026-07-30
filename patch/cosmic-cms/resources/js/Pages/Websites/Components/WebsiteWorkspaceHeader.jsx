@@ -1,6 +1,7 @@
 import { Link } from "@inertiajs/react";
+import CreditBalanceBadge from "../../../Components/CosmicCredits/CreditBalanceBadge";
 
-export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCount = 0, themeSummary, onNewPage, onPushLive, pushingLive, onOpenInquiries, onOpenProfile, onOpenSettings }) {
+export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCount = 0, themeSummary, onNewPage, onPushLive, pushingLive, onOpenInquiries, onOpenProfile, onOpenSettings, creditBalance }) {
     return (
         <header className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-end">
             <div>
@@ -32,12 +33,15 @@ export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCoun
                     ) : null}
                 </button>
                 <span aria-hidden="true" className="text-slate-700">|</span>
+                <Link href={route("sparks.index")} className="font-medium text-violet-300 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Sparks</Link>
+                <span aria-hidden="true" className="text-slate-700">|</span>
                 <button type="button" onClick={onOpenProfile} className="font-medium text-slate-500 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 focus:ring-offset-[#0a0a0b]">Profile</button>
                 <span aria-hidden="true" className="text-slate-700">|</span>
                 <button type="button" onClick={onOpenSettings} className="font-medium text-slate-500 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 focus:ring-offset-[#0a0a0b]">Settings</button>
             </div>
 
-            <div className="flex flex-wrap gap-2 lg:justify-self-end">
+            <div className="flex flex-wrap items-center gap-2 lg:justify-self-end">
+                <CreditBalanceBadge balance={creditBalance} className="h-10" />
                 <button type="button" onClick={onPushLive} disabled={pushingLive} className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/20 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50">
                     {pushingLive ? "Pushing live..." : "Push live update"}
                 </button>

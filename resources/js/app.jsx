@@ -19,7 +19,18 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
 
-        root.render(<CreditBalanceProvider><App {...props} /><CosmicNotification /></CreditBalanceProvider>);
+        const initialBalance =
+            props.initialPage?.props?.auth?.creditBalance ??
+            props.initialPage?.props?.auth?.user?.credits ??
+            props.initialPage?.props?.balance ??
+            0;
+
+        root.render(
+            <CreditBalanceProvider initialBalance={initialBalance}>
+                <App {...props} />
+                <CosmicNotification />
+            </CreditBalanceProvider>,
+        );
     },
     progress: {
         color: '#4B5563',

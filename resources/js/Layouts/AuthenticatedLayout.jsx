@@ -31,6 +31,18 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     Dashboard
                                 </NavLink>
+                                <NavLink
+                                    href={route('sparks.index')}
+                                    active={route().current('sparks.*')}
+                                >
+                                    ✨ Sparks
+                                </NavLink>
+                                <NavLink
+                                    href={route('credits.index')}
+                                    active={route().current('credits.*')}
+                                >
+                                    ⚡ Credits
+                                </NavLink>
                             </div>
                         </div>
 

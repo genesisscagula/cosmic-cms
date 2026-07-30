@@ -29,3 +29,9 @@ No payment gateway is connected yet. In local/testing environments, purchases ca
 A local-only Developer Test Top-up button adds 1000 credits instantly.
 
 ## No migration required
+
+## Hotfix 2.5.6.1
+
+- Fixed the blank screen caused by calling Inertia `usePage()` outside the Inertia `<App>` context.
+- The credit provider now receives its initial balance from `props.initialPage`.
+- Added an Inertia success listener so the shared balance stays synchronized after navigation and refreshes.

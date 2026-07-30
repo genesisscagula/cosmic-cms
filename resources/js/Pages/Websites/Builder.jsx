@@ -19,6 +19,7 @@ import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialCapabilities = {}, cosmicPricing = {} }) {
     const { props } = usePage();
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
+
     const capabilities = {
         canNavigateAway: !trialMode,
         canChangeTheme: !trialMode,

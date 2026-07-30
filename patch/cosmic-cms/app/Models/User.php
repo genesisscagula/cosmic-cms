@@ -13,6 +13,7 @@ use App\Models\Page;
 use App\Models\Workspace;
 use App\Models\CreditTransaction;
 use App\Models\CosmicUnlock;
+use App\Models\Spark;
 
 class User extends Authenticatable
 {
@@ -90,6 +91,13 @@ class User extends Authenticatable
     public function cosmicUnlocks()
     {
         return $this->hasMany(CosmicUnlock::class);
+    }
+
+    public function sparks()
+    {
+        return $this->belongsToMany(Spark::class, 'user_sparks')
+            ->withPivot(['credits_paid', 'unlocked_at'])
+            ->withTimestamps();
     }
 
     public function isPlatformOwner(): bool

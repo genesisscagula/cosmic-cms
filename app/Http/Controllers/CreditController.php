@@ -38,6 +38,13 @@ class CreditController extends Controller
         ]);
     }
 
+    public function balance(Request $request): JsonResponse
+    {
+        return response()->json([
+            'credit_balance' => (int) $request->user()->fresh()->credits,
+        ]);
+    }
+
     public function purchase(Request $request, CreditService $credits): JsonResponse
     {
         abort_unless(app()->environment(['local', 'testing']), 403, 'Credit purchases are not enabled yet.');

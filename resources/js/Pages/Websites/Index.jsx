@@ -31,8 +31,8 @@ const replaceLegacyHeaderLogo = (header, websiteName) => {
 };
 
 export default function Index({ website, pages, inquiryCount = 0, recentInquiries = [], globalHeaderBlock, globalFooterBlock }) {
-    const pageProps = usePage().props;
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
+
     const { data, setData, post, processing, errors, reset } = useForm({
         title: '',
         page_type: 'standard',
@@ -302,8 +302,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
             <div className="min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-6xl space-y-7">
-                    <div className="flex justify-end"><CreditBalanceBadge balance={creditBalance} /></div>
-                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={visibleInquiryCount} themeSummary={themeSummary} onNewPage={() => openNewPage()} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} onOpenInquiries={() => setIsInquiryInboxOpen(true)} onOpenProfile={() => setIsBusinessProfileOpen(true)} onOpenSettings={() => setIsWebsiteSettingsOpen(true)} />
+                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={visibleInquiryCount} themeSummary={themeSummary} onNewPage={() => openNewPage()} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} onOpenInquiries={() => setIsInquiryInboxOpen(true)} onOpenProfile={() => setIsBusinessProfileOpen(true)} onOpenSettings={() => setIsWebsiteSettingsOpen(true)} creditBalance={creditBalance} />
 
                     <WebsiteLaunchGuide pages={pages || []} onNewPage={() => openNewPage()} />
 
