@@ -2,6 +2,7 @@ import axios from "axios";
 import { useState } from "react";
 import { useRef } from "react";
 import { showCosmicNotification } from "../../../Components/CosmicNotification";
+import { ACTION_PRICING, getBlockPrice } from "../../../cosmic/pricing";
 
 import BlockPreviewCard from "./BlockPreviewCard";
 
@@ -513,6 +514,7 @@ export default function AddSectionModal({
     hasBlocks = false,
     hasWebsiteContent = false,
     websiteContext = "",
+    websiteId = null,
 }) {
 
     const [prompt, setPrompt] = useState("");
@@ -649,7 +651,9 @@ export default function AddSectionModal({
                 {
                     prompt: generationPrompt,
                     sections,
-                    image_folder: imageFolder
+                    image_folder: imageFolder,
+                    generation_type: "page",
+                    website_id: websiteId,
                 }
             );
 
@@ -754,6 +758,8 @@ export default function AddSectionModal({
                 prompt: sectionPrompt,
                 sections: [section],
                 image_folder: imageFolder,
+                generation_type: "section",
+                website_id: websiteId,
             });
 
             const generatedBlock = contentResponse.data?.blocks?.[0];
@@ -805,6 +811,8 @@ export default function AddSectionModal({
             const contentResponse = await axios.post("/ai/generate-content", {
                 prompt: contentPrompt,
                 sections: [selectedSpecificBlock.type],
+                generation_type: "section",
+                website_id: websiteId,
             });
 
             const generatedBlock = contentResponse.data?.blocks?.[0];
@@ -1091,6 +1099,7 @@ export default function AddSectionModal({
                             >
                                 Generate section
                             </button>
+                            <span className="text-xs font-semibold text-violet-300">Cost depends on selected block</span>
                         </div>
                     </div>
                 )}
@@ -1120,8 +1129,8 @@ export default function AddSectionModal({
                                 setSelectedSpecificBlock(block);
                                 setSpecificLayoutInstruction("");
                             }}
-                            title={block.title}
-                            buttonLabel="Choose this layout"
+                            title={`${block.title} · ⚡${getBlockPrice(block.type).credits}`}
+                            buttonLabel={`Choose this layout · ${getBlockPrice(block.type).category}`}
                             buttonClass="bg-violet-600 hover:bg-violet-500"
                             preview={block.preview}
                             payload={block.payload}

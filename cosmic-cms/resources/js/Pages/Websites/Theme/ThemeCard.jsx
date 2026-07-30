@@ -1,3 +1,5 @@
+const THEME_CREDITS = { emerald: 1, ocean: 1, indigo: 1, amber: 1, teal: 1, coffee: 2, rose: 2, forest: 2, terracotta: 2, charcoal: 2, midnight: 3, navy: 3, obsidian: 4, espresso: 4, violet: 5, ruby: 5, asphalt: 5 };
+
 export default function ThemeCard({
     theme,
     selected,
@@ -49,11 +51,9 @@ export default function ThemeCard({
                         </div>
                     </div>
 
-                    {selected && (
-                        <span className="shrink-0 rounded-full bg-violet-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-violet-300">
-                            Active
-                        </span>
-                    )}
+                    <span className="shrink-0 rounded-full bg-violet-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-violet-300">
+                        {selected ? "Active" : `⚡${THEME_CREDITS[theme.id] ?? 2}`}
+                    </span>
                 </div>
 
                 <div className="mt-3 flex items-center gap-1.5" aria-label={`${theme.name} color palette`}>

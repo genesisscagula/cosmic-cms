@@ -1,7 +1,8 @@
-import { Head, Link, router } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 
 export default function ClientDashboard({ websites = [] }) {
     const logout = () => router.post(route('logout'));
+    const creditBalance = usePage().props.auth?.creditBalance ?? 0;
 
     return (
         <div className="min-h-screen bg-[#0a0a0b] text-slate-100">
@@ -16,9 +17,14 @@ export default function ClientDashboard({ websites = [] }) {
                             <p className="text-xs text-slate-500">Client workspace</p>
                         </div>
                     </div>
-                    <button type="button" onClick={logout} className="rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white">
+                    <div className="flex items-center gap-2">
+                        <Link href={route('credits.index')} className="rounded-lg border border-cyan-400/20 bg-cyan-400/10 px-3 py-2 text-sm font-semibold text-cyan-200 hover:bg-cyan-400/15">
+                            ⚡ {creditBalance}
+                        </Link>
+                        <button type="button" onClick={logout} className="rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white">
                         Log out
-                    </button>
+                        </button>
+                    </div>
                 </div>
             </header>
 

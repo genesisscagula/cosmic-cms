@@ -1,5 +1,4 @@
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router, usePage } from '@inertiajs/react';
 
 const FEATURES = [
     {
@@ -64,30 +63,44 @@ function DemoCard({ demo }) {
 }
 
 export default function SalesIndex({ demos = [] }) {
+    const user = usePage().props.auth?.user;
+    const logout = () => router.post(route('logout'));
+
     return (
-        <AuthenticatedLayout
-            header={
-                <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                        <p className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan-400">
-                            Sales toolkit
-                        </p>
-                        <h2 className="mt-1 text-xl font-semibold leading-tight text-white">
-                            Cosmic CMS Sales Page
-                        </h2>
-                    </div>
-                    <Link
-                        href={route('dashboard')}
-                        className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:border-white/20 hover:bg-white/5 hover:text-white"
-                    >
-                        Back to dashboard
-                    </Link>
-                </div>
-            }
-        >
+        <div className="min-h-screen bg-[#090b12] text-slate-100">
             <Head title="Sales" />
 
-            <div className="min-h-screen bg-[#090b12] py-10 text-slate-100">
+            <header className="border-b border-white/10 bg-[#111113]">
+                <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
+                    <div className="flex min-w-0 items-center gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 font-black text-slate-950">
+                            C
+                        </span>
+                        <div className="min-w-0">
+                            <p className="truncate font-semibold text-white">Cosmic CMS</p>
+                            <p className="truncate text-xs text-slate-500">Sales toolkit</p>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center gap-2">
+                        <Link
+                            href={route('dashboard')}
+                            className="rounded-lg border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/5 hover:text-white"
+                        >
+                            Dashboard
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={logout}
+                            className="hidden rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-400 transition hover:bg-white/5 hover:text-white sm:inline-flex"
+                        >
+                            Log out{user?.name ? ` · ${user.name}` : ''}
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <main className="py-10">
                 <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
                     <section className="overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-cyan-400/10 via-white/[0.035] to-violet-500/10 px-6 py-10 shadow-2xl shadow-black/30 sm:px-10 sm:py-14">
                         <div className="max-w-3xl">
@@ -166,7 +179,7 @@ export default function SalesIndex({ demos = [] }) {
                         )}
                     </section>
                 </div>
-            </div>
-        </AuthenticatedLayout>
+            </main>
+        </div>
     );
 }

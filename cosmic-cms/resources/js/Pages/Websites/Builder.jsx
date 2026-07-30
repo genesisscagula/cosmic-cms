@@ -14,7 +14,7 @@ import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 
 
 
-export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialCapabilities = {} }) {
+export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialCapabilities = {}, cosmicPricing = {} }) {
     const { props } = usePage();
     const capabilities = {
         canNavigateAway: !trialMode,
@@ -911,6 +911,8 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                     hasBlocks={(data.blocks?.length ?? 0) > 0}
                     hasWebsiteContent={hasWebsiteContent}
                     websiteContext={websiteContext}
+                    websiteId={website?.id}
+                    cosmicPricing={cosmicPricing}
                 />
             )}
 
