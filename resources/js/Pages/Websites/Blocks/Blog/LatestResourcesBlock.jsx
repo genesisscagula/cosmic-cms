@@ -1,14 +1,18 @@
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
+import { getEffectiveTheme } from "../../../../theme/Theme";
 
 export const LatestResourcesSchema = {
     type: "latest_resources",
     title: "Latest Resources",
     category: "Content",
-    purpose: "Surface two useful resources after a blog collection.",
-    description: "A compact two-card editorial resource section.",
+    sparkGroup: "Blog-Latest-Resources",
+    freeSparkCount: 3,
+    purpose: "Surface useful resources after a blog collection.",
+    description: "A flexible editorial resource section.",
     tags: ["resources", "guides", "blog", "content"],
     defaults: {
+        layout_variant: "resources-01",
         eyebrow: "Keep exploring",
         heading: "Latest resources",
         text: "Helpful next reads for visitors who want to learn more.",
@@ -19,39 +23,42 @@ export const LatestResourcesSchema = {
     },
 };
 
-export function LatestResourcesBlock({ block, onUpdate }) {
+export function LatestResourcesBlock({ block, onUpdate, globalTheme }) {
     const data = {
         ...LatestResourcesSchema.defaults,
         ...block,
-        resources: Array.isArray(block.resources) && block.resources.length
-            ? block.resources.slice(0, 2)
-            : LatestResourcesSchema.defaults.resources,
+        resources: Array.isArray(block.resources) && block.resources.length ? block.resources.slice(0, 2) : LatestResourcesSchema.defaults.resources,
     };
-    const updateResource = (index, key, value) => onUpdate({
-        resources: data.resources.map((resource, resourceIndex) => resourceIndex === index ? { ...resource, [key]: value } : resource),
-    });
-    const updateResourceButton = (index, cta_label, cta_url) => onUpdate({
-        resources: data.resources.map((resource, resourceIndex) => resourceIndex === index ? { ...resource, cta_label, cta_url } : resource),
-    });
+    const variant = data.layout_variant || "resources-01";
+    const selectedTheme = block.resolvedTheme || block.theme || "white";
+    const theme = getEffectiveTheme(selectedTheme, globalTheme);
+    const updateResource = (index, key, value) => onUpdate({ resources: data.resources.map((resource, resourceIndex) => resourceIndex === index ? { ...resource, [key]: value } : resource) });
+    const updateResourceButton = (index, cta_label, cta_url) => onUpdate({ resources: data.resources.map((resource, resourceIndex) => resourceIndex === index ? { ...resource, cta_label, cta_url } : resource) });
+
+    const card = (resource, index, compact = false) => (
+        <article key={index} className={`group border ${theme.border} ${theme.card} shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${compact ? "grid gap-4 rounded-2xl p-6 sm:grid-cols-[130px_1fr]" : "rounded-2xl p-7 sm:p-8"}`}>
+            {compact && <div className={`flex min-h-28 items-center justify-center rounded-xl ${theme.bg} text-3xl font-black ${theme.sub}`}>0{index + 1}</div>}
+            <div>
+                <EditableText value={resource.eyebrow} className={`block text-[11px] font-semibold uppercase tracking-[0.22em] ${theme.sub}`} onSave={(eyebrow) => updateResource(index, "eyebrow", eyebrow)} />
+                <EditableText value={resource.title} className={`mt-4 block text-2xl font-bold leading-tight tracking-tight ${theme.text}`} onSave={(title) => updateResource(index, "title", title)} />
+                <EditableText value={resource.text} isTextArea className={`mt-4 block text-sm leading-6 ${theme.sub}`} onSave={(text) => updateResource(index, "text", text)} />
+                <EditableButton label={resource.cta_label} url={resource.cta_url} className={`mt-7 inline-flex text-sm font-semibold ${theme.text} underline underline-offset-4 transition`} onSave={(cta_label, cta_url) => updateResourceButton(index, cta_label, cta_url)} />
+            </div>
+        </article>
+    );
 
     return (
-        <section className="bg-[#fcfcfb] px-6 py-16 sm:px-8 lg:px-12 lg:py-24">
+        <section className={`${theme.bg} ${theme.text} px-6 py-16 transition-colors duration-500 sm:px-8 lg:px-12 lg:py-24`}>
             <div className="mx-auto max-w-7xl">
-                <div className="max-w-3xl">
-                    <EditableText value={data.eyebrow} className="block text-xs font-semibold uppercase tracking-[0.28em] text-slate-500" onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                    <EditableText value={data.heading} className="mt-4 block text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.75rem]" onSave={(heading) => onUpdate({ heading })} />
-                    <EditableText value={data.text} isTextArea className="mt-5 block max-w-2xl text-base leading-7 text-slate-600" onSave={(text) => onUpdate({ text })} />
+                <div className={variant === "resources-02" ? "mx-auto max-w-3xl text-center" : variant === "resources-03" ? "grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-start" : ""}>
+                    <div className="max-w-3xl">
+                        <EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[0.28em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
+                        <EditableText value={data.heading} className={`mt-4 block text-4xl font-bold leading-[1.05] tracking-tight ${theme.text} sm:text-5xl lg:text-[3.75rem]`} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.text} isTextArea className={`mt-5 block max-w-2xl text-base leading-7 ${theme.sub} ${variant === "resources-02" ? "mx-auto" : ""}`} onSave={(text) => onUpdate({ text })} />
+                    </div>
+                    {variant === "resources-03" && <div className="grid gap-4">{data.resources.map((resource, index) => card(resource, index, true))}</div>}
                 </div>
-                <div className="mt-10 grid gap-5 md:grid-cols-2">
-                    {data.resources.map((resource, index) => (
-                        <article key={index} className="group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg sm:p-8">
-                            <EditableText value={resource.eyebrow} className="block text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-700" onSave={(eyebrow) => updateResource(index, "eyebrow", eyebrow)} />
-                            <EditableText value={resource.title} className="mt-4 block text-2xl font-bold leading-tight tracking-tight text-slate-900" onSave={(title) => updateResource(index, "title", title)} />
-                            <EditableText value={resource.text} isTextArea className="mt-4 block text-sm leading-6 text-slate-600" onSave={(text) => updateResource(index, "text", text)} />
-                            <EditableButton label={resource.cta_label} url={resource.cta_url} className="mt-7 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 transition group-hover:decoration-slate-900" onSave={(cta_label, cta_url) => updateResourceButton(index, cta_label, cta_url)} />
-                        </article>
-                    ))}
-                </div>
+                {variant !== "resources-03" && <div className={`mt-10 grid gap-5 ${variant === "resources-02" ? "mx-auto max-w-4xl" : "md:grid-cols-2"}`}>{data.resources.map((resource, index) => card(resource, index, variant === "resources-02"))}</div>}
             </div>
         </section>
     );

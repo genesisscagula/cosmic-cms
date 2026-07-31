@@ -3,11 +3,15 @@
 namespace App\Services;
 
 use App\AI\Generators\ContentGenerator;
-use App\AI\Generators\ImageGenerator;
 use App\AI\Layouts\LayoutEngine;
+use Illuminate\Support\Str;
 
 class AiPageGenerationService
 {
+    public function __construct(private readonly SmartImageService $images)
+    {
+    }
+
     public function generatePage(string $prompt): array
     {
         $selection = $this->selectSections($prompt);
@@ -26,19 +30,17 @@ class AiPageGenerationService
     public function generateBlocks(string $prompt, array $sections, ?string $imageFolder = null): array
     {
         $generator = new ContentGenerator();
-        $imageGenerator = new ImageGenerator();
         $resolvedImageFolder = $imageFolder ?: $this->resolveLayoutFolder($prompt);
 
         $content = $generator->generate($prompt, $sections);
         $blocks = $content['blocks'] ?? [];
 
         foreach ($blocks as &$block) {
-            if (($block['type'] ?? null) === 'hero_video_background') {
-                $block['poster_image_url'] = $imageGenerator->generate(
-                    $resolvedImageFolder,
-                    $block
-                );
+            $type = (string) ($block['type'] ?? 'website section');
+            $query = $this->buildBlockImageQuery($prompt, $block, $type);
 
+            if ($type === 'hero_video_background') {
+                $block['poster_image_url'] = $this->images->find($query, $resolvedImageFolder);
                 continue;
             }
 
@@ -46,10 +48,7 @@ class AiPageGenerationService
                 continue;
             }
 
-            $block['image_url'] = $imageGenerator->generate(
-                $resolvedImageFolder,
-                $block
-            );
+            $block['image_url'] = $this->images->find($query, $resolvedImageFolder);
         }
 
         unset($block);
@@ -108,6 +107,74 @@ class AiPageGenerationService
         return 'default';
     }
 
+    private function buildBlockImageQuery(string $prompt, array $block, string $type): string
+    {
+        // Keep stock-photo searches short and visual. Long AI copy confuses
+        // Unsplash and can return unrelated technology or office photos.
+        $subject = $this->extractVisualSubject($prompt);
+
+        $visualIntent = match (true) {
+            str_contains($type, 'hero') => 'wide exterior lifestyle',
+            str_contains($type, 'team') => 'people working',
+            str_contains($type, 'service') => 'service in action',
+            str_contains($type, 'feature') => 'detail lifestyle',
+            str_contains($type, 'gallery') => 'portfolio',
+            str_contains($type, 'contact') || str_contains($type, 'cta') => 'customer experience',
+            default => 'editorial photography',
+        };
+
+        return trim("{$subject} {$visualIntent}");
+    }
+
+    private function extractVisualSubject(string $prompt): string
+    {
+        $context = $this->extractPromptContext($prompt);
+        $context = preg_replace('/[^\pL\pN\s-]+/u', ' ', $context) ?? '';
+        $words = preg_split('/\s+/', strtolower(trim($context))) ?: [];
+
+        $stopWords = [
+            'a', 'an', 'and', 'are', 'as', 'at', 'based', 'be', 'business', 'company',
+            'create', 'for', 'from', 'in', 'is', 'landing', 'of', 'offering', 'page',
+            'professional', 'the', 'their', 'to', 'website', 'with', 'your',
+        ];
+
+        $important = [];
+        foreach ($words as $word) {
+            $word = trim($word, '-');
+            if ($word === '' || strlen($word) < 3 || in_array($word, $stopWords, true)) {
+                continue;
+            }
+            if (! in_array($word, $important, true)) {
+                $important[] = $word;
+            }
+            if (count($important) >= 7) {
+                break;
+            }
+        }
+
+        return $important !== []
+            ? implode(' ', $important)
+            : 'modern business';
+    }
+
+    private function extractPromptContext(string $prompt): string
+    {
+        $parts = [];
+
+        foreach (['Business name', 'Industry', 'Location', 'Page'] as $label) {
+            if (preg_match('/^' . preg_quote($label, '/') . ':\s*([^\r\n]+)/mi', $prompt, $matches) === 1) {
+                $parts[] = trim($matches[1]);
+            }
+        }
+
+        if ($parts === []) {
+            $clean = preg_replace('/\s+/', ' ', strip_tags($prompt)) ?? '';
+            $parts[] = Str::limit(trim($clean), 100, '');
+        }
+
+        return implode(' ', array_unique(array_filter($parts)));
+    }
+
     private function industryKeywords(): array
     {
         return [
@@ -131,19 +198,7 @@ class AiPageGenerationService
             'electrician' => ['electrician', 'electrical', 'wiring', 'electric service'],
             'plumbing' => ['plumbing', 'plumber', 'drain cleaning', 'water heater', 'pipe repair'],
             'construction' => ['construction', 'contractor', 'home builder', 'renovation', 'remodeling', 'remodelling'],
-            'automotive' => [
-                'automotive',
-                'car dealership',
-                'car dealer',
-                'auto repair',
-                'mechanic',
-                'garage',
-                'car service',
-                'vehicle',
-                'car wash',
-                'detailing',
-                'tire shop',
-            ],
+            'automotive' => ['automotive', 'car dealership', 'car dealer', 'auto repair', 'mechanic', 'garage', 'car service', 'vehicle', 'car wash', 'detailing', 'tire shop'],
         ];
     }
 }

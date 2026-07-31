@@ -19,6 +19,8 @@ createInertiaApp({
     setup({ el, App, props }) {
         const root = createRoot(el);
 
+        const authenticated = Boolean(props.initialPage?.props?.auth?.user);
+
         const initialBalance =
             props.initialPage?.props?.auth?.creditBalance ??
             props.initialPage?.props?.auth?.user?.credits ??
@@ -26,7 +28,10 @@ createInertiaApp({
             0;
 
         root.render(
-            <CreditBalanceProvider initialBalance={initialBalance}>
+            <CreditBalanceProvider
+                authenticated={authenticated}
+                initialBalance={initialBalance}
+            >
                 <App {...props} />
                 <CosmicNotification />
             </CreditBalanceProvider>,

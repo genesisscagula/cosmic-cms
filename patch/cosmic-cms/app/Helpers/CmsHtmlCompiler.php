@@ -267,38 +267,51 @@ class CmsHtmlCompiler
 
             switch ($type) {
                 case 'newsletter_cta':
-                // Editorial newsletter callouts remain neutral so they pair
-                // with the white Blog Hub regardless of the website theme.
+                // v2.7.4: Newsletter Sparks always inherit the active website
+                // primary color instead of using a hardcoded midnight panel.
+                $theme = self::getTheme($primaryColor);
+                $variant = $block['layout_variant'] ?? 'newsletter-01';
                 $eyebrow = e($block['eyebrow'] ?? 'Stay in the loop');
                 $heading = e($block['heading'] ?? 'Get weekly insights');
                 $text = e($block['text'] ?? 'Practical ideas, useful updates, and new resources delivered occasionally.');
                 $placeholder = e($block['placeholder'] ?? 'Your email address');
                 $buttonLabel = e($block['button_label'] ?? 'Subscribe');
                 $disclaimer = e($block['disclaimer'] ?? 'No spam. Unsubscribe anytime.');
-                $html .= "<section class='bg-[#fcfcfb] px-6 py-14 sm:px-8 lg:px-12 lg:py-20'><div class='mx-auto max-w-7xl'><div class='rounded-3xl border border-slate-800 bg-slate-950 px-6 py-10 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:px-10 lg:flex lg:items-center lg:justify-between lg:gap-12 lg:px-14 lg:py-12'><div class='max-w-2xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] text-violet-200'>{$eyebrow}</p><h2 class='mt-4 text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl'>{$heading}</h2><p class='mt-4 max-w-xl text-base leading-7 text-slate-300'>{$text}</p></div><form class='mt-8 w-full max-w-md lg:mt-0' onsubmit='return false'><div class='flex flex-col gap-3 sm:flex-row'><input type='email' aria-label='Email address' placeholder='{$placeholder}' class='min-h-[50px] flex-1 rounded-xl border border-white/15 bg-white/10 px-4 text-sm text-white placeholder:text-slate-400 outline-none'><button type='submit' class='min-h-[50px] rounded-xl bg-white px-6 text-sm font-bold text-slate-950'>{$buttonLabel}</button></div><p class='mt-3 text-xs text-slate-400'>{$disclaimer}</p></form></div></div></section>";
+                $panelLayout = $variant === 'newsletter-02'
+                    ? 'text-center'
+                    : ($variant === 'newsletter-03' ? 'grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center' : 'lg:flex lg:items-center lg:justify-between lg:gap-12');
+                $copyLayout = $variant === 'newsletter-02' ? 'mx-auto max-w-2xl' : 'max-w-2xl';
+                $formLayout = $variant === 'newsletter-02' ? 'mx-auto mt-8' : ($variant === 'newsletter-03' ? '' : 'mt-8 lg:mt-0');
+                $html .= "<section class='bg-[#fcfcfb] px-6 py-14 sm:px-8 lg:px-12 lg:py-20'><div class='mx-auto max-w-7xl'><div class='rounded-3xl border px-6 py-10 shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:px-10 lg:px-14 lg:py-12 {$panelLayout} {$theme['bg']} {$theme['border']} {$theme['text']}'><div class='{$copyLayout}'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl'>{$heading}</h2><p class='mt-4 max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p></div><form class='{$formLayout} w-full max-w-md' onsubmit='return false'><div class='flex flex-col gap-3 sm:flex-row'><input type='email' aria-label='Email address' placeholder='{$placeholder}' class='min-h-[50px] flex-1 rounded-xl border px-4 text-sm outline-none {$theme['card']} {$theme['border']} {$theme['text']}'><button type='submit' class='min-h-[50px] rounded-xl px-6 text-sm font-bold {$theme['card']} {$theme['text']}'>{$buttonLabel}</button></div><p class='mt-3 text-xs {$theme['sub']}'>{$disclaimer}</p></form></div></div></section>";
                 break;
 
                 case 'latest_resources':
                 $eyebrow = e($block['eyebrow'] ?? 'Keep exploring');
                 $heading = e($block['heading'] ?? 'Latest resources');
                 $text = e($block['text'] ?? 'Helpful next reads for visitors who want to learn more.');
+                $variant = $block['layout_variant'] ?? 'resources-01';
                 $resources = is_array($block['resources'] ?? null) ? array_slice($block['resources'], 0, 2) : [
                     ['eyebrow' => 'Guide', 'title' => 'A practical checklist for your next step', 'text' => 'A concise starting point for making a clearer, more confident decision.', 'cta_label' => 'Read the guide', 'cta_url' => '#'],
                     ['eyebrow' => 'Resource', 'title' => 'Questions worth asking before you begin', 'text' => 'Use this focused resource to prepare for a better conversation with your team.', 'cta_label' => 'Explore resource', 'cta_url' => '#'],
                 ];
                 $resourceMarkup = '';
+                $resourceCardClass = $variant === 'resources-02' ? 'grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-[130px_1fr]' : 'group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg sm:p-8';
                 foreach ($resources as $resource) {
                     if (!is_array($resource)) continue;
-                    $resourceMarkup .= "<article class='group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg sm:p-8'><p class='text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-700'>" . e($resource['eyebrow'] ?? 'Resource') . "</p><h3 class='mt-4 text-2xl font-bold leading-tight tracking-tight text-slate-900'>" . e($resource['title'] ?? '') . "</h3><p class='mt-4 text-sm leading-6 text-slate-600'>" . e($resource['text'] ?? '') . "</p><a href='" . e($resource['cta_url'] ?? '#') . "' class='mt-7 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 transition group-hover:decoration-slate-900'>" . e($resource['cta_label'] ?? 'Read more') . "</a></article>";
+                    $resourceMarkup .= "<article class='{$resourceCardClass}'><p class='text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-700'>" . e($resource['eyebrow'] ?? 'Resource') . "</p><h3 class='mt-4 text-2xl font-bold leading-tight tracking-tight text-slate-900'>" . e($resource['title'] ?? '') . "</h3><p class='mt-4 text-sm leading-6 text-slate-600'>" . e($resource['text'] ?? '') . "</p><a href='" . e($resource['cta_url'] ?? '#') . "' class='mt-7 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 transition group-hover:decoration-slate-900'>" . e($resource['cta_label'] ?? 'Read more') . "</a></article>";
                 }
-                $html .= "<section class='bg-[#fcfcfb] px-6 py-16 sm:px-8 lg:px-12 lg:py-24'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] text-slate-500'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 text-slate-600'>{$text}</p></div><div class='mt-10 grid gap-5 md:grid-cols-2'>{$resourceMarkup}</div></div></section>";
+                $resourcesHeaderClass = $variant === 'resources-02' ? 'mx-auto max-w-3xl text-center' : 'max-w-3xl';
+                $resourcesGridClass = $variant === 'resources-02' ? 'mx-auto mt-10 grid max-w-4xl gap-5' : ($variant === 'resources-03' ? 'mt-10 grid gap-5 lg:grid-cols-2' : 'mt-10 grid gap-5 md:grid-cols-2');
+                $html .= "<section class='bg-[#fcfcfb] px-6 py-16 sm:px-8 lg:px-12 lg:py-24'><div class='mx-auto max-w-7xl'><div class='{$resourcesHeaderClass}'><p class='text-xs font-semibold uppercase tracking-[0.28em] text-slate-500'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 text-slate-600'>{$text}</p></div><div class='{$resourcesGridClass}'>{$resourceMarkup}</div></div></section>";
                 break;
 
                 case 'blog_mini_hero':
                 $eyebrow = e($block['eyebrow'] ?? 'Latest insights');
                 $heading = e($block['heading'] ?? 'Ideas for building a better business');
                 $text = e($block['text'] ?? 'Practical notes, useful perspectives, and updates from our team.');
-                $html .= "<section class='relative overflow-hidden border-b px-6 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']} {$theme['border']}'><div class='pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full {$theme['card']} opacity-10 blur-3xl'></div><div class='relative mx-auto max-w-7xl'><div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h1 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h1><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$theme['sub']}'>{$text}</p></div></div></section>";
+                $variant = $block['layout_variant'] ?? 'mini-header-01';
+                $contentLayout = $variant === 'mini-header-02' ? 'mx-auto max-w-4xl text-center' : ($variant === 'mini-header-03' ? 'grid items-end gap-8 lg:grid-cols-[1.15fr_.85fr]' : 'max-w-3xl');
+                $html .= "<section class='relative overflow-hidden border-b px-6 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']} {$theme['border']}'><div class='pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full {$theme['card']} opacity-10 blur-3xl'></div><div class='relative mx-auto max-w-7xl'><div class='{$contentLayout}'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h1 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h1><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$theme['sub']}'>{$text}</p></div></div></section>";
                 break;
 
                 case 'blog_hub':
@@ -310,6 +323,7 @@ class CmsHtmlCompiler
                 $heading = e($block['heading'] ?? 'Ideas for building a better business');
                 $text = e($block['text'] ?? 'Practical notes, useful perspectives, and updates from our team.');
                 $showIntro = ($block['show_intro'] ?? true) !== false;
+                $variant = $block['layout_variant'] ?? 'blog-cards-01';
                 $featured = is_array($block['featured'] ?? null) ? $block['featured'] : [];
                 $featuredCategory = e($featured['category'] ?? 'Featured article');
                 $featuredTitle = e($featured['title'] ?? 'A clearer way to plan your next project');
@@ -365,7 +379,9 @@ class CmsHtmlCompiler
                     ? "<div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 {$theme['sub']}'>{$text}</p></div>"
                     : '';
                 $featuredSpacing = $showIntro ? 'mt-12' : '';
-                $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$introMarkup}<article class='{$featuredSpacing} grid overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} md:grid-cols-2'><img src='{$featuredImage}' alt='{$featuredTitle}' class='min-h-[260px] h-full w-full object-cover'><div class='flex min-h-[260px] flex-col justify-center p-7 sm:p-10'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$featuredCategory}</p><h3 class='mt-4 text-3xl font-bold tracking-tight {$theme['text']}'>{$featuredTitle}</h3><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$featuredExcerpt}</p><a href='{$featuredUrl}' class='mt-7 text-sm font-semibold {$theme['text']} hover:underline'>{$featuredCta}</a></div></article><div class='mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>{$postMarkup}</div></div></section>";
+                $featuredGridClass = $variant === 'blog-cards-02' ? 'md:grid-cols-[.8fr_1.2fr]' : ($variant === 'blog-cards-03' ? 'md:grid-cols-1' : 'md:grid-cols-2');
+                $postGridClass = $variant === 'blog-cards-02' ? 'lg:grid-cols-2' : ($variant === 'blog-cards-03' ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4');
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$introMarkup}<article class='{$featuredSpacing} grid overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} {$featuredGridClass}'><img src='{$featuredImage}' alt='{$featuredTitle}' class='min-h-[260px] h-full w-full object-cover'><div class='flex min-h-[260px] flex-col justify-center p-7 sm:p-10'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$featuredCategory}</p><h3 class='mt-4 text-3xl font-bold tracking-tight {$theme['text']}'>{$featuredTitle}</h3><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$featuredExcerpt}</p><a href='{$featuredUrl}' class='mt-7 text-sm font-semibold {$theme['text']} hover:underline'>{$featuredCta}</a></div></article><div class='mt-7 grid gap-5 {$postGridClass}'>{$postMarkup}</div></div></section>";
                 break;
 
                 case 'hero_centered_cta':

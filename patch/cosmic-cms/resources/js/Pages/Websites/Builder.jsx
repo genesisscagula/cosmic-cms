@@ -10,6 +10,7 @@ import AddSectionModal from "./Components/AddSectionModal";
 import ThemeSelector from "./Theme/ThemeSelector";
 
 import { BlockRegistry } from "./BlockRegistry";
+import { BLOG_SPARK_GROUPS, FREE_BLOG_SPARKS } from "./Sparks/Blog";
 import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
 
 import { MinimalFooter, DetailedFooter } from './GenerateFooter';
@@ -59,6 +60,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
     const [themeMenu, setThemeMenu] = useState(null);
     const [layoutMenu, setLayoutMenu] = useState(null);
+    const [layoutApplying, setLayoutApplying] = useState(null);
     const [sparkCatalog, setSparkCatalog] = useState([]);
     const [sparkInsertTarget, setSparkInsertTarget] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
@@ -330,6 +332,24 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     };
 
     const getCompatibleLayouts = (blockType) => {
+        const blogSparkGroup = BLOG_SPARK_GROUPS[blockType];
+
+        // Blog sections use three free visual variants within the same block type.
+        // They are always available and do not depend on Spark ownership.
+        if (blogSparkGroup) {
+            return FREE_BLOG_SPARKS
+                .filter((spark) => spark.group === blogSparkGroup)
+                .map((spark) => ({
+                    id: spark.id,
+                    type: blockType,
+                    title: spark.title,
+                    layoutVariant: spark.payload.layout_variant,
+                    description: spark.description,
+                    preview: spark.preview,
+                    kind: 'blog-variant',
+                }));
+        }
+
         const currentBlock = BlockRegistry[blockType];
         const category = currentBlock?.schema?.category;
         const ownedKeys = new Set(
@@ -346,17 +366,44 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                 (type === blockType || ownedKeys.has(type))
             )
             .map(([type, registryItem]) => ({
+                id: type,
                 type,
                 title: registryItem.schema?.title || type.replaceAll('_', ' '),
+                kind: 'block-type',
             }));
     };
 
-    const changeBlockLayout = (index, nextType) => {
+    const isCurrentLayout = (block, layout) => layout.kind === 'blog-variant'
+        ? (block.layout_variant || BlockRegistry[block.type]?.schema?.defaults?.layout_variant) === layout.layoutVariant
+        : block.type === layout.type;
+
+    const changeBlockLayout = (index, layout) => {
         const currentBlock = data.blocks[index];
-        const nextLayout = BlockRegistry[nextType];
+
+        if (!currentBlock || isCurrentLayout(currentBlock, layout)) {
+            setLayoutMenu(null);
+            return;
+        }
+
+        if (layout.kind === 'blog-variant') {
+            setLayoutApplying(index);
+            const blocks = [...data.blocks];
+            blocks[index] = {
+                ...currentBlock,
+                layout_variant: layout.layoutVariant,
+                _renderKey: crypto.randomUUID(),
+            };
+
+            setData('blocks', blocks);
+            setLayoutMenu(null);
+            window.setTimeout(() => setLayoutApplying((activeIndex) => activeIndex === index ? null : activeIndex), 450);
+            return;
+        }
+
+        const nextLayout = BlockRegistry[layout.type];
         const defaults = nextLayout?.schema?.defaults;
 
-        if (!currentBlock || !defaults || currentBlock.type === nextType) {
+        if (!defaults) {
             setLayoutMenu(null);
             return;
         }
@@ -375,7 +422,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
         blocks[index] = {
             ...defaults,
             ...sharedContent,
-            type: nextType,
+            type: layout.type,
             theme: currentBlock.theme || 'auto',
             _renderKey: crypto.randomUUID(),
         };
@@ -737,24 +784,43 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                         <div className="absolute top-12 right-10 z-50 w-64 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
                                             <div className="border-b border-slate-700 px-4 py-3">
                                                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Change Spark</p>
-                                                <p className="mt-1 text-xs font-semibold text-white">Owned {BlockRegistry[block.type]?.schema?.category || 'Section'} Sparks</p>
+                                                <p className="mt-1 text-xs font-semibold text-white">{BLOG_SPARK_GROUPS[block.type] ? 'Choose from 3 free Blog Sparks' : `Owned ${BlockRegistry[block.type]?.schema?.category || 'Section'} Sparks`}</p>
                                             </div>
 
                                             <div className="max-h-64 overflow-y-auto py-1 [scrollbar-color:rgb(100_116_139)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
-                                                {getCompatibleLayouts(block.type).map((layout) => (
-                                                    <button
-                                                        key={layout.type}
-                                                        type="button"
-                                                        disabled={layout.type === block.type}
-                                                        onClick={() => changeBlockLayout(index, layout.type)}
-                                                        className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left text-sm text-slate-200 transition hover:bg-slate-800 focus:outline-none focus:bg-slate-800 disabled:cursor-default disabled:bg-violet-500/10 disabled:text-white"
-                                                    >
-                                                        <span className="capitalize">{layout.title}</span>
-                                                        {layout.type === block.type && (
-                                                            <span className="text-[10px] font-bold uppercase tracking-wide text-violet-300">Current</span>
-                                                        )}
-                                                    </button>
-                                                ))}
+                                                {getCompatibleLayouts(block.type).map((layout) => {
+                                                    const current = isCurrentLayout(block, layout);
+
+                                                    return (
+                                                        <button
+                                                            key={layout.id}
+                                                            type="button"
+                                                            disabled={current}
+                                                            onClick={() => changeBlockLayout(index, layout)}
+                                                            aria-current={current ? "true" : undefined}
+                                                            className={`group/layout flex w-full items-center gap-3 border-l-2 px-4 py-3 text-left text-sm transition-all duration-200 focus:outline-none ${current
+                                                                ? 'cursor-default border-violet-400 bg-violet-500/10 text-white'
+                                                                : 'border-transparent text-slate-200 hover:border-violet-400/60 hover:bg-slate-800 focus:bg-slate-800'}`}
+                                                        >
+                                                            {layout.kind === 'blog-variant' && (
+                                                                <span className={`grid h-10 w-12 shrink-0 gap-1 rounded-lg border p-1.5 transition ${current ? 'border-violet-400/40 bg-violet-400/10' : 'border-slate-700 bg-slate-950 group-hover/layout:border-slate-500'}`} aria-hidden="true">
+                                                                    <span className={`rounded-sm ${layout.preview === 'center' || layout.preview === 'compact' ? 'mx-auto w-7' : 'w-full'} bg-slate-500/70`} />
+                                                                    <span className={`rounded-sm bg-slate-700 ${layout.preview === 'split' || layout.preview === 'stacked' ? 'w-2/3' : 'w-full'}`} />
+                                                                    <span className={`rounded-sm bg-slate-700 ${layout.preview === 'magazine' || layout.preview === 'cards' ? 'grid grid-cols-2 gap-0.5' : ''}`} />
+                                                                </span>
+                                                            )}
+                                                            <span className="min-w-0 flex-1">
+                                                                <span className="block truncate font-semibold">{layout.title}</span>
+                                                                {layout.kind === 'blog-variant' && (
+                                                                    <span className="mt-0.5 block text-[10px] leading-4 text-slate-500">{layout.description || 'Free Blog Spark'}</span>
+                                                                )}
+                                                            </span>
+                                                            {current && (
+                                                                <span className="rounded-full bg-violet-400/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-violet-300">Current</span>
+                                                            )}
+                                                        </button>
+                                                    );
+                                                })}
                                             </div>
                                         </div>
                                     )}
@@ -871,7 +937,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
                             {/* Selected Outline */}
 
-                            <div className="group-hover:ring-2 group-hover:ring-violet-500/40 transition-all">
+                            <div className={`group-hover:ring-2 group-hover:ring-violet-500/40 transition-all duration-500 ${layoutApplying === index ? "scale-[0.997] opacity-80 ring-2 ring-violet-400/40" : "opacity-100"}`}>
 
                                 {renderBlock(block,index)}
 

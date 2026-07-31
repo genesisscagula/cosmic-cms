@@ -35,6 +35,14 @@ return [
         ],
     ],
 
+    'smart_images' => [
+        'provider' => env('SMART_IMAGE_PROVIDER', 'unsplash'),
+    ],
+
+    'unsplash' => [
+        'access_key' => env('UNSPLASH_ACCESS_KEY'),
+    ],
+
     'cosmic' => [
         'publish_webhook_url' => env('COSMIC_PUBLISH_WEBHOOK_URL'),
         'static_sync_url' => env('COSMIC_STATIC_SYNC_URL'),

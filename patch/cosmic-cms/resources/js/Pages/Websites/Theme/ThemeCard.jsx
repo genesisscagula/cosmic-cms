@@ -1,4 +1,27 @@
-const THEME_CREDITS = { emerald: 1, ocean: 1, indigo: 1, amber: 1, teal: 1, coffee: 2, rose: 2, forest: 2, terracotta: 2, charcoal: 2, midnight: 3, navy: 3, obsidian: 4, espresso: 4, violet: 5, ruby: 5, asphalt: 5 };
+const THEME_CREDITS = {
+    emerald: 10,
+    ocean: 10,
+    indigo: 10,
+    amber: 10,
+    teal: 10,
+    coffee: 20,
+    rose: 20,
+    forest: 20,
+    terracotta: 20,
+    charcoal: 20,
+    void: 20,
+    olive: 20,
+    slate: 20,
+    midnight: 30,
+    navy: 30,
+    sapphire: 30,
+    obsidian: 40,
+    espresso: 40,
+    plum: 40,
+    violet: 50,
+    ruby: 50,
+    asphalt: 50,
+};
 
 export default function ThemeCard({
     theme,
@@ -52,7 +75,7 @@ export default function ThemeCard({
                     </div>
 
                     <span className="shrink-0 rounded-full bg-violet-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-violet-300">
-                        {selected ? "Active" : `⚡${THEME_CREDITS[theme.id] ?? 2}`}
+                        {selected ? "Active" : `⚡${THEME_CREDITS[theme.id] ?? 20}`}
                     </span>
                 </div>
 

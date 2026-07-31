@@ -9,7 +9,11 @@ function normalizeBalance(value, fallback = 0) {
     return Number.isFinite(numericValue) ? numericValue : fallback;
 }
 
-export function CreditBalanceProvider({ children, initialBalance = 0 }) {
+export function CreditBalanceProvider({
+    children,
+    initialBalance = 0,
+    authenticated = false,
+}) {
     const [balance, setBalanceState] = useState(() => normalizeBalance(initialBalance));
 
     const setBalance = useCallback((nextBalance) => {
@@ -17,6 +21,10 @@ export function CreditBalanceProvider({ children, initialBalance = 0 }) {
     }, []);
 
     const refreshBalance = useCallback(async () => {
+        if (!authenticated) {
+            return;
+        }
+
         try {
             const response = await axios.get(route('credits.balance'), {
                 headers: { Accept: 'application/json' },
@@ -26,12 +34,18 @@ export function CreditBalanceProvider({ children, initialBalance = 0 }) {
                 setBalance(response.data.credit_balance);
             }
         } catch (error) {
-            // Keep the last known balance if the wallet request temporarily fails.
-            console.warn('Unable to refresh Cosmic Credits balance.', error);
+            // Ignore expired/guest sessions. Keep the last known balance for other failures.
+            if (error.response?.status !== 401) {
+                console.warn('Unable to refresh Cosmic Credits balance.', error);
+            }
         }
-    }, [setBalance]);
+    }, [authenticated, setBalance]);
 
     useEffect(() => {
+        if (!authenticated) {
+            return undefined;
+        }
+
         refreshBalance();
 
         const removeSuccessListener = router.on('success', () => {
@@ -39,7 +53,7 @@ export function CreditBalanceProvider({ children, initialBalance = 0 }) {
         });
 
         return removeSuccessListener;
-    }, [refreshBalance]);
+    }, [authenticated, refreshBalance]);
 
     const value = useMemo(
         () => ({ balance, setBalance, refreshBalance }),

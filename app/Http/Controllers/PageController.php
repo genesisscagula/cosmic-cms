@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Services\PagePublisher;
 use App\Services\CreditService;
+use App\Services\BlogSparkRegistry;
 use App\Cosmic\Pricing\ActionPricing;
 use App\Cosmic\Pricing\BlockPricingRegistry;
 use App\Cosmic\Pricing\ThemePricingRegistry;
@@ -216,11 +217,36 @@ class PageController extends Controller
      */
     private function createBlogPageBlocks(): array
     {
+        // Randomization happens only here, during the initial creation of a
+        // Posts / updates page. The selected layout_variant is persisted in
+        // the block payload, so edit, save, publish, refresh, and theme changes
+        // never re-roll the customer's composition.
         return [
-            ['type' => 'blog_mini_hero', 'theme' => 'primary'],
-            ['type' => 'blog_hub', 'theme' => 'editorial', 'show_intro' => false],
-            ['type' => 'newsletter_cta', 'theme' => 'editorial'],
-            ['type' => 'latest_resources', 'theme' => 'editorial'],
+            [
+                'type' => 'blog_mini_hero',
+                'theme' => 'primary',
+                'layout_variant' => BlogSparkRegistry::randomVariant('blog_mini_hero')
+                    ?? 'mini-header-01',
+            ],
+            [
+                'type' => 'blog_hub',
+                'theme' => 'editorial',
+                'show_intro' => false,
+                'layout_variant' => BlogSparkRegistry::randomVariant('blog_hub')
+                    ?? 'blog-cards-01',
+            ],
+            [
+                'type' => 'newsletter_cta',
+                'theme' => 'primary',
+                'layout_variant' => BlogSparkRegistry::randomVariant('newsletter_cta')
+                    ?? 'newsletter-01',
+            ],
+            [
+                'type' => 'latest_resources',
+                'theme' => 'white',
+                'layout_variant' => BlogSparkRegistry::randomVariant('latest_resources')
+                    ?? 'resources-01',
+            ],
         ];
     }
 
