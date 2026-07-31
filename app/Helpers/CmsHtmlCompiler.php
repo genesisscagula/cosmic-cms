@@ -2,6 +2,8 @@
 
 namespace App\Helpers;
 
+use App\Support\PageStyleRegistry;
+
 class CmsHtmlCompiler
 {
     private static ?array $themeCatalog = null;
@@ -197,22 +199,44 @@ class CmsHtmlCompiler
         return $markup;
     }
 
-    /** Compile one published blog post into the same static visual system as the Builder. */
-    public static function compileBlogPost(array $post, string $primaryColor = null): string
+    /** Keep AI/editor rich text safe while preserving the same structure shown in Builder. */
+    private static function blogPostContentHtml(?string $content, string $fallback = ''): string
     {
-        $theme = self::getTheme($primaryColor ?: 'emerald');
+        $content = trim((string) $content);
+
+        if ($content === '') {
+            return $fallback !== '' ? '<p>' . e($fallback) . '</p>' : '';
+        }
+
+        if (preg_match('/<(?:p|h2|h3|ul|ol|li|blockquote|strong|em|a)\b/i', $content) === 1) {
+            return strip_tags($content, '<h2><h3><p><ul><ol><li><strong><em><blockquote><a>');
+        }
+
+        $paragraphs = preg_split('/\R{2,}/', $content) ?: [];
+
+        return collect($paragraphs)
+            ->map(fn ($paragraph) => trim((string) $paragraph))
+            ->filter()
+            ->map(fn ($paragraph) => '<p>' . nl2br(e($paragraph)) . '</p>')
+            ->implode("\n");
+    }
+
+    /** Compile one published blog post using the same visual hierarchy as Builder. */
+    public static function compileBlogPost(array $post, string $primaryColor = null, string $backUrl = 'blog/'): string
+    {
+        $theme = self::getTheme('white');
         $title = e($post['title'] ?? 'Untitled article');
         $category = e($post['category'] ?? 'Article');
         $excerpt = e($post['excerpt'] ?? '');
-        $content = trim((string) ($post['content'] ?? ''));
-        $content = $content !== '' ? nl2br(e($content)) : $excerpt;
+        $content = self::blogPostContentHtml($post['content'] ?? '', $post['excerpt'] ?? '');
         $image = e(self::staticAssetUrl($post['image_url'] ?? '/storage/cms-images/background/background-1.avif'));
+        $backUrl = e($backUrl);
         $tags = is_array($post['tags'] ?? null) ? array_slice($post['tags'], 0, 8) : [];
         $tagMarkup = collect($tags)
-            ->map(fn ($tag) => "<span class='rounded-full border px-3 py-1 text-xs font-medium {$theme['border']} {$theme['sub']}'>" . e((string) $tag) . '</span>')
+            ->map(fn ($tag) => "<span class='rounded-full border px-3 py-1 text-xs {$theme['border']} {$theme['sub']}'>#" . e((string) $tag) . '</span>')
             ->implode('');
 
-        return "<article class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-4xl'><a href='blog/' class='text-sm font-semibold {$theme['sub']} hover:underline'>← Back to articles</a><p class='mt-12 text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$category}</p><h1 class='mt-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl {$theme['text']}'>{$title}</h1><p class='mt-6 max-w-3xl text-lg leading-8 {$theme['sub']}'>{$excerpt}</p><img src='{$image}' alt='{$title}' class='mt-10 aspect-[16/8] w-full rounded-3xl object-cover'><div class='mt-8 flex flex-wrap gap-2'>{$tagMarkup}</div><div class='mt-10 max-w-3xl text-base leading-8 {$theme['sub']}'>{$content}</div></div></article>";
+        return "<article class='bg-[#fcfcfb] px-6 py-16 sm:px-8 lg:px-12 lg:py-24'><div class='mx-auto w-full max-w-6xl'><a href='{$backUrl}' class='mb-5 inline-block text-sm font-semibold text-slate-900 hover:underline'>← Back to all posts</a><img src='{$image}' alt='{$title}' class='max-h-[620px] w-full rounded-[15px] object-cover'><div class='mx-auto max-w-4xl py-10 sm:py-14'><p class='text-xs font-semibold uppercase tracking-[0.22em] text-slate-600'>{$category}</p><h1 class='mt-4 text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl'>{$title}</h1>" . ($excerpt !== '' ? "<p class='mt-5 text-lg leading-8 text-slate-600'>{$excerpt}</p>" : '') . "<div class='cosmic-blog-content mt-9 max-w-none text-base leading-8 text-slate-900 [&_p]:mb-5 [&_h2]:mb-4 [&_h2]:mt-9 [&_h2]:text-3xl [&_h3]:mb-3 [&_h3]:mt-7 [&_h3]:text-2xl [&_ul]:mb-5 [&_ul]:pl-6 [&_ol]:mb-5 [&_ol]:pl-6 [&_blockquote]:my-6'>{$content}</div>" . ($tagMarkup !== '' ? "<div class='mt-10 flex flex-wrap gap-2'>{$tagMarkup}</div>" : '') . "</div></div></article>";
     }
 
    public static function compile(array $blocks, string $primaryColor = null, array $context = []): string
@@ -225,12 +249,7 @@ class CmsHtmlCompiler
         foreach ($blocks as $index => $block) {
 
 
-            $pattern = [
-                "primary",
-                "white",
-                "surface",
-                "white"
-            ];
+            $pattern = PageStyleRegistry::pattern($context['page_style'] ?? null);
 
             $blockTheme = $block['theme'] ?? "auto";
 
@@ -315,6 +334,15 @@ class CmsHtmlCompiler
                 break;
 
                 case 'blog_hub':
+                if (is_array($context['single_blog_post'] ?? null)) {
+                    $html .= self::compileBlogPost(
+                        $context['single_blog_post'],
+                        $primaryColor,
+                        (string) ($context['blog_index_url'] ?? 'blog/')
+                    );
+                    break;
+                }
+
                 // Editorial hubs are intentionally neutral. Unlike surrounding
                 // hero/supporting sections, their reading surface never inherits
                 // the website's primary color.
@@ -380,8 +408,11 @@ class CmsHtmlCompiler
                     : '';
                 $featuredSpacing = $showIntro ? 'mt-12' : '';
                 $featuredGridClass = $variant === 'blog-cards-02' ? 'md:grid-cols-[.8fr_1.2fr]' : ($variant === 'blog-cards-03' ? 'md:grid-cols-1' : 'md:grid-cols-2');
+                $featuredImageClass = $variant === 'blog-cards-03'
+                    ? 'h-[240px] sm:h-[340px] lg:h-[420px]'
+                    : 'min-h-[260px] h-full';
                 $postGridClass = $variant === 'blog-cards-02' ? 'lg:grid-cols-2' : ($variant === 'blog-cards-03' ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4');
-                $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$introMarkup}<article class='{$featuredSpacing} grid overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} {$featuredGridClass}'><img src='{$featuredImage}' alt='{$featuredTitle}' class='min-h-[260px] h-full w-full object-cover'><div class='flex min-h-[260px] flex-col justify-center p-7 sm:p-10'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$featuredCategory}</p><h3 class='mt-4 text-3xl font-bold tracking-tight {$theme['text']}'>{$featuredTitle}</h3><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$featuredExcerpt}</p><a href='{$featuredUrl}' class='mt-7 text-sm font-semibold {$theme['text']} hover:underline'>{$featuredCta}</a></div></article><div class='mt-7 grid gap-5 {$postGridClass}'>{$postMarkup}</div></div></section>";
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$introMarkup}<article class='{$featuredSpacing} grid overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} {$featuredGridClass}'><img src='{$featuredImage}' alt='{$featuredTitle}' class='{$featuredImageClass} w-full object-cover'><div class='flex min-h-[260px] flex-col justify-center p-7 sm:p-10'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$featuredCategory}</p><h3 class='mt-4 text-3xl font-bold tracking-tight {$theme['text']}'>{$featuredTitle}</h3><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$featuredExcerpt}</p><a href='{$featuredUrl}' class='mt-7 text-sm font-semibold {$theme['text']} hover:underline'>{$featuredCta}</a></div></article><div class='mt-7 grid gap-5 {$postGridClass}'>{$postMarkup}</div></div></section>";
                 break;
 
                 case 'hero_centered_cta':
@@ -1335,6 +1366,17 @@ HTML;
                     ? 'min-h-[720px]'
                     : 'min-h-[88svh] lg:min-h-screen';
                 $primaryTheme = self::getTheme($primaryColor);
+                $isLightMedia = in_array($selectedThemeName, ['white', 'stone']);
+                $mediaOverlay = $isLightMedia ? 'bg-white' : 'bg-slate-950';
+                $mediaGradient = $isLightMedia ? 'from-white/95 via-white/55 to-white/25' : 'from-slate-950/85 via-slate-950/20 to-slate-950/25';
+                $mediaBadge = $isLightMedia ? 'border-slate-900/15 bg-white/60' : 'border-white/20 bg-white/10';
+                $mediaEyebrow = $isLightMedia ? 'text-slate-700' : 'text-white/85';
+                $mediaHeading = $isLightMedia ? 'text-slate-950' : 'text-white';
+                $mediaBody = $isLightMedia ? 'text-slate-700' : 'text-white/75';
+                $mediaSecondary = $isLightMedia ? 'border-slate-900/20 bg-white/50 text-slate-950' : 'border-white/30 bg-white/10 text-white';
+                $mediaScroll = $isLightMedia ? 'text-slate-700' : 'text-white/65';
+                $mediaScrollLine = $isLightMedia ? 'bg-slate-900/25' : 'bg-white/25';
+                $mediaScrollDot = $isLightMedia ? 'bg-slate-900' : 'bg-white';
                 $parallaxId = 'cosmic-parallax-' . substr(md5(json_encode($block) . uniqid('', true)), 0, 12);
 
                 $alignment = match ($contentAlign) {
@@ -1358,31 +1400,31 @@ HTML;
                     : '';
 
                 $html .= "
-                <section id='{$parallaxId}' class='relative isolate flex overflow-hidden {$heroHeight}' data-parallax-speed='{$parallaxSpeed}'>
+                <section id='{$parallaxId}' class='relative isolate flex overflow-hidden px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 {$heroHeight}' data-parallax-speed='{$parallaxSpeed}'>
                     <div class='cosmic-parallax-media absolute -inset-y-[12%] inset-x-0 z-0 will-change-transform' style=\"{$backgroundStyle}transform:translate3d(0,0,0) scale(1.08);\"></div>
-                    <div class='absolute inset-0 z-10 bg-slate-950' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
-                    <div class='absolute inset-0 z-10 {$gradientDirection} from-slate-950/85 via-slate-950/20 to-slate-950/25'></div>
+                    <div class='absolute inset-0 z-10 {$mediaOverlay}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 z-10 {$gradientDirection} {$mediaGradient}'></div>
 
-                    <div class='cosmic-parallax-content relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-6 py-24 sm:px-[8%] lg:py-32 {$alignment}' style='transform:translate3d(0,0,0);will-change:transform,opacity;'>
+                    <div class='cosmic-parallax-content relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center {$alignment}' style='transform:translate3d(0,0,0);will-change:transform,opacity;'>
                         <div class='{$contentWidth}'>
-                            <div class='inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 backdrop-blur-md'>
+                            <div class='inline-flex items-center gap-3 rounded-full border px-4 py-2 {$mediaBadge} backdrop-blur-md'>
                                 <span class='h-2 w-2 rounded-full {$primaryTheme['bg']}'></span>
-                                <span class='text-xs font-bold uppercase tracking-[0.28em] text-white/85'>{$eyebrow}</span>
+                                <span class='text-xs font-bold uppercase tracking-[0.28em] {$mediaEyebrow}'>{$eyebrow}</span>
                             </div>
 
-                            <h1 class='mt-7 text-5xl font-semibold leading-[0.96] tracking-[-0.045em] text-white sm:text-6xl md:text-7xl lg:text-[6.5rem]'>{$heading}</h1>
-                            <div class='mt-7 max-w-2xl text-base leading-8 text-white/75 sm:text-lg'>{$text}</div>
+                            <h1 class='mt-7 text-5xl font-semibold leading-[0.96] tracking-[-0.045em] {$mediaHeading} sm:text-6xl md:text-7xl lg:text-[6.5rem]'>{$heading}</h1>
+                            <div class='mt-7 max-w-2xl text-base leading-8 {$mediaBody} sm:text-lg'>{$text}</div>
 
                             <div class='mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row {$buttonAlignment}'>
                                 <a href='{$primaryUrl}' class='inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
-                                <a href='{$secondaryUrl}' class='inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/30 bg-white/10 px-8 font-bold text-white backdrop-blur-md transition'>{$secondaryLabel}</a>
+                                <a href='{$secondaryUrl}' class='inline-flex min-h-[54px] items-center justify-center rounded-full border px-8 font-bold {$mediaSecondary} backdrop-blur-md transition'>{$secondaryLabel}</a>
                             </div>
                         </div>
                     </div>
 
-                    <div class='pointer-events-none absolute bottom-7 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 text-white/65 sm:flex'>
+                    <div class='pointer-events-none absolute bottom-7 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 {$mediaScroll} sm:flex'>
                         <span class='text-[10px] font-bold uppercase tracking-[0.32em]'>{$scrollLabel}</span>
-                        <span class='relative h-10 w-px overflow-hidden bg-white/25'><span class='absolute left-0 top-0 h-4 w-px animate-bounce bg-white'></span></span>
+                        <span class='relative h-10 w-px overflow-hidden {$mediaScrollLine}'><span class='absolute left-0 top-0 h-4 w-px animate-bounce {$mediaScrollDot}'></span></span>
                     </div>
                 </section>
                 <script>
@@ -1434,9 +1476,7 @@ HTML;
                 $buttonUrl = e($block['button_url'] ?? '#');
 
                 $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 50)));
-                // Match HeroBackgroundImageBlock: the overlay uses the
-                // website primary theme at overlayOpacity / 60.
-                $overlayStrength = min(1, $overlayOpacity / 60);
+                $overlayStrength = $overlayOpacity / 100;
                 $primaryOverlayTheme = self::getTheme($primaryColor);
                 $textAlign = $block['textAlign'] ?? 'center';
                 $height = $block['height'] ?? 'screen';
@@ -1451,6 +1491,10 @@ HTML;
                 $btnText = $isLight
                     ? self::getTheme($primaryColor)['text']
                     : 'text-slate-900';
+                $mediaOverlay = $isLight ? 'bg-white' : 'bg-slate-950';
+                $mediaTagline = $isLight ? 'text-slate-700' : 'text-white/80';
+                $mediaHeading = $isLight ? 'text-slate-950' : 'text-white';
+                $mediaBody = $isLight ? 'text-slate-700' : 'text-white/80';
 
                 // Alignment
                 $alignment = match ($textAlign) {
@@ -1479,21 +1523,21 @@ HTML;
                 >
 
                     <div
-                        class='absolute inset-0 {$primaryOverlayTheme['bg']}'
+                        class='absolute inset-0 {$mediaOverlay}'
                         style='opacity:{$overlayStrength};'>
                     </div>
 
                     <div class='relative z-10 w-full max-w-7xl mx-auto px-6 py-20 sm:px-[8%] sm:py-24 flex flex-col justify-center {$alignment}'>
 
-                        <span class='text-sm uppercase tracking-[0.35em] font-semibold text-white/80 block'>
+                        <span class='text-sm uppercase tracking-[0.35em] font-semibold {$mediaTagline} block'>
                             {$tagline}
                         </span>
 
-                        <h1 class='mt-6 text-4xl sm:text-5xl md:text-7xl font-bold leading-tight break-words text-white block'>
+                        <h1 class='mt-6 text-4xl sm:text-5xl md:text-7xl font-bold leading-tight break-words {$mediaHeading} block'>
                             {$heading}
                         </h1>
 
-                        <div class='mt-6 max-w-2xl text-base leading-7 sm:mt-8 sm:text-xl sm:leading-8 text-white/80'>
+                        <div class='mt-6 max-w-2xl text-base leading-7 sm:mt-8 sm:text-xl sm:leading-8 {$mediaBody}'>
                             {$text}
                         </div>
 
@@ -1529,22 +1573,29 @@ HTML;
                     default => 'min-h-[650px]',
                 };
                 $primaryTheme = self::getTheme($primaryColor);
+                $isLightMedia = in_array($selectedThemeName, ['white', 'stone']);
+                $mediaOverlay = $isLightMedia ? 'bg-white' : 'bg-slate-950';
+                $mediaGradient = $isLightMedia ? 'from-white/95 via-white/60 to-transparent' : '{$mediaGradient}';
+                $mediaTagline = $isLightMedia ? 'text-slate-700' : 'text-white/75';
+                $mediaHeading = $isLightMedia ? 'text-slate-950' : 'text-white';
+                $mediaBody = $isLightMedia ? 'text-slate-700' : 'text-white/80';
+                $mediaSecondary = $isLightMedia ? 'border-slate-900/20 bg-white/50 text-slate-950' : 'border-white/40 bg-white/5 text-white';
                 $backgroundStyle = $backgroundImage
                     ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
                     : '';
 
                 $html .= "
                 <section class='relative flex overflow-hidden {$heroHeight}' style=\"{$backgroundStyle}\">
-                    <div class='absolute inset-0 {$primaryTheme['bg']}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 {$mediaOverlay}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
                     <div class='absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/40 to-transparent'></div>
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24'>
                         <div class='max-w-3xl'>
-                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] text-white/75'>{$tagline}</span>
-                            <h1 class='mt-5 text-5xl font-bold leading-[1.03] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
-                            <div class='mt-6 max-w-2xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8'>{$text}</div>
+                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$mediaTagline}'>{$tagline}</span>
+                            <h1 class='mt-5 text-5xl font-bold leading-[1.03] tracking-tight {$mediaHeading} sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
+                            <div class='mt-6 max-w-2xl text-base leading-7 {$mediaBody} sm:text-lg sm:leading-8'>{$text}</div>
                             <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
                                 <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
-                                <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border border-white/40 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a>
+                                <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$mediaSecondary}'>{$secondaryLabel}</a>
                             </div>
                         </div>
                     </div>
@@ -1607,22 +1658,30 @@ HTML;
                 $backgroundImage = e(self::staticAssetUrl($block['image_url'] ?? ''));
                 $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 76)));
                 $primaryTheme = self::getTheme($primaryColor);
+                $isLightMedia = in_array($selectedThemeName, ['white', 'stone']);
+                $mediaOverlay = $isLightMedia ? 'bg-white' : 'bg-slate-950';
+                $mediaGradient = $isLightMedia ? 'from-white/95 via-white/55 to-white/20' : '{$mediaGradient}';
+                $mediaEyebrow = $isLightMedia ? 'text-slate-700' : 'text-white/75';
+                $mediaHeading = $isLightMedia ? 'text-slate-950' : 'text-white';
+                $mediaBody = $isLightMedia ? 'text-slate-700' : 'text-white/85';
+                $mediaPrimary = $isLightMedia ? $primaryTheme['bg'] . ' ' . $primaryTheme['text'] : 'bg-white text-slate-950';
+                $mediaSecondary = $isLightMedia ? 'border-slate-900/20 bg-white/50 text-slate-950' : 'border-white/45 bg-white/5 text-white';
                 $backgroundStyle = $backgroundImage
                     ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
                     : '';
 
                 $html .= "
                 <section class='relative flex min-h-[420px] overflow-hidden sm:min-h-[460px] lg:min-h-[500px]' style=\"{$backgroundStyle}\">
-                    <div class='absolute inset-0 {$primaryTheme['bg']}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 {$mediaOverlay}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
                     <div class='absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-950/25 to-slate-950/15'></div>
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20'>
                         <div class='max-w-3xl'>
-                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] text-white/75'>{$eyebrow}</span>
-                            <h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2>
-                            <div class='mx-auto mt-5 max-w-2xl text-base leading-7 text-white/85 sm:text-lg sm:leading-8'>{$text}</div>
+                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$mediaEyebrow}'>{$eyebrow}</span>
+                            <h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight {$mediaHeading} sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2>
+                            <div class='mx-auto mt-5 max-w-2xl text-base leading-7 {$mediaBody} sm:text-lg sm:leading-8'>{$text}</div>
                             <div class='mt-7 flex flex-col justify-center gap-3 sm:flex-row sm:items-center'>
-                                <a href='{$primaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full bg-white px-7 font-bold text-slate-950'>{$primaryLabel}</a>
-                                <a href='{$secondaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full border border-white/45 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a>
+                                <a href='{$primaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full px-7 font-bold {$mediaPrimary}'>{$primaryLabel}</a>
+                                <a href='{$secondaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full border px-7 font-bold {$mediaSecondary}'>{$secondaryLabel}</a>
                             </div>
                         </div>
                     </div>
@@ -2231,6 +2290,18 @@ HTML;
                 $primaryTheme = self::getTheme(
                     $primaryColor
                 );
+                $isLightMedia = in_array($selectedThemeName, ['white', 'stone']);
+                $mediaOverlay = $isLightMedia ? 'bg-white/75' : '{$mediaOverlay}';
+                $mediaGradientX = $isLightMedia ? 'from-white/95 via-white/65 to-white/20' : '{$mediaGradientX}';
+                $mediaGradientY = $isLightMedia ? 'from-white/65 via-transparent to-white/20' : '{$mediaGradientY}';
+                $mediaTagline = $isLightMedia ? 'text-slate-700' : '{$mediaTagline}';
+                $mediaHeading = $isLightMedia ? 'text-slate-950' : 'text-white';
+                $mediaBody = $isLightMedia ? 'text-slate-700' : 'text-white/75';
+                $mediaSecondary = $isLightMedia ? 'border-slate-900/20 bg-white/50 text-slate-950' : 'border-white/30 bg-white/10 text-white';
+                $mediaPill = $isLightMedia ? 'border-slate-900/15 bg-white/55 text-slate-900' : 'border-white/15 bg-slate-950/35 text-white';
+                $mediaScroll = $isLightMedia ? 'text-slate-700' : 'text-white/70';
+                $mediaScrollBorder = $isLightMedia ? 'border-slate-900/30' : 'border-white/30';
+                $mediaScrollDot = $isLightMedia ? 'bg-slate-900' : 'bg-white';
 
                 $backgroundMedia = $backgroundVideoEmbedUrl
                     ? "<div class='absolute inset-0 overflow-hidden'>
@@ -2281,11 +2352,11 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h1 class='mt-6 block text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-8xl'>
+                            <h1 class='mt-6 block text-5xl font-bold leading-[0.98] tracking-tight {$mediaHeading} sm:text-6xl lg:text-8xl'>
                                 {$heading}
                             </h1>
 
-                            <p class='mt-7 block max-w-2xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8'>
+                            <p class='mt-7 block max-w-2xl text-base leading-7 {$mediaBody} sm:text-lg sm:leading-8'>
                                 {$text}
                             </p>
 
@@ -2300,7 +2371,7 @@ HTML;
 
                                 <a
                                     href='{$secondaryUrl}'
-                                    class='inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/30 bg-white/10 px-8 font-bold text-white backdrop-blur transition hover:bg-white/20'
+                                    class='inline-flex min-h-[52px] items-center justify-center rounded-full border px-8 font-bold {$mediaSecondary} backdrop-blur transition hover:bg-white/20'
                                 >
                                     {$secondaryLabel}
                                 </a>
@@ -2309,7 +2380,7 @@ HTML;
 
                             <div class='mt-10 flex items-center gap-3'>
 
-                                <div class='flex items-center gap-3 rounded-full border border-white/15 bg-slate-950/35 px-4 py-2.5 backdrop-blur'>
+                                <div class='flex items-center gap-3 rounded-full border px-4 py-2.5 {$mediaPill} backdrop-blur'>
 
                                     <span class='flex h-8 w-8 items-center justify-center rounded-full {$primaryTheme['bg']} {$primaryTheme['text']}'>
                                         ▶
@@ -2331,10 +2402,10 @@ HTML;
 
                         <div class='mx-auto flex max-w-7xl items-end justify-between gap-6 px-7 pb-7 sm:px-10 lg:px-12'>
 
-                            <div class='flex items-center gap-3 text-white/70'>
+                            <div class='flex items-center gap-3 {$mediaScroll}'>
 
-                                <span class='flex h-9 w-6 items-start justify-center rounded-full border border-white/30 p-1.5'>
-                                    <span class='h-1.5 w-1.5 rounded-full bg-white'></span>
+                                <span class='flex h-9 w-6 items-start justify-center rounded-full border p-1.5 {$mediaScrollBorder}'>
+                                    <span class='h-1.5 w-1.5 rounded-full {$mediaScrollDot}'></span>
                                 </span>
 
                                 <span class='text-xs font-semibold uppercase tracking-[0.24em]'>

@@ -55,6 +55,32 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const primaryTheme = colorFamilies[globalTheme.primary];
+    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
+    const mediaStyle = isLightMediaTheme
+        ? {
+            overlay: "bg-white",
+            gradient: "from-white/95 via-white/55 to-white/25",
+            badge: "border-slate-900/15 bg-white/60",
+            eyebrow: "text-slate-700",
+            heading: "text-slate-950",
+            body: "text-slate-700",
+            secondary: "border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75",
+            scroll: "text-slate-700",
+            scrollLine: "bg-slate-900/25",
+            scrollDot: "bg-slate-900",
+        }
+        : {
+            overlay: "bg-slate-950",
+            gradient: "from-slate-950/85 via-slate-950/20 to-slate-950/25",
+            badge: "border-white/20 bg-white/10",
+            eyebrow: "text-white/85",
+            heading: "text-white",
+            body: "text-white/75",
+            secondary: "border-white/30 bg-white/10 text-white hover:bg-white/20",
+            scroll: "text-white/65",
+            scrollLine: "bg-white/25",
+            scrollDot: "bg-white",
+        };
 
     useEffect(() => {
         const section = sectionRef.current;
@@ -124,7 +150,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const heroHeight = data.height === "large" ? "min-h-[720px]" : "min-h-[88svh] lg:min-h-screen";
 
     return (
-        <section ref={sectionRef} className={`relative isolate flex overflow-hidden ${heroHeight}`}>
+        <section ref={sectionRef} className={`relative isolate flex overflow-hidden px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 ${heroHeight}`}>
             <div
                 className="cosmic-parallax-media absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform"
                 style={{ transform: "translate3d(0, 0, 0) scale(1.14)" }}
@@ -141,34 +167,34 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
                 />
             </div>
 
-            <div className="absolute inset-0 z-10 bg-slate-950" style={{ opacity: Number(data.overlayOpacity || 64) / 100 }} />
-            <div className={`absolute inset-0 z-10 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-slate-950/25 ${data.contentAlign === "right" ? "bg-gradient-to-l" : data.contentAlign === "left" ? "bg-gradient-to-r" : ""}`} />
+            <div className={`absolute inset-0 z-10 ${mediaStyle.overlay}`} style={{ opacity: Number(data.overlayOpacity || 64) / 100 }} />
+            <div className={`absolute inset-0 z-10 bg-gradient-to-t ${mediaStyle.gradient} ${data.contentAlign === "right" ? "bg-gradient-to-l" : data.contentAlign === "left" ? "bg-gradient-to-r" : ""}`} />
 
             <div
                 ref={contentRef}
-                className={`relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-6 py-24 transition-opacity duration-150 sm:px-[8%] lg:py-32 ${alignment[data.contentAlign] || alignment.left}`}
+                className={`relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center transition-opacity duration-150 ${alignment[data.contentAlign] || alignment.left}`}
                 style={{ transform: "translate3d(0, 0, 0)", willChange: "transform, opacity" }}
             >
                 <div className={contentWidth}>
-                    <div className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 backdrop-blur-md">
+                    <div className={`inline-flex items-center gap-3 rounded-full border px-4 py-2 backdrop-blur-md ${mediaStyle.badge}`}>
                         <span className={`h-2 w-2 rounded-full ${primaryTheme.bg}`} />
                         <EditableText
                             value={data.eyebrow}
-                            className="text-xs font-bold uppercase tracking-[0.28em] text-white/85"
+                            className={`text-xs font-bold uppercase tracking-[0.28em] ${mediaStyle.eyebrow}`}
                             onSave={(value) => onUpdate({ eyebrow: value })}
                         />
                     </div>
 
                     <EditableText
                         value={data.heading}
-                        className="mt-7 text-5xl font-semibold leading-[0.96] tracking-[-0.045em] text-white sm:text-6xl md:text-7xl lg:text-[6.5rem]"
+                        className={`mt-7 text-5xl font-semibold leading-[0.96] tracking-[-0.045em] sm:text-6xl md:text-7xl lg:text-[6.5rem] ${mediaStyle.heading}`}
                         onSave={(value) => onUpdate({ heading: value })}
                     />
 
                     <EditableText
                         value={data.text}
                         isTextArea
-                        className={`mt-7 text-base leading-8 text-white/75 sm:text-lg ${data.contentAlign === "center" ? "mx-auto max-w-2xl" : "max-w-2xl"}`}
+                        className={`mt-7 text-base leading-8 sm:text-lg ${mediaStyle.body} ${data.contentAlign === "center" ? "mx-auto max-w-2xl" : "max-w-2xl"}`}
                         onSave={(value) => onUpdate({ text: value })}
                     />
 
@@ -182,17 +208,17 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
                         <EditableButton
                             label={data.secondary_label}
                             url={data.secondary_url}
-                            className="inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/30 bg-white/10 px-8 font-bold text-white backdrop-blur-md transition hover:bg-white/20"
+                            className={`inline-flex min-h-[54px] items-center justify-center rounded-full border px-8 font-bold backdrop-blur-md transition ${mediaStyle.secondary}`}
                             onSave={(label, url) => onUpdate({ secondary_label: label, secondary_url: url })}
                         />
                     </div>
                 </div>
             </div>
 
-            <div className="pointer-events-none absolute bottom-7 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 text-white/65 sm:flex">
+            <div className={`pointer-events-none absolute bottom-7 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 sm:flex ${mediaStyle.scroll}`}>
                 <span className="text-[10px] font-bold uppercase tracking-[0.32em]">{data.scroll_label}</span>
-                <span className="relative h-10 w-px overflow-hidden bg-white/25">
-                    <span className="absolute left-0 top-0 h-4 w-px animate-bounce bg-white" />
+                <span className={`relative h-10 w-px overflow-hidden ${mediaStyle.scrollLine}`}>
+                    <span className={`absolute left-0 top-0 h-4 w-px animate-bounce ${mediaStyle.scrollDot}`} />
                 </span>
             </div>
 

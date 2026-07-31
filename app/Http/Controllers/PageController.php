@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Services\PagePublisher;
 use App\Services\CreditService;
+use App\Support\PageStyleRegistry;
 use App\Services\BlogSparkRegistry;
 use App\Cosmic\Pricing\ActionPricing;
 use App\Cosmic\Pricing\BlockPricingRegistry;
@@ -351,6 +352,8 @@ class PageController extends Controller
                     : []),
             'hasWebsiteContent' => $websiteMessaging !== '',
             'websiteContext' => $websiteContext,
+            'pageStyle' => $page->page_style ?: 'auto',
+            'pageStyleOptions' => PageStyleRegistry::suggestions($website->industry, $page->page_style),
             'trialMode' => $isTrialMode,
             'globalHeaderBlock' => $isTrialMode
                 ? [
@@ -454,6 +457,64 @@ class PageController extends Controller
         ]);
     }
 
+    public function applyPageStyle(Request $request, Page $page, CreditService $credits)
+    {
+        $this->authorize('update', $page->website);
+
+        $validated = $request->validate([
+            'style' => ['required', 'string', 'max:40'],
+            'blocks' => ['required', 'array'],
+        ]);
+
+        abort_unless(PageStyleRegistry::exists($validated['style']), 422, 'That page style is not available.');
+
+        $user = $request->user();
+        $cost = PageStyleRegistry::CREDIT_COST;
+        $reference = 'page-style-'.$page->id.'-'.now()->format('YmdHisv');
+
+        $credits->consume(
+            $user,
+            $cost,
+            'AI page style: '.$validated['style'],
+            $page->website,
+            $reference
+        );
+
+        try {
+            $blocks = collect($validated['blocks'])
+                ->map(function ($block) {
+                    if (! is_array($block)) return $block;
+                    $block['theme'] = 'auto';
+                    unset($block['resolvedTheme']);
+                    return $block;
+                })
+                ->values()
+                ->all();
+
+            DB::transaction(function () use ($page, $validated, $blocks) {
+                $page->page_style = $validated['style'];
+                $page->blocks = $blocks;
+                $page->status = 'draft';
+                $page->publish_error = null;
+                $page->save();
+            });
+
+            return response()->json([
+                'status' => 'success',
+                'page_style' => $page->page_style,
+                'style' => ['key' => $page->page_style, ...PageStyleRegistry::all()[$page->page_style]],
+                'blocks' => $blocks,
+                'page_status' => 'draft',
+                'credits_spent' => $cost,
+                'credit_balance' => $credits->balance($user),
+                'suggestions' => PageStyleRegistry::suggestions($page->website->industry, $page->page_style),
+            ]);
+        } catch (\Throwable $exception) {
+            $credits->refund($user, $cost, 'Refund for failed AI page style', $page->website, $reference.'-refund');
+            throw $exception;
+        }
+    }
+
     private function resolveTrialAccess(Request $request, Page $page): ?TrialGeneration
     {
         if ($request->user()) {
@@ -511,6 +572,7 @@ class PageController extends Controller
             DB::transaction(function () use ($page, $website, $html, $request, $themeKey, $themeCost) {
                 $publishedAt = now();
                 $page->published_blocks = $page->blocks ?? [];
+                $page->published_page_style = $page->page_style;
                 $page->published_html = $html;
                 $page->status = 'published';
                 $page->published_at ??= $publishedAt;

@@ -31,6 +31,24 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
     const imageRef = useRef(null);
     const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
     const primaryTheme = colorFamilies[globalTheme.primary];
+    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
+    const mediaStyle = isLightMediaTheme
+        ? {
+            overlay: "bg-white",
+            gradient: "from-white/95 via-white/60 to-transparent",
+            tagline: "text-slate-700",
+            heading: "text-slate-950",
+            body: "text-slate-700",
+            secondary: "border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75",
+        }
+        : {
+            overlay: "bg-slate-950",
+            gradient: "from-slate-950/80 via-slate-950/40 to-transparent",
+            tagline: "text-white/75",
+            heading: "text-white",
+            body: "text-white/80",
+            secondary: "border-white/40 bg-white/5 text-white hover:bg-white/10",
+        };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const data = { ...HeroEditorialOverlaySchema.defaults, ...block };
@@ -53,28 +71,28 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
                 onSave={(image_url) => onUpdate({ image_url })}
             />
             <div
-                className={`absolute inset-0 z-10 ${primaryTheme.bg}`}
+                className={`absolute inset-0 z-10 ${mediaStyle.overlay}`}
                 style={{ opacity: Math.max(0, Math.min(100, Number(data.overlayOpacity) || 72)) / 100 }}
                 onClick={() => imageRef.current?.openEditor()}
             />
-            <div className="absolute inset-0 z-10 bg-gradient-to-r from-slate-950/80 via-slate-950/40 to-transparent" />
+            <div className={`absolute inset-0 z-10 bg-gradient-to-r ${mediaStyle.gradient}`} />
 
             <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24">
                 <div className="max-w-3xl">
                     <EditableText
                         value={data.tagline}
-                        className="block text-xs font-semibold uppercase tracking-[0.3em] text-white/75"
+                        className={`block text-xs font-semibold uppercase tracking-[0.3em] ${mediaStyle.tagline}`}
                         onSave={(tagline) => onUpdate({ tagline })}
                     />
                     <EditableText
                         value={data.heading}
-                        className="mt-5 block text-5xl font-bold leading-[1.03] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl"
+                        className={`mt-5 block text-5xl font-bold leading-[1.03] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl ${mediaStyle.heading}`}
                         onSave={(heading) => onUpdate({ heading })}
                     />
                     <EditableText
                         value={data.text}
                         isTextArea
-                        className="mt-6 block max-w-2xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8"
+                        className={`mt-6 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${mediaStyle.body}`}
                         onSave={(text) => onUpdate({ text })}
                     />
                     <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -87,7 +105,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
                         <EditableButton
                             label={data.secondary_label}
                             url={data.secondary_url}
-                            className="inline-flex min-h-[50px] items-center justify-center rounded-full border border-white/40 bg-white/5 px-7 font-bold text-white transition hover:bg-white/10"
+                            className={`inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold transition ${mediaStyle.secondary}`}
                             onSave={(secondary_label, secondary_url) => onUpdate({ secondary_label, secondary_url })}
                         />
                     </div>

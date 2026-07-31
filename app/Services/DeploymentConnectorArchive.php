@@ -310,6 +310,7 @@ function cosmicOutputPath(array $page): string
 
     $parts = array_values(array_filter(explode('/', str_replace('\\', '/', $requestedPath)), static fn ($part) => $part !== ''));
 
+    // Maximum supported page depth is three folders plus index.html.
     if ($parts === [] || count($parts) > 4) {
         throw new RuntimeException('Published package contains an invalid output path.');
     }
@@ -438,7 +439,7 @@ if (! cosmicAuthorized($config)) {
 $action = $_GET['action'] ?? null;
 
 if ($action === 'verify' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    cosmicResponse(['status' => 'success', 'message' => 'Cosmic deployment connector is ready.']);
+    cosmicResponse(['status' => 'success', 'message' => 'Cosmic deployment connector is ready.', 'version' => '2.9.0.4-nested-pages']);
 }
 
 if ($action === 'receive_package' && $_SERVER['REQUEST_METHOD'] === 'POST') {

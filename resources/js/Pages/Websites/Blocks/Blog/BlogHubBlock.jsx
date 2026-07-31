@@ -38,6 +38,86 @@ function ModalPortal({ children }) {
     return createPortal(children, document.body);
 }
 
+function CosmicStatusSelect({ value, onChange }) {
+    const [isOpen, setIsOpen] = useState(false);
+    const rootRef = useRef(null);
+    const options = [
+        { value: "draft", label: "Draft", dot: "bg-amber-400", text: "text-amber-200" },
+        { value: "published", label: "Published", dot: "bg-emerald-400", text: "text-emerald-200" },
+    ];
+    const selected = options.find((option) => option.value === value) || options[0];
+
+    useEffect(() => {
+        if (!isOpen) return undefined;
+
+        const handlePointerDown = (event) => {
+            if (!rootRef.current?.contains(event.target)) setIsOpen(false);
+        };
+        const handleKeyDown = (event) => {
+            if (event.key === "Escape") setIsOpen(false);
+        };
+
+        document.addEventListener("pointerdown", handlePointerDown);
+        document.addEventListener("keydown", handleKeyDown);
+        return () => {
+            document.removeEventListener("pointerdown", handlePointerDown);
+            document.removeEventListener("keydown", handleKeyDown);
+        };
+    }, [isOpen]);
+
+    return (
+        <div ref={rootRef} className="relative">
+            <button
+                type="button"
+                onClick={() => setIsOpen((current) => !current)}
+                aria-haspopup="listbox"
+                aria-expanded={isOpen}
+                className="inline-flex h-10 min-w-[142px] items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 text-sm font-semibold text-white transition hover:border-violet-400/60 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-violet-400/40"
+            >
+                <span className="inline-flex items-center gap-2">
+                    <span className={`h-2.5 w-2.5 rounded-full ${selected.dot}`} />
+                    <span className={selected.text}>{selected.label}</span>
+                </span>
+                <span className={`text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}>⌄</span>
+            </button>
+
+            {isOpen && (
+                <div
+                    role="listbox"
+                    className="absolute right-0 top-full z-[1000010] mt-2 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#202024] p-1.5 shadow-2xl shadow-black/60"
+                >
+                    {options.map((option) => {
+                        const isSelected = option.value === value;
+                        return (
+                            <button
+                                key={option.value}
+                                type="button"
+                                role="option"
+                                aria-selected={isSelected}
+                                onClick={() => {
+                                    onChange(option.value);
+                                    setIsOpen(false);
+                                }}
+                                className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition ${
+                                    isSelected
+                                        ? "bg-violet-500/20 text-white"
+                                        : "text-slate-200 hover:bg-white/[0.07] hover:text-white"
+                                }`}
+                            >
+                                <span className="inline-flex items-center gap-2.5">
+                                    <span className={`h-2.5 w-2.5 rounded-full ${option.dot}`} />
+                                    {option.label}
+                                </span>
+                                {isSelected && <span className="text-violet-300">✓</span>}
+                            </button>
+                        );
+                    })}
+                </div>
+            )}
+        </div>
+    );
+}
+
 function normalizeGeneratedHtml(content) {
     const source = String(content || "").trim();
     if (!source) return "";
@@ -369,9 +449,9 @@ export function BlogHubBlock({
                     <>
                 <article className={`${showIntro ? "mt-12" : ""} grid overflow-hidden rounded-3xl border ${theme.border} ${theme.card} ${variant === "blog-cards-02" ? "md:grid-cols-[.8fr_1.2fr]" : variant === "blog-cards-03" ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
                     {hasSavedPosts ? (
-                        <img src={featuredPost.image_url || "/storage/cms-images/background/background-1.avif"} alt={featuredPost.title || "Featured article"} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "max-h-[420px] min-h-[300px]" : "min-h-[260px]"}`} />
+                        <img src={featuredPost.image_url || "/storage/cms-images/background/background-1.avif"} alt={featuredPost.title || "Featured article"} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`} />
                     ) : (
-                        <EditableImage src={data.featured.image_url} alt={data.featured.title} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "max-h-[420px] min-h-[300px]" : "min-h-[260px]"}`} onSave={(image_url) => updateFeatured("image_url", image_url)} />
+                        <EditableImage src={data.featured.image_url} alt={data.featured.title} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`} onSave={(image_url) => updateFeatured("image_url", image_url)} />
                     )}
                     <div className="flex min-h-[260px] flex-col justify-center p-7 sm:p-10">
                         {hasSavedPosts ? (
@@ -468,7 +548,13 @@ export function BlogHubBlock({
                         <form onSubmit={savePost} className="cosmic-scrollbar max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl">
                             <div className="flex items-start justify-between gap-4">
                                 <div><h3 id="blog-post-dialog-title" className="text-lg font-semibold text-white">{editingPost ? "Edit blog post" : "Add blog post"}</h3><p className="mt-1 text-sm text-slate-400">{editingPost ? "Update the article details and publish state." : "Create a draft article for this Blog Hub."}</p></div>
-                                <button type="button" onClick={closeComposer} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-2xl leading-none text-slate-400 transition hover:bg-white/10 hover:text-white" aria-label="Close">×</button>
+                                <div className="flex shrink-0 items-center gap-2">
+                                    <CosmicStatusSelect
+                                        value={postForm.status}
+                                        onChange={(status) => setPostForm((current) => ({ ...current, status }))}
+                                    />
+                                    <button type="button" onClick={closeComposer} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 text-2xl leading-none text-slate-400 transition hover:border-white/20 hover:bg-white/10 hover:text-white" aria-label="Close">×</button>
+                                </div>
                             </div>
                             <button type="button" onClick={() => setIsAiPromptOpen(true)} className="mt-5 w-full rounded-xl border border-violet-400/40 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20">✨ Write with AI · 10 Credits</button>
                             <div className="mt-5 grid gap-3">
@@ -482,7 +568,6 @@ export function BlogHubBlock({
                                 </div>
                                 <textarea value={postForm.excerpt} onChange={(event) => setPostForm({ ...postForm, excerpt: event.target.value })} placeholder="Short excerpt" rows="3" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
                                 <CosmicRichTextEditor value={postForm.content} onChange={(content) => setPostForm((current) => ({ ...current, content }))} />
-                                <label className="grid gap-1 text-sm font-medium text-slate-200">Post status<select value={postForm.status} onChange={(event) => setPostForm({ ...postForm, status: event.target.value })} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400"><option value="draft">Draft</option><option value="published">Published</option></select></label>
                             </div>
                             {postError && <p className="mt-3 text-sm text-red-300">{postError}</p>}
                             <div className="mt-5 flex flex-wrap items-center justify-between gap-2">

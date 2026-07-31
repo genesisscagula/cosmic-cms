@@ -6,8 +6,10 @@ import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadg
 import { useCreditBalance } from '../../Components/CosmicCredits/CreditBalanceContext';
 
 import AddSectionModal from "./Components/AddSectionModal";
+import GeneratePageModal from "./Components/GeneratePageModal";
 
 import ThemeSelector from "./Theme/ThemeSelector";
+import PageStyleSelector from "./PageStyle/PageStyleSelector";
 
 import { BlockRegistry } from "./BlockRegistry";
 import { BLOG_SPARK_GROUPS, FREE_BLOG_SPARKS } from "./Sparks/Blog";
@@ -17,7 +19,7 @@ import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 
 
 
-export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialCapabilities = {}, cosmicPricing = {} }) {
+export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [] }) {
     const { props } = usePage();
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
 
@@ -55,6 +57,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     });
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isGeneratePageOpen, setIsGeneratePageOpen] = useState(false);
     const [aiResult, setAiResult] = useState(null);
     const [aiLoading, setAiLoading] = useState(false);
 
@@ -70,6 +73,8 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const [pageStatus, setPageStatus] = useState(page.status || 'draft');
     const [publishError, setPublishError] = useState(page.publish_error || '');
     const [blogPosts, setBlogPosts] = useState(initialBlogPosts);
+    const [currentPageStyle, setCurrentPageStyle] = useState(pageStyle || 'auto');
+    const [styleOptions, setStyleOptions] = useState(pageStyleOptions || []);
     const hasUnsavedChanges = isDirty || hasUnsavedTheme;
 
     useEffect(() => {
@@ -302,7 +307,10 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             return block.theme;
         }
 
-        const pattern = [
+        const activeStyle = currentPageStyle === 'auto'
+            ? null
+            : styleOptions.find((style) => style.key === currentPageStyle);
+        const pattern = activeStyle?.pattern || [
             "primary",
             "white",
             "surface",
@@ -563,6 +571,39 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                     <span className="hidden text-[11px] text-slate-600 sm:inline">/{page.slug}</span>
                                 </div>
                             </div>
+
+                            {!trialMode && capabilities.canGenerateAi && (
+                                <PageStyleSelector
+                                    pageId={page.id}
+                                    currentStyle={currentPageStyle}
+                                    suggestions={styleOptions}
+                                    blocks={data.blocks}
+                                    disabled={isSaving || isPublishing}
+                                    onApplied={(response) => {
+                                        setData('blocks', (response.blocks || []).map((block) => ({
+                                            ...block,
+                                            theme: 'auto',
+                                            _renderKey: crypto.randomUUID(),
+                                        })));
+                                        setCurrentPageStyle(response.page_style || 'auto');
+                                        setStyleOptions(response.suggestions || styleOptions);
+                                        setPageStatus(response.page_status || 'draft');
+                                        setCreditBalance(response.credit_balance);
+                                        setPublishError('');
+                                    }}
+                                />
+                            )}
+
+                            {!trialMode && capabilities.canGenerateAi && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsGeneratePageOpen(true)}
+                                    className="hidden h-9 shrink-0 items-center gap-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 px-3 text-xs font-semibold text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-500/20 focus:outline-none focus:ring-2 focus:ring-violet-400 lg:inline-flex"
+                                >
+                                    <span aria-hidden="true">✦</span>
+                                    Generate Page
+                                </button>
+                            )}
                         </div>
 
                         <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 xl:flex">
@@ -668,13 +709,9 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                     )}
                 </header>
 
-                <main className={page.page_type === 'blog' ? "py-5 sm:py-8" : "px-4 py-5 sm:px-6 sm:py-8"}>
-                    <div className={page.page_type === 'blog'
-                        ? "mx-auto w-full max-w-[1760px] overflow-visible bg-white lg:w-[min(96vw,1760px)]"
-                        : "mx-auto w-full max-w-[1560px] overflow-visible rounded-xl border border-white/10 bg-white shadow-2xl shadow-black/30 lg:w-[min(86vw,1560px)]"}>
-                        <div className={page.page_type === 'blog'
-                            ? "flex w-full flex-col items-stretch overflow-hidden"
-                            : "flex w-full flex-col items-stretch overflow-hidden rounded-[11px]"}>
+                <main className="px-4 py-5 sm:px-6 sm:py-8">
+                    <div className="mx-auto w-full max-w-[1560px] overflow-visible rounded-xl border border-white/10 bg-white shadow-2xl shadow-black/30 lg:w-[min(86vw,1560px)]">
+                        <div className="flex w-full flex-col items-stretch overflow-hidden rounded-[11px]">
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}
                     {data.global_header && (
@@ -1093,7 +1130,6 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                     open={isModalOpen}
                     onClose={() => { setIsModalOpen(false); setSparkInsertTarget(null); }}
                     onAdd={addBlock}
-                    onReplace={replaceBlocks}
                     hasBlocks={(data.blocks?.length ?? 0) > 0}
                     hasWebsiteContent={hasWebsiteContent}
                     websiteContext={websiteContext}
@@ -1103,6 +1139,16 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                     ownedOnly={Boolean(sparkInsertTarget)}
                     contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : null}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
+                />
+            )}
+
+            {capabilities.canGenerateAi && (
+                <GeneratePageModal
+                    open={isGeneratePageOpen}
+                    onClose={() => setIsGeneratePageOpen(false)}
+                    onReplace={replaceBlocks}
+                    websiteContext={websiteContext}
+                    websiteId={website?.id}
                 />
             )}
 

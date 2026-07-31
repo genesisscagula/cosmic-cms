@@ -13,6 +13,8 @@ class Page extends Model
         'parent_id',
         'sort_order',
         'page_type',
+        'page_style',
+        'published_page_style',
         'blocks',
         'published_blocks',
         'published_html',

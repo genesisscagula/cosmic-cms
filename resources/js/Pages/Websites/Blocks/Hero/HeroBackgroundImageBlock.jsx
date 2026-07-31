@@ -149,17 +149,24 @@ export function HeroBackgroundImageBlock({
 
 
     const primaryTheme = colorFamilies[globalTheme.primary];
+    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
 
-    const isPrimarySection = block.resolvedTheme === "primary";
+    const buttonStyle = isLightMediaTheme
+        ? { bg: primaryTheme.bg, text: primaryTheme.text }
+        : { bg: "bg-white", text: "text-slate-950" };
 
-    const buttonStyle = isPrimarySection
+    const mediaStyle = isLightMediaTheme
         ? {
-            bg: "bg-white",
-            text: "text-slate-950"
+            overlay: "bg-white",
+            tagline: "text-slate-700",
+            heading: "text-slate-950",
+            body: "text-slate-700",
         }
         : {
-            bg: primaryTheme.bg,
-            text: primaryTheme.text
+            overlay: "bg-slate-950",
+            tagline: "text-white/80",
+            heading: "text-white",
+            body: "text-white/80",
         };
 
     const heroHeight = {
@@ -235,11 +242,11 @@ export function HeroBackgroundImageBlock({
                     absolute
                     inset-0
                     z-[25]
-                    ${primaryTheme.bg}
+                    ${mediaStyle.overlay}
                     cursor-pointer
                 `}
                 style={{
-                    opacity: data.overlayOpacity / 60
+                    opacity: Math.max(0, Math.min(100, Number(data.overlayOpacity) || 50)) / 100
                 }}
                 onClick={(e) => {
 
@@ -279,13 +286,13 @@ export function HeroBackgroundImageBlock({
 
                 <EditableText
                     value={data.tagline}
-                    className="
+                    className={`
                         text-sm
                         uppercase
                         tracking-[0.35em]
                         font-semibold
-                        text-white/80
-                    "
+                        ${mediaStyle.tagline}
+                    `}
                     onSave={(val) =>
                         onUpdate({
                             tagline: val
@@ -295,7 +302,7 @@ export function HeroBackgroundImageBlock({
 
                 <EditableText
                     value={data.heading}
-                    className="
+                    className={`
                         mt-6
                         text-4xl
                         sm:text-5xl
@@ -303,8 +310,8 @@ export function HeroBackgroundImageBlock({
                         font-bold
                         leading-tight
                         break-words
-                        text-white
-                    "
+                        ${mediaStyle.heading}
+                    `}
                     onSave={(val) =>
                         onUpdate({
                             heading: val
@@ -315,7 +322,7 @@ export function HeroBackgroundImageBlock({
                 <EditableText
                     value={data.text}
                     isTextArea={true}
-                    className="
+                    className={`
                         mt-6
                         sm:mt-8
                         max-w-2xl
@@ -323,8 +330,8 @@ export function HeroBackgroundImageBlock({
                         sm:text-xl
                         leading-7
                         sm:leading-8
-                        text-white/80
-                    "
+                        ${mediaStyle.body}
+                    `}
                     onSave={(val) =>
                         onUpdate({
                             text: val

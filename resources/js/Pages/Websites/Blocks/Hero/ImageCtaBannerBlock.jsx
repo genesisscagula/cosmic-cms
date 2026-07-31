@@ -29,6 +29,26 @@ export const ImageCtaBannerSchema = {
 export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }) {
     const imageRef = useRef(null);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
+    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
+    const mediaStyle = isLightMediaTheme
+        ? {
+            overlay: "bg-white",
+            gradient: "from-white/95 via-white/55 to-white/20",
+            eyebrow: "text-slate-700",
+            heading: "text-slate-950",
+            body: "text-slate-700",
+            primary: `${primaryTheme.bg} ${primaryTheme.text}`,
+            secondary: "border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75",
+        }
+        : {
+            overlay: "bg-slate-950",
+            gradient: "from-slate-950/65 via-slate-950/25 to-slate-950/15",
+            eyebrow: "text-white/75",
+            heading: "text-white",
+            body: "text-white/85",
+            primary: "bg-white text-slate-950",
+            secondary: "border-white/45 bg-white/5 text-white hover:bg-white/10",
+        };
     const data = { ...ImageCtaBannerSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
@@ -48,41 +68,41 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
             />
 
             <div
-                className={`absolute inset-0 z-10 ${primaryTheme.bg}`}
+                className={`absolute inset-0 z-10 ${mediaStyle.overlay}`}
                 style={{ opacity: overlayOpacity / 100 }}
                 onClick={() => imageRef.current?.openEditor()}
             />
-            <div className="pointer-events-none absolute inset-0 z-10 bg-gradient-to-r from-slate-950/65 via-slate-950/25 to-slate-950/15" />
+            <div className={`pointer-events-none absolute inset-0 z-10 bg-gradient-to-r ${mediaStyle.gradient}`} />
 
             <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20">
                 <div className="max-w-3xl">
                     <EditableText
                         value={data.eyebrow}
-                        className="block text-xs font-semibold uppercase tracking-[0.3em] text-white/75"
+                        className={`block text-xs font-semibold uppercase tracking-[0.3em] ${mediaStyle.eyebrow}`}
                         onSave={(eyebrow) => onUpdate({ eyebrow })}
                     />
                     <EditableText
                         value={data.heading}
-                        className="mt-4 block text-4xl font-bold leading-[1.05] tracking-tight text-white sm:text-5xl lg:text-[3.75rem]"
+                        className={`mt-4 block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${mediaStyle.heading}`}
                         onSave={(heading) => onUpdate({ heading })}
                     />
                     <EditableText
                         value={data.text}
                         isTextArea
-                        className="mx-auto mt-5 block max-w-2xl text-base leading-7 text-white/85 sm:text-lg sm:leading-8"
+                        className={`mx-auto mt-5 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${mediaStyle.body}`}
                         onSave={(text) => onUpdate({ text })}
                     />
                     <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row sm:items-center">
                         <EditableButton
                             label={data.primary_label}
                             url={data.primary_url}
-                            className="inline-flex min-h-[48px] items-center justify-center rounded-full bg-white px-7 font-bold text-slate-950"
+                            className={`inline-flex min-h-[48px] items-center justify-center rounded-full px-7 font-bold ${mediaStyle.primary}`}
                             onSave={(primary_label, primary_url) => onUpdate({ primary_label, primary_url })}
                         />
                         <EditableButton
                             label={data.secondary_label}
                             url={data.secondary_url}
-                            className="inline-flex min-h-[48px] items-center justify-center rounded-full border border-white/45 bg-white/5 px-7 font-bold text-white transition hover:bg-white/10"
+                            className={`inline-flex min-h-[48px] items-center justify-center rounded-full border px-7 font-bold transition ${mediaStyle.secondary}`}
                             onSave={(secondary_label, secondary_url) => onUpdate({ secondary_label, secondary_url })}
                         />
                     </div>

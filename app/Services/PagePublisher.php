@@ -18,7 +18,7 @@ class PagePublisher
     {
         $theme = $website->theme_settings ?? [];
         $primaryColor = $theme['primary'] ?? 'emerald';
-        return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor);
+        return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['page_style' => $page->page_style]);
     }
 
     /**
@@ -42,7 +42,7 @@ class PagePublisher
             ->orderBy('parent_id')
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->get(['id', 'parent_id', 'title', 'slug', 'page_type', 'published_html', 'published_blocks', 'blocks']);
+            ->get(['id', 'parent_id', 'title', 'slug', 'page_type', 'page_style', 'published_page_style', 'published_html', 'published_blocks', 'blocks']);
 
         $publishedPostsByPage = $website->blogPosts()
             ->where('status', 'published')
@@ -92,8 +92,8 @@ class PagePublisher
                         // parent/child routes predictable: /about/team/.
                         'output_path' => ($pageDirectory === '' ? 'index.html' : $pageDirectory . '/index.html'),
                         'html' => $page->page_type === 'blog'
-                            ? CmsHtmlCompiler::compile($blocks, $primaryColor, ['blog_posts' => $posts])
-                            : ($page->published_html ?? CmsHtmlCompiler::compile($blocks, $primaryColor)),
+                            ? CmsHtmlCompiler::compile($blocks, $primaryColor, ['blog_posts' => $posts, 'page_style' => $page->published_page_style ?? $page->page_style])
+                            : ($page->published_html ?? CmsHtmlCompiler::compile($blocks, $primaryColor, ['page_style' => $page->published_page_style ?? $page->page_style])),
                     ]];
 
                     if ($page->page_type !== 'blog') {
@@ -105,11 +105,15 @@ class PagePublisher
                             'title' => $post->title,
                             'slug' => $postDirectory . '/' . $post->slug,
                             'output_path' => $postDirectory . '/' . $post->slug . '.html',
-                            'html' => str_replace(
-                                "href='blog/'",
-                                "href='" . $postDirectory . "/'",
-                                CmsHtmlCompiler::compileBlogPost($post->toArray(), $primaryColor)
-                            ),
+                            // Compile the complete Blog page composition so the live
+                            // article keeps the same Mini Header, Single Post body,
+                            // Newsletter, and Latest Resources seen in Builder.
+                            'html' => CmsHtmlCompiler::compile($blocks, $primaryColor, [
+                                'blog_posts' => $posts,
+                                'single_blog_post' => $post->toArray(),
+                                'blog_index_url' => $postDirectory . '/',
+                                'page_style' => $page->published_page_style ?? $page->page_style,
+                            ]),
                         ])
                         ->all();
 
@@ -121,14 +125,17 @@ class PagePublisher
     }
 
     /**
-     * Convert menu targets that match published page slugs into static-file
-     * links. External URLs and in-page anchors intentionally stay untouched.
+     * Convert menu targets to static clean URLs and ensure every published page
+     * is represented in the live navigation. Cosmic intentionally supports a
+     * maximum of three page levels: page, child, and nested page.
      */
     private function staticNavigationHeader(?array $header, $pages, array $pagePaths): ?array
     {
-        if (! is_array($header) || ! is_array($header['menu'] ?? null)) {
+        if (! is_array($header)) {
             return $header;
         }
+
+        $header['menu'] = is_array($header['menu'] ?? null) ? $header['menu'] : [];
 
         $publishedTargets = [];
         foreach ($pages as $page) {
@@ -138,35 +145,139 @@ class PagePublisher
             $publishedTargets[strtolower(trim((string) $page->slug, '/'))] ??= $url;
         }
 
-        $header['menu'] = array_map(function ($item) use ($publishedTargets) {
-            if (! is_array($item)) {
-                return $item;
-            }
-
+        // First preserve the customer's custom menu while converting any page
+        // targets it already contains to the correct nested static URL.
+        $menu = $this->mapMenuItems($header['menu'], function (array $item) use ($publishedTargets): array {
             $item['url'] = $this->staticNavigationTarget((string) ($item['url'] ?? ''), $publishedTargets);
-            if (is_array($item['children'] ?? null)) {
-                $item['children'] = array_map(function ($child) use ($publishedTargets) {
-                    if (! is_array($child)) return $child;
-                    $child['url'] = $this->staticNavigationTarget((string) ($child['url'] ?? ''), $publishedTargets);
-                    if (is_array($child['children'] ?? null)) {
-                        $child['children'] = array_map(function ($grandchild) use ($publishedTargets) {
-                            if (! is_array($grandchild)) return $grandchild;
-                            $grandchild['url'] = $this->staticNavigationTarget((string) ($grandchild['url'] ?? ''), $publishedTargets);
-                            return $grandchild;
-                        }, $child['children']);
-                    }
-                    return $child;
-                }, $item['children']);
-            }
-
             return $item;
-        }, $header['menu']);
+        }, 0);
+
+        // Then merge the published page hierarchy into that menu. This adds
+        // missing Level 2 and Level 3 links without removing custom/external links.
+        $pageTree = $this->publishedPageMenuTree($pages, $pagePaths);
+        $header['menu'] = $this->mergePublishedMenu($menu, $pageTree, 0);
 
         if (array_key_exists('cta_url', $header)) {
             $header['cta_url'] = $this->staticNavigationTarget((string) $header['cta_url'], $publishedTargets);
         }
 
         return $header;
+    }
+
+    /** Recursively map menu items, hard-capped at Cosmic's three menu levels. */
+    private function mapMenuItems(array $items, callable $callback, int $depth): array
+    {
+        if ($depth >= 3) {
+            return [];
+        }
+
+        return array_values(array_map(function ($item) use ($callback, $depth) {
+            if (! is_array($item)) {
+                return $item;
+            }
+
+            $item = $callback($item);
+            $children = is_array($item['children'] ?? null) ? $item['children'] : [];
+            $item['children'] = $this->mapMenuItems($children, $callback, $depth + 1);
+
+            return $item;
+        }, $items));
+    }
+
+    /** Build the published page hierarchy used by the static header. */
+    private function publishedPageMenuTree($pages, array $pagePaths): array
+    {
+        $childrenByParent = $pages
+            ->groupBy(fn (Page $page) => $page->parent_id ?: 0);
+
+        $build = function ($parentId, int $depth) use (&$build, $childrenByParent, $pagePaths): array {
+            if ($depth >= 3) {
+                return [];
+            }
+
+            return $childrenByParent->get($parentId, collect())
+                ->map(function (Page $page) use (&$build, $depth, $pagePaths) {
+                    $path = trim((string) ($pagePaths[$page->id] ?? $page->slug), '/');
+
+                    return [
+                        'label' => $page->title,
+                        'url' => $path === '' ? './' : $path . '/',
+                        '_page_slug' => trim((string) $page->slug, '/'),
+                        '_page_title' => $page->title,
+                        'children' => $build($page->id, $depth + 1),
+                    ];
+                })
+                ->values()
+                ->all();
+        };
+
+        return $build(0, 0);
+    }
+
+    /** Merge generated page links into the existing customer-authored menu. */
+    private function mergePublishedMenu(array $existing, array $published, int $depth): array
+    {
+        if ($depth >= 3) {
+            return [];
+        }
+
+        foreach ($published as $pageItem) {
+            $matchIndex = $this->findMenuMatch($existing, $pageItem);
+
+            if ($matchIndex === null) {
+                $existing[] = [
+                    'label' => $pageItem['label'],
+                    'url' => $pageItem['url'],
+                    'children' => $this->mergePublishedMenu([], $pageItem['children'] ?? [], $depth + 1),
+                ];
+                continue;
+            }
+
+            $existing[$matchIndex]['url'] = $pageItem['url'];
+            $currentChildren = is_array($existing[$matchIndex]['children'] ?? null)
+                ? $existing[$matchIndex]['children']
+                : [];
+            $existing[$matchIndex]['children'] = $this->mergePublishedMenu(
+                $currentChildren,
+                $pageItem['children'] ?? [],
+                $depth + 1
+            );
+        }
+
+        return array_values($existing);
+    }
+
+    private function findMenuMatch(array $items, array $pageItem): ?int
+    {
+        $pageUrl = strtolower(trim((string) ($pageItem['url'] ?? ''), './'));
+        $pageSlug = $this->normaliseMenuKey((string) ($pageItem['_page_slug'] ?? ''));
+        $pageTitle = $this->normaliseMenuKey((string) ($pageItem['_page_title'] ?? $pageItem['label'] ?? ''));
+        $pageFirstWord = explode('-', $pageTitle)[0] ?? '';
+
+        foreach ($items as $index => $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+
+            $itemUrl = strtolower(trim((string) ($item['url'] ?? ''), './'));
+            $itemLabel = $this->normaliseMenuKey((string) ($item['label'] ?? ''));
+
+            if (($pageUrl !== '' && $itemUrl === $pageUrl)
+                || ($pageSlug !== '' && $itemUrl === $pageSlug)
+                || ($pageTitle !== '' && $itemLabel === $pageTitle)
+                || ($pageFirstWord !== '' && $itemLabel === $pageFirstWord)) {
+                return $index;
+            }
+        }
+
+        return null;
+    }
+
+    private function normaliseMenuKey(string $value): string
+    {
+        $value = strtolower(trim($value));
+        $value = preg_replace('/[^a-z0-9]+/', '-', $value) ?? '';
+        return trim($value, '-');
     }
 
     private function staticNavigationTarget(string $target, array $publishedTargets): string

@@ -171,6 +171,40 @@ export function HeroVideoBackgroundBlock({
     const primaryTheme =
         colorFamilies[globalTheme?.primary] ||
         colorFamilies.emerald;
+    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
+    const mediaStyle = isLightMediaTheme
+        ? {
+            overlay: "bg-white opacity-[0.72]",
+            gradientX: "from-white/95 via-white/65 to-white/20",
+            gradientY: "from-white/65 via-transparent to-white/20",
+            tagline: "text-slate-700",
+            heading: "text-slate-950",
+            body: "text-slate-700",
+            secondary: "border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75",
+            pill: "border-slate-900/15 bg-white/55",
+            pillText: "text-slate-900",
+            editButton: "border-slate-900/15 bg-white/55 text-slate-800 hover:bg-white/80 hover:text-slate-950 focus-visible:ring-slate-900/50",
+            scroll: "text-slate-700",
+            scrollBorder: "border-slate-900/30",
+            scrollDot: "bg-slate-900",
+            mediaCard: "border-slate-900/15 bg-white/45",
+        }
+        : {
+            overlay: `${primaryTheme.bg} opacity-[0.58]`,
+            gradientX: "from-slate-950/70 via-slate-950/35 to-transparent",
+            gradientY: "from-slate-950/55 via-transparent to-slate-950/15",
+            tagline: "text-white/70",
+            heading: "text-white",
+            body: "text-white/75",
+            secondary: "border-white/30 bg-white/10 text-white hover:bg-white/20",
+            pill: "border-white/15 bg-slate-950/35",
+            pillText: "text-white",
+            editButton: "border-white/15 bg-slate-950/35 text-white/80 hover:bg-slate-950/55 hover:text-white focus-visible:ring-white/80",
+            scroll: "text-white/70",
+            scrollBorder: "border-white/30",
+            scrollDot: "bg-white",
+            mediaCard: "border-white/20 bg-slate-950/35",
+        };
 
     const data = {
         ...HeroVideoBackgroundSchema.defaults,
@@ -228,14 +262,14 @@ export function HeroVideoBackgroundBlock({
 
                 {/* Keep the video readable while letting the website's active primary family tint the hero. */}
                 <div
-                    className={`absolute inset-0 ${primaryTheme.bg} opacity-[0.58]`}
+                    className={`absolute inset-0 ${mediaStyle.overlay}`}
                 />
 
                 <div
-                    className="absolute inset-0 bg-gradient-to-r from-slate-950/70 via-slate-950/35 to-transparent"
+                    className={`absolute inset-0 bg-gradient-to-r ${mediaStyle.gradientX}`}
                 />
 
-                <div className="absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-slate-950/15" />
+                <div className={`absolute inset-0 bg-gradient-to-t ${mediaStyle.gradientY}`} />
             </div>
 
             <button
@@ -253,7 +287,7 @@ export function HeroVideoBackgroundBlock({
                 <div className="pointer-events-auto max-w-3xl">
                     <EditableText
                         value={data.tagline}
-                        className="block text-xs font-semibold uppercase tracking-[0.34em] text-white/70"
+                        className={`block text-xs font-semibold uppercase tracking-[0.34em] ${mediaStyle.tagline}`}
                         onSave={(tagline) =>
                             onUpdate({ tagline })
                         }
@@ -261,7 +295,7 @@ export function HeroVideoBackgroundBlock({
 
                     <EditableText
                         value={data.heading}
-                        className="mt-6 block text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-8xl"
+                        className={`mt-6 block text-5xl font-bold leading-[0.98] tracking-tight sm:text-6xl lg:text-8xl ${mediaStyle.heading}`}
                         onSave={(heading) =>
                             onUpdate({ heading })
                         }
@@ -270,7 +304,7 @@ export function HeroVideoBackgroundBlock({
                     <EditableText
                         value={data.text}
                         isTextArea
-                        className="mt-7 block max-w-2xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8"
+                        className={`mt-7 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${mediaStyle.body}`}
                         onSave={(text) =>
                             onUpdate({ text })
                         }
@@ -295,7 +329,7 @@ export function HeroVideoBackgroundBlock({
                         <EditableButton
                             label={data.secondary_label}
                             url={data.secondary_url}
-                            className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/30 bg-white/10 px-8 font-bold text-white backdrop-blur transition hover:bg-white/20"
+                            className={`inline-flex min-h-[52px] items-center justify-center rounded-full border px-8 font-bold backdrop-blur transition ${mediaStyle.secondary}`}
                             onSave={(
                                 secondary_label,
                                 secondary_url
@@ -309,7 +343,7 @@ export function HeroVideoBackgroundBlock({
                     </div>
 
                     <div className="mt-10 flex flex-wrap items-center gap-4">
-                        <div className="flex items-center gap-3 rounded-full border border-white/15 bg-slate-950/35 px-4 py-2.5 backdrop-blur">
+                        <div className={`flex items-center gap-3 rounded-full border px-4 py-2.5 backdrop-blur ${mediaStyle.pill}`}>
                             <span
                                 className={`flex h-8 w-8 items-center justify-center rounded-full ${primaryTheme.bg} ${primaryTheme.text}`}
                             >
@@ -318,7 +352,7 @@ export function HeroVideoBackgroundBlock({
 
                             <EditableText
                                 value={data.video_badge}
-                                className="block text-sm font-semibold text-white"
+                                className={`block text-sm font-semibold ${mediaStyle.pillText}`}
                                 onSave={(video_badge) =>
                                     onUpdate({
                                         video_badge,
@@ -330,7 +364,7 @@ export function HeroVideoBackgroundBlock({
                         <button
                             type="button"
                             onClick={() => setIsVideoEditorOpen(true)}
-                            className="rounded-full border border-white/15 bg-slate-950/35 px-4 py-2.5 text-sm font-semibold text-white/80 backdrop-blur transition hover:bg-slate-950/55 hover:text-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
+                            className={`rounded-full border px-4 py-2.5 text-sm font-semibold backdrop-blur transition focus-visible:outline-none focus-visible:ring-2 ${mediaStyle.editButton}`}
                         >
                             Edit video
                         </button>
@@ -340,9 +374,9 @@ export function HeroVideoBackgroundBlock({
 
             <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10">
                 <div className="mx-auto flex max-w-7xl items-end justify-between gap-6 px-7 pb-7 sm:px-10 lg:px-12">
-                    <div className="pointer-events-auto flex items-center gap-3 text-white/70">
-                        <span className="flex h-9 w-6 items-start justify-center rounded-full border border-white/30 p-1.5">
-                            <span className="h-1.5 w-1.5 rounded-full bg-white" />
+                    <div className={`pointer-events-auto flex items-center gap-3 ${mediaStyle.scroll}`}>
+                        <span className={`flex h-9 w-6 items-start justify-center rounded-full border p-1.5 ${mediaStyle.scrollBorder}`}>
+                            <span className={`h-1.5 w-1.5 rounded-full ${mediaStyle.scrollDot}`} />
                         </span>
 
                         <EditableText
@@ -356,7 +390,7 @@ export function HeroVideoBackgroundBlock({
                         />
                     </div>
 
-                    <div data-editable-media className="pointer-events-auto hidden w-48 overflow-hidden rounded-2xl border border-white/20 bg-slate-950/35 shadow-2xl backdrop-blur sm:block">
+                    <div data-editable-media className={`pointer-events-auto hidden w-48 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur sm:block ${mediaStyle.mediaCard}`}>
                         <EditableImage
                             websiteId={websiteId}
                             blockIndex={blockIndex}

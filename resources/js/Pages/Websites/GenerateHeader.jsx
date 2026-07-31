@@ -111,8 +111,8 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets 
                     className={`
                         ${primaryTheme.bg}
                         ${primaryTheme.text}
-                        px-[22px]
-                        py-[10px]
+                        px-[40px]
+                        py-[16px]
                         shrink-0
                         rounded-full
                         text-sm
