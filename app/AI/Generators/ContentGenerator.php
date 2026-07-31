@@ -420,6 +420,37 @@ class ContentGenerator
     }
 
 
+    private function heroParallaxSchema(): string
+    {
+        return <<<TXT
+
+    hero_parallax
+
+    - type = hero_parallax
+    - theme = auto
+    - category
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - image_url = ""
+    - overlayOpacity = 64
+    - parallaxSpeed = 24
+    - contentAlign = left
+    - height = screen
+    - scroll_label = Scroll to explore
+
+    Requirements:
+    - Keep the heading short and cinematic.
+    - Do not invent awards, certifications, or unverifiable claims.
+    - Use neutral image search intent without brand names or logos.
+
+    TXT;
+    }
+
     private function heroBackgroundImageSchema(): string
     {
         return <<<TXT

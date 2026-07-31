@@ -21,6 +21,7 @@ import TeamModernPreview from "./Previews/TeamModernPreview";
 import TestimonialsCarouselPreview from "./Previews/TestimonialsCarouselPreview";
 import PricingCardsPreview from "./Previews/PricingCardsPreview";
 import HeroBackgroundImagePreview from "./Previews/HeroBackgroundImagePreview";
+import HeroParallaxPreview from "./Previews/HeroParallaxPreview";
 import HeroEditorialOverlayPreview from "./Previews/HeroEditorialOverlayPreview";
 import HeroSplitImagePreview from "./Previews/HeroSplitImagePreview";
 import ImageCtaBannerPreview from "./Previews/ImageCtaBannerPreview";
@@ -286,6 +287,32 @@ export const BlockRegistry = [
             tagline: "SIMPLE PRICING",
             heading: "Choose The Perfect Plan",
             text: "Flexible pricing options designed for individuals, growing businesses, and enterprise teams."
+        }
+    },
+
+    {
+        type: "hero_parallax",
+        theme: "auto",
+        title: "Hero Parallax",
+        buttonLabel: "Unlock Hero Parallax",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: HeroParallaxPreview,
+        badge: "PRO",
+        payload: {
+            type: "hero_parallax",
+            eyebrow: "INTRODUCING A NEW PERSPECTIVE",
+            heading: "Move beyond the ordinary.",
+            text: "Create a memorable first impression with cinematic depth, confident typography, and a clear next step.",
+            primary_label: "Start a project",
+            primary_url: "#",
+            secondary_label: "Explore our work",
+            secondary_url: "#",
+            image_url: "/storage/cms-images/background/background-1.avif",
+            overlayOpacity: 64,
+            parallaxSpeed: 24,
+            contentAlign: "left",
+            height: "screen",
+            scroll_label: "Scroll to explore"
         }
     },
 

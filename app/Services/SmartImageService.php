@@ -29,7 +29,7 @@ class SmartImageService
         }
 
         try {
-            $cacheKey = 'cosmic-smart-image-url:v2:' . sha1($query);
+            $cacheKey = 'cosmic-smart-image-url:v3:' . sha1($query);
             $cachedUrl = Cache::get($cacheKey);
 
             if (is_string($cachedUrl) && $cachedUrl !== '' && $this->publicUrlExists($cachedUrl)) {
@@ -122,6 +122,7 @@ class SmartImageService
 
         $results = collect($response->json('results', []))
             ->filter(fn ($photo) => is_array($photo) && filled(data_get($photo, 'urls.raw')))
+            ->reject(fn (array $photo) => $this->containsBlockedBranding($photo))
             ->take(12)
             ->values();
 
@@ -150,6 +151,30 @@ class SmartImageService
             })
             ->sortByDesc(fn ($item) => ($item['score'] * 100) - $item['index'])
             ->first()['photo'];
+    }
+
+    private function containsBlockedBranding(array $photo): bool
+    {
+        $metadata = strtolower(implode(' ', array_filter([
+            data_get($photo, 'alt_description'),
+            data_get($photo, 'description'),
+            data_get($photo, 'slug'),
+            collect(data_get($photo, 'tags', []))->pluck('title')->implode(' '),
+        ])));
+
+        $blockedTerms = [
+            'adobe', 'apple', 'canva', 'figma', 'google', 'microsoft', 'shopify',
+            'squarespace', 'webflow', 'wix', 'wordpress', 'logo', 'watermark',
+            'brand identity', 'branded interface', 'app screenshot', 'website builder',
+        ];
+
+        foreach ($blockedTerms as $term) {
+            if (str_contains($metadata, $term)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -61,6 +61,11 @@ import {
 } from "./Blocks/Hero/HeroBackgroundImageBlock";
 
 import {
+    HeroParallaxBlock,
+    HeroParallaxSchema
+} from "./Blocks/Hero/HeroParallaxBlock";
+
+import {
     HeroEditorialOverlayBlock,
     HeroEditorialOverlaySchema
 } from "./Blocks/Hero/HeroEditorialOverlayBlock";
@@ -144,6 +149,14 @@ export const BlockRegistry = {
         component: HeroBackgroundImageBlock,
 
         schema: HeroBackgroundImageSchema
+
+    },
+
+    hero_parallax: {
+
+        component: HeroParallaxBlock,
+
+        schema: HeroParallaxSchema
 
     },
 

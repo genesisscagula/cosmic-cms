@@ -1,4 +1,5 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import axios from "axios";
 import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
@@ -30,6 +31,75 @@ export const BlogHubSchema = {
         ],
     },
 };
+
+
+function ModalPortal({ children }) {
+    if (typeof document === "undefined") return null;
+    return createPortal(children, document.body);
+}
+
+function normalizeGeneratedHtml(content) {
+    const source = String(content || "").trim();
+    if (!source) return "";
+    if (/<(?:p|h2|h3|ul|ol|blockquote)\b/i.test(source)) return source;
+
+    return source
+        .split(/\n{2,}/)
+        .map((block) => block.trim())
+        .filter(Boolean)
+        .map((block) => {
+            const escaped = block
+                .replace(/&/g, "&amp;")
+                .replace(/</g, "&lt;")
+                .replace(/>/g, "&gt;");
+            const isHeading = block.length <= 100 && !/[.!?]$/.test(block);
+            return isHeading ? `<h2>${escaped}</h2>` : `<p>${escaped.replace(/\n/g, "<br>")}</p>`;
+        })
+        .join("\n");
+}
+
+function CosmicRichTextEditor({ value, onChange }) {
+    const editorRef = useRef(null);
+
+    useEffect(() => {
+        if (editorRef.current && editorRef.current.innerHTML !== (value || "")) {
+            editorRef.current.innerHTML = value || "";
+        }
+    }, [value]);
+
+    const runCommand = (command, commandValue = null) => {
+        editorRef.current?.focus();
+        document.execCommand(command, false, commandValue);
+        onChange(editorRef.current?.innerHTML || "");
+    };
+
+    return (
+        <div className="overflow-hidden rounded-xl border border-white/10 bg-black/20 focus-within:border-violet-400">
+            <div className="flex flex-wrap gap-1 border-b border-white/10 bg-white/[0.03] p-2">
+                {[
+                    ["Bold", "bold"],
+                    ["Italic", "italic"],
+                    ["Underline", "underline"],
+                    ["• List", "insertUnorderedList"],
+                    ["1. List", "insertOrderedList"],
+                    ["Quote", "formatBlock", "blockquote"],
+                    ["Undo", "undo"],
+                    ["Redo", "redo"],
+                ].map(([label, command, commandValue]) => (
+                    <button key={label} type="button" onClick={() => runCommand(command, commandValue)} className="rounded-md px-2.5 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">{label}</button>
+                ))}
+            </div>
+            <div
+                ref={editorRef}
+                contentEditable
+                suppressContentEditableWarning
+                onInput={(event) => onChange(event.currentTarget.innerHTML)}
+                data-placeholder="Article content"
+                className="cosmic-rich-editor cosmic-scrollbar min-h-[280px] max-h-[420px] overflow-y-auto px-4 py-3 text-sm leading-7 text-white outline-none"
+            />
+        </div>
+    );
+}
 
 const emptyPostForm = {
     title: "",
@@ -90,6 +160,8 @@ export function BlogHubBlock({
     const [aiPrompt, setAiPrompt] = useState("");
     const [isGeneratingPost, setIsGeneratingPost] = useState(false);
     const [isUploadingImage, setIsUploadingImage] = useState(false);
+    const [confirmation, setConfirmation] = useState(null);
+    const [actionNotice, setActionNotice] = useState("");
     const imageInputRef = useRef(null);
 
     const updateFeatured = (key, value) => onUpdate({ featured: { ...data.featured, [key]: value } });
@@ -144,33 +216,67 @@ export function BlogHubBlock({
         }
     };
 
-    const generatePostWithAi = async () => {
-        if (!aiPrompt.trim()) return;
-        if ((postForm.title || postForm.content) && !window.confirm("Replace the current post fields with AI-generated content?")) return;
-
+    const performGeneratePostWithAi = async () => {
+        setConfirmation(null);
         setIsGeneratingPost(true);
         setPostError("");
+
         try {
             const response = await axios.post(route("blog-posts.generate", [blogWebsiteId, blogPageId]), {
                 prompt: aiPrompt.trim(),
             });
             const generated = response.data.post || {};
-            setPostForm((current) => ({
-                ...current,
-                title: generated.title || current.title,
-                category: generated.category || current.category,
-                tags: Array.isArray(generated.tags) ? generated.tags.join(", ") : current.tags,
-                excerpt: generated.excerpt || current.excerpt,
-                content: generated.content || current.content,
-                image_url: generated.image_url || current.image_url,
-            }));
+            const generatedForm = {
+                ...postForm,
+                title: generated.title || postForm.title,
+                category: generated.category || postForm.category,
+                tags: Array.isArray(generated.tags) ? generated.tags.join(", ") : postForm.tags,
+                excerpt: generated.excerpt || postForm.excerpt,
+                content: normalizeGeneratedHtml(generated.content || postForm.content),
+                image_url: generated.image_url || postForm.image_url,
+            };
+
+            const payload = {
+                ...generatedForm,
+                tags: generatedForm.tags.split(",").map((tag) => tag.trim()).filter(Boolean),
+            };
+            const savedResponse = editingPost
+                ? await axios.put(route("blog-posts.update", [blogWebsiteId, blogPageId, editingPost.id]), payload)
+                : await axios.post(route("blog-posts.store", [blogWebsiteId, blogPageId]), payload);
+
+            const savedPost = savedResponse.data.post;
+            if (editingPost) {
+                onBlogPostUpdated?.(savedPost);
+                setViewingPost((current) => current?.id === savedPost.id ? savedPost : current);
+            } else {
+                onBlogPostCreated?.(savedPost);
+            }
+
             setIsAiPromptOpen(false);
             setAiPrompt("");
+            closeComposer();
         } catch (error) {
             setPostError(error.response?.data?.message || "Cosmic AI could not write this post.");
         } finally {
             setIsGeneratingPost(false);
         }
+    };
+
+    const generatePostWithAi = () => {
+        if (!aiPrompt.trim() || isGeneratingPost) return;
+
+        if (postForm.title || postForm.content) {
+            setConfirmation({
+                title: "Replace current post content?",
+                message: "Cosmic AI will replace the current title, excerpt, content, category, tags, and featured image before saving the post.",
+                confirmLabel: "Replace and generate",
+                tone: "violet",
+                onConfirm: performGeneratePostWithAi,
+            });
+            return;
+        }
+
+        performGeneratePostWithAi();
     };
 
     const savePost = async (event) => {
@@ -188,8 +294,13 @@ export function BlogHubBlock({
                 ? await axios.put(route("blog-posts.update", [blogWebsiteId, blogPageId, editingPost.id]), payload)
                 : await axios.post(route("blog-posts.store", [blogWebsiteId, blogPageId]), payload);
 
-            if (editingPost) onBlogPostUpdated?.(response.data.post);
-            else onBlogPostCreated?.(response.data.post);
+            const savedPost = response.data.post;
+            if (editingPost) {
+                onBlogPostUpdated?.(savedPost);
+                setViewingPost((current) => current?.id === savedPost.id ? savedPost : current);
+            } else {
+                onBlogPostCreated?.(savedPost);
+            }
             closeComposer();
         } catch (error) {
             setPostError(error.response?.data?.message || "Unable to save this post.");
@@ -198,21 +309,37 @@ export function BlogHubBlock({
         }
     };
 
-    const deletePost = async () => {
-        if (!editingPost || !window.confirm(`Delete “${editingPost.title}”? This cannot be undone.`)) return;
-
+    const performDeletePost = async (post) => {
+        if (!post?.id) return;
+        setConfirmation(null);
         setIsSavingPost(true);
         setPostError("");
         try {
-            await axios.delete(route("blog-posts.destroy", [blogWebsiteId, blogPageId, editingPost.id]));
-            onBlogPostDeleted?.(editingPost.id);
-            closeComposer();
+            await axios.delete(route("blog-posts.destroy", [blogWebsiteId, blogPageId, post.id]));
+            onBlogPostDeleted?.(post.id);
+            setViewingPost((current) => current?.id === post.id ? null : current);
+            if (editingPost?.id === post.id) closeComposer();
+            setActionNotice("Blog post deleted successfully.");
+            window.setTimeout(() => setActionNotice(""), 3000);
         } catch (error) {
             setPostError(error.response?.data?.message || "Unable to delete this post.");
         } finally {
             setIsSavingPost(false);
         }
     };
+
+    const requestDeletePost = (post) => {
+        if (!post?.id) return;
+        setConfirmation({
+            title: "Delete this blog post?",
+            message: `“${post.title}” will be permanently deleted. This action cannot be undone.`,
+            confirmLabel: "Delete post",
+            tone: "danger",
+            onConfirm: () => performDeletePost(post),
+        });
+    };
+
+    const deletePost = () => requestDeletePost(editingPost);
 
     return (
         <section className={`px-6 py-16 sm:px-8 lg:px-12 lg:py-24 ${theme.bg} transition-colors duration-500`}>
@@ -226,14 +353,14 @@ export function BlogHubBlock({
                 )}
 
                 {viewingPost ? (
-                    <article className={`${showIntro ? "mt-12" : ""} overflow-hidden rounded-3xl border ${theme.border} ${theme.card}`}>
-                        <button type="button" onClick={() => setViewingPost(null)} className={`mx-7 mt-7 text-sm font-semibold hover:underline sm:mx-10 ${theme.text}`}>← Back to all posts</button>
-                        {viewingPost.image_url && <img src={viewingPost.image_url} alt={viewingPost.title} className="mt-6 max-h-[520px] w-full object-cover" />}
-                        <div className="mx-auto max-w-3xl px-7 py-10 sm:px-10 sm:py-14">
+                    <article className={`${showIntro ? "mt-12" : ""} mx-auto w-full max-w-6xl`}>
+                        <button type="button" onClick={() => setViewingPost(null)} className={`mb-5 text-sm font-semibold hover:underline ${theme.text}`}>← Back to all posts</button>
+                        {viewingPost.image_url && <img src={viewingPost.image_url} alt={viewingPost.title} className="max-h-[620px] w-full rounded-[15px] object-cover" />}
+                        <div className="mx-auto max-w-4xl py-10 sm:py-14">
                             <div className={`text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`}>{viewingPost.category || "Article"}{viewingPost.published_at ? ` · ${new Date(viewingPost.published_at).toLocaleDateString()}` : ""}</div>
                             <h1 className={`mt-4 text-4xl font-bold leading-tight tracking-tight sm:text-5xl ${theme.text}`}>{viewingPost.title}</h1>
                             {viewingPost.excerpt && <p className={`mt-5 text-lg leading-8 ${theme.sub}`}>{viewingPost.excerpt}</p>}
-                            <div className={`mt-9 whitespace-pre-wrap text-base leading-8 ${theme.text}`}>{viewingPost.content || viewingPost.excerpt || "This article is ready for content."}</div>
+                            <div className={`prose prose-slate mt-9 max-w-none text-base leading-8 [&_p]:mb-5 [&_h2]:mb-4 [&_h2]:mt-9 [&_h2]:text-3xl [&_h3]:mb-3 [&_h3]:mt-7 [&_h3]:text-2xl [&_ul]:mb-5 [&_ul]:pl-6 [&_ol]:mb-5 [&_ol]:pl-6 [&_blockquote]:my-6 ${theme.text}`} dangerouslySetInnerHTML={{ __html: viewingPost.content || viewingPost.excerpt || "This article is ready for content." }} />
                             {Array.isArray(viewingPost.tags) && viewingPost.tags.length > 0 && <div className="mt-10 flex flex-wrap gap-2">{viewingPost.tags.map((tag) => <span key={tag} className={`rounded-full border px-3 py-1 text-xs ${theme.border} ${theme.sub}`}>#{tag}</span>)}</div>}
                             {isBuilder && <button type="button" onClick={() => openComposer(viewingPost)} className={`mt-10 text-sm font-semibold hover:underline ${theme.text}`}>Edit this post</button>}
                         </div>
@@ -252,7 +379,7 @@ export function BlogHubBlock({
                                 <span className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`}>{featuredPost.category || "Featured article"}</span>
                                 <h3 className={`mt-4 text-3xl font-bold tracking-tight ${theme.text}`}>{featuredPost.title}</h3>
                                 {featuredPost.excerpt && <p className={`mt-4 text-base leading-7 ${theme.sub}`}>{featuredPost.excerpt}</p>}
-                                {isBuilder && <div className="mt-7 flex gap-4"><button type="button" onClick={() => setViewingPost(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit featured post</button></div>}
+                                {isBuilder && <div className="mt-7 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit featured post</button><button type="button" onClick={() => requestDeletePost(featuredPost)} className="ml-auto text-sm font-semibold text-red-600 transition hover:text-red-700 hover:underline">Delete post</button></div>}
                             </>
                         ) : (
                             <>
@@ -282,7 +409,7 @@ export function BlogHubBlock({
                                         </div>
                                         <h3 className={`mt-3 text-lg font-bold leading-snug ${theme.text}`}>{post.title}</h3>
                                         {post.excerpt && <p className={`mt-3 text-sm leading-6 ${theme.sub}`}>{post.excerpt}</p>}
-                                        {isBuilder && <div className="mt-4 flex gap-4"><button type="button" onClick={() => setViewingPost(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit post</button></div>}
+                                        {isBuilder && <div className="mt-4 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit post</button><button type="button" onClick={() => requestDeletePost(post)} className="ml-auto text-sm font-semibold text-red-600 transition hover:text-red-700 hover:underline">Delete post</button></div>}
                                     </>
                                 ) : (
                                     <>
@@ -300,27 +427,53 @@ export function BlogHubBlock({
                 )}
                 {isBuilder && !viewingPost && <button type="button" onClick={() => openComposer()} className={`mt-7 rounded-xl border px-4 py-2 text-sm font-semibold transition hover:bg-white/10 ${theme.border} ${theme.text}`}>+ Add post</button>}
 
+                {actionNotice && (
+                    <ModalPortal>
+                        <div className="fixed bottom-6 right-6 z-[1000001] rounded-xl border border-emerald-400/30 bg-[#18181b] px-4 py-3 text-sm font-semibold text-emerald-300 shadow-2xl">
+                            ✓ {actionNotice}
+                        </div>
+                    </ModalPortal>
+                )}
+
                 {isAiPromptOpen && (
-                    <div className="fixed inset-0 z-[1100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
-                        <div className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#18181b] p-5 shadow-2xl">
-                            <div className="flex items-start justify-between gap-4"><div><h3 className="text-lg font-semibold text-white">Write this blog post with AI</h3><p className="mt-1 text-sm text-slate-400">Describe the topic, audience, tone, and key points you want included.</p></div><button type="button" onClick={() => setIsAiPromptOpen(false)} className="text-slate-400 hover:text-white">×</button></div>
+                    <ModalPortal>
+                    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
+                        <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl">
+                            <div className="flex items-start justify-between gap-4"><div><h3 className="text-lg font-semibold text-white">Write this blog post with AI</h3><p className="mt-1 text-sm text-slate-400">Describe the topic, audience, tone, and key points you want included.</p></div><button type="button" onClick={() => setIsAiPromptOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-2xl leading-none text-slate-400 transition hover:bg-white/10 hover:text-white">×</button></div>
                             <textarea autoFocus value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows="6" placeholder="Example: Write a practical guide for homeowners choosing a construction company for a renovation..." className="mt-5 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none focus:border-violet-400" />
-                            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setIsAiPromptOpen(false)} className="px-3 py-2 text-sm text-slate-300">Cancel</button><button type="button" disabled={!aiPrompt.trim() || isGeneratingPost} onClick={generatePostWithAi} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isGeneratingPost ? "Writing..." : "Generate Article · 10 Credits"}</button></div>
+                            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setIsAiPromptOpen(false)} className="px-3 py-2 text-sm text-slate-300">Cancel</button><button type="button" disabled={!aiPrompt.trim() || isGeneratingPost} onClick={generatePostWithAi} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isGeneratingPost ? <span className="inline-flex items-center gap-2"><span className="cosmic-loading-spinner h-4 w-4 rounded-full" />Generating article...</span> : "Generate Article · 10 Credits"}</button></div>
                         </div>
                     </div>
+                    </ModalPortal>
+                )}
+
+                {confirmation && (
+                    <ModalPortal>
+                    <div className="fixed inset-0 z-[1000000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" role="alertdialog" aria-modal="true">
+                        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl">
+                            <h3 className="text-lg font-semibold text-white">{confirmation.title}</h3>
+                            <p className="mt-2 text-sm leading-6 text-slate-400">{confirmation.message}</p>
+                            <div className="mt-6 flex justify-end gap-2">
+                                <button type="button" onClick={() => setConfirmation(null)} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button>
+                                <button type="button" onClick={confirmation.onConfirm} className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${confirmation.tone === "danger" ? "bg-red-600 hover:bg-red-500" : "bg-violet-600 hover:bg-violet-500"}`}>{confirmation.confirmLabel}</button>
+                            </div>
+                        </div>
+                    </div>
+                    </ModalPortal>
                 )}
 
                 {isComposerOpen && (
-                    <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="blog-post-dialog-title">
-                        <form onSubmit={savePost} className="max-h-[90vh] w-full max-w-xl overflow-y-auto rounded-2xl border border-white/10 bg-[#18181b] p-5 shadow-2xl">
+                    <ModalPortal>
+                    <div className="fixed inset-0 z-[999998] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="blog-post-dialog-title">
+                        <form onSubmit={savePost} className="cosmic-scrollbar max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl">
                             <div className="flex items-start justify-between gap-4">
                                 <div><h3 id="blog-post-dialog-title" className="text-lg font-semibold text-white">{editingPost ? "Edit blog post" : "Add blog post"}</h3><p className="mt-1 text-sm text-slate-400">{editingPost ? "Update the article details and publish state." : "Create a draft article for this Blog Hub."}</p></div>
-                                <button type="button" onClick={closeComposer} className="text-slate-400 hover:text-white" aria-label="Close">×</button>
+                                <button type="button" onClick={closeComposer} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-2xl leading-none text-slate-400 transition hover:bg-white/10 hover:text-white" aria-label="Close">×</button>
                             </div>
                             <button type="button" onClick={() => setIsAiPromptOpen(true)} className="mt-5 w-full rounded-xl border border-violet-400/40 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20">✨ Write with AI · 10 Credits</button>
                             <div className="mt-5 grid gap-3">
                                 <input required value={postForm.title} onChange={(event) => setPostForm({ ...postForm, title: event.target.value })} placeholder="Post title" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
-                                <input value={postForm.category} onChange={(event) => setPostForm({ ...postForm, category: event.target.value })} placeholder="Category" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
+                                <input value={postForm.category} onChange={(event) => setPostForm({ ...postForm, category: event.target.value })} placeholder="Categories, separated by commas" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
                                 <input value={postForm.tags} onChange={(event) => setPostForm({ ...postForm, tags: event.target.value })} placeholder="Tags, separated by commas" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
                                 <div className="rounded-xl border border-white/10 bg-black/20 p-3">
                                     <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={uploadFeaturedImage} />
@@ -328,7 +481,7 @@ export function BlogHubBlock({
                                     <div className="mt-3 flex gap-2"><button type="button" disabled={isUploadingImage} onClick={() => imageInputRef.current?.click()} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isUploadingImage ? "Uploading..." : "Update Image"}</button>{postForm.image_url && <button type="button" onClick={() => setPostForm({ ...postForm, image_url: "" })} className="px-3 py-2 text-sm text-slate-300">Remove</button>}</div>
                                 </div>
                                 <textarea value={postForm.excerpt} onChange={(event) => setPostForm({ ...postForm, excerpt: event.target.value })} placeholder="Short excerpt" rows="3" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
-                                <textarea value={postForm.content} onChange={(event) => setPostForm({ ...postForm, content: event.target.value })} placeholder="Article content" rows="7" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
+                                <CosmicRichTextEditor value={postForm.content} onChange={(content) => setPostForm((current) => ({ ...current, content }))} />
                                 <label className="grid gap-1 text-sm font-medium text-slate-200">Post status<select value={postForm.status} onChange={(event) => setPostForm({ ...postForm, status: event.target.value })} className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400"><option value="draft">Draft</option><option value="published">Published</option></select></label>
                             </div>
                             {postError && <p className="mt-3 text-sm text-red-300">{postError}</p>}
@@ -338,6 +491,7 @@ export function BlogHubBlock({
                             </div>
                         </form>
                     </div>
+                    </ModalPortal>
                 )}
             </div>
         </section>

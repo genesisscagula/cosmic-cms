@@ -1317,6 +1317,101 @@ HTML;
                 break;
 
 
+                case 'hero_parallax':
+
+                $eyebrow = e($block['eyebrow'] ?? 'INTRODUCING A NEW PERSPECTIVE');
+                $heading = e($block['heading'] ?? 'Move beyond the ordinary.');
+                $text = e($block['text'] ?? 'Create a memorable first impression with cinematic depth, confident typography, and a clear next step.');
+                $primaryLabel = e($block['primary_label'] ?? 'Start a project');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'Explore our work');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $scrollLabel = e($block['scroll_label'] ?? 'Scroll to explore');
+                $backgroundImage = e(self::staticAssetUrl($block['image_url'] ?? ''));
+                $overlayOpacity = max(20, min(90, intval($block['overlayOpacity'] ?? 64)));
+                $parallaxSpeed = max(8, min(40, intval($block['parallaxSpeed'] ?? 24)));
+                $contentAlign = $block['contentAlign'] ?? 'left';
+                $heroHeight = ($block['height'] ?? 'screen') === 'large'
+                    ? 'min-h-[720px]'
+                    : 'min-h-[88svh] lg:min-h-screen';
+                $primaryTheme = self::getTheme($primaryColor);
+                $parallaxId = 'cosmic-parallax-' . substr(md5(json_encode($block) . uniqid('', true)), 0, 12);
+
+                $alignment = match ($contentAlign) {
+                    'center' => 'items-center text-center',
+                    'right' => 'items-end text-right',
+                    default => 'items-start text-left',
+                };
+                $contentWidth = $contentAlign === 'center' ? 'max-w-4xl' : 'max-w-3xl';
+                $buttonAlignment = match ($contentAlign) {
+                    'center' => 'justify-center',
+                    'right' => 'justify-end',
+                    default => 'justify-start',
+                };
+                $gradientDirection = match ($contentAlign) {
+                    'center' => 'bg-gradient-to-t',
+                    'right' => 'bg-gradient-to-l',
+                    default => 'bg-gradient-to-r',
+                };
+                $backgroundStyle = $backgroundImage
+                    ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
+                    : '';
+
+                $html .= "
+                <section id='{$parallaxId}' class='relative isolate flex overflow-hidden {$heroHeight}' data-parallax-speed='{$parallaxSpeed}'>
+                    <div class='cosmic-parallax-media absolute -inset-y-[12%] inset-x-0 z-0 will-change-transform' style=\"{$backgroundStyle}transform:translate3d(0,0,0) scale(1.08);\"></div>
+                    <div class='absolute inset-0 z-10 bg-slate-950' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 z-10 {$gradientDirection} from-slate-950/85 via-slate-950/20 to-slate-950/25'></div>
+
+                    <div class='relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-6 py-24 sm:px-[8%] lg:py-32 {$alignment}'>
+                        <div class='{$contentWidth}'>
+                            <div class='inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 backdrop-blur-md'>
+                                <span class='h-2 w-2 rounded-full {$primaryTheme['bg']}'></span>
+                                <span class='text-xs font-bold uppercase tracking-[0.28em] text-white/85'>{$eyebrow}</span>
+                            </div>
+
+                            <h1 class='mt-7 text-5xl font-semibold leading-[0.96] tracking-[-0.045em] text-white sm:text-6xl md:text-7xl lg:text-[6.5rem]'>{$heading}</h1>
+                            <div class='mt-7 max-w-2xl text-base leading-8 text-white/75 sm:text-lg'>{$text}</div>
+
+                            <div class='mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row {$buttonAlignment}'>
+                                <a href='{$primaryUrl}' class='inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
+                                <a href='{$secondaryUrl}' class='inline-flex min-h-[54px] items-center justify-center rounded-full border border-white/30 bg-white/10 px-8 font-bold text-white backdrop-blur-md transition'>{$secondaryLabel}</a>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class='pointer-events-none absolute bottom-7 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 text-white/65 sm:flex'>
+                        <span class='text-[10px] font-bold uppercase tracking-[0.32em]'>{$scrollLabel}</span>
+                        <span class='relative h-10 w-px overflow-hidden bg-white/25'><span class='absolute left-0 top-0 h-4 w-px animate-bounce bg-white'></span></span>
+                    </div>
+                </section>
+                <script>
+                (() => {
+                    const section = document.getElementById('{$parallaxId}');
+                    if (!section || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                    const media = section.querySelector('.cosmic-parallax-media');
+                    const speed = Number(section.dataset.parallaxSpeed || 24);
+                    let frame = null;
+                    const update = () => {
+                        frame = null;
+                        const rect = section.getBoundingClientRect();
+                        const viewport = window.innerHeight || 1;
+                        if (rect.bottom < 0 || rect.top > viewport) return;
+                        const progress = (viewport - rect.top) / (viewport + rect.height);
+                        const offset = (progress - 0.5) * speed;
+                        media.style.transform = `translate3d(0, \${offset}px, 0) scale(1.08)`;
+                    };
+                    const requestUpdate = () => {
+                        if (frame === null) frame = window.requestAnimationFrame(update);
+                    };
+                    update();
+                    window.addEventListener('scroll', requestUpdate, { passive: true });
+                    window.addEventListener('resize', requestUpdate);
+                })();
+                </script>";
+
+                break;
+
                 case 'hero_background_image':
 
                 $tagline = e($block['tagline'] ?? 'WELCOME TO OUR COMPANY');

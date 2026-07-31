@@ -39,6 +39,7 @@ class BlockPricingRegistry
             'latest_resources' => ['label' => 'Latest Resources', 'category' => 'growth', 'credits' => 30],
 
             // Signature Collection.
+            'hero_parallax' => ['label' => 'Hero Parallax', 'category' => 'signature', 'credits' => 100],
             'hero_video_style' => ['label' => 'Video Style Hero', 'category' => 'signature', 'credits' => 50],
             'hero_video_background' => ['label' => 'Video Background Hero', 'category' => 'signature', 'credits' => 50],
         ];

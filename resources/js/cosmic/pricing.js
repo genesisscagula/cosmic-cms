@@ -34,6 +34,7 @@ export const BLOCK_PRICING = {
     blog_hub: { category: 'growth', credits: 30 },
     newsletter_cta: { category: 'growth', credits: 20 },
     latest_resources: { category: 'growth', credits: 30 },
+    hero_parallax: { category: 'signature', credits: 100 },
     hero_video_style: { category: 'signature', credits: 50 },
     hero_video_background: { category: 'signature', credits: 50 },
 };

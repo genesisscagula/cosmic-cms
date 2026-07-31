@@ -21,3 +21,86 @@
         animation: none;
     }
 }
+
+/* Cosmic modal scrollbars — shared by all dark dialogs and editors. */
+.cosmic-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #475569 #111827;
+}
+
+.cosmic-scrollbar::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+.cosmic-scrollbar::-webkit-scrollbar-track {
+    background: #111827;
+    border-radius: 999px;
+}
+
+.cosmic-scrollbar::-webkit-scrollbar-thumb {
+    background: #475569;
+    border: 2px solid #111827;
+    border-radius: 999px;
+}
+
+.cosmic-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
+}
+
+.cosmic-rich-editor:empty::before {
+    color: #64748b;
+    content: attr(data-placeholder);
+    pointer-events: none;
+}
+
+.cosmic-rich-editor blockquote {
+    margin: 1rem 0;
+    border-left: 3px solid #8b5cf6;
+    padding-left: 1rem;
+    color: #cbd5e1;
+}
+
+.cosmic-rich-editor ul,
+.cosmic-rich-editor ol {
+    margin: 0.75rem 0;
+    padding-left: 1.5rem;
+}
+
+.cosmic-rich-editor ul { list-style: disc; }
+.cosmic-rich-editor ol { list-style: decimal; }
+.cosmic-rich-editor a { color: #a78bfa; text-decoration: underline; }
+
+
+/* Keep scrollbar styling consistent in every application dialog. */
+[role="dialog"],
+[role="alertdialog"],
+[role="dialog"] *,
+[role="alertdialog"] * {
+    scrollbar-width: thin;
+    scrollbar-color: #475569 #111827;
+}
+
+[role="dialog"]::-webkit-scrollbar,
+[role="alertdialog"]::-webkit-scrollbar,
+[role="dialog"] *::-webkit-scrollbar,
+[role="alertdialog"] *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+}
+
+[role="dialog"]::-webkit-scrollbar-track,
+[role="alertdialog"]::-webkit-scrollbar-track,
+[role="dialog"] *::-webkit-scrollbar-track,
+[role="alertdialog"] *::-webkit-scrollbar-track {
+    background: #111827;
+}
+
+[role="dialog"]::-webkit-scrollbar-thumb,
+[role="alertdialog"]::-webkit-scrollbar-thumb,
+[role="dialog"] *::-webkit-scrollbar-thumb,
+[role="alertdialog"] *::-webkit-scrollbar-thumb {
+    background: #475569;
+    border: 2px solid #111827;
+    border-radius: 999px;
+}
