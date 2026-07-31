@@ -1,5 +1,5 @@
 import { usePage } from "@inertiajs/react";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
@@ -50,40 +50,66 @@ export const HeroParallaxSchema = {
 export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) {
     const sectionRef = useRef(null);
     const imageRef = useRef(null);
-    const [offset, setOffset] = useState(0);
+    const contentRef = useRef(null);
     const data = { ...HeroParallaxSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const primaryTheme = colorFamilies[globalTheme.primary];
 
     useEffect(() => {
+        const section = sectionRef.current;
+        const media = imageRef.current?.closest?.(".cosmic-parallax-media");
+        const content = contentRef.current;
+        if (!section || !media) return undefined;
+
+        const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)");
         let frame = null;
 
         const updateParallax = () => {
             frame = null;
-            const section = sectionRef.current;
-            if (!section) return;
+
+            if (reducedMotion.matches) {
+                media.style.transform = "translate3d(0, 0, 0) scale(1.14)";
+                if (content) {
+                    content.style.transform = "translate3d(0, 0, 0)";
+                    content.style.opacity = "1";
+                }
+                return;
+            }
 
             const rect = section.getBoundingClientRect();
             const viewport = window.innerHeight || 1;
-            if (rect.bottom < 0 || rect.top > viewport) return;
+            if (rect.bottom <= 0 || rect.top >= viewport) return;
 
-            const progress = (viewport - rect.top) / (viewport + rect.height);
+            // 0 at entry, 0.5 near viewport centre, 1 at exit.
+            const progress = Math.max(0, Math.min(1, (viewport - rect.top) / (viewport + rect.height)));
             const centered = progress - 0.5;
-            setOffset(centered * Number(data.parallaxSpeed || 24));
+            const strength = Number(data.parallaxSpeed || 24);
+            const mediaOffset = centered * strength * 7;
+            const contentOffset = centered * strength * -1.7;
+            const contentOpacity = Math.max(0.35, 1 - Math.abs(centered) * 0.75);
+
+            media.style.transform = `translate3d(0, ${mediaOffset}px, 0) scale(1.14)`;
+            if (content) {
+                content.style.transform = `translate3d(0, ${contentOffset}px, 0)`;
+                content.style.opacity = String(contentOpacity);
+            }
         };
 
-        const onScroll = () => {
+        const requestUpdate = () => {
             if (frame === null) frame = window.requestAnimationFrame(updateParallax);
         };
 
         updateParallax();
-        window.addEventListener("scroll", onScroll, { passive: true });
-        window.addEventListener("resize", onScroll);
+        // Capture scroll events so the effect also works inside the Builder's scrollable canvas.
+        document.addEventListener("scroll", requestUpdate, true);
+        window.addEventListener("resize", requestUpdate);
+        reducedMotion.addEventListener?.("change", requestUpdate);
 
         return () => {
-            window.removeEventListener("scroll", onScroll);
-            window.removeEventListener("resize", onScroll);
+            document.removeEventListener("scroll", requestUpdate, true);
+            window.removeEventListener("resize", requestUpdate);
+            reducedMotion.removeEventListener?.("change", requestUpdate);
             if (frame !== null) window.cancelAnimationFrame(frame);
         };
     }, [data.parallaxSpeed]);
@@ -100,8 +126,8 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     return (
         <section ref={sectionRef} className={`relative isolate flex overflow-hidden ${heroHeight}`}>
             <div
-                className="absolute -inset-y-[12%] inset-x-0 z-0 will-change-transform"
-                style={{ transform: `translate3d(0, ${offset}px, 0) scale(1.08)` }}
+                className="cosmic-parallax-media absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform"
+                style={{ transform: "translate3d(0, 0, 0) scale(1.14)" }}
             >
                 <EditableImage
                     ref={imageRef}
@@ -118,7 +144,11 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
             <div className="absolute inset-0 z-10 bg-slate-950" style={{ opacity: Number(data.overlayOpacity || 64) / 100 }} />
             <div className={`absolute inset-0 z-10 bg-gradient-to-t from-slate-950/85 via-slate-950/20 to-slate-950/25 ${data.contentAlign === "right" ? "bg-gradient-to-l" : data.contentAlign === "left" ? "bg-gradient-to-r" : ""}`} />
 
-            <div className={`relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-6 py-24 sm:px-[8%] lg:py-32 ${alignment[data.contentAlign] || alignment.left}`}>
+            <div
+                ref={contentRef}
+                className={`relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-6 py-24 transition-opacity duration-150 sm:px-[8%] lg:py-32 ${alignment[data.contentAlign] || alignment.left}`}
+                style={{ transform: "translate3d(0, 0, 0)", willChange: "transform, opacity" }}
+            >
                 <div className={contentWidth}>
                     <div className="inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 backdrop-blur-md">
                         <span className={`h-2 w-2 rounded-full ${primaryTheme.bg}`} />

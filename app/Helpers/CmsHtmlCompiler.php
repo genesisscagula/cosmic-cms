@@ -1363,7 +1363,7 @@ HTML;
                     <div class='absolute inset-0 z-10 bg-slate-950' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
                     <div class='absolute inset-0 z-10 {$gradientDirection} from-slate-950/85 via-slate-950/20 to-slate-950/25'></div>
 
-                    <div class='relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-6 py-24 sm:px-[8%] lg:py-32 {$alignment}'>
+                    <div class='cosmic-parallax-content relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-6 py-24 sm:px-[8%] lg:py-32 {$alignment}' style='transform:translate3d(0,0,0);will-change:transform,opacity;'>
                         <div class='{$contentWidth}'>
                             <div class='inline-flex items-center gap-3 rounded-full border border-white/20 bg-white/10 px-4 py-2 backdrop-blur-md'>
                                 <span class='h-2 w-2 rounded-full {$primaryTheme['bg']}'></span>
@@ -1390,22 +1390,30 @@ HTML;
                     const section = document.getElementById('{$parallaxId}');
                     if (!section || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
                     const media = section.querySelector('.cosmic-parallax-media');
+                    const content = section.querySelector('.cosmic-parallax-content');
                     const speed = Number(section.dataset.parallaxSpeed || 24);
                     let frame = null;
                     const update = () => {
                         frame = null;
                         const rect = section.getBoundingClientRect();
                         const viewport = window.innerHeight || 1;
-                        if (rect.bottom < 0 || rect.top > viewport) return;
-                        const progress = (viewport - rect.top) / (viewport + rect.height);
-                        const offset = (progress - 0.5) * speed;
-                        media.style.transform = `translate3d(0, \${offset}px, 0) scale(1.08)`;
+                        if (rect.bottom <= 0 || rect.top >= viewport) return;
+                        const progress = Math.max(0, Math.min(1, (viewport - rect.top) / (viewport + rect.height)));
+                        const centered = progress - 0.5;
+                        const mediaOffset = centered * speed * 7;
+                        const contentOffset = centered * speed * -1.7;
+                        const contentOpacity = Math.max(0.35, 1 - Math.abs(centered) * 0.75);
+                        media.style.transform = `translate3d(0, \${mediaOffset}px, 0) scale(1.14)`;
+                        if (content) {
+                            content.style.transform = `translate3d(0, \${contentOffset}px, 0)`;
+                            content.style.opacity = String(contentOpacity);
+                        }
                     };
                     const requestUpdate = () => {
                         if (frame === null) frame = window.requestAnimationFrame(update);
                     };
                     update();
-                    window.addEventListener('scroll', requestUpdate, { passive: true });
+                    document.addEventListener('scroll', requestUpdate, true);
                     window.addEventListener('resize', requestUpdate);
                 })();
                 </script>";
