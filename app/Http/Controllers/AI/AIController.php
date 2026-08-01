@@ -43,7 +43,7 @@ class AIController extends Controller
         $generationType = $validated['generation_type'] ?? (count($validated['sections']) > 1 ? 'page' : 'section');
         $cost = $generationType === 'page'
             ? ActionPricing::GENERATE_PAGE
-            : 2;
+            : ActionPricing::SPARK_AI_PERSONALIZE;
         $reference = 'ai-' . Str::uuid();
 
         $this->credits->consume(

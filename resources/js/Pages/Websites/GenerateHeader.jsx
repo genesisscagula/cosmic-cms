@@ -34,7 +34,7 @@ function EditableText({ value, onSave, className }) {
     );
 }
 
-export function DarkCyanHeader({ block, onUpdate, pageTargets = [] }) {
+export function DarkCyanHeader({ block, onUpdate, pageTargets = [], onLogoClick = null }) {
     const menuItems = block.menu || [{ label: 'Home', url: '#' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }];
 
     // Theme Config for Light Mode
@@ -44,11 +44,12 @@ export function DarkCyanHeader({ block, onUpdate, pageTargets = [] }) {
     const accent = 'text-emerald-600';
 
     const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
+    const logoHeight = Math.min(60, Math.max(24, Number(block.logo_height || 40)));
 
     return (
-        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-4 border-b px-6 py-4 sm:px-8 sm:py-5 lg:flex-nowrap transition-colors duration-500`}>
+        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4 sm:px-6 sm:py-5 lg:flex-nowrap transition-colors duration-500`}>
             {logoImageUrl ? (
-                <img src={logoImageUrl} alt={block.logo_text || 'Website logo'} className="h-9 w-auto max-w-[200px] object-contain" />
+                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "60px" }} className="w-auto max-w-[250px] object-contain" /></button>
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
@@ -57,7 +58,7 @@ export function DarkCyanHeader({ block, onUpdate, pageTargets = [] }) {
                 />
             )}
             <nav className="w-full lg:w-auto">
-                <ul className="flex flex-wrap list-none items-center gap-x-5 gap-y-2 whitespace-nowrap sm:gap-x-[30px] lg:flex-nowrap">
+                <ul className="flex flex-wrap list-none items-center gap-x-3 gap-y-2 whitespace-nowrap sm:gap-x-5 lg:flex-nowrap">
                     <HeaderNavigation
                         items={menuItems}
                         textClass={`${textColor} text-base hover:text-emerald-600`}
@@ -70,7 +71,7 @@ export function DarkCyanHeader({ block, onUpdate, pageTargets = [] }) {
     );
 }
 
-export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets = [] }) {
+export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets = [], onLogoClick = null }) {
     const menuItems = block.menu || [
         { label: 'Home', url: '#' }, 
         { label: 'About', url: '#' }, 
@@ -86,11 +87,12 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets 
     const primaryTheme = getEffectiveTheme('primary', globalTheme);
 
     const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
+    const logoHeight = Math.min(60, Math.max(24, Number(block.logo_height || 40)));
 
     return (
-        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-4 border-b border-slate-200 px-6 py-4 sm:px-[8%] sm:py-6 lg:flex-nowrap`}>
+        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6 sm:py-5 lg:flex-nowrap`}>
             {logoImageUrl ? (
-                <img src={logoImageUrl} alt={block.logo_text || 'Website logo'} className="h-9 w-auto max-w-[200px] object-contain" />
+                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "60px" }} className="w-auto max-w-[250px] object-contain" /></button>
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
@@ -98,8 +100,8 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets 
                     onSave={(val) => onUpdate({ logo_text: val })}
                 />
             )}
-            <nav className="flex w-full items-center justify-between gap-4 lg:w-auto lg:justify-start lg:gap-10">
-                <ul className="flex flex-wrap list-none gap-x-4 gap-y-2 whitespace-nowrap sm:gap-x-[40px] lg:flex-nowrap">
+            <nav className="flex w-full items-center justify-between gap-4 lg:w-auto lg:justify-start lg:gap-6">
+                <ul className="flex flex-wrap list-none gap-x-3 gap-y-2 whitespace-nowrap sm:gap-x-5 lg:flex-nowrap">
                     <HeaderNavigation
                         items={menuItems}
                         textClass={`${subColor} text-[15px] font-medium hover:text-slate-900`}
@@ -111,8 +113,8 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets 
                     className={`
                         ${primaryTheme.bg}
                         ${primaryTheme.text}
-                        px-[40px]
-                        py-[16px]
+                        px-7
+                        py-3
                         shrink-0
                         rounded-full
                         text-sm
@@ -147,6 +149,17 @@ function HeaderNavigation({ items, textClass, onUpdate, pageTargets = [] }) {
         onUpdate(next);
     };
 
+    const normalizeTarget = (value) => String(value || '')
+        .trim()
+        .replace(/^\/+|\/+$/g, '')
+        .toLowerCase();
+
+    const findPageTarget = (url) => {
+        const normalized = normalizeTarget(url);
+        if (!normalized || normalized === '#' || normalized.startsWith('http') || normalized.startsWith('mailto:') || normalized.startsWith('tel:')) return null;
+        return pageTargets.find((pageTarget) => normalizeTarget(pageTarget.slug) === normalized) || null;
+    };
+
     const navigationGroups = [
         {
             wrapper: 'group/header-root',
@@ -169,17 +182,25 @@ function HeaderNavigation({ items, textClass, onUpdate, pageTargets = [] }) {
         const navigationGroup = navigationGroups[Math.min(depth, navigationGroups.length - 1)];
         const nested = depth > 0;
 
-        return <li key={path.join('-')} className={`${navigationGroup.wrapper} relative`}>
+        const linkedPage = findPageTarget(item.url);
+
+        return <li
+            key={path.join('-')}
+            className={`${navigationGroup.wrapper} relative z-[520]`}
+            onMouseEnter={() => document.documentElement.classList.add('cosmic-header-menu-active')}
+            onMouseLeave={() => document.documentElement.classList.remove('cosmic-header-menu-active')}
+        >
             <HeaderMenuItemEditor
                 item={item}
                 textClass={textClass}
                 targetListId={targetListId}
                 pageTargets={pageTargets}
                 hasChildren={children.length > 0}
+                linkedPage={linkedPage}
                 onSave={(changes) => updateAtPath(path, changes)}
             />
             {children.length > 0 && (
-                <div className={`${nested ? 'left-full top-0 pl-2' : 'left-0 top-full pt-2'} ${navigationGroup.reveal} invisible absolute z-30 min-w-52 opacity-0 transition duration-150`}>
+                <div className={`${nested ? 'left-full top-0 pl-2' : 'left-0 top-full pt-2'} ${navigationGroup.reveal} invisible absolute z-[530] min-w-52 opacity-0 transition duration-150`}>
                     <ul className={`list-none rounded-xl border bg-white p-2 shadow-xl ring-1 ring-slate-950/5 ${nested ? 'border-slate-300' : 'border-slate-200'}`}>
                         {renderItems(children, path, depth + 1)}
                     </ul>
@@ -191,7 +212,7 @@ function HeaderNavigation({ items, textClass, onUpdate, pageTargets = [] }) {
     return <>{renderItems(items || [])}</>;
 }
 
-function HeaderMenuItemEditor({ item, textClass, targetListId, pageTargets, hasChildren, onSave }) {
+function HeaderMenuItemEditor({ item, textClass, targetListId, pageTargets, hasChildren, linkedPage, onSave }) {
     const [isEditing, setIsEditing] = useState(false);
     const [label, setLabel] = useState(item.label || 'Menu item');
     const [url, setUrl] = useState(item.url || '#');
@@ -204,19 +225,39 @@ function HeaderMenuItemEditor({ item, textClass, targetListId, pageTargets, hasC
 
     return (
         <>
-            <button
-                type="button"
-                onClick={openEditor}
-                className={`${textClass} flex max-w-full items-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-left transition hover:bg-slate-950/5 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500`}
-                aria-label={`Edit ${item.label || 'menu item'}`}
-            >
-                <span>{item.label || 'Menu item'}</span>
-                {hasChildren && (
-                    <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3 w-3 shrink-0 transition-transform duration-200">
-                        <path d="m4 6 4 4 4-4" />
-                    </svg>
+            <div className="group/menu-edit flex max-w-full items-center gap-0.5 rounded-md hover:bg-slate-950/5">
+                <button
+                    type="button"
+                    onClick={openEditor}
+                    className={`${textClass} flex max-w-full items-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500`}
+                    aria-label={`Edit ${item.label || 'menu item'}`}
+                >
+                    <span>{item.label || 'Menu item'}</span>
+                    {hasChildren && (
+                        <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3 w-3 shrink-0 transition-transform duration-200">
+                            <path d="m4 6 4 4 4-4" />
+                        </svg>
+                    )}
+                </button>
+                {linkedPage?.id && (
+                    <button
+                        type="button"
+                        onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            window.location.assign(`/pages/${linkedPage.id}/builder`);
+                        }}
+                        className="mr-1 hidden h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-violet-500/10 hover:text-violet-600 group-hover/menu-edit:flex group-focus-within/menu-edit:flex"
+                        title={`Open ${linkedPage.title || item.label || 'page'} in Builder`}
+                        aria-label={`Open ${linkedPage.title || item.label || 'page'} in Builder`}
+                    >
+                        <svg viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.7" className="h-3.5 w-3.5" aria-hidden="true">
+                            <path d="M4 16h3.25L16 7.25 12.75 4 4 12.75V16Z" />
+                            <path d="m11.75 5 3.25 3.25" />
+                        </svg>
+                    </button>
                 )}
-            </button>
+            </div>
 
             {isEditing && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm" onMouseDown={() => setIsEditing(false)}>

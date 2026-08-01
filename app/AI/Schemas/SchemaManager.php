@@ -18,6 +18,8 @@ class SchemaManager
 
             'hero_background_image' => 'heroBackgroundImageSchema',
 
+            'hero_slider_fade' => 'heroSliderFadeSchema',
+
             'hero_parallax' => 'heroParallaxSchema',
 
             'hero_editorial_overlay' => 'heroEditorialOverlaySchema',

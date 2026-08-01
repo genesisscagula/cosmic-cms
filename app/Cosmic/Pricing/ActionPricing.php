@@ -9,6 +9,7 @@ class ActionPricing
     public const GENERATE_PAGE = 50;
     public const GENERATE_WEBSITE = 100;
     public const AI_REWRITE = 10;
+    public const SPARK_AI_PERSONALIZE = 20;
 
     public static function all(): array
     {
@@ -18,6 +19,7 @@ class ActionPricing
             'generate_page' => self::GENERATE_PAGE,
             'generate_website' => self::GENERATE_WEBSITE,
             'ai_rewrite' => self::AI_REWRITE,
+            'spark_ai_personalize' => self::SPARK_AI_PERSONALIZE,
         ];
     }
 }

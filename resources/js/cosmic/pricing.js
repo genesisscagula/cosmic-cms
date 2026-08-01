@@ -1,6 +1,6 @@
 export const ACTION_PRICING = {
     add_page: 30,
-    add_menu_item: 1,
+    add_menu_item: 10,
     generate_page: 5,
     generate_website: 10,
     ai_rewrite: 2,

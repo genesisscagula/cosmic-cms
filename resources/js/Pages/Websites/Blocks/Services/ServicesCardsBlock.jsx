@@ -43,19 +43,25 @@ export const ServicesCardsSchema = {
             {
                 icon: "💻",
                 title: "Website Development",
-                desc: "Modern, fast, and scalable websites tailored for your business."
+                desc: "Modern, fast, and scalable websites tailored for your business.",
+                cta_label: "Learn More",
+                cta_url: "#"
             },
 
             {
                 icon: "🎨",
                 title: "UI / UX Design",
-                desc: "Beautiful user experiences focused on clarity and conversion."
+                desc: "Beautiful user experiences focused on clarity and conversion.",
+                cta_label: "Learn More",
+                cta_url: "#"
             },
 
             {
                 icon: "🚀",
                 title: "Digital Strategy",
-                desc: "Helping businesses grow through thoughtful digital solutions."
+                desc: "Helping businesses grow through thoughtful digital solutions.",
+                cta_label: "Learn More",
+                cta_url: "#"
             }
 
         ]
@@ -104,6 +110,16 @@ export const ServicesCardsSchema = {
                     key: "desc",
                     type: "textarea",
                     label: "Description"
+                },
+                {
+                    key: "cta_label",
+                    type: "text",
+                    label: "CTA Label"
+                },
+                {
+                    key: "cta_url",
+                    type: "text",
+                    label: "CTA URL"
                 }
 
             ]
@@ -246,16 +262,16 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
 
                             <div className="mt-8">
 
-                                <span
-                                    className={`inline-flex items-center gap-2 text-sm font-semibold ${theme.text} opacity-80`}
-                                >
-                                    Learn More
-
-                                    <span className="transition-transform duration-300 group-hover:translate-x-1">
-                                        →
-                                    </span>
-
-                                </span>
+                                <EditableButton
+                                    label={card.cta_label || "Learn More"}
+                                    url={card.cta_url || "#"}
+                                    onSave={(label, url) => {
+                                        const updatedCards = [...cardData];
+                                        updatedCards[i] = { ...updatedCards[i], cta_label: label, cta_url: url };
+                                        onUpdate({ cards: updatedCards });
+                                    }}
+                                    className={`inline-flex items-center gap-2 text-sm font-semibold ${theme.text} opacity-80 transition-all duration-300 hover:gap-3`}
+                                />
 
                             </div>
 

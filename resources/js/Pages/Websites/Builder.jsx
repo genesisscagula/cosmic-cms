@@ -78,6 +78,13 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const hasUnsavedChanges = isDirty || hasUnsavedTheme;
 
     useEffect(() => {
+        const serverBalance = Number(cosmicPricing?.balance);
+        if (!trialMode && Number.isFinite(serverBalance)) {
+            setCreditBalance(serverBalance);
+        }
+    }, [cosmicPricing?.balance, setCreditBalance, trialMode]);
+
+    useEffect(() => {
         const warnBeforeLeaving = (event) => {
             if (!hasUnsavedChanges || isSaving || isPublishing) {
                 return;
@@ -710,6 +717,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                 </header>
 
                 <main className="px-4 py-5 sm:px-6 sm:py-8">
+                    <style>{`html.cosmic-header-menu-active .cosmic-block-toolbar { opacity: 0 !important; pointer-events: none !important; }`}</style>
                     <div className="mx-auto w-full max-w-[1560px] overflow-visible rounded-xl border border-white/10 bg-white shadow-2xl shadow-black/30 lg:w-[min(86vw,1560px)]">
                         <div className="flex w-full flex-col items-stretch overflow-hidden rounded-[11px]">
                     
@@ -740,7 +748,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                             {/* Hover Toolbar */}
 
                             {capabilities.canManageBlocks && (
-                            <div className="absolute top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all duration-300 z-50">
+                            <div className="cosmic-block-toolbar absolute top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all duration-300 z-50">
 
                                 <div className="flex items-center gap-2 rounded-full bg-slate-900/90 backdrop-blur-xl border border-slate-700 shadow-2xl px-3 py-2">
 

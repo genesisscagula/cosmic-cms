@@ -26,6 +26,7 @@ class BlockPricingRegistry
 
             // Growth Collection.
             'hero_background_image' => ['label' => 'Background Image Hero', 'category' => 'growth', 'credits' => 30],
+            'hero_slider_fade' => ['label' => 'Fade Slider Hero', 'category' => 'signature', 'credits' => 150],
             'hero_editorial_overlay' => ['label' => 'Editorial Overlay Hero', 'category' => 'growth', 'credits' => 30],
             'hero_split_image' => ['label' => 'Split Image Hero', 'category' => 'growth', 'credits' => 30],
             'hero_floating_cards' => ['label' => 'Floating Cards Hero', 'category' => 'growth', 'credits' => 40],

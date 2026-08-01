@@ -710,6 +710,8 @@ HTML;
                     $title = e($card['title'] ?? '');
                     $desc = e($card['desc'] ?? '');
                     $icon = $icons[$i % count($icons)];
+                    $ctaLabel = e($card['cta_label'] ?? 'Learn More');
+                    $ctaUrl = e($card['cta_url'] ?? '#');
 
                     $cardHtml .= "
                     <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-8 h-full flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl'>
@@ -724,10 +726,10 @@ HTML;
                             {$desc}
                         </p>
                         <div class='mt-8'>
-                            <span class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']} opacity-80 transition-all duration-300 hover:gap-3'>
-                                Learn More
+                            <a href='{$ctaUrl}' class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']} opacity-80 transition-all duration-300 hover:gap-3'>
+                                {$ctaLabel}
                                 <span>→</span>
-                            </span>
+                            </a>
                         </div>
                     </div>";
                 }
@@ -757,8 +759,10 @@ HTML;
                 case 'glassmorphism_header':
                 $logoText = e($block['logo_text'] ?? 'Your Website');
                 $logoImageUrl = e(self::staticAssetUrl($block['logo_image_url'] ?? ''));
+                $logoHeight = min(60, max(24, (int) ($block['logo_height'] ?? 40)));
+                $logoMaxWidth = min(250, max(120, (int) ($block['logo_max_width'] ?? 250)));
                 $logo = $logoImageUrl !== ''
-                    ? "<img src='{$logoImageUrl}' alt='{$logoText}' class='h-14 w-auto max-w-[300px] object-contain'>"
+                    ? "<img src='{$logoImageUrl}' alt='{$logoText}' style='height: {$logoHeight}px; max-height: 60px; max-width: {$logoMaxWidth}px' class='w-auto object-contain'>"
                     : $logoText;
                 $ctaLabel = e($block['cta_label'] ?? 'Get Started');
                 $ctaUrl = e($block['cta_url'] ?? '#');
@@ -839,19 +843,19 @@ HTML;
                         background: rgb(241 245 249);
                     }
                 </style>
-                <header class='cosmic-static-header w-full {$headerBg} flex flex-wrap items-center justify-between gap-4 border-b {$headerBorder} px-6 py-4 sm:px-[8%] sm:py-6 sticky top-0 z-50 shadow-sm'>
+                <header class='cosmic-static-header w-full {$headerBg} flex flex-wrap items-center justify-between gap-4 border-b {$headerBorder} px-5 py-4 sm:px-6 sm:py-5 sticky top-0 z-50 shadow-sm'>
                     <div class='text-xl font-extrabold tracking-wide {$headerText}'>
                         {$logo}
                     </div>
 
-                    <nav class='flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-start sm:gap-10'>
-                        <ul class='flex flex-wrap list-none gap-x-4 gap-y-2 sm:gap-x-[40px] m-0 p-0'>
+                    <nav class='flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-start sm:gap-8'>
+                        <ul class='flex flex-wrap list-none gap-x-5 gap-y-2 sm:gap-x-8 m-0 p-0'>
                             {$navHtml}
                         </ul>
 
                         <a
                             href='{$ctaUrl}'
-                            class='{$buttonBg} {$buttonText} shrink-0 px-[40px] py-[16px] rounded-full text-sm font-semibold hover:opacity-90 transition'
+                            class='{$buttonBg} {$buttonText} shrink-0 px-7 py-3 rounded-full text-sm font-semibold hover:opacity-90 transition'
                         >
                             {$ctaLabel}
                         </a>
@@ -1019,6 +1023,8 @@ HTML;
                     $icon  = e($service['icon'] ?? '⚡');
                     $title = e($service['title'] ?? 'Service Title');
                     $desc  = e($service['desc'] ?? 'Service description.');
+                    $ctaLabel = e($service['cta_label'] ?? 'Learn More');
+                    $ctaUrl = e($service['cta_url'] ?? '#');
 
                     $html .= "
                         <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-8 flex flex-col md:flex-row md:items-center gap-8 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1'>
@@ -1040,9 +1046,9 @@ HTML;
                             </div>
 
                             <div class='shrink-0'>
-                                <span class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']}'>
-                                    Learn More →
-                                </span>
+                                <a href='{$ctaUrl}' class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']}'>
+                                    {$ctaLabel} →
+                                </a>
                             </div>
 
                         </div>
@@ -1462,7 +1468,127 @@ HTML;
 
                 break;
 
-                case 'hero_background_image':
+            case 'hero_slider_fade':
+                $sliderId = 'cosmic-slider-' . uniqid();
+                $slides = is_array($block['slides'] ?? null) ? array_values($block['slides']) : [];
+                $autoplayInterval = max(3000, intval($block['autoplay_interval'] ?? $block['interval'] ?? 6000));
+
+                if ($slides === []) {
+                    $slides = [[
+                        'image_url' => '',
+                        'eyebrow' => 'Built for what is next',
+                        'heading' => 'A stronger first impression',
+                        'description' => 'Introduce your business with a focused message and a clear next step.',
+                        'button_1_text' => 'Get started',
+                        'button_1_url' => '#',
+                        'button_2_text' => 'Explore services',
+                        'button_2_url' => '#',
+                        'button_3_text' => 'View our work',
+                        'button_3_url' => '#',
+                        'button_4_text' => 'Learn more',
+                        'button_4_url' => '#',
+                    ]];
+                }
+
+                $slideMarkup = '';
+                $dotMarkup = '';
+
+                foreach ($slides as $index => $slide) {
+                    $imageSource = self::staticAssetUrl($slide['image_url'] ?? $slide['image'] ?? $slide['background_image'] ?? '');
+                    $image = htmlspecialchars((string) $imageSource, ENT_QUOTES, 'UTF-8');
+                    $eyebrow = htmlspecialchars((string) ($slide['eyebrow'] ?? ''), ENT_QUOTES, 'UTF-8');
+                    $heading = htmlspecialchars((string) ($slide['heading'] ?? ''), ENT_QUOTES, 'UTF-8');
+                    $description = htmlspecialchars((string) ($slide['description'] ?? ''), ENT_QUOTES, 'UTF-8');
+                    $activeClass = $index === 0 ? ' is-active' : '';
+                    $backgroundStyle = $image !== '' ? "background-image:url('{$image}')" : '';
+                    $ariaHidden = $index === 0 ? 'false' : 'true';
+                    $buttonMarkup = '';
+                    $floatingButtonMarkup = '';
+                    $buttonDefaults = [
+                        2 => 'Explore services',
+                        3 => 'View our work',
+                        4 => 'Learn more',
+                    ];
+
+                    for ($buttonIndex = 1; $buttonIndex <= 4; $buttonIndex++) {
+                        $legacyText = $buttonIndex === 1 ? ($slide['button_text'] ?? '') : '';
+                        $legacyUrl = $buttonIndex === 1 ? ($slide['button_url'] ?? '#') : '#';
+                        $textKey = "button_{$buttonIndex}_text";
+                        $urlKey = "button_{$buttonIndex}_url";
+                        $rawText = array_key_exists($textKey, $slide)
+                            ? $slide[$textKey]
+                            : ($buttonDefaults[$buttonIndex] ?? $legacyText);
+                        $buttonText = trim((string) $rawText);
+
+                        if ($buttonText === '') {
+                            continue;
+                        }
+
+                        $buttonUrl = htmlspecialchars((string) ($slide[$urlKey] ?? $legacyUrl), ENT_QUOTES, 'UTF-8');
+                        $safeButtonText = htmlspecialchars($buttonText, ENT_QUOTES, 'UTF-8');
+                        $markup = '<a class="cosmic-fade-slide__button cosmic-fade-slide__button--' . $buttonIndex . '" href="' . $buttonUrl . '">' . $safeButtonText . '</a>';
+
+                        if ($buttonIndex === 4) {
+                            $floatingButtonMarkup = $markup;
+                        } else {
+                            $buttonMarkup .= $markup;
+                        }
+                    }
+
+                    $slideMarkup .= <<<HTML
+                        <article class="cosmic-fade-slide{$activeClass}" data-slider-slide style="{$backgroundStyle}" aria-hidden="{$ariaHidden}">
+                            <div class="cosmic-fade-slide__overlay"></div>
+                            <div class="cosmic-fade-slide__content">
+                                <p class="cosmic-fade-slide__eyebrow">{$eyebrow}</p>
+                                <h1>{$heading}</h1>
+                                <p class="cosmic-fade-slide__description">{$description}</p>
+                                <div class="cosmic-fade-slide__actions">{$buttonMarkup}</div>
+                            </div>
+                            <div class="cosmic-fade-slide__floating-action">{$floatingButtonMarkup}</div>
+                        </article>
+                    HTML;
+
+                    $dotMarkup .= '<button type="button" class="cosmic-fade-slider__dot' . ($index === 0 ? ' is-active' : '') . '" data-slider-dot="' . $index . '" aria-label="Show slide ' . ($index + 1) . '" aria-current="' . ($index === 0 ? 'true' : 'false') . '"></button>';
+                }
+
+                return <<<HTML
+                    <section id="{$sliderId}" class="cosmic-fade-slider" data-cosmic-fade-slider data-autoplay="{$autoplayInterval}" aria-roledescription="carousel">
+                        <div class="cosmic-fade-slider__viewport">{$slideMarkup}</div>
+                        <button type="button" class="cosmic-fade-slider__arrow cosmic-fade-slider__arrow--previous" data-slider-previous aria-label="Previous slide">&#8592;</button>
+                        <button type="button" class="cosmic-fade-slider__arrow cosmic-fade-slider__arrow--next" data-slider-next aria-label="Next slide">&#8594;</button>
+                        <div class="cosmic-fade-slider__dots" aria-label="Choose slide">{$dotMarkup}</div>
+                    </section>
+                    <style>
+                        #{$sliderId}{position:relative;min-height:clamp(34rem,72vh,52rem);overflow:hidden;background:#111827;color:#fff}
+                        #{$sliderId} .cosmic-fade-slider__viewport,#{$sliderId} .cosmic-fade-slide{position:absolute;inset:0}
+                        #{$sliderId} .cosmic-fade-slide{display:grid;align-items:center;background-position:center;background-size:cover;opacity:0;visibility:hidden;transition:opacity .7s ease,visibility .7s ease}
+                        #{$sliderId} .cosmic-fade-slide.is-active{opacity:1;visibility:visible;z-index:1}
+                        #{$sliderId} .cosmic-fade-slide__overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,6,23,.9) 0%,rgba(2,6,23,.66) 48%,rgba(2,6,23,.3) 100%)}
+                        #{$sliderId} .cosmic-fade-slide__content{position:relative;z-index:2;width:min(100% - 3rem,82rem);margin-inline:auto;padding-block:7rem;max-width:82rem}
+                        #{$sliderId} .cosmic-fade-slide__eyebrow{margin:0 0 1rem;font-size:.75rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:#c4b5fd}
+                        #{$sliderId} h1{max-width:13ch;margin:0;font-size:clamp(2.75rem,6vw,5.75rem);font-weight:700;line-height:.98;letter-spacing:-.045em;color:#fff}
+                        #{$sliderId} .cosmic-fade-slide__description{max-width:42rem;margin:1.5rem 0 0;font-size:clamp(1rem,1.5vw,1.2rem);line-height:1.7;color:#dbe4f0}
+                        #{$sliderId} .cosmic-fade-slide__actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}
+                        #{$sliderId} .cosmic-fade-slide__button{display:inline-flex;align-items:center;justify-content:center;padding:.85rem 1.35rem;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(2,6,23,.2);color:#fff;text-decoration:none;font-weight:700;backdrop-filter:blur(12px);transition:background .2s ease,border-color .2s ease,transform .2s ease}
+                        #{$sliderId} .cosmic-fade-slide__button:hover{border-color:rgba(255,255,255,.65);background:rgba(2,6,23,.42);transform:translateY(-1px)}
+                        #{$sliderId} .cosmic-fade-slide__button--1{border-color:#fff;background:#fff;color:#0f172a}
+                        #{$sliderId} .cosmic-fade-slide__button--1:hover{background:rgba(255,255,255,.9)}
+                        #{$sliderId} .cosmic-fade-slide__button--4{padding:.68rem 1rem;border-color:rgba(255,255,255,.25);background:rgba(2,6,23,.36);font-size:.8rem}
+                        #{$sliderId} .cosmic-fade-slide__floating-action{position:absolute;z-index:4;right:8.25rem;bottom:1.5rem}
+                        #{$sliderId} .cosmic-fade-slider__arrow{position:absolute;z-index:4;bottom:1.5rem;width:2.75rem;height:2.75rem;border:1px solid rgba(255,255,255,.32);border-radius:999px;background:rgba(15,23,42,.62);color:#fff;cursor:pointer;backdrop-filter:blur(12px)}
+                        #{$sliderId} .cosmic-fade-slider__arrow--previous{right:4.75rem}#{$sliderId} .cosmic-fade-slider__arrow--next{right:1.25rem}
+                        #{$sliderId} .cosmic-fade-slider__dots{position:absolute;z-index:4;left:clamp(1.5rem,calc((100% - 82rem)/2),5rem);bottom:1.75rem;display:flex;gap:.55rem}
+                        #{$sliderId} .cosmic-fade-slider__dot{width:.55rem;height:.55rem;padding:0;border:0;border-radius:999px;background:rgba(255,255,255,.4);cursor:pointer;transition:width .25s ease,background .25s ease}
+                        #{$sliderId} .cosmic-fade-slider__dot.is-active{width:1.8rem;background:#fff}
+                        @media(max-width:640px){#{$sliderId}{min-height:42rem}#{$sliderId} .cosmic-fade-slide__content{width:min(100% - 2rem,82rem);padding:5rem 1rem 8rem}#{$sliderId} .cosmic-fade-slide__actions{gap:.5rem}#{$sliderId} .cosmic-fade-slide__button{padding:.72rem 1rem;font-size:.82rem}#{$sliderId} .cosmic-fade-slide__floating-action{right:7.25rem;bottom:1.5rem;max-width:calc(100% - 9rem)}#{$sliderId} .cosmic-fade-slide__floating-action .cosmic-fade-slide__button{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#{$sliderId} .cosmic-fade-slider__dots{left:1rem;bottom:1.6rem}#{$sliderId} .cosmic-fade-slider__arrow--previous{right:4rem}#{$sliderId} .cosmic-fade-slider__arrow--next{right:.75rem}}
+                        @media(prefers-reduced-motion:reduce){#{$sliderId} .cosmic-fade-slide,#{$sliderId} .cosmic-fade-slider__dot,#{$sliderId} .cosmic-fade-slide__button{transition:none}}
+                    </style>
+                    <script>
+                        (()=>{const root=document.getElementById('{$sliderId}');if(!root)return;const slides=[...root.querySelectorAll('[data-slider-slide]')],dots=[...root.querySelectorAll('[data-slider-dot]')];if(slides.length<2)return;const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;let index=0,timer=null,paused=false;const show=(next)=>{index=(next+slides.length)%slides.length;slides.forEach((slide,i)=>{const active=i===index;slide.classList.toggle('is-active',active);slide.setAttribute('aria-hidden',active?'false':'true')});dots.forEach((dot,i)=>{const active=i===index;dot.classList.toggle('is-active',active);dot.setAttribute('aria-current',active?'true':'false')})};const stop=()=>{if(timer){clearInterval(timer);timer=null}};const start=()=>{stop();if(!reduced&&!paused)timer=setInterval(()=>show(index+1),Number(root.dataset.autoplay)||6000)};root.querySelector('[data-slider-previous]')?.addEventListener('click',()=>{show(index-1);start()});root.querySelector('[data-slider-next]')?.addEventListener('click',()=>{show(index+1);start()});dots.forEach((dot,i)=>dot.addEventListener('click',()=>{show(i);start()}));root.addEventListener('mouseenter',()=>{paused=true;stop()});root.addEventListener('mouseleave',()=>{paused=false;start()});root.addEventListener('focusin',()=>{paused=true;stop()});root.addEventListener('focusout',event=>{if(!root.contains(event.relatedTarget)){paused=false;start()}});show(0);start()})();
+                    </script>
+                HTML;
+
+            case 'hero_background_image':
 
                 $tagline = e($block['tagline'] ?? 'WELCOME TO OUR COMPANY');
                 $heading = e($block['heading'] ?? 'Build Beautiful Websites With Confidence');
@@ -1660,7 +1786,7 @@ HTML;
                 $primaryTheme = self::getTheme($primaryColor);
                 $isLightMedia = in_array($selectedThemeName, ['white', 'stone']);
                 $mediaOverlay = $isLightMedia ? 'bg-white' : 'bg-slate-950';
-                $mediaGradient = $isLightMedia ? 'from-white/95 via-white/55 to-white/20' : '{$mediaGradient}';
+                $mediaGradient = $isLightMedia ? 'from-white/95 via-white/70 to-white/35' : 'from-slate-950/65 via-slate-950/25 to-slate-950/15';
                 $mediaEyebrow = $isLightMedia ? 'text-slate-700' : 'text-white/75';
                 $mediaHeading = $isLightMedia ? 'text-slate-950' : 'text-white';
                 $mediaBody = $isLightMedia ? 'text-slate-700' : 'text-white/85';
@@ -1673,7 +1799,7 @@ HTML;
                 $html .= "
                 <section class='relative flex min-h-[420px] overflow-hidden sm:min-h-[460px] lg:min-h-[500px]' style=\"{$backgroundStyle}\">
                     <div class='absolute inset-0 {$mediaOverlay}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
-                    <div class='absolute inset-0 bg-gradient-to-r from-slate-950/65 via-slate-950/25 to-slate-950/15'></div>
+                    <div class='absolute inset-0 bg-gradient-to-r {$mediaGradient}'></div>
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20'>
                         <div class='max-w-3xl'>
                             <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$mediaEyebrow}'>{$eyebrow}</span>

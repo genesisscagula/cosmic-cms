@@ -473,6 +473,44 @@ class ContentGenerator
     TXT;
     }
 
+    private function heroSliderFadeSchema(): string
+    {
+        return <<<TXT
+
+    hero_slider_fade
+
+    - type = hero_slider_fade
+    - theme = auto
+    - category
+    - autoplay = true
+    - interval = 5000
+    - pause_on_hover = true
+    - show_dots = true
+    - show_arrows = true
+    - slides = array of exactly 3 items
+
+    Each slide must contain:
+    - image_url = ""
+    - eyebrow
+    - heading
+    - description
+    - button_1_text
+    - button_1_url
+    - button_2_text
+    - button_2_url
+    - button_3_text
+    - button_3_url
+    - button_4_text
+    - button_4_url
+
+    Generate exactly 3 distinct slides in the submitted business and page context.
+    Keep eyebrow text concise, headings clear, descriptions brief, and all four calls to action specific.
+    Use an empty image_url so the existing image pipeline can supply an appropriate image.
+    Do not omit, rename, duplicate, or add slide keys. Do not include markdown.
+
+    TXT;
+    }
+
     private function pricingCardsSchema(): string
     {
         return <<<TXT

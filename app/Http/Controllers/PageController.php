@@ -373,7 +373,7 @@ class PageController extends Controller
             'globalFooterBlock' => $website->global_footer,
             'trialToken' => $trial?->token,
             'cosmicPricing' => [
-                'balance' => (int) ($request->user()?->credits ?? 0),
+                'balance' => (int) ($request->user()?->fresh()?->credits ?? 0),
                 'actions' => ActionPricing::all(),
                 'blocks' => BlockPricingRegistry::all(),
                 'themes' => ThemePricingRegistry::all(),
@@ -628,8 +628,20 @@ class PageController extends Controller
             'header_block' => 'nullable|array',
         ]);
 
-        $oldMenuCount = count((array) data_get($website->global_header, 'menu', []));
-        $newMenuCount = count((array) data_get($validated, 'header_block.menu', []));
+        $countMenuItems = function (array $items) use (&$countMenuItems): int {
+            return collect($items)->sum(function ($item) use (&$countMenuItems) {
+                if (! is_array($item)) {
+                    return 0;
+                }
+
+                $children = is_array($item['children'] ?? null) ? $item['children'] : [];
+
+                return 1 + $countMenuItems($children);
+            });
+        };
+
+        $oldMenuCount = $countMenuItems((array) data_get($website->global_header, 'menu', []));
+        $newMenuCount = $countMenuItems((array) data_get($validated, 'header_block.menu', []));
         $addedItems = max(0, $newMenuCount - $oldMenuCount);
         $cost = $addedItems * ActionPricing::ADD_MENU_ITEM;
         $reference = 'menu-' . Str::uuid();

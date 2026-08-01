@@ -21,6 +21,7 @@ import TeamModernPreview from "./Previews/TeamModernPreview";
 import TestimonialsCarouselPreview from "./Previews/TestimonialsCarouselPreview";
 import PricingCardsPreview from "./Previews/PricingCardsPreview";
 import HeroBackgroundImagePreview from "./Previews/HeroBackgroundImagePreview";
+import HeroSliderFadePreview from "./Previews/HeroSliderFadePreview";
 import HeroParallaxPreview from "./Previews/HeroParallaxPreview";
 import HeroEditorialOverlayPreview from "./Previews/HeroEditorialOverlayPreview";
 import HeroSplitImagePreview from "./Previews/HeroSplitImagePreview";
@@ -338,6 +339,68 @@ export const BlockRegistry = [
     },
 
     {
+        type: "hero_slider_fade",
+        theme: "auto",
+        title: "Hero Slider Fade",
+        buttonLabel: "Add Fade Slider",
+        buttonClass: "bg-violet-600 hover:bg-violet-500",
+        preview: HeroSliderFadePreview,
+        payload: {
+            type: "hero_slider_fade",
+            theme: "auto",
+            autoplay: true,
+            interval: 5000,
+            pause_on_hover: true,
+            show_dots: true,
+            show_arrows: true,
+            slides: [
+                {
+                    image_url: "/storage/cms-images/background/background-1.avif",
+                    eyebrow: "BUILT FOR WHAT'S NEXT",
+                    heading: "A stronger first impression",
+                    description: "Introduce your business with a clear message and a confident next step.",
+                    button_1_text: "Get Started",
+                    button_1_url: "#",
+                    button_2_text: "Explore Services",
+                    button_2_url: "#",
+                    button_3_text: "View Our Work",
+                    button_3_url: "#",
+                    button_4_text: "Learn More",
+                    button_4_url: "#"
+                },
+                {
+                    image_url: "/storage/cms-images/background/background-2.avif",
+                    eyebrow: "DESIGNED AROUND YOU",
+                    heading: "Show what makes you different",
+                    description: "Highlight your services, experience, and the value customers can expect.",
+                    button_1_text: "Explore Services",
+                    button_1_url: "#",
+                    button_2_text: "Our Process",
+                    button_2_url: "#",
+                    button_3_text: "Case Studies",
+                    button_3_url: "#",
+                    button_4_text: "See Details",
+                    button_4_url: "#"
+                },
+                {
+                    image_url: "/storage/cms-images/background/background-3.avif",
+                    eyebrow: "READY WHEN YOU ARE",
+                    heading: "Turn interest into action",
+                    description: "Give visitors a simple, direct path to contact, book, or learn more.",
+                    button_1_text: "Contact Us",
+                    button_1_url: "#",
+                    button_2_text: "Book a Call",
+                    button_2_url: "#",
+                    button_3_text: "View Pricing",
+                    button_3_url: "#",
+                    button_4_text: "Get Started",
+                    button_4_url: "#"
+                }
+            ]
+        }
+    },
+
+    {
         type: "hero_editorial_overlay",
         theme: "auto",
         title: "Hero Editorial Overlay",
@@ -511,4 +574,3 @@ export const BlockRegistry = [
         ] },
     },
 ];
-

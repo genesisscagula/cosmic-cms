@@ -42,6 +42,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
     const [isHeaderModalOpen, setIsHeaderModalOpen] = useState(false);
     const [isNewPageOpen, setIsNewPageOpen] = useState(false);
     const [savedHeader, setSavedHeader] = useState(() => replaceLegacyHeaderLogo(globalHeaderBlock, website.name));
+    const [isLogoSizeOpen, setIsLogoSizeOpen] = useState(false);
     const originalMenuItemCount = countMenuItems(globalHeaderBlock?.menu || []);
     const [isSaving, setIsSaving] = useState(false);
     const [isLogoUploading, setIsLogoUploading] = useState(false);
@@ -206,6 +207,9 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
             });
             
             if (response.data.status === 'success') {
+                if (response.data.credit_balance !== undefined) {
+                    setCreditBalance(response.data.credit_balance);
+                }
                 showCosmicNotification({ title: 'Header saved', message: 'Use Push live update when you are ready to send this header to the live site.', tone: 'success' });
                 router.reload({ 
                     only: ['globalHeaderBlock'],
@@ -440,7 +444,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
             {isHeaderModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
                     <button type="button" aria-label="Close header dialog" onClick={() => !isSaving && setIsHeaderModalOpen(false)} className="absolute inset-0 cursor-default" />
-                    <div role="dialog" aria-modal="true" aria-labelledby="edit-header-title" className="relative h-[min(88dvh,900px)] max-h-[calc(100dvh-2rem)] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
+                    <div role="dialog" aria-modal="true" aria-labelledby="edit-header-title" className="relative h-[min(88dvh,900px)] max-h-[calc(100dvh-2rem)] w-full max-w-7xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
                         <div className="mb-5 flex items-start justify-between gap-4">
                             <div>
                                 <h2 id="edit-header-title" className="text-xl font-semibold text-white">Edit global header</h2>
@@ -453,9 +457,9 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                         <div className="mb-6 rounded-xl border border-white/10 bg-black/20 p-3">
                             <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</h3>
                             {savedHeader ? (
-                                <div className="w-full">
-                                    {savedHeader.type === 'dark_cyan_header' && <DarkCyanHeader block={savedHeader} onUpdate={updateHeaderContent} pageTargets={publishedPageTargets} />}
-                                    {savedHeader.type === 'glassmorphism_header' && <GlassmorphismHeader block={savedHeader} onUpdate={updateHeaderContent} globalTheme={globalTheme} pageTargets={publishedPageTargets} />}
+                                <div className="w-full overflow-hidden rounded-lg">
+                                    {savedHeader.type === 'dark_cyan_header' && <DarkCyanHeader block={savedHeader} onUpdate={updateHeaderContent} pageTargets={publishedPageTargets} onLogoClick={savedHeader.logo_image_url ? () => setIsLogoSizeOpen(true) : null} />}
+                                    {savedHeader.type === 'glassmorphism_header' && <GlassmorphismHeader block={savedHeader} onUpdate={updateHeaderContent} globalTheme={globalTheme} pageTargets={publishedPageTargets} onLogoClick={savedHeader.logo_image_url ? () => setIsLogoSizeOpen(true) : null} />}
                                 </div>
                             ) : (
                                 <div className="py-7 text-center text-sm text-slate-500">
@@ -501,8 +505,9 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                                     {savedHeader.logo_image_url && (
                                         <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-white/10 bg-black/20 p-2.5">
                                             <div className="flex h-11 min-w-24 items-center rounded-md bg-white px-3">
-                                                <img src={savedHeader.logo_image_url} alt="Uploaded website logo" className="max-h-7 max-w-40 object-contain" />
+                                                <img src={savedHeader.logo_image_url} alt="Uploaded website logo" style={{ height: `${Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))}px` }} className="w-auto max-w-[250px] object-contain" />
                                             </div>
+                                            <button type="button" onClick={() => setIsLogoSizeOpen(true)} disabled={isSaving || isLogoUploading} className="text-xs font-medium text-violet-300 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Adjust size</button>
                                             <button
                                                 type="button"
                                                 onClick={() => updateHeaderContent({ logo_image_url: null })}
@@ -629,6 +634,18 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                 </div>
             )}
 
+
+            {isLogoSizeOpen && savedHeader?.logo_image_url && (
+                <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+                    <button type="button" onClick={() => setIsLogoSizeOpen(false)} className="absolute inset-0" aria-label="Close logo size settings" />
+                    <section role="dialog" aria-modal="true" className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#18181d] p-5 text-slate-100 shadow-2xl">
+                        <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">Global header</p><h3 className="mt-1 text-lg font-semibold text-white">Logo size</h3><p className="mt-1 text-xs leading-5 text-slate-400">Adjust the logo height. The aspect ratio stays unchanged and the width remains capped at 250px.</p></div><button type="button" onClick={() => setIsLogoSizeOpen(false)} className="rounded-lg px-2 py-1 text-slate-400 hover:bg-white/5 hover:text-white">×</button></div>
+                        <div className="mt-5 rounded-xl border border-white/10 bg-white p-4"><img src={savedHeader.logo_image_url} alt="Logo size preview" style={{ height: `${Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))}px` }} className="mx-auto w-auto max-w-[250px] object-contain" /></div>
+                        <label className="mt-5 block"><span className="flex items-center justify-between text-xs font-medium text-slate-300"><span>Logo height</span><span>{Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))}px</span></span><input type="range" min="24" max="60" step="1" value={Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))} onChange={(event) => updateHeaderContent({ logo_height: Number(event.target.value), logo_max_width: 250 })} className="mt-3 w-full accent-violet-500" /></label>
+                        <div className="mt-5 flex justify-between gap-2"><button type="button" onClick={() => updateHeaderContent({ logo_height: 40, logo_max_width: 250 })} className="rounded-lg border border-white/10 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5">Use default</button><button type="button" onClick={() => setIsLogoSizeOpen(false)} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-slate-200">Done</button></div>
+                    </section>
+                </div>
+            )}
 
             {/* GLOBAL FOOTER MODAL POPUP SYSTEM */}
             {isFooterModalOpen && (

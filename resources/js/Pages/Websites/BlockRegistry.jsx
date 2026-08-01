@@ -59,6 +59,9 @@ import {
     HeroBackgroundImageBlock,
     HeroBackgroundImageSchema
 } from "./Blocks/Hero/HeroBackgroundImageBlock";
+import HeroSliderFadeBlock, {
+    HeroSliderFadeSchema
+} from "./Blocks/Hero/HeroSliderFadeBlock";
 
 import {
     HeroParallaxBlock,
@@ -149,6 +152,14 @@ export const BlockRegistry = {
         component: HeroBackgroundImageBlock,
 
         schema: HeroBackgroundImageSchema
+
+    },
+
+    hero_slider_fade: {
+
+        component: HeroSliderFadeBlock,
+
+        schema: HeroSliderFadeSchema
 
     },
 

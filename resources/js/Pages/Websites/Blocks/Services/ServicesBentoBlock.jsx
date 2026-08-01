@@ -46,7 +46,9 @@ export const ServicesBentoSchema = {
 
                 title: "Website Development",
 
-                desc: "Fast, scalable and SEO-friendly websites."
+                desc: "Fast, scalable and SEO-friendly websites.",
+                cta_label: "Learn More",
+                cta_url: "#"
 
             },
 
@@ -56,7 +58,9 @@ export const ServicesBentoSchema = {
 
                 title: "UI / UX Design",
 
-                desc: "Interfaces designed for people."
+                desc: "Interfaces designed for people.",
+                cta_label: "Learn More",
+                cta_url: "#"
 
             },
 
@@ -66,7 +70,9 @@ export const ServicesBentoSchema = {
 
                 title: "Digital Strategy",
 
-                desc: "Roadmaps that move your business forward."
+                desc: "Roadmaps that move your business forward.",
+                cta_label: "Learn More",
+                cta_url: "#"
 
             }
 
@@ -131,6 +137,26 @@ export const ServicesBentoSchema = {
                     type: "textarea",
 
                     label: "Description"
+
+                },
+
+                {
+
+                    key: "cta_label",
+
+                    type: "text",
+
+                    label: "CTA Label"
+
+                },
+
+                {
+
+                    key: "cta_url",
+
+                    type: "text",
+
+                    label: "CTA URL"
 
                 }
 
@@ -289,12 +315,16 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
 
                             <div className="shrink-0">
 
-                                <span
+                                <EditableButton
+                                    label={service.cta_label || "Learn More"}
+                                    url={service.cta_url || "#"}
+                                    onSave={(label, url) => {
+                                        const updated = [...services];
+                                        updated[index] = { ...updated[index], cta_label: label, cta_url: url };
+                                        onUpdate({ services: updated });
+                                    }}
                                     className={`inline-flex items-center gap-2 text-sm font-semibold ${theme.text}`}
-                                >
-                                    Learn More →
-
-                                </span>
+                                />
 
                             </div>
 
