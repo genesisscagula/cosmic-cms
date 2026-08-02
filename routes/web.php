@@ -12,6 +12,7 @@ use App\Http\Controllers\TrialGenerationController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\CreditController;
 use App\Http\Controllers\CosmicPricingController;
+use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SparkController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
@@ -48,6 +49,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
     Route::get('/credits/balance', [CreditController::class, 'balance'])->name('credits.balance');
     Route::post('/credits/purchase', [CreditController::class, 'purchase'])->name('credits.purchase');
+    Route::post('/payments/checkout', [PaymentController::class, 'checkout'])->middleware('throttle:10,1')->name('payments.checkout');
+    Route::get('/payments/success', [PaymentController::class, 'success'])->name('payments.success');
     Route::get('/cosmic-pricing', [CosmicPricingController::class, 'index'])->name('cosmic-pricing.index');
     Route::get('/sparks', [SparkController::class, 'index'])->name('sparks.index');
     Route::get('/sparks/catalog', [SparkController::class, 'catalog'])->name('sparks.catalog');

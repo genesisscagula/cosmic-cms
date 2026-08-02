@@ -54,8 +54,21 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
     const websiteId = props.page?.website_id || props.website?.id;
     const overlayOpacity = Math.max(0, Math.min(100, Number(data.overlayOpacity) || 76));
 
+    const handleSectionImageEdit = (event) => {
+        // Keep copy, links, and Builder controls independently editable.
+        // Clicking the remaining banner canvas opens the background image editor.
+        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable='true'], [role='button']")) {
+            return;
+        }
+
+        imageRef.current?.openEditor();
+    };
+
     return (
-        <section className="relative flex min-h-[420px] overflow-hidden sm:min-h-[460px] lg:min-h-[500px]">
+        <section
+            className="relative flex min-h-[420px] cursor-pointer overflow-hidden sm:min-h-[460px] lg:min-h-[500px]"
+            onClick={handleSectionImageEdit}
+        >
             <EditableImage
                 ref={imageRef}
                 websiteId={websiteId}
@@ -68,13 +81,15 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
             />
 
             <div
-                className={`absolute inset-0 z-10 ${mediaStyle.overlay}`}
+                className={`pointer-events-none absolute inset-0 z-10 ${mediaStyle.overlay}`}
                 style={{ opacity: overlayOpacity / 100 }}
-                onClick={() => imageRef.current?.openEditor()}
             />
             <div className={`pointer-events-none absolute inset-0 z-10 bg-gradient-to-r ${mediaStyle.gradient}`} />
 
-            <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20">
+            <div
+                className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20"
+                onClick={(event) => event.stopPropagation()}
+            >
                 <div className="max-w-3xl">
                     <EditableText
                         value={data.eyebrow}

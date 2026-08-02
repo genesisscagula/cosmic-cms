@@ -44,6 +44,25 @@ class AiPageGenerationService
                 continue;
             }
 
+            if ($type === 'case_studies_grid' && is_array($block['studies'] ?? null)) {
+                $studyImages = $this->images->localFallbacks(
+                    $resolvedImageFolder,
+                    count($block['studies'])
+                );
+
+                foreach ($block['studies'] as $studyIndex => &$study) {
+                    if (! is_array($study)) {
+                        continue;
+                    }
+
+                    $study['image_url'] = $studyImages[$studyIndex]
+                        ?? '/cosmic-images/cosmic-fallback.svg';
+                }
+
+                unset($study);
+                continue;
+            }
+
             if (! array_key_exists('image_url', $block)) {
                 continue;
             }

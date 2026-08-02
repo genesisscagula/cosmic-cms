@@ -149,8 +149,22 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const contentWidth = data.contentAlign === "center" ? "max-w-4xl" : "max-w-3xl";
     const heroHeight = data.height === "large" ? "min-h-[720px]" : "min-h-[88svh] lg:min-h-screen";
 
+    const handleSectionImageEdit = (event) => {
+        // Keep text, buttons, and other Builder controls independently editable.
+        // Any click on the remaining hero canvas opens the background media editor.
+        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable='true'], [role='button']")) {
+            return;
+        }
+
+        imageRef.current?.openEditor();
+    };
+
     return (
-        <section ref={sectionRef} className={`relative isolate flex overflow-hidden px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 ${heroHeight}`}>
+        <section
+            ref={sectionRef}
+            className={`relative isolate flex cursor-pointer overflow-hidden px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 ${heroHeight}`}
+            onClick={handleSectionImageEdit}
+        >
             <div
                 className="cosmic-parallax-media absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform"
                 style={{ transform: "translate3d(0, 0, 0) scale(1.14)" }}
@@ -174,6 +188,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
                 ref={contentRef}
                 className={`relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center transition-opacity duration-150 ${alignment[data.contentAlign] || alignment.left}`}
                 style={{ transform: "translate3d(0, 0, 0)", willChange: "transform, opacity" }}
+                onClick={(event) => event.stopPropagation()}
             >
                 <div className={contentWidth}>
                     <div className={`inline-flex items-center gap-3 rounded-full border px-4 py-2 backdrop-blur-md ${mediaStyle.badge}`}>
@@ -222,12 +237,6 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
                 </span>
             </div>
 
-            <button
-                type="button"
-                aria-label="Edit hero parallax background image"
-                className="absolute inset-0 z-[15] cursor-pointer bg-transparent"
-                onClick={() => imageRef.current?.openEditor()}
-            />
         </section>
     );
 }

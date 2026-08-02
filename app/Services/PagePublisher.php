@@ -91,9 +91,16 @@ class PagePublisher
                         // Every page gets its own directory. This makes
                         // parent/child routes predictable: /about/team/.
                         'output_path' => ($pageDirectory === '' ? 'index.html' : $pageDirectory . '/index.html'),
-                        'html' => $page->page_type === 'blog'
-                            ? CmsHtmlCompiler::compile($blocks, $primaryColor, ['blog_posts' => $posts, 'page_style' => $page->published_page_style ?? $page->page_style])
-                            : ($page->published_html ?? CmsHtmlCompiler::compile($blocks, $primaryColor, ['page_style' => $page->published_page_style ?? $page->page_style])),
+                        // Recompile the approved snapshot for every live push. Reusing
+                        // published_html would preserve stale localhost asset URLs that
+                        // were generated before the export normalizer was introduced.
+                        'html' => CmsHtmlCompiler::compile(
+                            $blocks,
+                            $primaryColor,
+                            $page->page_type === 'blog'
+                                ? ['blog_posts' => $posts, 'page_style' => $page->published_page_style ?? $page->page_style]
+                                : ['page_style' => $page->published_page_style ?? $page->page_style]
+                        ),
                     ]];
 
                     if ($page->page_type !== 'blog') {

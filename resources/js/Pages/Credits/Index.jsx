@@ -16,7 +16,8 @@ export default function CreditsIndex({
     balance = 0,
     transactions,
     packages = {},
-    paymentsEnabled = false,
+    plans = {},
+    paymentProviders = {},
     developerPurchasesEnabled = false,
 }) {
     const wallet = useCreditBalance();
@@ -30,6 +31,10 @@ export default function CreditsIndex({
     const packageRows = useMemo(
         () => Object.entries(packages).map(([key, value]) => ({ key, ...value })),
         [packages],
+    );
+    const planRows = useMemo(
+        () => Object.entries(plans).map(([key, value]) => ({ key, product_type: 'plan', ...value })),
+        [plans],
     );
 
     const syncBalance = (nextBalance) => {
@@ -54,6 +59,23 @@ export default function CreditsIndex({
         } catch (purchaseError) {
             setError(purchaseError.response?.data?.message || 'Unable to add credits right now.');
         } finally {
+            setPurchasing(false);
+        }
+    };
+
+    const startCheckout = async (provider) => {
+        if (!selectedPackage || purchasing) return;
+        setPurchasing(true);
+        setError('');
+        try {
+            const response = await axios.post(route('payments.checkout'), {
+                provider,
+                product_type: selectedPackage.product_type || 'credits',
+                product_key: selectedPackage.key,
+            });
+            window.location.assign(response.data.checkout_url);
+        } catch (checkoutError) {
+            setError(checkoutError.response?.data?.message || 'Unable to start secure checkout.');
             setPurchasing(false);
         }
     };
@@ -110,12 +132,26 @@ export default function CreditsIndex({
                             <button
                                 type="button"
                                 key={item.key}
-                                onClick={() => setSelectedPackage(item)}
+                                onClick={() => setSelectedPackage({ ...item, product_type: 'credits' })}
                                 className="rounded-2xl border border-white/10 bg-[#141416] p-5 text-left transition hover:-translate-y-0.5 hover:border-cyan-300/30 hover:bg-white/[0.06]"
                             >
                                 <p className="text-sm font-semibold text-slate-300">{item.label}</p>
                                 <p className="mt-4 text-2xl font-black text-white">⚡ {item.credits}</p>
                                 <p className="mt-1 text-sm font-semibold text-cyan-300">${item.price_usd} USD</p>
+                            </button>
+                        ))}
+                    </div>
+
+                    <div className="mb-4 mt-10">
+                        <h2 className="text-xl font-semibold text-white">Monthly plans</h2>
+                        <p className="mt-1 text-sm text-slate-500">Secure recurring billing through Stripe.</p>
+                    </div>
+                    <div className="grid gap-4 md:grid-cols-3">
+                        {planRows.map((plan) => (
+                            <button type="button" key={plan.key} onClick={() => setSelectedPackage(plan)} className="rounded-2xl border border-white/10 bg-[#141416] p-5 text-left transition hover:border-violet-300/30 hover:bg-white/[0.06]">
+                                <p className="font-semibold text-white">{plan.label}</p>
+                                <p className="mt-3 text-2xl font-black text-white">${plan.price_usd}<span className="text-sm font-medium text-slate-500">/month</span></p>
+                                <p className="mt-2 text-sm text-cyan-300">{plan.credits} monthly credits</p>
                             </button>
                         ))}
                     </div>
@@ -190,7 +226,7 @@ export default function CreditsIndex({
                         <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-slate-400">
                             {developerPurchasesEnabled
                                 ? 'Developer simulation is active. No real payment will be processed.'
-                                : paymentsEnabled
+                                : (paymentProviders.stripe || paymentProviders.paymongo)
                                     ? 'Continue to secure payment.'
                                     : 'Online payments are coming soon.'}
                         </div>
@@ -199,11 +235,17 @@ export default function CreditsIndex({
                             <button type="button" onClick={() => setSelectedPackage(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5">
                                 Cancel
                             </button>
+                            {paymentProviders.paymongo && selectedPackage.product_type !== 'plan' && (
+                                <button type="button" disabled={purchasing} onClick={() => startCheckout('paymongo')} className="rounded-xl bg-cyan-400 px-4 py-2.5 text-sm font-black text-slate-950 disabled:opacity-50">Pay ₱{selectedPackage.price_php.toLocaleString()}</button>
+                            )}
+                            {paymentProviders.stripe && (
+                                <button type="button" disabled={purchasing} onClick={() => startCheckout('stripe')} className="rounded-xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 disabled:opacity-50">Pay ${selectedPackage.price_usd}</button>
+                            )}
                             <button
                                 type="button"
                                 disabled={!developerPurchasesEnabled || purchasing}
                                 onClick={() => simulatePurchase(selectedPackage.key)}
-                                className="rounded-xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-500"
+                                className={`${developerPurchasesEnabled ? '' : 'hidden'} rounded-xl bg-white px-4 py-2.5 text-sm font-black text-slate-950 transition hover:bg-cyan-100 disabled:cursor-not-allowed disabled:bg-white/10 disabled:text-slate-500`}
                             >
                                 {purchasing ? 'Processing…' : developerPurchasesEnabled ? 'Simulate Purchase' : 'Payments Coming Soon'}
                             </button>

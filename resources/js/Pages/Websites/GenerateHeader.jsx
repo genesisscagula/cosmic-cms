@@ -234,7 +234,7 @@ function HeaderMenuItemEditor({ item, textClass, targetListId, pageTargets, hasC
                 >
                     <span>{item.label || 'Menu item'}</span>
                     {hasChildren && (
-                        <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-3 w-3 shrink-0 transition-transform duration-200">
+                        <svg aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" strokeWidth="1.8" className="h-[0.35rem] w-[0.35rem] shrink-0 transition-transform duration-200">
                             <path d="m4 6 4 4 4-4" />
                         </svg>
                     )}

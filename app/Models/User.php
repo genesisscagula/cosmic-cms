@@ -31,6 +31,10 @@ class User extends Authenticatable
         'password',
         'account_type',
         'credits',
+        'plan_key',
+        'plan_status',
+        'plan_provider',
+        'plan_renews_at',
     ];
 
     /**
@@ -56,6 +60,7 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'credits' => 'integer',
+            'plan_renews_at' => 'datetime',
         ];
     }
 
@@ -86,6 +91,11 @@ class User extends Authenticatable
     public function creditTransactions()
     {
         return $this->hasMany(CreditTransaction::class);
+    }
+
+    public function paymentOrders()
+    {
+        return $this->hasMany(PaymentOrder::class);
     }
 
     public function cosmicUnlocks()

@@ -2,8 +2,6 @@
 
 namespace App\Helpers;
 
-use App\Support\PageStyleRegistry;
-
 class CmsHtmlCompiler
 {
     private static ?array $themeCatalog = null;
@@ -43,13 +41,76 @@ class CmsHtmlCompiler
     {
         $url = trim((string) $url);
 
-        if ($url === '' || preg_match('/^(?:https?:)?\/\//i', $url) || str_starts_with($url, 'data:')) {
+        if ($url === '' || str_starts_with($url, 'data:')) {
             return $url;
         }
+
+        // Exported websites must never retain local development hosts or Windows paths.
+        // Convert local absolute URLs back to their public path, then resolve them against
+        // the configured Cosmic CMS asset host used by deployed static websites.
+        if (preg_match('#^(?:https?:)?//([^/]+)(/.*)?$#i', $url, $matches)) {
+            $host = strtolower(preg_replace('/:\d+$/', '', $matches[1]) ?? $matches[1]);
+            $path = $matches[2] ?? '/';
+            $localHosts = ['localhost', '127.0.0.1', '::1'];
+
+            if (in_array($host, $localHosts, true)
+                || str_ends_with($host, '.local')
+                || str_contains($host, 'skyrocket-claude')) {
+                $url = $path;
+            } else {
+                return $url;
+            }
+        }
+
+        // Normalize accidental Windows public/storage paths copied into block data.
+        $url = preg_replace('#^[A-Za-z]:[\\/].*?[\\/]public[\\/]#', '/', $url) ?? $url;
+        $url = str_replace('\\', '/', $url);
 
         $baseUrl = rtrim((string) config('services.cosmic.asset_base_url', config('app.url')), '/');
 
         return $baseUrl . '/' . ltrim($url, '/');
+    }
+
+    /**
+     * Final safety pass for image-bearing HTML attributes and CSS URLs. This catches
+     * nested block data that may bypass staticAssetUrl() while leaving normal links alone.
+     */
+    private static function normalizePublishedAssetUrls(string $html): string
+    {
+        $normalize = static fn (string $url): string => self::staticAssetUrl(html_entity_decode($url, ENT_QUOTES));
+
+        $html = preg_replace_callback(
+            '/\b(src|poster)=([' . "\"'" . '])([^' . "\"'" . ']+)\2/i',
+            static function (array $matches) use ($normalize): string {
+                $url = $matches[3];
+                if (! preg_match('#^(?:https?:)?//#i', $url)
+                    && ! preg_match('#^(?:[A-Za-z]:[\\/])#', $url)
+                    && ! preg_match('#^/storage(?:/|$)#i', $url)) {
+                    return $matches[0];
+                }
+
+                $normalized = e($normalize($url));
+                return $matches[1] . '=' . $matches[2] . $normalized . $matches[2];
+            },
+            $html
+        ) ?? $html;
+
+        $html = preg_replace_callback(
+            '/url\(([' . "\"'" . ']?)([^)' . "\"'" . ']+)\1\)/i',
+            static function (array $matches) use ($normalize): string {
+                $url = trim($matches[2]);
+                if (! preg_match('#^(?:https?:)?//#i', $url)
+                    && ! preg_match('#^(?:[A-Za-z]:[\\/])#', $url)
+                    && ! preg_match('#^/storage(?:/|$)#i', $url)) {
+                    return $matches[0];
+                }
+
+                return "url('" . e($normalize($url)) . "')";
+            },
+            $html
+        ) ?? $html;
+
+        return $html;
     }
 
     /**
@@ -199,44 +260,22 @@ class CmsHtmlCompiler
         return $markup;
     }
 
-    /** Keep AI/editor rich text safe while preserving the same structure shown in Builder. */
-    private static function blogPostContentHtml(?string $content, string $fallback = ''): string
+    /** Compile one published blog post into the same static visual system as the Builder. */
+    public static function compileBlogPost(array $post, string $primaryColor = null): string
     {
-        $content = trim((string) $content);
-
-        if ($content === '') {
-            return $fallback !== '' ? '<p>' . e($fallback) . '</p>' : '';
-        }
-
-        if (preg_match('/<(?:p|h2|h3|ul|ol|li|blockquote|strong|em|a)\b/i', $content) === 1) {
-            return strip_tags($content, '<h2><h3><p><ul><ol><li><strong><em><blockquote><a>');
-        }
-
-        $paragraphs = preg_split('/\R{2,}/', $content) ?: [];
-
-        return collect($paragraphs)
-            ->map(fn ($paragraph) => trim((string) $paragraph))
-            ->filter()
-            ->map(fn ($paragraph) => '<p>' . nl2br(e($paragraph)) . '</p>')
-            ->implode("\n");
-    }
-
-    /** Compile one published blog post using the same visual hierarchy as Builder. */
-    public static function compileBlogPost(array $post, string $primaryColor = null, string $backUrl = 'blog/'): string
-    {
-        $theme = self::getTheme('white');
+        $theme = self::getTheme($primaryColor ?: 'emerald');
         $title = e($post['title'] ?? 'Untitled article');
         $category = e($post['category'] ?? 'Article');
         $excerpt = e($post['excerpt'] ?? '');
-        $content = self::blogPostContentHtml($post['content'] ?? '', $post['excerpt'] ?? '');
+        $content = trim((string) ($post['content'] ?? ''));
+        $content = $content !== '' ? nl2br(e($content)) : $excerpt;
         $image = e(self::staticAssetUrl($post['image_url'] ?? '/storage/cms-images/background/background-1.avif'));
-        $backUrl = e($backUrl);
         $tags = is_array($post['tags'] ?? null) ? array_slice($post['tags'], 0, 8) : [];
         $tagMarkup = collect($tags)
-            ->map(fn ($tag) => "<span class='rounded-full border px-3 py-1 text-xs {$theme['border']} {$theme['sub']}'>#" . e((string) $tag) . '</span>')
+            ->map(fn ($tag) => "<span class='rounded-full border px-3 py-1 text-xs font-medium {$theme['border']} {$theme['sub']}'>" . e((string) $tag) . '</span>')
             ->implode('');
 
-        return "<article class='bg-[#fcfcfb] px-6 py-16 sm:px-8 lg:px-12 lg:py-24'><div class='mx-auto w-full max-w-6xl'><a href='{$backUrl}' class='mb-5 inline-block text-sm font-semibold text-slate-900 hover:underline'>← Back to all posts</a><img src='{$image}' alt='{$title}' class='max-h-[620px] w-full rounded-[15px] object-cover'><div class='mx-auto max-w-4xl py-10 sm:py-14'><p class='text-xs font-semibold uppercase tracking-[0.22em] text-slate-600'>{$category}</p><h1 class='mt-4 text-4xl font-bold leading-tight tracking-tight text-slate-900 sm:text-5xl'>{$title}</h1>" . ($excerpt !== '' ? "<p class='mt-5 text-lg leading-8 text-slate-600'>{$excerpt}</p>" : '') . "<div class='cosmic-blog-content mt-9 max-w-none text-base leading-8 text-slate-900 [&_p]:mb-5 [&_h2]:mb-4 [&_h2]:mt-9 [&_h2]:text-3xl [&_h3]:mb-3 [&_h3]:mt-7 [&_h3]:text-2xl [&_ul]:mb-5 [&_ul]:pl-6 [&_ol]:mb-5 [&_ol]:pl-6 [&_blockquote]:my-6'>{$content}</div>" . ($tagMarkup !== '' ? "<div class='mt-10 flex flex-wrap gap-2'>{$tagMarkup}</div>" : '') . "</div></div></article>";
+        return "<article class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-4xl'><a href='blog/' class='text-sm font-semibold {$theme['sub']} hover:underline'>← Back to articles</a><p class='mt-12 text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$category}</p><h1 class='mt-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl {$theme['text']}'>{$title}</h1><p class='mt-6 max-w-3xl text-lg leading-8 {$theme['sub']}'>{$excerpt}</p><img src='{$image}' alt='{$title}' class='mt-10 aspect-[16/8] w-full rounded-3xl object-cover'><div class='mt-8 flex flex-wrap gap-2'>{$tagMarkup}</div><div class='mt-10 max-w-3xl text-base leading-8 {$theme['sub']}'>{$content}</div></div></article>";
     }
 
    public static function compile(array $blocks, string $primaryColor = null, array $context = []): string
@@ -249,7 +288,12 @@ class CmsHtmlCompiler
         foreach ($blocks as $index => $block) {
 
 
-            $pattern = PageStyleRegistry::pattern($context['page_style'] ?? null);
+            $pattern = [
+                "primary",
+                "white",
+                "surface",
+                "white"
+            ];
 
             $blockTheme = $block['theme'] ?? "auto";
 
@@ -286,63 +330,41 @@ class CmsHtmlCompiler
 
             switch ($type) {
                 case 'newsletter_cta':
-                // v2.7.4: Newsletter Sparks always inherit the active website
-                // primary color instead of using a hardcoded midnight panel.
-                $theme = self::getTheme($primaryColor);
-                $variant = $block['layout_variant'] ?? 'newsletter-01';
+                // Editorial newsletter callouts remain neutral so they pair
+                // with the white Blog Hub regardless of the website theme.
                 $eyebrow = e($block['eyebrow'] ?? 'Stay in the loop');
                 $heading = e($block['heading'] ?? 'Get weekly insights');
                 $text = e($block['text'] ?? 'Practical ideas, useful updates, and new resources delivered occasionally.');
                 $placeholder = e($block['placeholder'] ?? 'Your email address');
                 $buttonLabel = e($block['button_label'] ?? 'Subscribe');
                 $disclaimer = e($block['disclaimer'] ?? 'No spam. Unsubscribe anytime.');
-                $panelLayout = $variant === 'newsletter-02'
-                    ? 'text-center'
-                    : ($variant === 'newsletter-03' ? 'grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center' : 'lg:flex lg:items-center lg:justify-between lg:gap-12');
-                $copyLayout = $variant === 'newsletter-02' ? 'mx-auto max-w-2xl' : 'max-w-2xl';
-                $formLayout = $variant === 'newsletter-02' ? 'mx-auto mt-8' : ($variant === 'newsletter-03' ? '' : 'mt-8 lg:mt-0');
-                $html .= "<section class='bg-[#fcfcfb] px-6 py-14 sm:px-8 lg:px-12 lg:py-20'><div class='mx-auto max-w-7xl'><div class='rounded-3xl border px-6 py-10 shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:px-10 lg:px-14 lg:py-12 {$panelLayout} {$theme['bg']} {$theme['border']} {$theme['text']}'><div class='{$copyLayout}'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl'>{$heading}</h2><p class='mt-4 max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p></div><form class='{$formLayout} w-full max-w-md' onsubmit='return false'><div class='flex flex-col gap-3 sm:flex-row'><input type='email' aria-label='Email address' placeholder='{$placeholder}' class='min-h-[50px] flex-1 rounded-xl border px-4 text-sm outline-none {$theme['card']} {$theme['border']} {$theme['text']}'><button type='submit' class='min-h-[50px] rounded-xl px-6 text-sm font-bold {$theme['card']} {$theme['text']}'>{$buttonLabel}</button></div><p class='mt-3 text-xs {$theme['sub']}'>{$disclaimer}</p></form></div></div></section>";
+                $html .= "<section class='bg-[#fcfcfb] px-6 py-14 sm:px-8 lg:px-12 lg:py-20'><div class='mx-auto max-w-7xl'><div class='rounded-3xl border border-slate-800 bg-slate-950 px-6 py-10 text-white shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:px-10 lg:flex lg:items-center lg:justify-between lg:gap-12 lg:px-14 lg:py-12'><div class='max-w-2xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] text-violet-200'>{$eyebrow}</p><h2 class='mt-4 text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl'>{$heading}</h2><p class='mt-4 max-w-xl text-base leading-7 text-slate-300'>{$text}</p></div><form class='mt-8 w-full max-w-md lg:mt-0' onsubmit='return false'><div class='flex flex-col gap-3 sm:flex-row'><input type='email' aria-label='Email address' placeholder='{$placeholder}' class='min-h-[50px] flex-1 rounded-xl border border-white/15 bg-white/10 px-4 text-sm text-white placeholder:text-slate-400 outline-none'><button type='submit' class='min-h-[50px] rounded-xl bg-white px-6 text-sm font-bold text-slate-950'>{$buttonLabel}</button></div><p class='mt-3 text-xs text-slate-400'>{$disclaimer}</p></form></div></div></section>";
                 break;
 
                 case 'latest_resources':
                 $eyebrow = e($block['eyebrow'] ?? 'Keep exploring');
                 $heading = e($block['heading'] ?? 'Latest resources');
                 $text = e($block['text'] ?? 'Helpful next reads for visitors who want to learn more.');
-                $variant = $block['layout_variant'] ?? 'resources-01';
                 $resources = is_array($block['resources'] ?? null) ? array_slice($block['resources'], 0, 2) : [
                     ['eyebrow' => 'Guide', 'title' => 'A practical checklist for your next step', 'text' => 'A concise starting point for making a clearer, more confident decision.', 'cta_label' => 'Read the guide', 'cta_url' => '#'],
                     ['eyebrow' => 'Resource', 'title' => 'Questions worth asking before you begin', 'text' => 'Use this focused resource to prepare for a better conversation with your team.', 'cta_label' => 'Explore resource', 'cta_url' => '#'],
                 ];
                 $resourceMarkup = '';
-                $resourceCardClass = $variant === 'resources-02' ? 'grid gap-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm sm:grid-cols-[130px_1fr]' : 'group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg sm:p-8';
                 foreach ($resources as $resource) {
                     if (!is_array($resource)) continue;
-                    $resourceMarkup .= "<article class='{$resourceCardClass}'><p class='text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-700'>" . e($resource['eyebrow'] ?? 'Resource') . "</p><h3 class='mt-4 text-2xl font-bold leading-tight tracking-tight text-slate-900'>" . e($resource['title'] ?? '') . "</h3><p class='mt-4 text-sm leading-6 text-slate-600'>" . e($resource['text'] ?? '') . "</p><a href='" . e($resource['cta_url'] ?? '#') . "' class='mt-7 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 transition group-hover:decoration-slate-900'>" . e($resource['cta_label'] ?? 'Read more') . "</a></article>";
+                    $resourceMarkup .= "<article class='group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg sm:p-8'><p class='text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-700'>" . e($resource['eyebrow'] ?? 'Resource') . "</p><h3 class='mt-4 text-2xl font-bold leading-tight tracking-tight text-slate-900'>" . e($resource['title'] ?? '') . "</h3><p class='mt-4 text-sm leading-6 text-slate-600'>" . e($resource['text'] ?? '') . "</p><a href='" . e($resource['cta_url'] ?? '#') . "' class='mt-7 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 transition group-hover:decoration-slate-900'>" . e($resource['cta_label'] ?? 'Read more') . "</a></article>";
                 }
-                $resourcesHeaderClass = $variant === 'resources-02' ? 'mx-auto max-w-3xl text-center' : 'max-w-3xl';
-                $resourcesGridClass = $variant === 'resources-02' ? 'mx-auto mt-10 grid max-w-4xl gap-5' : ($variant === 'resources-03' ? 'mt-10 grid gap-5 lg:grid-cols-2' : 'mt-10 grid gap-5 md:grid-cols-2');
-                $html .= "<section class='bg-[#fcfcfb] px-6 py-16 sm:px-8 lg:px-12 lg:py-24'><div class='mx-auto max-w-7xl'><div class='{$resourcesHeaderClass}'><p class='text-xs font-semibold uppercase tracking-[0.28em] text-slate-500'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 text-slate-600'>{$text}</p></div><div class='{$resourcesGridClass}'>{$resourceMarkup}</div></div></section>";
+                $html .= "<section class='bg-[#fcfcfb] px-6 py-16 sm:px-8 lg:px-12 lg:py-24'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] text-slate-500'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 text-slate-600'>{$text}</p></div><div class='mt-10 grid gap-5 md:grid-cols-2'>{$resourceMarkup}</div></div></section>";
                 break;
 
                 case 'blog_mini_hero':
                 $eyebrow = e($block['eyebrow'] ?? 'Latest insights');
                 $heading = e($block['heading'] ?? 'Ideas for building a better business');
                 $text = e($block['text'] ?? 'Practical notes, useful perspectives, and updates from our team.');
-                $variant = $block['layout_variant'] ?? 'mini-header-01';
-                $contentLayout = $variant === 'mini-header-02' ? 'mx-auto max-w-4xl text-center' : ($variant === 'mini-header-03' ? 'grid items-end gap-8 lg:grid-cols-[1.15fr_.85fr]' : 'max-w-3xl');
-                $html .= "<section class='relative overflow-hidden border-b px-6 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']} {$theme['border']}'><div class='pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full {$theme['card']} opacity-10 blur-3xl'></div><div class='relative mx-auto max-w-7xl'><div class='{$contentLayout}'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h1 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h1><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$theme['sub']}'>{$text}</p></div></div></section>";
+                $html .= "<section class='relative overflow-hidden border-b px-6 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']} {$theme['border']}'><div class='pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full {$theme['card']} opacity-10 blur-3xl'></div><div class='relative mx-auto max-w-7xl'><div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h1 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h1><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$theme['sub']}'>{$text}</p></div></div></section>";
                 break;
 
                 case 'blog_hub':
-                if (is_array($context['single_blog_post'] ?? null)) {
-                    $html .= self::compileBlogPost(
-                        $context['single_blog_post'],
-                        $primaryColor,
-                        (string) ($context['blog_index_url'] ?? 'blog/')
-                    );
-                    break;
-                }
-
                 // Editorial hubs are intentionally neutral. Unlike surrounding
                 // hero/supporting sections, their reading surface never inherits
                 // the website's primary color.
@@ -351,7 +373,6 @@ class CmsHtmlCompiler
                 $heading = e($block['heading'] ?? 'Ideas for building a better business');
                 $text = e($block['text'] ?? 'Practical notes, useful perspectives, and updates from our team.');
                 $showIntro = ($block['show_intro'] ?? true) !== false;
-                $variant = $block['layout_variant'] ?? 'blog-cards-01';
                 $featured = is_array($block['featured'] ?? null) ? $block['featured'] : [];
                 $featuredCategory = e($featured['category'] ?? 'Featured article');
                 $featuredTitle = e($featured['title'] ?? 'A clearer way to plan your next project');
@@ -407,12 +428,7 @@ class CmsHtmlCompiler
                     ? "<div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 {$theme['sub']}'>{$text}</p></div>"
                     : '';
                 $featuredSpacing = $showIntro ? 'mt-12' : '';
-                $featuredGridClass = $variant === 'blog-cards-02' ? 'md:grid-cols-[.8fr_1.2fr]' : ($variant === 'blog-cards-03' ? 'md:grid-cols-1' : 'md:grid-cols-2');
-                $featuredImageClass = $variant === 'blog-cards-03'
-                    ? 'h-[240px] sm:h-[340px] lg:h-[420px]'
-                    : 'min-h-[260px] h-full';
-                $postGridClass = $variant === 'blog-cards-02' ? 'lg:grid-cols-2' : ($variant === 'blog-cards-03' ? 'sm:grid-cols-2 lg:grid-cols-3' : 'sm:grid-cols-2 lg:grid-cols-4');
-                $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$introMarkup}<article class='{$featuredSpacing} grid overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} {$featuredGridClass}'><img src='{$featuredImage}' alt='{$featuredTitle}' class='{$featuredImageClass} w-full object-cover'><div class='flex min-h-[260px] flex-col justify-center p-7 sm:p-10'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$featuredCategory}</p><h3 class='mt-4 text-3xl font-bold tracking-tight {$theme['text']}'>{$featuredTitle}</h3><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$featuredExcerpt}</p><a href='{$featuredUrl}' class='mt-7 text-sm font-semibold {$theme['text']} hover:underline'>{$featuredCta}</a></div></article><div class='mt-7 grid gap-5 {$postGridClass}'>{$postMarkup}</div></div></section>";
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$introMarkup}<article class='{$featuredSpacing} grid overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} md:grid-cols-2'><img src='{$featuredImage}' alt='{$featuredTitle}' class='min-h-[260px] h-full w-full object-cover'><div class='flex min-h-[260px] flex-col justify-center p-7 sm:p-10'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$featuredCategory}</p><h3 class='mt-4 text-3xl font-bold tracking-tight {$theme['text']}'>{$featuredTitle}</h3><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$featuredExcerpt}</p><a href='{$featuredUrl}' class='mt-7 text-sm font-semibold {$theme['text']} hover:underline'>{$featuredCta}</a></div></article><div class='mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>{$postMarkup}</div></div></section>";
                 break;
 
                 case 'hero_centered_cta':
@@ -710,8 +726,6 @@ HTML;
                     $title = e($card['title'] ?? '');
                     $desc = e($card['desc'] ?? '');
                     $icon = $icons[$i % count($icons)];
-                    $ctaLabel = e($card['cta_label'] ?? 'Learn More');
-                    $ctaUrl = e($card['cta_url'] ?? '#');
 
                     $cardHtml .= "
                     <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-8 h-full flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl'>
@@ -726,10 +740,10 @@ HTML;
                             {$desc}
                         </p>
                         <div class='mt-8'>
-                            <a href='{$ctaUrl}' class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']} opacity-80 transition-all duration-300 hover:gap-3'>
-                                {$ctaLabel}
+                            <span class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']} opacity-80 transition-all duration-300 hover:gap-3'>
+                                Learn More
                                 <span>→</span>
-                            </a>
+                            </span>
                         </div>
                     </div>";
                 }
@@ -759,30 +773,29 @@ HTML;
                 case 'glassmorphism_header':
                 $logoText = e($block['logo_text'] ?? 'Your Website');
                 $logoImageUrl = e(self::staticAssetUrl($block['logo_image_url'] ?? ''));
-                $logoHeight = min(60, max(24, (int) ($block['logo_height'] ?? 40)));
-                $logoMaxWidth = min(250, max(120, (int) ($block['logo_max_width'] ?? 250)));
                 $logo = $logoImageUrl !== ''
-                    ? "<img src='{$logoImageUrl}' alt='{$logoText}' style='height: {$logoHeight}px; max-height: 60px; max-width: {$logoMaxWidth}px' class='w-auto object-contain'>"
+                    ? "<img src='{$logoImageUrl}' alt='{$logoText}' class='h-14 w-auto max-w-[300px] object-contain'>"
                     : $logoText;
                 $ctaLabel = e($block['cta_label'] ?? 'Get Started');
                 $ctaUrl = e($block['cta_url'] ?? '#');
                 $menuItems = $block['menu'] ?? [];
 
-                // Header always white
+                // Header always white.
                 $headerBg = 'bg-white';
                 $headerBorder = 'border-slate-200';
                 $headerText = 'text-slate-900';
                 $menuText = 'text-slate-600';
 
-                // CTA Button follows PRIMARY THEME
+                // CTA button follows the primary theme.
                 $buttonBg = $theme['bg'];
                 $buttonText = $theme['text'];
 
-                $renderMenu = function (array $items, int $depth = 0) use (&$renderMenu, $menuText): string {
+                $renderDesktopMenu = function (array $items, int $depth = 0) use (&$renderDesktopMenu, $menuText): string {
                     $itemsHtml = '';
 
                     foreach ($items as $item) {
                         if (! is_array($item)) continue;
+
                         $url = e($item['url'] ?? '#');
                         $label = e($item['label'] ?? '');
                         $children = is_array($item['children'] ?? null) ? $item['children'] : [];
@@ -790,21 +803,21 @@ HTML;
                         $dropdown = '';
 
                         if ($hasChildren) {
-                            // The wrapper touches its parent. The inner padding creates visual
-                            // space without a hover gap that would close the submenu.
+                            // The wrapper touches its parent; inner padding creates visual space
+                            // without introducing a hover gap that closes the submenu.
                             $dropdownPosition = $depth > 0
                                 ? 'left-full top-0 pl-2'
                                 : 'left-0 top-full pt-2';
                             $borderClass = $depth > 0 ? 'border-slate-300' : 'border-slate-200';
                             $dropdown = "<div class='menu-dropdown absolute {$dropdownPosition} z-50 min-w-52'>"
                                 . "<ul class='list-none rounded-xl border {$borderClass} bg-white p-2 shadow-2xl ring-1 ring-slate-950/5'>"
-                                . $renderMenu($children, $depth + 1)
+                                . $renderDesktopMenu($children, $depth + 1)
                                 . "</ul></div>";
                         }
 
                         $menuClass = $hasChildren ? "menu-node menu-depth-{$depth} relative" : 'menu-leaf';
                         $itemsHtml .= "<li class='{$menuClass}'>"
-                            . "<a href='{$url}' class='{$menuText} flex items-center gap-1 whitespace-nowrap hover:text-slate-900 transition'>{$label}" . ($hasChildren ? "<span aria-hidden='true' class='text-xs'>⌄</span>" : '') . "</a>"
+                            . "<a href='{$url}' class='{$menuText} flex items-center gap-1 whitespace-nowrap transition hover:text-slate-900'>{$label}" . ($hasChildren ? "<span aria-hidden='true' class='text-xs'>⌄</span>" : '') . "</a>"
                             . $dropdown
                             . "</li>";
                     }
@@ -812,16 +825,55 @@ HTML;
                     return $itemsHtml;
                 };
 
-                $navHtml = $renderMenu(is_array($menuItems) ? $menuItems : []);
+                $mobileMenuCounter = 0;
+                $renderMobileMenu = function (array $items, int $depth = 0) use (&$renderMobileMenu, &$mobileMenuCounter): string {
+                    $itemsHtml = '';
+
+                    foreach ($items as $item) {
+                        if (! is_array($item)) continue;
+
+                        $url = e($item['url'] ?? '#');
+                        $label = e($item['label'] ?? '');
+                        $children = is_array($item['children'] ?? null) ? $item['children'] : [];
+                        $hasChildren = count($children) > 0;
+                        $indent = min($depth, 3) * 16;
+
+                        if (! $hasChildren) {
+                            $itemsHtml .= "<li>"
+                                . "<a data-cosmic-mobile-link href='{$url}' class='block rounded-xl px-3 py-3 text-base font-semibold text-slate-800 transition hover:bg-slate-100' style='margin-left: {$indent}px'>{$label}</a>"
+                                . "</li>";
+                            continue;
+                        }
+
+                        $mobileMenuCounter++;
+                        $submenuId = 'cosmic-mobile-submenu-' . $mobileMenuCounter;
+                        $itemsHtml .= "<li class='border-b border-slate-200/80 py-1 last:border-b-0'>"
+                            . "<div class='flex items-center gap-2' style='margin-left: {$indent}px'>"
+                            . "<a data-cosmic-mobile-link href='{$url}' class='min-w-0 flex-1 rounded-xl px-3 py-3 text-base font-semibold text-slate-900 transition hover:bg-slate-100'>{$label}</a>"
+                            . "<button type='button' class='cosmic-mobile-submenu-toggle inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-slate-600 transition hover:bg-slate-100 hover:text-slate-950' aria-expanded='false' aria-controls='{$submenuId}' aria-label='Toggle {$label} submenu'>"
+                            . "<svg aria-hidden='true' viewBox='0 0 24 24' class='h-5 w-5 transition-transform duration-200'><path d='m7 10 5 5 5-5' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'/></svg>"
+                            . "</button>"
+                            . "</div>"
+                            . "<ul id='{$submenuId}' class='cosmic-mobile-submenu hidden list-none space-y-1 pb-3 pt-1'>"
+                            . $renderMobileMenu($children, $depth + 1)
+                            . "</ul>"
+                            . "</li>";
+                    }
+
+                    return $itemsHtml;
+                };
+
+                $desktopNavHtml = $renderDesktopMenu(is_array($menuItems) ? $menuItems : []);
+                $mobileNavHtml = $renderMobileMenu(is_array($menuItems) ? $menuItems : []);
 
                 $html .= "
                 <style>
                     .cosmic-static-header .menu-node > a > span[aria-hidden='true'] { display: none; }
                     .cosmic-static-header .menu-node > a::after {
                         content: '';
-                        width: .42rem;
-                        height: .42rem;
-                        margin-left: .15rem;
+                        width: .35rem;
+                        height: .35rem;
+                        margin-left: .2rem;
                         border-right: 1.5px solid currentColor;
                         border-bottom: 1.5px solid currentColor;
                         transform: rotate(45deg) translateY(-2px);
@@ -836,31 +888,147 @@ HTML;
                     .cosmic-static-header .menu-node:focus-within > .menu-dropdown { display: block; }
                     .cosmic-static-header .menu-dropdown > ul > li > a {
                         display: flex;
-                        padding: .55rem .75rem;
-                        border-radius: .5rem;
+                        padding: .65rem .8rem;
+                        border-radius: .65rem;
                     }
                     .cosmic-static-header .menu-dropdown > ul > li > a:hover {
                         background: rgb(241 245 249);
                     }
+                    .cosmic-mobile-overlay {
+                        opacity: 0;
+                        visibility: hidden;
+                        transition: opacity .28s ease, visibility .28s ease;
+                    }
+                    .cosmic-mobile-panel {
+                        transform: translateX(100%);
+                        transition: transform .32s cubic-bezier(.22, 1, .36, 1);
+                    }
+                    .cosmic-mobile-nav-open .cosmic-mobile-overlay {
+                        opacity: 1;
+                        visibility: visible;
+                    }
+                    .cosmic-mobile-nav-open .cosmic-mobile-panel { transform: translateX(0); }
+                    .cosmic-mobile-submenu-toggle[aria-expanded='true'] svg { transform: rotate(180deg); }
+                    body.cosmic-mobile-menu-locked { overflow: hidden; }
+                    @media (min-width: 768px) {
+                        .cosmic-mobile-overlay,
+                        .cosmic-mobile-panel { display: none !important; }
+                    }
                 </style>
-                <header class='cosmic-static-header w-full {$headerBg} flex flex-wrap items-center justify-between gap-4 border-b {$headerBorder} px-5 py-4 sm:px-6 sm:py-5 sticky top-0 z-50 shadow-sm'>
-                    <div class='text-xl font-extrabold tracking-wide {$headerText}'>
-                        {$logo}
-                    </div>
 
-                    <nav class='flex w-full items-center justify-between gap-4 sm:w-auto sm:justify-start sm:gap-8'>
-                        <ul class='flex flex-wrap list-none gap-x-5 gap-y-2 sm:gap-x-8 m-0 p-0'>
-                            {$navHtml}
+                <header class='cosmic-static-header sticky top-0 z-50 flex w-full items-center justify-between gap-6 border-b {$headerBorder} {$headerBg} px-6 py-4 shadow-sm sm:px-[5%] lg:px-[7%]'>
+                    <a href='/' class='relative z-[72] text-xl font-extrabold tracking-wide {$headerText}' aria-label='{$logoText} home'>
+                        {$logo}
+                    </a>
+
+                    <nav class='hidden min-w-0 items-center md:flex md:gap-8 lg:gap-10 xl:gap-12' aria-label='Primary navigation'>
+                        <ul class='m-0 flex list-none items-center gap-7 p-0 lg:gap-9 xl:gap-10'>
+                            {$desktopNavHtml}
                         </ul>
 
                         <a
                             href='{$ctaUrl}'
-                            class='{$buttonBg} {$buttonText} shrink-0 px-7 py-3 rounded-full text-sm font-semibold hover:opacity-90 transition'
+                            class='{$buttonBg} {$buttonText} shrink-0 rounded-full px-8 py-4 text-sm font-semibold transition hover:opacity-90 lg:px-10'
                         >
                             {$ctaLabel}
                         </a>
                     </nav>
-                </header>";
+
+                    <button
+                        type='button'
+                        class='cosmic-mobile-menu-open relative z-[72] inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-900 shadow-sm transition hover:bg-slate-50 md:hidden'
+                        aria-expanded='false'
+                        aria-controls='cosmic-mobile-panel'
+                        aria-label='Open navigation menu'
+                    >
+                        <svg aria-hidden='true' viewBox='0 0 24 24' class='h-6 w-6'><path d='M4 7h16M4 12h16M4 17h16' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'/></svg>
+                    </button>
+                </header>
+
+                <div class='cosmic-mobile-navigation md:hidden' aria-hidden='true'>
+                    <button type='button' class='cosmic-mobile-overlay fixed inset-0 z-[68] cursor-default bg-slate-950/60 backdrop-blur-[2px]' aria-label='Close navigation menu'></button>
+
+                    <aside id='cosmic-mobile-panel' class='cosmic-mobile-panel fixed inset-y-0 right-0 z-[70] flex w-[min(88vw,390px)] flex-col bg-white shadow-[-24px_0_70px_rgba(15,23,42,.22)]' role='dialog' aria-modal='true' aria-label='Mobile navigation'>
+                        <div class='flex items-center justify-between border-b border-slate-200 px-6 py-5'>
+                            <span class='text-xs font-bold uppercase tracking-[.24em] text-slate-500'>Navigation</span>
+                            <button type='button' class='cosmic-mobile-menu-close inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-200 text-slate-700 transition hover:bg-slate-100 hover:text-slate-950' aria-label='Close navigation menu'>
+                                <svg aria-hidden='true' viewBox='0 0 24 24' class='h-5 w-5'><path d='m6 6 12 12M18 6 6 18' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round'/></svg>
+                            </button>
+                        </div>
+
+                        <div class='flex-1 overflow-y-auto px-5 py-5'>
+                            <ul class='m-0 list-none space-y-1 p-0'>
+                                {$mobileNavHtml}
+                            </ul>
+                        </div>
+
+                        <div class='border-t border-slate-200 bg-slate-50 px-6 py-6'>
+                            <a data-cosmic-mobile-link href='{$ctaUrl}' class='{$buttonBg} {$buttonText} flex w-full items-center justify-center rounded-full px-7 py-4 text-center text-sm font-semibold shadow-lg transition hover:opacity-90'>
+                                {$ctaLabel}
+                            </a>
+                        </div>
+                    </aside>
+                </div>
+
+                <script>
+                    (() => {
+                        const navRoot = document.querySelector('.cosmic-mobile-navigation');
+                        const openButton = document.querySelector('.cosmic-mobile-menu-open');
+                        const closeButton = navRoot?.querySelector('.cosmic-mobile-menu-close');
+                        const overlay = navRoot?.querySelector('.cosmic-mobile-overlay');
+                        const panel = navRoot?.querySelector('.cosmic-mobile-panel');
+
+                        if (!navRoot || !openButton || !closeButton || !overlay || !panel) return;
+
+                        let lastFocusedElement = null;
+
+                        const setMenuOpen = (isOpen) => {
+                            document.documentElement.classList.toggle('cosmic-mobile-nav-open', isOpen);
+                            document.body.classList.toggle('cosmic-mobile-menu-locked', isOpen);
+                            navRoot.setAttribute('aria-hidden', isOpen ? 'false' : 'true');
+                            openButton.setAttribute('aria-expanded', isOpen ? 'true' : 'false');
+
+                            if (isOpen) {
+                                lastFocusedElement = document.activeElement;
+                                window.setTimeout(() => closeButton.focus(), 60);
+                            } else if (lastFocusedElement instanceof HTMLElement) {
+                                lastFocusedElement.focus();
+                            }
+                        };
+
+                        openButton.addEventListener('click', () => setMenuOpen(true));
+                        closeButton.addEventListener('click', () => setMenuOpen(false));
+                        overlay.addEventListener('click', () => setMenuOpen(false));
+
+                        navRoot.querySelectorAll('[data-cosmic-mobile-link]').forEach((link) => {
+                            link.addEventListener('click', () => setMenuOpen(false));
+                        });
+
+                        navRoot.querySelectorAll('.cosmic-mobile-submenu-toggle').forEach((toggle) => {
+                            toggle.addEventListener('click', () => {
+                                const submenuId = toggle.getAttribute('aria-controls');
+                                const submenu = submenuId ? document.getElementById(submenuId) : null;
+                                if (!submenu) return;
+
+                                const expanded = toggle.getAttribute('aria-expanded') === 'true';
+                                toggle.setAttribute('aria-expanded', expanded ? 'false' : 'true');
+                                submenu.classList.toggle('hidden', expanded);
+                            });
+                        });
+
+                        document.addEventListener('keydown', (event) => {
+                            if (event.key === 'Escape' && openButton.getAttribute('aria-expanded') === 'true') {
+                                setMenuOpen(false);
+                            }
+                        });
+
+                        window.addEventListener('resize', () => {
+                            if (window.innerWidth >= 768 && openButton.getAttribute('aria-expanded') === 'true') {
+                                setMenuOpen(false);
+                            }
+                        });
+                    })();
+                </script>";
                 break;
 
                 case 'minimal_footer':
@@ -1023,8 +1191,6 @@ HTML;
                     $icon  = e($service['icon'] ?? '⚡');
                     $title = e($service['title'] ?? 'Service Title');
                     $desc  = e($service['desc'] ?? 'Service description.');
-                    $ctaLabel = e($service['cta_label'] ?? 'Learn More');
-                    $ctaUrl = e($service['cta_url'] ?? '#');
 
                     $html .= "
                         <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-8 flex flex-col md:flex-row md:items-center gap-8 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1'>
@@ -1046,9 +1212,9 @@ HTML;
                             </div>
 
                             <div class='shrink-0'>
-                                <a href='{$ctaUrl}' class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']}'>
-                                    {$ctaLabel} →
-                                </a>
+                                <span class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']}'>
+                                    Learn More →
+                                </span>
                             </div>
 
                         </div>
@@ -1354,241 +1520,7 @@ HTML;
                 break;
 
 
-                case 'hero_parallax':
-
-                $eyebrow = e($block['eyebrow'] ?? 'INTRODUCING A NEW PERSPECTIVE');
-                $heading = e($block['heading'] ?? 'Move beyond the ordinary.');
-                $text = e($block['text'] ?? 'Create a memorable first impression with cinematic depth, confident typography, and a clear next step.');
-                $primaryLabel = e($block['primary_label'] ?? 'Start a project');
-                $primaryUrl = e($block['primary_url'] ?? '#');
-                $secondaryLabel = e($block['secondary_label'] ?? 'Explore our work');
-                $secondaryUrl = e($block['secondary_url'] ?? '#');
-                $scrollLabel = e($block['scroll_label'] ?? 'Scroll to explore');
-                $backgroundImage = e(self::staticAssetUrl($block['image_url'] ?? ''));
-                $overlayOpacity = max(20, min(90, intval($block['overlayOpacity'] ?? 64)));
-                $parallaxSpeed = max(8, min(40, intval($block['parallaxSpeed'] ?? 24)));
-                $contentAlign = $block['contentAlign'] ?? 'left';
-                $heroHeight = ($block['height'] ?? 'screen') === 'large'
-                    ? 'min-h-[720px]'
-                    : 'min-h-[88svh] lg:min-h-screen';
-                $primaryTheme = self::getTheme($primaryColor);
-                $isLightMedia = in_array($selectedThemeName, ['white', 'stone']);
-                $mediaOverlay = $isLightMedia ? 'bg-white' : 'bg-slate-950';
-                $mediaGradient = $isLightMedia ? 'from-white/95 via-white/55 to-white/25' : 'from-slate-950/85 via-slate-950/20 to-slate-950/25';
-                $mediaBadge = $isLightMedia ? 'border-slate-900/15 bg-white/60' : 'border-white/20 bg-white/10';
-                $mediaEyebrow = $isLightMedia ? 'text-slate-700' : 'text-white/85';
-                $mediaHeading = $isLightMedia ? 'text-slate-950' : 'text-white';
-                $mediaBody = $isLightMedia ? 'text-slate-700' : 'text-white/75';
-                $mediaSecondary = $isLightMedia ? 'border-slate-900/20 bg-white/50 text-slate-950' : 'border-white/30 bg-white/10 text-white';
-                $mediaScroll = $isLightMedia ? 'text-slate-700' : 'text-white/65';
-                $mediaScrollLine = $isLightMedia ? 'bg-slate-900/25' : 'bg-white/25';
-                $mediaScrollDot = $isLightMedia ? 'bg-slate-900' : 'bg-white';
-                $parallaxId = 'cosmic-parallax-' . substr(md5(json_encode($block) . uniqid('', true)), 0, 12);
-
-                $alignment = match ($contentAlign) {
-                    'center' => 'items-center text-center',
-                    'right' => 'items-end text-right',
-                    default => 'items-start text-left',
-                };
-                $contentWidth = $contentAlign === 'center' ? 'max-w-4xl' : 'max-w-3xl';
-                $buttonAlignment = match ($contentAlign) {
-                    'center' => 'justify-center',
-                    'right' => 'justify-end',
-                    default => 'justify-start',
-                };
-                $gradientDirection = match ($contentAlign) {
-                    'center' => 'bg-gradient-to-t',
-                    'right' => 'bg-gradient-to-l',
-                    default => 'bg-gradient-to-r',
-                };
-                $backgroundStyle = $backgroundImage
-                    ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
-                    : '';
-
-                $html .= "
-                <section id='{$parallaxId}' class='relative isolate flex overflow-hidden px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 {$heroHeight}' data-parallax-speed='{$parallaxSpeed}'>
-                    <div class='cosmic-parallax-media absolute -inset-y-[12%] inset-x-0 z-0 will-change-transform' style=\"{$backgroundStyle}transform:translate3d(0,0,0) scale(1.08);\"></div>
-                    <div class='absolute inset-0 z-10 {$mediaOverlay}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
-                    <div class='absolute inset-0 z-10 {$gradientDirection} {$mediaGradient}'></div>
-
-                    <div class='cosmic-parallax-content relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center {$alignment}' style='transform:translate3d(0,0,0);will-change:transform,opacity;'>
-                        <div class='{$contentWidth}'>
-                            <div class='inline-flex items-center gap-3 rounded-full border px-4 py-2 {$mediaBadge} backdrop-blur-md'>
-                                <span class='h-2 w-2 rounded-full {$primaryTheme['bg']}'></span>
-                                <span class='text-xs font-bold uppercase tracking-[0.28em] {$mediaEyebrow}'>{$eyebrow}</span>
-                            </div>
-
-                            <h1 class='mt-7 text-5xl font-semibold leading-[0.96] tracking-[-0.045em] {$mediaHeading} sm:text-6xl md:text-7xl lg:text-[6.5rem]'>{$heading}</h1>
-                            <div class='mt-7 max-w-2xl text-base leading-8 {$mediaBody} sm:text-lg'>{$text}</div>
-
-                            <div class='mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row {$buttonAlignment}'>
-                                <a href='{$primaryUrl}' class='inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
-                                <a href='{$secondaryUrl}' class='inline-flex min-h-[54px] items-center justify-center rounded-full border px-8 font-bold {$mediaSecondary} backdrop-blur-md transition'>{$secondaryLabel}</a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class='pointer-events-none absolute bottom-7 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 {$mediaScroll} sm:flex'>
-                        <span class='text-[10px] font-bold uppercase tracking-[0.32em]'>{$scrollLabel}</span>
-                        <span class='relative h-10 w-px overflow-hidden {$mediaScrollLine}'><span class='absolute left-0 top-0 h-4 w-px animate-bounce {$mediaScrollDot}'></span></span>
-                    </div>
-                </section>
-                <script>
-                (() => {
-                    const section = document.getElementById('{$parallaxId}');
-                    if (!section || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
-                    const media = section.querySelector('.cosmic-parallax-media');
-                    const content = section.querySelector('.cosmic-parallax-content');
-                    const speed = Number(section.dataset.parallaxSpeed || 24);
-                    let frame = null;
-                    const update = () => {
-                        frame = null;
-                        const rect = section.getBoundingClientRect();
-                        const viewport = window.innerHeight || 1;
-                        if (rect.bottom <= 0 || rect.top >= viewport) return;
-                        const progress = Math.max(0, Math.min(1, (viewport - rect.top) / (viewport + rect.height)));
-                        const centered = progress - 0.5;
-                        const mediaOffset = centered * speed * 7;
-                        const contentOffset = centered * speed * -1.7;
-                        const contentOpacity = Math.max(0.35, 1 - Math.abs(centered) * 0.75);
-                        media.style.transform = `translate3d(0, \${mediaOffset}px, 0) scale(1.14)`;
-                        if (content) {
-                            content.style.transform = `translate3d(0, \${contentOffset}px, 0)`;
-                            content.style.opacity = String(contentOpacity);
-                        }
-                    };
-                    const requestUpdate = () => {
-                        if (frame === null) frame = window.requestAnimationFrame(update);
-                    };
-                    update();
-                    document.addEventListener('scroll', requestUpdate, true);
-                    window.addEventListener('resize', requestUpdate);
-                })();
-                </script>";
-
-                break;
-
-            case 'hero_slider_fade':
-                $sliderId = 'cosmic-slider-' . uniqid();
-                $slides = is_array($block['slides'] ?? null) ? array_values($block['slides']) : [];
-                $autoplayInterval = max(3000, intval($block['autoplay_interval'] ?? $block['interval'] ?? 6000));
-
-                if ($slides === []) {
-                    $slides = [[
-                        'image_url' => '',
-                        'eyebrow' => 'Built for what is next',
-                        'heading' => 'A stronger first impression',
-                        'description' => 'Introduce your business with a focused message and a clear next step.',
-                        'button_1_text' => 'Get started',
-                        'button_1_url' => '#',
-                        'button_2_text' => 'Explore services',
-                        'button_2_url' => '#',
-                        'button_3_text' => 'View our work',
-                        'button_3_url' => '#',
-                        'button_4_text' => 'Learn more',
-                        'button_4_url' => '#',
-                    ]];
-                }
-
-                $slideMarkup = '';
-                $dotMarkup = '';
-
-                foreach ($slides as $index => $slide) {
-                    $imageSource = self::staticAssetUrl($slide['image_url'] ?? $slide['image'] ?? $slide['background_image'] ?? '');
-                    $image = htmlspecialchars((string) $imageSource, ENT_QUOTES, 'UTF-8');
-                    $eyebrow = htmlspecialchars((string) ($slide['eyebrow'] ?? ''), ENT_QUOTES, 'UTF-8');
-                    $heading = htmlspecialchars((string) ($slide['heading'] ?? ''), ENT_QUOTES, 'UTF-8');
-                    $description = htmlspecialchars((string) ($slide['description'] ?? ''), ENT_QUOTES, 'UTF-8');
-                    $activeClass = $index === 0 ? ' is-active' : '';
-                    $backgroundStyle = $image !== '' ? "background-image:url('{$image}')" : '';
-                    $ariaHidden = $index === 0 ? 'false' : 'true';
-                    $buttonMarkup = '';
-                    $floatingButtonMarkup = '';
-                    $buttonDefaults = [
-                        2 => 'Explore services',
-                        3 => 'View our work',
-                        4 => 'Learn more',
-                    ];
-
-                    for ($buttonIndex = 1; $buttonIndex <= 4; $buttonIndex++) {
-                        $legacyText = $buttonIndex === 1 ? ($slide['button_text'] ?? '') : '';
-                        $legacyUrl = $buttonIndex === 1 ? ($slide['button_url'] ?? '#') : '#';
-                        $textKey = "button_{$buttonIndex}_text";
-                        $urlKey = "button_{$buttonIndex}_url";
-                        $rawText = array_key_exists($textKey, $slide)
-                            ? $slide[$textKey]
-                            : ($buttonDefaults[$buttonIndex] ?? $legacyText);
-                        $buttonText = trim((string) $rawText);
-
-                        if ($buttonText === '') {
-                            continue;
-                        }
-
-                        $buttonUrl = htmlspecialchars((string) ($slide[$urlKey] ?? $legacyUrl), ENT_QUOTES, 'UTF-8');
-                        $safeButtonText = htmlspecialchars($buttonText, ENT_QUOTES, 'UTF-8');
-                        $markup = '<a class="cosmic-fade-slide__button cosmic-fade-slide__button--' . $buttonIndex . '" href="' . $buttonUrl . '">' . $safeButtonText . '</a>';
-
-                        if ($buttonIndex === 4) {
-                            $floatingButtonMarkup = $markup;
-                        } else {
-                            $buttonMarkup .= $markup;
-                        }
-                    }
-
-                    $slideMarkup .= <<<HTML
-                        <article class="cosmic-fade-slide{$activeClass}" data-slider-slide style="{$backgroundStyle}" aria-hidden="{$ariaHidden}">
-                            <div class="cosmic-fade-slide__overlay"></div>
-                            <div class="cosmic-fade-slide__content">
-                                <p class="cosmic-fade-slide__eyebrow">{$eyebrow}</p>
-                                <h1>{$heading}</h1>
-                                <p class="cosmic-fade-slide__description">{$description}</p>
-                                <div class="cosmic-fade-slide__actions">{$buttonMarkup}</div>
-                            </div>
-                            <div class="cosmic-fade-slide__floating-action">{$floatingButtonMarkup}</div>
-                        </article>
-                    HTML;
-
-                    $dotMarkup .= '<button type="button" class="cosmic-fade-slider__dot' . ($index === 0 ? ' is-active' : '') . '" data-slider-dot="' . $index . '" aria-label="Show slide ' . ($index + 1) . '" aria-current="' . ($index === 0 ? 'true' : 'false') . '"></button>';
-                }
-
-                return <<<HTML
-                    <section id="{$sliderId}" class="cosmic-fade-slider" data-cosmic-fade-slider data-autoplay="{$autoplayInterval}" aria-roledescription="carousel">
-                        <div class="cosmic-fade-slider__viewport">{$slideMarkup}</div>
-                        <button type="button" class="cosmic-fade-slider__arrow cosmic-fade-slider__arrow--previous" data-slider-previous aria-label="Previous slide">&#8592;</button>
-                        <button type="button" class="cosmic-fade-slider__arrow cosmic-fade-slider__arrow--next" data-slider-next aria-label="Next slide">&#8594;</button>
-                        <div class="cosmic-fade-slider__dots" aria-label="Choose slide">{$dotMarkup}</div>
-                    </section>
-                    <style>
-                        #{$sliderId}{position:relative;min-height:clamp(34rem,72vh,52rem);overflow:hidden;background:#111827;color:#fff}
-                        #{$sliderId} .cosmic-fade-slider__viewport,#{$sliderId} .cosmic-fade-slide{position:absolute;inset:0}
-                        #{$sliderId} .cosmic-fade-slide{display:grid;align-items:center;background-position:center;background-size:cover;opacity:0;visibility:hidden;transition:opacity .7s ease,visibility .7s ease}
-                        #{$sliderId} .cosmic-fade-slide.is-active{opacity:1;visibility:visible;z-index:1}
-                        #{$sliderId} .cosmic-fade-slide__overlay{position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,6,23,.9) 0%,rgba(2,6,23,.66) 48%,rgba(2,6,23,.3) 100%)}
-                        #{$sliderId} .cosmic-fade-slide__content{position:relative;z-index:2;width:min(100% - 3rem,82rem);margin-inline:auto;padding-block:7rem;max-width:82rem}
-                        #{$sliderId} .cosmic-fade-slide__eyebrow{margin:0 0 1rem;font-size:.75rem;font-weight:700;letter-spacing:.24em;text-transform:uppercase;color:#c4b5fd}
-                        #{$sliderId} h1{max-width:13ch;margin:0;font-size:clamp(2.75rem,6vw,5.75rem);font-weight:700;line-height:.98;letter-spacing:-.045em;color:#fff}
-                        #{$sliderId} .cosmic-fade-slide__description{max-width:42rem;margin:1.5rem 0 0;font-size:clamp(1rem,1.5vw,1.2rem);line-height:1.7;color:#dbe4f0}
-                        #{$sliderId} .cosmic-fade-slide__actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}
-                        #{$sliderId} .cosmic-fade-slide__button{display:inline-flex;align-items:center;justify-content:center;padding:.85rem 1.35rem;border:1px solid rgba(255,255,255,.35);border-radius:999px;background:rgba(2,6,23,.2);color:#fff;text-decoration:none;font-weight:700;backdrop-filter:blur(12px);transition:background .2s ease,border-color .2s ease,transform .2s ease}
-                        #{$sliderId} .cosmic-fade-slide__button:hover{border-color:rgba(255,255,255,.65);background:rgba(2,6,23,.42);transform:translateY(-1px)}
-                        #{$sliderId} .cosmic-fade-slide__button--1{border-color:#fff;background:#fff;color:#0f172a}
-                        #{$sliderId} .cosmic-fade-slide__button--1:hover{background:rgba(255,255,255,.9)}
-                        #{$sliderId} .cosmic-fade-slide__button--4{padding:.68rem 1rem;border-color:rgba(255,255,255,.25);background:rgba(2,6,23,.36);font-size:.8rem}
-                        #{$sliderId} .cosmic-fade-slide__floating-action{position:absolute;z-index:4;right:8.25rem;bottom:1.5rem}
-                        #{$sliderId} .cosmic-fade-slider__arrow{position:absolute;z-index:4;bottom:1.5rem;width:2.75rem;height:2.75rem;border:1px solid rgba(255,255,255,.32);border-radius:999px;background:rgba(15,23,42,.62);color:#fff;cursor:pointer;backdrop-filter:blur(12px)}
-                        #{$sliderId} .cosmic-fade-slider__arrow--previous{right:4.75rem}#{$sliderId} .cosmic-fade-slider__arrow--next{right:1.25rem}
-                        #{$sliderId} .cosmic-fade-slider__dots{position:absolute;z-index:4;left:clamp(1.5rem,calc((100% - 82rem)/2),5rem);bottom:1.75rem;display:flex;gap:.55rem}
-                        #{$sliderId} .cosmic-fade-slider__dot{width:.55rem;height:.55rem;padding:0;border:0;border-radius:999px;background:rgba(255,255,255,.4);cursor:pointer;transition:width .25s ease,background .25s ease}
-                        #{$sliderId} .cosmic-fade-slider__dot.is-active{width:1.8rem;background:#fff}
-                        @media(max-width:640px){#{$sliderId}{min-height:42rem}#{$sliderId} .cosmic-fade-slide__content{width:min(100% - 2rem,82rem);padding:5rem 1rem 8rem}#{$sliderId} .cosmic-fade-slide__actions{gap:.5rem}#{$sliderId} .cosmic-fade-slide__button{padding:.72rem 1rem;font-size:.82rem}#{$sliderId} .cosmic-fade-slide__floating-action{right:7.25rem;bottom:1.5rem;max-width:calc(100% - 9rem)}#{$sliderId} .cosmic-fade-slide__floating-action .cosmic-fade-slide__button{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#{$sliderId} .cosmic-fade-slider__dots{left:1rem;bottom:1.6rem}#{$sliderId} .cosmic-fade-slider__arrow--previous{right:4rem}#{$sliderId} .cosmic-fade-slider__arrow--next{right:.75rem}}
-                        @media(prefers-reduced-motion:reduce){#{$sliderId} .cosmic-fade-slide,#{$sliderId} .cosmic-fade-slider__dot,#{$sliderId} .cosmic-fade-slide__button{transition:none}}
-                    </style>
-                    <script>
-                        (()=>{const root=document.getElementById('{$sliderId}');if(!root)return;const slides=[...root.querySelectorAll('[data-slider-slide]')],dots=[...root.querySelectorAll('[data-slider-dot]')];if(slides.length<2)return;const reduced=window.matchMedia('(prefers-reduced-motion: reduce)').matches;let index=0,timer=null,paused=false;const show=(next)=>{index=(next+slides.length)%slides.length;slides.forEach((slide,i)=>{const active=i===index;slide.classList.toggle('is-active',active);slide.setAttribute('aria-hidden',active?'false':'true')});dots.forEach((dot,i)=>{const active=i===index;dot.classList.toggle('is-active',active);dot.setAttribute('aria-current',active?'true':'false')})};const stop=()=>{if(timer){clearInterval(timer);timer=null}};const start=()=>{stop();if(!reduced&&!paused)timer=setInterval(()=>show(index+1),Number(root.dataset.autoplay)||6000)};root.querySelector('[data-slider-previous]')?.addEventListener('click',()=>{show(index-1);start()});root.querySelector('[data-slider-next]')?.addEventListener('click',()=>{show(index+1);start()});dots.forEach((dot,i)=>dot.addEventListener('click',()=>{show(i);start()}));root.addEventListener('mouseenter',()=>{paused=true;stop()});root.addEventListener('mouseleave',()=>{paused=false;start()});root.addEventListener('focusin',()=>{paused=true;stop()});root.addEventListener('focusout',event=>{if(!root.contains(event.relatedTarget)){paused=false;start()}});show(0);start()})();
-                    </script>
-                HTML;
-
-            case 'hero_background_image':
+                case 'hero_background_image':
 
                 $tagline = e($block['tagline'] ?? 'WELCOME TO OUR COMPANY');
                 $heading = e($block['heading'] ?? 'Build Beautiful Websites With Confidence');
@@ -1602,7 +1534,9 @@ HTML;
                 $buttonUrl = e($block['button_url'] ?? '#');
 
                 $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 50)));
-                $overlayStrength = $overlayOpacity / 100;
+                // Match HeroBackgroundImageBlock: the overlay uses the
+                // website primary theme at overlayOpacity / 60.
+                $overlayStrength = min(1, $overlayOpacity / 60);
                 $primaryOverlayTheme = self::getTheme($primaryColor);
                 $textAlign = $block['textAlign'] ?? 'center';
                 $height = $block['height'] ?? 'screen';
@@ -1617,10 +1551,6 @@ HTML;
                 $btnText = $isLight
                     ? self::getTheme($primaryColor)['text']
                     : 'text-slate-900';
-                $mediaOverlay = $isLight ? 'bg-white' : 'bg-slate-950';
-                $mediaTagline = $isLight ? 'text-slate-700' : 'text-white/80';
-                $mediaHeading = $isLight ? 'text-slate-950' : 'text-white';
-                $mediaBody = $isLight ? 'text-slate-700' : 'text-white/80';
 
                 // Alignment
                 $alignment = match ($textAlign) {
@@ -1649,21 +1579,21 @@ HTML;
                 >
 
                     <div
-                        class='absolute inset-0 {$mediaOverlay}'
+                        class='absolute inset-0 {$primaryOverlayTheme['bg']}'
                         style='opacity:{$overlayStrength};'>
                     </div>
 
                     <div class='relative z-10 w-full max-w-7xl mx-auto px-6 py-20 sm:px-[8%] sm:py-24 flex flex-col justify-center {$alignment}'>
 
-                        <span class='text-sm uppercase tracking-[0.35em] font-semibold {$mediaTagline} block'>
+                        <span class='text-sm uppercase tracking-[0.35em] font-semibold text-white/80 block'>
                             {$tagline}
                         </span>
 
-                        <h1 class='mt-6 text-4xl sm:text-5xl md:text-7xl font-bold leading-tight break-words {$mediaHeading} block'>
+                        <h1 class='mt-6 text-4xl sm:text-5xl md:text-7xl font-bold leading-tight break-words text-white block'>
                             {$heading}
                         </h1>
 
-                        <div class='mt-6 max-w-2xl text-base leading-7 sm:mt-8 sm:text-xl sm:leading-8 {$mediaBody}'>
+                        <div class='mt-6 max-w-2xl text-base leading-7 sm:mt-8 sm:text-xl sm:leading-8 text-white/80'>
                             {$text}
                         </div>
 
@@ -1682,6 +1612,334 @@ HTML;
 
                 break;
 
+
+                case 'hero_slider_fade':
+                    $slides = is_array($block['slides'] ?? null) && ($block['slides'] ?? []) !== []
+                        ? array_values($block['slides'])
+                        : [[
+                            'image_url' => '',
+                            'eyebrow' => 'Built for what is next',
+                            'heading' => 'Make a confident first impression',
+                            'description' => 'Present your business with clear messaging, purposeful imagery, and a direct next step.',
+                            'button_1_text' => 'Get started',
+                            'button_1_url' => '#',
+                            'button_2_text' => 'Explore services',
+                            'button_2_url' => '#',
+                            'button_3_text' => 'View our work',
+                            'button_3_url' => '#',
+                            'button_4_text' => 'Learn more',
+                            'button_4_url' => '#',
+                        ]];
+
+                    $slides = array_values(array_filter(array_map(static function ($slide) {
+                        if (! is_array($slide)) {
+                            return null;
+                        }
+
+                        return [
+                            'image_url' => (string) ($slide['image_url'] ?? $slide['image'] ?? $slide['background_image'] ?? ''),
+                            'eyebrow' => (string) ($slide['eyebrow'] ?? ''),
+                            'heading' => (string) ($slide['heading'] ?? ''),
+                            'description' => (string) ($slide['description'] ?? ''),
+                            'button_1_text' => (string) ($slide['button_1_text'] ?? $slide['button_text'] ?? ''),
+                            'button_1_url' => (string) ($slide['button_1_url'] ?? $slide['button_url'] ?? '#'),
+                            'button_2_text' => (string) ($slide['button_2_text'] ?? 'Explore services'),
+                            'button_2_url' => (string) ($slide['button_2_url'] ?? '#'),
+                            'button_3_text' => (string) ($slide['button_3_text'] ?? 'View our work'),
+                            'button_3_url' => (string) ($slide['button_3_url'] ?? '#'),
+                            'button_4_text' => (string) ($slide['button_4_text'] ?? 'Learn more'),
+                            'button_4_url' => (string) ($slide['button_4_url'] ?? '#'),
+                        ];
+                    }, $slides)));
+
+                    if ($slides === []) {
+                        break;
+                    }
+
+                    $sliderId = 'cosmic-slider-' . substr(sha1(json_encode($slides)), 0, 10);
+                    $interval = max(3000, (int) ($block['autoplay_interval'] ?? $block['interval'] ?? 6000));
+                    $slideMarkup = '';
+                    $dotMarkup = '';
+
+                    foreach ($slides as $slideIndex => $slide) {
+                        $imageUrl = e(self::staticAssetUrl($slide['image_url']));
+                        $eyebrow = e($slide['eyebrow']);
+                        $heading = e($slide['heading']);
+                        $description = e($slide['description']);
+                        $buttons = '';
+
+                        for ($buttonNumber = 1; $buttonNumber <= 3; $buttonNumber++) {
+                            $label = trim($slide["button_{$buttonNumber}_text"]);
+                            if ($label === '') {
+                                continue;
+                            }
+
+                            $buttonUrl = e($slide["button_{$buttonNumber}_url"] ?: '#');
+                            $buttonLabel = e($label);
+                            $buttonClasses = $buttonNumber === 1
+                                ? 'bg-white text-slate-950 hover:bg-white/90'
+                                : 'border border-white/35 bg-black/20 text-white hover:border-white/60 hover:bg-black/35';
+
+                            $buttons .= "<a href='{$buttonUrl}' class='rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition {$buttonClasses}'>{$buttonLabel}</a>";
+                        }
+
+                        $floating = '';
+                        if (trim($slide['button_4_text']) !== '') {
+                            $floatingUrl = e($slide['button_4_url'] ?: '#');
+                            $floatingLabel = e($slide['button_4_text']);
+                            $floating = "<a href='{$floatingUrl}' class='mr-[30px] rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold text-white backdrop-blur transition hover:border-white/50 hover:bg-black/55'>{$floatingLabel}</a>";
+                        }
+
+                        $activeClasses = $slideIndex === 0 ? 'z-10 opacity-100' : 'z-0 opacity-0';
+                        $ariaHidden = $slideIndex === 0 ? 'false' : 'true';
+                        $media = $imageUrl !== ''
+                            ? "<img src='{$imageUrl}' alt='' class='absolute inset-0 h-full w-full object-cover'>"
+                            : "<div class='absolute inset-0 bg-slate-900'></div>";
+
+                        $slideMarkup .= "
+                        <article data-cosmic-slide='{$slideIndex}' aria-hidden='{$ariaHidden}' class='absolute inset-0 transition-opacity duration-700 {$activeClasses}'>
+                            {$media}
+                            <div class='absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/65 to-slate-950/25'></div>
+                            <div class='absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20'></div>
+                            <div class='relative z-10 mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-24 sm:min-h-[700px] sm:px-10 lg:min-h-[760px] lg:px-14'>
+                                <div class='max-w-3xl text-white' aria-live='polite'>
+                                    " . ($eyebrow !== '' ? "<p class='mb-5 text-xs font-bold uppercase tracking-[0.32em] text-white/70 sm:text-sm'>{$eyebrow}</p>" : '') . "
+                                    <h2 class='max-w-3xl text-5xl font-bold leading-[0.98] tracking-[-0.04em] sm:text-6xl lg:text-7xl'>{$heading}</h2>
+                                    <p class='mt-7 max-w-2xl text-base leading-8 text-white/75 sm:text-lg'>{$description}</p>
+                                    <div class='mt-9 flex flex-wrap gap-3'>{$buttons}</div>
+                                </div>
+                            </div>
+                            <div class='absolute bottom-6 right-32 z-30 hidden items-center sm:flex'>{$floating}</div>
+                        </article>";
+
+                        $dotClasses = $slideIndex === 0 ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/70';
+                        $current = $slideIndex === 0 ? " aria-current='true'" : '';
+                        $dotMarkup .= "<button type='button' data-slider-dot='{$slideIndex}' class='h-2.5 rounded-full transition-all {$dotClasses}' aria-label='Show slide " . ($slideIndex + 1) . "'{$current}></button>";
+                    }
+
+                    $html .= "
+                    <section id='{$sliderId}' data-cosmic-slider data-interval='{$interval}' class='relative isolate min-h-[620px] overflow-hidden sm:min-h-[700px] lg:min-h-[760px]' aria-roledescription='carousel' aria-label='Featured content'>
+                        {$slideMarkup}
+                        <div class='absolute bottom-6 left-6 z-40 flex items-center gap-2 sm:left-10 lg:left-14'>{$dotMarkup}</div>
+                        <div class='absolute bottom-6 right-6 z-40 flex items-center gap-2 sm:right-10 lg:right-14'>
+                            <button type='button' data-slider-prev class='grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 text-white backdrop-blur hover:bg-black/55' aria-label='Previous slide'>←</button>
+                            <button type='button' data-slider-next class='grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 text-white backdrop-blur hover:bg-black/55' aria-label='Next slide'>→</button>
+                        </div>
+                    </section>
+                    <script>
+                    (function () {
+                        var root = document.getElementById('{$sliderId}');
+                        if (!root || root.dataset.ready === '1') return;
+                        root.dataset.ready = '1';
+
+                        var slides = Array.prototype.slice.call(root.querySelectorAll('[data-cosmic-slide]'));
+                        var dots = Array.prototype.slice.call(root.querySelectorAll('[data-slider-dot]'));
+                        var index = 0;
+                        var timer = null;
+                        var paused = false;
+                        var reduced = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+                        function show(nextIndex) {
+                            if (!slides.length) return;
+                            index = (nextIndex + slides.length) % slides.length;
+
+                            slides.forEach(function (slide, slideIndex) {
+                                var active = slideIndex === index;
+                                slide.classList.toggle('opacity-100', active);
+                                slide.classList.toggle('z-10', active);
+                                slide.classList.toggle('opacity-0', !active);
+                                slide.classList.toggle('z-0', !active);
+                                slide.setAttribute('aria-hidden', active ? 'false' : 'true');
+                            });
+
+                            dots.forEach(function (dot, dotIndex) {
+                                var active = dotIndex === index;
+                                dot.classList.toggle('w-8', active);
+                                dot.classList.toggle('bg-white', active);
+                                dot.classList.toggle('w-2.5', !active);
+                                dot.classList.toggle('bg-white/45', !active);
+                                if (active) dot.setAttribute('aria-current', 'true');
+                                else dot.removeAttribute('aria-current');
+                            });
+                        }
+
+                        function stop() {
+                            if (timer) {
+                                clearInterval(timer);
+                                timer = null;
+                            }
+                        }
+
+                        function start() {
+                            stop();
+                            if (paused || reduced || slides.length < 2) return;
+                            timer = setInterval(function () {
+                                show(index + 1);
+                            }, Math.max(3000, Number(root.dataset.interval) || 6000));
+                        }
+
+                        dots.forEach(function (dot, dotIndex) {
+                            dot.addEventListener('click', function () {
+                                show(dotIndex);
+                                start();
+                            });
+                        });
+
+                        var previous = root.querySelector('[data-slider-prev]');
+                        var next = root.querySelector('[data-slider-next]');
+                        if (previous) previous.addEventListener('click', function () { show(index - 1); start(); });
+                        if (next) next.addEventListener('click', function () { show(index + 1); start(); });
+
+                        root.addEventListener('mouseenter', function () { paused = true; stop(); });
+                        root.addEventListener('mouseleave', function () { paused = false; start(); });
+                        root.addEventListener('focusin', function () { paused = true; stop(); });
+                        root.addEventListener('focusout', function (event) {
+                            if (!root.contains(event.relatedTarget)) {
+                                paused = false;
+                                start();
+                            }
+                        });
+
+                        show(0);
+                        start();
+                    })();
+                    </script>";
+
+                    break;
+
+                case 'hero_parallax':
+                    $eyebrow = e($block['eyebrow'] ?? 'INTRODUCING A NEW PERSPECTIVE');
+                    $heading = e($block['heading'] ?? 'Move beyond the ordinary.');
+                    $text = e($block['text'] ?? 'Create a memorable first impression with cinematic depth, confident typography, and a clear next step.');
+                    $primaryLabel = e($block['primary_label'] ?? 'Start a project');
+                    $primaryUrl = e($block['primary_url'] ?? '#');
+                    $secondaryLabel = e($block['secondary_label'] ?? 'Explore our work');
+                    $secondaryUrl = e($block['secondary_url'] ?? '#');
+                    $imageUrl = e(self::staticAssetUrl((string) ($block['image_url'] ?? '/storage/cms-images/background/background-1.avif')));
+                    $overlayOpacity = max(20, min(90, (int) ($block['overlayOpacity'] ?? 64)));
+                    $parallaxSpeed = max(8, min(40, (int) ($block['parallaxSpeed'] ?? 24)));
+                    $contentAlign = in_array(($block['contentAlign'] ?? 'left'), ['left', 'center', 'right'], true)
+                        ? $block['contentAlign']
+                        : 'left';
+                    $height = ($block['height'] ?? 'screen') === 'large' ? 'large' : 'screen';
+                    $scrollLabel = e($block['scroll_label'] ?? 'Scroll to explore');
+                    $resolvedTheme = (string) ($block['resolvedTheme'] ?? 'primary');
+                    $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                    $primaryTheme = self::getTheme($primaryColor);
+                    $parallaxId = 'cosmic-parallax-' . substr(sha1(json_encode($block)), 0, 10);
+
+                    $alignmentClasses = [
+                        'left' => 'items-start text-left',
+                        'center' => 'items-center text-center',
+                        'right' => 'items-end text-right',
+                    ];
+                    $alignmentClass = $alignmentClasses[$contentAlign];
+                    $contentWidth = $contentAlign === 'center' ? 'max-w-4xl' : 'max-w-3xl';
+                    $heroHeight = $height === 'large' ? 'min-h-[720px]' : 'min-h-[88svh] lg:min-h-screen';
+                    $buttonJustify = $contentAlign === 'center'
+                        ? 'justify-center'
+                        : ($contentAlign === 'right' ? 'justify-end' : 'justify-start');
+                    $gradientDirection = $contentAlign === 'right'
+                        ? 'bg-gradient-to-l'
+                        : ($contentAlign === 'left' ? 'bg-gradient-to-r' : 'bg-gradient-to-t');
+
+                    $overlayColor = $lightMedia ? 'bg-white' : 'bg-slate-950';
+                    $gradient = $lightMedia
+                        ? 'from-white/95 via-white/55 to-white/25'
+                        : 'from-slate-950/85 via-slate-950/20 to-slate-950/25';
+                    $badge = $lightMedia ? 'border-slate-900/15 bg-white/60' : 'border-white/20 bg-white/10';
+                    $eyebrowClass = $lightMedia ? 'text-slate-700' : 'text-white/85';
+                    $headingClass = $lightMedia ? 'text-slate-950' : 'text-white';
+                    $bodyClass = $lightMedia ? 'text-slate-700' : 'text-white/75';
+                    $secondaryClass = $lightMedia
+                        ? 'border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75'
+                        : 'border-white/30 bg-white/10 text-white hover:bg-white/20';
+                    $scrollClass = $lightMedia ? 'text-slate-700' : 'text-white/65';
+                    $scrollLine = $lightMedia ? 'bg-slate-900/25' : 'bg-white/25';
+                    $scrollDot = $lightMedia ? 'bg-slate-900' : 'bg-white';
+
+                    $html .= "
+                    <section id='{$parallaxId}' data-cosmic-parallax data-speed='{$parallaxSpeed}' class='relative isolate flex overflow-hidden px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 {$heroHeight}'>
+                        <div data-parallax-media class='absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform' style='transform:translate3d(0,0,0) scale(1.14)'>
+                            <img src='{$imageUrl}' alt='' class='absolute inset-0 h-full w-full object-cover'>
+                        </div>
+                        <div class='absolute inset-0 z-10 {$overlayColor}' style='opacity:" . ($overlayOpacity / 100) . "'></div>
+                        <div class='absolute inset-0 z-10 {$gradientDirection} {$gradient}'></div>
+                        <div data-parallax-content class='relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center transition-opacity duration-150 {$alignmentClass}' style='transform:translate3d(0,0,0);will-change:transform,opacity'>
+                            <div class='{$contentWidth}'>
+                                <div class='inline-flex items-center gap-3 rounded-full border px-4 py-2 backdrop-blur-md {$badge}'>
+                                    <span class='h-2 w-2 rounded-full {$primaryTheme['bg']}'></span>
+                                    <span class='text-xs font-bold uppercase tracking-[0.28em] {$eyebrowClass}'>{$eyebrow}</span>
+                                </div>
+                                <h1 class='mt-7 text-5xl font-semibold leading-[0.96] tracking-[-0.045em] sm:text-6xl md:text-7xl lg:text-[6.5rem] {$headingClass}'>{$heading}</h1>
+                                <p class='mt-7 text-base leading-8 sm:text-lg {$bodyClass} " . ($contentAlign === 'center' ? 'mx-auto max-w-2xl' : 'max-w-2xl') . "'>{$text}</p>
+                                <div class='mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row {$buttonJustify}'>
+                                    <a href='{$primaryUrl}' class='inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition hover:-translate-y-0.5 {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
+                                    <a href='{$secondaryUrl}' class='inline-flex min-h-[54px] items-center justify-center rounded-full border px-8 font-bold backdrop-blur-md transition {$secondaryClass}'>{$secondaryLabel}</a>
+                                </div>
+                            </div>
+                        </div>
+                        <div class='pointer-events-none absolute bottom-7 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 sm:flex {$scrollClass}'>
+                            <span class='text-[10px] font-bold uppercase tracking-[0.32em]'>{$scrollLabel}</span>
+                            <span class='relative h-10 w-px overflow-hidden {$scrollLine}'><span class='absolute left-0 top-0 h-4 w-px animate-bounce {$scrollDot}'></span></span>
+                        </div>
+                    </section>
+                    <script>
+                    (function () {
+                        var root = document.getElementById('{$parallaxId}');
+                        if (!root || root.dataset.ready === '1') return;
+                        root.dataset.ready = '1';
+
+                        var media = root.querySelector('[data-parallax-media]');
+                        var content = root.querySelector('[data-parallax-content]');
+                        if (!media) return;
+
+                        var reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+                        var frame = null;
+
+                        function update() {
+                            frame = null;
+
+                            if (reduced.matches) {
+                                media.style.transform = 'translate3d(0,0,0) scale(1.14)';
+                                if (content) {
+                                    content.style.transform = 'translate3d(0,0,0)';
+                                    content.style.opacity = '1';
+                                }
+                                return;
+                            }
+
+                            var rect = root.getBoundingClientRect();
+                            var viewport = window.innerHeight || 1;
+                            if (rect.bottom <= 0 || rect.top >= viewport) return;
+
+                            var progress = Math.max(0, Math.min(1, (viewport - rect.top) / (viewport + rect.height)));
+                            var centered = progress - 0.5;
+                            var strength = Number(root.dataset.speed) || 24;
+
+                            media.style.transform = 'translate3d(0,' + (centered * strength * 7) + 'px,0) scale(1.14)';
+
+                            if (content) {
+                                content.style.transform = 'translate3d(0,' + (centered * strength * -1.7) + 'px,0)';
+                                content.style.opacity = String(Math.max(0.35, 1 - Math.abs(centered) * 0.75));
+                            }
+                        }
+
+                        function requestUpdate() {
+                            if (frame === null) {
+                                frame = window.requestAnimationFrame(update);
+                            }
+                        }
+
+                        update();
+                        document.addEventListener('scroll', requestUpdate, true);
+                        window.addEventListener('resize', requestUpdate);
+                        if (reduced.addEventListener) reduced.addEventListener('change', requestUpdate);
+                    })();
+                    </script>";
+
+                    break;
+
                 case 'hero_editorial_overlay':
 
                 $tagline = e($block['tagline'] ?? 'BUILT FOR WHAT COMES NEXT');
@@ -1699,29 +1957,22 @@ HTML;
                     default => 'min-h-[650px]',
                 };
                 $primaryTheme = self::getTheme($primaryColor);
-                $isLightMedia = in_array($selectedThemeName, ['white', 'stone']);
-                $mediaOverlay = $isLightMedia ? 'bg-white' : 'bg-slate-950';
-                $mediaGradient = $isLightMedia ? 'from-white/95 via-white/60 to-transparent' : '{$mediaGradient}';
-                $mediaTagline = $isLightMedia ? 'text-slate-700' : 'text-white/75';
-                $mediaHeading = $isLightMedia ? 'text-slate-950' : 'text-white';
-                $mediaBody = $isLightMedia ? 'text-slate-700' : 'text-white/80';
-                $mediaSecondary = $isLightMedia ? 'border-slate-900/20 bg-white/50 text-slate-950' : 'border-white/40 bg-white/5 text-white';
                 $backgroundStyle = $backgroundImage
                     ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
                     : '';
 
                 $html .= "
                 <section class='relative flex overflow-hidden {$heroHeight}' style=\"{$backgroundStyle}\">
-                    <div class='absolute inset-0 {$mediaOverlay}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 {$primaryTheme['bg']}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
                     <div class='absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/40 to-transparent'></div>
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24'>
                         <div class='max-w-3xl'>
-                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$mediaTagline}'>{$tagline}</span>
-                            <h1 class='mt-5 text-5xl font-bold leading-[1.03] tracking-tight {$mediaHeading} sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
-                            <div class='mt-6 max-w-2xl text-base leading-7 {$mediaBody} sm:text-lg sm:leading-8'>{$text}</div>
+                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] text-white/75'>{$tagline}</span>
+                            <h1 class='mt-5 text-5xl font-bold leading-[1.03] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
+                            <div class='mt-6 max-w-2xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8'>{$text}</div>
                             <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
                                 <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
-                                <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$mediaSecondary}'>{$secondaryLabel}</a>
+                                <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border border-white/40 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a>
                             </div>
                         </div>
                     </div>
@@ -1784,30 +2035,40 @@ HTML;
                 $backgroundImage = e(self::staticAssetUrl($block['image_url'] ?? ''));
                 $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 76)));
                 $primaryTheme = self::getTheme($primaryColor);
-                $isLightMedia = in_array($selectedThemeName, ['white', 'stone']);
-                $mediaOverlay = $isLightMedia ? 'bg-white' : 'bg-slate-950';
-                $mediaGradient = $isLightMedia ? 'from-white/95 via-white/70 to-white/35' : 'from-slate-950/65 via-slate-950/25 to-slate-950/15';
-                $mediaEyebrow = $isLightMedia ? 'text-slate-700' : 'text-white/75';
-                $mediaHeading = $isLightMedia ? 'text-slate-950' : 'text-white';
-                $mediaBody = $isLightMedia ? 'text-slate-700' : 'text-white/85';
-                $mediaPrimary = $isLightMedia ? $primaryTheme['bg'] . ' ' . $primaryTheme['text'] : 'bg-white text-slate-950';
-                $mediaSecondary = $isLightMedia ? 'border-slate-900/20 bg-white/50 text-slate-950' : 'border-white/45 bg-white/5 text-white';
+                // Builder receives resolvedTheme from the section wrapper, while stored/published
+                // block data commonly only contains theme. Recreate the same resolved value here.
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'primary');
+                $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                 $backgroundStyle = $backgroundImage
                     ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
                     : '';
 
+                $overlayClass = $lightMedia ? 'bg-white' : 'bg-slate-950';
+                $gradientClass = $lightMedia
+                    ? 'from-white/95 via-white/55 to-white/20'
+                    : 'from-slate-950/65 via-slate-950/25 to-slate-950/15';
+                $eyebrowClass = $lightMedia ? 'text-slate-700' : 'text-white/75';
+                $headingClass = $lightMedia ? 'text-slate-950' : 'text-white';
+                $bodyClass = $lightMedia ? 'text-slate-700' : 'text-white/85';
+                $primaryButtonClass = $lightMedia
+                    ? "{$primaryTheme['bg']} {$primaryTheme['text']}"
+                    : 'bg-white text-slate-950';
+                $secondaryButtonClass = $lightMedia
+                    ? 'border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75'
+                    : 'border-white/45 bg-white/5 text-white hover:bg-white/10';
+
                 $html .= "
                 <section class='relative flex min-h-[420px] overflow-hidden sm:min-h-[460px] lg:min-h-[500px]' style=\"{$backgroundStyle}\">
-                    <div class='absolute inset-0 {$mediaOverlay}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
-                    <div class='absolute inset-0 bg-gradient-to-r {$mediaGradient}'></div>
+                    <div class='absolute inset-0 {$overlayClass}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 bg-gradient-to-r {$gradientClass}'></div>
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20'>
                         <div class='max-w-3xl'>
-                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$mediaEyebrow}'>{$eyebrow}</span>
-                            <h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight {$mediaHeading} sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2>
-                            <div class='mx-auto mt-5 max-w-2xl text-base leading-7 {$mediaBody} sm:text-lg sm:leading-8'>{$text}</div>
+                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$eyebrowClass}'>{$eyebrow}</span>
+                            <h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$headingClass}'>{$heading}</h2>
+                            <div class='mx-auto mt-5 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$bodyClass}'>{$text}</div>
                             <div class='mt-7 flex flex-col justify-center gap-3 sm:flex-row sm:items-center'>
-                                <a href='{$primaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full px-7 font-bold {$mediaPrimary}'>{$primaryLabel}</a>
-                                <a href='{$secondaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full border px-7 font-bold {$mediaSecondary}'>{$secondaryLabel}</a>
+                                <a href='{$primaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonClass}'>{$primaryLabel}</a>
+                                <a href='{$secondaryUrl}' class='inline-flex min-h-[48px] items-center justify-center rounded-full border px-7 font-bold transition {$secondaryButtonClass}'>{$secondaryLabel}</a>
                             </div>
                         </div>
                     </div>
@@ -2416,18 +2677,6 @@ HTML;
                 $primaryTheme = self::getTheme(
                     $primaryColor
                 );
-                $isLightMedia = in_array($selectedThemeName, ['white', 'stone']);
-                $mediaOverlay = $isLightMedia ? 'bg-white/75' : '{$mediaOverlay}';
-                $mediaGradientX = $isLightMedia ? 'from-white/95 via-white/65 to-white/20' : '{$mediaGradientX}';
-                $mediaGradientY = $isLightMedia ? 'from-white/65 via-transparent to-white/20' : '{$mediaGradientY}';
-                $mediaTagline = $isLightMedia ? 'text-slate-700' : '{$mediaTagline}';
-                $mediaHeading = $isLightMedia ? 'text-slate-950' : 'text-white';
-                $mediaBody = $isLightMedia ? 'text-slate-700' : 'text-white/75';
-                $mediaSecondary = $isLightMedia ? 'border-slate-900/20 bg-white/50 text-slate-950' : 'border-white/30 bg-white/10 text-white';
-                $mediaPill = $isLightMedia ? 'border-slate-900/15 bg-white/55 text-slate-900' : 'border-white/15 bg-slate-950/35 text-white';
-                $mediaScroll = $isLightMedia ? 'text-slate-700' : 'text-white/70';
-                $mediaScrollBorder = $isLightMedia ? 'border-slate-900/30' : 'border-white/30';
-                $mediaScrollDot = $isLightMedia ? 'bg-slate-900' : 'bg-white';
 
                 $backgroundMedia = $backgroundVideoEmbedUrl
                     ? "<div class='absolute inset-0 overflow-hidden'>
@@ -2478,11 +2727,11 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h1 class='mt-6 block text-5xl font-bold leading-[0.98] tracking-tight {$mediaHeading} sm:text-6xl lg:text-8xl'>
+                            <h1 class='mt-6 block text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-8xl'>
                                 {$heading}
                             </h1>
 
-                            <p class='mt-7 block max-w-2xl text-base leading-7 {$mediaBody} sm:text-lg sm:leading-8'>
+                            <p class='mt-7 block max-w-2xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8'>
                                 {$text}
                             </p>
 
@@ -2497,7 +2746,7 @@ HTML;
 
                                 <a
                                     href='{$secondaryUrl}'
-                                    class='inline-flex min-h-[52px] items-center justify-center rounded-full border px-8 font-bold {$mediaSecondary} backdrop-blur transition hover:bg-white/20'
+                                    class='inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/30 bg-white/10 px-8 font-bold text-white backdrop-blur transition hover:bg-white/20'
                                 >
                                     {$secondaryLabel}
                                 </a>
@@ -2506,7 +2755,7 @@ HTML;
 
                             <div class='mt-10 flex items-center gap-3'>
 
-                                <div class='flex items-center gap-3 rounded-full border px-4 py-2.5 {$mediaPill} backdrop-blur'>
+                                <div class='flex items-center gap-3 rounded-full border border-white/15 bg-slate-950/35 px-4 py-2.5 backdrop-blur'>
 
                                     <span class='flex h-8 w-8 items-center justify-center rounded-full {$primaryTheme['bg']} {$primaryTheme['text']}'>
                                         ▶
@@ -2528,10 +2777,10 @@ HTML;
 
                         <div class='mx-auto flex max-w-7xl items-end justify-between gap-6 px-7 pb-7 sm:px-10 lg:px-12'>
 
-                            <div class='flex items-center gap-3 {$mediaScroll}'>
+                            <div class='flex items-center gap-3 text-white/70'>
 
-                                <span class='flex h-9 w-6 items-start justify-center rounded-full border p-1.5 {$mediaScrollBorder}'>
-                                    <span class='h-1.5 w-1.5 rounded-full {$mediaScrollDot}'></span>
+                                <span class='flex h-9 w-6 items-start justify-center rounded-full border border-white/30 p-1.5'>
+                                    <span class='h-1.5 w-1.5 rounded-full bg-white'></span>
                                 </span>
 
                                 <span class='text-xs font-semibold uppercase tracking-[0.24em]'>
@@ -2559,6 +2808,6 @@ HTML;
                 break;
             }
         }
-        return $html;
+        return self::normalizePublishedAssetUrls($html);
     }
 }

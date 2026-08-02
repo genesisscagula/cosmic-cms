@@ -47,7 +47,9 @@ return [
         'publish_webhook_url' => env('COSMIC_PUBLISH_WEBHOOK_URL'),
         'static_sync_url' => env('COSMIC_STATIC_SYNC_URL'),
         'static_sync_token' => env('COSMIC_STATIC_SYNC_TOKEN'),
-        'asset_base_url' => env('COSMIC_ASSET_BASE_URL', env('APP_URL')),
+        // Static exports can be hosted on a different domain from the CMS.
+        // Keep their /storage assets anchored to the CMS instead of the target site.
+        'asset_base_url' => env('COSMIC_ASSET_BASE_URL', 'https://cosmiccms.com'),
     ],
 
 ];

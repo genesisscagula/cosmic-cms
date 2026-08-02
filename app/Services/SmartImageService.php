@@ -86,6 +86,51 @@ class SmartImageService
         return '/cosmic-images/cosmic-fallback.svg';
     }
 
+    /**
+     * Return unique local images for image-led collections such as case studies.
+     *
+     * Unlike the general fallback resolver, this intentionally never reaches
+     * into the generic background library. The selected industry is primary,
+     * then the default industry library, then the bundled SVG fallback.
+     */
+    public function localFallbacks(string $folder = 'default', int $count = 1): array
+    {
+        $folder = Str::slug($folder) ?: 'default';
+        $count = max(1, $count);
+        $selected = [];
+
+        foreach (array_values(array_unique([$folder, 'default'])) as $candidateFolder) {
+            $files = $this->localImageFiles($candidateFolder);
+            shuffle($files);
+
+            foreach ($files as $file) {
+                $relativePath = str_replace('\\', '/', Str::after($file, storage_path('app/public/')));
+                $url = '/storage/' . ltrim($relativePath, '/');
+
+                if (! in_array($url, $selected, true)) {
+                    $selected[] = $url;
+                }
+
+                if (count($selected) >= $count) {
+                    return $selected;
+                }
+            }
+        }
+
+        if ($selected === []) {
+            logger()->error('[SmartImageService] No case-study fallback images were found.', [
+                'requested_folder' => $folder,
+                'searched' => [$folder, 'default'],
+            ]);
+        }
+
+        while (count($selected) < $count) {
+            $selected[] = '/cosmic-images/cosmic-fallback.svg';
+        }
+
+        return $selected;
+    }
+
     private function remoteSearchIsConfigured(): bool
     {
         return config('services.smart_images.provider', 'unsplash') === 'unsplash'

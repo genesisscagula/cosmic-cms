@@ -19,7 +19,11 @@ class CreditController extends Controller
         return Inertia::render('Credits/Index', [
             'balance' => (int) $user->credits,
             'packages' => CreditPackageRegistry::all(),
-            'paymentsEnabled' => false,
+            'plans' => config('payments.plans', []),
+            'paymentProviders' => [
+                'stripe' => filled(config('payments.stripe.secret')),
+                'paymongo' => filled(config('payments.paymongo.secret')),
+            ],
             'developerPurchasesEnabled' => app()->environment(['local', 'testing']),
             'transactions' => $user->creditTransactions()
                 ->with('website:id,name')
