@@ -3,115 +3,254 @@
 namespace App\Http\Controllers;
 
 use App\Models\PaymentOrder;
-use App\Services\CreditService;
+use App\Services\PaymentFulfillmentService;
+use App\Services\PayPalService;
+use App\Services\SubscriptionManagementService;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpFoundation\Response;
 
 class PaymentWebhookController extends Controller
 {
-    public function stripe(Request $request, CreditService $credits): Response
-    {
-        $payload = $request->getContent();
-        abort_unless($this->validStripeSignature($payload, (string) $request->header('Stripe-Signature')), 400, 'Invalid signature.');
-        $event = json_decode($payload, true);
-        $type = $event['type'] ?? '';
-        $object = $event['data']['object'] ?? [];
+    public function paypal(
+        Request $request,
+        PayPalService $paypal,
+        PaymentFulfillmentService $fulfillment,
+        SubscriptionManagementService $subscriptions,
+    ): Response {
+        abort_unless($paypal->verifyWebhook($request), 400, 'Invalid PayPal webhook signature.');
 
-        if (in_array($type, ['checkout.session.completed', 'checkout.session.async_payment_succeeded'], true)
-            && ($object['payment_status'] ?? '') !== 'unpaid') {
-            $reference = $object['metadata']['order_reference'] ?? $object['client_reference_id'] ?? null;
-            $this->fulfill($reference, (string) ($object['payment_intent'] ?? $object['id'] ?? ''), (string) ($object['subscription'] ?? ''), $credits);
-        }
+        $event = json_decode($request->getContent(), true) ?: [];
+        $type = (string) ($event['event_type'] ?? '');
+        $resource = $event['resource'] ?? [];
 
-        if ($type === 'customer.subscription.deleted') {
-            PaymentOrder::where('external_subscription_id', $object['id'] ?? '')->first()?->user?->update(['plan_status' => 'cancelled']);
-        }
+        match ($type) {
+            'CHECKOUT.ORDER.APPROVED' => $this->captureApprovedOrder($resource, $paypal, $fulfillment),
+            'PAYMENT.CAPTURE.COMPLETED' => $this->fulfillPayPalCapture($resource, $fulfillment),
+            'BILLING.SUBSCRIPTION.ACTIVATED' => $this->activateSubscription($resource, $fulfillment, $subscriptions),
+            'PAYMENT.SALE.COMPLETED' => $this->renewSubscription($resource, $fulfillment),
+            'BILLING.SUBSCRIPTION.SUSPENDED' => $fulfillment->updateSubscriptionStatus(
+                (string) ($resource['id'] ?? ''),
+                'suspended',
+            ),
+            'BILLING.SUBSCRIPTION.CANCELLED' => $fulfillment->updateSubscriptionStatus(
+                (string) ($resource['id'] ?? ''),
+                'cancelled',
+            ),
+            'BILLING.SUBSCRIPTION.EXPIRED' => $fulfillment->updateSubscriptionStatus(
+                (string) ($resource['id'] ?? ''),
+                'expired',
+            ),
+            default => null,
+        };
 
         return response('ok');
     }
 
-    public function paymongo(Request $request, CreditService $credits): Response
-    {
+    public function paymongo(
+        Request $request,
+        PaymentFulfillmentService $fulfillment,
+    ): Response {
         $payload = $request->getContent();
         $event = json_decode($payload, true);
-        abort_unless($this->validPaymongoSignature($payload, (string) $request->header('Paymongo-Signature'), (bool) data_get($event, 'data.attributes.livemode')), 400, 'Invalid signature.');
+
+        abort_unless(
+            $this->validPaymongoSignature(
+                $payload,
+                (string) $request->header('Paymongo-Signature'),
+                (bool) data_get($event, 'data.attributes.livemode'),
+            ),
+            400,
+            'Invalid PayMongo signature.',
+        );
 
         if (data_get($event, 'data.attributes.type') === 'payment.paid') {
             $payment = data_get($event, 'data.attributes.data', []);
             $reference = data_get($payment, 'attributes.external_reference_number');
-            $this->fulfill($reference, (string) ($payment['id'] ?? ''), '', $credits);
+
+            $fulfillment->fulfillOrder(
+                $reference,
+                (string) ($payment['id'] ?? ''),
+                '',
+                ['paymongo_event_id' => data_get($event, 'data.id')],
+            );
         }
 
         return response('ok');
     }
 
-    private function fulfill(?string $reference, string $paymentId, string $subscriptionId, CreditService $credits): void
+    public function stripe(Request $request): Response
     {
-        if (! $reference) {
+        /*
+         * Stripe remains intentionally disabled in Cosmic Payments V1.
+         * Preserve the endpoint for older integrations without fulfilling data.
+         */
+        abort(410, 'Stripe checkout is disabled.');
+    }
+
+    private function captureApprovedOrder(
+        array $resource,
+        PayPalService $paypal,
+        PaymentFulfillmentService $fulfillment,
+    ): void {
+        $orderId = (string) ($resource['id'] ?? '');
+
+        if ($orderId === '') {
             return;
         }
 
-        DB::transaction(function () use ($reference, $paymentId, $subscriptionId, $credits) {
-            $order = PaymentOrder::where('reference', $reference)->lockForUpdate()->first();
-            if (! $order || $order->fulfilled_at) {
-                return;
-            }
+        $capturedOrder = $paypal->captureOrder($orderId);
+        $reference = $paypal->orderReference($capturedOrder);
+        $paymentOrder = PaymentOrder::query()->where('reference', $reference)->first();
 
-            $order->update([
-                'status' => 'paid',
-                'external_payment_id' => $paymentId ?: null,
-                'external_subscription_id' => $subscriptionId ?: null,
-                'paid_at' => now(),
-            ]);
+        if (! $paymentOrder || $paymentOrder->product_type !== 'credits') {
+            return;
+        }
 
-            $credits->grant(
-                $order->user,
-                $order->credits,
-                $order->product_type === 'plan' ? ucfirst($order->product_key).' plan credits' : 'Credit purchase: '.$order->product_key,
-                'payment:'.$order->provider.':'.$order->reference,
-                ['payment_order_id' => $order->id, 'provider' => $order->provider, 'product_type' => $order->product_type],
-            );
+        $paypal->assertOrderMatches($paymentOrder, $capturedOrder);
 
-            if ($order->product_type === 'plan') {
-                $order->user->update([
-                    'plan_key' => $order->product_key,
-                    'plan_status' => 'active',
-                    'plan_provider' => $order->provider,
-                    'plan_renews_at' => now()->addMonth(),
-                ]);
-            }
-            $order->update(['fulfilled_at' => now()]);
-        });
+        $fulfillment->fulfillOrder(
+            $paymentOrder->reference,
+            $paypal->captureId($capturedOrder),
+            '',
+            [
+                'paypal_order_id' => $orderId,
+                'paypal_capture_source' => 'webhook',
+            ],
+        );
     }
 
-    private function validStripeSignature(string $payload, string $header): bool
-    {
-        $secret = (string) config('payments.stripe.webhook_secret');
-        preg_match('/(?:^|,)t=(\d+)/', $header, $time);
-        preg_match_all('/(?:^|,)v1=([a-f0-9]+)/i', $header, $signatures);
-        if ($secret === '' || empty($time[1]) || abs(time() - (int) $time[1]) > 300) {
-            return false;
+    private function fulfillPayPalCapture(
+        array $resource,
+        PaymentFulfillmentService $fulfillment,
+        SubscriptionManagementService $subscriptions,
+    ): void {
+        $reference = (string) (
+            $resource['custom_id']
+            ?? $resource['invoice_id']
+            ?? ''
+        );
+
+        if ($reference === '') {
+            $orderId = (string) data_get($resource, 'supplementary_data.related_ids.order_id');
+
+            $reference = (string) PaymentOrder::query()
+                ->where('external_checkout_id', $orderId)
+                ->value('reference');
         }
-        $expected = hash_hmac('sha256', $time[1].'.'.$payload, $secret);
-        foreach ($signatures[1] ?? [] as $signature) {
-            if (hash_equals($expected, $signature)) return true;
+
+        $paymentOrder = PaymentOrder::query()
+            ->where('reference', $reference)
+            ->where('product_type', 'credits')
+            ->first();
+
+        if (! $paymentOrder) {
+            return;
         }
-        return false;
+
+        $status = strtoupper((string) ($resource['status'] ?? ''));
+        $currency = strtoupper((string) data_get($resource, 'amount.currency_code'));
+        $amountMinor = (int) round(((float) data_get($resource, 'amount.value')) * 100);
+
+        if (
+            $status !== 'COMPLETED'
+            || $currency !== strtoupper((string) $paymentOrder->currency)
+            || $amountMinor !== (int) $paymentOrder->amount_minor
+        ) {
+            return;
+        }
+
+        $fulfillment->fulfillOrder(
+            $paymentOrder->reference,
+            (string) ($resource['id'] ?? ''),
+            '',
+            ['paypal_capture_source' => 'payment_capture_webhook'],
+        );
+    }
+
+    private function activateSubscription(
+        array $resource,
+        PaymentFulfillmentService $fulfillment,
+        SubscriptionManagementService $subscriptions,
+    ): void {
+        $reference = (string) ($resource['custom_id'] ?? '');
+        $subscriptionId = (string) ($resource['id'] ?? '');
+
+        if ($reference === '' && $subscriptionId !== '') {
+            $reference = (string) PaymentOrder::query()
+                ->where('external_subscription_id', $subscriptionId)
+                ->value('reference');
+        }
+
+        $fulfilled = $fulfillment->fulfillOrder(
+            $reference,
+            '',
+            $subscriptionId,
+            [
+                'paypal_subscription_status' => (string) ($resource['status'] ?? 'ACTIVE'),
+                'paypal_next_billing_time' => data_get($resource, 'billing_info.next_billing_time'),
+            ],
+        );
+
+        if ($fulfilled) {
+            $order = PaymentOrder::query()->where('reference', $reference)->first();
+
+            if ($order) {
+                try {
+                    $subscriptions->syncOrder($order);
+                    $subscriptions->finalizeSwitch($order->fresh());
+                } catch (\Throwable $exception) {
+                    report($exception);
+                }
+            }
+        }
+    }
+
+    private function renewSubscription(
+        array $resource,
+        PaymentFulfillmentService $fulfillment,
+    ): void {
+        $subscriptionId = (string) (
+            $resource['billing_agreement_id']
+            ?? data_get($resource, 'supplementary_data.related_ids.subscription_id')
+            ?? ''
+        );
+
+        $fulfillment->fulfillSubscriptionRenewal(
+            $subscriptionId,
+            (string) ($resource['id'] ?? ''),
+            [
+                'paypal_sale_state' => (string) ($resource['state'] ?? ''),
+            ],
+        );
     }
 
     private function validPaymongoSignature(string $payload, string $header, bool $live): bool
     {
         $secret = (string) config('payments.paymongo.webhook_secret');
         $parts = [];
+
         foreach (explode(',', $header) as $part) {
             [$key, $value] = array_pad(explode('=', trim($part), 2), 2, null);
-            if ($key && $value) $parts[$key] = $value;
+
+            if ($key && $value) {
+                $parts[$key] = $value;
+            }
         }
+
         $signature = $parts[$live ? 'li' : 'te'] ?? null;
-        if ($secret === '' || ! isset($parts['t']) || ! $signature || abs(time() - (int) $parts['t']) > 300) {
+
+        if (
+            $secret === ''
+            || ! isset($parts['t'])
+            || ! $signature
+            || abs(time() - (int) $parts['t']) > 300
+        ) {
             return false;
         }
-        return hash_equals(hash_hmac('sha256', $parts['t'].'.'.$payload, $secret), $signature);
+
+        return hash_equals(
+            hash_hmac('sha256', $parts['t'].'.'.$payload, $secret),
+            $signature,
+        );
     }
 }

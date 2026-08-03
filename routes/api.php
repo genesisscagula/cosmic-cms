@@ -66,5 +66,6 @@ Route::get('/v1/published-package', function (Request $request) {
 
     return response()->json(app(PagePublisher::class)->publishedPackage($website));
 });
+Route::post('/payments/webhooks/paypal', [PaymentWebhookController::class, 'paypal'])->middleware('throttle:120,1');
 Route::post('/payments/webhooks/stripe', [PaymentWebhookController::class, 'stripe'])->middleware('throttle:120,1');
 Route::post('/payments/webhooks/paymongo', [PaymentWebhookController::class, 'paymongo'])->middleware('throttle:120,1');

@@ -4,8 +4,9 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
+use App\AI\Images\DTO\ImageSearchResult;
+use App\AI\Images\ImageProviderManager;
 
 class SmartImageService
 {
@@ -19,39 +20,71 @@ class SmartImageService
      * 4. Local background library
      * 5. Bundled public SVG fallback
      */
+    public function __construct(
+        private readonly ImageProviderManager $providerManager,
+    ) {
+    }
+
+    /**
+     * Find a context-aware stock image and return a browser-safe URL.
+     *
+     * Priority:
+     * 1. Cached/downloaded remote image in public/cosmic-images/remote
+     * 2. Enabled remote providers in configured failover order
+     * 3. Local industry folder in storage/app/public/cms-images/{industry}
+     * 4. Local default/background libraries
+     * 5. Bundled public SVG fallback
+     */
     public function find(string $query, string $fallbackFolder = 'default'): string
     {
         $query = $this->normalizeQuery($query);
         $fallbackFolder = Str::slug($fallbackFolder) ?: 'default';
 
-        if ($query === '' || ! $this->remoteSearchIsConfigured()) {
+        if ($query === '' || ! $this->providerManager->hasEnabledProvider()) {
             return $this->localFallback($fallbackFolder);
         }
 
         try {
-            $cacheKey = 'cosmic-smart-image-url:v3:' . sha1($query);
-            $cachedUrl = Cache::get($cacheKey);
+            // Ranking changes must not reuse a previously accepted low-relevance result.
+            $rankingVersion = (string) config('services.smart_images.ranking_version', '4.2.0.4');
+            $cacheKey = 'cosmic-smart-image-url:v4:' . sha1($rankingVersion . '|' . $query);
+            $cacheEnabled = (bool) config('services.smart_images.cache', true);
+            $cachedUrl = $cacheEnabled ? Cache::get($cacheKey) : null;
 
             if (is_string($cachedUrl) && $cachedUrl !== '' && $this->publicUrlExists($cachedUrl)) {
                 return $cachedUrl;
             }
 
-            $photo = $this->searchUnsplash($query);
+            foreach ($this->providerManager->searchCandidates($query, [
+                'orientation' => 'landscape',
+            ]) as $result) {
+                $publicUrl = $this->downloadRemoteImage($result, $query);
 
-            if (! $photo) {
-                return $this->localFallback($fallbackFolder);
+                if (! $publicUrl) {
+                    logger()->info('[SmartImageService] Continuing after provider download failure.', [
+                        'provider' => $result->provider,
+                        'query' => $query,
+                    ]);
+                    continue;
+                }
+
+                if ($cacheEnabled) {
+                    $ttl = max(60, (int) config('services.smart_images.cache_ttl', 2592000));
+                    Cache::put($cacheKey, $publicUrl, now()->addSeconds($ttl));
+                }
+
+                $this->providerManager->trackDownload($result);
+
+                logger()->info('[SmartImageService] Remote image resolved.', [
+                    'provider' => $result->provider,
+                    'query' => $query,
+                    'url' => $publicUrl,
+                ]);
+
+                return $publicUrl;
             }
 
-            $publicUrl = $this->downloadUnsplashPhoto($photo, $query);
-
-            if (! $publicUrl) {
-                return $this->localFallback($fallbackFolder);
-            }
-
-            Cache::put($cacheKey, $publicUrl, now()->addDays(30));
-            $this->triggerUnsplashDownload(data_get($photo, 'links.download_location'));
-
-            return $publicUrl;
+            return $this->localFallback($fallbackFolder);
         } catch (\Throwable $exception) {
             logger()->warning('[SmartImageService] Remote image search failed; using local fallback.', [
                 'query' => $query,
@@ -131,123 +164,20 @@ class SmartImageService
         return $selected;
     }
 
-    private function remoteSearchIsConfigured(): bool
-    {
-        return config('services.smart_images.provider', 'unsplash') === 'unsplash'
-            && filled(config('services.unsplash.access_key'));
-    }
-
-    private function searchUnsplash(string $query): ?array
-    {
-        $response = Http::acceptJson()
-            ->withHeaders([
-                'Authorization' => 'Client-ID ' . config('services.unsplash.access_key'),
-                'Accept-Version' => 'v1',
-            ])
-            ->connectTimeout(4)
-            ->timeout(10)
-            ->retry(2, 250, throw: false)
-            ->get('https://api.unsplash.com/search/photos', [
-                'query' => $query,
-                'orientation' => 'landscape',
-                'content_filter' => 'high',
-                'per_page' => 12,
-                'page' => 1,
-            ]);
-
-        if (! $response->successful()) {
-            logger()->warning('[SmartImageService] Unsplash search was not successful.', [
-                'status' => $response->status(),
-                'query' => $query,
-                'body' => Str::limit($response->body(), 300),
-            ]);
-
-            return null;
-        }
-
-        $results = collect($response->json('results', []))
-            ->filter(fn ($photo) => is_array($photo) && filled(data_get($photo, 'urls.raw')))
-            ->reject(fn (array $photo) => $this->containsBlockedBranding($photo))
-            ->take(12)
-            ->values();
-
-        if ($results->isEmpty()) {
-            return null;
-        }
-
-        // Choose the most relevant result rather than a random one. Random
-        // selection allowed yacht searches to return computers or code images.
-        $tokens = collect(preg_split('/\s+/', strtolower($query)) ?: [])
-            ->filter(fn ($token) => strlen($token) >= 4)
-            ->unique()
-            ->values();
-
-        return $results
-            ->map(function (array $photo, int $index) use ($tokens) {
-                $haystack = strtolower(implode(' ', array_filter([
-                    data_get($photo, 'alt_description'),
-                    data_get($photo, 'description'),
-                    collect(data_get($photo, 'tags', []))->pluck('title')->implode(' '),
-                ])));
-
-                $score = $tokens->sum(fn ($token) => str_contains($haystack, $token) ? 1 : 0);
-
-                return ['photo' => $photo, 'score' => $score, 'index' => $index];
-            })
-            ->sortByDesc(fn ($item) => ($item['score'] * 100) - $item['index'])
-            ->first()['photo'];
-    }
-
-    private function containsBlockedBranding(array $photo): bool
-    {
-        $metadata = strtolower(implode(' ', array_filter([
-            data_get($photo, 'alt_description'),
-            data_get($photo, 'description'),
-            data_get($photo, 'slug'),
-            collect(data_get($photo, 'tags', []))->pluck('title')->implode(' '),
-        ])));
-
-        $blockedTerms = [
-            'adobe', 'apple', 'canva', 'figma', 'google', 'microsoft', 'shopify',
-            'squarespace', 'webflow', 'wix', 'wordpress', 'logo', 'watermark',
-            'brand identity', 'branded interface', 'app screenshot', 'website builder',
-        ];
-
-        foreach ($blockedTerms as $term) {
-            if (str_contains($metadata, $term)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
     /**
-     * Save remote files directly under public/ so generated images work even
-     * when php artisan storage:link has not been run yet.
+     * Save a provider result under public/ so generated pages work without a
+     * storage symlink. Provider-specific URL parameters live on the DTO.
      */
-    private function downloadUnsplashPhoto(array $photo, string $query): ?string
+    private function downloadRemoteImage(ImageSearchResult $result, string $query): ?string
     {
-        $url = data_get($photo, 'urls.raw') ?: data_get($photo, 'urls.regular');
-
-        if (! is_string($url) || $url === '') {
-            return null;
-        }
-
-        $response = Http::connectTimeout(5)
+        $response = \Illuminate\Support\Facades\Http::connectTimeout(5)
             ->timeout(20)
             ->retry(2, 300, throw: false)
-            ->get($url, [
-                'auto' => 'format',
-                'fit' => 'crop',
-                'crop' => 'entropy',
-                'w' => 1600,
-                'h' => 1000,
-                'q' => 82,
-            ]);
+            ->get($result->url, $result->downloadParameters);
 
         if (! $response->successful() || $response->body() === '') {
-            logger()->warning('[SmartImageService] Unsplash image download failed.', [
+            logger()->warning('[SmartImageService] Remote image download failed.', [
+                'provider' => $result->provider,
                 'status' => $response->status(),
                 'query' => $query,
             ]);
@@ -277,28 +207,6 @@ class SmartImageService
         }
 
         return '/' . trim($relativeDirectory, '/') . '/' . $filename;
-    }
-
-    private function triggerUnsplashDownload(?string $downloadLocation): void
-    {
-        if (! is_string($downloadLocation) || $downloadLocation === '') {
-            return;
-        }
-
-        try {
-            Http::acceptJson()
-                ->withHeaders([
-                    'Authorization' => 'Client-ID ' . config('services.unsplash.access_key'),
-                    'Accept-Version' => 'v1',
-                ])
-                ->connectTimeout(3)
-                ->timeout(6)
-                ->get($downloadLocation);
-        } catch (\Throwable $exception) {
-            logger()->notice('[SmartImageService] Unsplash download tracking failed.', [
-                'message' => $exception->getMessage(),
-            ]);
-        }
     }
 
     private function localImageFiles(string $folder): array

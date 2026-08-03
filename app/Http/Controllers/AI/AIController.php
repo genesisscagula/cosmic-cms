@@ -64,14 +64,15 @@ class AIController extends Controller
             ?? $this->pageGenerationService->resolveLayoutFolder($validated['prompt']);
 
         try {
-            $blocks = $this->pageGenerationService->generateBlocks(
+            $generation = $this->pageGenerationService->generateBlocksDetailed(
                 $validated['prompt'],
                 $validated['sections'],
                 $imageFolder
             );
 
             return response()->json([
-                'blocks' => $blocks,
+                'blocks' => $generation['blocks'],
+                'generation_meta' => $generation['diagnostics'],
                 'credits_spent' => $cost,
                 'credit_balance' => $this->credits->balance($request->user()),
             ]);

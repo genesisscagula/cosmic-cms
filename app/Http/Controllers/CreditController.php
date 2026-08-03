@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Cosmic\Pricing\CreditPackageRegistry;
 use App\Services\CreditService;
+use App\Services\PaymentCountryResolver;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -12,19 +13,42 @@ use Inertia\Response;
 
 class CreditController extends Controller
 {
-    public function index(Request $request): Response
+    public function index(Request $request, PaymentCountryResolver $paymentCountry): Response
     {
         $user = $request->user();
+        $activeSubscriptionOrder = $user->paymentOrders()
+            ->where('product_type', 'plan')
+            ->whereNotNull('external_subscription_id')
+            ->latest('id')
+            ->first();
+
+        $planKey = (string) ($user->plan_key ?? '');
+        $planConfig = $planKey !== ''
+            ? config("payments.plans.{$planKey}")
+            : null;
 
         return Inertia::render('Credits/Index', [
             'balance' => (int) $user->credits,
             'packages' => CreditPackageRegistry::all(),
             'plans' => config('payments.plans', []),
-            'paymentProviders' => [
-                'stripe' => filled(config('payments.stripe.secret')),
-                'paymongo' => filled(config('payments.paymongo.secret')),
-            ],
+            'currentPlan' => $planConfig ? [
+                'key' => $planKey,
+                'label' => $planConfig['label'] ?? ucfirst($planKey),
+                'credits' => (int) ($planConfig['credits'] ?? 0),
+                'price_usd' => (float) ($planConfig['price_usd'] ?? 0),
+                'status' => (string) ($user->plan_status ?: 'inactive'),
+                'provider' => (string) ($user->plan_provider ?: ''),
+                'renews_at' => $user->plan_renews_at?->toIso8601String(),
+                'subscription_id' => $activeSubscriptionOrder?->external_subscription_id,
+                'cancel_at_period_end' => (bool) $user->plan_cancel_at_period_end,
+                'cancelled_at' => $user->plan_cancelled_at?->toIso8601String(),
+                'has_access' => in_array(strtolower((string) $user->plan_status), ['active', 'approved'], true)
+                    || ((bool) $user->plan_cancel_at_period_end && $user->plan_renews_at?->isFuture()),
+            ] : null,
+            'paymentRouting' => $paymentCountry->payload($request),
             'developerPurchasesEnabled' => app()->environment(['local', 'testing']),
+            'statusMessage' => session('status'),
+            'paymentError' => session('payment_error'),
             'transactions' => $user->creditTransactions()
                 ->with('website:id,name')
                 ->latest()

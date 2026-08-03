@@ -1,7 +1,8 @@
 <?php
 
 namespace App\AI\Generators;
-use App\AI\Schemas\SchemaManager;
+use App\AI\Schemas\SelectedSchemaLoader;
+use App\AI\Validation\GeneratedContentValidator;
 
 use OpenAI\Laravel\Facades\OpenAI;
 
@@ -34,145 +35,208 @@ class ContentGenerator
 
     public function generate(string $prompt, array $sections): array
     {
+        $schemaSelection = (new SelectedSchemaLoader())->resolve($sections);
+        $selectedSections = $schemaSelection['selected'];
 
-
-        $system = <<<PROMPT
-        You are a senior website copywriter.
-
-        Generate professional marketing copy.
-
-        Format:
-
-        {
-            "image_folder":"",
-            "blocks":[]
+        if ($selectedSections === []) {
+            throw new \InvalidArgumentException('No supported Spark schemas were selected.');
         }
 
-        image_folder MUST be exactly one of:
+        $system = $this->buildSystemPrompt($schemaSelection);
+        $user = $this->buildUserPrompt($prompt, $selectedSections);
+        $attemptLimit = max(1, (int) config('openai.content_json_attempts', 2));
+        $lastContent = '';
+        $lastJsonError = null;
 
-        PROMPT;
+        for ($attempt = 1; $attempt <= $attemptLimit; $attempt++) {
+            $messages = [
+                [
+                    'role' => 'system',
+                    'content' => $system,
+                ],
+                [
+                    'role' => 'user',
+                    'content' => $attempt === 1
+                        ? $user
+                        : $this->buildRepairPrompt($user, $lastContent, $lastJsonError),
+                ],
+            ];
 
-        $system .= implode("\n", self::IMAGE_FOLDERS);
+            $response = OpenAI::chat()->create([
+                'model' => config('openai.content_model', env('OPENAI_MODEL', 'gpt-5-mini')),
+                'response_format' => ['type' => 'json_object'],
+                'messages' => $messages,
+            ]);
 
+            $lastContent = trim((string) ($response->choices[0]->message->content ?? ''));
 
-        $schemaMap = SchemaManager::map();
+            try {
+                $data = $this->decodeEnvelope($lastContent);
+                $validation = (new GeneratedContentValidator())->validate(
+                    $data['blocks'],
+                    $selectedSections
+                );
 
-        foreach ($sections as $section) {
+                return [
+                    'image_folder' => $data['image_folder'],
+                    'blocks' => $validation['blocks'],
+                    'schema_diagnostics' => [
+                        'selected' => $selectedSections,
+                        'loaded_count' => count($selectedSections),
+                        'skipped' => $schemaSelection['skipped'],
+                        'duplicates_removed' => $schemaSelection['duplicate_count'],
+                        'content_model' => config('openai.content_model'),
+                        'json_attempts_used' => $attempt,
+                        'json_validation' => $validation['diagnostics'],
+                    ],
+                ];
+            } catch (\UnexpectedValueException $exception) {
+                $lastJsonError = $exception->getMessage();
+            }
+        }
 
-            if (!isset($schemaMap[$section])) {
-                continue;
+        throw new \UnexpectedValueException(
+            "AI content generator failed to return the required JSON envelope after {$attemptLimit} attempt(s). " .
+            ($lastJsonError ?: 'Unknown JSON response error.')
+        );
+    }
+
+    /**
+     * Build the complete schema boundary for the selected Sparks only.
+     */
+    private function buildSystemPrompt(array $schemaSelection): string
+    {
+        $system = <<<PROMPT
+You are Cosmic's senior website content generator.
+
+Return one JSON object only, with this exact top-level envelope:
+
+{
+  "image_folder": "",
+  "blocks": []
+}
+
+The image_folder value MUST be exactly one of:
+PROMPT;
+
+        $system .= "\n- " . implode("\n- ", self::IMAGE_FOLDERS) . "\n";
+        $system .= "\nSELECTED SPARK SCHEMAS\n";
+
+        foreach ($schemaSelection['methods'] as $section => $method) {
+            if (! method_exists($this, $method)) {
+                throw new \LogicException("Schema method [{$method}] for Spark [{$section}] does not exist.");
             }
 
-            $method = $schemaMap[$section];
-
-            $system .= $this->$method();
-
+            $system .= $this->{$method}();
         }
 
-        $system .= <<<RULES
+        $system .= <<<'RULES'
 
-        - Return ONLY valid JSON.
-        - Theme must always be "auto".
-        - Every block must contain all required fields.
+GLOBAL CONTENT CONTRACT
 
-        RULES;
+- Output valid JSON only. Never wrap the response in markdown fences.
+- Generate exactly one block for every selected Spark.
+- Keep blocks in the exact same order as the selected Spark list.
+- Every block.type must exactly match its selected Spark ID.
+- Do not add, replace, rename, or omit a selected Spark.
+- Every block must contain every field required by its selected schema.
+- Every block theme must be "auto".
+- Use the supplied business and page context consistently across all blocks.
+- Write production-ready content, not notes, explanations, TODOs, or placeholders.
+- Do not invent awards, certifications, client names, dates, prices, statistics, addresses, phone numbers, or performance claims not supplied by the user.
+- Keep URLs editable and safe. Use "#" when no real destination was supplied.
+- Image URL fields defined by a schema must remain empty strings; the application assigns images after generation.
+RULES;
 
+        return $system;
+    }
 
-        $user = <<<PROMPT
-        Website Request
-
-        {$prompt}
-
-        Selected Sections
-
-        PROMPT;
-
-        foreach ($sections as $section) {
-            $user .= "\n- {$section}";
+    private function buildUserPrompt(string $prompt, array $selectedSections): string
+    {
+        $ordered = [];
+        foreach ($selectedSections as $index => $section) {
+            $ordered[] = ($index + 1) . '. ' . $section;
         }
 
+        $orderedList = implode("\n", $ordered);
+        $blockCount = count($selectedSections);
 
-        $user .= <<<PROMPT
+        return <<<PROMPT
+WEBSITE REQUEST
 
-        Generate professional content for each selected section.
+{$prompt}
 
-        Return ONLY this JSON structure:
+ORDERED SELECTED SPARKS
 
-        {
-            "image_folder":"",
-            "blocks":[]
-        }
+{$orderedList}
 
-        One block per selected section.
+Generate the complete content payload now.
+The blocks array must contain exactly {$blockCount} blocks in the order shown above.
+PROMPT;
+    }
 
-        PROMPT;
+    private function buildRepairPrompt(string $originalPrompt, string $invalidContent, ?string $error): string
+    {
+        $invalidContent = function_exists('mb_substr')
+            ? mb_substr($invalidContent, 0, 12000)
+            : substr($invalidContent, 0, 12000);
 
-        $response = OpenAI::chat()->create([
+        return <<<PROMPT
+{$originalPrompt}
 
-            "model" => env("OPENAI_MODEL", "gpt-5-mini"),
+Your previous response did not satisfy the JSON envelope.
+Error: {$error}
 
-            "messages" => [
+Previous response:
+{$invalidContent}
 
-                [
-                    "role" => "system",
-                    "content" => $system
-                ],
+Return a corrected JSON object only. Preserve the exact selected Spark order and include one block per selected Spark.
+PROMPT;
+    }
 
-                [
-                    "role" => "user",
-                    "content" => $user
-                ]
-
-            ]
-
-        ]);
-
-        $content = trim(
-            $response->choices[0]->message->content
-        );
-
-        // Remove markdown fences
-        $content = preg_replace('/^```json\s*/i', '', $content);
-        $content = preg_replace('/^```\s*/i', '', $content);
-        $content = preg_replace('/```\s*$/i', '', $content);
-
-        // Remove UTF-8 BOM if present
-        $content = preg_replace('/^\xEF\xBB\xBF/', '', $content);
-
+    /**
+     * @return array{image_folder:string, blocks:array<int, array<string, mixed>>}
+     */
+    private function decodeEnvelope(string $content): array
+    {
+        $content = preg_replace('/^```json\s*/i', '', $content) ?? $content;
+        $content = preg_replace('/^```\s*/i', '', $content) ?? $content;
+        $content = preg_replace('/```\s*$/i', '', $content) ?? $content;
+        $content = preg_replace('/^\xEF\xBB\xBF/', '', $content) ?? $content;
         $content = trim($content);
 
-        $data = json_decode($content, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-
-            throw new \Exception(
-                "AI returned invalid JSON:\n\n".$content
-            );
-
+        if ($content === '') {
+            throw new \UnexpectedValueException('The AI returned an empty response.');
         }
 
-        if (!isset($data["blocks"])) {
-
-            throw new \Exception(
-                "AI did not return a blocks array.\n\n".$content
-            );
-
+        try {
+            $data = json_decode($content, true, 512, JSON_THROW_ON_ERROR);
+        } catch (\JsonException $exception) {
+            throw new \UnexpectedValueException('Invalid JSON: ' . $exception->getMessage(), 0, $exception);
         }
 
-        if (!isset($data["image_folder"])) {
+        if (! is_array($data)) {
+            throw new \UnexpectedValueException('The AI response must be a JSON object.');
+        }
 
-            throw new \Exception(
-                "AI did not return an image_folder.\n\n".$content
-            );
+        if (! isset($data['blocks']) || ! is_array($data['blocks'])) {
+            throw new \UnexpectedValueException('The AI response is missing a blocks array.');
+        }
 
+        if (! isset($data['image_folder']) || ! is_string($data['image_folder'])) {
+            throw new \UnexpectedValueException('The AI response is missing a string image_folder.');
+        }
+
+        if (! in_array($data['image_folder'], self::IMAGE_FOLDERS, true)) {
+            throw new \UnexpectedValueException('The AI returned an unsupported image_folder.');
         }
 
         return [
             'image_folder' => $data['image_folder'],
-            'blocks' => $data['blocks'],
+            'blocks' => array_values($data['blocks']),
         ];
-
     }
+
 
     private function heroHeadlineSchema(): string
     {

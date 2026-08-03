@@ -35,6 +35,8 @@ class User extends Authenticatable
         'plan_status',
         'plan_provider',
         'plan_renews_at',
+        'plan_cancel_at_period_end',
+        'plan_cancelled_at',
     ];
 
     /**
@@ -61,6 +63,8 @@ class User extends Authenticatable
             'password' => 'hashed',
             'credits' => 'integer',
             'plan_renews_at' => 'datetime',
+            'plan_cancel_at_period_end' => 'boolean',
+            'plan_cancelled_at' => 'datetime',
         ];
     }
 

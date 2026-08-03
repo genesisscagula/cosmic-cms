@@ -36,11 +36,30 @@ return [
     ],
 
     'smart_images' => [
+        // SMART_IMAGE_PROVIDER remains supported for backward compatibility.
         'provider' => env('SMART_IMAGE_PROVIDER', 'unsplash'),
+        'providers' => array_values(array_filter(array_map(
+            'trim',
+            explode(',', env('SMART_IMAGE_PROVIDERS', env('SMART_IMAGE_PROVIDER', 'unsplash')))
+        ))),
+        'timeout' => (int) env('SMART_IMAGE_TIMEOUT', 8),
+        'cache' => filter_var(env('SMART_IMAGE_CACHE', true), FILTER_VALIDATE_BOOL),
+        'cache_ttl' => (int) env('SMART_IMAGE_CACHE_TTL', 2592000),
+        'min_score' => (int) env('SMART_IMAGE_MIN_SCORE', 2),
+        'query_builder_version' => '4.2.0.4',
+        'ranking_version' => '4.2.0.4',
     ],
 
     'unsplash' => [
         'access_key' => env('UNSPLASH_ACCESS_KEY'),
+    ],
+
+    'pexels' => [
+        'api_key' => env('PEXELS_API_KEY'),
+    ],
+
+    'pixabay' => [
+        'api_key' => env('PIXABAY_API_KEY'),
     ],
 
     'cosmic' => [

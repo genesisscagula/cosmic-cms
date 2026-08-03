@@ -2,14 +2,24 @@
 
 namespace App\Services;
 
+use App\AI\Compatibility\SparkCompatibilityChecker;
 use App\AI\Generators\ContentGenerator;
 use App\AI\Layouts\LayoutEngine;
+use App\AI\Planners\SparkPlanner;
+use App\AI\Images\VisualQueryBuilder;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
 class AiPageGenerationService
 {
-    public function __construct(private readonly SmartImageService $images)
-    {
+    public function __construct(
+        private readonly SmartImageService $images,
+        private readonly SparkPlanner $sparkPlanner,
+        private readonly SparkCompatibilityChecker $compatibilityChecker,
+        private readonly AiGenerationAnalytics $analytics,
+        private readonly VisualQueryBuilder $visualQueryBuilder,
+    ) {
     }
 
     public function generatePage(string $prompt): array
@@ -29,15 +39,65 @@ class AiPageGenerationService
 
     public function generateBlocks(string $prompt, array $sections, ?string $imageFolder = null): array
     {
-        $generator = new ContentGenerator();
-        $resolvedImageFolder = $imageFolder ?: $this->resolveLayoutFolder($prompt);
+        return $this->generateBlocksDetailed($prompt, $sections, $imageFolder)['blocks'];
+    }
 
-        $content = $generator->generate($prompt, $sections);
+    public function generateBlocksDetailed(string $prompt, array $sections, ?string $imageFolder = null): array
+    {
+        $this->analytics->increment('content_requests');
+
+        $resolvedImageFolder = $imageFolder ?: $this->resolveLayoutFolder($prompt);
+        $cacheKey = $this->contentCacheKey($prompt, $sections);
+        $cacheEnabled = (bool) config('openai.content_cache_enabled', true);
+        $cached = $cacheEnabled ? Cache::get($cacheKey) : null;
+
+        if (is_array($cached) && is_array($cached['blocks'] ?? null)) {
+            $content = $cached;
+            $cacheStatus = 'hit';
+            $this->analytics->increment('content_cache_hits');
+        } else {
+            $this->analytics->increment('content_cache_misses');
+
+            try {
+                $content = (new ContentGenerator())->generate($prompt, $sections);
+                $this->analytics->increment('content_successes');
+            } catch (\Throwable $exception) {
+                $this->analytics->increment('content_failures');
+                throw $exception;
+            }
+
+            $cacheStatus = $cacheEnabled ? 'miss' : 'disabled';
+
+            if ($cacheEnabled) {
+                Cache::put(
+                    $cacheKey,
+                    $content,
+                    max(60, (int) config('openai.content_cache_ttl', 3600))
+                );
+            }
+        }
+
         $blocks = $content['blocks'] ?? [];
+
+        Log::debug('Selected Spark schemas loaded for content generation', array_merge(
+            $content['schema_diagnostics'] ?? [],
+            ['content_cache' => $cacheStatus]
+        ));
 
         foreach ($blocks as &$block) {
             $type = (string) ($block['type'] ?? 'website section');
-            $query = $this->buildBlockImageQuery($prompt, $block, $type);
+            $query = $this->visualQueryBuilder->build(
+                $prompt,
+                $block,
+                $type,
+                $resolvedImageFolder
+            );
+
+            Log::debug('[SmartVisualQuery] Built provider search query.', [
+                'block_type' => $type,
+                'image_folder' => $resolvedImageFolder,
+                'query' => $query,
+            ]);
 
             if ($type === 'hero_video_background') {
                 $block['poster_image_url'] = $this->images->find($query, $resolvedImageFolder);
@@ -72,17 +132,82 @@ class AiPageGenerationService
 
         unset($block);
 
-        return $blocks;
+        return [
+            'blocks' => $blocks,
+            'diagnostics' => [
+                'cache' => $cacheStatus,
+                'cache_key' => substr(hash('sha256', $cacheKey), 0, 12),
+                'content_model' => config('openai.content_model'),
+                'schema' => $content['schema_diagnostics'] ?? [],
+                'analytics' => $this->analytics->snapshot(),
+            ],
+        ];
     }
 
     public function selectSections(string $prompt): array
     {
-        $imageFolder = $this->resolveLayoutFolder($prompt);
+        $this->analytics->increment('planner_requests');
 
-        return [
-            'sections' => LayoutEngine::random($imageFolder, $prompt),
+        $imageFolder = $this->resolveLayoutFolder($prompt);
+        $cacheKey = $this->plannerCacheKey($prompt);
+        $cacheEnabled = (bool) config('openai.planner_cache_enabled', true);
+        $cached = $cacheEnabled ? Cache::get($cacheKey) : null;
+
+        if (is_array($cached) && is_array($cached['sections'] ?? null)) {
+            $result = $cached;
+            $result['cache'] = 'hit';
+            $this->analytics->increment('planner_cache_hits');
+            $result['analytics'] = $this->analytics->snapshot();
+
+            return $result;
+        }
+
+        $this->analytics->increment('planner_cache_misses');
+
+        try {
+            $sections = $this->sparkPlanner->plan($prompt);
+            $planner = 'ai';
+            $this->analytics->increment('planner_ai_successes');
+        } catch (\Throwable $exception) {
+            Log::warning('Spark Planner failed; using deterministic layout fallback', [
+                'message' => $exception->getMessage(),
+                'image_folder' => $imageFolder,
+            ]);
+
+            $sections = LayoutEngine::random($imageFolder, $prompt);
+            $planner = 'fallback';
+            $this->analytics->increment('planner_fallbacks');
+        }
+
+        $compatibility = $this->compatibilityChecker->check($sections, $prompt);
+
+        if ($compatibility['changed']) {
+            $this->analytics->increment('compatibility_repairs');
+        }
+
+        $result = [
+            'sections' => $compatibility['sections'],
             'image_folder' => $imageFolder,
+            'planner' => $planner,
+            'page_intent' => $compatibility['intent'],
+            'compatibility' => [
+                'changed' => $compatibility['changed'],
+                'changes' => $compatibility['changes'],
+            ],
+            'cache' => $cacheEnabled ? 'miss' : 'disabled',
         ];
+
+        if ($cacheEnabled) {
+            Cache::put(
+                $cacheKey,
+                $result,
+                max(60, (int) config('openai.planner_cache_ttl', 86400))
+            );
+        }
+
+        $result['analytics'] = $this->analytics->snapshot();
+
+        return $result;
     }
 
     public function selectSection(string $category, string $prompt): array
@@ -126,72 +251,35 @@ class AiPageGenerationService
         return 'default';
     }
 
-    private function buildBlockImageQuery(string $prompt, array $block, string $type): string
+    private function plannerCacheKey(string $prompt): string
     {
-        // Keep stock-photo searches short and visual. Long AI copy confuses
-        // Unsplash and can return unrelated technology or office photos.
-        $subject = $this->extractVisualSubject($prompt);
+        $registry = \App\AI\Registries\SparkPlannerRegistry::slugs();
 
-        $visualIntent = match (true) {
-            str_contains($type, 'hero') => 'wide exterior lifestyle',
-            str_contains($type, 'team') => 'people working',
-            str_contains($type, 'service') => 'service in action',
-            str_contains($type, 'feature') => 'detail lifestyle',
-            str_contains($type, 'gallery') => 'portfolio',
-            str_contains($type, 'contact') || str_contains($type, 'cta') => 'customer experience',
-            default => 'editorial photography',
-        };
-
-        return trim("{$subject} {$visualIntent}");
+        return 'cosmic:ai:planner:' . hash('sha256', json_encode([
+            'prompt' => $this->normalizeCachePrompt($prompt),
+            'model' => config('openai.planner_model'),
+            'registry' => $registry,
+            'version' => '4.1.0.6',
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
-    private function extractVisualSubject(string $prompt): string
+    private function contentCacheKey(string $prompt, array $sections): string
     {
-        $context = $this->extractPromptContext($prompt);
-        $context = preg_replace('/[^\pL\pN\s-]+/u', ' ', $context) ?? '';
-        $words = preg_split('/\s+/', strtolower(trim($context))) ?: [];
-
-        $stopWords = [
-            'a', 'an', 'and', 'are', 'as', 'at', 'based', 'be', 'business', 'company',
-            'create', 'for', 'from', 'in', 'is', 'landing', 'of', 'offering', 'page',
-            'professional', 'the', 'their', 'to', 'website', 'with', 'your',
-        ];
-
-        $important = [];
-        foreach ($words as $word) {
-            $word = trim($word, '-');
-            if ($word === '' || strlen($word) < 3 || in_array($word, $stopWords, true)) {
-                continue;
-            }
-            if (! in_array($word, $important, true)) {
-                $important[] = $word;
-            }
-            if (count($important) >= 7) {
-                break;
-            }
-        }
-
-        return $important !== []
-            ? implode(' ', $important)
-            : 'modern business';
+        return 'cosmic:ai:content:' . hash('sha256', json_encode([
+            'prompt' => $this->normalizeCachePrompt($prompt),
+            'sections' => array_values($sections),
+            'model' => config('openai.content_model'),
+            'version' => '4.1.0.6',
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
-    private function extractPromptContext(string $prompt): string
+    private function normalizeCachePrompt(string $prompt): string
     {
-        $parts = [];
+        $prompt = preg_replace('/\s+/', ' ', trim($prompt)) ?? trim($prompt);
 
-        foreach (['Business name', 'Industry', 'Location', 'Page'] as $label) {
-            if (preg_match('/^' . preg_quote($label, '/') . ':\s*([^\r\n]+)/mi', $prompt, $matches) === 1) {
-                $parts[] = trim($matches[1]);
-            }
-        }
-
-        if ($parts === []) {
-            $clean = preg_replace('/\s+/', ' ', strip_tags($prompt)) ?? '';
-            $parts[] = Str::limit(trim($clean), 100, '');
-        }
-
-        return implode(' ', array_unique(array_filter($parts)));
+        return function_exists('mb_strtolower')
+            ? mb_strtolower($prompt, 'UTF-8')
+            : strtolower($prompt);
     }
 
     private function industryKeywords(): array
@@ -200,7 +288,7 @@ class AiPageGenerationService
             'bakery' => ['bakery', 'pastry', 'pastries', 'bread', 'cake', 'cakes', 'dessert', 'desserts'],
             'coffee' => ['coffee', 'coffee shop', 'cafe', 'café', 'espresso', 'roastery'],
             'hotel' => ['hotel', 'resort', 'accommodation', 'lodging', 'boutique hotel'],
-            'travel' => ['travel', 'tour', 'tourism', 'vacation', 'holiday', 'destination'],
+            'travel' => ['travel', 'tour', 'tourism', 'vacation', 'holiday', 'destination', 'yacht', 'yachting', 'superyacht', 'charter', 'yacht charter', 'cruise', 'cruises', 'sailing', 'sailboat', 'catamaran', 'mediterranean'],
             'restaurant' => ['restaurant', 'dining', 'food', 'pizza', 'pasta', 'catering', 'bistro'],
             'dentist' => ['dentist', 'dental', 'orthodontist', 'orthodontic', 'teeth whitening'],
             'medical' => ['medical', 'healthcare', 'health care', 'clinic', 'doctor', 'physician', 'wellness center'],

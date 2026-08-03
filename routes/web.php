@@ -49,8 +49,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
     Route::get('/credits/balance', [CreditController::class, 'balance'])->name('credits.balance');
     Route::post('/credits/purchase', [CreditController::class, 'purchase'])->name('credits.purchase');
-    Route::post('/payments/checkout', [PaymentController::class, 'checkout'])->middleware('throttle:10,1')->name('payments.checkout');
+    Route::get('/payments/provider', [PaymentController::class, 'provider'])
+        ->middleware('throttle:60,1')
+        ->name('payments.provider');
+    Route::post('/payments/checkout', [PaymentController::class, 'checkout'])
+        ->middleware('throttle:10,1')
+        ->name('payments.checkout');
     Route::get('/payments/success', [PaymentController::class, 'success'])->name('payments.success');
+    Route::get('/payments/cancel', [PaymentController::class, 'cancel'])->name('payments.cancel');
+    Route::post('/payments/subscription/cancel', [PaymentController::class, 'cancelSubscription'])
+        ->middleware('throttle:5,1')
+        ->name('payments.subscription.cancel');
+    Route::post('/payments/subscription/sync', [PaymentController::class, 'syncSubscription'])
+        ->middleware('throttle:10,1')
+        ->name('payments.subscription.sync');
     Route::get('/cosmic-pricing', [CosmicPricingController::class, 'index'])->name('cosmic-pricing.index');
     Route::get('/sparks', [SparkController::class, 'index'])->name('sparks.index');
     Route::get('/sparks/catalog', [SparkController::class, 'catalog'])->name('sparks.catalog');
