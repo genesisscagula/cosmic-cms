@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Page;
 use App\Models\Website;
 use App\Services\DeploymentConnectorArchive;
 use App\Services\PagePublisher;
@@ -28,15 +29,129 @@ class WebsiteController extends Controller
             ]);
         }
 
-        $websites = $user->isPlatformOwner()
-            ? Website::query()
-                ->whereHas('workspace', fn ($query) => $query->where('owner_user_id', $user->id))
-                ->latest('updated_at')
+        $websiteQuery = $user->isPlatformOwner()
+            ? Website::query()->whereHas('workspace', fn ($query) => $query->where('owner_user_id', $user->id))
+            : Website::query()->where('user_id', $user->id);
+
+        $websites = (clone $websiteQuery)
+            ->withCount([
+                'pages',
+                'pages as published_pages_count' => fn ($query) => $query->where('status', 'published'),
+                'pages as draft_pages_count' => fn ($query) => $query->where('status', 'draft'),
+            ])
+            ->latest('updated_at')
+            ->get();
+
+        $websiteIds = $websites->pluck('id');
+        $now = now();
+        $publishedWebsites = $websites->filter(fn (Website $website) => $website->published_pages_count > 0);
+        $draftWebsites = $websites->reject(fn (Website $website) => $website->published_pages_count > 0);
+        $recentDeployments = $websites->filter(fn (Website $website) => $website->last_deployed_at?->gte($now->copy()->subDays(30)))->count();
+        $publishedThisWeek = $publishedWebsites->filter(fn (Website $website) => $website->updated_at?->gte($now->copy()->startOfWeek()))->count();
+
+        $recentWebsites = $websites->take(3)->values()->map(function (Website $website, int $index) {
+            $accents = [
+                'from-violet-500 to-indigo-600',
+                'from-emerald-500 to-teal-600',
+                'from-sky-500 to-blue-700',
+                'from-orange-400 to-rose-600',
+            ];
+
+            return [
+                'id' => $website->id,
+                'name' => $website->name ?: 'Untitled Website',
+                'domain' => $website->domain ?: 'No domain connected',
+                'status' => $website->published_pages_count > 0 ? 'Published' : 'Draft',
+                'accent' => $accents[$index % count($accents)],
+                'updated_at' => $website->updated_at?->toIso8601String(),
+            ];
+        });
+
+        $activity = collect();
+
+        foreach ($websites->take(4) as $website) {
+            $activity->push([
+                'id' => 'website-' . $website->id,
+                'type' => 'edit',
+                'actor' => 'You',
+                'action' => 'updated',
+                'target' => $website->name ?: 'Untitled Website',
+                'time' => $website->updated_at?->diffForHumans() ?? 'Recently',
+                'timestamp' => $website->updated_at?->timestamp ?? 0,
+            ]);
+        }
+
+        if ($websiteIds->isNotEmpty()) {
+            Page::query()
+                ->whereIn('website_id', $websiteIds)
+                ->whereNotNull('last_published_at')
+                ->with('website:id,name')
+                ->latest('last_published_at')
+                ->limit(4)
                 ->get()
-            : Website::query()->where('user_id', $user->id)->latest('updated_at')->get();
+                ->each(function (Page $page) use ($activity) {
+                    $activity->push([
+                        'id' => 'publish-' . $page->id,
+                        'type' => 'publish',
+                        'actor' => 'You',
+                        'action' => 'published ' . ($page->title ?: 'a page') . ' for',
+                        'target' => $page->website?->name ?: 'a website',
+                        'time' => $page->last_published_at?->diffForHumans() ?? 'Recently',
+                        'timestamp' => $page->last_published_at?->timestamp ?? 0,
+                    ]);
+                });
+        }
+
+        $activity = $activity
+            ->sortByDesc('timestamp')
+            ->take(4)
+            ->values()
+            ->map(fn (array $item) => collect($item)->except('timestamp')->all());
+
+        $hasWebsite = $websites->isNotEmpty();
+        $hasPages = $websites->sum('pages_count') > 0;
+        $hasWebsiteShell = $websites->contains(fn (Website $website) => filled($website->global_header) && filled($website->global_footer));
+        $hasPublishedWebsite = $publishedWebsites->isNotEmpty();
+        $workspaceCompleted = collect([$hasWebsite, $hasPages, $hasWebsiteShell, $hasPublishedWebsite])->filter()->count();
+        $lastUpdatedAt = $websites->max('updated_at');
 
 	    return Inertia::render('Dashboard/Dashboard', [
 		    'websites' => $websites,
+            'dashboard' => [
+                'stats' => [
+                    [
+                        'label' => 'Total Websites',
+                        'value' => $websites->count(),
+                        'detail' => $websites->filter(fn (Website $website) => $website->created_at?->isCurrentMonth())->count() . ' created this month',
+                        'accent' => 'bg-violet-400/10 text-violet-300',
+                    ],
+                    [
+                        'label' => 'Published',
+                        'value' => $publishedWebsites->count(),
+                        'detail' => $publishedThisWeek . ' updated this week',
+                        'accent' => 'bg-emerald-400/10 text-emerald-300',
+                    ],
+                    [
+                        'label' => 'Drafts',
+                        'value' => $draftWebsites->count(),
+                        'detail' => $websites->sum('draft_pages_count') . ' draft pages',
+                        'accent' => 'bg-amber-300/10 text-amber-200',
+                    ],
+                    [
+                        'label' => 'Recent Deployments',
+                        'value' => $recentDeployments,
+                        'detail' => 'Across the last 30 days',
+                        'accent' => 'bg-cyan-400/10 text-cyan-300',
+                    ],
+                ],
+                'recent_websites' => $recentWebsites,
+                'recent_activity' => $activity,
+                'workspace_progress' => [
+                    'completed' => $workspaceCompleted,
+                    'total' => 4,
+                ],
+                'last_updated' => $lastUpdatedAt?->diffForHumans() ?? null,
+            ],
             'accessMode' => $user->isPlatformOwner() ? 'platform_owner' : 'customer',
 		]);
 	}

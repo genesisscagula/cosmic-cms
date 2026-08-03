@@ -5,6 +5,7 @@ namespace App\Services;
 use Illuminate\Http\Client\PendingRequest;
 use App\Models\PaymentOrder;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -21,23 +22,37 @@ class PayPalService
             throw new RuntimeException('PayPal is not configured.');
         }
 
-        $tokenResponse = Http::asForm()
-            ->withBasicAuth($clientId, $clientSecret)
-            ->post($baseUrl.'/v1/oauth2/token', [
-                'grant_type' => 'client_credentials',
-            ]);
+        $cacheKey = 'paypal:access-token:'.sha1($baseUrl.'|'.$clientId);
+        $accessToken = Cache::get($cacheKey);
 
-        $accessToken = $tokenResponse->json('access_token');
+        if (! is_string($accessToken) || $accessToken === '') {
+            $tokenResponse = Http::asForm()
+                ->connectTimeout(5)
+                ->timeout(15)
+                ->retry(2, 300, throw: false)
+                ->withBasicAuth($clientId, $clientSecret)
+                ->post($baseUrl.'/v1/oauth2/token', [
+                    'grant_type' => 'client_credentials',
+                ]);
 
-        if (! $tokenResponse->successful() || ! is_string($accessToken) || $accessToken === '') {
-            throw new RuntimeException(
-                $tokenResponse->json('error_description', 'PayPal authentication failed.')
-            );
+            $accessToken = $tokenResponse->json('access_token');
+
+            if (! $tokenResponse->successful() || ! is_string($accessToken) || $accessToken === '') {
+                throw new RuntimeException(
+                    $tokenResponse->json('error_description', 'PayPal authentication failed.')
+                );
+            }
+
+            $ttl = max(60, ((int) $tokenResponse->json('expires_in', 300)) - 60);
+            Cache::put($cacheKey, $accessToken, now()->addSeconds($ttl));
         }
 
         return Http::baseUrl($baseUrl)
             ->acceptJson()
             ->asJson()
+            ->connectTimeout(5)
+            ->timeout(20)
+            ->retry(2, 300, throw: false)
             ->withToken($accessToken)
             ->withHeaders([
                 'PayPal-Request-Id' => (string) Str::uuid(),
