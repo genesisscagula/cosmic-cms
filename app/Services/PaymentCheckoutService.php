@@ -135,7 +135,13 @@ class PaymentCheckoutService
             );
         }
 
-        $order->update(['external_checkout_id' => $response->json('id')]);
+        $order->update([
+            'external_checkout_id' => $response->json('id'),
+            'metadata' => array_merge($order->metadata ?? [], [
+                'checkout_url' => $approvalUrl,
+                'checkout_created_at' => now()->toIso8601String(),
+            ]),
+        ]);
 
         return [
             'checkout_url' => $approvalUrl,
@@ -196,6 +202,10 @@ class PaymentCheckoutService
         $order->update([
             'external_checkout_id' => $response->json('id'),
             'external_subscription_id' => $response->json('id'),
+            'metadata' => array_merge($order->metadata ?? [], [
+                'checkout_url' => $approvalUrl,
+                'checkout_created_at' => now()->toIso8601String(),
+            ]),
         ]);
 
         return [

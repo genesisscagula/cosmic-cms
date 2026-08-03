@@ -19,7 +19,7 @@ import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 
 
 
-export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [] }) {
+export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [] }) {
     const { props } = usePage();
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
 
@@ -70,6 +70,14 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const [isPublishing, setIsPublishing] = useState(false);
     const [saveError, setSaveError] = useState('');
     const [hasUnsavedTheme, setHasUnsavedTheme] = useState(false);
+    const [showTrialEmailModal, setShowTrialEmailModal] = useState(false);
+    const [trialEmail, setTrialEmail] = useState(trialExperience?.email || '');
+    const [trialEmailCaptured, setTrialEmailCaptured] = useState(Boolean(trialExperience?.email_captured));
+    const [trialEmailSaving, setTrialEmailSaving] = useState(false);
+    const [showRegenerateModal, setShowRegenerateModal] = useState(false);
+    const [regeneratePrompt, setRegeneratePrompt] = useState('');
+    const [regenerating, setRegenerating] = useState(false);
+    const [regenerationUsed, setRegenerationUsed] = useState(Number(trialExperience?.regenerations_used || 0));
     const [pageStatus, setPageStatus] = useState(page.status || 'draft');
     const [publishError, setPublishError] = useState(page.publish_error || '');
     const [blogPosts, setBlogPosts] = useState(initialBlogPosts);
@@ -183,7 +191,11 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
         }
     };
 
-    const saveDraft = async () => {
+    const saveDraft = async ({ skipEmailGate = false } = {}) => {
+        if (trialMode && !trialEmailCaptured && !skipEmailGate) {
+            setShowTrialEmailModal(true);
+            return false;
+        }
         setIsSaving(true);
         setSaveError('');
 
@@ -214,6 +226,53 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             return false;
         } finally {
             setIsSaving(false);
+        }
+    };
+
+    const captureTrialEmailAndSave = async (event) => {
+        event.preventDefault();
+        if (!trialEmail.trim()) return;
+        setTrialEmailSaving(true);
+        setSaveError('');
+        try {
+            await axios.post(route('trial-generations.email.capture', trialToken), { email: trialEmail.trim() });
+            setTrialEmailCaptured(true);
+            setShowTrialEmailModal(false);
+            const saved = await saveDraft({ skipEmailGate: true });
+            if (saved) {
+                showCosmicNotification({
+                    title: 'Your page is saved',
+                    message: 'We sent your private editing link to your email.',
+                    tone: 'success',
+                });
+            }
+        } catch (error) {
+            setSaveError(error.response?.data?.message || 'We could not save your email. Please try again.');
+        } finally {
+            setTrialEmailSaving(false);
+        }
+    };
+
+    const handleRegenerate = async (event) => {
+        event.preventDefault();
+        if (!trialEmailCaptured) {
+            setShowRegenerateModal(false);
+            setShowTrialEmailModal(true);
+            return;
+        }
+        if (!regeneratePrompt.trim()) return;
+        setRegenerating(true);
+        setSaveError('');
+        try {
+            const response = await axios.post(route('trial-generations.regenerate', trialToken), { prompt: regeneratePrompt.trim() });
+            setRegenerationUsed((value) => value + 1);
+            window.location.assign(response.data.redirect_url);
+        } catch (error) {
+            const message = error.response?.data?.message || 'Regeneration failed. Your current page was preserved.';
+            setSaveError(message);
+            showCosmicNotification({ title: 'Regeneration unavailable', message, tone: 'error' });
+        } finally {
+            setRegenerating(false);
         }
     };
 
@@ -541,6 +600,12 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     
     return (
         <>
+            {trialMode && (
+                <div className="border-b border-violet-300/20 bg-gradient-to-r from-violet-500/15 via-cyan-400/10 to-emerald-400/10 px-4 py-3 text-center">
+                    <p className="text-sm font-semibold text-white">Turn this landing page into a complete website.</p>
+                    <p className="mt-0.5 text-xs text-slate-300">Sign up to generate more pages, unlock premium tools, and publish your business online. <a href={`${route('start')}?trial=${encodeURIComponent(trialToken)}`} className="font-bold text-cyan-300 hover:text-cyan-200">Create free account →</a></p>
+                </div>
+            )}
             <Head title={`Builder — ${page.title}`} />
             <div className="min-h-screen bg-[#09090b] text-slate-100">
                 <header className="sticky top-0 z-[60] border-b border-white/10 bg-[#09090b]/95 backdrop-blur-xl">
@@ -655,6 +720,18 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                         <path d="M10 2.5c.28 3.92 1.68 5.32 5.6 5.6-3.92.28-5.32 1.68-5.6 5.6-.28-3.92-1.68-5.32-5.6-5.6 3.92-.28 5.32-1.68 5.6-5.6Zm5.25 9.75c.1 1.4.6 1.9 2 2-1.4.1-1.9.6-2 2-.1-1.4-.6-1.9-2-2 1.4-.1 1.9-.6 2-2Z" />
                                     </svg>
                                     <span className="hidden sm:inline">Add Spark</span>
+                                </button>
+                            )}
+
+                            {trialMode && trialToken && (
+                                <button
+                                    type="button"
+                                    onClick={() => setShowRegenerateModal(true)}
+                                    disabled={regenerating || regenerationUsed >= 2}
+                                    className="inline-flex h-9 shrink-0 items-center rounded-lg border border-violet-300/30 bg-violet-400/10 px-3 text-xs font-semibold text-violet-100 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:opacity-45"
+                                    title={`${Math.max(0, 2 - regenerationUsed)} free regenerations remaining this week`}
+                                >
+                                    {regenerating ? 'Regenerating…' : `Regenerate (${Math.max(0, 2 - regenerationUsed)} left)`}
                                 </button>
                             )}
 
@@ -1162,6 +1239,35 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
             {/* AI MODAL INJECTOR CONFIG */}
             
+            {showTrialEmailModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+                    <form onSubmit={captureTrialEmailAndSave} className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111318] p-6 shadow-2xl">
+                        <p className="text-xs font-bold uppercase tracking-[0.22em] text-cyan-300">Save your landing page</p>
+                        <h2 className="mt-2 text-xl font-bold text-white">Where should we send your private editing link?</h2>
+                        <p className="mt-2 text-sm text-slate-400">Enter your email once. Future saves will not ask again, and your trial link stays available for 30 days.</p>
+                        <input type="email" required autoFocus value={trialEmail} onChange={(event) => setTrialEmail(event.target.value)} placeholder="you@business.com" className="mt-5 w-full rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none focus:border-cyan-300" />
+                        <div className="mt-5 flex justify-end gap-3">
+                            <button type="button" onClick={() => setShowTrialEmailModal(false)} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
+                            <button type="submit" disabled={trialEmailSaving} className="rounded-lg bg-cyan-300 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50">{trialEmailSaving ? 'Saving…' : 'Save & email link'}</button>
+                        </div>
+                    </form>
+                </div>
+            )}
+
+            {showRegenerateModal && (
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+                    <form onSubmit={handleRegenerate} className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#111318] p-6 shadow-2xl">
+                        <p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-300">Regenerate landing page</p>
+                        <h2 className="mt-2 text-xl font-bold text-white">Describe the new direction</h2>
+                        <p className="mt-2 text-sm text-slate-400">You have {Math.max(0, 2 - regenerationUsed)} of 2 free regenerations remaining for this 7-day period. Your current page is preserved if generation fails.</p>
+                        <textarea required minLength={10} value={regeneratePrompt} onChange={(event) => setRegeneratePrompt(event.target.value)} rows={5} placeholder="Make it more premium, modern, and focused on corporate clients…" className="mt-5 w-full resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none focus:border-violet-300" />
+                        <div className="mt-5 flex justify-end gap-3">
+                            <button type="button" onClick={() => setShowRegenerateModal(false)} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
+                            <button type="submit" disabled={regenerating || regenerationUsed >= 2} className="rounded-lg bg-violet-300 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50">{regenerating ? 'Regenerating…' : 'Regenerate page'}</button>
+                        </div>
+                    </form>
+                </div>
+            )}
         </>
     );
 }

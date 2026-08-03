@@ -34,6 +34,12 @@ Route::post('/start', [TrialGenerationController::class, 'store'])->middleware('
 Route::post('/start/{trial:token}/plan', [TrialGenerationController::class, 'selectPlan'])
     ->middleware('throttle:12,1')
     ->name('trial-generations.plan.select');
+Route::post('/trials/{trial:token}/email', [TrialGenerationController::class, 'captureEmail'])
+    ->middleware('throttle:5,1')
+    ->name('trial-generations.email.capture');
+Route::post('/trials/{trial:token}/regenerate', [TrialGenerationController::class, 'regenerate'])
+    ->middleware('throttle:3,1')
+    ->name('trial-generations.regenerate');
 
 
 // Token-aware Builder routes. Signed-in users keep normal policy checks;
@@ -43,7 +49,7 @@ Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder']
     ->middleware('throttle:60,1')
     ->name('pages.builder.save');
 
-Route::middleware(['auth', 'verified'])->group(function () {
+Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
     Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
     Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
@@ -55,8 +61,6 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/payments/checkout', [PaymentController::class, 'checkout'])
         ->middleware('throttle:10,1')
         ->name('payments.checkout');
-    Route::get('/payments/success', [PaymentController::class, 'success'])->name('payments.success');
-    Route::get('/payments/cancel', [PaymentController::class, 'cancel'])->name('payments.cancel');
     Route::post('/payments/subscription/cancel', [PaymentController::class, 'cancelSubscription'])
         ->middleware('throttle:5,1')
         ->name('payments.subscription.cancel');

@@ -1,6 +1,6 @@
 import { Head, Link } from '@inertiajs/react';
 
-export default function GuestLayout({ children, title = 'Welcome to Cosmic CMS', subtitle }) {
+export default function GuestLayout({ children, title = 'Welcome to Cosmic CMS', subtitle, wide = false }) {
     return (
         <div className="relative min-h-screen overflow-hidden bg-[#09090b] px-4 py-6 text-slate-100 sm:px-6 sm:py-10">
             <Head title={title} />
@@ -11,7 +11,7 @@ export default function GuestLayout({ children, title = 'Welcome to Cosmic CMS',
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_top,rgba(16,185,129,0.15),transparent_38%)]" />
             </div>
 
-            <div className="relative mx-auto flex min-h-[calc(100vh-3rem)] max-w-md flex-col justify-center">
+            <div className={`relative mx-auto flex min-h-[calc(100vh-3rem)] flex-col justify-center ${wide ? 'max-w-4xl' : 'max-w-md'}`}>
                 <Link href="/" className="mb-8 inline-flex w-fit items-center gap-3 rounded-xl outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-emerald-300 focus-visible:ring-offset-2 focus-visible:ring-offset-[#09090b]">
                     <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-400 to-cyan-300 text-sm font-black text-slate-950 shadow-lg shadow-emerald-400/25">C</span>
                     <span>

@@ -372,6 +372,16 @@ class PageController extends Controller
                 : $website->global_header,
             'globalFooterBlock' => $website->global_footer,
             'trialToken' => $trial?->token,
+            'trialExperience' => $trial ? [
+                'email' => $trial->email,
+                'email_captured' => filled($trial->email),
+                'regenerations_used' => DB::table('trial_regenerations')
+                    ->where('email', Str::lower((string) $trial->email))
+                    ->where('created_at', '>=', now()->subDays(7))
+                    ->count(),
+                'regenerations_limit' => 2,
+                'regenerations_reset_at' => now()->addDays(7)->toIso8601String(),
+            ] : null,
             'cosmicPricing' => [
                 'balance' => (int) ($request->user()?->fresh()?->credits ?? 0),
                 'actions' => ActionPricing::all(),
@@ -438,7 +448,7 @@ class PageController extends Controller
             $page->save();
 
             if ($trial !== null) {
-                $trial->update(['generated_blocks' => $page->blocks]);
+                $trial->update(['generated_blocks' => $page->blocks, 'last_saved_at' => now()]);
                 return;
             }
 
@@ -533,7 +543,8 @@ class PageController extends Controller
             ->first();
 
         abort_unless($trial, 404);
-        abort_if($trial->created_at->lt(now()->subHours(24)), 410, 'This trial link has expired.');
+        $expiresAt = filled($trial->email) ? $trial->created_at->copy()->addDays(30) : $trial->created_at->copy()->addHours(24);
+        abort_if($expiresAt->isPast(), 410, 'This trial link has expired.');
 
         return $trial;
     }

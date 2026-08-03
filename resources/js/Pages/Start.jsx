@@ -297,14 +297,14 @@ export default function Start({ trial }) {
             <main className="cosmic-start relative min-h-screen overflow-hidden bg-[#09090b] text-white">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(circle_at_50%_-10%,rgba(124,58,237,0.25),transparent_48%),radial-gradient(circle_at_78%_12%,rgba(16,185,129,0.15),transparent_32%)]" />
 
-                <section className="relative mx-auto flex min-h-screen w-full max-w-6xl items-center justify-center px-5 py-10 sm:px-8 sm:py-16">
-                    <div className="relative w-full max-w-4xl">
+                <section className="relative mx-auto flex min-h-screen w-full max-w-[1440px] items-center justify-center px-5 py-10 sm:px-8 sm:py-16">
+                    <div className={`relative w-full ${isReady ? 'max-w-7xl' : 'max-w-4xl'}`}>
                         <div className="pointer-events-none absolute -inset-10 rounded-[3rem] bg-gradient-to-r from-violet-500/20 via-cyan-400/15 to-emerald-400/20 blur-3xl" />
                         <div className="relative overflow-hidden rounded-[2rem] border border-emerald-200/30 bg-[radial-gradient(circle_at_100%_0%,rgba(20,184,166,0.20),transparent_36%),radial-gradient(circle_at_0%_0%,rgba(124,58,237,0.23),transparent_38%),linear-gradient(145deg,#181627_0%,#0d1017_56%,#10221f_100%)] p-5 shadow-2xl shadow-black/60 sm:p-8 lg:p-12">
                             <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:42px_42px] opacity-30" />
                             <div className="relative">
                         {isReady ? (
-                            <div className="mx-auto max-w-3xl py-5 sm:py-8">
+                            <div className="mx-auto max-w-6xl py-5 sm:py-8">
                                 <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-400/15 text-xl text-emerald-300">✓</div>
                                 <p className="mt-7 text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">Draft prepared</p>
                                 <h2 className="mt-3 text-3xl font-semibold tracking-tight">Your website direction is ready.</h2>
@@ -471,7 +471,7 @@ function PlanSelection({ selectedPlan, onSelect }) {
                 <p className="text-xs text-slate-500">No payment on this page</p>
             </div>
 
-            <div className="mt-4 grid gap-3 md:grid-cols-3">
+            <div className="mt-6 grid items-stretch gap-4 lg:grid-cols-3">
                 {plans.map((plan) => {
                     const isSelected = selectedPlan === plan.id;
 
@@ -481,7 +481,7 @@ function PlanSelection({ selectedPlan, onSelect }) {
                             key={plan.id}
                             onClick={() => onSelect(plan.id)}
                             aria-pressed={isSelected}
-                            className={`relative rounded-2xl border p-4 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 ${isSelected ? 'border-violet-400 bg-violet-500/10 shadow-lg shadow-violet-950/20' : 'border-white/10 bg-black/20 hover:border-white/25 hover:bg-white/[0.03]'}`}
+                            className={`relative flex h-full min-h-[31rem] flex-col rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:p-6 ${isSelected ? 'border-violet-400 bg-violet-500/10 shadow-lg shadow-violet-950/20' : 'border-white/10 bg-black/20 hover:border-white/25 hover:bg-white/[0.03]'}`}
                         >
                             {plan.featured && (
                                 <span className="absolute right-3 top-3 rounded-full bg-violet-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-200">Popular</span>
@@ -491,10 +491,10 @@ function PlanSelection({ selectedPlan, onSelect }) {
                                 {plan.price}<span className="ml-1 text-xs font-medium text-slate-400">/ month</span>
                             </span>
                             <span className="mt-2 block text-xs leading-5 text-slate-400">{plan.summary}</span>
-                            <span className="mt-3 block space-y-1 border-t border-white/10 pt-3 text-xs leading-5 text-slate-300">
+                            <span className="mt-4 block flex-1 space-y-2 border-t border-white/10 pt-4 text-xs leading-5 text-slate-300">
                                 {plan.features.map((feature) => <span key={feature} className="block">✓ {feature}</span>)}
                             </span>
-                            <span className={`mt-4 block text-xs font-semibold ${isSelected ? 'text-violet-200' : 'text-slate-400'}`}>
+                            <span className={`mt-6 block border-t border-white/10 pt-4 text-xs font-semibold ${isSelected ? 'text-violet-200' : 'text-slate-400'}`}>
                                 {isSelected ? 'Selected' : 'Choose plan'}
                             </span>
                         </button>

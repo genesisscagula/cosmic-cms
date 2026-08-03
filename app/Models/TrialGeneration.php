@@ -26,6 +26,8 @@ class TrialGeneration extends Model
         'claimed_by_user_id',
         'selected_plan',
         'plan_selected_at',
+        'email_captured_at',
+        'last_saved_at',
     ];
 
     protected $casts = [
@@ -35,6 +37,8 @@ class TrialGeneration extends Model
         'preview_theme' => 'array',
         'claimed_at' => 'datetime',
         'plan_selected_at' => 'datetime',
+        'email_captured_at' => 'datetime',
+        'last_saved_at' => 'datetime',
     ];
 
     public function page()

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PaymentOrder;
 use App\Models\PaymentWebhookEvent;
 use App\Services\PaymentFulfillmentService;
+use App\Services\OnboardingWorkspaceService;
 use App\Services\PaymentWebhookEventService;
 use App\Services\PayPalService;
 use App\Services\SubscriptionManagementService;
@@ -192,6 +193,7 @@ class PaymentWebhookController extends Controller
         array $resource,
         PaymentFulfillmentService $fulfillment,
         SubscriptionManagementService $subscriptions,
+        OnboardingWorkspaceService $workspaceSetup,
     ): void {
         $reference = (string) ($resource['custom_id'] ?? '');
         $subscriptionId = (string) ($resource['id'] ?? '');
@@ -218,6 +220,22 @@ class PaymentWebhookController extends Controller
             if ($order) {
                 $subscriptions->syncOrder($order);
                 $subscriptions->finalizeSwitch($order->fresh());
+
+                $onboardingId = (int) data_get($order->metadata, 'onboarding_id', 0);
+                if ($onboardingId > 0) {
+                    $onboarding = \App\Models\PendingOnboarding::query()->find($onboardingId);
+                    if ($onboarding && $onboarding->status !== 'completed') {
+                        $onboarding->update([
+                            'status' => 'payment_confirmed',
+                            'metadata' => array_merge($onboarding->metadata ?? [], [
+                                'payment_confirmed_at' => now()->toIso8601String(),
+                                'paypal_subscription_id' => $order->external_subscription_id,
+                                'confirmed_by' => 'webhook',
+                            ]),
+                        ]);
+                        $workspaceSetup->finalize($onboarding->fresh(), $order->fresh());
+                    }
+                }
             }
         }
     }

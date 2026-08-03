@@ -16,6 +16,7 @@ export default function UpdateProfileInformation({
         useForm({
             name: user.name,
             email: user.email,
+            location: user.location || '',
         });
 
     const submit = (e) => {
@@ -51,6 +52,21 @@ export default function UpdateProfileInformation({
                     />
 
                     <InputError className="mt-2" message={errors.name} />
+                </div>
+
+                <div>
+                    <InputLabel htmlFor="location" value="Location" />
+
+                    <TextInput
+                        id="location"
+                        className="mt-1 block w-full"
+                        value={data.location}
+                        onChange={(e) => setData('location', e.target.value)}
+                        placeholder="e.g. Ormoc City, Philippines"
+                        autoComplete="address-level2"
+                    />
+
+                    <InputError className="mt-2" message={errors.location} />
                 </div>
 
                 <div>

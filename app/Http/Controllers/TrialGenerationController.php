@@ -10,6 +10,7 @@ use App\Services\AiPageGenerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -194,6 +195,121 @@ class TrialGenerationController extends Controller
         ]);
 
         return redirect()->route('start', ['trial' => $trial->token]);
+    }
+
+    public function captureEmail(Request $request, TrialGeneration $trial)
+    {
+        abort_unless($trial->status === 'ready' && ! $trial->claimed_at, 404);
+
+        $validated = $request->validate([
+            'email' => ['required', 'email:rfc', 'max:255'],
+        ]);
+
+        $trial->update([
+            'email' => Str::lower($validated['email']),
+            'email_captured_at' => now(),
+            'last_saved_at' => now(),
+        ]);
+
+        $this->sendTrialAccessEmail($trial, false);
+
+        return response()->json([
+            'message' => 'Your private editing link has been sent to your email.',
+            'email' => $trial->email,
+        ]);
+    }
+
+    public function regenerate(Request $request, TrialGeneration $trial)
+    {
+        set_time_limit(240);
+        abort_unless($trial->status === 'ready' && ! $trial->claimed_at && $trial->page_id, 404);
+        abort_if(blank($trial->email), 422, 'Save your page with an email address before regenerating.');
+
+        $validated = $request->validate([
+            'prompt' => ['required', 'string', 'min:10', 'max:2000'],
+        ]);
+
+        $windowStart = now()->subDays(7);
+        $used = DB::table('trial_regenerations')
+            ->where('email', Str::lower($trial->email))
+            ->where('created_at', '>=', $windowStart)
+            ->count();
+
+        abort_if($used >= 2, 429, 'You have used your two free regenerations for this 7-day period. Create an account to keep generating.');
+
+        $profile = [
+            'business_name' => $trial->business_name,
+            'industry' => $trial->industry,
+            'location' => $trial->location,
+            'business_description' => $trial->business_description,
+            'prompt' => $validated['prompt'],
+        ];
+
+        try {
+            $generated = $this->pageGenerationService->generatePage($this->buildPrompt($profile));
+            $newToken = (string) Str::uuid();
+
+            DB::transaction(function () use ($trial, $generated, $validated, $newToken) {
+                $trial->page()->lockForUpdate()->firstOrFail()->update([
+                    'blocks' => $generated['blocks'],
+                    'status' => 'draft',
+                    'publish_error' => null,
+                ]);
+
+                DB::table('trial_regenerations')->insert([
+                    'trial_generation_id' => $trial->id,
+                    'email' => Str::lower($trial->email),
+                    'prompt' => $validated['prompt'],
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+
+                $trial->update([
+                    'token' => $newToken,
+                    'prompt' => $validated['prompt'],
+                    'sections' => $generated['sections'],
+                    'generated_blocks' => $generated['blocks'],
+                    'last_saved_at' => now(),
+                    'error_message' => null,
+                ]);
+            });
+
+            $trial->refresh();
+            $this->sendTrialAccessEmail($trial, true);
+
+            return response()->json([
+                'message' => 'Your landing page was regenerated successfully.',
+                'redirect_url' => route('pages.builder', ['page' => $trial->page_id, 'token' => $trial->token]),
+                'token' => $trial->token,
+                'remaining' => max(0, 1 - $used),
+                'resets_at' => now()->addDays(7)->toIso8601String(),
+            ]);
+        } catch (TransporterException $exception) {
+            Log::warning('Trial regeneration unavailable', ['trial' => $trial->id, 'message' => $exception->getMessage()]);
+            return response()->json(['message' => 'Cosmic AI took too long to respond. Your existing page was preserved.'], 503);
+        } catch (\Throwable $exception) {
+            Log::error('Trial regeneration failed', ['trial' => $trial->id, 'message' => $exception->getMessage()]);
+            return response()->json(['message' => 'Regeneration failed. Your existing page was preserved.'], 500);
+        }
+    }
+
+    private function sendTrialAccessEmail(TrialGeneration $trial, bool $regenerated): void
+    {
+        if (blank($trial->email) || ! $trial->page_id) return;
+
+        $url = route('pages.builder', ['page' => $trial->page_id, 'token' => $trial->token]);
+        $subject = $regenerated ? 'Your updated Cosmic CMS landing page is ready' : 'Your Cosmic CMS landing page is ready';
+        $intro = $regenerated
+            ? 'Your landing page has been regenerated and your private editing link was refreshed.'
+            : 'Welcome to Cosmic CMS! Your landing page has been saved successfully.';
+
+        try {
+            Mail::raw($intro."\n\nOpen your private editing link:\n{$url}\n\nCreate a free Cosmic CMS account to generate more pages, unlock premium tools, and publish your business online.", function ($message) use ($trial, $subject) {
+                $message->to($trial->email)->subject($subject);
+            });
+        } catch (\Throwable $exception) {
+            Log::warning('Trial access email failed', ['trial' => $trial->id, 'message' => $exception->getMessage()]);
+        }
     }
 
     private function uniqueDemoSlug(Website $website, string $businessName): string

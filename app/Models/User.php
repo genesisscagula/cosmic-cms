@@ -28,8 +28,10 @@ class User extends Authenticatable
     protected $fillable = [
         'name',
         'email',
+        'location',
         'password',
         'account_type',
+        'onboarding_status',
         'credits',
         'plan_key',
         'plan_status',
@@ -47,6 +49,7 @@ class User extends Authenticatable
     protected $hidden = [
         'password',
         'account_type',
+        'onboarding_status',
         'credits',
         'remember_token',
     ];
@@ -90,6 +93,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Workspace::class, 'workspace_user')
             ->withPivot('role')
             ->withTimestamps();
+    }
+
+    public function pendingOnboarding()
+    {
+        return $this->hasOne(PendingOnboarding::class);
     }
 
     public function creditTransactions()

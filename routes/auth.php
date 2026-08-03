@@ -9,6 +9,7 @@ use App\Http\Controllers\Auth\PasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\Auth\VerifyEmailController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 Route::middleware('guest')->group(function () {
@@ -36,6 +37,22 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::middleware('auth')->group(function () {
+    Route::get('onboarding/pending', [RegisteredUserController::class, 'pending'])
+        ->name('onboarding.pending');
+
+    Route::get('onboarding/success', [RegisteredUserController::class, 'success'])
+        ->name('onboarding.success');
+
+    Route::post('onboarding/checkout', [PaymentController::class, 'onboardingCheckout'])
+        ->middleware('throttle:8,1')
+        ->name('onboarding.checkout');
+
+    Route::get('payments/success', [PaymentController::class, 'success'])
+        ->name('payments.success');
+
+    Route::get('payments/cancel', [PaymentController::class, 'cancel'])
+        ->name('payments.cancel');
+
     Route::get('verify-email', EmailVerificationPromptController::class)
         ->name('verification.notice');
 

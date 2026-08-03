@@ -2,20 +2,19 @@
 
 namespace App\Http\Controllers\Auth;
 
-use App\AI\Registries\IndustryMenuRegistry;
 use App\Http\Controllers\Controller;
+use App\Models\PendingOnboarding;
 use App\Models\TrialGeneration;
 use App\Models\User;
 use App\Models\Website;
-use App\Models\Workspace;
-use App\Services\CreditService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
@@ -23,9 +22,6 @@ use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
-    /**
-     * Display the registration view.
-     */
     public function create(Request $request): Response
     {
         $trial = null;
@@ -46,25 +42,50 @@ class RegisteredUserController extends Controller
     }
 
     /**
-     * Handle an incoming registration request.
-     *
-     * @throws ValidationException
+     * Store the account and business setup as a resumable pending onboarding.
+     * Paid access, credits, workspace creation, and trial claiming happen only
+     * after verified payment in the following onboarding patches.
      */
     public function store(Request $request): RedirectResponse
     {
-        $request->validate([
-            'name' => 'required|string|max:255',
-            'email' => 'required|string|lowercase|email|max:255|unique:'.User::class,
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'trial_token' => ['nullable', 'uuid'],
+            'selected_plan' => ['required', Rule::in(['starter', 'growth', 'pro'])],
+            'website_name' => ['required', 'string', 'max:255'],
+            'website_url' => [
+                'required',
+                'string',
+                'max:60',
+                'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
+                Rule::unique('pending_onboardings', 'website_slug'),
+            ],
+            'industry' => ['required', 'string', 'max:120'],
+            'business_description' => ['required', 'string', 'min:20', 'max:1000'],
+            'location' => ['required', 'string', 'max:255'],
+        ], [
+            'website_url.regex' => 'Use lowercase letters, numbers, and single hyphens only.',
+            'website_url.unique' => 'That website address is already reserved. Choose another one.',
         ]);
 
-        $claimedWebsite = DB::transaction(function () use ($request) {
+        $domainAlreadyUsed = Website::query()
+            ->where('domain', 'like', '%://'.$validated['website_url'].'.%')
+            ->exists();
+
+        if ($domainAlreadyUsed) {
+            throw ValidationException::withMessages([
+                'website_url' => 'That website address is already in use. Choose another one.',
+            ]);
+        }
+
+        $user = DB::transaction(function () use ($validated) {
             $trial = null;
 
-            if ($request->filled('trial_token')) {
+            if (! empty($validated['trial_token'])) {
                 $trial = TrialGeneration::query()
-                    ->where('token', $request->string('trial_token'))
+                    ->where('token', $validated['trial_token'])
                     ->where('status', 'ready')
                     ->whereNull('claimed_at')
                     ->lockForUpdate()
@@ -76,147 +97,122 @@ class RegisteredUserController extends Controller
                     ]);
                 }
 
-                if ($trial->email && Str::lower($trial->email) !== Str::lower($request->email)) {
+                if ($trial->email && Str::lower($trial->email) !== Str::lower($validated['email'])) {
                     throw ValidationException::withMessages([
-                        'email' => 'Use the same email address used to create this draft.',
+                        'email' => 'Use the same email address used to save this draft.',
                     ]);
                 }
             }
 
-            $openingCredits = match ($trial?->selected_plan) {
-                'growth' => 70,
-                'pro' => 200,
-                default => 30,
-            };
-
             $user = User::create([
-                'name' => $request->name,
-                'email' => $request->email,
-                'password' => Hash::make($request->password),
-                'account_type' => $trial ? 'client' : 'customer',
+                'name' => $validated['name'],
+                'email' => $validated['email'],
+                'password' => Hash::make($validated['password']),
+                'account_type' => 'customer',
+                'onboarding_status' => 'pending_payment',
                 'credits' => 0,
+                'plan_key' => null,
+                'plan_status' => 'pending_payment',
+                'plan_provider' => 'paypal',
             ]);
 
-            app(CreditService::class)->grant(
-                $user,
-                $openingCredits,
-                $trial ? ucfirst((string) ($trial->selected_plan ?: 'starter')).' plan credits' : 'Welcome credits',
-                $trial ? 'trial:'.$trial->token : 'registration:'.$user->id,
-                ['plan' => $trial?->selected_plan ?: 'starter'],
-            );
-
-            if (! $trial) {
-                $workspace = Workspace::create([
-                    'owner_user_id' => $user->id,
-                    'name' => $user->name.' Workspace',
-                    'slug' => Str::slug($user->name.' Workspace').'-'.$user->id,
-                ]);
-                $workspace->users()->attach($user->id, ['role' => 'owner']);
-
-                return [$user, null];
-            }
-
-            $menuStructure = $trial->menu_structure ?: IndustryMenuRegistry::for($trial->industry);
-
-            $platformOwner = User::query()
-                ->whereRaw('LOWER(email) = ?', [Str::lower((string) config('cosmic.platform_owner_email'))])
-                ->first();
-
-            $workspace = $platformOwner?->ownedWorkspaces()->firstOrCreate(
-                [],
-                [
-                    'name' => config('cosmic.agency_workspace_name'),
-                    'slug' => Str::slug((string) config('cosmic.agency_workspace_name')).'-'.$platformOwner?->id,
-                ]
-            );
-
-            if (! $workspace) {
-                // Development-safe fallback when the configured platform owner
-                // account has not been created yet.
-                $workspace = Workspace::create([
-                    'owner_user_id' => $user->id,
-                    'name' => $user->name.' Workspace',
-                    'slug' => Str::slug($user->name.' Workspace').'-'.$user->id,
-                ]);
-                $user->update(['account_type' => 'customer']);
-                $workspaceRole = 'owner';
-            } else {
-                $workspaceRole = 'client';
-            }
-
-            $workspace->users()->syncWithoutDetaching([
-                $user->id => ['role' => $workspaceRole],
-            ]);
-
-            $website = Website::create([
+            PendingOnboarding::create([
                 'user_id' => $user->id,
-                'workspace_id' => $workspace->id,
-                'name' => $trial->business_name,
-                // This is a valid placeholder only. It never becomes a live deployment target.
-                'domain' => 'https://'.(Str::slug($trial->business_name) ?: 'website').'.draft.cosmic.local',
-                'industry' => $trial->industry,
-                'location' => $trial->location,
-                'business_description' => $trial->business_description,
-                'contact_email' => $user->email,
-                'api_token' => Str::random(60),
-                'theme_settings' => $trial->preview_theme ?? [
-                    'primary' => 'midnight',
-                    'secondary' => 'white',
-                    'tertiary' => 'stone',
-                    'auto' => true,
-                ],
-                'global_header' => [
-                    'type' => 'glassmorphism_header',
-                    'logo_text' => $trial->business_name,
-                    'cta_label' => 'Get Started',
-                    'cta_url' => '#',
-                    'menu' => collect($menuStructure)
-                        ->map(fn (array $menuPage) => [
-                            'label' => $menuPage['title'],
-                            'url' => ($menuPage['is_home'] ?? false) ? 'home' : $menuPage['slug'],
-                        ])
-                        ->values()
-                        ->all(),
-                ],
-                'global_footer' => [
-                    'type' => 'minimal_footer',
-                    'logo_text' => $trial->business_name,
-                    'copyright' => '© '.now()->year.'. All rights reserved.',
+                'trial_generation_id' => $trial?->id,
+                'selected_plan' => $validated['selected_plan'],
+                'website_name' => trim($validated['website_name']),
+                'website_slug' => $validated['website_url'],
+                'industry' => $validated['industry'],
+                'business_description' => trim($validated['business_description']),
+                'location' => trim($validated['location']),
+                'status' => 'pending_payment',
+                'expires_at' => now()->addDays(7),
+                'metadata' => [
+                    'trial_token_present' => (bool) $trial,
+                    'created_from_ip_hash' => hash('sha256', request()->ip().'|'.config('app.key')),
                 ],
             ]);
 
-            foreach ($menuStructure as $index => $menuPage) {
-                $isHome = (bool) ($menuPage['is_home'] ?? $index === 0);
-
-                $website->pages()->create([
-                    'title' => $menuPage['title'],
-                    'slug' => $menuPage['slug'],
-                    'parent_id' => null,
-                    'sort_order' => $menuPage['sort_order'] ?? ($index + 1),
-                    'page_type' => $menuPage['page_type'] ?? 'standard',
-                    // The purchased draft keeps the generated homepage only.
-                    // All remaining industry pages start empty and ready to edit.
-                    'blocks' => $isHome ? ($trial->generated_blocks ?? []) : [],
-                    'status' => 'draft',
-                ]);
-            }
-
-            $trial->update([
-                'claimed_at' => now(),
-                'claimed_by_user_id' => $user->id,
-            ]);
-
-            return [$user, $website];
+            return $user;
         });
 
-        [$user, $website] = $claimedWebsite;
-
         event(new Registered($user));
-
         Auth::login($user);
+        $request->session()->regenerate();
 
-        return $website
-            ? redirect()->route('pages.index', $website)
-            : redirect(route('dashboard', absolute: false));
+        return redirect()->route('onboarding.pending')
+            ->with('status', 'Your account and business details were saved. Complete payment to activate your plan.');
     }
+
+    public function pending(Request $request): Response|RedirectResponse
+    {
+        $user = $request->user();
+
+        if ($user->onboarding_status !== 'pending_payment') {
+            return redirect()->route('dashboard');
+        }
+
+        $onboarding = PendingOnboarding::query()
+            ->where('user_id', $user->id)
+            ->firstOrFail();
+
+        $plan = config('payments.plans.'.$onboarding->selected_plan, []);
+
+        $pendingOrder = $user->paymentOrders()
+            ->where('provider', 'paypal')
+            ->where('product_type', 'plan')
+            ->where('product_key', $onboarding->selected_plan)
+            ->where('status', 'pending')
+            ->latest('id')
+            ->first();
+
+        return Inertia::render('Onboarding/Pending', [
+            'onboarding' => [
+                'plan_key' => $onboarding->selected_plan,
+                'plan_name' => $plan['label'] ?? Str::headline($onboarding->selected_plan),
+                'price' => '$'.number_format((float) ($plan['price_usd'] ?? 0), 0),
+                'website_name' => $onboarding->website_name,
+                'website_slug' => $onboarding->website_slug,
+                'industry' => $onboarding->industry,
+                'location' => $onboarding->location,
+                'expires_at' => $onboarding->expires_at?->toIso8601String(),
+                'is_expired' => (bool) ($onboarding->expires_at?->isPast()),
+                'status' => $onboarding->status,
+                'has_pending_checkout' => (bool) $pendingOrder,
+            ],
+            'status' => session('status'),
+            'paymentError' => session('payment_error'),
+        ]);
+    }
+
+    public function success(Request $request): Response|RedirectResponse
+    {
+        $user = $request->user();
+
+        $onboarding = PendingOnboarding::query()
+            ->with('website')
+            ->where('user_id', $user->id)
+            ->latest('id')
+            ->first();
+
+        if (! $onboarding || $onboarding->status !== 'completed' || ! $onboarding->website_id) {
+            return redirect()->route('onboarding.pending')
+                ->with('status', 'We are still finishing your workspace. You can safely resume from here.');
+        }
+
+        $plan = config('payments.plans.'.$onboarding->selected_plan, []);
+
+        return Inertia::render('Onboarding/Success', [
+            'onboarding' => [
+                'plan_name' => $plan['label'] ?? Str::headline($onboarding->selected_plan),
+                'website_name' => $onboarding->website_name,
+                'website_url' => $onboarding->website?->domain,
+                'website_id' => $onboarding->website_id,
+                'trial_transferred' => (bool) data_get($onboarding->metadata, 'trial_transferred', false),
+                'completed_at' => $onboarding->completed_at?->toIso8601String(),
+            ],
+            'status' => session('status'),
+        ]);
+    }
+
 }
