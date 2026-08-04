@@ -27,8 +27,16 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'business_name',
         'email',
+        'avatar_path',
         'location',
+        'phone',
+        'industry',
+        'timezone',
+        'locale',
+        'profile_settings',
+        'profile_completed_at',
         'password',
         'account_type',
         'onboarding_status',
@@ -39,6 +47,13 @@ class User extends Authenticatable
         'plan_renews_at',
         'plan_cancel_at_period_end',
         'plan_cancelled_at',
+        'plan_status_changed_at',
+        'plan_past_due_at',
+        'plan_suspended_at',
+        'plan_expired_at',
+        'plan_last_synced_at',
+        'plan_recovery_attempted_at',
+        'plan_recovery_error',
     ];
 
     /**
@@ -63,11 +78,20 @@ class User extends Authenticatable
     {
         return [
             'email_verified_at' => 'datetime',
+            'last_login_at' => 'datetime',
+            'profile_settings' => 'array',
+            'profile_completed_at' => 'datetime',
             'password' => 'hashed',
             'credits' => 'integer',
             'plan_renews_at' => 'datetime',
             'plan_cancel_at_period_end' => 'boolean',
             'plan_cancelled_at' => 'datetime',
+            'plan_status_changed_at' => 'datetime',
+            'plan_past_due_at' => 'datetime',
+            'plan_suspended_at' => 'datetime',
+            'plan_expired_at' => 'datetime',
+            'plan_last_synced_at' => 'datetime',
+            'plan_recovery_attempted_at' => 'datetime',
         ];
     }
 
@@ -108,6 +132,21 @@ class User extends Authenticatable
     public function paymentOrders()
     {
         return $this->hasMany(PaymentOrder::class);
+    }
+
+    public function billingTransactions()
+    {
+        return $this->hasMany(BillingTransaction::class);
+    }
+
+    public function workspaceProvisionings()
+    {
+        return $this->hasMany(WorkspaceProvisioning::class);
+    }
+
+    public function sparkFavorites()
+    {
+        return $this->hasMany(CosmicSparkFavorite::class);
     }
 
     public function cosmicUnlocks()

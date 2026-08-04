@@ -11,6 +11,23 @@ function formatDate(value) {
     }).format(new Date(value));
 }
 
+
+const subscriptionBadgeClasses = {
+    active: 'border-emerald-400/25 bg-emerald-400/10 text-emerald-200',
+    pending: 'border-amber-300/25 bg-amber-300/10 text-amber-100',
+    danger: 'border-rose-400/25 bg-rose-400/10 text-rose-200',
+    warning: 'border-orange-300/25 bg-orange-300/10 text-orange-100',
+    cancelled: 'border-slate-400/20 bg-slate-400/10 text-slate-300',
+    expired: 'border-white/10 bg-white/[0.04] text-slate-400',
+};
+
+function compactIdentifier(value) {
+    if (!value) return 'Not available';
+    if (value.length <= 18) return value;
+
+    return `${value.slice(0, 9)}…${value.slice(-6)}`;
+}
+
 function formatMoney(amount, currency) {
     return new Intl.NumberFormat(currency === 'PHP' ? 'en-PH' : 'en-US', {
         style: 'currency',
@@ -21,22 +38,54 @@ function formatMoney(amount, currency) {
 
 export default function CreditsIndex({
     balance = 0,
+    creditsSummary = {},
     transactions,
     packages = {},
     plans = {},
     currentPlan = null,
+    pendingCheckout = null,
     paymentRouting = {},
     developerPurchasesEnabled = false,
     statusMessage = '',
     paymentError = '',
+    billingTransactions = [],
 }) {
-    const currentBalance = Number(balance);
+    const currentBalance = Number(creditsSummary.current_balance ?? balance);
+    const summaryCards = [
+        { label: 'Current Credits', value: currentBalance, detail: 'Available to use now', icon: '⚡' },
+        {
+            label: 'Monthly Included',
+            value: Number(creditsSummary.monthly_included ?? currentPlan?.credits ?? 0),
+            detail: currentPlan ? `${currentPlan.label} plan allocation` : 'No active monthly plan',
+            icon: '↻',
+        },
+        { label: 'Purchased Credits', value: Number(creditsSummary.purchased_total ?? 0), detail: 'All-time top-up credits', icon: '+' },
+        {
+            label: 'Used This Month',
+            value: Number(creditsSummary.used_this_month ?? 0),
+            detail: creditsSummary.period_label || 'Current month',
+            icon: '−',
+        },
+        { label: 'Granted This Month', value: Number(creditsSummary.granted_this_month ?? 0), detail: 'Plans, purchases, and refunds', icon: '↑' },
+    ];
     const [selectedPackage, setSelectedPackage] = useState(null);
     const [purchasing, setPurchasing] = useState(false);
-    const [managingSubscription, setManagingSubscription] = useState(false);
+    const [subscriptionAction, setSubscriptionAction] = useState('');
+    const [transactionFilter, setTransactionFilter] = useState('all');
     const notice = statusMessage || '';
     const [error, setError] = useState(paymentError || '');
     const rows = transactions?.data ?? [];
+    const usageByCategory = creditsSummary.usage_by_category ?? {};
+    const usageRows = [
+        ['websites', 'Websites'],
+        ['ai', 'AI & Images'],
+        ['sparks', 'Sparks'],
+        ['themes', 'Themes'],
+        ['other', 'Other'],
+    ].map(([key, label]) => ({ key, label, value: Number(usageByCategory[key] ?? 0) }));
+    const filteredRows = transactionFilter === 'all'
+        ? rows
+        : rows.filter((transaction) => transaction.category === transactionFilter);
 
     const packageRows = useMemo(
         () => Object.entries(packages).map(([key, value]) => ({ key, ...value })),
@@ -53,9 +102,14 @@ export default function CreditsIndex({
 
     const activePlanKey = currentPlan?.key || '';
     const activePlanStatus = String(currentPlan?.status || '').toLowerCase();
-    const hasActivePlan = Boolean(activePlanKey) && ['active', 'approved'].includes(activePlanStatus);
+    const hasActivePlan = Boolean(activePlanKey) && activePlanStatus === 'active';
     const hasPlanAccess = Boolean(currentPlan?.has_access ?? hasActivePlan);
     const cancelAtPeriodEnd = Boolean(currentPlan?.cancel_at_period_end);
+    const subscriptionBadge = currentPlan?.status_badge || {
+        label: activePlanStatus ? activePlanStatus.replaceAll('_', ' ') : 'Not Subscribed',
+        tone: hasActivePlan ? 'active' : 'expired',
+    };
+    const subscriptionBadgeClass = subscriptionBadgeClasses[subscriptionBadge.tone] || subscriptionBadgeClasses.expired;
 
     const country = paymentRouting.country || 'XX';
     const creditProvider = paymentRouting.credit_provider || 'paypal';
@@ -98,8 +152,16 @@ export default function CreditsIndex({
         }
     };
 
+    const resumePayment = () => {
+        if (!pendingCheckout?.checkout_url || purchasing) return;
+
+        setPurchasing(true);
+        setError('');
+        window.location.assign(pendingCheckout.checkout_url);
+    };
+
     const cancelSubscription = async () => {
-        if (managingSubscription) return;
+        if (Boolean(subscriptionAction)) return;
 
         const confirmed = window.confirm(
             'Cancel your PayPal subscription? You will keep access until the end of the current paid period.',
@@ -107,7 +169,7 @@ export default function CreditsIndex({
 
         if (!confirmed) return;
 
-        setManagingSubscription(true);
+        setSubscriptionAction('cancel');
         setError('');
 
         try {
@@ -115,14 +177,14 @@ export default function CreditsIndex({
             window.location.assign(`${route('credits.index')}?subscription_cancelled=1`);
         } catch (cancelError) {
             setError(cancelError.response?.data?.message || 'Unable to cancel the subscription.');
-            setManagingSubscription(false);
+            setSubscriptionAction('');
         }
     };
 
     const syncSubscription = async () => {
-        if (managingSubscription) return;
+        if (Boolean(subscriptionAction)) return;
 
-        setManagingSubscription(true);
+        setSubscriptionAction('sync');
         setError('');
 
         try {
@@ -130,7 +192,27 @@ export default function CreditsIndex({
             window.location.reload();
         } catch (syncError) {
             setError(syncError.response?.data?.message || 'Unable to sync the subscription.');
-            setManagingSubscription(false);
+            setSubscriptionAction('');
+        }
+    };
+
+    const recoverSubscription = async () => {
+        if (Boolean(subscriptionAction)) return;
+
+        setSubscriptionAction('recover');
+        setError('');
+
+        try {
+            const response = await axios.post(route('payments.subscription.recover'));
+            if (!response.data?.recovered) {
+                setError(response.data?.message || 'PayPal has not restored the subscription yet.');
+                setSubscriptionAction('');
+                return;
+            }
+            window.location.assign(`${route('credits.index')}?billing_recovered=1`);
+        } catch (recoveryError) {
+            setError(recoveryError.response?.data?.message || 'Unable to recover the subscription.');
+            setSubscriptionAction('');
         }
     };
 
@@ -186,82 +268,188 @@ export default function CreditsIndex({
                     </div>
                 </section>
 
+                <section className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+                    {summaryCards.map((card) => (
+                        <article key={card.label} className="rounded-2xl border border-white/10 bg-[#141416] p-5">
+                            <div className="flex items-start justify-between gap-3">
+                                <div>
+                                    <p className="text-xs font-semibold uppercase tracking-[0.14em] text-slate-500">{card.label}</p>
+                                    <p className="mt-3 text-3xl font-black tracking-tight text-white">{card.value.toLocaleString()}</p>
+                                </div>
+                                <span className="flex h-9 w-9 items-center justify-center rounded-xl border border-cyan-300/15 bg-cyan-300/10 font-black text-cyan-200">
+                                    {card.icon}
+                                </span>
+                            </div>
+                            <p className="mt-3 text-xs text-slate-500">{card.detail}</p>
+                        </article>
+                    ))}
+                </section>
+
+                <section className="mt-6 rounded-2xl border border-white/10 bg-[#141416] p-5">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                            <h2 className="font-semibold text-white">Account wallet usage</h2>
+                            <p className="mt-1 text-sm text-slate-500">One Cosmic Credits balance shared across your websites, AI tools, themes, and Sparks.</p>
+                        </div>
+                        <span className="rounded-full border border-cyan-300/20 bg-cyan-300/10 px-3 py-1 text-xs font-semibold text-cyan-200">Account-wide wallet</span>
+                    </div>
+                    <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                        {usageRows.map((item) => (
+                            <div key={item.key} className="rounded-xl border border-white/10 bg-black/20 p-4">
+                                <p className="text-xs uppercase tracking-wide text-slate-500">{item.label}</p>
+                                <p className="mt-2 text-2xl font-black text-white">{item.value}</p>
+                                <p className="mt-1 text-xs text-slate-600">credits used this month</p>
+                            </div>
+                        ))}
+                    </div>
+                </section>
+
                 {notice && <div className="mt-5 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-sm text-emerald-200">{notice}</div>}
                 {error && <div className="mt-5 rounded-xl border border-rose-400/20 bg-rose-400/10 px-4 py-3 text-sm text-rose-200">{error}</div>}
 
-                <section className="mt-8 rounded-3xl border border-white/10 bg-[#141416] p-6">
-                    <div className="flex flex-wrap items-start justify-between gap-5">
-                        <div>
-                            <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">Subscription</p>
-                            <h2 className="mt-2 text-xl font-semibold text-white">
-                                {currentPlan ? `${currentPlan.label} Monthly` : 'No active monthly plan'}
-                            </h2>
-                            <p className="mt-1 text-sm text-slate-500">
-                                {currentPlan
-                                    ? `${currentPlan.credits} credits are included with each successful billing cycle.`
-                                    : 'Choose a monthly plan below to receive recurring credits.'}
-                            </p>
-                        </div>
-
-                        <span className={`rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${
-                            hasActivePlan
-                                ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-200'
-                                : 'border-white/10 bg-white/[0.04] text-slate-400'
-                        }`}>
-                            {cancelAtPeriodEnd ? '● Cancels at period end' : hasActivePlan ? '● Active' : activePlanStatus || 'Not subscribed'}
-                        </span>
-                    </div>
-
-                    {currentPlan && (
-                        <div className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-wide text-slate-500">Current plan</p>
-                                <p className="mt-2 font-semibold text-white">{currentPlan.label}</p>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-wide text-slate-500">Monthly credits</p>
-                                <p className="mt-2 font-semibold text-cyan-300">⚡ {currentPlan.credits}</p>
-                            </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-wide text-slate-500">Next billing</p>
-                                <p className="mt-2 font-semibold text-white">
-                                    {currentPlan.renews_at ? formatDate(currentPlan.renews_at) : 'Pending PayPal sync'}
+                {pendingCheckout && (
+                    <section className="mt-8 rounded-3xl border border-amber-300/20 bg-amber-300/[0.07] p-6">
+                        <div className="flex flex-wrap items-center justify-between gap-4">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.18em] text-amber-200">Pending payment</p>
+                                <h2 className="mt-2 text-lg font-semibold text-white">
+                                    {pendingCheckout.is_plan_change
+                                        ? `Finish your ${pendingCheckout.change_type || 'plan'} to ${pendingCheckout.plan_label}`
+                                        : `Finish your ${pendingCheckout.plan_label} subscription`}
+                                </h2>
+                                <p className="mt-1 text-sm text-slate-400">
+                                    The same PayPal checkout will reopen. Your current plan stays active until the new plan is confirmed, and no duplicate subscription will be created.
                                 </p>
                             </div>
-                            <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                <p className="text-xs uppercase tracking-wide text-slate-500">Payment provider</p>
-                                <p className="mt-2 font-semibold capitalize text-white">{currentPlan.provider || 'PayPal'}</p>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={resumePayment}
+                                disabled={purchasing}
+                                className="rounded-xl bg-amber-300 px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-amber-200 disabled:opacity-60"
+                            >
+                                {purchasing ? 'Opening PayPal…' : pendingCheckout.cancelled_at ? 'Retry Payment' : 'Resume Payment'}
+                            </button>
                         </div>
-                    )}
+                    </section>
+                )}
 
-                    {currentPlan?.subscription_id && (
-                        <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
-                            <p className="text-sm text-slate-400">
-                                {cancelAtPeriodEnd
-                                    ? `Your plan remains available until ${currentPlan.renews_at ? formatDate(currentPlan.renews_at) : 'the end of the paid period'}.`
-                                    : 'You can sync your billing status or cancel future renewals at any time.'}
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                                <button
-                                    type="button"
-                                    disabled={managingSubscription}
-                                    onClick={syncSubscription}
-                                    className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/5 disabled:opacity-50"
-                                >
-                                    {managingSubscription ? 'Working…' : 'Sync with PayPal'}
-                                </button>
-                                {!cancelAtPeriodEnd && (
-                                    <button
-                                        type="button"
-                                        disabled={managingSubscription}
-                                        onClick={cancelSubscription}
-                                        className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-400/15 disabled:opacity-50"
-                                    >
-                                        Cancel subscription
-                                    </button>
-                                )}
+                <section className="mt-8 overflow-hidden rounded-3xl border border-white/10 bg-[#141416]">
+                    <div className="border-b border-white/10 p-6">
+                        <div className="flex flex-wrap items-start justify-between gap-5">
+                            <div>
+                                <p className="text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">Subscription Center</p>
+                                <h2 className="mt-2 text-xl font-semibold text-white">
+                                    {currentPlan ? `${currentPlan.label} Monthly` : 'No active monthly plan'}
+                                </h2>
+                                <p className="mt-1 text-sm text-slate-500">
+                                    {currentPlan
+                                        ? 'Manage your recurring plan, billing status, renewal, and plan changes.'
+                                        : 'Choose a monthly plan below to activate recurring credits.'}
+                                </p>
                             </div>
+
+                            <span className={`rounded-full border px-3 py-1.5 text-xs font-bold uppercase tracking-wide ${subscriptionBadgeClass}`}>
+                                ● {subscriptionBadge.label}
+                            </span>
+                        </div>
+                    </div>
+
+                    {currentPlan ? (
+                        <div className="p-6">
+                            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Current plan</p>
+                                    <p className="mt-2 font-semibold text-white">{currentPlan.label}</p>
+                                    <p className="mt-1 text-xs text-slate-500">{currentPlan.billing_cycle || 'Monthly'} subscription</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Plan price</p>
+                                    <p className="mt-2 font-semibold text-white">{formatMoney(currentPlan.price_usd, 'USD')}/month</p>
+                                    <p className="mt-1 text-xs text-slate-500">Recurring through {currentPlan.provider || 'PayPal'}</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Monthly credits</p>
+                                    <p className="mt-2 font-semibold text-cyan-300">⚡ {currentPlan.credits}</p>
+                                    <p className="mt-1 text-xs text-slate-500">Granted after successful billing</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Credits remaining</p>
+                                    <p className="mt-2 font-semibold text-cyan-300">⚡ {currentBalance}</p>
+                                    <p className="mt-1 text-xs text-slate-500">Available across your workspace</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Started</p>
+                                    <p className="mt-2 font-semibold text-white">{currentPlan.started_at ? formatDate(currentPlan.started_at) : 'Pending activation'}</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Next billing</p>
+                                    <p className="mt-2 font-semibold text-white">
+                                        {currentPlan.renews_at ? formatDate(currentPlan.renews_at) : 'Pending provider sync'}
+                                    </p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Payment provider</p>
+                                    <p className="mt-2 font-semibold capitalize text-white">{currentPlan.provider || 'PayPal'}</p>
+                                    <p className="mt-1 text-xs text-slate-500">Subscription payments</p>
+                                </div>
+                                <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Subscription ID</p>
+                                    <p className="mt-2 break-all font-mono text-sm font-semibold text-white" title={currentPlan.subscription_id || ''}>
+                                        {compactIdentifier(currentPlan.subscription_id)}
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div className="mt-5 grid gap-3 lg:grid-cols-2">
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Billing lifecycle</p>
+                                    <div className="mt-3 space-y-2 text-sm">
+                                        <div className="flex items-center justify-between gap-4"><span className="text-slate-400">Status</span><span className="font-semibold text-white">{subscriptionBadge.label}</span></div>
+                                        <div className="flex items-center justify-between gap-4"><span className="text-slate-400">Last payment</span><span className="text-right font-semibold text-white">{currentPlan.last_payment_at ? formatDate(currentPlan.last_payment_at) : 'No completed payment recorded'}</span></div>
+                                        <div className="flex items-center justify-between gap-4"><span className="text-slate-400">Last provider sync</span><span className="text-right font-semibold text-white">{currentPlan.last_synced_at ? formatDate(currentPlan.last_synced_at) : 'Not synced yet'}</span></div>
+                                    </div>
+                                </div>
+
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4">
+                                    <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">Renewal status</p>
+                                    <p className="mt-3 text-sm leading-6 text-slate-400">
+                                        {cancelAtPeriodEnd
+                                            ? `Renewal is cancelled. Access remains available until ${currentPlan.renews_at ? formatDate(currentPlan.renews_at) : 'the end of the paid period'}.`
+                                            : 'Automatic renewal is enabled. PayPal will process the next monthly payment on the billing date shown above.'}
+                                    </p>
+                                    {currentPlan.cancelled_at && (
+                                        <p className="mt-2 text-xs text-slate-500">Cancellation recorded {formatDate(currentPlan.cancelled_at)}.</p>
+                                    )}
+                                </div>
+                            </div>
+
+                            {currentPlan.subscription_id && (
+                                <div className="mt-5 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
+                                    <p className="max-w-2xl text-sm text-slate-400">
+                                        Upgrade or downgrade by choosing another plan below. Your current subscription stays active until PayPal confirms the replacement plan.
+                                    </p>
+                                    <div className="flex flex-wrap gap-2">
+                                        {currentPlan.can_recover && (
+                                            <button type="button" disabled={Boolean(subscriptionAction)} onClick={recoverSubscription} className="rounded-xl bg-amber-300 px-4 py-2 text-sm font-bold text-slate-950 transition hover:bg-amber-200 disabled:opacity-50">
+                                                {subscriptionAction === 'recover' ? 'Recovering…' : currentPlan.status === 'suspended' ? 'Reactivate Subscription' : 'Retry Billing Recovery'}
+                                            </button>
+                                        )}
+                                        <button type="button" disabled={Boolean(subscriptionAction)} onClick={syncSubscription} className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300 transition hover:bg-white/5 disabled:opacity-50">
+                                            {subscriptionAction === 'sync' ? 'Syncing…' : 'Sync with PayPal'}
+                                        </button>
+                                        {!cancelAtPeriodEnd && (
+                                            <button type="button" disabled={Boolean(subscriptionAction)} onClick={cancelSubscription} className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-400/15 disabled:opacity-50">
+                                                {subscriptionAction === 'cancel' ? 'Cancelling…' : 'Cancel Subscription'}
+                                            </button>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    ) : (
+                        <div className="p-8 text-center">
+                            <p className="text-sm text-slate-400">No subscription is currently connected to this account.</p>
+                            <a href="#monthly-plans" className="mt-4 inline-flex rounded-xl bg-violet-300 px-4 py-2.5 text-sm font-bold text-slate-950 transition hover:bg-violet-200">Choose a plan</a>
                         </div>
                     )}
                 </section>
@@ -302,7 +490,7 @@ export default function CreditsIndex({
                         })}
                     </div>
 
-                    <div className="mb-4 mt-10">
+                    <div id="monthly-plans" className="mb-4 mt-10 scroll-mt-8">
                         <h2 className="text-xl font-semibold text-white">Monthly plans</h2>
                         <p className="mt-1 text-sm text-slate-500">Secure recurring billing through PayPal.</p>
                     </div>
@@ -348,17 +536,58 @@ export default function CreditsIndex({
                     </div>
                 </section>
 
+                {billingTransactions.length > 0 && (
+                    <section className="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-[#141416]">
+                        <div className="border-b border-white/10 px-5 py-4">
+                            <h2 className="text-lg font-semibold text-white">Billing activity</h2>
+                            <p className="mt-1 text-sm text-slate-500">Recent subscription payments, renewals, and failed billing attempts.</p>
+                        </div>
+                        <div className="divide-y divide-white/10">
+                            {billingTransactions.map((transaction) => (
+                                <article key={transaction.id} className="flex flex-wrap items-center justify-between gap-4 px-5 py-4">
+                                    <div>
+                                        <p className="font-medium capitalize text-white">{transaction.type.replaceAll('_', ' ')} payment</p>
+                                        <p className="mt-1 text-xs text-slate-500">{formatDate(transaction.occurred_at)} · {transaction.provider}</p>
+                                    </div>
+                                    <div className="text-right">
+                                        <p className={transaction.status === 'completed' ? 'font-bold text-emerald-300' : 'font-bold text-rose-300'}>
+                                            {transaction.status === 'completed' ? 'Successful' : 'Failed'}
+                                        </p>
+                                        <p className="mt-1 text-xs text-slate-500">
+                                            {formatMoney(transaction.amount_minor / 100, transaction.currency)}
+                                            {transaction.credits_granted > 0 ? ` · +${transaction.credits_granted} credits` : ''}
+                                        </p>
+                                    </div>
+                                </article>
+                            ))}
+                        </div>
+                    </section>
+                )}
+
                 <section className="mt-8 overflow-hidden rounded-2xl border border-white/10 bg-[#141416]">
-                    <div className="border-b border-white/10 px-5 py-4">
-                        <h1 className="text-lg font-semibold text-white">Transaction history</h1>
-                        <p className="mt-1 text-sm text-slate-500">Every grant, charge, purchase, and refund appears here.</p>
+                    <div className="flex flex-wrap items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
+                        <div>
+                            <h1 className="text-lg font-semibold text-white">Transaction history</h1>
+                            <p className="mt-1 text-sm text-slate-500">Every account-level grant, charge, purchase, and refund appears here.</p>
+                        </div>
+                        <select value={transactionFilter} onChange={(event) => setTransactionFilter(event.target.value)} className="rounded-xl border border-white/10 bg-black/30 px-3 py-2 text-sm text-slate-300 outline-none">
+                            <option value="all">All activity</option>
+                            <option value="websites">Websites</option>
+                            <option value="ai">AI & Images</option>
+                            <option value="sparks">Sparks</option>
+                            <option value="themes">Themes</option>
+                            <option value="subscription">Subscriptions</option>
+                            <option value="purchase">Purchases</option>
+                            <option value="refund">Refunds</option>
+                            <option value="other">Other</option>
+                        </select>
                     </div>
 
-                    {rows.length === 0 ? (
+                    {filteredRows.length === 0 ? (
                         <div className="p-10 text-center text-sm text-slate-500">No credit transactions yet.</div>
                     ) : (
                         <div className="divide-y divide-white/10">
-                            {rows.map((transaction) => {
+                            {filteredRows.map((transaction) => {
                                 const positive = transaction.amount > 0;
 
                                 return (
@@ -366,7 +595,7 @@ export default function CreditsIndex({
                                         <div>
                                             <p className="font-medium text-white">{transaction.description}</p>
                                             <p className="mt-1 text-xs text-slate-500">
-                                                {transaction.website?.name ? `${transaction.website.name} · ` : ''}{formatDate(transaction.created_at)}
+                                                <span className="mr-2 rounded-full border border-white/10 bg-white/[0.04] px-2 py-0.5 uppercase tracking-wide text-slate-400">{transaction.category || 'other'}</span>{transaction.website?.name ? `${transaction.website.name} · ` : ''}{formatDate(transaction.created_at)}
                                             </p>
                                         </div>
                                         <div className="text-right">
@@ -379,6 +608,32 @@ export default function CreditsIndex({
                                 );
                             })}
                         </div>
+                    )}
+
+                    {(transactions?.links?.length ?? 0) > 3 && (
+                        <nav className="flex flex-wrap items-center justify-center gap-2 border-t border-white/10 px-5 py-4" aria-label="Credit transaction pages">
+                            {transactions.links.map((link, index) => (
+                                link.url ? (
+                                    <Link
+                                        key={`${link.label}-${index}`}
+                                        href={link.url}
+                                        preserveScroll
+                                        className={`min-w-9 rounded-lg border px-3 py-2 text-center text-xs font-semibold transition ${
+                                            link.active
+                                                ? 'border-cyan-300/30 bg-cyan-300/10 text-cyan-200'
+                                                : 'border-white/10 text-slate-400 hover:bg-white/5 hover:text-white'
+                                        }`}
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
+                                ) : (
+                                    <span
+                                        key={`${link.label}-${index}`}
+                                        className="min-w-9 cursor-not-allowed rounded-lg border border-white/5 px-3 py-2 text-center text-xs font-semibold text-slate-700"
+                                        dangerouslySetInnerHTML={{ __html: link.label }}
+                                    />
+                                )
+                            ))}
+                        </nav>
                     )}
                 </section>
             </main>

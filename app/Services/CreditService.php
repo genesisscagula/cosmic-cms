@@ -2,127 +2,45 @@
 
 namespace App\Services;
 
-use App\Exceptions\InsufficientCreditsException;
 use App\Models\CreditTransaction;
 use App\Models\User;
 use App\Models\Website;
-use Illuminate\Support\Facades\DB;
-use InvalidArgumentException;
 
+/** Backward-compatible facade for the centralized account wallet. */
 class CreditService
 {
-    public function balance(User $user): int
+    public function __construct(private readonly CreditWalletService $wallet) {}
+
+    public function balance(User $user): int { return $this->wallet->balance($user); }
+    public function canAfford(User $user, int $amount): bool { return $this->wallet->canAfford($user, $amount); }
+
+    public function consume(User $user, int $amount, string $description, ?Website $website = null, ?string $reference = null, array $metadata = []): CreditTransaction
     {
-        return (int) $user->credits;
+        return $this->wallet->debit($user, $amount, $description, $this->category($metadata, $description), $website, $reference, $metadata);
     }
 
-    public function canAfford(User $user, int $amount): bool
+    public function grant(User $user, int $amount, string $description, ?string $reference = null, array $metadata = []): CreditTransaction
     {
-        $this->assertPositiveAmount($amount);
-
-        return $this->balance($user) >= $amount;
+        return $this->wallet->credit($user, $amount, $description, $this->category($metadata, $description), $reference, $metadata);
     }
 
-    public function consume(
-        User $user,
-        int $amount,
-        string $description,
-        ?Website $website = null,
-        ?string $reference = null,
-        array $metadata = [],
-    ): CreditTransaction {
-        $this->assertPositiveAmount($amount);
-
-        return DB::transaction(function () use ($user, $amount, $description, $website, $reference, $metadata) {
-            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
-
-            if ((int) $lockedUser->credits < $amount) {
-                throw new InsufficientCreditsException($amount, (int) $lockedUser->credits);
-            }
-
-            $lockedUser->decrement('credits', $amount);
-            $lockedUser->refresh();
-
-            $transaction = $lockedUser->creditTransactions()->create([
-                'website_id' => $website?->id,
-                'type' => 'debit',
-                'amount' => -$amount,
-                'balance_after' => (int) $lockedUser->credits,
-                'description' => $description,
-                'reference' => $reference,
-                'metadata' => $metadata ?: null,
-            ]);
-
-            $user->setAttribute('credits', $lockedUser->credits);
-
-            return $transaction;
-        });
-    }
-
-    public function grant(
-        User $user,
-        int $amount,
-        string $description,
-        ?string $reference = null,
-        array $metadata = [],
-    ): CreditTransaction {
-        $this->assertPositiveAmount($amount);
-
-        return DB::transaction(function () use ($user, $amount, $description, $reference, $metadata) {
-            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
-            $lockedUser->increment('credits', $amount);
-            $lockedUser->refresh();
-
-            $transaction = $lockedUser->creditTransactions()->create([
-                'type' => 'credit',
-                'amount' => $amount,
-                'balance_after' => (int) $lockedUser->credits,
-                'description' => $description,
-                'reference' => $reference,
-                'metadata' => $metadata ?: null,
-            ]);
-
-            $user->setAttribute('credits', $lockedUser->credits);
-
-            return $transaction;
-        });
-    }
-
-    public function refund(
-        User $user,
-        int $amount,
-        string $description,
-        ?Website $website = null,
-        ?string $reference = null,
-        array $metadata = [],
-    ): CreditTransaction {
-        $this->assertPositiveAmount($amount);
-
-        return DB::transaction(function () use ($user, $amount, $description, $website, $reference, $metadata) {
-            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
-            $lockedUser->increment('credits', $amount);
-            $lockedUser->refresh();
-
-            $transaction = $lockedUser->creditTransactions()->create([
-                'website_id' => $website?->id,
-                'type' => 'refund',
-                'amount' => $amount,
-                'balance_after' => (int) $lockedUser->credits,
-                'description' => $description,
-                'reference' => $reference,
-                'metadata' => $metadata ?: null,
-            ]);
-
-            $user->setAttribute('credits', $lockedUser->credits);
-
-            return $transaction;
-        });
-    }
-
-    private function assertPositiveAmount(int $amount): void
+    public function refund(User $user, int $amount, string $description, ?Website $website = null, ?string $reference = null, array $metadata = []): CreditTransaction
     {
-        if ($amount < 1) {
-            throw new InvalidArgumentException('Credit amount must be at least 1.');
-        }
+        return $this->wallet->refund($user, $amount, $description, 'refund', $website, $reference, $metadata);
+    }
+
+    private function category(array $metadata, string $description): string
+    {
+        if (!empty($metadata['category'])) return (string) $metadata['category'];
+        $value = strtolower($description.' '.($metadata['product_type'] ?? ''));
+        return match (true) {
+            str_contains($value, 'spark') => 'sparks',
+            str_contains($value, 'theme'), str_contains($value, 'style') => 'themes',
+            str_contains($value, 'page'), str_contains($value, 'website'), str_contains($value, 'menu') => 'websites',
+            str_contains($value, 'ai'), str_contains($value, 'generate'), str_contains($value, 'image'), str_contains($value, 'blog') => 'ai',
+            str_contains($value, 'subscription'), str_contains($value, 'renewal'), str_contains($value, 'plan') => 'subscription',
+            str_contains($value, 'purchase'), str_contains($value, 'top-up'), str_contains($value, 'credits') => 'purchase',
+            default => 'other',
+        };
     }
 }

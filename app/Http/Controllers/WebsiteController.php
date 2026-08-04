@@ -6,10 +6,13 @@ use App\Models\Page;
 use App\Models\Website;
 use App\Services\DeploymentConnectorArchive;
 use App\Services\PagePublisher;
+use App\Services\PlanCapabilityService;
+use App\Services\SparkCatalog;
 use App\Services\WebsiteTemplateCatalog;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use ZipArchive;
@@ -29,9 +32,14 @@ class WebsiteController extends Controller
             ]);
         }
 
-        $websiteQuery = $user->isPlatformOwner()
-            ? Website::query()->whereHas('workspace', fn ($query) => $query->where('owner_user_id', $user->id))
-            : Website::query()->where('user_id', $user->id);
+        $websiteQuery = Website::query()
+            ->where(function ($query) use ($user) {
+                $query->where('user_id', $user->id)
+                    ->orWhereHas('workspace', function ($workspaceQuery) use ($user) {
+                        $workspaceQuery->where('owner_user_id', $user->id)
+                            ->orWhereHas('users', fn ($memberQuery) => $memberQuery->whereKey($user->id));
+                    });
+            });
 
         $websites = (clone $websiteQuery)
             ->withCount([
@@ -43,11 +51,63 @@ class WebsiteController extends Controller
             ->get();
 
         $websiteIds = $websites->pluck('id');
-        $now = now();
         $publishedWebsites = $websites->filter(fn (Website $website) => $website->published_pages_count > 0);
         $draftWebsites = $websites->reject(fn (Website $website) => $website->published_pages_count > 0);
-        $recentDeployments = $websites->filter(fn (Website $website) => $website->last_deployed_at?->gte($now->copy()->subDays(30)))->count();
-        $publishedThisWeek = $publishedWebsites->filter(fn (Website $website) => $website->updated_at?->gte($now->copy()->startOfWeek()))->count();
+        $planCapabilities = app(PlanCapabilityService::class)->forUser($user);
+        $plan = config('payments.plans.' . $user->plan_key, []);
+        $planLabel = $plan['label'] ?? ($user->plan_key ? Str::headline($user->plan_key) : 'No Plan');
+        $monthlyCredits = (int) ($plan['credits'] ?? 0);
+        $provider = $user->plan_provider ? Str::headline($user->plan_provider) : 'Not connected';
+        $subscriptionStatus = $user->plan_status ? Str::headline(str_replace('_', ' ', $user->plan_status)) : 'Inactive';
+        $nextBilling = $user->plan_renews_at?->timezone($user->timezone ?: config('app.timezone'));
+
+        $sparkUnlocks = $user->cosmicUnlocks()
+            ->where('unlock_type', 'spark')
+            ->latest()
+            ->get()
+            ->keyBy('unlock_key');
+        $favoriteKeys = $user->sparkFavorites()->pluck('spark_key');
+
+        $sparkMarketplace = collect(SparkCatalog::all())
+            ->values()
+            ->map(function (array $spark, int $index) use ($sparkUnlocks, $favoriteKeys) {
+                $isFeatured = (bool) ($spark['featured'] ?? false);
+                $unlock = $sparkUnlocks->get($spark['key']);
+
+                return [
+                    ...$spark,
+                    'owned' => (bool) ($unlock?->is_installed),
+                    'purchased' => (int) ($unlock?->credits_paid ?? 0) > 0,
+                    'favorited' => $favoriteKeys->contains($spark['key']),
+                    'credits_paid' => (int) ($unlock?->credits_paid ?? 0),
+                    'is_free' => (int) ($spark['credits'] ?? 0) === 0,
+                    'is_premium' => (int) ($spark['credits'] ?? 0) > 0,
+                    'is_new' => $index < 8,
+                    'popular' => $isFeatured || in_array($spark['category'] ?? null, ['Hero', 'Services', 'Pricing', 'Testimonials'], true),
+                    'staff_pick' => $isFeatured,
+                ];
+            });
+
+        $sparkCatalog = $sparkMarketplace->keyBy('key');
+        $sparkLibrary = $sparkUnlocks
+            ->filter(fn ($unlock) => (bool) $unlock->is_installed)
+            ->map(function ($unlock) use ($sparkCatalog, $user, $favoriteKeys) {
+                $spark = $sparkCatalog->get($unlock->unlock_key);
+                if (! $spark) return null;
+
+                return [
+                    ...$spark,
+                    'source' => 'Marketplace',
+                    'credits_paid' => (int) $unlock->credits_paid,
+                    'purchased' => (int) $unlock->credits_paid > 0,
+                    'favorited' => $favoriteKeys->contains($unlock->unlock_key),
+                    'unlocked_at' => $unlock->created_at?->toIso8601String(),
+                    'unlocked_label' => $unlock->created_at?->timezone($user->timezone ?: config('app.timezone'))->format('M j, Y'),
+                    'usage_count' => 0,
+                ];
+            })
+            ->filter()
+            ->values();
 
         $recentWebsites = $websites->take(3)->values()->map(function (Website $website, int $index) {
             $accents = [
@@ -72,7 +132,7 @@ class WebsiteController extends Controller
         foreach ($websites->take(4) as $website) {
             $activity->push([
                 'id' => 'website-' . $website->id,
-                'type' => 'edit',
+                'type' => 'website',
                 'actor' => 'You',
                 'action' => 'updated',
                 'target' => $website->name ?: 'Untitled Website',
@@ -102,9 +162,58 @@ class WebsiteController extends Controller
                 });
         }
 
+        $user->creditTransactions()
+            ->latest()
+            ->limit(5)
+            ->get()
+            ->each(function ($transaction) use ($activity) {
+                $activity->push([
+                    'id' => 'credit-' . $transaction->id,
+                    'type' => 'credits',
+                    'actor' => 'Credits',
+                    'action' => $transaction->amount > 0 ? 'added' : 'used',
+                    'target' => abs((int) $transaction->amount) . ' — ' . $transaction->description,
+                    'time' => $transaction->created_at?->diffForHumans() ?? 'Recently',
+                    'timestamp' => $transaction->created_at?->timestamp ?? 0,
+                ]);
+            });
+
+        $user->billingTransactions()
+            ->latest('occurred_at')
+            ->limit(5)
+            ->get()
+            ->each(function ($transaction) use ($activity) {
+                $activity->push([
+                    'id' => 'billing-' . $transaction->id,
+                    'type' => $transaction->status === 'completed' ? 'billing' : 'warning',
+                    'actor' => Str::headline($transaction->provider),
+                    'action' => $transaction->status === 'completed' ? 'processed' : 'failed',
+                    'target' => Str::headline($transaction->type) . ' payment',
+                    'time' => $transaction->occurred_at?->diffForHumans() ?? 'Recently',
+                    'timestamp' => $transaction->occurred_at?->timestamp ?? 0,
+                ]);
+            });
+
+        $user->workspaceProvisionings()
+            ->whereNotNull('completed_at')
+            ->latest('completed_at')
+            ->limit(3)
+            ->get()
+            ->each(function ($provisioning) use ($activity) {
+                $activity->push([
+                    'id' => 'provisioning-' . $provisioning->id,
+                    'type' => 'workspace',
+                    'actor' => 'Cosmic',
+                    'action' => 'created',
+                    'target' => 'your workspace and starter website',
+                    'time' => $provisioning->completed_at?->diffForHumans() ?? 'Recently',
+                    'timestamp' => $provisioning->completed_at?->timestamp ?? 0,
+                ]);
+            });
+
         $activity = $activity
             ->sortByDesc('timestamp')
-            ->take(4)
+            ->take(6)
             ->values()
             ->map(fn (array $item) => collect($item)->except('timestamp')->all());
 
@@ -113,36 +222,150 @@ class WebsiteController extends Controller
         $hasWebsiteShell = $websites->contains(fn (Website $website) => filled($website->global_header) && filled($website->global_footer));
         $hasPublishedWebsite = $publishedWebsites->isNotEmpty();
         $workspaceCompleted = collect([$hasWebsite, $hasPages, $hasWebsiteShell, $hasPublishedWebsite])->filter()->count();
-        $lastUpdatedAt = $websites->max('updated_at');
+        $lastUpdatedAt = collect([
+            $websites->max('updated_at'),
+            $user->creditTransactions()->max('created_at'),
+            $user->billingTransactions()->max('occurred_at'),
+        ])->filter()->sortDesc()->first();
+
+        $workspace = $user->ownedWorkspaces()->with(['owner:id,name,email', 'users:id,name,email'])->first()
+            ?? $user->workspaces()->with(['owner:id,name,email', 'users:id,name,email'])->first();
+
+        $workspaceWebsites = $workspace
+            ? $websites->where('workspace_id', $workspace->id)->values()
+            : $websites->values();
+
+        $settingsWebsites = $websites->map(function (Website $website) {
+            $settings = $website->settings ?? [];
+
+            return [
+                'id' => $website->id,
+                'name' => $website->name,
+                'domain' => $website->domain,
+                'industry' => $website->industry,
+                'location' => $website->location,
+                'business_description' => $website->business_description,
+                'contact_email' => $website->contact_email,
+                'contact_phone' => $website->contact_phone,
+                'timezone' => $website->timezone ?: 'Asia/Manila',
+                'locale' => $website->locale ?: 'en',
+                'business_name' => $settings['business_name'] ?? $website->name,
+                'address' => $settings['address'] ?? $website->location,
+                'company_name' => $settings['company_name'] ?? null,
+                'owner_name' => $settings['owner_name'] ?? null,
+                'registration_number' => $settings['registration_number'] ?? null,
+                'vat_number' => $settings['vat_number'] ?? null,
+                'logo_url' => filled($settings['logo_path'] ?? null) ? Storage::disk('public')->url($settings['logo_path']) : null,
+                'favicon_url' => filled($settings['favicon_path'] ?? null) ? Storage::disk('public')->url($settings['favicon_path']) : null,
+            ];
+        })->values();
+
+        $workspaceInformation = [
+            'id' => $workspace?->id,
+            'name' => $workspace?->name ?? (($user->business_name ?: $user->name) . ' Workspace'),
+            'slug' => $workspace?->slug,
+            'role' => $workspace?->roleFor($user) ?? 'owner',
+            'owner' => [
+                'name' => $workspace?->owner?->name ?? $user->name,
+                'email' => $workspace?->owner?->email ?? $user->email,
+            ],
+            'created_at' => $workspace?->created_at?->toIso8601String(),
+            'created_label' => $workspace?->created_at?->timezone($user->timezone ?: config('app.timezone'))->format('M j, Y'),
+            'status' => $workspaceWebsites->isNotEmpty() ? 'Active' : 'Setup required',
+            'members_count' => $workspace ? $workspace->users->count() : 1,
+            'websites_count' => $workspaceWebsites->count(),
+            'published_websites_count' => $workspaceWebsites->filter(fn (Website $website) => $website->published_pages_count > 0)->count(),
+            'websites' => $workspaceWebsites->map(function (Website $website) use ($user) {
+                $published = $website->published_pages_count > 0;
+                $deploymentStatus = $website->last_deployed_at
+                    ? 'Deployed'
+                    : ($website->deployment_verified_at ? 'Connected' : 'Not connected');
+
+                return [
+                    'id' => $website->id,
+                    'name' => $website->name ?: 'Untitled Website',
+                    'industry' => $website->industry ?: 'Not set',
+                    'location' => $website->location ?: 'Not set',
+                    'domain' => $website->domain ?: 'No domain connected',
+                    'status' => $published ? 'Published' : 'Draft',
+                    'pages_count' => (int) $website->pages_count,
+                    'published_pages_count' => (int) $website->published_pages_count,
+                    'deployment_status' => $deploymentStatus,
+                    'updated_at' => $website->updated_at?->timezone($user->timezone ?: config('app.timezone'))->format('M j, Y'),
+                ];
+            })->values(),
+        ];
 
 	    return Inertia::render('Dashboard/Dashboard', [
 		    'websites' => $websites,
             'dashboard' => [
                 'stats' => [
                     [
-                        'label' => 'Total Websites',
-                        'value' => $websites->count(),
-                        'detail' => $websites->filter(fn (Website $website) => $website->created_at?->isCurrentMonth())->count() . ' created this month',
+                        'label' => 'Credits',
+                        'value' => number_format((int) $user->credits),
+                        'detail' => 'Available balance',
                         'accent' => 'bg-violet-400/10 text-violet-300',
+                        'icon' => '✦',
                     ],
                     [
-                        'label' => 'Published',
-                        'value' => $publishedWebsites->count(),
-                        'detail' => $publishedThisWeek . ' updated this week',
+                        'label' => 'Current Plan',
+                        'value' => $planLabel,
+                        'detail' => $subscriptionStatus,
                         'accent' => 'bg-emerald-400/10 text-emerald-300',
+                        'icon' => '◆',
                     ],
                     [
-                        'label' => 'Drafts',
-                        'value' => $draftWebsites->count(),
-                        'detail' => $websites->sum('draft_pages_count') . ' draft pages',
-                        'accent' => 'bg-amber-300/10 text-amber-200',
-                    ],
-                    [
-                        'label' => 'Recent Deployments',
-                        'value' => $recentDeployments,
-                        'detail' => 'Across the last 30 days',
+                        'label' => 'Monthly Credits',
+                        'value' => number_format($monthlyCredits),
+                        'detail' => $user->plan_key ? 'Included every billing cycle' : 'Choose a plan to activate',
                         'accent' => 'bg-cyan-400/10 text-cyan-300',
+                        'icon' => '↻',
                     ],
+                    [
+                        'label' => 'Next Billing',
+                        'value' => $nextBilling?->format('M j, Y') ?? '—',
+                        'detail' => $user->plan_cancel_at_period_end ? 'Cancels at period end' : ($nextBilling ? $nextBilling->diffForHumans() : 'No renewal scheduled'),
+                        'accent' => 'bg-amber-300/10 text-amber-200',
+                        'icon' => '◷',
+                    ],
+                    [
+                        'label' => 'Payment Provider',
+                        'value' => $provider,
+                        'detail' => $user->plan_provider ? 'Connected billing provider' : 'No provider connected',
+                        'accent' => 'bg-sky-400/10 text-sky-300',
+                        'icon' => '▣',
+                    ],
+                    [
+                        'label' => 'Websites',
+                        'value' => number_format($websites->count()),
+                        'detail' => $publishedWebsites->count() . ' published · ' . $draftWebsites->count() . ' draft',
+                        'accent' => 'bg-rose-400/10 text-rose-300',
+                        'icon' => '◎',
+                    ],
+                ],
+                'plan_capabilities' => $planCapabilities,
+                'subscription' => [
+                    'plan_key' => $user->plan_key,
+                    'plan_label' => $planLabel,
+                    'status' => $user->plan_status,
+                    'status_label' => $subscriptionStatus,
+                    'monthly_credits' => $monthlyCredits,
+                    'next_billing_at' => $nextBilling?->toIso8601String(),
+                    'payment_provider' => $user->plan_provider,
+                    'cancel_at_period_end' => (bool) $user->plan_cancel_at_period_end,
+                ],
+                'spark_library' => [
+                    'items' => $sparkLibrary,
+                    'categories' => $sparkLibrary->pluck('category')->filter()->unique()->sort()->values(),
+                    'count' => $sparkLibrary->count(),
+                ],
+                'spark_marketplace' => [
+                    'items' => $sparkMarketplace,
+                    'categories' => $sparkMarketplace->pluck('category')->filter()->unique()->sort()->values(),
+                    'count' => $sparkMarketplace->count(),
+                    'owned_count' => $sparkMarketplace->where('owned', true)->count(),
+                    'favorite_count' => $sparkMarketplace->where('favorited', true)->count(),
+                    'purchased_count' => $sparkMarketplace->where('purchased', true)->count(),
                 ],
                 'recent_websites' => $recentWebsites,
                 'recent_activity' => $activity,
@@ -150,14 +373,22 @@ class WebsiteController extends Controller
                     'completed' => $workspaceCompleted,
                     'total' => 4,
                 ],
-                'last_updated' => $lastUpdatedAt?->diffForHumans() ?? null,
+                'workspace' => $workspaceInformation,
+                'settings' => [
+                    'websites' => $settingsWebsites,
+                    'default_website_id' => $settingsWebsites->first()['id'] ?? null,
+                ],
+                'last_updated' => $lastUpdatedAt ? now()->parse($lastUpdatedAt)->diffForHumans() : null,
             ],
-            'accessMode' => $user->isPlatformOwner() ? 'platform_owner' : 'customer',
+            'accessMode' => $user->isPlatformOwner() ? 'platform_owner' : ($user->isClient() ? 'client' : 'customer'),
 		]);
 	}
 
-    public function store(Request $request, WebsiteTemplateCatalog $templates)
+    public function store(Request $request, WebsiteTemplateCatalog $templates, PlanCapabilityService $planCapabilities)
 	{
+        if ($message = $planCapabilities->assertCanCreateWebsite($request->user())) {
+            return back()->withErrors(['website_limit' => $message]);
+        }
 	    $request->validate([
 	        'name' => 'required|string|max:255',
 	        'domain' => 'required|url',
@@ -253,15 +484,67 @@ class WebsiteController extends Controller
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'domain' => ['nullable', 'url', 'max:2048'],
+            'industry' => ['nullable', 'string', 'max:120'],
+            'location' => ['nullable', 'string', 'max:255'],
+            'business_description' => ['nullable', 'string', 'max:3000'],
             'contact_email' => ['nullable', 'email', 'max:254'],
+            'contact_phone' => ['nullable', 'string', 'max:40'],
+            'timezone' => ['required', 'string', 'max:80'],
+            'locale' => ['required', 'string', 'max:20'],
+            'business_name' => ['nullable', 'string', 'max:255'],
+            'address' => ['nullable', 'string', 'max:500'],
+            'company_name' => ['nullable', 'string', 'max:255'],
+            'owner_name' => ['nullable', 'string', 'max:255'],
+            'registration_number' => ['nullable', 'string', 'max:120'],
+            'vat_number' => ['nullable', 'string', 'max:120'],
+            'logo' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp,svg', 'max:3072'],
+            'favicon' => ['nullable', 'image', 'mimes:png,ico,jpg,jpeg,webp', 'max:1024'],
+            'remove_logo' => ['nullable', 'boolean'],
+            'remove_favicon' => ['nullable', 'boolean'],
         ]);
 
-        $website->update($validated);
+        $settings = $website->settings ?? [];
 
-        return response()->json([
-            'status' => 'success',
-            'website' => $website->fresh(),
+        foreach (['business_name', 'address', 'company_name', 'owner_name', 'registration_number', 'vat_number'] as $field) {
+            $settings[$field] = $validated[$field] ?? null;
+        }
+
+        foreach ([
+            'logo' => ['path_key' => 'logo_path', 'directory' => 'website-branding/logos', 'remove_key' => 'remove_logo'],
+            'favicon' => ['path_key' => 'favicon_path', 'directory' => 'website-branding/favicons', 'remove_key' => 'remove_favicon'],
+        ] as $uploadField => $config) {
+            $oldPath = $settings[$config['path_key']] ?? null;
+            $shouldRemove = (bool) ($validated[$config['remove_key']] ?? false);
+
+            if ($request->hasFile($uploadField)) {
+                if ($oldPath) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+
+                $settings[$config['path_key']] = $request->file($uploadField)->store($config['directory'], 'public');
+            } elseif ($shouldRemove) {
+                if ($oldPath) {
+                    Storage::disk('public')->delete($oldPath);
+                }
+
+                $settings[$config['path_key']] = null;
+            }
+        }
+
+        $website->update([
+            'name' => $validated['name'],
+            'domain' => $validated['domain'] ?? null,
+            'industry' => $validated['industry'] ?? null,
+            'location' => $validated['location'] ?? null,
+            'business_description' => $validated['business_description'] ?? null,
+            'contact_email' => $validated['contact_email'] ?? null,
+            'contact_phone' => $validated['contact_phone'] ?? null,
+            'timezone' => $validated['timezone'],
+            'locale' => $validated['locale'],
+            'settings' => $settings,
         ]);
+
+        return back()->with('status', 'website-settings-updated');
     }
 
     public function updateProfile(Request $request, Website $website)
@@ -535,7 +818,9 @@ class WebsiteController extends Controller
 		}
 
 		if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST["api_token"])) {
-		    $configContent = "<?php\ndefine(\"API_TOKEN\", \"" . addslashes($_POST["api_token"]) . "\");\n";
+		    $configContent = "<?php
+define(\"API_TOKEN\", \"" . addslashes($_POST["api_token"]) . "\");
+";
 		    file_put_contents("config.php", $configContent);
 		    header("Location: index.php?sync=true");
 		    exit;

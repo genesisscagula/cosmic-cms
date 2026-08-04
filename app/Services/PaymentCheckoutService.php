@@ -39,6 +39,14 @@ class PaymentCheckoutService
             throw new RuntimeException('Monthly plans currently use PayPal. PayMongo is available for Philippine credit top-ups.');
         }
 
+        if ($provider === 'paypal' && $productType === 'plan') {
+            $resumed = $this->subscriptions->resumeCheckout($user, $productKey);
+
+            if ($resumed) {
+                return $resumed;
+            }
+        }
+
         $currency = $provider === 'paymongo' ? 'PHP' : 'USD';
         $priceKey = $provider === 'paymongo' ? 'price_php' : 'price_usd';
 
@@ -69,6 +77,8 @@ class PaymentCheckoutService
                 'plan_change_type' => $previousSubscription
                     ? ($this->planRank($productKey) > $this->planRank((string) $previousSubscription->product_key) ? 'upgrade' : 'downgrade')
                     : null,
+                'plan_switch_status' => $previousSubscription ? 'awaiting_approval' : null,
+                'plan_switch_started_at' => $previousSubscription ? now()->toIso8601String() : null,
             ]),
         ]);
 
@@ -146,6 +156,7 @@ class PaymentCheckoutService
         return [
             'checkout_url' => $approvalUrl,
             'order_reference' => $order->reference,
+            'resumed' => false,
         ];
     }
 
@@ -211,6 +222,7 @@ class PaymentCheckoutService
         return [
             'checkout_url' => $approvalUrl,
             'order_reference' => $order->reference,
+            'resumed' => false,
         ];
     }
 
@@ -300,6 +312,7 @@ class PaymentCheckoutService
         return [
             'checkout_url' => $url,
             'order_reference' => $order->reference,
+            'resumed' => false,
         ];
     }
 }

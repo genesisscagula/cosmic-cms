@@ -71,6 +71,7 @@ export default function NewWebsiteModal({ open, onClose, template = null }) {
                 </div>
 
                 <form className="mt-6 space-y-4" onSubmit={submit}>
+                    {errors.website_limit && <div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.07] p-3 text-sm leading-6 text-amber-100" role="alert">{errors.website_limit}</div>}
                     <div>
                         <label htmlFor="website-name" className="text-sm font-medium text-slate-200">Website name</label>
                         <input ref={nameInput} id="website-name" type="text" value={data.name} onChange={(event) => setData("name", event.target.value)} maxLength={255} required disabled={processing} placeholder="e.g. Northstar Studio" className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/25 px-3 text-sm text-white outline-none transition placeholder:text-slate-500 hover:border-white/20 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20 disabled:cursor-not-allowed disabled:opacity-60" />

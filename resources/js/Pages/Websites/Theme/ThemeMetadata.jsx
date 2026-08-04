@@ -1,47 +1,39 @@
 import themeCatalog from "../../../../theme/theme-families.json";
 
-const themeDetails = [
-    ["midnight", "Midnight Blue", "Professional"],
-    ["obsidian", "Obsidian Black", "Luxury"],
-    ["terracotta", "Terracotta", "Warm"],
-    ["asphalt", "Asphalt Grey", "Industrial"],
-    ["espresso", "Espresso Brown", "Elegant"],
-    ["navy", "Classic Navy", "Corporate"],
-    ["void", "Void Deep Blue", "Technology"],
-    ["emerald", "Emerald Forest", "Fresh"],
-    ["coffee", "Coffee Bean", "Hospitality"],
-    ["rose", "Rose Bloom", "Beauty"],
-    ["indigo", "Royal Indigo", "Creative"],
-    ["amber", "Golden Amber", "Warm"],
-    ["charcoal", "Charcoal Grey", "Minimal"],
-    ["violet", "Deep Violet", "Creative"],
-    ["teal", "Coastal Teal", "Fresh"],
-    ["ruby", "Ruby Red", "Bold"],
-    ["forest", "Moss Forest", "Nature"],
-    ["sapphire", "Sapphire Blue", "Professional"],
-    ["plum", "Royal Plum", "Luxury"],
-    ["olive", "Olive Grove", "Organic"],
-    ["ocean", "Ocean Blue", "Professional"],
-    ["slate", "Slate", "Technology"],
-];
+const fallbackNames = {
+    dark: "Dark Matter",
+    violet: "Aurora Violet",
+};
 
-const colorFromClass = (value, fallback) => value?.match(/#([0-9a-f]{6})/i)?.[0] || fallback;
+const classHex = (value, fallback) => value?.match(/#([0-9a-f]{6})/i)?.[0] || fallback;
 
-const themeMetadata = themeDetails.map(([id, name, category]) => {
-    const family = themeCatalog.families[id];
+const orderedIds = themeCatalog.themeOrder || Object.keys(themeCatalog.families);
 
-    return {
-        id,
-        name,
-        category,
-        // Preview colors come from the same shared family that Builder and
-        // CmsHtmlCompiler use, preventing a template/picker mismatch.
-        colors: [
-            colorFromClass(family?.bg, "#18181b"),
-            colorFromClass(family?.card, "#27272a"),
-            "#f8fafc",
-        ],
-    };
-});
+const themeMetadata = orderedIds
+    .filter((id) => themeCatalog.families[id])
+    .map((id) => {
+        const family = themeCatalog.families[id];
+        const palette = family.palette || {};
+
+        return {
+            id,
+            name: family.name || fallbackNames[id] || id.replace(/(^|-)(\w)/g, (_, prefix, letter) => `${prefix ? " " : ""}${letter.toUpperCase()}`),
+            category: family.category || "Professional",
+            description: family.description || "A flexible Cosmic color family.",
+            featured: (themeCatalog.featuredFamilies || []).includes(id),
+            colors: [
+                palette.background || classHex(family.bg, "#18181b"),
+                palette.surface || classHex(family.card, "#27272a"),
+                palette.accent || "#a78bfa",
+                palette.text || "#f8fafc",
+            ],
+            styles: {
+                button: family.buttonStyle || "rounded",
+                card: family.cardStyle || "soft",
+                hero: family.heroStyle || "centered",
+                cta: family.ctaStyle || "solid",
+            },
+        };
+    });
 
 export default themeMetadata;

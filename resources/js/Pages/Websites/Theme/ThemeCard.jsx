@@ -28,7 +28,7 @@ export default function ThemeCard({
     selected,
     onSelect,
 }) {
-    const [primary, surface, text] = theme.colors;
+    const [primary, surface, accent, text] = theme.colors;
 
     return (
         <button
@@ -75,19 +75,21 @@ export default function ThemeCard({
                     </div>
 
                     <span className="shrink-0 rounded-full bg-violet-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-violet-300">
-                        {selected ? "Active" : `⚡${THEME_CREDITS[theme.id] ?? 20}`}
+                        {selected ? "Active" : theme.featured ? "Featured" : `⚡${THEME_CREDITS[theme.id] ?? 20}`}
                     </span>
                 </div>
 
+                <p className="mt-2 line-clamp-2 min-h-8 text-[11px] leading-4 text-slate-500">{theme.description}</p>
+
                 <div className="mt-3 flex items-center gap-1.5" aria-label={`${theme.name} color palette`}>
-                    {[primary, surface, text].map((color, index) => (
+                    {[primary, surface, accent, text].map((color, index) => (
                         <span
                             key={`${color}-${index}`}
                             className="h-2.5 w-2.5 rounded-full border border-white/15"
                             style={{ backgroundColor: color }}
                         />
                     ))}
-                    <span className="ml-1 text-[10px] font-medium text-slate-500">Primary · Surface · Text</span>
+                    <span className="ml-1 text-[10px] font-medium text-slate-500">Background · Surface · Accent · Text</span>
                 </div>
             </div>
         </button>

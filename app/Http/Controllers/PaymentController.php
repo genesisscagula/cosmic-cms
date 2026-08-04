@@ -7,9 +7,10 @@ use App\Models\PendingOnboarding;
 use App\Services\PaymentCheckoutService;
 use App\Services\PaymentCountryResolver;
 use App\Services\PaymentFulfillmentService;
-use App\Services\OnboardingWorkspaceService;
+use App\Services\WorkspaceProvisioningService;
 use App\Services\PayPalService;
 use App\Services\SubscriptionManagementService;
+use App\Support\SubscriptionStatus;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -58,44 +59,6 @@ class PaymentController extends Controller
             ->whereIn('status', ['pending_payment', 'payment_cancelled'])
             ->firstOrFail();
 
-        $existing = PaymentOrder::query()
-            ->where('user_id', $user->id)
-            ->where('provider', 'paypal')
-            ->where('product_type', 'plan')
-            ->where('product_key', $onboarding->selected_plan)
-            ->where('status', 'pending')
-            ->where('created_at', '>=', now()->subMinutes(30))
-            ->latest('id')
-            ->first();
-
-        $existingUrl = (string) data_get($existing?->metadata, 'checkout_url', '');
-
-        if ($existing && $existingUrl !== '') {
-            $onboarding->update([
-                'status' => 'pending_payment',
-                'metadata' => array_merge($onboarding->metadata ?? [], [
-                    'payment_order_reference' => $existing->reference,
-                    'checkout_resumed_at' => now()->toIso8601String(),
-                ]),
-            ]);
-
-            return response()->json([
-                'checkout_url' => $existingUrl,
-                'order_reference' => $existing->reference,
-                'resumed' => true,
-            ]);
-        }
-
-        if ($existing) {
-            $existing->update([
-                'status' => 'expired',
-                'metadata' => array_merge($existing->metadata ?? [], [
-                    'expired_reason' => 'missing_checkout_url',
-                    'expired_at' => now()->toIso8601String(),
-                ]),
-            ]);
-        }
-
         try {
             $result = $checkout->create($user, 'paypal', 'plan', $onboarding->selected_plan);
 
@@ -133,7 +96,7 @@ class PaymentController extends Controller
         PayPalService $paypal,
         PaymentFulfillmentService $fulfillment,
         SubscriptionManagementService $subscriptions,
-        OnboardingWorkspaceService $workspaceSetup,
+        WorkspaceProvisioningService $provisioning,
     ) {
         $provider = (string) $request->query('provider');
         $reference = (string) $request->query('order');
@@ -182,9 +145,26 @@ class PaymentController extends Controller
 
                         try {
                             $subscription = $subscriptions->syncOrder($paymentOrder->fresh());
-                            $status = strtolower((string) ($subscription['status'] ?? ''));
+                            $status = SubscriptionStatus::normalize((string) ($subscription['status'] ?? ''));
 
-                            if (in_array($status, ['active', 'approved'], true)) {
+                            if ($status === SubscriptionStatus::ACTIVE) {
+                                // The return callback and webhook intentionally share the
+                                // same idempotent fulfillment path. Whichever arrives first
+                                // completes the order; the other safely becomes a no-op.
+                                $fulfillment->fulfillOrder(
+                                    $paymentOrder->reference,
+                                    '',
+                                    $subscriptionId,
+                                    [
+                                        'paypal_subscription_status' => (string) ($subscription['status'] ?? 'ACTIVE'),
+                                        'paypal_next_billing_time' => data_get($subscription, 'billing_info.next_billing_time'),
+                                        'confirmation_source' => 'return_url_sync',
+                                    ],
+                                );
+
+                                $subscriptions->finalizeSwitch($paymentOrder->fresh());
+                                $paymentOrder->refresh();
+
                                 $onboardingId = (int) data_get($paymentOrder->metadata, 'onboarding_id', 0);
 
                                 if ($onboardingId > 0) {
@@ -201,11 +181,11 @@ class PaymentController extends Controller
                                         ]),
                                     ]);
 
-                                    $workspaceSetup->finalize($onboarding->fresh(), $paymentOrder->fresh());
+                                    $provisioning->start($onboarding->fresh(), $paymentOrder->fresh(), 'return_url');
 
                                     return redirect()
                                         ->route('onboarding.success')
-                                        ->with('status', 'Payment confirmed. Your website workspace is ready.');
+                                        ->with('status', 'Payment confirmed. Your workspace is being prepared.');
                                 }
                             }
                         } catch (Throwable $syncException) {
@@ -254,9 +234,10 @@ class PaymentController extends Controller
 
             if ($order) {
                 $order->update([
-                    'status' => 'cancelled',
+                    'status' => 'pending',
                     'metadata' => array_merge($order->metadata ?? [], [
-                        'cancelled_at' => now()->toIso8601String(),
+                        'checkout_cancelled_at' => now()->toIso8601String(),
+                        'checkout_resume_available' => true,
                     ]),
                 ]);
             }
@@ -281,7 +262,7 @@ class PaymentController extends Controller
 
             return redirect()
                 ->route('onboarding.pending')
-                ->with('payment_error', 'Payment was cancelled. Your account and business details are still saved.');
+                ->with('payment_error', 'Payment was cancelled. Your saved PayPal checkout is ready to resume.');
         }
 
         return redirect()
@@ -325,4 +306,29 @@ class PaymentController extends Controller
             ], 422);
         }
     }
+
+    public function recoverSubscription(
+        Request $request,
+        SubscriptionManagementService $subscriptions,
+    ): JsonResponse {
+        try {
+            $result = $subscriptions->recover($request->user());
+
+            return response()->json([
+                'message' => $result['recovered']
+                    ? 'Billing recovered. Your subscription is active again.'
+                    : 'Recovery request completed. PayPal still reports '.str_replace('_', ' ', $result['after']).'.',
+                'status' => $result['after'],
+                'recovered' => $result['recovered'],
+                'next_billing_time' => data_get($result, 'subscription.billing_info.next_billing_time'),
+            ]);
+        } catch (Throwable $exception) {
+            report($exception);
+
+            return response()->json([
+                'message' => $exception->getMessage() ?: 'Unable to recover the subscription.',
+            ], 422);
+        }
+    }
+
 }

@@ -11,6 +11,7 @@ use App\Http\Controllers\BlogPostController;
 use App\Http\Controllers\TrialGenerationController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\CreditController;
+use App\Http\Controllers\AccountDataController;
 use App\Http\Controllers\CosmicPricingController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SparkController;
@@ -54,6 +55,10 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
     Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
     Route::get('/credits/balance', [CreditController::class, 'balance'])->name('credits.balance');
+    Route::get('/account-data/{section}', [AccountDataController::class, 'show'])
+        ->whereIn('section', ['credits', 'subscription', 'workspace', 'profile', 'settings'])
+        ->middleware('throttle:60,1')
+        ->name('account-data.show');
     Route::post('/credits/purchase', [CreditController::class, 'purchase'])->name('credits.purchase');
     Route::get('/payments/provider', [PaymentController::class, 'provider'])
         ->middleware('throttle:60,1')
@@ -67,10 +72,15 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/payments/subscription/sync', [PaymentController::class, 'syncSubscription'])
         ->middleware('throttle:10,1')
         ->name('payments.subscription.sync');
+    Route::post('/payments/subscription/recover', [PaymentController::class, 'recoverSubscription'])
+        ->middleware('throttle:5,1')
+        ->name('payments.subscription.recover');
     Route::get('/cosmic-pricing', [CosmicPricingController::class, 'index'])->name('cosmic-pricing.index');
     Route::get('/sparks', [SparkController::class, 'index'])->name('sparks.index');
     Route::get('/sparks/catalog', [SparkController::class, 'catalog'])->name('sparks.catalog');
     Route::post('/sparks/{key}/unlock', [SparkController::class, 'unlockKey'])->name('sparks.unlock');
+    Route::delete('/sparks/{key}/owned', [SparkController::class, 'removeOwned'])->name('sparks.owned.destroy');
+    Route::post('/sparks/{key}/favorite', [SparkController::class, 'toggleFavorite'])->name('sparks.favorite.toggle');
     Route::post('/websites', [WebsiteController::class, 'store'])->name('websites.store');
     Route::delete('/websites/{website}', [WebsiteController::class, 'destroy'])->name('websites.destroy');
     Route::get('/websites/{website}/deployment-connector', [WebsiteController::class, 'downloadDeploymentConnector'])->name('websites.deployment-connector.download');

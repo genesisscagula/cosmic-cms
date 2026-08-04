@@ -13,6 +13,7 @@ class CreditTransaction extends Model
         'user_id',
         'website_id',
         'type',
+        'category',
         'amount',
         'balance_after',
         'description',

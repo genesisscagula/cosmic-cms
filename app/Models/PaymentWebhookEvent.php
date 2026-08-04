@@ -13,7 +13,10 @@ class PaymentWebhookEvent extends Model
         return [
             'payload' => 'array',
             'received_at' => 'datetime',
+            'occurred_at' => 'datetime',
             'processing_started_at' => 'datetime',
+            'last_attempted_at' => 'datetime',
+            'next_retry_at' => 'datetime',
             'processed_at' => 'datetime',
         ];
     }

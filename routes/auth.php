@@ -43,6 +43,10 @@ Route::middleware('auth')->group(function () {
     Route::get('onboarding/success', [RegisteredUserController::class, 'success'])
         ->name('onboarding.success');
 
+    Route::post('onboarding/recover', [RegisteredUserController::class, 'recoverProvisioning'])
+        ->middleware('throttle:3,1')
+        ->name('onboarding.recover');
+
     Route::post('onboarding/checkout', [PaymentController::class, 'onboardingCheckout'])
         ->middleware('throttle:8,1')
         ->name('onboarding.checkout');

@@ -3,12 +3,14 @@ import ActivityFeed from "../Components/ActivityFeed";
 import OverviewStatCard from "../Components/OverviewStatCard";
 import RecentWebsiteList from "../Components/RecentWebsiteList";
 import WorkspaceProgress from "../Components/WorkspaceProgress";
+import WorkspaceInformation from "../Components/WorkspaceInformation";
 
 export default function Home({ dashboard = {}, onTabChange }) {
     const stats = Array.isArray(dashboard.stats) ? dashboard.stats : [];
     const recentWebsites = Array.isArray(dashboard.recent_websites) ? dashboard.recent_websites : [];
     const activity = Array.isArray(dashboard.recent_activity) ? dashboard.recent_activity : [];
     const progress = dashboard.workspace_progress || { completed: 0, total: 4 };
+    const workspace = dashboard.workspace || {};
 
     const openWebsite = (website) => router.visit(route("pages.index", website.id));
 
@@ -40,9 +42,11 @@ export default function Home({ dashboard = {}, onTabChange }) {
                 </button>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {stats.map((stat) => <OverviewStatCard key={stat.label} {...stat} />)}
             </div>
+
+            <WorkspaceInformation workspace={workspace} onViewAll={() => onTabChange?.("websites")} />
 
             <div className="grid gap-6 xl:grid-cols-[minmax(0,1.25fr)_minmax(300px,0.75fr)]">
                 <div>

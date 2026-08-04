@@ -16,6 +16,10 @@ class Website extends Model
         'location',
         'business_description',
         'contact_email',
+        'contact_phone',
+        'timezone',
+        'locale',
+        'settings',
         'api_token',
         'deployment_secret',
         'deployment_verified_at',
@@ -32,6 +36,7 @@ class Website extends Model
     // Gi-automatic cast nato ang JSON string ngadto sa PHP/React Array packet
     protected $casts = [
         'theme_settings' => 'array',
+        'settings' => 'array',
         'global_header' => 'array', 
         'global_footer' => 'array',
         'published_theme_settings' => 'array',

@@ -18,7 +18,14 @@ class ProfileUpdateRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'max:255'],
+            'avatar' => ['nullable', 'image', 'mimes:jpg,jpeg,png,webp', 'max:2048'],
+            'remove_avatar' => ['nullable', 'boolean'],
+            'business_name' => ['nullable', 'string', 'max:255'],
             'location' => ['nullable', 'string', 'max:255'],
+            'phone' => ['nullable', 'string', 'max:40'],
+            'industry' => ['nullable', 'string', 'max:120'],
+            'timezone' => ['required', 'timezone'],
+            'locale' => ['required', Rule::in(['en', 'en-PH'])],
             'email' => [
                 'required',
                 'string',

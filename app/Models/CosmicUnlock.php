@@ -7,7 +7,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class CosmicUnlock extends Model
 {
-    protected $fillable = ['user_id', 'unlock_type', 'unlock_key', 'credits_paid'];
+    protected $casts = ['is_installed' => 'boolean'];
+    protected $fillable = ['user_id', 'unlock_type', 'unlock_key', 'credits_paid', 'is_installed'];
 
     public function user(): BelongsTo
     {

@@ -3,7 +3,7 @@ const navigationItems = [
     { id: "home", label: "Overview", icon: "⌂" },
     { id: "websites", label: "Websites", icon: "◈" },
     { id: "templates", label: "Templates", icon: "▧" },
-    { id: "blocks", label: "Blocks", icon: "◫" },
+    { id: "sparks", label: "Sparks", icon: "✦" },
     { id: "aiStudio", label: "AI Studio", icon: "✦" },
 ];
 

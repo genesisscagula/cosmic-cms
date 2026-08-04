@@ -2,9 +2,13 @@
 
 namespace App\Services;
 
+use App\Mail\BillingReceiptMail;
+use App\Models\BillingTransaction;
 use App\Models\CreditTransaction;
 use App\Models\PaymentOrder;
+use App\Support\SubscriptionStatus;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 use RuntimeException;
 
 class PaymentFulfillmentService
@@ -66,11 +70,15 @@ class PaymentFulfillmentService
 
                 $order->user->update([
                     'plan_key' => $order->product_key,
-                    'plan_status' => 'active',
+                    'plan_status' => SubscriptionStatus::ACTIVE,
                     'plan_provider' => $order->provider,
                     'plan_renews_at' => $nextBilling ?: now()->addMonth(),
                     'plan_cancel_at_period_end' => false,
                     'plan_cancelled_at' => null,
+                    'plan_status_changed_at' => now(),
+                    'plan_past_due_at' => null,
+                    'plan_suspended_at' => null,
+                    'plan_expired_at' => null,
                 ]);
             }
 
@@ -102,22 +110,30 @@ class PaymentFulfillmentService
 
         $this->assertRenewalMatches($order, $metadata);
 
-        // If the payment webhook arrives before activation, fulfill the initial
-        // plan once here. The first sale then becomes the recorded initial charge,
-        // not an extra monthly credit grant.
+        // PayPal may deliver the first SALE before ACTIVATED. Fulfill the initial
+        // purchase once, record it as the initial charge, and stop here so the
+        // same sale cannot also grant a second monthly credit allocation.
         if (! $order->fulfilled_at) {
-            $this->fulfillOrder(
+            $fulfilled = $this->fulfillOrder(
                 $order->reference,
                 $paymentId,
                 $subscriptionId,
                 array_merge($metadata, ['initial_subscription_payment_id' => $paymentId]),
             );
+
+            if ($fulfilled) {
+                $this->recordBillingTransaction($order->fresh(), 'initial', 'completed', $paymentId, $subscriptionId, (int) $order->credits, $metadata);
+            }
+
+            return $fulfilled;
         }
 
-        return DB::transaction(function () use ($order, $subscriptionId, $paymentId, $metadata) {
+        $result = DB::transaction(function () use ($order, $subscriptionId, $paymentId, $metadata) {
             $lockedOrder = PaymentOrder::query()->lockForUpdate()->findOrFail($order->id);
             $orderMetadata = $lockedOrder->metadata ?? [];
 
+            // Activation was processed first. The first SALE identifies the
+            // initial charge but must not grant another monthly allocation.
             if ((string) ($orderMetadata['initial_subscription_payment_id'] ?? '') === '') {
                 $lockedOrder->update([
                     'external_payment_id' => $paymentId,
@@ -126,6 +142,8 @@ class PaymentFulfillmentService
                         'initial_subscription_payment_id' => $paymentId,
                     ]),
                 ]);
+
+                $this->recordBillingTransaction($lockedOrder->fresh(), 'initial', 'completed', $paymentId, $subscriptionId, (int) $lockedOrder->credits, $metadata);
 
                 return true;
             }
@@ -151,14 +169,24 @@ class PaymentFulfillmentService
             );
 
             $nextBilling = data_get($metadata, 'next_billing_time');
+            $fallbackNextBilling = $lockedOrder->user->plan_renews_at?->isFuture()
+                ? $lockedOrder->user->plan_renews_at->copy()->addMonth()
+                : now()->addMonth();
+            $resolvedNextBilling = $nextBilling
+                ? \Illuminate\Support\Carbon::parse($nextBilling)
+                : $fallbackNextBilling;
 
             $lockedOrder->user->update([
                 'plan_key' => $lockedOrder->product_key,
-                'plan_status' => 'active',
+                'plan_status' => SubscriptionStatus::ACTIVE,
                 'plan_provider' => 'paypal',
-                'plan_renews_at' => $nextBilling ?: now()->addMonth(),
+                'plan_renews_at' => $resolvedNextBilling,
                 'plan_cancel_at_period_end' => false,
                 'plan_cancelled_at' => null,
+                'plan_status_changed_at' => now(),
+                'plan_past_due_at' => null,
+                'plan_suspended_at' => null,
+                'plan_expired_at' => null,
             ]);
 
             $lockedOrder->update([
@@ -168,11 +196,16 @@ class PaymentFulfillmentService
                 'metadata' => array_merge($lockedOrder->metadata ?? [], [
                     'last_renewal_payment_id' => $paymentId,
                     'last_renewal_at' => now()->toIso8601String(),
+                    'next_billing_time' => $resolvedNextBilling->toIso8601String(),
                 ], $metadata),
             ]);
 
+            $this->recordBillingTransaction($lockedOrder->fresh(), 'renewal', 'completed', $paymentId, $subscriptionId, (int) $lockedOrder->credits, $metadata);
+
             return true;
         });
+
+        return $result;
     }
 
     public function updateSubscriptionStatus(
@@ -184,6 +217,8 @@ class PaymentFulfillmentService
             return;
         }
 
+        $status = SubscriptionStatus::normalize($status);
+
         $order = PaymentOrder::query()
             ->where('external_subscription_id', $subscriptionId)
             ->latest('id')
@@ -193,12 +228,17 @@ class PaymentFulfillmentService
             return;
         }
 
-        $cancelled = in_array($status, ['cancelled', 'expired'], true);
+        if ($status === SubscriptionStatus::PAST_DUE) {
+            $failureId = (string) ($metadata['payment_failure_id'] ?? 'failure:'.$subscriptionId.':'.now()->timestamp);
+            $this->recordBillingTransaction($order, 'renewal', 'failed', $failureId, $subscriptionId, 0, $metadata);
+        }
+
+        $cancelled = $status === SubscriptionStatus::CANCELLED;
         $currentOrder = $order->user->paymentOrders()
             ->where('provider', 'paypal')
             ->where('product_type', 'plan')
             ->whereNotNull('external_subscription_id')
-            ->whereNotIn('status', ['failed', 'cancelled', 'expired', 'replaced'])
+            ->whereNotIn('status', ['failed', SubscriptionStatus::CANCELLED, SubscriptionStatus::EXPIRED, 'replaced'])
             ->latest('id')
             ->first();
 
@@ -209,7 +249,11 @@ class PaymentFulfillmentService
                 'plan_status' => $status,
                 'plan_cancel_at_period_end' => $cancelled,
                 'plan_cancelled_at' => $cancelled ? ($order->user->plan_cancelled_at ?? now()) : null,
-                'plan_renews_at' => $status === 'expired' ? null : $order->user->plan_renews_at,
+                'plan_renews_at' => $status === SubscriptionStatus::EXPIRED ? null : $order->user->plan_renews_at,
+                'plan_status_changed_at' => $order->user->plan_status !== $status ? now() : $order->user->plan_status_changed_at,
+                'plan_past_due_at' => $status === SubscriptionStatus::PAST_DUE ? ($order->user->plan_past_due_at ?? now()) : null,
+                'plan_suspended_at' => $status === SubscriptionStatus::SUSPENDED ? ($order->user->plan_suspended_at ?? now()) : null,
+                'plan_expired_at' => $status === SubscriptionStatus::EXPIRED ? ($order->user->plan_expired_at ?? now()) : null,
             ]);
         }
 
@@ -220,6 +264,47 @@ class PaymentFulfillmentService
                 'subscription_status_updated_at' => now()->toIso8601String(),
             ]),
         ]);
+    }
+
+    private function recordBillingTransaction(
+        PaymentOrder $order,
+        string $type,
+        string $status,
+        string $externalId,
+        string $subscriptionId,
+        int $creditsGranted,
+        array $metadata = [],
+    ): BillingTransaction {
+        $transaction = BillingTransaction::query()->firstOrCreate(
+            [
+                'provider' => 'paypal',
+                'external_id' => $externalId,
+            ],
+            [
+                'user_id' => $order->user_id,
+                'payment_order_id' => $order->id,
+                'type' => $type,
+                'status' => $status,
+                'subscription_id' => $subscriptionId,
+                'amount_minor' => (int) ($metadata['amount_minor'] ?? $order->amount_minor),
+                'currency' => strtoupper((string) ($metadata['currency'] ?? $order->currency)),
+                'credits_granted' => $creditsGranted,
+                'occurred_at' => now(),
+                'metadata' => $metadata ?: null,
+            ],
+        );
+
+        if ($transaction->wasRecentlyCreated && $status === 'completed') {
+            DB::afterCommit(function () use ($transaction): void {
+                try {
+                    Mail::to($transaction->user->email)->send(new BillingReceiptMail($transaction->load(['user', 'paymentOrder'])));
+                } catch (\Throwable $exception) {
+                    report($exception);
+                }
+            });
+        }
+
+        return $transaction;
     }
 
     private function assertRenewalMatches(PaymentOrder $order, array $metadata): void

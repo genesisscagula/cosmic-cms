@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PaymentOrder;
 use App\Models\PaymentWebhookEvent;
 use App\Services\PaymentFulfillmentService;
-use App\Services\OnboardingWorkspaceService;
+use App\Services\WorkspaceProvisioningService;
 use App\Services\PaymentWebhookEventService;
 use App\Services\PayPalService;
 use App\Services\SubscriptionManagementService;
@@ -20,6 +20,7 @@ class PaymentWebhookController extends Controller
         PaymentFulfillmentService $fulfillment,
         SubscriptionManagementService $subscriptions,
         PaymentWebhookEventService $events,
+        WorkspaceProvisioningService $provisioning,
     ): Response {
         abort_unless($paypal->verifyWebhook($request), 400, 'Invalid PayPal webhook signature.');
 
@@ -27,6 +28,7 @@ class PaymentWebhookController extends Controller
         $eventId = (string) ($event['id'] ?? '');
         $type = (string) ($event['event_type'] ?? '');
         $resource = is_array($event['resource'] ?? null) ? $event['resource'] : [];
+        $resource['_webhook_event_id'] = $eventId;
 
         abort_if($eventId === '' || $type === '', 400, 'Invalid PayPal webhook payload.');
 
@@ -38,30 +40,25 @@ class PaymentWebhookController extends Controller
         }
 
         try {
-            match ($type) {
+            $handled = match ($type) {
                 'CHECKOUT.ORDER.APPROVED' => $this->captureApprovedOrder($resource, $paypal, $fulfillment),
                 'PAYMENT.CAPTURE.COMPLETED' => $this->fulfillPayPalCapture($resource, $fulfillment),
-                'BILLING.SUBSCRIPTION.ACTIVATED' => $this->activateSubscription($resource, $fulfillment, $subscriptions),
+                'BILLING.SUBSCRIPTION.ACTIVATED' => $this->activateSubscription($resource, $fulfillment, $subscriptions, $provisioning),
                 'BILLING.SUBSCRIPTION.UPDATED' => $this->syncSubscriptionUpdate($resource, $subscriptions),
                 'PAYMENT.SALE.COMPLETED' => $this->renewSubscription($resource, $fulfillment),
                 'BILLING.SUBSCRIPTION.PAYMENT.FAILED',
                 'PAYMENT.SALE.DENIED' => $this->subscriptionPaymentFailed($resource, $fulfillment),
-                'BILLING.SUBSCRIPTION.SUSPENDED' => $fulfillment->updateSubscriptionStatus(
-                    (string) ($resource['id'] ?? ''),
-                    'suspended',
-                ),
-                'BILLING.SUBSCRIPTION.CANCELLED' => $fulfillment->updateSubscriptionStatus(
-                    (string) ($resource['id'] ?? ''),
-                    'cancelled',
-                ),
-                'BILLING.SUBSCRIPTION.EXPIRED' => $fulfillment->updateSubscriptionStatus(
-                    (string) ($resource['id'] ?? ''),
-                    'expired',
-                ),
-                default => null,
+                'BILLING.SUBSCRIPTION.SUSPENDED' => $this->applySubscriptionStatus($resource, $fulfillment, 'suspended'),
+                'BILLING.SUBSCRIPTION.CANCELLED' => $this->applySubscriptionStatus($resource, $fulfillment, 'cancelled'),
+                'BILLING.SUBSCRIPTION.EXPIRED' => $this->applySubscriptionStatus($resource, $fulfillment, 'expired'),
+                default => false,
             };
 
-            $events->processed($eventRecord);
+            if ($handled === false) {
+                $events->ignored($eventRecord, 'Unsupported PayPal event type.');
+            } else {
+                $events->processed($eventRecord);
+            }
         } catch (\Throwable $exception) {
             $events->failed($eventRecord, $exception);
             report($exception);
@@ -114,11 +111,11 @@ class PaymentWebhookController extends Controller
         array $resource,
         PayPalService $paypal,
         PaymentFulfillmentService $fulfillment,
-    ): void {
+    ): bool {
         $orderId = (string) ($resource['id'] ?? '');
 
         if ($orderId === '') {
-            return;
+            return true;
         }
 
         $capturedOrder = $paypal->captureOrder($orderId);
@@ -126,7 +123,7 @@ class PaymentWebhookController extends Controller
         $paymentOrder = PaymentOrder::query()->where('reference', $reference)->first();
 
         if (! $paymentOrder || $paymentOrder->product_type !== 'credits') {
-            return;
+            return true;
         }
 
         $paypal->assertOrderMatches($paymentOrder, $capturedOrder);
@@ -140,12 +137,14 @@ class PaymentWebhookController extends Controller
                 'paypal_capture_source' => 'webhook',
             ],
         );
+
+        return true;
     }
 
     private function fulfillPayPalCapture(
         array $resource,
         PaymentFulfillmentService $fulfillment,
-    ): void {
+    ): bool {
         $reference = (string) (
             $resource['custom_id']
             ?? $resource['invoice_id']
@@ -166,7 +165,7 @@ class PaymentWebhookController extends Controller
             ->first();
 
         if (! $paymentOrder) {
-            return;
+            throw new \RuntimeException('PayPal capture arrived before its payment order was available.');
         }
 
         $status = strtoupper((string) ($resource['status'] ?? ''));
@@ -177,8 +176,8 @@ class PaymentWebhookController extends Controller
             $status !== 'COMPLETED'
             || $currency !== strtoupper((string) $paymentOrder->currency)
             || $amountMinor !== (int) $paymentOrder->amount_minor
-        ) {
-            return;
+) {
+            throw new \RuntimeException('PayPal capture details did not match the local payment order.');
         }
 
         $fulfillment->fulfillOrder(
@@ -187,14 +186,16 @@ class PaymentWebhookController extends Controller
             '',
             ['paypal_capture_source' => 'payment_capture_webhook'],
         );
+
+        return true;
     }
 
     private function activateSubscription(
         array $resource,
         PaymentFulfillmentService $fulfillment,
         SubscriptionManagementService $subscriptions,
-        OnboardingWorkspaceService $workspaceSetup,
-    ): void {
+        WorkspaceProvisioningService $provisioning,
+    ): bool {
         $reference = (string) ($resource['custom_id'] ?? '');
         $subscriptionId = (string) ($resource['id'] ?? '');
 
@@ -202,6 +203,10 @@ class PaymentWebhookController extends Controller
             $reference = (string) PaymentOrder::query()
                 ->where('external_subscription_id', $subscriptionId)
                 ->value('reference');
+        }
+
+        if ($reference === '') {
+            throw new \RuntimeException('Subscription activation arrived before the local checkout was linked.');
         }
 
         $fulfilled = $fulfillment->fulfillOrder(
@@ -233,19 +238,21 @@ class PaymentWebhookController extends Controller
                                 'confirmed_by' => 'webhook',
                             ]),
                         ]);
-                        $workspaceSetup->finalize($onboarding->fresh(), $order->fresh());
+                        $provisioning->start($onboarding->fresh(), $order->fresh(), 'webhook');
                     }
                 }
             }
         }
+
+        return true;
     }
 
-    private function syncSubscriptionUpdate(array $resource, SubscriptionManagementService $subscriptions): void
+    private function syncSubscriptionUpdate(array $resource, SubscriptionManagementService $subscriptions): bool
     {
         $subscriptionId = (string) ($resource['id'] ?? '');
 
         if ($subscriptionId === '') {
-            return;
+            return true;
         }
 
         $order = PaymentOrder::query()
@@ -253,22 +260,26 @@ class PaymentWebhookController extends Controller
             ->latest('id')
             ->first();
 
-        if ($order) {
-            $subscriptions->syncOrder($order);
+        if (! $order) {
+            throw new \RuntimeException('Subscription update arrived before the local subscription was linked.');
         }
+
+        $subscriptions->syncOrder($order);
+
+        return true;
     }
 
     private function renewSubscription(
         array $resource,
         PaymentFulfillmentService $fulfillment,
-    ): void {
+    ): bool {
         $subscriptionId = (string) (
             $resource['billing_agreement_id']
             ?? data_get($resource, 'supplementary_data.related_ids.subscription_id')
             ?? ''
         );
 
-        $fulfillment->fulfillSubscriptionRenewal(
+        $fulfilled = $fulfillment->fulfillSubscriptionRenewal(
             $subscriptionId,
             (string) ($resource['id'] ?? ''),
             [
@@ -278,12 +289,18 @@ class PaymentWebhookController extends Controller
                 'next_billing_time' => data_get($resource, 'billing_info.next_billing_time'),
             ],
         );
+
+        if (! $fulfilled) {
+            throw new \RuntimeException('Renewal arrived before the local subscription was linked.');
+        }
+
+        return true;
     }
 
     private function subscriptionPaymentFailed(
         array $resource,
         PaymentFulfillmentService $fulfillment,
-    ): void {
+    ): bool {
         $subscriptionId = (string) (
             $resource['billing_agreement_id']
             ?? $resource['id']
@@ -291,10 +308,32 @@ class PaymentWebhookController extends Controller
             ?? ''
         );
 
+        $this->assertKnownSubscription($subscriptionId);
+
         $fulfillment->updateSubscriptionStatus($subscriptionId, 'past_due', [
-            'payment_failure_id' => (string) ($resource['id'] ?? ''),
+            'payment_failure_id' => (string) ($resource['_webhook_event_id'] ?? $resource['id'] ?? ''),
             'payment_failure_at' => now()->toIso8601String(),
         ]);
+
+        return true;
+    }
+
+    private function applySubscriptionStatus(array $resource, PaymentFulfillmentService $fulfillment, string $status): bool
+    {
+        $subscriptionId = (string) ($resource['id'] ?? '');
+        $this->assertKnownSubscription($subscriptionId);
+        $fulfillment->updateSubscriptionStatus($subscriptionId, $status, [
+            'provider_event_id' => (string) ($resource['_webhook_event_id'] ?? ''),
+        ]);
+
+        return true;
+    }
+
+    private function assertKnownSubscription(string $subscriptionId): void
+    {
+        if ($subscriptionId === '' || ! PaymentOrder::query()->where('external_subscription_id', $subscriptionId)->exists()) {
+            throw new \RuntimeException('Webhook arrived before the local subscription was linked.');
+        }
     }
 
     private function validPaymongoSignature(string $payload, string $header, bool $live): bool

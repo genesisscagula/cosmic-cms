@@ -17,4 +17,9 @@ class PaymentOrder extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function provisioning()
+    {
+        return $this->hasOne(WorkspaceProvisioning::class);
+    }
 }

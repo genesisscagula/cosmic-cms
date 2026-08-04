@@ -68,21 +68,46 @@ return [
         'webhook_secret' => env('STRIPE_WEBHOOK_SECRET'),
     ],
 
+
+    'website_upgrade_options' => [
+        [
+            'key' => 'business',
+            'label' => 'Business',
+            'sites' => '3 websites',
+            'description' => 'Manage several business websites from one account.',
+        ],
+        [
+            'key' => 'agency',
+            'label' => 'Agency',
+            'sites' => '10 websites',
+            'description' => 'Built for growing client work and shared operations.',
+        ],
+        [
+            'key' => 'agency_pro',
+            'label' => 'Agency Pro',
+            'sites' => 'Unlimited websites',
+            'description' => 'Maximum capacity for established agencies.',
+        ],
+    ],
+
     'plans' => [
         'starter' => [
             'label' => 'Starter',
             'price_usd' => 49,
             'credits' => 30,
+            'capabilities' => ['plan_type' => 'personal', 'max_sites' => 1],
         ],
         'growth' => [
             'label' => 'Growth',
             'price_usd' => 79,
             'credits' => 70,
+            'capabilities' => ['plan_type' => 'personal', 'max_sites' => 1],
         ],
         'pro' => [
             'label' => 'Pro',
             'price_usd' => 129,
             'credits' => 200,
+            'capabilities' => ['plan_type' => 'personal', 'max_sites' => 1],
         ],
     ],
 ];

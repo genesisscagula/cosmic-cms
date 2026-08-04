@@ -8,7 +8,7 @@ use Illuminate\Console\Command;
 
 class ReconcilePayPalSubscriptions extends Command
 {
-    protected $signature = 'payments:reconcile-paypal {--user= : Only reconcile one user ID} {--limit=500 : Maximum subscriptions to inspect}';
+    protected $signature = 'payments:reconcile-paypal {--user= : Only reconcile one user ID} {--limit=500 : Maximum subscriptions to inspect} {--status= : Only local lifecycle status} {--dry-run : List candidates without contacting PayPal}';
 
     protected $description = 'Synchronize local PayPal subscription status and billing dates with PayPal.';
 
@@ -19,7 +19,11 @@ class ReconcilePayPalSubscriptions extends Command
             ->where('provider', 'paypal')
             ->where('product_type', 'plan')
             ->whereNotNull('external_subscription_id')
-            ->whereNotIn('status', ['failed', 'expired', 'replaced']);
+            ->whereNotIn('status', ['failed', 'replaced']);
+
+        if ($this->option('status')) {
+            $query->where('status', strtolower((string) $this->option('status')));
+        }
 
         if ($this->option('user')) {
             $query->where('user_id', (int) $this->option('user'));
@@ -31,6 +35,12 @@ class ReconcilePayPalSubscriptions extends Command
 
         foreach ($orders as $order) {
             try {
+                if ($this->option('dry-run')) {
+                    $this->line(sprintf('[DRY] order=%d user=%d subscription=%s local=%s', $order->id, $order->user_id, $order->external_subscription_id, $order->status));
+                    $ok++;
+                    continue;
+                }
+
                 $subscription = $subscriptions->syncOrder($order);
                 $this->line(sprintf(
                     '[OK] order=%d user=%d subscription=%s status=%s',

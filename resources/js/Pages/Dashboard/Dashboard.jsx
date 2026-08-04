@@ -4,7 +4,7 @@ import Navigation from "./Components/Navigation";
 import Home from "./Tabs/Home";
 import Websites from "./Tabs/Websites";
 import Templates from "./Tabs/Templates";
-import Blocks from "./Tabs/Blocks";
+import Sparks from "./Tabs/Sparks";
 import AIStudio from "./Tabs/AIStudio";
 import Publish from "./Tabs/Publish";
 import Settings from "./Tabs/Settings";
@@ -13,15 +13,34 @@ const tabs = {
     home: Home,
     websites: Websites,
     templates: Templates,
-    blocks: Blocks,
+    sparks: Sparks,
     aiStudio: AIStudio,
     publish: Publish,
     settings: Settings,
 };
 
 export default function Dashboard({ websites, dashboard }) {
-    const [activeTab, setActiveTab] = useState("home");
-    const ActiveTab = tabs[activeTab];
+    const [activeTab, setActiveTab] = useState(() => {
+        if (typeof window === "undefined") return "home";
+
+        const requestedTab = new URLSearchParams(window.location.search).get("tab");
+        if (requestedTab === "blocks") return "sparks";
+
+        return tabs[requestedTab] ? requestedTab : "home";
+    });
+    const ActiveTab = tabs[activeTab] ?? Home;
+
+    const changeTab = (tab) => {
+        const normalizedTab = tab === "blocks" ? "sparks" : tab;
+        setActiveTab(tabs[normalizedTab] ? normalizedTab : "home");
+
+        if (typeof window !== "undefined") {
+            const url = new URL(window.location.href);
+            if (normalizedTab === "home") url.searchParams.delete("tab");
+            else url.searchParams.set("tab", normalizedTab);
+            window.history.replaceState({}, "", url);
+        }
+    };
 
     useEffect(() => {
         // Browser Back can restore an older Inertia history snapshot. Refresh
@@ -31,11 +50,11 @@ export default function Dashboard({ websites, dashboard }) {
 
     return (
         <div className="min-h-screen bg-[#0a0a0b] text-slate-100 md:flex">
-            <Navigation activeTab={activeTab} onTabChange={setActiveTab} />
+            <Navigation activeTab={activeTab} onTabChange={changeTab} />
 
             <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-7xl">
-                    <ActiveTab websites={websites} dashboard={dashboard} onTabChange={setActiveTab} />
+                    <ActiveTab websites={websites} dashboard={dashboard} onTabChange={changeTab} />
                 </div>
             </main>
         </div>

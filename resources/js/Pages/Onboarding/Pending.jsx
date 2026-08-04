@@ -1,13 +1,15 @@
 import GuestLayout from '@/Layouts/GuestLayout';
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, router } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 
 export default function Pending({ onboarding, status, paymentError }) {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(paymentError || '');
+    const [recovering, setRecovering] = useState(false);
 
     const paymentConfirmed = onboarding.status === 'payment_confirmed';
     const paymentCancelled = onboarding.status === 'payment_cancelled';
+    const provisioningFailed = onboarding.provisioning_status === 'failed';
     const expired = onboarding.is_expired;
 
     const expiryLabel = useMemo(() => {
@@ -45,7 +47,21 @@ export default function Pending({ onboarding, status, paymentError }) {
         }
     };
 
-    const badge = paymentConfirmed
+
+    const recoverProvisioning = () => {
+        if (recovering) return;
+        setRecovering(true);
+        setError('');
+        router.post(route('onboarding.recover'), {}, {
+            preserveScroll: true,
+            onError: () => setError('Unable to retry provisioning.'),
+            onFinish: () => setRecovering(false),
+        });
+    };
+
+    const badge = provisioningFailed
+        ? 'Setup needs attention'
+        : paymentConfirmed
         ? 'Payment confirmed'
         : paymentCancelled
             ? 'Payment cancelled'
@@ -97,7 +113,7 @@ export default function Pending({ onboarding, status, paymentError }) {
                         {paymentConfirmed
                             ? 'No action is needed. Refresh this page shortly if you are not redirected automatically.'
                             : paymentCancelled
-                                ? 'Nothing was charged. Your information is still saved, and you can start a fresh PayPal checkout below.'
+                                ? 'Nothing was charged. Your information is still saved, and you can safely reopen the same PayPal checkout below.'
                                 : expired
                                     ? 'For security, this saved setup is no longer eligible for payment. Please create a new onboarding request.'
                                     : 'Paid features and dashboard access stay locked until PayPal confirms your subscription.'}
@@ -132,6 +148,16 @@ export default function Pending({ onboarding, status, paymentError }) {
                             <p className="mt-3 text-xs leading-5 text-slate-500">
                                 You can safely close this page and sign in later. Your saved onboarding will resume here.
                             </p>
+                        </div>
+                    )}
+
+                    {provisioningFailed && (
+                        <div className="mt-6 rounded-xl border border-rose-400/20 bg-rose-400/10 p-4 text-sm text-rose-100">
+                            <p className="font-semibold">Workspace setup did not finish.</p>
+                            <p className="mt-1 text-rose-100/80">{onboarding.provisioning_error || 'Your payment is safe. Retry the remaining setup steps below.'}</p>
+                            <button type="button" onClick={recoverProvisioning} disabled={recovering} className="mt-4 rounded-lg bg-white px-4 py-2 font-semibold text-slate-950 disabled:opacity-60">
+                                {recovering ? 'Recovering…' : 'Retry workspace setup'}
+                            </button>
                         </div>
                     )}
 

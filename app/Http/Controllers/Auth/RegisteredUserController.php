@@ -7,6 +7,8 @@ use App\Models\PendingOnboarding;
 use App\Models\TrialGeneration;
 use App\Models\User;
 use App\Models\Website;
+use App\Models\WorkspaceProvisioning;
+use App\Services\WorkspaceProvisioningService;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -148,7 +150,7 @@ class RegisteredUserController extends Controller
     {
         $user = $request->user();
 
-        if ($user->onboarding_status !== 'pending_payment') {
+        if (! in_array($user->onboarding_status, ['pending_payment', 'provisioning'], true)) {
             return redirect()->route('dashboard');
         }
 
@@ -157,12 +159,14 @@ class RegisteredUserController extends Controller
             ->firstOrFail();
 
         $plan = config('payments.plans.'.$onboarding->selected_plan, []);
+        $provisioning = WorkspaceProvisioning::query()->where('pending_onboarding_id', $onboarding->id)->latest('id')->first();
 
         $pendingOrder = $user->paymentOrders()
             ->where('provider', 'paypal')
             ->where('product_type', 'plan')
             ->where('product_key', $onboarding->selected_plan)
             ->where('status', 'pending')
+            ->where('created_at', '>=', now()->subDay())
             ->latest('id')
             ->first();
 
@@ -178,11 +182,29 @@ class RegisteredUserController extends Controller
                 'expires_at' => $onboarding->expires_at?->toIso8601String(),
                 'is_expired' => (bool) ($onboarding->expires_at?->isPast()),
                 'status' => $onboarding->status,
-                'has_pending_checkout' => (bool) $pendingOrder,
+                'has_pending_checkout' => (bool) ($pendingOrder && data_get($pendingOrder->metadata, 'checkout_url')),
+                'provisioning_status' => $provisioning?->status,
+                'provisioning_error' => $provisioning?->last_error,
+                'can_retry_provisioning' => (bool) ($provisioning && in_array($provisioning->status, ['failed', 'processing'], true)),
+                'next_retry_at' => $provisioning?->next_retry_at?->toIso8601String(),
             ],
             'status' => session('status'),
             'paymentError' => session('payment_error'),
         ]);
+    }
+
+    public function recoverProvisioning(Request $request, WorkspaceProvisioningService $service): RedirectResponse
+    {
+        $onboarding = PendingOnboarding::query()->where('user_id', $request->user()->id)->latest('id')->firstOrFail();
+        $provisioning = WorkspaceProvisioning::query()->where('pending_onboarding_id', $onboarding->id)->latest('id')->firstOrFail();
+
+        try {
+            $service->recover($provisioning, 'customer_manual');
+            return redirect()->route('onboarding.pending')->with('status', 'Provisioning recovery completed successfully.');
+        } catch (\Throwable $e) {
+            report($e);
+            return redirect()->route('onboarding.pending')->with('payment_error', $e->getMessage() ?: 'Provisioning recovery failed.');
+        }
     }
 
     public function success(Request $request): Response|RedirectResponse

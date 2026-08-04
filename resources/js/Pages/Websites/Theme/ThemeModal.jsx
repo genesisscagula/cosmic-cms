@@ -6,20 +6,24 @@ import ThemeGrid from "./ThemeGrid";
 
 export default function ThemeModal({ open, onClose, selectedTheme, onSelect }) {
     const [search, setSearch] = useState("");
+    const [category, setCategory] = useState("All");
 
     const filteredThemes = useMemo(() => {
         const keyword = search.toLowerCase().trim();
 
-        if (!keyword) {
-            return themeMetadata;
-        }
+        return themeMetadata.filter((theme) => {
+            const matchesCategory = category === "All" || theme.category === category;
+            const matchesSearch = !keyword
+                || theme.name.toLowerCase().includes(keyword)
+                || theme.category.toLowerCase().includes(keyword)
+                || theme.description.toLowerCase().includes(keyword)
+                || theme.id.toLowerCase().includes(keyword);
 
-        return themeMetadata.filter((theme) => (
-            theme.name.toLowerCase().includes(keyword)
-            || theme.category.toLowerCase().includes(keyword)
-            || theme.id.toLowerCase().includes(keyword)
-        ));
-    }, [search]);
+            return matchesCategory && matchesSearch;
+        });
+    }, [search, category]);
+
+    const categories = ["All", ...new Set(themeMetadata.map((theme) => theme.category))];
 
     if (!open) {
         return null;
@@ -79,6 +83,23 @@ export default function ThemeModal({ open, onClose, selectedTheme, onSelect }) {
                                 className="h-10 w-full rounded-lg border border-white/10 bg-white/[0.04] px-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-violet-400/70 focus:ring-2 focus:ring-violet-400/15"
                             />
                         </label>
+                    </div>
+
+                    <div className="mb-5 flex flex-wrap gap-2">
+                        {categories.map((item) => (
+                            <button
+                                key={item}
+                                type="button"
+                                onClick={() => setCategory(item)}
+                                className={`rounded-full border px-3 py-1.5 text-xs font-medium transition ${
+                                    category === item
+                                        ? "border-violet-400/50 bg-violet-400/15 text-violet-200"
+                                        : "border-white/10 bg-white/[0.025] text-slate-400 hover:border-white/20 hover:text-white"
+                                }`}
+                            >
+                                {item}
+                            </button>
+                        ))}
                     </div>
 
                     <ThemeGrid themes={filteredThemes} selectedTheme={selectedTheme} onSelect={onSelect} />

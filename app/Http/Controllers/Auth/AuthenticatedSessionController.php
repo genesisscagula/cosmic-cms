@@ -33,6 +33,8 @@ class AuthenticatedSessionController extends Controller
 
         $request->session()->regenerate();
 
+        $request->user()?->forceFill(['last_login_at' => now()])->save();
+
         if ($request->user()?->onboarding_status === 'pending_payment') {
             return redirect()->route('onboarding.pending');
         }

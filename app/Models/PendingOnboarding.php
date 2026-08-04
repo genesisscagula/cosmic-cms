@@ -48,4 +48,9 @@ class PendingOnboarding extends Model
     {
         return $this->belongsTo(TrialGeneration::class);
     }
+
+    public function provisioning()
+    {
+        return $this->hasOne(WorkspaceProvisioning::class);
+    }
 }

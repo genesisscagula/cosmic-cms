@@ -196,6 +196,31 @@ class PayPalService
         return $response->json();
     }
 
+    public function activateSubscription(string $subscriptionId, string $reason = 'Reactivated by the customer from Cosmic CMS.'): void
+    {
+        if ($subscriptionId === '') {
+            throw new RuntimeException('Missing PayPal subscription ID.');
+        }
+
+        $response = $this->client()->post('/v1/billing/subscriptions/'.$subscriptionId.'/activate', [
+            'reason' => $reason,
+        ]);
+
+        if (! $response->successful() && $response->status() !== 204) {
+            $name = strtoupper((string) $response->json('name'));
+
+            // PayPal may return UNPROCESSABLE_ENTITY when the subscription is
+            // already active. A following GET sync determines the real state.
+            if ($name !== 'UNPROCESSABLE_ENTITY') {
+                throw new RuntimeException(
+                    $response->json('details.0.description')
+                        ?? $response->json('message')
+                        ?? 'PayPal could not reactivate the subscription.'
+                );
+            }
+        }
+    }
+
     public function cancelSubscription(string $subscriptionId, string $reason): void
     {
         if ($subscriptionId === '') {

@@ -1,0 +1,23 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration {
+    public function up(): void
+    {
+        Schema::table('credit_transactions', function (Blueprint $table) {
+            $table->string('category', 40)->default('other')->after('type')->index();
+            $table->unique(['user_id', 'reference'], 'credit_transactions_user_reference_unique');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('credit_transactions', function (Blueprint $table) {
+            $table->dropUnique('credit_transactions_user_reference_unique');
+            $table->dropColumn('category');
+        });
+    }
+};
