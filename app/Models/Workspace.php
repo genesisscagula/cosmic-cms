@@ -38,9 +38,30 @@ class Workspace extends Model
         return $this->users()->whereKey($user->id)->value('workspace_user.role');
     }
 
+    public function allows(User $user, string $permission): bool
+    {
+        return app(\App\Services\WorkspacePermissionService::class)->allows($user, $this, $permission);
+    }
+
+    public function permissionsFor(User $user): array
+    {
+        $role = $this->roleFor($user);
+        return $role ? app(\App\Services\WorkspacePermissionService::class)->permissionsForRole($role) : [];
+    }
+
+    public function invitations()
+    {
+        return $this->hasMany(WorkspaceInvitation::class);
+    }
+
     public function websites()
     {
         return $this->hasMany(Website::class);
+    }
+
+    public function assignedWebsitesFor(User $user)
+    {
+        return $this->websites()->whereHas('assignedUsers', fn ($query) => $query->whereKey($user->id));
     }
 
     public function sharedSparks()

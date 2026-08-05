@@ -9,6 +9,7 @@ import AIStudio from "./Tabs/AIStudio";
 import Publish from "./Tabs/Publish";
 import Settings from "./Tabs/Settings";
 import Insights from "./Tabs/Insights";
+import Team from "./Tabs/Team";
 
 const tabs = {
     home: Home,
@@ -17,6 +18,7 @@ const tabs = {
     sparks: Sparks,
     aiStudio: AIStudio,
     insights: Insights,
+    team: Team,
     publish: Publish,
     settings: Settings,
 };

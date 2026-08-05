@@ -52,6 +52,13 @@ class Website extends Model
         return $this->belongsTo(Workspace::class);
     }
 
+    public function assignedUsers()
+    {
+        return $this->belongsToMany(User::class, 'website_user')
+            ->withPivot('assigned_by_user_id')
+            ->withTimestamps();
+    }
+
     public function user()
     {
         return $this->belongsTo(User::class);

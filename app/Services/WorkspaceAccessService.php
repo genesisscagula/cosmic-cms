@@ -20,9 +20,12 @@ class WorkspaceAccessService
             return self::OWNER;
         }
 
-        return $workspace->users()
-            ->whereKey($user->id)
-            ->value('workspace_user.role');
+        return $workspace->users()->whereKey($user->id)->value('workspace_user.role');
+    }
+
+    public function isAssigned(User $user, Website $website): bool
+    {
+        return $website->assignedUsers()->whereKey($user->id)->exists();
     }
 
     public function canView(User $user, Website $website): bool
@@ -36,9 +39,13 @@ class WorkspaceAccessService
             return false;
         }
 
-        return in_array($this->role($user, $workspace), [
-            self::OWNER, self::ADMIN, self::EDITOR, self::VIEWER,
-        ], true);
+        $role = $this->role($user, $workspace);
+        if ($role === self::OWNER) {
+            return true;
+        }
+
+        return in_array($role, [self::ADMIN, self::EDITOR, self::VIEWER, self::CLIENT], true)
+            && $this->isAssigned($user, $website);
     }
 
     public function canUpdate(User $user, Website $website): bool
@@ -52,17 +59,27 @@ class WorkspaceAccessService
             return false;
         }
 
-        return in_array($this->role($user, $workspace), [
-            self::OWNER, self::ADMIN, self::EDITOR,
-        ], true);
+        $role = $this->role($user, $workspace);
+        if ($role === self::OWNER) {
+            return true;
+        }
+
+        return in_array($role, [self::ADMIN, self::EDITOR], true)
+            && $this->isAssigned($user, $website);
     }
 
     public function canDelete(User $user, Website $website): bool
     {
         $workspace = $website->workspace;
+        if (! $workspace) {
+            return false;
+        }
 
-        return $workspace && in_array($this->role($user, $workspace), [
-            self::OWNER, self::ADMIN,
-        ], true);
+        $role = $this->role($user, $workspace);
+        if ($role === self::OWNER) {
+            return true;
+        }
+
+        return $role === self::ADMIN && $this->isAssigned($user, $website);
     }
 }

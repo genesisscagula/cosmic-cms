@@ -38,7 +38,7 @@ export default function Navigation({ activeTab, onTabChange, dashboard = {} }) {
     const { balance: creditBalance } = useCreditBalance();
     const isAgency = dashboard.plan_capabilities?.plan_family === "agency";
     const navigationItems = isAgency
-        ? [...baseNavigationItems.slice(0, 2), { id: "insights", label: "Agency Insights", icon: "◉" }, ...baseNavigationItems.slice(2)]
+        ? [...baseNavigationItems.slice(0, 2), { id: "insights", label: "Agency Insights", icon: "◉" }, { id: "team", label: "Team", icon: "♙" }, ...baseNavigationItems.slice(2)]
         : baseNavigationItems;
 
     return (

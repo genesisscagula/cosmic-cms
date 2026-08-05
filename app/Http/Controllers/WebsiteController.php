@@ -35,21 +35,33 @@ class WebsiteController extends Controller
         $user = $request->user();
 
         if ($user->isClient()) {
+            $clientWebsites = Website::query()
+                ->whereHas('assignedUsers', fn ($query) => $query->whereKey($user->id))
+                ->withCount('pages')
+                ->latest('updated_at')
+                ->get()
+                ->map(fn (Website $website) => [
+                    'id' => $website->id,
+                    'name' => $website->name ?: 'Untitled Website',
+                    'domain' => $website->domain,
+                    'industry' => $website->industry,
+                    'location' => $website->location,
+                    'status' => $website->status ?? 'active',
+                    'pages_count' => (int) $website->pages_count,
+                    'updated_at' => $website->updated_at?->diffForHumans(),
+                ]);
+
             return Inertia::render('Client/Dashboard', [
-                'websites' => Website::query()
-                    ->where('user_id', $user->id)
-                    ->latest('updated_at')
-                    ->get(),
+                'websites' => $clientWebsites,
+                'client' => ['name' => $user->name, 'email' => $user->email],
             ]);
         }
 
         $websiteQuery = Website::query()
             ->where(function ($query) use ($user) {
                 $query->where('user_id', $user->id)
-                    ->orWhereHas('workspace', function ($workspaceQuery) use ($user) {
-                        $workspaceQuery->where('owner_user_id', $user->id)
-                            ->orWhereHas('users', fn ($memberQuery) => $memberQuery->whereKey($user->id));
-                    });
+                    ->orWhereHas('workspace', fn ($workspaceQuery) => $workspaceQuery->where('owner_user_id', $user->id))
+                    ->orWhereHas('assignedUsers', fn ($memberQuery) => $memberQuery->whereKey($user->id));
             });
 
         $websites = (clone $websiteQuery)
@@ -354,6 +366,49 @@ class WebsiteController extends Controller
             })->values(),
         ];
 
+        $teamMemberLimit = data_get($planCapabilities, 'capabilities.team_members', 0);
+        $workspaceMembers = $workspace ? $workspace->users()->orderBy('name')->get() : collect([$user]);
+        $pendingInvitations = $workspace ? $workspace->invitations()->where('status', 'pending')->latest()->get() : collect();
+        $teamUsed = max(0, $workspaceMembers->count() - 1) + $pendingInvitations->count();
+        $teamWorkspace = [
+            'enabled' => $planCapabilities['plan_family'] === 'agency' && ($teamMemberLimit === null || (int) $teamMemberLimit > 0),
+            'is_owner' => $workspace && (int) $workspace->owner_user_id === (int) $user->id,
+            'current_role' => $workspace?->roleFor($user) ?? 'owner',
+            'roles' => app(\App\Services\WorkspacePermissionService::class)->catalog(),
+            'limit' => $teamMemberLimit,
+            'used' => $teamUsed,
+            'remaining' => $teamMemberLimit === null ? null : max(0, (int) $teamMemberLimit - $teamUsed),
+            'websites' => $workspaceWebsites->map(fn (Website $website) => [
+                'id' => $website->id,
+                'name' => $website->name ?: 'Untitled Website',
+                'domain' => $website->domain ?: 'No domain connected',
+                'status' => $website->published_pages_count > 0 ? 'Published' : 'Draft',
+            ])->values(),
+            'members' => $workspaceMembers->map(function ($member) use ($workspace) {
+                $isOwner = $workspace && (int) $workspace->owner_user_id === (int) $member->id;
+                return [
+                    'id' => $member->id,
+                    'name' => $member->name,
+                    'email' => $member->email,
+                    'role' => $workspace?->roleFor($member) ?? 'owner',
+                    'joined_at' => $member->pivot?->created_at?->toIso8601String(),
+                    'website_ids' => $isOwner
+                        ? $workspace->websites()->pluck('id')->map(fn ($id) => (int) $id)->values()
+                        : $member->assignedWebsites()->where('workspace_id', $workspace->id)->pluck('websites.id')->map(fn ($id) => (int) $id)->values(),
+                ];
+            })->values(),
+            'invitations' => $pendingInvitations->map(fn ($invitation) => [
+                'id' => $invitation->id,
+                'name' => $invitation->name,
+                'email' => $invitation->email,
+                'role' => $invitation->role,
+                'website_ids' => collect($invitation->website_ids ?? [])->map(fn ($id) => (int) $id)->values(),
+                'accept_url' => route('workspace-invitations.show', $invitation->token),
+                'status' => $invitation->status,
+                'expires_at' => $invitation->expires_at?->toIso8601String(),
+            ])->values(),
+        ];
+
 	    return Inertia::render('Dashboard/Dashboard', [
 		    'websites' => $websites,
             'dashboard' => [
@@ -404,6 +459,7 @@ class WebsiteController extends Controller
                 'plan_capabilities' => $planCapabilities,
                 'websites_dashboard' => $websitesDashboard,
                 'agency_insights' => $agencyInsights,
+                'team_workspace' => $teamWorkspace,
                 'subscription' => [
                     'plan_key' => $user->plan_key,
                     'plan_label' => $planLabel,

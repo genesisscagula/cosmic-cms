@@ -224,4 +224,11 @@ class User extends Authenticatable
     {
         return $this->account_type === 'client';
     }
+    public function assignedWebsites()
+    {
+        return $this->belongsToMany(Website::class, 'website_user')
+            ->withPivot('assigned_by_user_id')
+            ->withTimestamps();
+    }
+
 }

@@ -17,6 +17,9 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SparkController;
 use App\Http\Controllers\AgencyLeadController;
 use App\Http\Controllers\AgencySalesController;
+use App\Http\Controllers\WorkspaceMemberController;
+use App\Http\Controllers\WebsiteAssignmentController;
+use App\Http\Controllers\WorkspaceInvitationAcceptanceController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -43,6 +46,13 @@ Route::post('/trials/{trial:token}/email', [TrialGenerationController::class, 'c
 Route::post('/trials/{trial:token}/regenerate', [TrialGenerationController::class, 'regenerate'])
     ->middleware('throttle:3,1')
     ->name('trial-generations.regenerate');
+
+Route::get('/workspace-invitations/{token}', [WorkspaceInvitationAcceptanceController::class, 'show'])
+    ->middleware('throttle:30,1')
+    ->name('workspace-invitations.show');
+Route::post('/workspace-invitations/{token}/accept', [WorkspaceInvitationAcceptanceController::class, 'accept'])
+    ->middleware('throttle:10,1')
+    ->name('workspace-invitations.accept');
 
 
 // Token-aware Builder routes. Signed-in users keep normal policy checks;
@@ -103,6 +113,11 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::get('/agency-insights/leads/export', [AgencyLeadController::class, 'export'])->name('agency-insights.leads.export');
     Route::post('/agency-insights/sales', [AgencySalesController::class, 'store'])->name('agency-insights.sales.store');
     Route::get('/agency-insights/sales/export', [AgencySalesController::class, 'export'])->name('agency-insights.sales.export');
+    Route::post('/workspace/members', [WorkspaceMemberController::class, 'store'])->name('workspace.members.store');
+    Route::patch('/workspace/members/{member}/role', [WorkspaceMemberController::class, 'updateRole'])->name('workspace.members.role.update');
+    Route::delete('/workspace/members/{member}', [WorkspaceMemberController::class, 'destroy'])->name('workspace.members.destroy');
+    Route::delete('/workspace/invitations/{invitation}', [WorkspaceMemberController::class, 'cancel'])->name('workspace.invitations.destroy');
+    Route::put('/workspace/members/{member}/website-assignments', [WebsiteAssignmentController::class, 'update'])->name('workspace.members.website-assignments.update');
     Route::get('/websites/{website}/pages', [PageController::class, 'index'])->name('pages.index');
     Route::get('/websites/{website}/inquiries', [ContactSubmissionController::class, 'index'])->name('websites.inquiries.index');
     Route::patch('/websites/{website}/inquiries/{submission}', [ContactSubmissionController::class, 'update'])->name('websites.inquiries.update');
