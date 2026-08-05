@@ -12,14 +12,18 @@ use RuntimeException;
 
 class PaymentCheckoutService
 {
-    public function __construct(private readonly SubscriptionManagementService $subscriptions)
+    public function __construct(
+        private readonly SubscriptionManagementService $subscriptions,
+        private readonly PlanRegistry $plans,
+        private readonly PayPalPlanBindingService $paypalPlanBindings,
+    )
     {
     }
     public function create(User $user, string $provider, string $productType, string $productKey): array
     {
         $product = match ($productType) {
             'credits' => CreditPackageRegistry::get($productKey),
-            'plan' => config("payments.plans.{$productKey}"),
+            'plan' => $this->plans->find($productKey),
             default => null,
         };
 
@@ -75,7 +79,7 @@ class PaymentCheckoutService
                 'previous_subscription_id' => $previousSubscription?->external_subscription_id,
                 'previous_plan_key' => $previousSubscription?->product_key,
                 'plan_change_type' => $previousSubscription
-                    ? ($this->planRank($productKey) > $this->planRank((string) $previousSubscription->product_key) ? 'upgrade' : 'downgrade')
+                    ? $this->plans->changeType((string) $previousSubscription->product_key, $productKey)
                     : null,
                 'plan_switch_status' => $previousSubscription ? 'awaiting_approval' : null,
                 'plan_switch_started_at' => $previousSubscription ? now()->toIso8601String() : null,
@@ -166,13 +170,7 @@ class PaymentCheckoutService
         User $user,
         array $product,
     ): array {
-        $planId = (string) config("payments.paypal.plan_ids.{$order->product_key}");
-
-        if ($planId === '') {
-            throw new RuntimeException(
-                'The PayPal subscription plan ID for '.$order->product_key.' is not configured.'
-            );
-        }
+        $planId = $this->paypalPlanBindings->planId($order->product_key);
 
         $name = trim((string) $user->name);
         $nameParts = preg_split('/\s+/', $name, 2) ?: [];
@@ -216,6 +214,7 @@ class PaymentCheckoutService
             'metadata' => array_merge($order->metadata ?? [], [
                 'checkout_url' => $approvalUrl,
                 'checkout_created_at' => now()->toIso8601String(),
+                'paypal_plan_id' => $planId,
             ]),
         ]);
 
@@ -226,10 +225,6 @@ class PaymentCheckoutService
         ];
     }
 
-    private function planRank(string $planKey): int
-    {
-        return array_search($planKey, array_keys(config('payments.plans', [])), true) ?: 0;
-    }
 
     private function paypalClient(): PendingRequest
     {

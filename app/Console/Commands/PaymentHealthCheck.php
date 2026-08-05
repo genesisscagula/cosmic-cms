@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\PayPalPlanBindingService;
 use App\Services\PayPalService;
 use Illuminate\Console\Command;
 
@@ -11,7 +12,7 @@ class PaymentHealthCheck extends Command
 
     protected $description = 'Validate payment configuration and PayPal API connectivity.';
 
-    public function handle(PayPalService $paypal): int
+    public function handle(PayPalService $paypal, PayPalPlanBindingService $bindings): int
     {
         $errors = [];
         $warnings = [];
@@ -26,10 +27,16 @@ class PaymentHealthCheck extends Command
             }
         }
 
-        foreach (array_keys(config('payments.plans', [])) as $planKey) {
-            if ((string) config("payments.paypal.plan_ids.{$planKey}") === '') {
+        foreach ($bindings->bindings() as $planKey => $planId) {
+            if ($planId === '') {
                 $errors[] = 'Missing PayPal plan ID for '.$planKey.'.';
             }
+        }
+
+        try {
+            $bindings->assertUnique();
+        } catch (\Throwable $exception) {
+            $errors[] = $exception->getMessage();
         }
 
         $mode = (string) config('payments.paypal.mode');

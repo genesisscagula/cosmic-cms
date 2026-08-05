@@ -2,6 +2,12 @@
 
 namespace App\Http\Middleware;
 
+use App\Services\CreditWalletService;
+use App\Services\PlanEntitlementService;
+use App\Services\PlanRegistry;
+use App\Services\WebsiteTemplateCatalog;
+use App\Services\SparkCatalog;
+use App\Cosmic\Capabilities\CapabilityEngine;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -29,6 +35,10 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        $user = $request->user();
+        $creditBalance = $user ? app(CreditWalletService::class)->balance($user) : 0;
+        $planEntitlements = $user ? app(PlanEntitlementService::class)->summary($user) : null;
+
         return [
             ...parent::share($request),
             'auth' => [
@@ -36,7 +46,21 @@ class HandleInertiaRequests extends Middleware
                 'accountType' => $request->user()?->account_type,
                 'isPlatformOwner' => $request->user()?->isPlatformOwner() ?? false,
                 'isClient' => $request->user()?->isClient() ?? false,
-                'creditBalance' => (int) ($request->user()?->credits ?? 0),
+                'creditBalance' => $creditBalance,
+                'plan' => $planEntitlements,
+                'planCapabilities' => $user ? app(CapabilityEngine::class)->forClient($user) : null,
+                'planChangeMatrix' => $user ? app(PlanEntitlementService::class)->changeMatrix($user->plan_key) : [],
+            ],
+            'cosmicPlans' => fn () => app(PlanRegistry::class)->forClient(),
+            'cosmicSparks' => fn () => SparkCatalog::forClient(),
+            'cosmicTemplates' => fn () => [
+                'access_levels' => app(WebsiteTemplateCatalog::class)->accessLevels(),
+                'agency_collections' => $user
+                    ? app(WebsiteTemplateCatalog::class)->agencyCollectionsForUser($user, app(PlanEntitlementService::class))
+                    : array_values(app(WebsiteTemplateCatalog::class)->agencyCollections()),
+                'items' => $user
+                    ? app(WebsiteTemplateCatalog::class)->forUser($user, app(PlanEntitlementService::class))
+                    : app(WebsiteTemplateCatalog::class)->forClient(),
             ],
         ];
     }

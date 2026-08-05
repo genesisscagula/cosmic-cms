@@ -36,6 +36,27 @@ function formatMoney(amount, currency) {
     }).format(Number(amount ?? 0));
 }
 
+function capabilityLabel(value, labels = {}) {
+    if (value === null || value === 'unlimited') return 'Unlimited';
+    if (value === true) return 'Included';
+    if (value === false || value === 'none' || value === 0) return 'Not included';
+    return labels[value] || String(value).replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+const COMPARISON_ROWS = [
+    { label: 'Websites', key: 'max_sites', format: (value) => value == null ? 'Unlimited' : String(value) },
+    { label: 'Pages per website', key: 'max_pages_per_site', format: (value) => value == null ? 'Unlimited' : String(value) },
+    { label: 'Active Sparks', key: 'max_sparks_per_site', format: (value) => value == null ? 'Unlimited' : String(value) },
+    { label: 'Owned Sparks', key: 'max_owned_sparks', format: (value) => value == null ? 'Unlimited' : String(value) },
+    { label: 'Templates', key: 'template_limit', format: (value) => value == null ? 'All' : String(value) },
+    { label: 'Analytics', key: 'analytics_level' },
+    { label: 'Leads', key: 'leads_level' },
+    { label: 'Sales', key: 'sales_level' },
+    { label: 'Team members', key: 'team_members', format: (value) => value == null ? 'Unlimited' : String(value) },
+    { label: 'White label', key: 'white_label_level' },
+    { label: 'API access', key: 'api_access' },
+];
+
 export default function CreditsIndex({
     balance = 0,
     creditsSummary = {},
@@ -49,6 +70,7 @@ export default function CreditsIndex({
     statusMessage = '',
     paymentError = '',
     billingTransactions = [],
+    planChangeMatrix = [],
 }) {
     const currentBalance = Number(creditsSummary.current_balance ?? balance);
     const summaryCards = [
@@ -72,6 +94,10 @@ export default function CreditsIndex({
     const [purchasing, setPurchasing] = useState(false);
     const [subscriptionAction, setSubscriptionAction] = useState('');
     const [transactionFilter, setTransactionFilter] = useState('all');
+    const upgradeQuery = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const recommendedPlanKey = upgradeQuery?.get('plan') || '';
+    const requestedFamily = upgradeQuery?.get('family');
+    const [selectedPlanFamily, setSelectedPlanFamily] = useState(requestedFamily === 'agency' || requestedFamily === 'personal' ? requestedFamily : (currentPlan?.key?.startsWith('agency_') ? 'agency' : 'personal'));
     const notice = statusMessage || '';
     const [error, setError] = useState(paymentError || '');
     const rows = transactions?.data ?? [];
@@ -96,8 +122,20 @@ export default function CreditsIndex({
         [plans],
     );
     const planOrder = useMemo(
-        () => Object.fromEntries(planRows.map((plan, index) => [plan.key, index])),
+        () => Object.fromEntries(planRows.map((plan, index) => [plan.key, Number(plan.rank ?? index)])),
         [planRows],
+    );
+    const planFamilies = useMemo(() => ([
+        { key: 'personal', label: 'Personal plans', description: 'One complete website for your business or brand.' },
+        { key: 'agency', label: 'Agency plans', description: 'Multi-website tools for freelancers and client teams.' },
+    ]).map((family) => ({
+        ...family,
+        plans: planRows.filter((plan) => (plan.family || 'personal') === family.key),
+    })).filter((family) => family.plans.length > 0), [planRows]);
+    const visiblePlanFamily = planFamilies.find((family) => family.key === selectedPlanFamily) || planFamilies[0];
+    const transitionByTarget = useMemo(
+        () => Object.fromEntries((planChangeMatrix || []).map((decision) => [decision.to, decision])),
+        [planChangeMatrix],
     );
 
     const activePlanKey = currentPlan?.key || '';
@@ -124,6 +162,9 @@ export default function CreditsIndex({
     const selectedPrice = selectedCurrency === 'PHP'
         ? selectedPackage?.price_php
         : selectedPackage?.price_usd;
+    const selectedPlanTransition = selectedProductType === 'plan'
+        ? transitionByTarget[selectedPackage?.key]
+        : null;
 
     const startCheckout = async () => {
         if (!selectedPackage || purchasing) return;
@@ -490,50 +531,149 @@ export default function CreditsIndex({
                         })}
                     </div>
 
-                    <div id="monthly-plans" className="mb-4 mt-10 scroll-mt-8">
-                        <h2 className="text-xl font-semibold text-white">Monthly plans</h2>
-                        <p className="mt-1 text-sm text-slate-500">Secure recurring billing through PayPal.</p>
+                    <div id="monthly-plans" className="mb-5 mt-10 scroll-mt-8">
+                        <div className="flex flex-wrap items-end justify-between gap-4">
+                            <div>
+                                <h2 className="text-xl font-semibold text-white">Compare monthly plans</h2>
+                                <p className="mt-1 text-sm text-slate-500">Choose Personal for one brand website or Agency for multi-client operations.</p>
+                            </div>
+                            <div className="inline-flex rounded-xl border border-white/10 bg-black/20 p-1">
+                                {planFamilies.map((family) => (
+                                    <button
+                                        key={family.key}
+                                        type="button"
+                                        onClick={() => setSelectedPlanFamily(family.key)}
+                                        className={`rounded-lg px-4 py-2 text-sm font-bold transition ${
+                                            selectedPlanFamily === family.key
+                                                ? 'bg-white text-slate-950'
+                                                : 'text-slate-400 hover:text-white'
+                                        }`}
+                                    >
+                                        {family.key === 'personal' ? 'Personal' : 'Agency'}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
                     </div>
 
-                    <div className="grid gap-4 md:grid-cols-3">
-                        {planRows.map((plan) => {
-                            const isCurrent = hasPlanAccess && plan.key === activePlanKey;
-                            const actionLabel = planActionLabel(plan.key);
+                    {visiblePlanFamily && (
+                        <div className="space-y-5">
+                            <div>
+                                <h3 className="text-base font-semibold text-white">{visiblePlanFamily.label}</h3>
+                                <p className="mt-1 text-sm text-slate-500">{visiblePlanFamily.description}</p>
+                            </div>
 
-                            return (
-                                <button
-                                    type="button"
-                                    key={plan.key}
-                                    disabled={isCurrent}
-                                    onClick={() => !isCurrent && setSelectedPackage(plan)}
-                                    className={`relative rounded-2xl p-5 text-left transition ${
-                                        isCurrent
-                                            ? 'cursor-default border border-emerald-300/40 bg-gradient-to-br from-emerald-400/15 via-[#141416] to-cyan-400/10 shadow-lg shadow-emerald-950/20 ring-1 ring-emerald-300/20'
-                                            : 'border border-white/10 bg-[#141416] hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-white/[0.06]'
-                                    }`}
-                                >
-                                    {isCurrent && (
-                                        <span className="absolute right-4 top-4 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-200">
-                                            Current Plan
-                                        </span>
-                                    )}
-                                    <p className="font-semibold text-white">{plan.label}</p>
-                                    <p className="mt-3 text-2xl font-black text-white">
-                                        {formatMoney(plan.price_usd, 'USD')}
-                                        <span className="text-sm font-medium text-slate-500">/month</span>
-                                    </p>
-                                    <p className="mt-2 text-sm text-cyan-300">{plan.credits} monthly credits</p>
-                                    <div className={`mt-5 rounded-xl px-3 py-2 text-center text-sm font-bold ${
-                                        isCurrent
-                                            ? 'bg-emerald-300/10 text-emerald-200'
-                                            : 'border border-white/10 bg-white/[0.04] text-slate-200'
-                                    }`}>
-                                        {actionLabel}
-                                    </div>
-                                </button>
-                            );
-                        })}
-                    </div>
+                            <div className="grid gap-4 md:grid-cols-3">
+                                {visiblePlanFamily.plans.map((plan) => {
+                                    const isCurrent = hasPlanAccess && plan.key === activePlanKey;
+                                    const isRecommended = !isCurrent && recommendedPlanKey === plan.key;
+                                    const transition = transitionByTarget[plan.key];
+                                    const actionLabel = isCurrent
+                                        ? 'Current plan'
+                                        : transition?.type === 'downgrade'
+                                            ? 'Downgrade'
+                                            : transition?.family_change
+                                                ? `Switch to ${plan.family === 'agency' ? 'Agency' : 'Personal'}`
+                                                : 'Upgrade';
+                                    const maxSites = plan.capabilities?.max_sites;
+                                    const sitesLabel = maxSites == null ? 'Unlimited websites' : `${maxSites} website${Number(maxSites) === 1 ? '' : 's'}`;
+                                    const featureHighlights = [
+                                        `${plan.capabilities?.max_pages_per_site == null ? 'Unlimited' : plan.capabilities?.max_pages_per_site} pages/site`,
+                                        `${plan.capabilities?.max_owned_sparks ?? 'Unlimited'} Owned Sparks`,
+                                        capabilityLabel(plan.capabilities?.analytics_level) + ' analytics',
+                                    ];
+
+                                    return (
+                                        <article
+                                            key={plan.key}
+                                            className={`relative flex flex-col rounded-2xl p-5 transition ${
+                                                isCurrent
+                                                    ? 'border border-emerald-300/40 bg-gradient-to-br from-emerald-400/15 via-[#141416] to-cyan-400/10 shadow-lg shadow-emerald-950/20 ring-1 ring-emerald-300/20'
+                                                    : isRecommended
+                                                        ? 'border border-violet-300/45 bg-gradient-to-br from-violet-400/15 via-[#141416] to-fuchsia-400/10 shadow-lg shadow-violet-950/20 ring-1 ring-violet-300/25'
+                                                        : 'border border-white/10 bg-[#141416] hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-white/[0.06]'
+                                            }`}
+                                        >
+                                            {isRecommended && (
+                                                <span className="absolute right-4 top-4 rounded-full border border-violet-300/25 bg-violet-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-violet-200">
+                                                    Recommended
+                                                </span>
+                                            )}
+                                            {isCurrent && (
+                                                <span className="absolute right-4 top-4 rounded-full border border-emerald-300/25 bg-emerald-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-wide text-emerald-200">
+                                                    Current Plan
+                                                </span>
+                                            )}
+                                            <p className="font-semibold text-white">{plan.label}</p>
+                                            <p className="mt-3 text-2xl font-black text-white">
+                                                {formatMoney(plan.price_usd, 'USD')}
+                                                <span className="text-sm font-medium text-slate-500">/month</span>
+                                            </p>
+                                            <p className="mt-2 text-sm text-cyan-300">{Number(plan.credits || 0).toLocaleString()} monthly credits</p>
+                                            <p className="mt-3 text-sm leading-6 text-slate-400">{plan.description}</p>
+                                            <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-violet-300">{sitesLabel}</p>
+                                            <ul className="mt-4 space-y-2 text-sm text-slate-300">
+                                                {featureHighlights.map((highlight) => (
+                                                    <li key={highlight} className="flex gap-2"><span className="text-emerald-300">✓</span><span>{highlight}</span></li>
+                                                ))}
+                                            </ul>
+                                            {transition?.warnings?.length > 0 && !isCurrent && (
+                                                <p className="mt-4 rounded-xl border border-amber-300/15 bg-amber-300/[0.06] px-3 py-2 text-xs leading-5 text-amber-100/80">
+                                                    {transition.warnings[0]}
+                                                </p>
+                                            )}
+                                            <button
+                                                type="button"
+                                                disabled={isCurrent || transition?.allowed === false}
+                                                onClick={() => !isCurrent && transition?.allowed !== false && setSelectedPackage(plan)}
+                                                className={`mt-auto pt-5 ${isCurrent || transition?.allowed === false ? 'cursor-default' : ''}`}
+                                            >
+                                                <span className={`block rounded-xl px-3 py-2 text-center text-sm font-bold ${
+                                                    isCurrent
+                                                        ? 'bg-emerald-300/10 text-emerald-200'
+                                                        : transition?.allowed === false
+                                                            ? 'bg-white/[0.03] text-slate-600'
+                                                            : 'border border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08]'
+                                                }`}>
+                                                    {transition?.allowed === false && !isCurrent ? transition.reason || 'Unavailable' : actionLabel}
+                                                </span>
+                                            </button>
+                                        </article>
+                                    );
+                                })}
+                            </div>
+
+                            <div className="overflow-x-auto rounded-2xl border border-white/10 bg-[#141416]">
+                                <table className="min-w-[760px] w-full text-left text-sm">
+                                    <thead className="border-b border-white/10 bg-white/[0.025]">
+                                        <tr>
+                                            <th className="px-4 py-3 font-semibold text-slate-400">Feature</th>
+                                            {visiblePlanFamily.plans.map((plan) => (
+                                                <th key={plan.key} className="px-4 py-3 font-semibold text-white">{plan.label}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-white/10">
+                                        {COMPARISON_ROWS.map((row) => (
+                                            <tr key={row.key}>
+                                                <th className="px-4 py-3 font-medium text-slate-400">{row.label}</th>
+                                                {visiblePlanFamily.plans.map((plan) => {
+                                                    const value = plan.capabilities?.[row.key];
+                                                    const display = row.format ? row.format(value) : capabilityLabel(value);
+                                                    const unavailable = display === 'Not included';
+                                                    return (
+                                                        <td key={plan.key} className={`px-4 py-3 font-semibold ${unavailable ? 'text-slate-600' : 'text-slate-200'}`}>
+                                                            {unavailable ? '—' : display}
+                                                        </td>
+                                                    );
+                                                })}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    )}
                 </section>
 
                 {billingTransactions.length > 0 && (
@@ -666,7 +806,12 @@ export default function CreditsIndex({
 
                         {selectedProductType === 'plan' && activePlanKey && selectedPackage.key !== activePlanKey && (
                             <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/10 px-4 py-3 text-sm leading-6 text-amber-100">
-                                This will {planActionLabel(selectedPackage.key).toLowerCase()} your current {currentPlan?.label} plan. Your old PayPal subscription is cancelled only after the new plan becomes active.
+                                <p>
+                                    This will {(selectedPlanTransition?.type || planActionLabel(selectedPackage.key)).toLowerCase()} your current {currentPlan?.label} plan. Your old PayPal subscription is cancelled only after the new plan becomes active.
+                                </p>
+                                {selectedPlanTransition?.warnings?.map((warning) => (
+                                    <p key={warning} className="mt-2 text-xs text-amber-100/75">• {warning}</p>
+                                ))}
                             </div>
                         )}
 

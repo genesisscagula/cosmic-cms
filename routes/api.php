@@ -7,6 +7,9 @@ use App\Models\Website;
 use App\Helpers\CmsHtmlCompiler;
 use App\Services\PagePublisher;
 use App\Http\Controllers\ContactSubmissionController;
+use App\Http\Controllers\AnalyticsEventController;
+
+Route::post('/v1/websites/{website}/analytics', [AnalyticsEventController::class, 'store'])->middleware('throttle:240,1')->name('api.websites.analytics.store');
 
 Route::post('/v1/websites/{website}/contact-submissions', [ContactSubmissionController::class, 'storeFromConnector'])
     ->name('api.websites.contact-submissions.store');

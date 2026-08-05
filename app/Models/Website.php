@@ -67,9 +67,24 @@ class Website extends Model
         return $this->hasMany(GlobalElements::class);
     }
 
+    public function salesEvents()
+    {
+        return $this->hasMany(SalesEvent::class);
+    }
+
     public function contactSubmissions()
     {
         return $this->hasMany(ContactSubmission::class);
+    }
+
+    public function ownershipTransfers()
+    {
+        return $this->hasMany(WebsiteOwnershipTransfer::class);
+    }
+
+    public function analyticsDaily()
+    {
+        return $this->hasMany(WebsiteAnalyticsDaily::class);
     }
 
     public function blogPosts()

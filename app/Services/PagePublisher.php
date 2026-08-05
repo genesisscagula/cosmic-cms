@@ -17,7 +17,7 @@ class PagePublisher
     public function publish(Page $page, Website $website): string
     {
         $theme = $website->theme_settings ?? [];
-        $primaryColor = $theme['primary'] ?? 'emerald';
+        $primaryColor = $theme['primary'] ?? 'midnight';
         return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['page_style' => $page->page_style]);
     }
 
@@ -30,7 +30,7 @@ class PagePublisher
     public function publishedPackage(Website $website): array
     {
         $theme = $website->published_theme_settings ?? $website->theme_settings ?? [];
-        $primaryColor = $theme['primary'] ?? 'emerald';
+        $primaryColor = $theme['primary'] ?? 'midnight';
         $header = $website->published_global_header ?? $website->global_header;
         $footer = $website->published_global_footer ?? $website->global_footer;
         $pages = $website->pages()

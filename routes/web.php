@@ -15,6 +15,8 @@ use App\Http\Controllers\AccountDataController;
 use App\Http\Controllers\CosmicPricingController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SparkController;
+use App\Http\Controllers\AgencyLeadController;
+use App\Http\Controllers\AgencySalesController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -81,7 +83,14 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/sparks/{key}/unlock', [SparkController::class, 'unlockKey'])->name('sparks.unlock');
     Route::delete('/sparks/{key}/owned', [SparkController::class, 'removeOwned'])->name('sparks.owned.destroy');
     Route::post('/sparks/{key}/favorite', [SparkController::class, 'toggleFavorite'])->name('sparks.favorite.toggle');
+    Route::post('/sparks/{key}/share', [SparkController::class, 'share'])->middleware('throttle:30,1')->name('sparks.share');
+    Route::delete('/sparks/{key}/share', [SparkController::class, 'unshare'])->middleware('throttle:30,1')->name('sparks.unshare');
     Route::post('/websites', [WebsiteController::class, 'store'])->name('websites.store');
+    Route::post('/websites/bulk-action', [WebsiteController::class, 'bulkAction'])
+        ->middleware('throttle:10,1')
+        ->name('websites.bulk-action');
+    Route::post('/websites/{website}/duplicate', [WebsiteController::class, 'duplicate'])->name('websites.duplicate');
+    Route::post('/websites/{website}/transfer-ownership', [WebsiteController::class, 'transferOwnership'])->name('websites.transfer-ownership');
     Route::delete('/websites/{website}', [WebsiteController::class, 'destroy'])->name('websites.destroy');
     Route::get('/websites/{website}/deployment-connector', [WebsiteController::class, 'downloadDeploymentConnector'])->name('websites.deployment-connector.download');
     Route::post('/websites/{website}/deployment-connector/verify', [WebsiteController::class, 'verifyDeploymentConnector'])->name('websites.deployment-connector.verify');
@@ -90,6 +99,10 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::put('/websites/{website}/profile', [WebsiteController::class, 'updateProfile'])->name('websites.profile.update');
     Route::get('/download-bridge', [WebsiteController::class, 'downloadBridge'])->name('bridge.download');
 
+    Route::patch('/agency-insights/leads/{lead}', [AgencyLeadController::class, 'update'])->name('agency-insights.leads.update');
+    Route::get('/agency-insights/leads/export', [AgencyLeadController::class, 'export'])->name('agency-insights.leads.export');
+    Route::post('/agency-insights/sales', [AgencySalesController::class, 'store'])->name('agency-insights.sales.store');
+    Route::get('/agency-insights/sales/export', [AgencySalesController::class, 'export'])->name('agency-insights.sales.export');
     Route::get('/websites/{website}/pages', [PageController::class, 'index'])->name('pages.index');
     Route::get('/websites/{website}/inquiries', [ContactSubmissionController::class, 'index'])->name('websites.inquiries.index');
     Route::patch('/websites/{website}/inquiries/{submission}', [ContactSubmissionController::class, 'update'])->name('websites.inquiries.update');

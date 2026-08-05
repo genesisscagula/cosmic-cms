@@ -8,6 +8,7 @@ import Sparks from "./Tabs/Sparks";
 import AIStudio from "./Tabs/AIStudio";
 import Publish from "./Tabs/Publish";
 import Settings from "./Tabs/Settings";
+import Insights from "./Tabs/Insights";
 
 const tabs = {
     home: Home,
@@ -15,6 +16,7 @@ const tabs = {
     templates: Templates,
     sparks: Sparks,
     aiStudio: AIStudio,
+    insights: Insights,
     publish: Publish,
     settings: Settings,
 };
@@ -50,7 +52,7 @@ export default function Dashboard({ websites, dashboard }) {
 
     return (
         <div className="min-h-screen bg-[#0a0a0b] text-slate-100 md:flex">
-            <Navigation activeTab={activeTab} onTabChange={changeTab} />
+            <Navigation activeTab={activeTab} onTabChange={changeTab} dashboard={dashboard} />
 
             <main className="min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-7xl">

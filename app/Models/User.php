@@ -14,6 +14,14 @@ use App\Models\Workspace;
 use App\Models\CreditTransaction;
 use App\Models\CosmicUnlock;
 use App\Models\Spark;
+use App\Services\PlanCapabilityService;
+use App\Services\PlanEntitlementService;
+use App\Services\PersonalPlanEntitlementService;
+use App\Services\AgencyPlanEntitlementService;
+use App\Cosmic\Plans\PlanDefinition;
+use App\Cosmic\Plans\PlanResolver;
+use App\Cosmic\Capabilities\CapabilityDecision;
+use App\Cosmic\Capabilities\CapabilityEngine;
 
 class User extends Authenticatable
 {
@@ -159,6 +167,51 @@ class User extends Authenticatable
         return $this->belongsToMany(Spark::class, 'user_sparks')
             ->withPivot(['credits_paid', 'unlocked_at'])
             ->withTimestamps();
+    }
+
+    public function plan(): PlanDefinition
+    {
+        return app(PlanResolver::class)->forUser($this);
+    }
+
+    public function planCapabilities(): array
+    {
+        return app(PlanCapabilityService::class)->forUser($this);
+    }
+
+    public function planEntitlements(): array
+    {
+        return app(PlanEntitlementService::class)->summary($this);
+    }
+
+    public function personalPlanEntitlements(): array
+    {
+        return app(PersonalPlanEntitlementService::class)->summary($this);
+    }
+
+    public function agencyPlanEntitlements(): array
+    {
+        return app(AgencyPlanEntitlementService::class)->summary($this);
+    }
+
+    public function hasPlanCapability(string $capability, mixed $expected = true): bool
+    {
+        return app(CapabilityEngine::class)->allows($this, $capability, $expected);
+    }
+
+    public function planCapability(string $capability, mixed $default = null): mixed
+    {
+        return app(CapabilityEngine::class)->value($this, $capability, $default);
+    }
+
+    public function planCapabilityDecision(string $capability, mixed $expected = true): CapabilityDecision
+    {
+        return app(CapabilityEngine::class)->decide($this, $capability, $expected);
+    }
+
+    public function isWithinPlanLimit(string $capability, int $currentUsage, int $increment = 1): bool
+    {
+        return app(CapabilityEngine::class)->withinLimit($this, $capability, $currentUsage, $increment)->allowed;
     }
 
     public function isPlatformOwner(): bool

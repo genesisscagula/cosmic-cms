@@ -4,67 +4,55 @@ namespace App\Services;
 
 use App\Models\User;
 use App\Models\Website;
+use App\Cosmic\Capabilities\CapabilityEngine;
 
 class PlanCapabilityService
 {
+    public function __construct(
+        private readonly PlanRegistry $plans,
+        private readonly CapabilityEngine $engine,
+        private readonly AgencyWebsiteLimitService $websiteLimits,
+    ) {
+    }
+
     public function forUser(User $user): array
     {
-        $planKey = $user->plan_key ?: 'starter';
-        $plan = config("payments.plans.{$planKey}", []);
-        $capabilities = $plan['capabilities'] ?? [];
-        $maxSites = $capabilities['max_sites'] ?? 1;
-
-        // Count websites owned directly by the account and websites attached to
-        // workspaces owned by the account. Workspace members do not consume
-        // their personal allowance for another owner's websites.
-        $siteCount = Website::query()
-            ->where(function ($query) use ($user) {
-                $query->where('user_id', $user->id)
-                    ->orWhereHas('workspace', fn ($workspaceQuery) => $workspaceQuery->where('owner_user_id', $user->id));
-            })
-            ->distinct('websites.id')
-            ->count('websites.id');
-
-        $isUnlimited = $maxSites === null || $maxSites === 'unlimited';
-        $numericMax = $isUnlimited ? null : max(1, (int) $maxSites);
-        $canAddSites = $isUnlimited || $siteCount < $numericMax;
-        $planType = $capabilities['plan_type'] ?? 'personal';
+        $plan = $this->plans->get($user->plan_key);
+        $capabilities = (array) ($plan['capabilities'] ?? []);
+        $websiteLimits = $this->websiteLimits->summary($user);
 
         return [
-            'plan_key' => $planKey,
-            'plan_label' => $plan['label'] ?? ucfirst(str_replace('_', ' ', $planKey)),
-            'plan_type' => $planType,
-            'max_sites' => $numericMax,
-            'max_sites_label' => $isUnlimited ? 'Unlimited' : (string) $numericMax,
-            'site_count' => $siteCount,
-            'remaining_sites' => $isUnlimited ? null : max(0, $numericMax - $siteCount),
-            'can_add_sites' => $canAddSites,
-            'upgrade_required' => ! $canAddSites,
-            'upgrade_message' => $this->upgradeMessage($planType, $numericMax),
+            'plan_key' => $plan['key'],
+            'plan_label' => $plan['label'],
+            'plan_family' => $plan['family'] ?? 'personal',
+            'plan_tier' => $plan['tier'] ?? 'starter',
+            'plan_rank' => (int) ($plan['rank'] ?? 0),
+            'max_sites' => $websiteLimits['limit'],
+            'max_sites_label' => $websiteLimits['limit_label'],
+            'site_count' => $websiteLimits['used'],
+            'remaining_sites' => $websiteLimits['remaining'],
+            'can_add_sites' => $websiteLimits['can_create'],
+            'upgrade_required' => $websiteLimits['is_at_limit'],
+            'upgrade_message' => $websiteLimits['upgrade_message'],
+            'website_limit' => $websiteLimits,
             'upgrade_options' => config('payments.website_upgrade_options', []),
+            'capabilities' => $capabilities,
         ];
+    }
+
+    public function allows(User $user, string $capability, mixed $expected = true): bool
+    {
+        return $this->engine->allows($user, $capability, $expected);
+    }
+
+    public function value(User $user, string $capability, mixed $default = null): mixed
+    {
+        return $this->engine->value($user, $capability, $default);
     }
 
     public function assertCanCreateWebsite(User $user): ?string
     {
-        $capabilities = $this->forUser($user);
-
-        if ($capabilities['can_add_sites']) {
-            return null;
-        }
-
-        $limit = $capabilities['max_sites_label'];
-        $websiteWord = (int) $capabilities['max_sites'] === 1 ? 'website' : 'websites';
-
-        return "Your current plan supports {$limit} {$websiteWord}. Upgrade to a Business or Agency plan to create another site.";
+        return $this->websiteLimits->validationMessage($user);
     }
 
-    private function upgradeMessage(string $planType, ?int $maxSites): string
-    {
-        if ($planType === 'personal' || $maxSites === 1) {
-            return 'Upgrade to a Business or Agency plan to add more websites.';
-        }
-
-        return 'Upgrade your plan to increase your website allowance.';
-    }
 }

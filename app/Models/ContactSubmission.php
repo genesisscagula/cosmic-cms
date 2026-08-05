@@ -14,8 +14,13 @@ class ContactSubmission extends Model
         'message',
         'fields',
         'status',
+        'lead_status',
+        'source',
+        'notes',
         'received_at',
         'read_at',
+        'qualified_at',
+        'converted_at',
         'archived_at',
     ];
 
@@ -24,6 +29,8 @@ class ContactSubmission extends Model
         'received_at' => 'datetime',
         'read_at' => 'datetime',
         'archived_at' => 'datetime',
+        'qualified_at' => 'datetime',
+        'converted_at' => 'datetime',
     ];
 
     public function website()

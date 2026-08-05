@@ -30,7 +30,7 @@ class CmsHtmlCompiler
             return $themes[$key];
         }
 
-        return $themes['amber'];
+        return $themes['midnight'] ?? $themes['amber'];
     }
 
     /**
@@ -263,7 +263,7 @@ class CmsHtmlCompiler
     /** Compile one published blog post into the same static visual system as the Builder. */
     public static function compileBlogPost(array $post, string $primaryColor = null): string
     {
-        $theme = self::getTheme($primaryColor ?: 'emerald');
+        $theme = self::getTheme($primaryColor ?: 'midnight');
         $title = e($post['title'] ?? 'Untitled article');
         $category = e($post['category'] ?? 'Article');
         $excerpt = e($post['excerpt'] ?? '');
@@ -275,7 +275,7 @@ class CmsHtmlCompiler
             ->map(fn ($tag) => "<span class='rounded-full border px-3 py-1 text-xs font-medium {$theme['border']} {$theme['sub']}'>" . e((string) $tag) . '</span>')
             ->implode('');
 
-        return "<article class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-4xl'><a href='blog/' class='text-sm font-semibold {$theme['sub']} hover:underline'>← Back to articles</a><p class='mt-12 text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$category}</p><h1 class='mt-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl {$theme['text']}'>{$title}</h1><p class='mt-6 max-w-3xl text-lg leading-8 {$theme['sub']}'>{$excerpt}</p><img src='{$image}' alt='{$title}' class='mt-10 aspect-[16/8] w-full rounded-3xl object-cover'><div class='mt-8 flex flex-wrap gap-2'>{$tagMarkup}</div><div class='mt-10 max-w-3xl text-base leading-8 {$theme['sub']}'>{$content}</div></div></article>";
+        return "<article class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-4xl'><a href='blog/' class='text-sm font-semibold {$theme['sub']} hover:underline'>← Back to articles</a><p class='mt-12 text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$category}</p><h1 class='mt-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl {$theme['text']}'>{$title}</h1><p class='mt-6 max-w-3xl text-lg leading-8 {$theme['sub']}'>{$excerpt}</p><img src='{$image}' alt='{$title}' width='1200' height='600' loading='lazy' decoding='async' class='mt-10 aspect-[16/8] w-full rounded-3xl object-cover'><div class='mt-8 flex flex-wrap gap-2'>{$tagMarkup}</div><div class='mt-10 max-w-3xl text-base leading-8 {$theme['sub']}'>{$content}</div></div></article>";
     }
 
    public static function compile(array $blocks, string $primaryColor = null, array $context = []): string
@@ -422,13 +422,13 @@ class CmsHtmlCompiler
                 foreach ($posts as $post) {
                     if (!is_array($post)) continue;
                     $postUrl = e($post['url'] ?? '#');
-                    $postMarkup .= "<article class='overflow-hidden rounded-2xl border {$theme['border']} {$theme['card']}'><img src='" . e(self::staticAssetUrl($post['image_url'] ?? '/storage/cms-images/background/background-1.avif')) . "' alt='" . e($post['title'] ?? 'Article image') . "' class='h-44 w-full object-cover'><div class='p-5'><p class='text-[11px] font-semibold uppercase tracking-[0.2em] {$theme['sub']}'>" . e($post['category'] ?? 'Article') . "</p><h3 class='mt-3 text-lg font-bold leading-snug {$theme['text']}'>" . e($post['title'] ?? '') . "</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>" . e($post['excerpt'] ?? '') . "</p><a href='{$postUrl}' class='mt-4 inline-block text-sm font-semibold {$theme['text']} hover:underline'>Read article</a></div></article>";
+                    $postMarkup .= "<article class='overflow-hidden rounded-2xl border {$theme['border']} {$theme['card']}'><img src='" . e(self::staticAssetUrl($post['image_url'] ?? '/storage/cms-images/background/background-1.avif')) . "' alt='" . e($post['title'] ?? 'Article image') . "' width='640' height='352' loading='lazy' decoding='async' class='h-44 w-full object-cover'><div class='p-5'><p class='text-[11px] font-semibold uppercase tracking-[0.2em] {$theme['sub']}'>" . e($post['category'] ?? 'Article') . "</p><h3 class='mt-3 text-lg font-bold leading-snug {$theme['text']}'>" . e($post['title'] ?? '') . "</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>" . e($post['excerpt'] ?? '') . "</p><a href='{$postUrl}' class='mt-4 inline-block text-sm font-semibold {$theme['text']} hover:underline'>Read article</a></div></article>";
                 }
                 $introMarkup = $showIntro
                     ? "<div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 {$theme['sub']}'>{$text}</p></div>"
                     : '';
                 $featuredSpacing = $showIntro ? 'mt-12' : '';
-                $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$introMarkup}<article class='{$featuredSpacing} grid overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} md:grid-cols-2'><img src='{$featuredImage}' alt='{$featuredTitle}' class='min-h-[260px] h-full w-full object-cover'><div class='flex min-h-[260px] flex-col justify-center p-7 sm:p-10'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$featuredCategory}</p><h3 class='mt-4 text-3xl font-bold tracking-tight {$theme['text']}'>{$featuredTitle}</h3><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$featuredExcerpt}</p><a href='{$featuredUrl}' class='mt-7 text-sm font-semibold {$theme['text']} hover:underline'>{$featuredCta}</a></div></article><div class='mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>{$postMarkup}</div></div></section>";
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$introMarkup}<article class='{$featuredSpacing} grid overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} md:grid-cols-2'><img src='{$featuredImage}' alt='{$featuredTitle}' width='960' height='640' loading='lazy' decoding='async' class='min-h-[260px] h-full w-full object-cover'><div class='flex min-h-[260px] flex-col justify-center p-7 sm:p-10'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$featuredCategory}</p><h3 class='mt-4 text-3xl font-bold tracking-tight {$theme['text']}'>{$featuredTitle}</h3><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$featuredExcerpt}</p><a href='{$featuredUrl}' class='mt-7 text-sm font-semibold {$theme['text']} hover:underline'>{$featuredCta}</a></div></article><div class='mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>{$postMarkup}</div></div></section>";
                 break;
 
                 case 'hero_centered_cta':
@@ -550,7 +550,7 @@ class CmsHtmlCompiler
                     $linkLabel = e($study['link_label'] ?? 'View case study');
                     $featured = $index === 0 ? 'lg:col-span-2 lg:grid lg:grid-cols-2' : '';
                     $imageHeight = $index === 0 ? 'min-h-[18rem] lg:h-full' : 'aspect-[16/10]';
-                    $studyMarkup .= "<article class='group overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} {$featured}'><img src='{$imageUrl}' alt='' class='w-full object-cover {$imageHeight}'><div class='flex flex-col justify-center p-6 sm:p-8 " . ($index === 0 ? 'lg:p-10' : '') . "'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$category}</p><h3 class='mt-4 text-2xl font-bold leading-tight tracking-tight {$theme['text']}'>{$title}</h3><p class='mt-4 text-sm leading-6 {$theme['sub']}'>{$summary}</p><p class='mt-6 text-sm font-semibold {$theme['text']}'>{$result}</p><span class='mt-5 text-sm font-semibold {$theme['text']}'>{$linkLabel}</span></div></article>";
+                    $studyMarkup .= "<article class='group overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']} {$featured}'><img src='{$imageUrl}' alt='' width='960' height='640' loading='lazy' decoding='async' class='w-full object-cover {$imageHeight}'><div class='flex flex-col justify-center p-6 sm:p-8 " . ($index === 0 ? 'lg:p-10' : '') . "'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$category}</p><h3 class='mt-4 text-2xl font-bold leading-tight tracking-tight {$theme['text']}'>{$title}</h3><p class='mt-4 text-sm leading-6 {$theme['sub']}'>{$summary}</p><p class='mt-6 text-sm font-semibold {$theme['text']}'>{$result}</p><span class='mt-5 text-sm font-semibold {$theme['text']}'>{$linkLabel}</span></div></article>";
                 }
                 $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='mb-10 max-w-2xl sm:mb-12'><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='grid gap-5 lg:grid-cols-2'>{$studyMarkup}</div></div></section>";
                 break;
@@ -1058,7 +1058,7 @@ HTML;
                     <div class='max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-20'>
                         <div class='w-full md:w-1/2'>
                             <div class='rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 transition-transform duration-500 hover:scale-[1.02]'>
-                                <img src='{$imageUrl}' alt='Feature Image' class='w-full h-auto object-cover'>
+                                <img src='{$imageUrl}' alt='Feature Image' width='960' height='720' loading='lazy' decoding='async' class='w-full h-auto object-cover'>
                             </div>
                         </div>
                         <div class='w-full md:w-1/2 space-y-8'>
@@ -1094,7 +1094,7 @@ HTML;
                     <div class='max-w-7xl mx-auto flex flex-col md:flex-row-reverse items-center justify-between gap-20'>
                         <div class='w-full md:w-1/2'>
                             <div class='rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 transition-transform duration-500 hover:scale-[1.02]'>
-                                <img src='{$imageUrl}' alt='Feature Image' class='w-full h-auto object-cover'>
+                                <img src='{$imageUrl}' alt='Feature Image' width='960' height='720' loading='lazy' decoding='async' class='w-full h-auto object-cover'>
                             </div>
                         </div>
                         <div class='w-full md:w-1/2 space-y-8'>
@@ -1404,7 +1404,7 @@ HTML;
 
                     $html .= "
                         <article class='overflow-hidden rounded-2xl border {$theme['border']} {$theme['card']}'>
-                            <img src='{$imageUrl}' alt='{$name}' class='aspect-[4/3] w-full object-cover' loading='lazy'>
+                            <img src='{$imageUrl}' alt='{$name}' width='960' height='720' loading='lazy' decoding='async' class='aspect-[4/3] w-full object-cover' loading='lazy'>
                             <div class='space-y-2 p-5'>
                                 <h3 class='block text-base font-semibold {$theme['text']}'>{$name}</h3>
                                 <p class='block text-sm font-medium {$theme['sub']}'>{$role}</p>";
@@ -1489,7 +1489,7 @@ HTML;
                                 <img
                                     src='{$avatar}'
                                     alt='{$name}'
-                                    class='w-14 h-14 rounded-full object-cover'
+                                    width='56' height='56' loading='lazy' decoding='async' class='w-14 h-14 rounded-full object-cover'
                                 >
 
                                 <div>
@@ -1693,7 +1693,7 @@ HTML;
                         $activeClasses = $slideIndex === 0 ? 'z-10 opacity-100' : 'z-0 opacity-0';
                         $ariaHidden = $slideIndex === 0 ? 'false' : 'true';
                         $media = $imageUrl !== ''
-                            ? "<img src='{$imageUrl}' alt='' class='absolute inset-0 h-full w-full object-cover'>"
+                            ? "<img src='{$imageUrl}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async' class='absolute inset-0 h-full w-full object-cover'>"
                             : "<div class='absolute inset-0 bg-slate-900'></div>";
 
                         $slideMarkup .= "
@@ -1859,13 +1859,13 @@ HTML;
                     $scrollDot = $lightMedia ? 'bg-slate-900' : 'bg-white';
 
                     $html .= "
-                    <section id='{$parallaxId}' data-cosmic-parallax data-speed='{$parallaxSpeed}' class='relative isolate flex overflow-hidden px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 {$heroHeight}'>
+                    <section id='{$parallaxId}' data-cosmic-parallax data-speed='{$parallaxSpeed}' class='relative isolate flex overflow-hidden py-12 sm:py-16 lg:py-20 {$heroHeight}'>
                         <div data-parallax-media class='absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform' style='transform:translate3d(0,0,0) scale(1.14)'>
-                            <img src='{$imageUrl}' alt='' class='absolute inset-0 h-full w-full object-cover'>
+                            <img src='{$imageUrl}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async' class='absolute inset-0 h-full w-full object-cover'>
                         </div>
                         <div class='absolute inset-0 z-10 {$overlayColor}' style='opacity:" . ($overlayOpacity / 100) . "'></div>
                         <div class='absolute inset-0 z-10 {$gradientDirection} {$gradient}'></div>
-                        <div data-parallax-content class='relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center transition-opacity duration-150 {$alignmentClass}' style='transform:translate3d(0,0,0);will-change:transform,opacity'>
+                        <div data-parallax-content class='relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-4 transition-opacity duration-150 sm:px-6 lg:px-8 {$alignmentClass}' style='transform:translate3d(0,0,0);will-change:transform,opacity'>
                             <div class='{$contentWidth}'>
                                 <div class='inline-flex items-center gap-3 rounded-full border px-4 py-2 backdrop-blur-md {$badge}'>
                                     <span class='h-2 w-2 rounded-full {$primaryTheme['bg']}'></span>
@@ -1895,12 +1895,14 @@ HTML;
                         if (!media) return;
 
                         var reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+                        var mobile = window.matchMedia('(max-width: 639px)');
+                        var saveData = !!(navigator.connection && navigator.connection.saveData);
                         var frame = null;
 
                         function update() {
                             frame = null;
 
-                            if (reduced.matches) {
+                            if (reduced.matches || mobile.matches || saveData) {
                                 media.style.transform = 'translate3d(0,0,0) scale(1.14)';
                                 if (content) {
                                     content.style.transform = 'translate3d(0,0,0)';
@@ -2346,7 +2348,7 @@ HTML;
                                 <img
                                     src='{$imageUrl}'
                                     alt='{$heading}'
-                                    class='aspect-[4/3] w-full object-cover'
+                                    width='960' height='720' loading='lazy' decoding='async' class='aspect-[4/3] w-full object-cover'
                                 >
 
                                 <div class='absolute inset-0 bg-gradient-to-t from-slate-950/40 via-transparent to-transparent'></div>
@@ -2472,7 +2474,7 @@ HTML;
                         ? "<video autoplay muted loop playsinline preload='metadata' poster='{$imageUrl}' class='w-full object-cover' style='aspect-ratio: 16 / 9;'>
                                 <source src='{$staticVideoUrl}' type='video/mp4'>
                             </video>"
-                        : "<img src='{$imageUrl}' alt='{$heading}' class='w-full object-cover transition duration-500 group-hover:scale-[1.03]' style='aspect-ratio: 16 / 9;'>");
+                        : "<img src='{$imageUrl}' alt='{$heading}' width='1280' height='720' loading='lazy' decoding='async' class='w-full object-cover transition duration-500 group-hover:scale-[1.03]' style='aspect-ratio: 16 / 9;'>");
 
                 $isLight = in_array(
                     $selectedThemeName,
@@ -2794,7 +2796,7 @@ HTML;
                                 <img
                                     src='{$posterImageUrl}'
                                     alt='{$heading}'
-                                    class='aspect-video w-full object-cover opacity-80'
+                                    width='640' height='360' loading='lazy' decoding='async' class='aspect-video w-full object-cover opacity-80'
                                 >
 
                             </div>
@@ -2808,6 +2810,8 @@ HTML;
                 break;
             }
         }
+        $html = preg_replace('/<section(?![^>]*data-cosmic-spark)/i', '<section data-cosmic-spark', $html) ?? $html;
+
         return self::normalizePublishedAssetUrls($html);
     }
 }

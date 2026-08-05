@@ -9,9 +9,12 @@ use Illuminate\Support\Str;
 
 class AccountDataService
 {
+    public function __construct(private readonly PlanRegistry $plans)
+    {
+    }
     public function credits(User $user): array
     {
-        $plan = $user->plan_key ? config("payments.plans.{$user->plan_key}", []) : [];
+        $plan = $user->plan_key ? ($this->plans->find($user->plan_key) ?? []) : [];
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
 

@@ -4,17 +4,28 @@ namespace App\Http\Controllers;
 
 use App\Models\Page;
 use App\Models\Website;
+use App\Services\AgencyInsightsService;
+use App\Services\AgencyWebsiteLimitService;
+use App\Services\BulkWebsiteActionService;
 use App\Services\DeploymentConnectorArchive;
 use App\Services\PagePublisher;
 use App\Services\PlanCapabilityService;
+use App\Services\PlanEntitlementService;
+use App\Services\OwnedSparkSlotService;
+use App\Services\SparkAcquisitionService;
+use App\Services\SparkUsageStateService;
 use App\Services\SparkCatalog;
 use App\Services\WebsiteTemplateCatalog;
+use App\Services\WebsiteDuplicationService;
+use App\Services\WebsiteOwnershipTransferService;
+use App\Services\WebsiteDashboardService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use ZipArchive;
 
 class WebsiteController extends Controller
@@ -54,6 +65,32 @@ class WebsiteController extends Controller
         $publishedWebsites = $websites->filter(fn (Website $website) => $website->published_pages_count > 0);
         $draftWebsites = $websites->reject(fn (Website $website) => $website->published_pages_count > 0);
         $planCapabilities = app(PlanCapabilityService::class)->forUser($user);
+        $analyticsPeriod = (string) $request->query('analytics_period', '30d');
+        $agencyInsights = app(AgencyInsightsService::class)->build($user, $planCapabilities, [
+            'website_id' => $request->integer('analytics_website') ?: null,
+            'days' => match ($analyticsPeriod) {
+                '7d' => 7,
+                '90d' => 90,
+                default => 30,
+            },
+            'starts_at' => $analyticsPeriod === 'custom' ? $request->query('analytics_start') : null,
+            'ends_at' => $analyticsPeriod === 'custom' ? $request->query('analytics_end') : null,
+            'lead_website' => $request->query('lead_website', 'all'),
+            'lead_status' => $request->query('lead_status', 'all'),
+            'lead_source' => $request->query('lead_source', 'all'),
+            'lead_query' => $request->query('lead_query'),
+            'lead_start' => $request->query('lead_start'),
+            'lead_end' => $request->query('lead_end'),
+            'sale_website' => $request->query('sale_website', 'all'),
+            'sale_status' => $request->query('sale_status', 'all'),
+            'sale_source' => $request->query('sale_source', 'all'),
+            'sale_start' => $request->query('sale_start'),
+            'sale_end' => $request->query('sale_end'),
+            'conversion_website' => $request->query('conversion_website', 'all'),
+            'conversion_start' => $request->query('conversion_start'),
+            'conversion_end' => $request->query('conversion_end'),
+        ]);
+        $websitesDashboard = app(WebsiteDashboardService::class)->build($user, $websites, $planCapabilities);
         $plan = config('payments.plans.' . $user->plan_key, []);
         $planLabel = $plan['label'] ?? ($user->plan_key ? Str::headline($user->plan_key) : 'No Plan');
         $monthlyCredits = (int) ($plan['credits'] ?? 0);
@@ -67,16 +104,28 @@ class WebsiteController extends Controller
             ->get()
             ->keyBy('unlock_key');
         $favoriteKeys = $user->sparkFavorites()->pluck('spark_key');
+        $ownedSparkSlots = app(OwnedSparkSlotService::class)->usage($user);
+        $sharedSparkKeys = app(\App\Services\WorkspaceSparkLibraryService::class)->keysFor($user);
+        $usageStates = app(SparkUsageStateService::class);
 
         $sparkMarketplace = collect(SparkCatalog::all())
             ->values()
-            ->map(function (array $spark, int $index) use ($sparkUnlocks, $favoriteKeys) {
+            ->map(function (array $spark, int $index) use ($sparkUnlocks, $favoriteKeys, $user, $ownedSparkSlots, $sharedSparkKeys, $usageStates) {
+                $entitlements = app(PlanEntitlementService::class);
                 $isFeatured = (bool) ($spark['featured'] ?? false);
                 $unlock = $sparkUnlocks->get($spark['key']);
 
+                $access = $entitlements->sparkAccess($user, (string) ($spark['access_level'] ?? 'growth'));
+                $previewAccess = $entitlements->sparkPreviewAccess($user, (int) ($spark['catalog_index'] ?? $index));
+                $acquisition = app(SparkAcquisitionService::class)->decision($user, $spark, $unlock);
+                $shared = $sharedSparkKeys->contains($spark['key']);
+                $usageState = $usageStates->resolve($user, $spark, $acquisition, $previewAccess, $shared);
+
                 return [
                     ...$spark,
-                    'owned' => (bool) ($unlock?->is_installed),
+                    'owned' => (bool) ($unlock?->is_installed) || $sharedSparkKeys->contains($spark['key']),
+                    'shared' => $shared,
+                    'usage_state' => $usageState,
                     'purchased' => (int) ($unlock?->credits_paid ?? 0) > 0,
                     'favorited' => $favoriteKeys->contains($spark['key']),
                     'credits_paid' => (int) ($unlock?->credits_paid ?? 0),
@@ -85,6 +134,15 @@ class WebsiteController extends Controller
                     'is_new' => $index < 8,
                     'popular' => $isFeatured || in_array($spark['category'] ?? null, ['Hero', 'Services', 'Pricing', 'Testimonials'], true),
                     'staff_pick' => $isFeatured,
+                    'can_preview' => (bool) $previewAccess['allowed'],
+                    'preview_access' => $previewAccess,
+                    'can_install' => (bool) $acquisition['allowed'],
+                    'acquisition' => $acquisition,
+                    'action_label' => $acquisition['label'],
+                    'locked' => ! (bool) $access['allowed'],
+                    'slot_blocked' => $acquisition['reason'] === 'owned_spark_limit',
+                    'credit_blocked' => $acquisition['reason'] === 'insufficient_credits',
+                    'access' => $access,
                 ];
             });
 
@@ -344,6 +402,8 @@ class WebsiteController extends Controller
                     ],
                 ],
                 'plan_capabilities' => $planCapabilities,
+                'websites_dashboard' => $websitesDashboard,
+                'agency_insights' => $agencyInsights,
                 'subscription' => [
                     'plan_key' => $user->plan_key,
                     'plan_label' => $planLabel,
@@ -361,11 +421,13 @@ class WebsiteController extends Controller
                 ],
                 'spark_marketplace' => [
                     'items' => $sparkMarketplace,
+                    'registry' => SparkCatalog::forClient(),
                     'categories' => $sparkMarketplace->pluck('category')->filter()->unique()->sort()->values(),
                     'count' => $sparkMarketplace->count(),
                     'owned_count' => $sparkMarketplace->where('owned', true)->count(),
                     'favorite_count' => $sparkMarketplace->where('favorited', true)->count(),
                     'purchased_count' => $sparkMarketplace->where('purchased', true)->count(),
+                    'owned_spark_slots' => $ownedSparkSlots,
                 ],
                 'recent_websites' => $recentWebsites,
                 'recent_activity' => $activity,
@@ -384,11 +446,8 @@ class WebsiteController extends Controller
 		]);
 	}
 
-    public function store(Request $request, WebsiteTemplateCatalog $templates, PlanCapabilityService $planCapabilities)
+    public function store(Request $request, WebsiteTemplateCatalog $templates, AgencyWebsiteLimitService $websiteLimits, PlanEntitlementService $entitlements)
 	{
-        if ($message = $planCapabilities->assertCanCreateWebsite($request->user())) {
-            return back()->withErrors(['website_limit' => $message]);
-        }
 	    $request->validate([
 	        'name' => 'required|string|max:255',
 	        'domain' => 'required|url',
@@ -404,6 +463,16 @@ class WebsiteController extends Controller
 	    if ($template && ! $templates->supports($template)) {
 	        return back()->withErrors(['template' => 'The selected website template is not available.']);
 	    }
+
+        if ($template) {
+            $templateAccess = $entitlements->templateAccess($request->user(), $template, $templates);
+
+            if (! $templateAccess['allowed']) {
+                return back()->withErrors([
+                    'template' => $templateAccess['message'] ?? 'Your current plan cannot use this template.',
+                ]);
+            }
+        }
 
 	    $defaults = [
 	        'name' => $request->name,
@@ -440,7 +509,13 @@ class WebsiteController extends Controller
 	        ],
 	    ];
 
-	    $website = DB::transaction(function () use ($request, $template, $templates, $defaults) {
+	    $website = DB::transaction(function () use ($request, $template, $templates, $defaults, $websiteLimits) {
+            $request->user()->newQuery()->whereKey($request->user()->id)->lockForUpdate()->first();
+
+            if ($message = $websiteLimits->validationMessage($request->user())) {
+                throw ValidationException::withMessages(['website_limit' => $message]);
+            }
+
 	        $templateAttributes = $template
 	            ? $templates->websiteAttributes($template, $request->name)
 	            : [];
@@ -465,6 +540,80 @@ class WebsiteController extends Controller
 
 	    return redirect()->route('pages.index', $website);
 	}
+
+    public function duplicate(
+        Request $request,
+        Website $website,
+        AgencyWebsiteLimitService $websiteLimits,
+        WebsiteDuplicationService $duplicator,
+    ) {
+        $this->authorize('view', $website);
+
+        $copy = DB::transaction(function () use ($request, $website, $websiteLimits, $duplicator) {
+            $request->user()->newQuery()->whereKey($request->user()->id)->lockForUpdate()->first();
+
+            if ($message = $websiteLimits->validationMessage($request->user())) {
+                throw ValidationException::withMessages(['website_limit' => $message]);
+            }
+
+            $workspace = $request->user()->ownedWorkspaces()->first();
+
+            return $duplicator->duplicate($website, $request->user(), $workspace);
+        });
+
+        return redirect()
+            ->route('pages.index', $copy)
+            ->with('success', "{$copy->name} was created as a draft copy.");
+    }
+
+    public function bulkAction(Request $request, BulkWebsiteActionService $bulkActions)
+    {
+        $user = $request->user();
+
+        abort_unless($user->hasPlanCapability('bulk_actions'), 403, 'Bulk website actions require the Pro Agency plan.');
+
+        $validated = $request->validate([
+            'action' => ['required', 'string', 'in:duplicate,disconnect,delete'],
+            'website_ids' => ['required', 'array', 'min:1', 'max:50'],
+            'website_ids.*' => ['required', 'integer', 'distinct'],
+        ]);
+
+        $websites = Website::query()
+            ->whereIn('id', $validated['website_ids'])
+            ->get()
+            ->sortBy(fn (Website $website) => array_search($website->id, $validated['website_ids'], true))
+            ->values();
+
+        if ($websites->count() !== count($validated['website_ids'])) {
+            throw ValidationException::withMessages([
+                'website_ids' => 'One or more selected websites no longer exist.',
+            ]);
+        }
+
+        foreach ($websites as $website) {
+            $ability = $validated['action'] === 'delete' ? 'delete' : 'view';
+            $this->authorize($ability, $website);
+        }
+
+        return response()->json($bulkActions->execute($user, $websites, $validated['action']));
+    }
+
+    public function transferOwnership(
+        Request $request,
+        Website $website,
+        WebsiteOwnershipTransferService $transfers,
+    ) {
+        $this->authorize('transferOwnership', $website);
+
+        $validated = $request->validate([
+            'recipient_email' => ['required', 'email:rfc', 'max:254'],
+        ]);
+
+        $transfer = $transfers->transfer($website, $request->user(), $validated['recipient_email']);
+
+        return redirect()->route('dashboard', ['tab' => 'websites'], 303)
+            ->with('success', "{$website->name} was handed off to {$transfer->recipient_email}.");
+    }
 
     public function destroy(Website $website)
     {
@@ -757,6 +906,7 @@ class WebsiteController extends Controller
 		            <link rel=\"preconnect\" href=\"https://fonts.bunny.net\">
 		            <link href=\"https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap\" rel=\"stylesheet\">
 		            <script src=\"https://cdn.tailwindcss.com\"></script>
+                    <style>[data-cosmic-spark]{padding-top:50px!important;padding-bottom:50px!important}main>[data-cosmic-spark]:not(:first-child){content-visibility:auto;contain-intrinsic-size:800px}@media(min-width:640px){[data-cosmic-spark]{padding-top:80px!important;padding-bottom:80px!important}}</style>
 		        </head>
 		        <body class=\"bg-slate-50 text-slate-900 font-sans\">";
 		        

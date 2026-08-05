@@ -737,11 +737,8 @@ class WorkspaceProvisioningService
 
     private function websiteLimit(string $plan): ?int
     {
-        return match ($plan) {
-            'starter' => 3,
-            'growth' => 10,
-            'pro' => null,
-            default => 1,
-        };
+        $value = data_get(config('cosmic-plans.' . $plan), 'capabilities.max_sites', 1);
+
+        return $value === null || $value === 'unlimited' ? null : max(0, (int) $value);
     }
 }

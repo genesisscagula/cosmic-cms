@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\PaymentOrder;
+use App\Cosmic\Plans\PlanTransitionMatrix;
 use App\Models\User;
 use App\Support\SubscriptionStatus;
 use Carbon\Carbon;
@@ -10,8 +11,11 @@ use RuntimeException;
 
 class SubscriptionManagementService
 {
-    public function __construct(private readonly PayPalService $paypal)
-    {
+    public function __construct(
+        private readonly PayPalService $paypal,
+        private readonly PlanRegistry $plans,
+        private readonly PlanTransitionMatrix $transitions,
+    ) {
     }
 
     public function currentOrder(User $user): ?PaymentOrder
@@ -95,6 +99,8 @@ class SubscriptionManagementService
 
     public function assertCanStartPlanCheckout(User $user, string $planKey): ?PaymentOrder
     {
+        $this->transitions->assertAllowed($user, $planKey);
+
         $current = $this->currentOrder($user);
         $status = SubscriptionStatus::normalize($user->plan_status);
 
@@ -110,7 +116,7 @@ class SubscriptionManagementService
         $pendingChange = $this->pendingPlanChange($user);
 
         if ($pendingChange && $pendingChange->product_key !== $planKey) {
-            $target = config("payments.plans.{$pendingChange->product_key}.label", ucfirst($pendingChange->product_key));
+            $target = data_get($this->plans->find($pendingChange->product_key), 'label', ucfirst($pendingChange->product_key));
             throw new RuntimeException("You already have a pending change to {$target}. Resume or finish that PayPal checkout first.");
         }
 

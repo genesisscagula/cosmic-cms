@@ -3,7 +3,8 @@ import { useCreditBalance } from './CreditBalanceContext';
 
 export default function CreditBalanceBadge({ balance, className = '' }) {
     const wallet = useCreditBalance();
-    const amount = Number(balance ?? wallet.balance ?? 0);
+    const rawAmount = balance ?? wallet.balance;
+    const amount = rawAmount === null || rawAmount === undefined ? null : Number(rawAmount);
 
     return (
         <Link

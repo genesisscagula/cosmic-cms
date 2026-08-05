@@ -162,7 +162,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     return (
         <section
             ref={sectionRef}
-            className={`relative isolate flex cursor-pointer overflow-hidden px-4 py-12 sm:px-6 sm:py-16 lg:px-8 lg:py-20 ${heroHeight}`}
+            className={`relative isolate flex cursor-pointer overflow-hidden py-12 sm:py-16 lg:py-20 ${heroHeight}`}
             onClick={handleSectionImageEdit}
         >
             <div
@@ -186,7 +186,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
 
             <div
                 ref={contentRef}
-                className={`relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center transition-opacity duration-150 ${alignment[data.contentAlign] || alignment.left}`}
+                className={`relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-4 transition-opacity duration-150 sm:px-6 lg:px-8 ${alignment[data.contentAlign] || alignment.left}`}
                 style={{ transform: "translate3d(0, 0, 0)", willChange: "transform, opacity" }}
                 onClick={(event) => event.stopPropagation()}
             >

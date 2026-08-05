@@ -20,6 +20,12 @@ class WebsitePolicy
         return $this->access->canUpdate($user, $website);
     }
 
+    public function transferOwnership(User $user, Website $website): bool
+    {
+        return (int) $website->user_id === (int) $user->id
+            && $user->hasPlanCapability('ownership_transfer');
+    }
+
     public function delete(User $user, Website $website): bool
     {
         return $this->access->canDelete($user, $website);

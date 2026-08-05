@@ -1063,7 +1063,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
                             {/* Selected Outline */}
 
-                            <div className={`group-hover:ring-2 group-hover:ring-violet-500/40 transition-all duration-500 ${layoutApplying === index ? "scale-[0.997] opacity-80 ring-2 ring-violet-400/40" : "opacity-100"}`}>
+                            <div className={`cosmic-builder-spark group-hover:ring-2 group-hover:ring-violet-500/40 transition-all duration-500 ${layoutApplying === index ? "scale-[0.997] opacity-80 ring-2 ring-violet-400/40" : "opacity-100"}`}>
 
                                 {renderBlock(block,index)}
 

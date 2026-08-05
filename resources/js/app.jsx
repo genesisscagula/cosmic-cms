@@ -25,7 +25,7 @@ createInertiaApp({
             props.initialPage?.props?.auth?.creditBalance ??
             props.initialPage?.props?.auth?.user?.credits ??
             props.initialPage?.props?.balance ??
-            0;
+            null;
 
         root.render(
             <CreditBalanceProvider

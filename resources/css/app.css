@@ -104,3 +104,18 @@
     border: 2px solid #111827;
     border-radius: 999px;
 }
+
+
+/* Cosmic Spark vertical rhythm: 50px mobile, 80px tablet/laptop/desktop.
+   The wrapper intentionally overrides legacy py-* utilities without changing hero min-heights. */
+.cosmic-builder-spark > section {
+    padding-top: 50px !important;
+    padding-bottom: 50px !important;
+}
+
+@media (min-width: 640px) {
+    .cosmic-builder-spark > section {
+        padding-top: 80px !important;
+        padding-bottom: 80px !important;
+    }
+}

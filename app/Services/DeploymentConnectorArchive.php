@@ -344,7 +344,15 @@ function cosmicDocument(array $page, array $package): string
         ? "<base href='" . str_repeat('../', substr_count($outputDirectory, '/') + 1) . "'>\n"
         : '';
 
-    return "<!DOCTYPE html>\n<html lang='en'>\n<head>\n<meta charset='UTF-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n{$baseTag}<title>{$title}</title>\n<link rel='preconnect' href='https://fonts.bunny.net'>\n<link href='https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap' rel='stylesheet'>\n<script src='https://cdn.tailwindcss.com'></script>\n<style>html,body,button,input,select,textarea{font-family:Manrope,ui-sans-serif,system-ui,sans-serif!important}[data-cosmic-contact-form] select{color-scheme:dark;background-color:#334b67;color:#f8fafc}[data-cosmic-contact-form] select option{background-color:#334b67;color:#f8fafc}[data-cosmic-contact-form] input[type=date]{color-scheme:dark}</style>\n</head>\n<body class='bg-[#0b0f19] text-slate-100 min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}\n</body>\n</html>";
+    // The first visible image is usually the LCP hero. Preload it so mobile
+    // browsers discover it before Tailwind CDN has finished evaluating.
+    $heroPreload = '';
+    if (preg_match('/<img[^>]+src=[\"\']([^\"\']+)[\"\']/i', $body, $match) === 1) {
+        $heroSrc = htmlspecialchars((string) $match[1], ENT_QUOTES, 'UTF-8');
+        $heroPreload = "<link rel='preload' as='image' href='{$heroSrc}' fetchpriority='high'>\n";
+    }
+
+    return "<!DOCTYPE html>\n<html lang='en'>\n<head>\n<meta charset='UTF-8'>\n<meta name='viewport' content='width=device-width, initial-scale=1.0'>\n{$baseTag}<title>{$title}</title>\n<link rel='preconnect' href='https://fonts.bunny.net' crossorigin>\n<link rel='preconnect' href='https://cdn.tailwindcss.com' crossorigin>\n{$heroPreload}<link href='https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap' rel='stylesheet'>\n<script src='https://cdn.tailwindcss.com'></script>\n<style>html,body,button,input,select,textarea{font-family:Manrope,ui-sans-serif,system-ui,sans-serif!important}[data-cosmic-contact-form] select{color-scheme:dark;background-color:#334b67;color:#f8fafc}[data-cosmic-contact-form] select option{background-color:#334b67;color:#f8fafc}[data-cosmic-contact-form] input[type=date]{color-scheme:dark}[data-cosmic-spark]{padding-top:50px!important;padding-bottom:50px!important}main>[data-cosmic-spark]:not(:first-child){content-visibility:auto;contain-intrinsic-size:800px}@media(min-width:640px){[data-cosmic-spark]{padding-top:80px!important;padding-bottom:80px!important}}</style>\n</head>\n<body class='bg-[#0b0f19] text-slate-100 min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}\n</body>\n</html>";
 }
 
 function cosmicCleanUrlRules(): string

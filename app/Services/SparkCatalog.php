@@ -8,14 +8,26 @@ class SparkCatalog
 {
     public static function all(): array
     {
+        $overrides = (array) config('cosmic-sparks.overrides', []);
+
         return collect(BlockPricingRegistry::all())
-            ->map(function (array $item, string $type) {
+            ->map(function ($item, $type) use ($overrides) {
+                if (! is_array($item) || ! is_string($type) || blank($type)) {
+                    return null;
+                }
+
+                $collection = (string) ($item['category'] ?? 'growth');
+                $override = (array) ($overrides[$type] ?? []);
+
                 return [
                     'key' => $type,
                     'name' => self::displayName($type, $item['label'] ?? null),
                     'description' => self::description($type),
                     'category' => self::category($type),
-                    'collection' => $item['category'] ?? 'growth',
+                    'collection' => $collection,
+                    'collection_label' => self::collectionLabel($collection),
+                    'access_level' => (string) ($override['access_level'] ?? self::collectionAccessLevel($collection)),
+                    'catalog_index' => 0,
                     'credits' => (int) ($item['credits'] ?? 20),
                     'featured' => in_array($type, [
                         'hero_floating_cards', 'hero_video_background', 'services_bento',
@@ -23,13 +35,77 @@ class SparkCatalog
                     ], true),
                 ];
             })
+            ->filter()
             ->values()
+            ->map(function (array $spark, int $index) {
+                $spark['catalog_index'] = $index;
+
+                return $spark;
+            })
             ->all();
     }
 
     public static function find(string $key): ?array
     {
         return collect(self::all())->firstWhere('key', $key);
+    }
+
+    public static function accessLevels(): array
+    {
+        return (array) config('cosmic-sparks.access_levels', []);
+    }
+
+    public static function collections(): array
+    {
+        return (array) config('cosmic-sparks.collections', []);
+    }
+
+    /**
+     * Frontend-safe registry metadata. No ownership or user-specific state.
+     */
+    public static function forClient(): array
+    {
+        return [
+            'access_levels' => self::accessLevels(),
+            'collections' => self::collections(),
+        ];
+    }
+
+    /**
+     * Validate registry references without crashing production requests.
+     *
+     * @return array<int, string>
+     */
+    public static function validationErrors(): array
+    {
+        $levels = self::accessLevels();
+        $errors = [];
+
+        foreach (self::collections() as $key => $collection) {
+            $level = (string) ($collection['access_level'] ?? '');
+            if ($level === '' || ! array_key_exists($level, $levels)) {
+                $errors[] = "Spark collection [{$key}] references an unknown access level [{$level}].";
+            }
+        }
+
+        foreach (self::all() as $spark) {
+            $level = (string) ($spark['access_level'] ?? '');
+            if ($level === '' || ! array_key_exists($level, $levels)) {
+                $errors[] = "Spark [{$spark['key']}] references an unknown access level [{$level}].";
+            }
+        }
+
+        return array_values(array_unique($errors));
+    }
+
+    private static function collectionAccessLevel(string $collection): string
+    {
+        return (string) config("cosmic-sparks.collections.{$collection}.access_level", 'growth');
+    }
+
+    private static function collectionLabel(string $collection): string
+    {
+        return (string) config("cosmic-sparks.collections.{$collection}.label", str($collection)->headline()->toString());
     }
 
     private static function displayName(string $type, ?string $fallback): string

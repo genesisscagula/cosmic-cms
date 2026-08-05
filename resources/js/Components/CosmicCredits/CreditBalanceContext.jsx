@@ -4,14 +4,14 @@ import { router } from '@inertiajs/react';
 
 const CreditBalanceContext = createContext(null);
 
-function normalizeBalance(value, fallback = 0) {
+function normalizeBalance(value, fallback = null) {
     const numericValue = Number(value);
-    return Number.isFinite(numericValue) ? numericValue : fallback;
+    return value !== null && value !== '' && Number.isFinite(numericValue) ? numericValue : fallback;
 }
 
 export function CreditBalanceProvider({
     children,
-    initialBalance = 0,
+    initialBalance = null,
     authenticated = false,
 }) {
     const [balance, setBalanceState] = useState(() => normalizeBalance(initialBalance));

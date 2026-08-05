@@ -40,6 +40,7 @@ export default function Sparks({ dashboard }) {
     const library = dashboard?.spark_library ?? { items: [], categories: [], count: 0 };
     const marketplace = dashboard?.spark_marketplace ?? { items: [], categories: [], count: 0, owned_count: 0 };
     const [marketItems, setMarketItems] = useState(marketplace.items);
+    const slots = marketplace.owned_spark_slots ?? { used: marketplace.owned_count ?? 0, limit: null, limit_label: "Unlimited", remaining: null, unlimited: true, at_limit: false, can_add: true };
     const [activeView, setActiveView] = useState("owned");
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All");
@@ -121,6 +122,14 @@ export default function Sparks({ dashboard }) {
     };
 
     const unlockSpark = async (spark) => {
+        if (spark.can_install === false) {
+            window.alert(spark.acquisition?.message || (spark.slot_blocked
+                ? "Your Owned Sparks slots are full. Remove a Spark or upgrade your plan."
+                : spark.credit_blocked
+                    ? "You need more Cosmic Credits to purchase this Spark."
+                    : "This Spark is available on a higher plan. Upgrade to add it to Owned Sparks."));
+            return;
+        }
         setBusyKey(spark.key);
         try {
             await axios.post(`/sparks/${spark.key}/unlock`);
@@ -161,6 +170,11 @@ export default function Sparks({ dashboard }) {
                     <p className="mt-3 max-w-2xl text-sm leading-6 text-slate-400">
                         Manage owned Sparks and discover new reusable sections from one account-level library.
                     </p>
+                    <div className={`mt-4 inline-flex items-center gap-3 rounded-xl border px-3 py-2 text-xs ${slots.at_limit ? "border-amber-300/25 bg-amber-300/10 text-amber-100" : "border-white/10 bg-white/[0.03] text-slate-300"}`}>
+                        <span className="font-semibold">Owned Sparks {slots.used}/{slots.limit_label}</span>
+                        {!slots.unlimited && <span>{slots.remaining} slot{slots.remaining === 1 ? "" : "s"} remaining</span>}
+                        {slots.at_limit && <button type="button" onClick={() => router.visit('/credits')} className="font-semibold text-white underline underline-offset-2">Upgrade</button>}
+                    </div>
                 </div>
 
                 <button type="button" onClick={() => switchView("marketplace")} className="inline-flex h-11 items-center justify-center rounded-xl bg-white px-5 text-sm font-semibold text-slate-950 transition hover:bg-violet-100">
@@ -213,7 +227,7 @@ export default function Sparks({ dashboard }) {
                     filteredOwned.length ? (
                         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                             {filteredOwned.map((spark) => (
-                                <OwnedSparkCard key={spark.key} spark={spark} busy={busyKey === spark.key} onPreview={() => setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onRemove={() => removeSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
+                                <OwnedSparkCard key={spark.key} spark={spark} busy={busyKey === spark.key} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onRemove={() => removeSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
                             ))}
                         </div>
                     ) : (
@@ -223,7 +237,7 @@ export default function Sparks({ dashboard }) {
                     filteredMarketplace.length ? (
                         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                             {filteredMarketplace.map((spark) => (
-                                <MarketplaceSparkCard key={spark.key} spark={spark} busy={busyKey === spark.key} onPreview={() => setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
+                                <MarketplaceSparkCard key={spark.key} spark={spark} busy={busyKey === spark.key} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
                             ))}
                         </div>
                     ) : (
@@ -232,7 +246,7 @@ export default function Sparks({ dashboard }) {
                 ) : filteredCollection.length ? (
                     <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {filteredCollection.map((spark) => (
-                            <MarketplaceSparkCard key={spark.key} spark={spark} busy={busyKey === spark.key} favoriteBusy={busyKey === `favorite-${spark.key}`} onPreview={() => setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} />
+                            <MarketplaceSparkCard key={spark.key} spark={spark} busy={busyKey === spark.key} favoriteBusy={busyKey === `favorite-${spark.key}`} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} />
                         ))}
                     </div>
                 ) : (
@@ -279,7 +293,7 @@ function MarketplaceSparkCard({ spark, busy, onPreview, onUnlock, onFavorite, fa
                     <div className="mt-5 grid grid-cols-3 gap-2"><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /></div>
                 </div>
                 <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-1.5">
-                    {spark.staff_pick && <Badge>Staff Pick</Badge>}
+                    {spark.locked && <Badge>Locked</Badge>}{spark.staff_pick && <Badge>Staff Pick</Badge>}
                     {spark.is_new && <Badge>New</Badge>}
                 </div>
             </div>
@@ -294,7 +308,7 @@ function MarketplaceSparkCard({ spark, busy, onPreview, onUnlock, onFavorite, fa
                 <p className="mt-2 min-h-12 text-sm leading-6 text-slate-400">{spark.description}</p>{spark.purchased && <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-200">Purchased · permanent account access</p>}
                 <div className="mt-5 flex gap-2">
                     <button type="button" onClick={onPreview} className="rounded-xl border border-white/10 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/5">Preview</button>
-                    {spark.owned ? <div className="flex-1 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2.5 text-center text-sm font-semibold text-emerald-200">✓ In Owned Sparks</div> : <button type="button" disabled={busy} onClick={onUnlock} className="flex-1 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50">{busy ? "Adding..." : spark.is_free ? "Add Free Spark" : `Add to Owned · ⚡${spark.credits}`}</button>}
+                    {spark.owned ? <div className="flex-1 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2.5 text-center text-sm font-semibold text-emerald-200">✓ In Owned Sparks</div> : spark.can_install === false ? <button type="button" onClick={onUnlock} className="flex-1 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2.5 text-sm font-semibold text-amber-100">{spark.slot_blocked ? "Slots full" : "Upgrade to add"}</button> : <button type="button" disabled={busy} onClick={onUnlock} className="flex-1 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50">{busy ? "Adding..." : spark.is_free ? "Add Free Spark" : `Add to Owned · ⚡${spark.credits}`}</button>}
                 </div>
             </div>
         </article>

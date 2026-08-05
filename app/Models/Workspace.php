@@ -42,4 +42,9 @@ class Workspace extends Model
     {
         return $this->hasMany(Website::class);
     }
+
+    public function sharedSparks()
+    {
+        return $this->hasMany(WorkspaceSpark::class);
+    }
 }

@@ -6,6 +6,7 @@ use App\Cosmic\Pricing\CreditPackageRegistry;
 use App\Services\CreditService;
 use App\Services\AccountDataService;
 use App\Services\PaymentCountryResolver;
+use App\Services\PlanRegistry;
 use App\Services\SubscriptionManagementService;
 use App\Support\SubscriptionStatus;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,7 @@ use Inertia\Response;
 
 class CreditController extends Controller
 {
-    public function index(Request $request, PaymentCountryResolver $paymentCountry, SubscriptionManagementService $subscriptions, AccountDataService $accountData): Response
+    public function index(Request $request, PaymentCountryResolver $paymentCountry, SubscriptionManagementService $subscriptions, AccountDataService $accountData, PlanRegistry $plans): Response
     {
         $user = $request->user();
         $activeSubscriptionOrder = $subscriptions->currentOrder($user);
@@ -24,9 +25,7 @@ class CreditController extends Controller
         $planKey = (string) ($user->plan_key ?? '');
         $lifecycleStatus = SubscriptionStatus::normalize($user->plan_status);
         $statusBadge = SubscriptionStatus::badge($lifecycleStatus, (bool) $user->plan_cancel_at_period_end);
-        $planConfig = $planKey !== ''
-            ? config("payments.plans.{$planKey}")
-            : null;
+        $planConfig = $planKey !== '' ? $plans->find($planKey) : null;
 
         $resumableOrder = $user->paymentOrders()
             ->where('provider', 'paypal')
@@ -44,7 +43,7 @@ class CreditController extends Controller
             'balance' => (int) $user->credits,
             'creditsSummary' => $creditsSummary,
             'packages' => CreditPackageRegistry::all(),
-            'plans' => config('payments.plans', []),
+            'plans' => $plans->forClient(),
             'currentPlan' => $planConfig ? [
                 'key' => $planKey,
                 'label' => $planConfig['label'] ?? ucfirst($planKey),
@@ -85,7 +84,7 @@ class CreditController extends Controller
             'pendingCheckout' => ($resumableOrder && $resumableUrl !== '') ? [
                 'order_reference' => $resumableOrder->reference,
                 'plan_key' => $resumableOrder->product_key,
-                'plan_label' => config("payments.plans.{$resumableOrder->product_key}.label", ucfirst($resumableOrder->product_key)),
+                'plan_label' => data_get($plans->find($resumableOrder->product_key), 'label', ucfirst($resumableOrder->product_key)),
                 'checkout_url' => $resumableUrl,
                 'cancelled_at' => data_get($resumableOrder->metadata, 'checkout_cancelled_at'),
                 'change_type' => data_get($resumableOrder->metadata, 'plan_change_type'),

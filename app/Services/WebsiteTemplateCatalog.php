@@ -41,9 +41,198 @@ class WebsiteTemplateCatalog
         'form-function' => ['theme' => 'slate', 'industry' => 'design portfolio', 'tagline' => 'Independent designer and maker', 'heading' => 'Useful ideas, carefully made.', 'text' => 'Present selected work, capabilities, and a clear path to commission new projects.', 'services' => ['Product design', 'Visual systems', 'Creative collaboration']],
     ];
 
+    /**
+     * Canonical template access levels used by plan entitlements.
+     *
+     * @return array<string, int>
+     */
+    public function accessLevels(): array
+    {
+        return (array) config('cosmic-templates.access_levels', []);
+    }
+
+
+    /** @return array<string, array<string, mixed>> */
+    public function agencyCollections(): array
+    {
+        $allTemplates = array_keys(self::TEMPLATES);
+
+        return collect((array) config('cosmic-templates.agency_collections', []))
+            ->map(function (array $collection, string $key) use ($allTemplates) {
+                $templates = (array) ($collection['templates'] ?? []);
+                if (in_array('*', $templates, true)) {
+                    $templates = $allTemplates;
+                }
+
+                return [
+                    'key' => $key,
+                    'label' => (string) ($collection['label'] ?? ucfirst(str_replace('_', ' ', $key))),
+                    'description' => (string) ($collection['description'] ?? ''),
+                    'minimum_plan' => (string) ($collection['minimum_plan'] ?? $key),
+                    'templates' => array_values(array_filter($templates, fn ($template) => $this->supports($template))),
+                    'template_count' => count(array_filter($templates, fn ($template) => $this->supports($template))),
+                ];
+            })
+            ->all();
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function agencyCollectionsForUser(\App\Models\User $user, PlanEntitlementService $entitlements): array
+    {
+        $accountLevel = (string) (($entitlements->summary($user)['capabilities']['template_access_level'] ?? 'starter'));
+        $levels = $this->accessLevels();
+        $accountRank = $levels[$accountLevel] ?? -1;
+
+        return collect($this->agencyCollections())
+            ->map(function (array $collection) use ($levels, $accountRank) {
+                $required = (string) $collection['minimum_plan'];
+                $locked = $accountRank < ($levels[$required] ?? PHP_INT_MAX);
+
+                return [
+                    ...$collection,
+                    'locked' => $locked,
+                    'lock_message' => $locked ? 'Upgrade your Agency plan to unlock this collection.' : null,
+                ];
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Return normalized metadata for one template.
+     *
+     * @return array<string, mixed>|null
+     */
+    public function definition(string $template): ?array
+    {
+        if (! $this->supports($template)) {
+            return null;
+        }
+
+        $profile = self::TEMPLATES[$template];
+        $metadata = (array) config("cosmic-templates.templates.{$template}", []);
+
+        return [
+            'slug' => $template,
+            'minimum_plan' => (string) ($metadata['minimum_plan'] ?? 'pro'),
+            'industry' => (string) ($metadata['industry'] ?? $profile['industry'] ?? 'general'),
+            'theme_family' => (string) ($metadata['theme_family'] ?? $profile['theme'] ?? 'midnight'),
+            'page_count' => max(1, (int) ($metadata['page_count'] ?? 1)),
+            'spark_collection' => (string) ($metadata['spark_collection'] ?? "{$template}-starter"),
+            'is_featured' => (bool) ($metadata['is_featured'] ?? false),
+            'is_premium' => (bool) ($metadata['is_premium'] ?? false),
+            'collection' => (string) ($metadata['collection'] ?? 'personal'),
+            'agency_collections' => collect($this->agencyCollections())
+                ->filter(fn (array $collection) => in_array($template, $collection['templates'], true))
+                ->keys()
+                ->values()
+                ->all(),
+        ];
+    }
+
+    /**
+     * Frontend-safe catalog metadata. Template content remains server-owned.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function forClient(): array
+    {
+        return collect(array_keys(self::TEMPLATES))
+            ->map(fn (string $template) => $this->definition($template))
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Validate the source-controlled registry without crashing production requests.
+     *
+     * @return array<int, string>
+     */
+    public function validationErrors(): array
+    {
+        $levels = $this->accessLevels();
+        $errors = [];
+
+        foreach (array_keys(self::TEMPLATES) as $template) {
+            $definition = $this->definition($template);
+
+            if (! $definition) {
+                $errors[] = "Template [{$template}] has no definition.";
+                continue;
+            }
+
+            if (! array_key_exists($definition['minimum_plan'], $levels)) {
+                $errors[] = "Template [{$template}] uses unknown access level [{$definition['minimum_plan']}].";
+            }
+
+            foreach (['industry', 'theme_family', 'spark_collection'] as $required) {
+                if (trim((string) $definition[$required]) === '') {
+                    $errors[] = "Template [{$template}] is missing [{$required}].";
+                }
+            }
+        }
+
+        foreach ($this->agencyCollections() as $key => $collection) {
+            if (! array_key_exists($collection['minimum_plan'], $levels)) {
+                $errors[] = "Agency template collection [{$key}] uses unknown access level [{$collection['minimum_plan']}].";
+            }
+
+            if ($collection['template_count'] < 1) {
+                $errors[] = "Agency template collection [{$key}] has no valid templates.";
+            }
+        }
+
+        return $errors;
+    }
+
     public function supports(?string $template): bool
     {
         return is_string($template) && array_key_exists($template, self::TEMPLATES);
+    }
+
+
+    public function catalogIndex(string $template): ?int
+    {
+        $index = array_search($template, array_keys(self::TEMPLATES), true);
+
+        return $index === false ? null : $index;
+    }
+
+    /** @return array<int, array<string, mixed>> */
+    public function forUser(\App\Models\User $user, PlanEntitlementService $entitlements): array
+    {
+        return collect(array_keys(self::TEMPLATES))
+            ->map(function (string $template) use ($user, $entitlements) {
+                $definition = $this->definition($template);
+                $decision = $entitlements->templateAccess($user, $template, $this);
+
+                return $definition ? [
+                    ...$definition,
+                    'locked' => ! $decision['allowed'],
+                    'lock_reason' => $decision['reason'],
+                    'lock_message' => $decision['message'],
+                    'upgrade_prompt' => $decision['upgrade'] ?? null,
+                ] : null;
+            })
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    public function entitlement(string $template): ?array
+    {
+        $keys = array_keys(self::TEMPLATES);
+        $index = array_search($template, $keys, true);
+
+        if ($index === false) {
+            return null;
+        }
+
+        return [
+            'catalog_index' => $index,
+            'required_level' => $index < 5 ? 'starter' : ($index < 10 ? 'growth' : 'pro'),
+        ];
     }
 
     public function websiteAttributes(string $template, string $websiteName): array

@@ -31,11 +31,13 @@ return [
         'client_secret' => env('PAYPAL_CLIENT_SECRET'),
         'webhook_id' => env('PAYPAL_WEBHOOK_ID'),
         'currency' => env('PAYPAL_CURRENCY', 'USD'),
-        'plan_ids' => [
-            'starter' => env('PAYPAL_PLAN_STARTER_ID'),
-            'growth' => env('PAYPAL_PLAN_GROWTH_ID'),
-            'pro' => env('PAYPAL_PLAN_PRO_ID'),
-        ],
+        // Deprecated compatibility mirror. New code must resolve plan IDs through
+        // PayPalPlanBindingService, backed by config/cosmic-plans.php.
+        'plan_ids' => collect(require __DIR__.'/cosmic-plans.php')
+            ->mapWithKeys(fn (array $plan, string $key) => [
+                $key => data_get($plan, 'billing.paypal_plan_id'),
+            ])
+            ->all(),
         'base_url' => env('PAYPAL_MODE', 'sandbox') === 'live'
             ? 'https://api-m.paypal.com'
             : 'https://api-m.sandbox.paypal.com',
@@ -71,43 +73,34 @@ return [
 
     'website_upgrade_options' => [
         [
-            'key' => 'business',
-            'label' => 'Business',
-            'sites' => '3 websites',
-            'description' => 'Manage several business websites from one account.',
+            'key' => 'agency_starter',
+            'label' => 'Starter Agency',
+            'sites' => 'Up to 3 websites',
+            'description' => 'For freelancers managing a small client portfolio.',
         ],
         [
-            'key' => 'agency',
-            'label' => 'Agency',
-            'sites' => '10 websites',
-            'description' => 'Built for growing client work and shared operations.',
+            'key' => 'agency_growth',
+            'label' => 'Growth Agency',
+            'sites' => 'Up to 10 websites',
+            'description' => 'For growing teams managing multiple active clients.',
         ],
         [
             'key' => 'agency_pro',
-            'label' => 'Agency Pro',
+            'label' => 'Pro Agency',
             'sites' => 'Unlimited websites',
-            'description' => 'Maximum capacity for established agencies.',
+            'description' => 'Full agency operations, insights, teams, and white label.',
         ],
     ],
 
-    'plans' => [
-        'starter' => [
-            'label' => 'Starter',
-            'price_usd' => 49,
-            'credits' => 30,
-            'capabilities' => ['plan_type' => 'personal', 'max_sites' => 1],
-        ],
-        'growth' => [
-            'label' => 'Growth',
-            'price_usd' => 79,
-            'credits' => 70,
-            'capabilities' => ['plan_type' => 'personal', 'max_sites' => 1],
-        ],
-        'pro' => [
-            'label' => 'Pro',
-            'price_usd' => 129,
-            'credits' => 200,
-            'capabilities' => ['plan_type' => 'personal', 'max_sites' => 1],
-        ],
-    ],
+    /*
+    |--------------------------------------------------------------------------
+    | Unified plan registry
+    |--------------------------------------------------------------------------
+    |
+    | Capabilities are the source of truth. UI and backend guards must inspect
+    | capabilities instead of branching on individual plan names.
+    |
+    */
+    'plans' => require __DIR__.'/cosmic-plans.php',
+
 ];
