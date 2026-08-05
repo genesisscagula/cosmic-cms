@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Jobs\SendCosmicEventMailJob;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use App\Services\AgencyPlanEntitlementService;
@@ -35,7 +36,9 @@ class WorkspaceMemberController extends Controller
             throw ValidationException::withMessages(['email' => 'You are already the workspace owner.']);
         }
 
-        $currentMembers = max(0, $workspace->users()->count() - 1) + $workspace->invitations()->where('status', 'pending')->count();
+        $currentMembers = max(0, $workspace->users()->count() - 1) + $workspace->invitations()->where('status', 'pending')->where(function ($query) {
+            $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+        })->count();
         $decision = $entitlements->canAddTeamMember($request->user(), $currentMembers);
         if (! $decision->allowed) {
             throw ValidationException::withMessages(['email' => $decision->upgradeMessage ?: ($decision->reason ?: 'Your plan team member limit has been reached.')]);
@@ -70,6 +73,11 @@ class WorkspaceMemberController extends Controller
             );
         });
 
+        $invitation = WorkspaceInvitation::query()->where('workspace_id', $workspace->id)->where('email', $email)->first();
+        if ($invitation) {
+            $invitee = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+            if ($invitee) SendCosmicEventMailJob::dispatch($invitee->id, 'team', 'You were invited to a Cosmic workspace', 'Workspace invitation', 'You have been invited to join '.$workspace->name.' as '.$data['role'].'.', 'Review invitation', route('workspace-invitations.show', $invitation->token));
+        }
         return back()->with('success', 'Team invitation created.');
     }
 
@@ -95,8 +103,31 @@ class WorkspaceMemberController extends Controller
         if ((int) $workspace->owner_user_id === (int) $member->id) {
             throw ValidationException::withMessages(['member' => 'The workspace owner cannot be removed.']);
         }
-        $workspace->users()->detach($member->id);
-        return back()->with('success', 'Team member removed.');
+        DB::transaction(function () use ($workspace, $member) {
+            foreach ($workspace->websites as $website) {
+                $website->assignedUsers()->detach($member->id);
+            }
+            $workspace->users()->detach($member->id);
+        });
+
+        return back()->with('success', 'Team member removed and website access revoked.');
+    }
+
+
+    public function resend(Request $request, WorkspaceInvitation $invitation)
+    {
+        $workspace = $this->ownedWorkspace($request);
+        abort_unless((int) $invitation->workspace_id === (int) $workspace->id, 404);
+        abort_unless($invitation->status === 'pending', 422, 'Only pending invitations can be resent.');
+
+        $invitation->forceFill([
+            'token' => hash('sha256', Str::random(64)),
+            'expires_at' => now()->addDays(7),
+        ])->save();
+
+        $invitee = User::query()->whereRaw('LOWER(email) = ?', [strtolower($invitation->email)])->first();
+        if ($invitee) SendCosmicEventMailJob::dispatch($invitee->id, 'team', 'Your workspace invitation was refreshed', 'Invitation refreshed', 'Your workspace invitation is available for another seven days.', 'Review invitation', route('workspace-invitations.show', $invitation->token));
+        return back()->with('success', 'Invitation refreshed for another seven days.');
     }
 
     public function cancel(Request $request, WorkspaceInvitation $invitation)

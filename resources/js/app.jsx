@@ -5,6 +5,7 @@ import { createInertiaApp } from '@inertiajs/react';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { createRoot } from 'react-dom/client';
 import CosmicNotification from './Components/CosmicNotification';
+import CookieConsent from './Components/CookieConsent';
 import { CreditBalanceProvider } from './Components/CosmicCredits/CreditBalanceContext';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
@@ -34,6 +35,7 @@ createInertiaApp({
             >
                 <App {...props} />
                 <CosmicNotification />
+                <CookieConsent />
             </CreditBalanceProvider>,
         );
     },

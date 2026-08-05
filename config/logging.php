@@ -73,6 +73,30 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'cosmic_errors' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/cosmic-errors.log'),
+            'level' => env('COSMIC_ERROR_LOG_LEVEL', 'error'),
+            'days' => env('COSMIC_LOG_RETENTION_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
+        'cosmic_security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/cosmic-security.log'),
+            'level' => env('COSMIC_SECURITY_LOG_LEVEL', 'notice'),
+            'days' => env('COSMIC_SECURITY_LOG_RETENTION_DAYS', 90),
+            'replace_placeholders' => true,
+        ],
+
+        'cosmic_performance' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/cosmic-performance.log'),
+            'level' => env('COSMIC_PERFORMANCE_LOG_LEVEL', 'warning'),
+            'days' => env('COSMIC_PERFORMANCE_LOG_RETENTION_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

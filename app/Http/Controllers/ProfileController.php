@@ -24,6 +24,7 @@ class ProfileController extends Controller
             'mustVerifyEmail' => $user instanceof MustVerifyEmail,
             'status' => session('status'),
             'profileSummary' => $accountData->profile($user),
+            'notificationPreferences' => app(\App\Services\NotificationPreferenceService::class)->all($user),
         ]);
     }
 

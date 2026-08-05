@@ -84,6 +84,11 @@ class Website extends Model
         return $this->hasMany(ContactSubmission::class);
     }
 
+    public function previewLinks()
+    {
+        return $this->hasMany(WebsitePreviewLink::class);
+    }
+
     public function ownershipTransfers()
     {
         return $this->hasMany(WebsiteOwnershipTransfer::class);

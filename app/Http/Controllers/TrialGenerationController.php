@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\AI\Registries\IndustryMenuRegistry;
+use App\Jobs\SendTrialAccessLinkJob;
 use App\Models\Page;
 use App\Models\TrialGeneration;
 use App\Models\Website;
@@ -10,7 +11,6 @@ use App\Services\AiPageGenerationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -295,21 +295,11 @@ class TrialGenerationController extends Controller
 
     private function sendTrialAccessEmail(TrialGeneration $trial, bool $regenerated): void
     {
-        if (blank($trial->email) || ! $trial->page_id) return;
-
-        $url = route('pages.builder', ['page' => $trial->page_id, 'token' => $trial->token]);
-        $subject = $regenerated ? 'Your updated Cosmic CMS landing page is ready' : 'Your Cosmic CMS landing page is ready';
-        $intro = $regenerated
-            ? 'Your landing page has been regenerated and your private editing link was refreshed.'
-            : 'Welcome to Cosmic CMS! Your landing page has been saved successfully.';
-
-        try {
-            Mail::raw($intro."\n\nOpen your private editing link:\n{$url}\n\nCreate a free Cosmic CMS account to generate more pages, unlock premium tools, and publish your business online.", function ($message) use ($trial, $subject) {
-                $message->to($trial->email)->subject($subject);
-            });
-        } catch (\Throwable $exception) {
-            Log::warning('Trial access email failed', ['trial' => $trial->id, 'message' => $exception->getMessage()]);
+        if (blank($trial->email) || ! $trial->page_id) {
+            return;
         }
+
+        SendTrialAccessLinkJob::dispatch($trial->id, $regenerated);
     }
 
     private function uniqueDemoSlug(Website $website, string $businessName): string

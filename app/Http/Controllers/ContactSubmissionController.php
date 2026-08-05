@@ -36,12 +36,25 @@ class ContactSubmissionController extends Controller
             'email' => ['required', 'email', 'max:254'],
             'phone' => ['nullable', 'string', 'max:80'],
             'message' => ['required', 'string', 'max:4000'],
-            'fields' => ['nullable', 'array'],
+            'fields' => ['nullable', 'array', 'max:30'],
+            'fields.*' => ['nullable'],
             'received_at' => ['nullable', 'date'],
         ]);
 
+        $fields = collect($validated['fields'] ?? [])
+            ->mapWithKeys(function ($value, $key) {
+                $safeKey = mb_substr(strip_tags((string) $key), 0, 80);
+                $safeValue = is_scalar($value) || $value === null
+                    ? mb_substr(strip_tags((string) $value), 0, 1000)
+                    : '';
+
+                return $safeKey === '' ? [] : [$safeKey => $safeValue];
+            })
+            ->all();
+
         $submission = $website->contactSubmissions()->create([
             ...$validated,
+            'fields' => $fields,
             'received_at' => $validated['received_at'] ?? now(),
         ]);
 

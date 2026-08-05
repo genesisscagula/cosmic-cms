@@ -37,6 +37,7 @@ class WebsiteController extends Controller
         if ($user->isClient()) {
             $clientWebsites = Website::query()
                 ->whereHas('assignedUsers', fn ($query) => $query->whereKey($user->id))
+                ->with(['workspace.owner'])
                 ->withCount('pages')
                 ->latest('updated_at')
                 ->get()
@@ -51,9 +52,17 @@ class WebsiteController extends Controller
                     'updated_at' => $website->updated_at?->diffForHumans(),
                 ]);
 
+            $clientWorkspace = Website::query()
+                ->whereHas('assignedUsers', fn ($query) => $query->whereKey($user->id))
+                ->with('workspace.owner')
+                ->first()?->workspace;
+            $clientPortalAvailable = $clientWorkspace?->owner
+                && (string) data_get(app(PlanCapabilityService::class)->forUser($clientWorkspace->owner), 'capabilities.white_label_level', 'none') === 'full';
+
             return Inertia::render('Client/Dashboard', [
                 'websites' => $clientWebsites,
                 'client' => ['name' => $user->name, 'email' => $user->email],
+                'agency_portal_url' => $clientPortalAvailable ? route('agency-portal.index') : null,
             ]);
         }
 
@@ -368,8 +377,48 @@ class WebsiteController extends Controller
 
         $teamMemberLimit = data_get($planCapabilities, 'capabilities.team_members', 0);
         $workspaceMembers = $workspace ? $workspace->users()->orderBy('name')->get() : collect([$user]);
-        $pendingInvitations = $workspace ? $workspace->invitations()->where('status', 'pending')->latest()->get() : collect();
+        $pendingInvitations = $workspace ? $workspace->invitations()->where('status', 'pending')->where(function ($query) {
+            $query->whereNull('expires_at')->orWhere('expires_at', '>', now());
+        })->latest()->get() : collect();
         $teamUsed = max(0, $workspaceMembers->count() - 1) + $pendingInvitations->count();
+        $brandingSettings = (array) data_get($workspace?->settings, 'branding', []);
+        $whiteLabelLevel = (string) data_get($planCapabilities, 'capabilities.white_label_level', 'none');
+        $agencyBranding = [
+            'workspace_id' => $workspace?->id,
+            'is_agency' => ($planCapabilities['plan_family'] ?? null) === 'agency',
+            'available' => ($planCapabilities['plan_family'] ?? null) === 'agency' && $whiteLabelLevel !== 'none',
+            'is_owner' => $workspace && (int) $workspace->owner_user_id === (int) $user->id,
+            'level' => $whiteLabelLevel,
+            'agency_name' => $brandingSettings['agency_name'] ?? $workspace?->name ?? $user->business_name ?? $user->name,
+            'tagline' => $brandingSettings['tagline'] ?? null,
+            'primary_color' => $brandingSettings['primary_color'] ?? '#7C3AED',
+            'accent_color' => $brandingSettings['accent_color'] ?? '#22D3EE',
+            'support_email' => $brandingSettings['support_email'] ?? $user->email,
+            'website_url' => $brandingSettings['website_url'] ?? null,
+            'logo_url' => filled($brandingSettings['logo_path'] ?? null) ? Storage::disk('public')->url($brandingSettings['logo_path']) : null,
+            'can_remove_cosmic_branding' => $whiteLabelLevel !== 'none',
+            'remove_cosmic_branding' => $whiteLabelLevel !== 'none' && (bool) ($brandingSettings['remove_cosmic_branding'] ?? false),
+            'custom_portal_available' => $whiteLabelLevel === 'full',
+            'portal_title' => $brandingSettings['portal_title'] ?? 'Welcome to your client portal',
+            'portal_welcome' => $brandingSettings['portal_welcome'] ?? 'Review your websites, check publication status, and open secure previews from one place.',
+            'preview_links' => $workspaceWebsites->map(function (Website $website) {
+                return [
+                    'website_id' => $website->id,
+                    'website_name' => $website->name ?: 'Untitled Website',
+                    'links' => $website->previewLinks()->latest()->get()->map(fn ($link) => [
+                        'id' => $link->id,
+                        'label' => $link->label,
+                        'url' => route('preview-links.show', $link->token),
+                        'views' => (int) $link->views,
+                        'expires_at' => $link->expires_at?->toIso8601String(),
+                        'revoked_at' => $link->revoked_at?->toIso8601String(),
+                        'last_viewed_at' => $link->last_viewed_at?->toIso8601String(),
+                        'active' => ! $link->revoked_at && (! $link->expires_at || $link->expires_at->isFuture()),
+                    ])->values(),
+                ];
+            })->values(),
+        ];
+
         $teamWorkspace = [
             'enabled' => $planCapabilities['plan_family'] === 'agency' && ($teamMemberLimit === null || (int) $teamMemberLimit > 0),
             'is_owner' => $workspace && (int) $workspace->owner_user_id === (int) $user->id,
@@ -460,6 +509,7 @@ class WebsiteController extends Controller
                 'websites_dashboard' => $websitesDashboard,
                 'agency_insights' => $agencyInsights,
                 'team_workspace' => $teamWorkspace,
+                'agency_branding' => $agencyBranding,
                 'subscription' => [
                     'plan_key' => $user->plan_key,
                     'plan_label' => $planLabel,
@@ -668,7 +718,8 @@ class WebsiteController extends Controller
         $transfer = $transfers->transfer($website, $request->user(), $validated['recipient_email']);
 
         return redirect()->route('dashboard', ['tab' => 'websites'], 303)
-            ->with('success', "{$website->name} was handed off to {$transfer->recipient_email}.");
+            ->with('success', "Handoff invitation created for {$transfer->recipient_email}. Share this secure link within 7 days: ".route('website-handoffs.show', $transfer->token))
+            ->with('handoff_url', route('website-handoffs.show', $transfer->token));
     }
 
     public function destroy(Website $website)

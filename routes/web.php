@@ -5,7 +5,9 @@ use App\Http\Controllers\AI\AIController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\NotificationPreferenceController;
 use App\Http\Controllers\WebsiteController;
+use App\Http\Controllers\ClientPreviewController;
 use App\Http\Controllers\ContactSubmissionController;
 use App\Http\Controllers\BlogPostController;
 use App\Http\Controllers\TrialGenerationController;
@@ -20,11 +22,24 @@ use App\Http\Controllers\AgencySalesController;
 use App\Http\Controllers\WorkspaceMemberController;
 use App\Http\Controllers\WebsiteAssignmentController;
 use App\Http\Controllers\WorkspaceInvitationAcceptanceController;
+use App\Http\Controllers\WebsiteHandoffController;
+use App\Http\Controllers\AgencyBrandingController;
+use App\Http\Controllers\BrandedPreviewLinkController;
+use App\Http\Controllers\AgencyReportController;
+use App\Http\Controllers\AgencyPortalController;
+use App\Http\Controllers\LegalController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
+Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
+Route::get('/cookies', [LegalController::class, 'cookies'])->name('legal.cookies');
+Route::post('/legal/consent', [LegalController::class, 'consent'])
+    ->middleware(['throttle:20,1', \App\Http\Middleware\RejectOversizedRequest::class . ':32'])
+    ->name('legal.consent');
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -34,6 +49,8 @@ Route::get('/', function () {
         'phpVersion' => PHP_VERSION,
     ]);
 });
+
+Route::get('/pricing', fn () => Inertia::render('Pricing'))->name('pricing');
 
 Route::get('/start', [TrialGenerationController::class, 'create'])->name('start');
 Route::post('/start', [TrialGenerationController::class, 'store'])->middleware('throttle:6,1')->name('trial-generations.store');
@@ -48,18 +65,22 @@ Route::post('/trials/{trial:token}/regenerate', [TrialGenerationController::clas
     ->name('trial-generations.regenerate');
 
 Route::get('/workspace-invitations/{token}', [WorkspaceInvitationAcceptanceController::class, 'show'])
-    ->middleware('throttle:30,1')
+    ->middleware(['throttle:30,1', \App\Http\Middleware\AddSecurityHeaders::class])
     ->name('workspace-invitations.show');
 Route::post('/workspace-invitations/{token}/accept', [WorkspaceInvitationAcceptanceController::class, 'accept'])
-    ->middleware('throttle:10,1')
+    ->middleware(['throttle:10,1', \App\Http\Middleware\AddSecurityHeaders::class, \App\Http\Middleware\RejectOversizedRequest::class . ':64'])
     ->name('workspace-invitations.accept');
+
+Route::get('/preview/{token}', [BrandedPreviewLinkController::class, 'show'])
+    ->middleware(['throttle:cosmic-public-preview', \App\Http\Middleware\AddSecurityHeaders::class])
+    ->name('preview-links.show');
 
 
 // Token-aware Builder routes. Signed-in users keep normal policy checks;
 // logged-out visitors need a valid token that belongs to the requested page.
 Route::get('/pages/{page}/builder', [PageController::class, 'builder'])->name('pages.builder');
 Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder'])
-    ->middleware('throttle:60,1')
+    ->middleware(['throttle:60,1', \App\Http\Middleware\RejectOversizedRequest::class . ':1024'])
     ->name('pages.builder.save');
 
 Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
@@ -101,6 +122,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
         ->name('websites.bulk-action');
     Route::post('/websites/{website}/duplicate', [WebsiteController::class, 'duplicate'])->name('websites.duplicate');
     Route::post('/websites/{website}/transfer-ownership', [WebsiteController::class, 'transferOwnership'])->name('websites.transfer-ownership');
+    Route::get('/website-handoffs/{token}', [WebsiteHandoffController::class, 'show'])->name('website-handoffs.show');
+    Route::post('/website-handoffs/{token}/accept', [WebsiteHandoffController::class, 'accept'])->middleware('throttle:10,1')->name('website-handoffs.accept');
+    Route::delete('/website-handoffs/{handoff}', [WebsiteHandoffController::class, 'cancel'])->name('website-handoffs.cancel');
     Route::delete('/websites/{website}', [WebsiteController::class, 'destroy'])->name('websites.destroy');
     Route::get('/websites/{website}/deployment-connector', [WebsiteController::class, 'downloadDeploymentConnector'])->name('websites.deployment-connector.download');
     Route::post('/websites/{website}/deployment-connector/verify', [WebsiteController::class, 'verifyDeploymentConnector'])->name('websites.deployment-connector.verify');
@@ -113,11 +137,19 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::get('/agency-insights/leads/export', [AgencyLeadController::class, 'export'])->name('agency-insights.leads.export');
     Route::post('/agency-insights/sales', [AgencySalesController::class, 'store'])->name('agency-insights.sales.store');
     Route::get('/agency-insights/sales/export', [AgencySalesController::class, 'export'])->name('agency-insights.sales.export');
-    Route::post('/workspace/members', [WorkspaceMemberController::class, 'store'])->name('workspace.members.store');
-    Route::patch('/workspace/members/{member}/role', [WorkspaceMemberController::class, 'updateRole'])->name('workspace.members.role.update');
-    Route::delete('/workspace/members/{member}', [WorkspaceMemberController::class, 'destroy'])->name('workspace.members.destroy');
+    Route::post('/workspace/members', [WorkspaceMemberController::class, 'store'])->middleware('throttle:cosmic-workspace-write')->name('workspace.members.store');
+    Route::patch('/workspace/members/{member}/role', [WorkspaceMemberController::class, 'updateRole'])->middleware('throttle:cosmic-workspace-write')->name('workspace.members.role.update');
+    Route::delete('/workspace/members/{member}', [WorkspaceMemberController::class, 'destroy'])->middleware('throttle:cosmic-workspace-write')->name('workspace.members.destroy');
+    Route::post('/workspace/invitations/{invitation}/resend', [WorkspaceMemberController::class, 'resend'])->middleware('throttle:10,1')->name('workspace.invitations.resend');
     Route::delete('/workspace/invitations/{invitation}', [WorkspaceMemberController::class, 'cancel'])->name('workspace.invitations.destroy');
-    Route::put('/workspace/members/{member}/website-assignments', [WebsiteAssignmentController::class, 'update'])->name('workspace.members.website-assignments.update');
+    Route::put('/workspace/members/{member}/website-assignments', [WebsiteAssignmentController::class, 'update'])->middleware('throttle:cosmic-workspace-write')->name('workspace.members.website-assignments.update');
+    Route::post('/workspaces/{workspace}/branding', [AgencyBrandingController::class, 'update'])->middleware('throttle:20,1')->name('workspace.branding.update');
+    Route::delete('/workspaces/{workspace}/branding', [AgencyBrandingController::class, 'reset'])->middleware('throttle:10,1')->name('workspace.branding.reset');
+    Route::get('/agency-reports', [AgencyReportController::class, 'index'])->name('agency-reports.index');
+    Route::get('/agency-portal', [AgencyPortalController::class, 'index'])->name('agency-portal.index');
+    Route::post('/websites/{website}/preview-links', [BrandedPreviewLinkController::class, 'store'])->middleware('throttle:20,1')->name('preview-links.store');
+    Route::delete('/preview-links/{previewLink}', [BrandedPreviewLinkController::class, 'revoke'])->middleware('throttle:20,1')->name('preview-links.revoke');
+    Route::get('/client/websites/{website}/preview', [ClientPreviewController::class, 'show'])->name('client.websites.preview');
     Route::get('/websites/{website}/pages', [PageController::class, 'index'])->name('pages.index');
     Route::get('/websites/{website}/inquiries', [ContactSubmissionController::class, 'index'])->name('websites.inquiries.index');
     Route::patch('/websites/{website}/inquiries/{submission}', [ContactSubmissionController::class, 'update'])->name('websites.inquiries.update');
@@ -137,18 +169,19 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/websites/{website}/global-footer/save', [WebsiteController::class, 'saveFooter'])->name('websites.global-footer.save');
     Route::post('/websites/{website}/update-theme', [PageController::class, 'updateTheme'])->name('websites.update-theme');
 
-    Route::post('/ai/generate', [\App\Http\Controllers\AIChatController::class, 'generate'])->name('ai.generate');
-    Route::post('/ai/select-sections', [AIController::class, 'selectSections'])->name('ai.select-sections');
-    Route::post('/ai/select-section', [AIController::class, 'selectSection'])->name('ai.select-section');
-    Route::post('/ai/generate-content', [AIController::class, 'generateContent'])->name('ai.generate-content');
+    Route::post('/ai/generate', [\App\Http\Controllers\AIChatController::class, 'generate'])->middleware('throttle:cosmic-ai')->name('ai.generate');
+    Route::post('/ai/select-sections', [AIController::class, 'selectSections'])->middleware('throttle:cosmic-ai')->name('ai.select-sections');
+    Route::post('/ai/select-section', [AIController::class, 'selectSection'])->middleware('throttle:cosmic-ai')->name('ai.select-section');
+    Route::post('/ai/generate-content', [AIController::class, 'generateContent'])->middleware('throttle:cosmic-ai')->name('ai.generate-content');
 
     // Keep the existing browser-session image URLs while protecting the writes.
-    Route::post('/api/upload-block-image', [ImageController::class, 'uploadImage']);
-    Route::post('/api/upload-logo', [ImageController::class, 'uploadLogo'])->name('websites.logo.upload');
-    Route::post('/api/update-block-data', [ImageController::class, 'update']);
+    Route::post('/api/upload-block-image', [ImageController::class, 'uploadImage'])->middleware('throttle:cosmic-upload');
+    Route::post('/api/upload-logo', [ImageController::class, 'uploadLogo'])->middleware('throttle:cosmic-upload')->name('websites.logo.upload');
+    Route::post('/api/update-block-data', [ImageController::class, 'update'])->middleware('throttle:cosmic-upload');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::patch('/profile/notifications', [NotificationPreferenceController::class, 'update'])->name('profile.notifications.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 });
 

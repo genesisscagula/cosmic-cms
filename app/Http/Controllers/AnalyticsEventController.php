@@ -12,7 +12,15 @@ class AnalyticsEventController extends Controller
 {
     public function store(Request $request, Website $website): JsonResponse
     {
-        abort_unless(hash_equals((string) $website->api_token, (string) $request->header('X-Cosmic-Token')), 401);
+        $expectedToken = trim((string) $website->api_token);
+        $providedToken = trim((string) $request->header('X-Cosmic-Token'));
+
+        abort_unless(
+            $expectedToken !== ''
+            && $providedToken !== ''
+            && hash_equals($expectedToken, $providedToken),
+            401
+        );
         $data = $request->validate([
             'page_views' => ['nullable','integer','min:0','max:10000'],
             'visitors' => ['nullable','integer','min:0','max:10000'],

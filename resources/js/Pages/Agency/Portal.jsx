@@ -1,0 +1,22 @@
+import { Head, Link, router } from '@inertiajs/react';
+
+export default function AgencyPortal({ client = {}, branding = {}, websites = [] }) {
+    const initials = String(branding.agency_name || 'Agency').split(/\s+/).map(v => v[0]).join('').slice(0, 2).toUpperCase();
+    const logout = () => router.post(route('logout'));
+
+    return <div className="min-h-screen bg-slate-950 text-slate-100">
+        <Head title={`${branding.agency_name || 'Agency'} Client Portal`} />
+        <header className="border-b border-white/10" style={{background:`linear-gradient(135deg, ${branding.primary_color || '#7C3AED'}, ${branding.accent_color || '#22D3EE'})`}}>
+            <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5">
+                <div className="flex min-w-0 items-center gap-3">{branding.logo_url ? <img src={branding.logo_url} alt="" className="h-11 w-11 rounded-xl bg-white object-contain p-1.5"/> : <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/20 font-bold">{initials}</div>}<div className="min-w-0"><p className="truncate text-lg font-bold">{branding.agency_name || 'Your Agency'}</p><p className="truncate text-xs text-white/75">{branding.tagline || 'Client portal'}</p></div></div>
+                <div className="flex items-center gap-3"><span className="hidden text-sm text-white/80 sm:inline">{client.name || client.email}</span><button onClick={logout} className="rounded-lg border border-white/25 bg-white/10 px-3 py-2 text-sm font-semibold hover:bg-white/20">Log out</button></div>
+            </div>
+        </header>
+        <main className="mx-auto max-w-7xl px-5 py-10">
+            <section className="overflow-hidden rounded-3xl border border-white/10 bg-white/[0.04] p-7 md:p-10"><p className="text-xs font-bold uppercase tracking-[0.22em]" style={{color:branding.accent_color}}>Client workspace</p><h1 className="mt-3 text-3xl font-bold md:text-4xl">{branding.portal_title}</h1><p className="mt-4 max-w-3xl text-slate-400">{branding.portal_welcome}</p></section>
+            <div className="mt-8 flex items-center justify-between"><div><h2 className="text-xl font-semibold">Your websites</h2><p className="mt-1 text-sm text-slate-500">Only projects assigned to your client account appear here.</p></div><span className="rounded-full border border-white/10 px-3 py-1 text-xs text-slate-400">{websites.length} assigned</span></div>
+            {websites.length === 0 ? <div className="mt-6 rounded-2xl border border-dashed border-white/15 p-10 text-center text-slate-500">No website has been assigned yet.</div> : <div className="mt-6 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{websites.map(site => <article key={site.id} className="rounded-2xl border border-white/10 bg-white/[0.04] p-5"><div className="flex items-start justify-between gap-4"><div className="min-w-0"><h3 className="truncate text-lg font-semibold">{site.name}</h3><p className="mt-1 truncate text-sm text-slate-500">{site.industry || 'Business website'}{site.location ? ` · ${site.location}` : ''}</p></div><span className={`rounded-full px-2.5 py-1 text-xs font-semibold ${site.status === 'Published' ? 'bg-emerald-400/10 text-emerald-300' : 'bg-amber-400/10 text-amber-300'}`}>{site.status}</span></div><div className="mt-5 grid grid-cols-2 gap-3 text-sm"><div className="rounded-xl bg-black/20 p-3"><p className="text-slate-500">Pages</p><p className="mt-1 font-semibold">{site.pages_count}</p></div><div className="rounded-xl bg-black/20 p-3"><p className="text-slate-500">Published</p><p className="mt-1 font-semibold">{site.published_pages_count}</p></div></div><p className="mt-4 truncate text-xs text-slate-600">{site.domain || `Updated ${site.updated_at}`}</p><Link href={site.preview_url} className="mt-5 inline-flex w-full items-center justify-center rounded-xl px-4 py-2.5 text-sm font-semibold text-white" style={{backgroundColor:branding.primary_color}}>Open secure preview</Link></article>)}</div>}
+            <footer className="mt-12 flex flex-col gap-2 border-t border-white/10 pt-6 text-xs text-slate-600 sm:flex-row sm:items-center sm:justify-between"><div>{branding.support_email && <span>{branding.support_email}</span>}{branding.website_url && <span className="ml-3">{branding.website_url}</span>}</div>{!branding.cosmic_branding_removed && <span>{branding.attribution_label || 'Built with Cosmic CMS'}</span>}</footer>
+        </main>
+    </div>;
+}

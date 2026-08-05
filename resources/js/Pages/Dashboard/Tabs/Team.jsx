@@ -104,7 +104,10 @@ export default function Team({ dashboard = {} }) {
     const removeMember = (member) => {
         if (window.confirm(`Remove ${member.name || member.email} from this workspace?`)) router.delete(route('workspace.members.destroy', member.id), { preserveScroll: true });
     };
-    const cancelInvitation = (invitation) => router.delete(route('workspace.invitations.destroy', invitation.id), { preserveScroll: true });
+    const resendInvitation = (invitation) => router.post(route('workspace.invitations.resend', invitation.id), {}, { preserveScroll: true });
+    const cancelInvitation = (invitation) => {
+        if (window.confirm(`Cancel the invitation for ${invitation.email}?`)) router.delete(route('workspace.invitations.destroy', invitation.id), { preserveScroll: true });
+    };
 
     if (!team.enabled) {
         return <section><p className="text-sm font-medium text-violet-300">Agency workspace</p><h1 className="mt-2 text-3xl font-semibold text-white">Roles & Permissions</h1><div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6"><h2 className="text-lg font-semibold text-white">Team collaboration is locked</h2><p className="mt-2 max-w-2xl text-sm text-slate-400">Growth Agency includes up to 3 team members. Pro Agency includes up to 10 members.</p><a href={route('cosmic-pricing.index')} className="mt-5 inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-950">View Agency plans</a></div></section>;
@@ -130,6 +133,7 @@ export default function Team({ dashboard = {} }) {
             </form>}
 
             <div className="mt-6 space-y-4">
+                {(team.members || []).length === 0 && <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center"><p className="font-medium text-white">No team members yet</p><p className="mt-2 text-sm text-slate-500">Invite an admin, editor, or client and assign their websites above.</p></div>}
                 {(team.members || []).map((member) => <div key={member.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                         <div className="flex min-w-0 flex-1 items-center gap-4"><Initials name={member.name} email={member.email} /><div className="min-w-0"><p className="truncate font-medium text-white">{member.name || member.email}</p><p className="truncate text-sm text-slate-500">{member.email}</p></div></div>
@@ -140,7 +144,7 @@ export default function Team({ dashboard = {} }) {
                 </div>)}
             </div>
 
-            {(team.invitations || []).length > 0 && <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"><div className="border-b border-white/10 px-5 py-4"><h2 className="font-semibold text-white">Pending invitations</h2></div><div className="divide-y divide-white/10">{team.invitations.map((invitation) => <div key={invitation.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"><Initials name={invitation.name} email={invitation.email} /><div className="min-w-0 flex-1"><p className="truncate font-medium text-white">{invitation.name || invitation.email}</p><p className="truncate text-sm text-slate-500">{invitation.email}</p><p className="mt-1 text-xs capitalize text-slate-600">{invitation.role} access · {(invitation.website_ids || []).length} website assignment(s)</p></div><span className="w-fit rounded-full bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-200">Pending</span>{team.is_owner && <button onClick={() => copyInvitation(invitation)} className="text-left text-sm text-violet-300 hover:text-violet-200">Copy invite link</button>}{team.is_owner && <button onClick={() => cancelInvitation(invitation)} className="text-left text-sm text-slate-400 hover:text-white">Cancel</button>}</div>)}</div></div>}
+            {(team.invitations || []).length > 0 && <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.03]"><div className="border-b border-white/10 px-5 py-4"><h2 className="font-semibold text-white">Pending invitations</h2></div><div className="divide-y divide-white/10">{team.invitations.map((invitation) => <div key={invitation.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center"><Initials name={invitation.name} email={invitation.email} /><div className="min-w-0 flex-1"><p className="truncate font-medium text-white">{invitation.name || invitation.email}</p><p className="truncate text-sm text-slate-500">{invitation.email}</p><p className="mt-1 text-xs capitalize text-slate-600">{invitation.role} access · {(invitation.website_ids || []).length} website assignment(s)</p></div><span className="w-fit rounded-full bg-amber-400/10 px-3 py-1 text-xs font-medium text-amber-200">Pending</span>{team.is_owner && <button onClick={() => copyInvitation(invitation)} className="text-left text-sm text-violet-300 hover:text-violet-200">Copy invite link</button>}{team.is_owner && <button onClick={() => resendInvitation(invitation)} className="text-left text-sm text-emerald-300 hover:text-emerald-200">Refresh 7 days</button>}{team.is_owner && <button onClick={() => cancelInvitation(invitation)} className="text-left text-sm text-slate-400 hover:text-white">Cancel</button>}</div>)}</div></div>}
 
             <div className="mt-6 grid gap-4 lg:grid-cols-2">{(team.roles || []).map((role) => <div key={role.key} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5"><PermissionPreview role={role} /></div>)}</div>
         </section>

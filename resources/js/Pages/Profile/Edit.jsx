@@ -3,6 +3,7 @@ import { Head, usePage } from '@inertiajs/react';
 import DeleteUserForm from './Partials/DeleteUserForm';
 import UpdatePasswordForm from './Partials/UpdatePasswordForm';
 import UpdateProfileInformationForm from './Partials/UpdateProfileInformationForm';
+import NotificationPreferencesForm from './Partials/NotificationPreferencesForm';
 
 const formatDate = (value, timezone = 'Asia/Manila') => {
     if (!value) return 'Not available';
@@ -14,7 +15,7 @@ const formatDate = (value, timezone = 'Asia/Manila') => {
     }).format(new Date(value));
 };
 
-export default function Edit({ mustVerifyEmail, status, profileSummary }) {
+export default function Edit({ mustVerifyEmail, status, profileSummary, notificationPreferences }) {
     const user = usePage().props.auth.user;
     const initials = user.name
         .split(' ')
@@ -98,6 +99,10 @@ export default function Edit({ mustVerifyEmail, status, profileSummary }) {
                             avatarUrl={profileSummary.avatar_url}
                             className="max-w-2xl"
                         />
+                    </div>
+
+                    <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">
+                        <NotificationPreferencesForm preferences={notificationPreferences} />
                     </div>
 
                     <div className="bg-white p-4 shadow sm:rounded-lg sm:p-8">

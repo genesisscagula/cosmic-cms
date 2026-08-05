@@ -9,9 +9,10 @@ use App\Services\PagePublisher;
 use App\Http\Controllers\ContactSubmissionController;
 use App\Http\Controllers\AnalyticsEventController;
 
-Route::post('/v1/websites/{website}/analytics', [AnalyticsEventController::class, 'store'])->middleware('throttle:240,1')->name('api.websites.analytics.store');
+Route::post('/v1/websites/{website}/analytics', [AnalyticsEventController::class, 'store'])->middleware(['throttle:240,1', \App\Http\Middleware\RejectOversizedRequest::class . ':64'])->name('api.websites.analytics.store');
 
 Route::post('/v1/websites/{website}/contact-submissions', [ContactSubmissionController::class, 'storeFromConnector'])
+    ->middleware(['throttle:cosmic-contact', \App\Http\Middleware\RejectOversizedRequest::class . ':128'])
     ->name('api.websites.contact-submissions.store');
 
 if (! function_exists('cosmicWebsiteForBridge')) {
@@ -57,7 +58,7 @@ Route::get('/v1/sync', function (Request $request) {
                 'blocks' => $page->published_blocks ?? $page->blocks,
             ]),
     ]);
-});
+})->middleware('throttle:120,1');
 
 // Static-site bridge: only exposes content from a successful publication.
 Route::get('/v1/published-package', function (Request $request) {
@@ -68,7 +69,7 @@ Route::get('/v1/published-package', function (Request $request) {
     }
 
     return response()->json(app(PagePublisher::class)->publishedPackage($website));
-});
-Route::post('/payments/webhooks/paypal', [PaymentWebhookController::class, 'paypal'])->middleware('throttle:120,1');
+})->middleware('throttle:120,1');
+Route::post('/payments/webhooks/paypal', [PaymentWebhookController::class, 'paypal'])->middleware(['throttle:120,1', \App\Http\Middleware\RejectOversizedRequest::class . ':512']);
 Route::post('/payments/webhooks/stripe', [PaymentWebhookController::class, 'stripe'])->middleware('throttle:120,1');
-Route::post('/payments/webhooks/paymongo', [PaymentWebhookController::class, 'paymongo'])->middleware('throttle:120,1');
+Route::post('/payments/webhooks/paymongo', [PaymentWebhookController::class, 'paymongo'])->middleware(['throttle:120,1', \App\Http\Middleware\RejectOversizedRequest::class . ':512']);

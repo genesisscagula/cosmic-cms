@@ -2,13 +2,12 @@
 
 namespace App\Services;
 
-use App\Mail\BillingReceiptMail;
+use App\Jobs\SendBillingReceiptJob;
 use App\Models\BillingTransaction;
 use App\Models\CreditTransaction;
 use App\Models\PaymentOrder;
 use App\Support\SubscriptionStatus;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use RuntimeException;
 
 class PaymentFulfillmentService
@@ -295,13 +294,7 @@ class PaymentFulfillmentService
         );
 
         if ($transaction->wasRecentlyCreated && $status === 'completed') {
-            DB::afterCommit(function () use ($transaction): void {
-                try {
-                    Mail::to($transaction->user->email)->send(new BillingReceiptMail($transaction->load(['user', 'paymentOrder'])));
-                } catch (\Throwable $exception) {
-                    report($exception);
-                }
-            });
+            SendBillingReceiptJob::dispatch($transaction->id);
         }
 
         return $transaction;
