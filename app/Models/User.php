@@ -43,6 +43,7 @@ class User extends Authenticatable
         'industry',
         'timezone',
         'locale',
+        'appearance_preference',
         'profile_settings',
         'notification_preferences',
         'profile_completed_at',

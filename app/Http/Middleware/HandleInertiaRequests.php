@@ -50,6 +50,7 @@ class HandleInertiaRequests extends Middleware
                 'plan' => $planEntitlements,
                 'planCapabilities' => $user ? app(CapabilityEngine::class)->forClient($user) : null,
                 'planChangeMatrix' => $user ? app(PlanEntitlementService::class)->changeMatrix($user->plan_key) : [],
+                'appearance' => $user?->appearance_preference ?? 'light',
             ],
             'cosmicPlans' => fn () => app(PlanRegistry::class)->forClient(),
             'cosmicSparks' => fn () => SparkCatalog::forClient(),

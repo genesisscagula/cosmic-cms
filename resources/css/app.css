@@ -122,3 +122,77 @@
 @layer components {
   .input { @apply w-full rounded-xl border border-white/10 bg-black/20 px-3.5 py-2.5 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400/60 disabled:cursor-not-allowed disabled:opacity-50; }
 }
+
+/* Patch 15.1 Hotfix V4 — shared light-green guest/auth surface. */
+.cosmic-guest-light .bg-\[\#0f1013\],
+.cosmic-guest-light .bg-black\/20,
+.cosmic-guest-light .bg-black\/25,
+.cosmic-guest-light .bg-white\/5 { background-color: #ffffff !important; }
+.cosmic-guest-light .border-slate-700,
+.cosmic-guest-light .border-white\/10,
+.cosmic-guest-light .border-white\/15 { border-color: #dbe7df !important; }
+.cosmic-guest-light .text-white,
+.cosmic-guest-light .text-slate-100,
+.cosmic-guest-light .text-slate-200 { color: #0f172a !important; }
+.cosmic-guest-light .text-slate-300,
+.cosmic-guest-light .text-slate-400 { color: #475569 !important; }
+.cosmic-guest-light .text-slate-500 { color: #64748b !important; }
+.cosmic-guest-light .text-emerald-200,
+.cosmic-guest-light .text-emerald-300 { color: #047857 !important; }
+.cosmic-guest-light .text-rose-300 { color: #be123c !important; }
+.cosmic-guest-light input,
+.cosmic-guest-light select,
+.cosmic-guest-light textarea { color: #0f172a !important; background-color: #fff !important; border-color: #cbd5e1 !important; }
+.cosmic-guest-light input::placeholder,
+.cosmic-guest-light textarea::placeholder { color: #94a3b8 !important; }
+.cosmic-guest-light input:focus,
+.cosmic-guest-light select:focus,
+.cosmic-guest-light textarea:focus { border-color: #10b981 !important; --tw-ring-color: rgba(16,185,129,.28) !important; }
+.cosmic-guest-light button[type="submit"] { background-image: none !important; background-color: #047857 !important; color: #fff !important; box-shadow: 0 10px 24px rgba(4,120,87,.16) !important; }
+.cosmic-guest-light button[type="submit"]:hover { background-color: #065f46 !important; }
+
+/* Patch 15.2 — Global Appearance Engine */
+:root,
+:root[data-theme="light"] {
+    --cosmic-bg: #f7faf8;
+    --cosmic-surface: #ffffff;
+    --cosmic-surface-muted: #f0f7f3;
+    --cosmic-surface-raised: #ffffff;
+    --cosmic-text: #0f172a;
+    --cosmic-text-muted: #64748b;
+    --cosmic-border: #dce8e1;
+    --cosmic-primary: #047857;
+    --cosmic-primary-hover: #065f46;
+    --cosmic-accent: #10b981;
+    --cosmic-shadow: 0 18px 45px rgba(15, 23, 42, 0.08);
+}
+
+:root[data-theme="dark"] {
+    --cosmic-bg: #0a0a0b;
+    --cosmic-surface: #111113;
+    --cosmic-surface-muted: #17171a;
+    --cosmic-surface-raised: #1c1c20;
+    --cosmic-text: #f8fafc;
+    --cosmic-text-muted: #94a3b8;
+    --cosmic-border: rgba(255, 255, 255, 0.1);
+    --cosmic-primary: #8b5cf6;
+    --cosmic-primary-hover: #7c3aed;
+    --cosmic-accent: #34d399;
+    --cosmic-shadow: 0 18px 45px rgba(0, 0, 0, 0.28);
+}
+
+html { background: var(--cosmic-bg); }
+body { background: var(--cosmic-bg); color: var(--cosmic-text); }
+.cosmic-app-shell { background: var(--cosmic-bg); color: var(--cosmic-text); transition: background-color .2s ease, color .2s ease; }
+.cosmic-theme-surface { background: var(--cosmic-surface); border-color: var(--cosmic-border); color: var(--cosmic-text); }
+.cosmic-theme-muted { color: var(--cosmic-text-muted); }
+
+.cosmic-appearance-button {
+    display: inline-flex; height: 2.5rem; width: 2.5rem; align-items: center; justify-content: center;
+    border: 1px solid var(--cosmic-border); border-radius: .85rem; background: var(--cosmic-surface);
+    color: var(--cosmic-text); box-shadow: var(--cosmic-shadow); transition: transform .15s ease, background .2s ease;
+}
+.cosmic-appearance-button:hover { transform: translateY(-1px); background: var(--cosmic-surface-muted); }
+.cosmic-appearance-segment { display: inline-flex; gap: .25rem; padding: .25rem; border: 1px solid var(--cosmic-border); border-radius: .9rem; background: var(--cosmic-surface-muted); }
+.cosmic-appearance-segment button { display: inline-flex; align-items: center; gap: .4rem; border-radius: .7rem; padding: .55rem .8rem; color: var(--cosmic-text-muted); font-size: .8rem; font-weight: 600; }
+.cosmic-appearance-segment button.is-active { background: var(--cosmic-surface); color: var(--cosmic-text); box-shadow: 0 4px 14px rgba(15,23,42,.08); }

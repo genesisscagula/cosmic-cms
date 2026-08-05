@@ -168,7 +168,7 @@ export default function Pricing() {
                         </Link>
                         <div className="flex items-center gap-2 sm:gap-3">
                             <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:px-4">Log in</Link>
-                            <Link href="/register" className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 sm:px-5">Get started</Link>
+                            <Link href="/register?plan=growth" className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 sm:px-5">Get started</Link>
                         </div>
                     </div>
                 </header>

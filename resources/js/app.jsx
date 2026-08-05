@@ -7,6 +7,7 @@ import { createRoot } from 'react-dom/client';
 import CosmicNotification from './Components/CosmicNotification';
 import CookieConsent from './Components/CookieConsent';
 import { CreditBalanceProvider } from './Components/CosmicCredits/CreditBalanceContext';
+import { AppearanceProvider } from './Appearance/AppearanceContext';
 
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
@@ -29,6 +30,7 @@ createInertiaApp({
             null;
 
         root.render(
+            <AppearanceProvider>
             <CreditBalanceProvider
                 authenticated={authenticated}
                 initialBalance={initialBalance}
@@ -36,7 +38,8 @@ createInertiaApp({
                 <App {...props} />
                 <CosmicNotification />
                 <CookieConsent />
-            </CreditBalanceProvider>,
+            </CreditBalanceProvider>
+            </AppearanceProvider>,
         );
     },
     progress: {

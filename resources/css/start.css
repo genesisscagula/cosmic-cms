@@ -17,3 +17,45 @@
         animation: none;
     }
 }
+
+/* Patch 15.1 Hotfix V4 — light-green Start page skin. */
+.cosmic-start-light {
+    background:
+        radial-gradient(circle at 22% 8%, rgba(167, 243, 208, .50), transparent 30%),
+        radial-gradient(circle at 86% 18%, rgba(217, 249, 157, .34), transparent 28%),
+        linear-gradient(180deg, #fbfffc 0%, #f2fbf5 55%, #ffffff 100%) !important;
+    color: #0f172a !important;
+}
+.cosmic-start-light .bg-\[\#13151a\],
+.cosmic-start-light .bg-\[\#13151d\],
+.cosmic-start-light .bg-\[\#15151a\]\/95,
+.cosmic-start-light .bg-\[\#151519\]\/95,
+.cosmic-start-light .bg-\[\#17171d\],
+.cosmic-start-light .bg-black\/20,
+.cosmic-start-light .bg-black\/25,
+.cosmic-start-light .bg-white\/5,
+.cosmic-start-light .bg-white\/\[0\.02\] { background-color: rgba(255,255,255,.94) !important; }
+.cosmic-start-light .border-white\/10,
+.cosmic-start-light .border-white\/15,
+.cosmic-start-light .border-white\/25 { border-color: #dbe7df !important; }
+.cosmic-start-light .text-white,
+.cosmic-start-light .text-slate-100,
+.cosmic-start-light .text-slate-200 { color: #0f172a !important; }
+.cosmic-start-light .text-slate-300,
+.cosmic-start-light .text-slate-400 { color: #475569 !important; }
+.cosmic-start-light .text-slate-500 { color: #64748b !important; }
+.cosmic-start-light .text-violet-200,
+.cosmic-start-light .text-violet-300,
+.cosmic-start-light .text-emerald-300 { color: #047857 !important; }
+.cosmic-start-light textarea,
+.cosmic-start-light input,
+.cosmic-start-light select { background: #fff !important; color: #0f172a !important; border-color: #cbd5e1 !important; }
+.cosmic-start-light textarea::placeholder,
+.cosmic-start-light input::placeholder { color: #94a3b8 !important; }
+.cosmic-start-light .shadow-black\/60,
+.cosmic-start-light .shadow-black\/20,
+.cosmic-start-light .shadow-cyan-950\/30,
+.cosmic-start-light .shadow-cyan-950\/50,
+.cosmic-start-light .shadow-violet-950\/20,
+.cosmic-start-light .shadow-violet-950\/40,
+.cosmic-start-light .shadow-violet-950\/50 { --tw-shadow-color: rgba(15,23,42,.12) !important; }

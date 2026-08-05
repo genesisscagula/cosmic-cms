@@ -28,6 +28,7 @@ use App\Http\Controllers\BrandedPreviewLinkController;
 use App\Http\Controllers\AgencyReportController;
 use App\Http\Controllers\AgencyPortalController;
 use App\Http\Controllers\LegalController;
+use App\Http\Controllers\AppearancePreferenceController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -85,6 +86,9 @@ Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder']
 
 Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
+    Route::patch('/appearance', [AppearancePreferenceController::class, 'update'])
+        ->middleware('throttle:30,1')
+        ->name('appearance.update');
     Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
     Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
     Route::get('/credits/balance', [CreditController::class, 'balance'])->name('credits.balance');

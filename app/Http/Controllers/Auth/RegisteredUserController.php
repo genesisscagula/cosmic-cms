@@ -24,9 +24,10 @@ use Inertia\Response;
 
 class RegisteredUserController extends Controller
 {
-    public function create(Request $request): Response
+    public function create(Request $request): Response|RedirectResponse
     {
         $trial = null;
+        $validPlans = ['starter', 'growth', 'pro', 'agency_starter', 'agency_growth', 'agency_pro'];
 
         if ($request->filled('trial')) {
             $trial = TrialGeneration::query()
@@ -36,10 +37,16 @@ class RegisteredUserController extends Controller
                 ->first();
         }
 
+        $selectedPlan = $trial?->selected_plan ?: $request->string('plan')->toString();
+
+        if (! in_array($selectedPlan, $validPlans, true)) {
+            return redirect()->route('pricing');
+        }
+
         return Inertia::render('Auth/Register', [
             'trialToken' => $trial?->token,
             'trialEmail' => $trial?->email,
-            'trialPlan' => $trial?->selected_plan,
+            'trialPlan' => $selectedPlan,
         ]);
     }
 
@@ -55,7 +62,7 @@ class RegisteredUserController extends Controller
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
             'trial_token' => ['nullable', 'uuid'],
-            'selected_plan' => ['required', Rule::in(['starter', 'growth', 'pro'])],
+            'selected_plan' => ['required', Rule::in(['starter', 'growth', 'pro', 'agency_starter', 'agency_growth', 'agency_pro'])],
             'website_name' => ['required', 'string', 'max:255'],
             'website_url' => [
                 'required',

@@ -294,7 +294,7 @@ export default function Start({ trial }) {
         <>
             <Head title="Start building with Cosmic CMS" />
 
-            <main className="cosmic-start relative min-h-screen overflow-hidden bg-[#09090b] text-white">
+            <main className="cosmic-start cosmic-start-light relative min-h-screen overflow-hidden bg-[#fbfffc] text-slate-900">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(circle_at_50%_-10%,rgba(124,58,237,0.25),transparent_48%),radial-gradient(circle_at_78%_12%,rgba(16,185,129,0.15),transparent_32%)]" />
 
                 <section className="relative mx-auto flex min-h-screen w-full max-w-[1440px] items-center justify-center px-5 py-10 sm:px-8 sm:py-16">
