@@ -42,6 +42,9 @@ class BlockPricingRegistry
             // Signature Collection.
             'hero_split_editorial' => ['label' => 'Hero Split Editorial', 'category' => 'signature', 'credits' => 60],
             'hero_floating_glass' => ['label' => 'Floating Glass Hero', 'category' => 'signature', 'credits' => 70],
+            'hero_saas_dashboard' => ['label' => 'SaaS Dashboard Hero', 'category' => 'signature', 'credits' => 75],
+            'hero_luxury_fullscreen' => ['label' => 'Luxury Fullscreen Hero', 'category' => 'signature', 'credits' => 80],
+            'hero_video_premium' => ['label' => 'Video Hero Premium', 'category' => 'signature', 'credits' => 85],
             'hero_parallax' => ['label' => 'Hero Parallax', 'category' => 'signature', 'credits' => 100],
             'hero_video_style' => ['label' => 'Video Style Hero', 'category' => 'signature', 'credits' => 50],
             'hero_video_background' => ['label' => 'Video Background Hero', 'category' => 'signature', 'credits' => 50],

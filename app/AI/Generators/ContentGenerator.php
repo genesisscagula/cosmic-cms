@@ -749,6 +749,39 @@ PROMPT;
     TXT;
     }
 
+    private function heroVideoPremiumSchema(): string
+    {
+        return <<<TXT
+
+    hero_video_premium
+
+    - type = hero_video_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - media_badge
+    - scroll_label
+    - video_url = "/storage/cms-videos/hero-placeholder.mp4"
+    - poster_image_url = ""
+
+    Requirements:
+
+    - Write cinematic but concise copy for a premium motion-led homepage hero.
+    - Heading should be memorable and confident without unsupported superlatives.
+    - Keep media_badge and scroll_label short.
+    - Keep both calls to action clear and useful.
+    - Do not use markdown or placeholder copy.
+    - Keep video_url on the provided placeholder unless an existing approved asset is supplied.
+    - poster_image_url must remain empty so the existing image-selection flow can provide the poster image.
+
+    TXT;
+    }
+
     private function imageCtaBannerSchema(): string
     {
         return <<<TXT
@@ -1095,6 +1128,48 @@ PROMPT;
     - Do not imply that roles are currently open unless the owner confirms it; use broadly editable starter roles.
     - type and location must remain concise and should use flexible wording such as Full-time, Hybrid, Remote, or By arrangement when details are unavailable.
     - button_label must be a short action such as View role or Learn more.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+    private function heroSaasDashboardSchema(): string
+    {
+        return <<<TXT
+
+    hero_saas_dashboard
+
+    - type = hero_saas_dashboard
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - dashboard_title
+    - dashboard_subtitle
+    - metric_one_value
+    - metric_one_label
+    - metric_two_value
+    - metric_two_label
+    - metric_three_value
+    - metric_three_label
+    - chart_label
+    - logo_one
+    - logo_two
+    - logo_three
+    - logo_four
+
+    Requirements:
+
+    - Write concise product-led copy for a premium SaaS, AI, fintech, productivity, or technology homepage.
+    - Make the heading outcome-focused and credible, not hype-heavy.
+    - Dashboard labels should describe useful product activity without inventing customer data.
+    - Metrics must be broadly editable starter values; avoid claims presented as verified facts.
+    - Logo names must be fictional neutral placeholders, never real customer claims.
+    - Keep CTA labels short and product-oriented.
     - Do not use markdown or placeholder copy.
 
     TXT;

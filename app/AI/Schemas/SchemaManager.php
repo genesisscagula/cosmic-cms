@@ -28,6 +28,9 @@ class SchemaManager
 
             'hero_split_editorial' => 'heroSplitEditorialSchema',
             'hero_floating_glass' => 'heroFloatingGlassSchema',
+            'hero_saas_dashboard' => 'heroSaasDashboardSchema',
+            'hero_luxury_fullscreen' => 'heroLuxuryFullscreenSchema',
+            'hero_video_premium' => 'heroVideoPremiumSchema',
 
             'image_cta_banner' => 'imageCtaBannerSchema',
 

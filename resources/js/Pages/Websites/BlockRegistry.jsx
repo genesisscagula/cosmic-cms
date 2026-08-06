@@ -78,6 +78,9 @@ import {
     HeroSplitImageSchema
 } from "./Blocks/Hero/HeroSplitImageBlock";
 
+import { HeroLuxuryFullscreenBlock, HeroLuxuryFullscreenSchema } from "./Blocks/Hero/HeroLuxuryFullscreenBlock";
+import { HeroVideoPremiumBlock, HeroVideoPremiumSchema } from "./Blocks/Hero/HeroVideoPremiumBlock";
+
 import {
     HeroSplitEditorialBlock,
     HeroSplitEditorialSchema
@@ -87,6 +90,11 @@ import {
     HeroFloatingGlassBlock,
     HeroFloatingGlassSchema
 } from "./Blocks/Hero/HeroFloatingGlassBlock";
+
+import {
+    HeroSaasDashboardBlock,
+    HeroSaasDashboardSchema
+} from "./Blocks/Hero/HeroSaasDashboardBlock";
 
 import {
     ImageCtaBannerBlock,
@@ -212,6 +220,17 @@ export const BlockRegistry = {
         schema: HeroFloatingGlassSchema
 
     },
+
+    hero_saas_dashboard: {
+
+        component: HeroSaasDashboardBlock,
+
+        schema: HeroSaasDashboardSchema
+
+    },
+
+    hero_luxury_fullscreen: { component: HeroLuxuryFullscreenBlock, schema: HeroLuxuryFullscreenSchema },
+    hero_video_premium: { component: HeroVideoPremiumBlock, schema: HeroVideoPremiumSchema },
 
     image_cta_banner: {
 

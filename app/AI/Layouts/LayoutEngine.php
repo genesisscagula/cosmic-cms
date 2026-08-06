@@ -189,8 +189,16 @@ class LayoutEngine
     {
         // A video request is an explicit visual requirement, not a random variation.
         // Keep the rest of the selection deterministic and lightweight in PHP.
+        if ($category === 'hero' && $prompt !== null && preg_match('/\b(premium video|cinematic video|video hero premium|luxury video|background motion|motion hero)\b/i', $prompt) === 1) {
+            return 'hero_video_premium';
+        }
+
         if ($category === 'hero' && self::wantsVideo($prompt)) {
             return 'hero_video_background';
+        }
+
+        if ($category === 'hero' && $prompt !== null && preg_match('/\b(luxury|luxurious|high[- ]end|exclusive|boutique|resort|hotel|fashion|jewelry|architecture|automotive|private edition)\b/i', $prompt) === 1) {
+            return 'hero_luxury_fullscreen';
         }
 
         if ($category === 'hero' && self::wantsEditorial($prompt)) {
@@ -201,6 +209,10 @@ class LayoutEngine
             return 'hero_floating_glass';
         }
 
+        if ($category === 'hero' && $prompt !== null && preg_match('/\b(saas|software|dashboard|platform|app|product-led|fintech|productivity)\b/i', $prompt) === 1) {
+            return 'hero_saas_dashboard';
+        }
+
         $sections = [
             'hero' => [
                 'hero_headline',
@@ -209,6 +221,9 @@ class LayoutEngine
                 'hero_split_image',
                 'hero_split_editorial',
                 'hero_floating_glass',
+                'hero_saas_dashboard',
+                'hero_luxury_fullscreen',
+                'hero_video_premium',
                 'hero_video_background',
                 'hero_floating_cards',
             ],

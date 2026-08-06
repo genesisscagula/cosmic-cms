@@ -18,6 +18,9 @@ class SparkCompatibilityChecker
         'hero_split_image',
         'hero_split_editorial',
         'hero_floating_glass',
+        'hero_saas_dashboard',
+        'hero_luxury_fullscreen',
+        'hero_video_premium',
     ];
 
     private const CTA = ['hero_centered_cta', 'image_cta_banner'];
@@ -93,7 +96,7 @@ class SparkCompatibilityChecker
         $wantsParallax = preg_match('/\bparallax\b/i', $prompt) === 1;
 
         return array_values(array_filter($sections, function (string $section) use ($wantsVideo, $wantsParallax, &$changes): bool {
-            if (in_array($section, ['hero_video_background', 'hero_video_style'], true) && ! $wantsVideo) {
+            if (in_array($section, ['hero_video_background', 'hero_video_style', 'hero_video_premium'], true) && ! $wantsVideo) {
                 $changes[] = 'removed_unrequested_video_hero';
                 return false;
             }

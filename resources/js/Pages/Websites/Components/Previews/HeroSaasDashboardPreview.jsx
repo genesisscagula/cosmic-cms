@@ -1,0 +1,3 @@
+export default function HeroSaasDashboardPreview(){
+  return <div className="h-full w-full bg-slate-950 p-3 text-white"><div className="mx-auto mt-1 h-2 w-16 rounded bg-emerald-400/70"/><div className="mx-auto mt-2 h-3 w-3/4 rounded bg-white/90"/><div className="mx-auto mt-2 h-1.5 w-1/2 rounded bg-white/30"/><div className="mt-4 rounded-lg border border-white/10 bg-white/5 p-2"><div className="grid grid-cols-3 gap-1">{[1,2,3].map(i=><div key={i} className="h-7 rounded bg-white/10"/>)}</div><div className="mt-2 flex h-14 items-end gap-1">{[30,45,38,62,54,78,66,90].map((h,i)=><span key={i} className="flex-1 rounded-t bg-emerald-400/70" style={{height:`${h}%`}}/>)}</div></div></div>
+}

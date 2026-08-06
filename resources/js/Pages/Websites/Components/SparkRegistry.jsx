@@ -27,6 +27,9 @@ import HeroEditorialOverlayPreview from "./Previews/HeroEditorialOverlayPreview"
 import HeroSplitImagePreview from "./Previews/HeroSplitImagePreview";
 import HeroSplitEditorialPreview from "./Previews/HeroSplitEditorialPreview";
 import HeroFloatingGlassPreview from "./Previews/HeroFloatingGlassPreview";
+import HeroSaasDashboardPreview from "./Previews/HeroSaasDashboardPreview";
+import HeroLuxuryFullscreenPreview from "./Previews/HeroLuxuryFullscreenPreview";
+import HeroVideoPremiumPreview from "./Previews/HeroVideoPremiumPreview";
 import ImageCtaBannerPreview from "./Previews/ImageCtaBannerPreview";
 import HeroFloatingCardsPreview from "./Previews/HeroFloatingCardsPreview";
 import HeroVideoStylePreview from "./Previews/HeroVideoStylePreview";
@@ -465,6 +468,35 @@ export const BlockRegistry = [
             metric_value: "3.2x", metric_label: "Faster path to launch", badge_one: "Strategy-led", badge_two: "Conversion-ready",
             image_url: "/storage/cms-images/background/background-1.avif",
         },
+    },
+
+    {
+        type: "hero_saas_dashboard",
+        theme: "auto",
+        title: "SaaS Dashboard Hero",
+        buttonLabel: "Add SaaS Hero",
+        buttonClass: "bg-emerald-600 hover:bg-emerald-500",
+        preview: HeroSaasDashboardPreview,
+        payload: {
+            type: "hero_saas_dashboard", theme: "auto", eyebrow: "THE OPERATING SYSTEM FOR GROWTH",
+            heading: "Turn your workflow into a clear, measurable advantage.",
+            text: "Bring projects, performance, and customer momentum into one focused workspace built for modern teams.",
+            primary_label: "Start building", primary_url: "#", secondary_label: "View product tour", secondary_url: "#",
+            dashboard_title: "Workspace overview", dashboard_subtitle: "Live performance across your team",
+            metric_one_value: "42%", metric_one_label: "Faster delivery", metric_two_value: "18.4k", metric_two_label: "Monthly actions",
+            metric_three_value: "99.9%", metric_three_label: "Platform uptime", chart_label: "Growth this quarter",
+            logo_one: "NORTHSTAR", logo_two: "ARC LABS", logo_three: "SCALEWORKS", logo_four: "FOUNDRY",
+        },
+    },
+
+    {
+        type: "hero_luxury_fullscreen", theme: "auto", title: "Luxury Fullscreen Hero", buttonLabel: "Add Luxury Hero", buttonClass: "bg-emerald-600 hover:bg-emerald-500", preview: HeroLuxuryFullscreenPreview,
+        payload: { type: "hero_luxury_fullscreen", theme: "auto", eyebrow: "THE ART OF ARRIVAL", heading: "Quiet confidence, made unforgettable.", text: "A refined opening statement for brands defined by craft, place, and exceptional attention to detail.", primary_label: "Discover the collection", primary_url: "#", secondary_label: "Our story", secondary_url: "#", location_label: "Crafted in exceptional detail", edition_label: "Private Edition 01", image_url: "/storage/cms-images/background/background-1.avif" },
+    },
+
+    {
+        type: "hero_video_premium", theme: "auto", title: "Video Hero Premium", buttonLabel: "Add Premium Video Hero", buttonClass: "bg-emerald-600 hover:bg-emerald-500", preview: HeroVideoPremiumPreview,
+        payload: { type: "hero_video_premium", theme: "auto", eyebrow: "A STORY IN MOTION", heading: "Make the first few seconds impossible to forget.", text: "Use cinematic movement, focused copy, and one clear next step to introduce your brand with confidence.", primary_label: "Start the experience", primary_url: "#", secondary_label: "Watch the story", secondary_url: "#", media_badge: "Cinematic brand experience", scroll_label: "Scroll to explore", video_url: "/storage/cms-videos/hero-placeholder.mp4", poster_image_url: "/storage/cms-images/background/background-1.avif" },
     },
 
     {

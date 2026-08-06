@@ -2025,6 +2025,128 @@ HTML;
 
                 break;
 
+                case 'hero_video_premium':
+
+                $eyebrow = e($block['eyebrow'] ?? 'A STORY IN MOTION');
+                $heading = e($block['heading'] ?? 'Make the first few seconds impossible to forget.');
+                $text = e($block['text'] ?? 'Use cinematic movement, focused copy, and one clear next step to introduce your brand with confidence.');
+                $primaryLabel = e($block['primary_label'] ?? 'Start the experience');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'Watch the story');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $mediaBadge = e($block['media_badge'] ?? 'Cinematic brand experience');
+                $scrollLabel = e($block['scroll_label'] ?? 'Scroll to explore');
+                $videoUrl = e(self::staticAssetUrl($block['video_url'] ?? '/storage/cms-videos/hero-placeholder.mp4'));
+                $posterUrl = e(self::staticAssetUrl($block['poster_image_url'] ?? ''));
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $posterAttr = $posterUrl ? " poster='{$posterUrl}'" : '';
+
+                $html .= "
+                <section class='relative min-h-[84vh] overflow-hidden {$theme['bg']}'>
+                    <video class='absolute inset-0 h-full w-full object-cover' autoplay muted loop playsinline{$posterAttr}><source src='{$videoUrl}' type='video/mp4'></video>
+                    <div class='absolute inset-0 bg-gradient-to-r from-slate-950/88 via-slate-950/58 to-slate-950/18'></div>
+                    <div class='absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/25'></div>
+                    <div class='relative mx-auto flex min-h-[84vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12'>
+                        <div class='flex items-center justify-between border-b border-white/25 pb-5 text-white'><span class='text-[11px] font-bold uppercase tracking-[.34em] text-white/80'>{$eyebrow}</span><span class='rounded-full border border-white/30 bg-white/10 px-4 py-2 text-[11px] font-semibold text-white'>{$mediaBadge}</span></div>
+                        <div class='max-w-4xl py-14 sm:py-20 lg:py-24'>
+                            <h1 class='max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.05em] text-white sm:text-7xl lg:text-[6.6rem]'>{$heading}</h1>
+                            <p class='mt-7 max-w-2xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8'>{$text}</p>
+                            <div class='mt-9 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/45 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a></div>
+                        </div>
+                        <div class='flex items-center justify-between border-t border-white/25 pt-5 text-white'><span class='text-xs font-semibold uppercase tracking-[.2em] text-white/75'>{$scrollLabel}</span><span class='flex h-10 w-6 items-start justify-center rounded-full border border-white/45 p-1'><span class='h-2 w-1 rounded-full bg-white'></span></span></div>
+                    </div>
+                </section>";
+
+                break;
+
+                case 'hero_luxury_fullscreen':
+
+                $eyebrow = e($block['eyebrow'] ?? 'THE ART OF ARRIVAL');
+                $heading = e($block['heading'] ?? 'Quiet confidence, made unforgettable.');
+                $text = e($block['text'] ?? 'A refined opening statement for brands defined by craft, place, and exceptional attention to detail.');
+                $primaryLabel = e($block['primary_label'] ?? 'Discover the collection');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'Our story');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $locationLabel = e($block['location_label'] ?? 'Crafted in exceptional detail');
+                $editionLabel = e($block['edition_label'] ?? 'Private Edition 01');
+                $imageUrl = e(self::staticAssetUrl($block['image_url'] ?? ''));
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $imageStyle = $imageUrl ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;" : '';
+
+                $html .= "
+                <section class='relative min-h-[82vh] overflow-hidden {$theme['bg']}' style=\"{$imageStyle}\">
+                    <div class='absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/48 to-slate-950/12'></div>
+                    <div class='absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20'></div>
+                    <div class='relative mx-auto flex min-h-[82vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12'>
+                        <div class='flex items-center justify-between border-b border-white/25 pb-5 text-white'><span class='text-[11px] font-bold uppercase tracking-[.34em] text-white/80'>{$eyebrow}</span><span class='text-xs font-medium text-white/70'>{$editionLabel}</span></div>
+                        <div class='max-w-5xl py-14 sm:py-20 lg:py-24'>
+                            <h1 class='max-w-5xl text-5xl font-medium leading-[.92] tracking-[-.055em] text-white sm:text-7xl lg:text-[7.2rem]'>{$heading}</h1>
+                            <p class='mt-7 max-w-xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8'>{$text}</p>
+                            <div class='mt-9 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/45 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a></div>
+                        </div>
+                        <div class='flex items-end justify-between border-t border-white/25 pt-5 text-white'><span class='text-xs font-semibold uppercase tracking-[.2em] text-white/75'>{$locationLabel}</span><span class='h-10 w-px bg-white/35'></span></div>
+                    </div>
+                </section>";
+
+                break;
+
+                case 'hero_saas_dashboard':
+
+                $eyebrow = e($block['eyebrow'] ?? 'THE OPERATING SYSTEM FOR GROWTH');
+                $heading = e($block['heading'] ?? 'Turn your workflow into a clear, measurable advantage.');
+                $text = e($block['text'] ?? 'Bring projects, performance, and customer momentum into one focused workspace built for modern teams.');
+                $primaryLabel = e($block['primary_label'] ?? 'Start building');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'View product tour');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $dashboardTitle = e($block['dashboard_title'] ?? 'Workspace overview');
+                $dashboardSubtitle = e($block['dashboard_subtitle'] ?? 'Live performance across your team');
+                $metricOneValue = e($block['metric_one_value'] ?? '42%');
+                $metricOneLabel = e($block['metric_one_label'] ?? 'Faster delivery');
+                $metricTwoValue = e($block['metric_two_value'] ?? '18.4k');
+                $metricTwoLabel = e($block['metric_two_label'] ?? 'Monthly actions');
+                $metricThreeValue = e($block['metric_three_value'] ?? '99.9%');
+                $metricThreeLabel = e($block['metric_three_label'] ?? 'Platform uptime');
+                $chartLabel = e($block['chart_label'] ?? 'Growth this quarter');
+                $logos = array_map('e', [$block['logo_one'] ?? 'NORTHSTAR', $block['logo_two'] ?? 'ARC LABS', $block['logo_three'] ?? 'SCALEWORKS', $block['logo_four'] ?? 'FOUNDRY']);
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $metricCards = "<div class='rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-3xl font-semibold tracking-tight {$theme['text']}'>{$metricOneValue}</strong><span class='mt-2 block text-xs font-medium {$theme['sub']}'>{$metricOneLabel}</span></div><div class='rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-3xl font-semibold tracking-tight {$theme['text']}'>{$metricTwoValue}</strong><span class='mt-2 block text-xs font-medium {$theme['sub']}'>{$metricTwoLabel}</span></div><div class='rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-3xl font-semibold tracking-tight {$theme['text']}'>{$metricThreeValue}</strong><span class='mt-2 block text-xs font-medium {$theme['sub']}'>{$metricThreeLabel}</span></div>";
+                $bars = '';
+                foreach ([38,58,48,72,66,88,78,96,84,100] as $index => $height) { $opacity = 0.42 + ($index * 0.045); $bars .= "<span class='flex-1 rounded-t-lg {$primaryTheme['bg']}' style='height:{$height}%;opacity:{$opacity}'></span>"; }
+                $logoHtml = ''; foreach ($logos as $logo) { $logoHtml .= "<span class='text-xs font-bold tracking-[.16em] {$theme['sub']}'>{$logo}</span>"; }
+
+                $html .= "
+                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                    <div class='relative mx-auto max-w-7xl'>
+                        <div class='mx-auto max-w-4xl text-center'>
+                            <span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span>
+                            <h1 class='mt-5 text-5xl font-semibold leading-[.98] tracking-[-.05em] sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1>
+                            <p class='mx-auto mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p>
+                            <div class='mt-8 flex flex-col justify-center gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div>
+                        </div>
+                        <div class='mt-14 overflow-hidden rounded-[2rem] border shadow-2xl {$theme['border']}'>
+                            <div class='flex items-center justify-between border-b px-5 py-4 sm:px-7 {$theme['border']} {$theme['surface']}'><div><strong class='block text-sm {$theme['text']}'>{$dashboardTitle}</strong><span class='mt-1 block text-xs {$theme['sub']}'>{$dashboardSubtitle}</span></div><div class='flex gap-1.5'><span class='h-2.5 w-2.5 rounded-full bg-rose-400'></span><span class='h-2.5 w-2.5 rounded-full bg-amber-400'></span><span class='h-2.5 w-2.5 rounded-full bg-emerald-400'></span></div></div>
+                            <div class='grid lg:grid-cols-[240px_minmax(0,1fr)] {$theme['surface']}'><aside class='hidden border-r p-5 lg:block {$theme['border']}'><div class='rounded-xl px-3 py-2 text-xs font-semibold {$primaryTheme['soft']} {$primaryTheme['strongText']}'>Overview</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Projects</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Analytics</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Customers</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Automations</div></aside><div class='p-5 sm:p-7'><div class='grid gap-4 md:grid-cols-3'>{$metricCards}</div><div class='mt-4 rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-sm {$theme['text']}'>{$chartLabel}</strong><div class='mt-7 flex h-40 items-end gap-2 sm:gap-3'>{$bars}</div></div></div></div>
+                        </div>
+                        <div class='mt-8 border-t pt-7 text-center {$theme['border']}'><p class='text-[11px] font-bold uppercase tracking-[.26em] {$theme['sub']}'>Trusted by teams building what comes next</p><div class='mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4'>{$logoHtml}</div></div>
+                    </div>
+                </section>";
+
+                break;
+
                 case 'hero_floating_glass':
 
                 $eyebrow = e($block['eyebrow'] ?? 'BUILT FOR MOMENTUM');
