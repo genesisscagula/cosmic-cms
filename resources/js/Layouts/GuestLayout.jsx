@@ -1,8 +1,8 @@
 import { Head, Link } from '@inertiajs/react';
 
-export default function GuestLayout({ children, title = 'Welcome to Cosmic CMS', subtitle, wide = false }) {
+export default function GuestLayout({ children, title = 'Welcome to Cosmic CMS', subtitle, wide = false, forceLight = false }) {
     return (
-        <div className="cosmic-guest-light relative min-h-screen overflow-hidden bg-[#fbfffc] px-4 py-6 text-slate-900 sm:px-6 sm:py-10">
+        <div className={`cosmic-guest-light ${forceLight ? 'cosmic-force-light' : ''} relative min-h-screen overflow-hidden bg-[#fbfffc] px-4 py-6 text-slate-900 sm:px-6 sm:py-10`}>
             <Head title={title} />
 
             <div className="pointer-events-none absolute inset-0 overflow-hidden">

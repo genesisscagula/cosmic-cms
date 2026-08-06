@@ -2404,3 +2404,293 @@ html[data-theme] .cosmic-app-shell main {
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
 }
+
+
+/* Patch 12 premium Sparks hotfix: owned Spark dialog polish */
+:root[data-theme="light"] .cosmic-add-owned-spark-modal {
+    max-width: 34rem !important;
+    border-radius: 1.5rem !important;
+    padding: 1.75rem !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal > p:first-child {
+    color: #6d5bd0 !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal button.rounded-xl.border {
+    min-height: 5rem;
+    border-width: 1px !important;
+    box-shadow: 0 1px 2px rgba(15,23,42,.04) !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal button.rounded-xl.border:hover {
+    border-color: #9ccdb8 !important;
+    background: #f0faf5 !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal textarea:disabled {
+    background: #f3f7f5 !important;
+    color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal > div:last-child button:first-child {
+    background: #fff !important;
+    border-color: #cbd5e1 !important;
+    color: #334155 !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal > div:last-child button:last-child {
+    min-height: 2.75rem;
+    border-radius: .8rem !important;
+    box-shadow: 0 8px 20px rgba(35,150,107,.2) !important;
+}
+
+/* Premium Sparks Hotfix V2: clear mode selection, compact actions, readable AI progress */
+.cosmic-spark-mode-card .cosmic-spark-mode-check {
+    position: absolute;
+    right: .75rem;
+    top: .75rem;
+    display: none;
+    width: 1.25rem;
+    height: 1.25rem;
+    place-items: center;
+    border-radius: 9999px;
+    font-size: .7rem;
+    font-weight: 800;
+}
+.cosmic-spark-mode-card.is-selected .cosmic-spark-mode-check { display: grid; }
+.cosmic-spark-mode-card.is-quick .cosmic-spark-mode-check { background: #34d399; color: #052e22; }
+.cosmic-spark-mode-card.is-ai .cosmic-spark-mode-check { background: #a78bfa; color: #fff; }
+
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card {
+    min-height: 4.35rem !important;
+    padding: .9rem 2.6rem .9rem 1rem !important;
+    background: #fff !important;
+    border-color: #d7e4de !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card:not(.is-selected):hover {
+    background: #f7fbf9 !important;
+    border-color: #9fcdb9 !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card.is-quick {
+    background: #e8f7ef !important;
+    border-color: #23966b !important;
+    box-shadow: 0 0 0 2px rgba(35,150,107,.10) !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card.is-ai {
+    background: #f3f0ff !important;
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 0 0 2px rgba(139,92,246,.10) !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card :is(.text-sm,.text-xs) {
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-actions button {
+    min-height: 2.5rem !important;
+    padding-top: .5rem !important;
+    padding-bottom: .5rem !important;
+}
+
+:root[data-theme="light"] .cosmic-spark-progress-overlay {
+    background: rgba(15,23,42,.68) !important;
+    backdrop-filter: blur(10px) !important;
+}
+:root[data-theme="light"] .cosmic-spark-progress-modal {
+    border: 1px solid #cbdcd4 !important;
+    background: #ffffff !important;
+    color: #172033 !important;
+    box-shadow: 0 30px 90px rgba(15,23,42,.36) !important;
+}
+:root[data-theme="light"] .cosmic-spark-progress-modal :is(.text-white,.text-slate-300) { color: #172033 !important; }
+:root[data-theme="light"] .cosmic-spark-progress-modal .text-slate-500 { color: #64748b !important; }
+:root[data-theme="light"] .cosmic-spark-progress-modal .text-violet-300 { color: #6d5bd0 !important; }
+:root[data-theme="light"] .cosmic-spark-progress-modal .bg-\[\#17171d\] {
+    background: #f8fcfa !important;
+    color: #0891b2 !important;
+}
+:root[data-theme="light"] .cosmic-spark-progress-modal .border-emerald-400\/30 {
+    border-color: #6fc7a0 !important;
+    background: #e8f7ef !important;
+    color: #176b4c !important;
+}
+:root[data-theme="light"] .cosmic-spark-progress-modal .border-violet-400\/45 {
+    border-color: #8b5cf6 !important;
+    background: #f1edff !important;
+    color: #5b3fb2 !important;
+}
+:root[data-theme="light"] .cosmic-spark-progress-modal .border-white\/10 {
+    border-color: #d7e4de !important;
+    background: #f8fbfa !important;
+    color: #64748b !important;
+}
+:root[data-theme="light"] .cosmic-spark-progress-modal .bg-white\/10 { background: #e2e8f0 !important; }
+
+/* Premium Sparks Hotfix V3: unmistakable mode selection and revised plan slots. */
+.cosmic-spark-mode-selected-label {
+    position: absolute;
+    right: 2.45rem;
+    top: .78rem;
+    display: none;
+    border-radius: 9999px;
+    padding: .16rem .48rem;
+    font-size: .58rem;
+    font-weight: 800;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+}
+.cosmic-spark-mode-card.is-selected .cosmic-spark-mode-selected-label { display: inline-flex; }
+.cosmic-spark-mode-card.is-selected {
+    transform: translateY(-1px);
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card.is-quick {
+    background: #dff6ea !important;
+    border: 2px solid #16855d !important;
+    box-shadow: 0 0 0 4px rgba(22,133,93,.12), 0 10px 24px rgba(22,133,93,.10) !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card.is-ai {
+    background: #eee9ff !important;
+    border: 2px solid #7457df !important;
+    box-shadow: 0 0 0 4px rgba(116,87,223,.12), 0 10px 24px rgba(116,87,223,.10) !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card.is-selected .text-sm {
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card.is-quick .cosmic-spark-mode-selected-label {
+    background: #16855d;
+    color: #fff;
+}
+:root[data-theme="light"] .cosmic-add-owned-spark-modal .cosmic-spark-mode-card.is-ai .cosmic-spark-mode-selected-label {
+    background: #7457df;
+    color: #fff;
+}
+
+/* Premium Sparks Hotfix V4 */
+:root[data-theme="light"] .cosmic-owned-spark-card,
+:root[data-theme="light"] .cosmic-marketplace-spark-card {
+    border-color: #d7e5de !important;
+    background: #ffffff !important;
+    box-shadow: 0 12px 30px rgba(15, 23, 42, 0.06) !important;
+}
+:root[data-theme="light"] .cosmic-owned-badge,
+:root[data-theme="light"] .cosmic-owned-action {
+    border-color: #86efac !important;
+    background: #dcfce7 !important;
+    color: #166534 !important;
+    -webkit-text-fill-color: #166534 !important;
+}
+:root[data-theme="light"] .cosmic-marketplace-preview {
+    border-color: #cbd5e1 !important;
+    background: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-marketplace-preview > * {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    border-radius: 0.75rem !important;
+}
+
+
+/* Patch 15.5 Hotfix V5 — registered navigation and Spark typography */
+.cosmic-builder-shell [data-cosmic-spark],
+.cosmic-builder-shell [data-cosmic-spark] button,
+.cosmic-builder-shell [data-cosmic-spark] input,
+.cosmic-builder-shell [data-cosmic-spark] select,
+.cosmic-builder-shell [data-cosmic-spark] textarea {
+    font-family: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+
+
+/* Patch 1.0.123 — force public onboarding/pricing pages to stay light and readable. */
+.cosmic-force-light,
+.cosmic-public-light {
+    color-scheme: light !important;
+    background-color: #fbfffc !important;
+    color: #0f172a !important;
+}
+:root[data-theme="dark"] .cosmic-force-light {
+    background: #fbfffc !important;
+    color: #0f172a !important;
+}
+:root[data-theme="dark"] .cosmic-force-light main {
+    background: rgba(255,255,255,.97) !important;
+    border-color: #d8eee1 !important;
+    color: #0f172a !important;
+}
+:root[data-theme="dark"] .cosmic-force-light main > h1 { color: #0f172a !important; }
+:root[data-theme="dark"] .cosmic-force-light main > p { color: #475569 !important; }
+:root[data-theme="dark"] .cosmic-force-light .text-slate-950,
+:root[data-theme="dark"] .cosmic-force-light .text-slate-900,
+:root[data-theme="dark"] .cosmic-force-light .text-slate-800,
+:root[data-theme="dark"] .cosmic-public-light .text-slate-950,
+:root[data-theme="dark"] .cosmic-public-light .text-slate-900,
+:root[data-theme="dark"] .cosmic-public-light .text-slate-800 { color: #0f172a !important; }
+:root[data-theme="dark"] .cosmic-force-light .text-slate-700,
+:root[data-theme="dark"] .cosmic-force-light .text-slate-600,
+:root[data-theme="dark"] .cosmic-public-light .text-slate-700,
+:root[data-theme="dark"] .cosmic-public-light .text-slate-600 { color: #334155 !important; }
+:root[data-theme="dark"] .cosmic-force-light .text-slate-500,
+:root[data-theme="dark"] .cosmic-force-light .text-slate-400,
+:root[data-theme="dark"] .cosmic-public-light .text-slate-500,
+:root[data-theme="dark"] .cosmic-public-light .text-slate-400 { color: #64748b !important; }
+:root[data-theme="dark"] .cosmic-force-light .bg-white,
+:root[data-theme="dark"] .cosmic-public-light .bg-white { background-color: #fff !important; }
+:root[data-theme="dark"] .cosmic-force-light .bg-slate-50,
+:root[data-theme="dark"] .cosmic-force-light .bg-slate-50\/70,
+:root[data-theme="dark"] .cosmic-public-light .bg-slate-50 { background-color: #f8fafc !important; }
+:root[data-theme="dark"] .cosmic-force-light .border-slate-200,
+:root[data-theme="dark"] .cosmic-force-light .border-emerald-100,
+:root[data-theme="dark"] .cosmic-force-light .border-emerald-200,
+:root[data-theme="dark"] .cosmic-public-light .border-slate-200 { border-color: #dbe7df !important; }
+:root[data-theme="dark"] .cosmic-public-light header,
+:root[data-theme="dark"] .cosmic-public-light footer { background-color: rgba(255,255,255,.96) !important; }
+:root[data-theme="dark"] .cosmic-public-light article {
+    background-color: #fff !important;
+    color: #0f172a !important;
+}
+
+
+/* ==================================================================
+   Patch 1.0.125 hotfix v2 — public light-page contrast overrides
+   The global solid-action rule uses substring selectors, so classes such
+   as bg-emerald-50 were incorrectly forced to white text. These scoped
+   rules intentionally win with !important until the legacy selector can
+   be fully retired.
+   ================================================================== */
+.cosmic-public-light .cosmic-start-quick-idea {
+    color: #065f46 !important;
+    background-color: #ecfdf5 !important;
+    border-color: #6ee7b7 !important;
+    opacity: 1 !important;
+}
+.cosmic-public-light .cosmic-start-quick-idea:hover {
+    color: #064e3b !important;
+    background-color: #d1fae5 !important;
+    border-color: #34d399 !important;
+}
+.cosmic-public-light .cosmic-start-submit {
+    color: #ffffff !important;
+}
+.cosmic-public-light .cosmic-start-submit:disabled {
+    color: #ffffff !important;
+    background-color: #2f936b !important;
+    opacity: .58 !important;
+}
+.cosmic-public-light .cosmic-pricing-cta {
+    color: #065f46 !important;
+    border-width: 1px !important;
+}
+.cosmic-public-light .cosmic-pricing-cta[class*="bg-emerald-700"] {
+    color: #ffffff !important;
+}
+.cosmic-public-light .cosmic-paypal-cta,
+.cosmic-public-light .cosmic-paypal-cta * {
+    color: #ffffff !important;
+}
+.cosmic-public-light .cosmic-selected-plan-header,
+.cosmic-public-light .cosmic-selected-plan-header * {
+    color: #ffffff !important;
+}
+.cosmic-public-light .cosmic-selected-plan-header {
+    background: linear-gradient(135deg, #064e3b 0%, #065f46 58%, #047857 100%) !important;
+}
+.cosmic-public-light .cosmic-selected-plan-header .cosmic-selected-plan-price {
+    color: #a7f3d0 !important;
+}
+.cosmic-public-light .cosmic-selected-plan-header .text-emerald-300 {
+    color: #6ee7b7 !important;
+}

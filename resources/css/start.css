@@ -59,3 +59,20 @@
 .cosmic-start-light .shadow-violet-950\/20,
 .cosmic-start-light .shadow-violet-950\/40,
 .cosmic-start-light .shadow-violet-950\/50 { --tw-shadow-color: rgba(15,23,42,.12) !important; }
+
+/* Patch 1.0.116 — calm, professional Start experience. */
+.cosmic-start-light .cosmic-start-panel {
+    background: rgba(255, 255, 255, .96) !important;
+    color: #0f172a !important;
+    box-shadow: 0 32px 90px rgba(15, 23, 42, .14) !important;
+}
+.cosmic-start-light .cosmic-start-panel form {
+    color: #0f172a;
+}
+.cosmic-start-light .cosmic-start-panel textarea:focus {
+    border-color: #34d399 !important;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, .12) !important;
+}
+.cosmic-start-light .cosmic-start-panel button[type="submit"] {
+    color: #fff !important;
+}

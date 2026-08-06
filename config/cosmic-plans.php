@@ -12,7 +12,7 @@ return [
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_PERSONAL_STARTER_ID', env('PAYPAL_PLAN_STARTER_ID'))],
             'capabilities' => [
                 'max_sites' => 1, 'max_pages_per_site' => 5, 'max_sparks_per_site' => 15,
-                'max_owned_sparks' => 5, 'template_limit' => 5,
+                'max_owned_sparks' => 15, 'free_built_in_sparks' => 5, 'template_limit' => 5,
                 'template_access_level' => 'starter', 'spark_access_level' => 'free',
                 'analytics_level' => 'basic', 'leads_level' => 'inbox', 'sales_level' => 'none',
                 'team_members' => 0, 'white_label_level' => 'none', 'api_access' => false,
@@ -37,7 +37,7 @@ return [
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_PERSONAL_GROWTH_ID', env('PAYPAL_PLAN_GROWTH_ID'))],
             'capabilities' => [
                 'max_sites' => 1, 'max_pages_per_site' => 10, 'max_sparks_per_site' => 30,
-                'max_owned_sparks' => 10, 'template_limit' => 10,
+                'max_owned_sparks' => 30, 'free_built_in_sparks' => 10, 'template_limit' => 10,
                 'template_access_level' => 'growth', 'spark_access_level' => 'growth',
                 'analytics_level' => 'standard', 'leads_level' => 'history', 'sales_level' => 'basic',
                 'team_members' => 0, 'white_label_level' => 'none', 'api_access' => false,
@@ -62,7 +62,7 @@ return [
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_PERSONAL_PRO_ID', env('PAYPAL_PLAN_PRO_ID'))],
             'capabilities' => [
                 'max_sites' => 1, 'max_pages_per_site' => null, 'max_sparks_per_site' => null,
-                'max_owned_sparks' => 15, 'template_limit' => null,
+                'max_owned_sparks' => null, 'free_built_in_sparks' => 15, 'template_limit' => null,
                 'template_access_level' => 'pro', 'spark_access_level' => 'pro',
                 'analytics_level' => 'advanced', 'leads_level' => 'full', 'sales_level' => 'full',
                 'team_members' => 0, 'white_label_level' => 'branding_removed', 'api_access' => false,
@@ -87,7 +87,7 @@ return [
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_AGENCY_STARTER_ID', env('PAYPAL_PLAN_AGENCY_BASIC_ID'))],
             'capabilities' => [
                 'max_sites' => 3, 'max_pages_per_site' => 5, 'max_sparks_per_site' => 15,
-                'max_owned_sparks' => 5, 'template_limit' => 3, 'marketplace_preview_limit' => 15,
+                'max_owned_sparks' => 15, 'free_built_in_sparks' => 5, 'template_limit' => 3, 'marketplace_preview_limit' => 15,
                 'template_access_level' => 'agency_starter', 'spark_access_level' => 'agency_starter',
                 'analytics_level' => 'per_website', 'leads_level' => 'per_website', 'sales_level' => 'none',
                 'team_members' => 0, 'white_label_level' => 'none', 'api_access' => false,
@@ -111,7 +111,7 @@ return [
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_AGENCY_GROWTH_ID')],
             'capabilities' => [
                 'max_sites' => 10, 'max_pages_per_site' => 10, 'max_sparks_per_site' => 30,
-                'max_owned_sparks' => 10, 'template_limit' => 10, 'marketplace_preview_limit' => 30,
+                'max_owned_sparks' => 30, 'free_built_in_sparks' => 10, 'template_limit' => 10, 'marketplace_preview_limit' => 30,
                 'template_access_level' => 'agency_growth', 'spark_access_level' => 'agency_growth',
                 'analytics_level' => 'aggregated', 'leads_level' => 'aggregated', 'sales_level' => 'summary',
                 'team_members' => 3, 'white_label_level' => 'basic', 'api_access' => false,
@@ -143,7 +143,7 @@ return [
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_AGENCY_PRO_ID')],
             'capabilities' => [
                 'max_sites' => null, 'max_pages_per_site' => null, 'max_sparks_per_site' => null,
-                'max_owned_sparks' => 15, 'template_limit' => null, 'marketplace_preview_limit' => null,
+                'max_owned_sparks' => null, 'free_built_in_sparks' => 15, 'template_limit' => null, 'marketplace_preview_limit' => null,
                 'template_access_level' => 'all', 'spark_access_level' => 'all',
                 'analytics_level' => 'full_agency', 'leads_level' => 'full_agency', 'sales_level' => 'full_agency',
                 'team_members' => 10, 'white_label_level' => 'full', 'api_access' => true,

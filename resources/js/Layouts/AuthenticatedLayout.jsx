@@ -4,7 +4,7 @@ import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
-import { useCreditBalance } from '@/Components/CosmicCredits/CreditBalanceContext';
+import { useCreditBalance } from '@/Hooks/useCreditBalance';
 
 export default function AuthenticatedLayout({ header, children }) {
     // Gigamitan nato og optional chaining ang auth?.user

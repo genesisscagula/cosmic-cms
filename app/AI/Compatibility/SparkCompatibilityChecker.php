@@ -21,6 +21,9 @@ class SparkCompatibilityChecker
         'hero_saas_dashboard',
         'hero_luxury_fullscreen',
         'hero_video_premium',
+        'hero_ai_conversation',
+        'hero_agency_showcase',
+        'hero_bento_premium',
     ];
 
     private const CTA = ['hero_centered_cta', 'image_cta_banner'];
@@ -114,7 +117,7 @@ class SparkCompatibilityChecker
     {
         $groups = [
             'hero' => self::HEROES,
-            'services' => ['services_cards', 'services_bento'],
+            'services' => ['services_cards', 'services_bento', 'services_bento_premium', 'services_pricing_comparison', 'services_feature_comparison', 'services_hover_cards'],
             'cta' => self::CTA,
             'pricing' => ['pricing_cards'],
             'team' => ['team_modern'],
@@ -211,7 +214,7 @@ class SparkCompatibilityChecker
     {
         $groups = [
             self::HEROES,
-            ['services_cards', 'services_bento'],
+            ['services_cards', 'services_bento', 'services_bento_premium'],
             self::CTA,
         ];
 

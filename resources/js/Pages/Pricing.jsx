@@ -146,7 +146,7 @@ const comparisonRows = [
 ];
 
 function CheckIcon() {
-    return <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 text-xs font-black text-emerald-700">✓</span>;
+    return <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-black text-white shadow-sm">✓</span>;
 }
 
 export default function Pricing() {
@@ -156,7 +156,7 @@ export default function Pricing() {
     return (
         <>
             <Head title="Pricing | Cosmic CMS" />
-            <div className="min-h-screen bg-[#fbfefc] text-slate-900 selection:bg-emerald-100 selection:text-emerald-950">
+            <div className="cosmic-public-light min-h-screen bg-[#fbfefc] text-slate-900 selection:bg-emerald-100 selection:text-emerald-950">
                 <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
                     <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-6 lg:px-8">
                         <Link href="/" className="flex items-center gap-3">
@@ -207,12 +207,19 @@ export default function Pricing() {
                                     <h2 className="mt-3 text-2xl font-black text-slate-950">{plan.name}</h2>
                                     <div className="mt-5 flex items-end gap-2"><span className="text-5xl font-black tracking-tight text-slate-950">${plan.price}</span><span className="pb-1.5 font-semibold text-slate-500">/month</span></div>
                                     <p className="mt-5 min-h-20 leading-7 text-slate-600">{plan.positioning}</p>
-                                    <div className="mt-5 rounded-xl bg-emerald-50 px-4 py-3 text-sm font-bold text-emerald-800">{plan.credits}</div>
+                                    <div className="mt-5 rounded-xl bg-emerald-700 px-4 py-3 text-sm font-black text-white shadow-sm">{plan.credits}</div>
                                     <ul className="mt-7 flex-1 space-y-3.5">
-                                        {plan.features.map((feature) => <li key={feature} className="flex gap-3 text-sm leading-6 text-slate-700"><CheckIcon />{feature}</li>)}
+                                        {plan.features.map((feature) => <li key={feature} className="flex gap-3 text-sm font-medium leading-6 text-slate-800"><CheckIcon />{feature}</li>)}
                                     </ul>
-                                    <Link href={`/register?plan=${plan.key}`} className={`mt-8 flex items-center justify-center rounded-xl px-5 py-3.5 text-sm font-black transition ${plan.highlight ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-slate-300 bg-white text-slate-900 hover:border-emerald-400 hover:bg-emerald-50'}`}>Choose {plan.name}</Link>
+                                    <Link href={`/register?plan=${plan.key}`} className={`cosmic-pricing-cta mt-8 flex items-center justify-center rounded-xl px-5 py-3.5 text-sm font-black transition ${plan.highlight ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`} style={plan.highlight ? { color: '#ffffff' } : { color: '#065f46' }}>Choose {plan.name}</Link>
                                 </article>
+                            ))}
+                        </div>
+                        <div className="mx-auto mt-10 grid max-w-5xl gap-3 text-center text-sm font-bold text-slate-700 sm:grid-cols-2 lg:grid-cols-4">
+                            {['Cancel anytime', 'Change plans anytime', 'Secure PayPal payments', 'No hidden fees'].map((item) => (
+                                <div key={item} className="rounded-xl border border-slate-200 bg-white px-4 py-3 shadow-sm">
+                                    <span className="mr-2 text-emerald-700">✓</span>{item}
+                                </div>
                             ))}
                         </div>
                     </section>

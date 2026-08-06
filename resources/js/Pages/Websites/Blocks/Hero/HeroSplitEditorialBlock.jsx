@@ -52,7 +52,7 @@ export function HeroSplitEditorialBlock({ block, blockIndex, onUpdate, globalThe
                     />
                     <EditableText
                         value={data.editorial_index}
-                        className={`font-mono text-xs ${theme.sub}`}
+                        className={`text-xs ${theme.sub}`}
                         onSave={(editorial_index) => onUpdate({ editorial_index })}
                     />
                 </div>

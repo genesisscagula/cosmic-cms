@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { useCreditBalance } from './CreditBalanceContext';
+import { useCreditBalance } from '@/Hooks/useCreditBalance';
 
 export default function CreditBalanceBadge({ balance, className = '' }) {
     const wallet = useCreditBalance();

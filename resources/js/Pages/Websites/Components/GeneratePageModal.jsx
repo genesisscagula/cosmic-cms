@@ -1,7 +1,7 @@
 import axios from "axios";
 import { useEffect, useState } from "react";
 import { showCosmicNotification } from "../../../Components/CosmicNotification";
-import { useCreditBalance } from "../../../Components/CosmicCredits/CreditBalanceContext";
+import { useCreditBalance } from '@/Hooks/useCreditBalance';
 
 const generationSteps = [
     { label: "Understand brief", threshold: 18 },

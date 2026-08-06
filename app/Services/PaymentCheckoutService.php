@@ -44,10 +44,22 @@ class PaymentCheckoutService
         }
 
         if ($provider === 'paypal' && $productType === 'plan') {
-            $resumed = $this->subscriptions->resumeCheckout($user, $productKey);
+            $isPaidOnboarding = in_array((string) $user->onboarding_status, ['pending_payment', 'provisioning'], true);
 
-            if ($resumed) {
-                return $resumed;
+            if ($isPaidOnboarding) {
+                // Every onboarding attempt gets a fresh PayPal subscription and
+                // idempotency request. Never reuse a previous browser/account flow.
+                $user->paymentOrders()
+                    ->where('provider', 'paypal')
+                    ->where('product_type', 'plan')
+                    ->where('status', 'pending')
+                    ->update(['status' => 'expired']);
+            } else {
+                $resumed = $this->subscriptions->resumeCheckout($user, $productKey);
+
+                if ($resumed) {
+                    return $resumed;
+                }
             }
         }
 

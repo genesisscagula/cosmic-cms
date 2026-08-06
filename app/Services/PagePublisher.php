@@ -159,10 +159,12 @@ class PagePublisher
             return $item;
         }, 0);
 
-        // Then merge the published page hierarchy into that menu. This adds
-        // missing Level 2 and Level 3 links without removing custom/external links.
-        $pageTree = $this->publishedPageMenuTree($pages, $pagePaths);
-        $header['menu'] = $this->mergePublishedMenu($menu, $pageTree, 0);
+        // The registered header menu is the single source of truth for live
+        // navigation. Published pages remain exportable, but they are never
+        // auto-appended to the menu unless the customer explicitly registered
+        // them in Website Settings. This preserves custom order, nesting,
+        // external URLs, anchors, and intentionally hidden pages.
+        $header['menu'] = $menu;
 
         if (array_key_exists('cta_url', $header)) {
             $header['cta_url'] = $this->staticNavigationTarget((string) $header['cta_url'], $publishedTargets);

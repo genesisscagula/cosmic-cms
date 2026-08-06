@@ -104,6 +104,13 @@ class AiPageGenerationService
                 continue;
             }
 
+            if ($type === 'hero_agency_showcase') {
+                $images = $this->images->localFallbacks($resolvedImageFolder, 2);
+                $block['before_image_url'] = $images[0] ?? $this->images->find($query.' before redesign', $resolvedImageFolder);
+                $block['after_image_url'] = $images[1] ?? $this->images->find($query.' after redesign', $resolvedImageFolder);
+                continue;
+            }
+
             if ($type === 'case_studies_grid' && is_array($block['studies'] ?? null)) {
                 $studyImages = $this->images->localFallbacks(
                     $resolvedImageFolder,

@@ -241,7 +241,7 @@ export default function Sparks({ dashboard }) {
                     filteredMarketplace.length ? (
                         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                             {filteredMarketplace.map((spark) => (
-                                <MarketplaceSparkCard key={spark.key} spark={spark} busy={busyKey === spark.key} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
+                                <MarketplaceSparkCard key={spark.key} spark={spark} previewComponent={registry.get(spark.key)?.preview} busy={busyKey === spark.key} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
                             ))}
                         </div>
                     ) : (
@@ -250,7 +250,7 @@ export default function Sparks({ dashboard }) {
                 ) : filteredCollection.length ? (
                     <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
                         {filteredCollection.map((spark) => (
-                            <MarketplaceSparkCard key={spark.key} spark={spark} busy={busyKey === spark.key} favoriteBusy={busyKey === `favorite-${spark.key}`} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} />
+                            <MarketplaceSparkCard key={spark.key} spark={spark} previewComponent={registry.get(spark.key)?.preview} busy={busyKey === spark.key} favoriteBusy={busyKey === `favorite-${spark.key}`} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} />
                         ))}
                     </div>
                 ) : (
@@ -267,10 +267,10 @@ export default function Sparks({ dashboard }) {
 
 function OwnedSparkCard({ spark, busy, onPreview, onRemove, onFavorite, favoriteBusy }) {
     return (
-        <article className="rounded-2xl border border-white/10 bg-black/20 p-5 transition hover:border-violet-300/25 hover:bg-white/[0.025]">
+        <article className="cosmic-owned-spark-card rounded-2xl border border-white/10 bg-black/20 p-5 transition hover:border-violet-300/25 hover:bg-white/[0.025]">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-300/20 bg-violet-400/10 text-lg text-violet-200">✦</div>
-                <div className="flex items-center gap-2"><button type="button" disabled={favoriteBusy} onClick={onFavorite} className={`flex h-8 w-8 items-center justify-center rounded-full border text-sm transition ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button><span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">Owned</span></div>
+                <div className="flex items-center gap-2"><button type="button" disabled={favoriteBusy} onClick={onFavorite} className={`flex h-8 w-8 items-center justify-center rounded-full border text-sm transition ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button><span className="cosmic-owned-badge rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">✓ Owned</span></div>
             </div>
             <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.18em] text-violet-300">{spark.category} · {spark.collection}</p>
             <h3 className="mt-1 text-lg font-semibold text-white">{spark.name}</h3>
@@ -286,15 +286,12 @@ function OwnedSparkCard({ spark, busy, onPreview, onRemove, onFavorite, favorite
     );
 }
 
-function MarketplaceSparkCard({ spark, busy, onPreview, onUnlock, onFavorite, favoriteBusy }) {
+function MarketplaceSparkCard({ spark, previewComponent: PreviewComponent, busy, onPreview, onUnlock, onFavorite, favoriteBusy }) {
     return (
-        <article className="overflow-hidden rounded-2xl border border-white/10 bg-black/20 transition hover:-translate-y-0.5 hover:border-violet-300/30">
-            <div className="relative h-36 overflow-hidden bg-gradient-to-br from-violet-500/20 via-indigo-500/10 to-cyan-400/10 p-4">
-                <div className="h-full rounded-xl border border-white/10 bg-[#0d0d10]/85 p-4">
-                    <div className="h-2 w-16 rounded bg-white/15" />
-                    <div className="mt-5 h-4 w-4/5 rounded bg-white/20" />
-                    <div className="mt-2 h-2.5 w-3/5 rounded bg-white/10" />
-                    <div className="mt-5 grid grid-cols-3 gap-2"><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /></div>
+        <article className="cosmic-marketplace-spark-card overflow-hidden rounded-2xl border border-white/10 bg-black/20 transition hover:-translate-y-0.5 hover:border-violet-300/30">
+            <div className="relative h-40 overflow-hidden bg-gradient-to-br from-violet-500/20 via-indigo-500/10 to-cyan-400/10 p-3">
+                <div className="cosmic-marketplace-preview h-full overflow-hidden rounded-xl border border-white/10 bg-[#0d0d10]/85">
+                    {PreviewComponent ? <PreviewComponent /> : <div className="h-full p-4"><div className="h-2 w-16 rounded bg-white/15" /><div className="mt-5 h-4 w-4/5 rounded bg-white/20" /><div className="mt-2 h-2.5 w-3/5 rounded bg-white/10" /><div className="mt-5 grid grid-cols-3 gap-2"><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /></div></div>}
                 </div>
                 <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-1.5">
                     {spark.locked && <Badge>Locked</Badge>}{spark.staff_pick && <Badge>Staff Pick</Badge>}
@@ -307,12 +304,12 @@ function MarketplaceSparkCard({ spark, busy, onPreview, onUnlock, onFavorite, fa
                         <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-300">{spark.category} · {spark.collection}</p>
                         <h3 className="mt-1 text-lg font-semibold text-white">{spark.name}</h3>
                     </div>
-                    <div className="flex items-center gap-2"><button type="button" disabled={favoriteBusy} onClick={onFavorite} className={`flex h-8 w-8 items-center justify-center rounded-full border text-sm transition ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button>{spark.owned ? <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">Owned</span> : <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-xs font-bold text-amber-100">{spark.is_free ? "Free" : `⚡ ${spark.credits}`}</span>}</div>
+                    <div className="flex items-center gap-2"><button type="button" disabled={favoriteBusy} onClick={onFavorite} className={`flex h-8 w-8 items-center justify-center rounded-full border text-sm transition ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button>{spark.owned ? <span className="cosmic-owned-badge rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">✓ Owned</span> : <span className="rounded-full border border-amber-300/20 bg-amber-300/10 px-2.5 py-1 text-xs font-bold text-amber-100">{spark.is_free ? "Free" : `⚡ ${spark.credits}`}</span>}</div>
                 </div>
                 <p className="mt-2 min-h-12 text-sm leading-6 text-slate-400">{spark.description}</p>{spark.purchased && <p className="mt-3 text-[10px] font-bold uppercase tracking-[0.16em] text-amber-200">Purchased · permanent account access</p>}
                 <div className="mt-5 flex gap-2">
                     <button type="button" onClick={onPreview} className="rounded-xl border border-white/10 px-3 py-2.5 text-sm font-semibold text-slate-200 hover:bg-white/5">Preview</button>
-                    {spark.owned ? <div className="flex-1 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2.5 text-center text-sm font-semibold text-emerald-200">✓ In Owned Sparks</div> : spark.can_install === false ? <button type="button" onClick={onUnlock} className="flex-1 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2.5 text-sm font-semibold text-amber-100">{spark.slot_blocked ? "Slots full" : "Upgrade to add"}</button> : <button type="button" disabled={busy} onClick={onUnlock} className="flex-1 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50">{busy ? "Adding..." : spark.is_free ? "Add Free Spark" : `Add to Owned · ⚡${spark.credits}`}</button>}
+                    {spark.owned ? <div className="cosmic-owned-action flex-1 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-3 py-2.5 text-center text-sm font-semibold text-emerald-200">✓ In Owned Sparks</div> : spark.can_install === false ? <button type="button" onClick={onUnlock} className="flex-1 rounded-xl border border-amber-300/20 bg-amber-300/10 px-3 py-2.5 text-sm font-semibold text-amber-100">{spark.slot_blocked ? "Slots full" : "Upgrade to add"}</button> : <button type="button" disabled={busy} onClick={onUnlock} className="flex-1 rounded-xl bg-white px-3 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50">{busy ? "Adding..." : spark.is_free ? "Add Free Spark" : `Add to Owned · ⚡${spark.credits}`}</button>}
                 </div>
             </div>
         </article>

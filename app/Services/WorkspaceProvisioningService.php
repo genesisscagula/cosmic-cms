@@ -93,6 +93,7 @@ class WorkspaceProvisioningService
                 $this->ensureOwnershipAndAccess($onboarding, $workspace, $website);
                 $this->applyDefaultSettingsAndProfile($onboarding, $workspace, $website);
                 $binding = $this->bindCreditsAndSubscription($onboarding, $order, $workspace, $website);
+                app(PlanBuiltInSparkGrantService::class)->ensure($onboarding->user);
                 $plan = config('payments.plans.'.$onboarding->selected_plan, []);
 
                 $provisioning->forceFill([
@@ -137,7 +138,8 @@ class WorkspaceProvisioningService
                 $onboarding->forceFill([
                     'workspace_id' => $workspace->id,
                     'website_id' => $website->id,
-                    'status' => 'subscription_ready',
+                    'status' => 'completed',
+                    'completed_at' => $onboarding->completed_at ?? now(),
                     'metadata' => array_merge($onboarding->metadata ?? [], [
                         'provisioning_id' => $provisioning->id,
                         'workspace_id' => $workspace->id,
@@ -161,6 +163,24 @@ class WorkspaceProvisioningService
                         'paypal_subscription_id' => $order->external_subscription_id,
                     ]),
                 ])->save();
+
+                $provisioning->forceFill([
+                    'status' => WorkspaceProvisioning::STATUS_COMPLETED,
+                    'completed_at' => $provisioning->completed_at ?? now(),
+                    'last_error' => null,
+                    'metadata' => array_merge($provisioning->metadata ?? [], [
+                        'completed_at' => now()->toIso8601String(),
+                    ]),
+                ])->save();
+
+                $onboarding->user->forceFill([
+                    'onboarding_status' => 'complete',
+                ])->save();
+
+                $this->log($provisioning, 'provisioning_completed', WorkspaceProvisioning::STATUS_COMPLETED, 'Workspace provisioning completed.', [
+                    'workspace_id' => $workspace->id,
+                    'website_id' => $website->id,
+                ]);
 
                 return $provisioning->fresh(['workspace', 'website', 'trialPage']);
             });

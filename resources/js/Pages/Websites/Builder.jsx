@@ -3,7 +3,7 @@ import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadge';
-import { useCreditBalance } from '../../Components/CosmicCredits/CreditBalanceContext';
+import { useCreditBalance } from '@/Hooks/useCreditBalance';
 
 import AddSectionModal from "./Components/AddSectionModal";
 import GeneratePageModal from "./Components/GeneratePageModal";
@@ -336,7 +336,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
         }
     };
 
-    const [globalTheme, setGlobalTheme] = useState('dark');
+    const [globalTheme, setGlobalTheme] = useState(trialMode ? 'light' : 'dark');
 
     const [globalSelections, setGlobalSelections] = useState(() => {
         // 1. Define ang imong mga default
@@ -601,14 +601,14 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     return (
         <>
             {trialMode && (
-                <div className="border-b border-violet-300/20 bg-gradient-to-r from-violet-500/15 via-cyan-400/10 to-emerald-400/10 px-4 py-3 text-center">
-                    <p className="text-sm font-semibold text-white">Turn this landing page into a complete website.</p>
-                    <p className="mt-0.5 text-xs text-slate-300">Sign up to generate more pages, unlock premium tools, and publish your business online. <a href={`${route('start')}?trial=${encodeURIComponent(trialToken)}`} className="font-bold text-cyan-300 hover:text-cyan-200">Create free account →</a></p>
+                <div className="border-b border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 px-4 py-3 text-center">
+                    <p className="text-sm font-semibold text-slate-900">Turn this landing page into a complete website.</p>
+                    <p className="mt-0.5 text-xs text-slate-600">Sign up to generate more pages, unlock premium tools, and publish your business online. <a href={`${route('start')}?trial=${encodeURIComponent(trialToken)}`} className="font-bold text-emerald-700 hover:text-emerald-800">Create free account →</a></p>
                 </div>
             )}
             <Head title={`Builder — ${page.title}`} />
-            <div className="cosmic-builder-shell min-h-screen bg-[#09090b] text-slate-100">
-                <header data-cosmic-builder-header className="sticky top-0 z-[60] border-b border-white/10 bg-[#09090b]/95 backdrop-blur-xl">
+            <div className={`cosmic-builder-shell min-h-screen ${trialMode ? 'bg-slate-100 text-slate-900' : 'bg-[#09090b] text-slate-100'}`}>
+                <header data-cosmic-builder-header className={`sticky top-0 z-[60] backdrop-blur-xl ${trialMode ? 'border-b border-slate-200 bg-white/95' : 'border-b border-white/10 bg-[#09090b]/95'}`}>
                     <div className="mx-auto grid min-h-[64px] max-w-[1760px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-4 py-2.5 sm:px-6">
                         <div className="flex min-w-0 items-center gap-3">
                             {capabilities.canNavigateAway && (
@@ -794,7 +794,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
                 <main className="px-4 py-5 sm:px-6 sm:py-8">
                     <style>{`html.cosmic-header-menu-active .cosmic-block-toolbar { opacity: 0 !important; pointer-events: none !important; }`}</style>
-                    <div className="cosmic-builder-canvas mx-auto w-full max-w-[1560px] overflow-visible rounded-xl border border-white/10 bg-white shadow-2xl shadow-black/30 lg:w-[min(86vw,1560px)]">
+                    <div className={`cosmic-builder-canvas mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl lg:w-[min(86vw,1560px)] ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
                         <div className="flex w-full flex-col items-stretch overflow-hidden rounded-[11px]">
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}

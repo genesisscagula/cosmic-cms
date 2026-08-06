@@ -184,8 +184,8 @@ class PaymentController extends Controller
                                     $provisioning->start($onboarding->fresh(), $paymentOrder->fresh(), 'return_url');
 
                                     return redirect()
-                                        ->route('onboarding.success')
-                                        ->with('status', 'Payment confirmed. Your workspace is being prepared.');
+                                        ->route('dashboard')
+                                        ->with('status', 'Payment confirmed. Your Cosmic CMS workspace is ready.');
                                 }
                             }
                         } catch (Throwable $syncException) {

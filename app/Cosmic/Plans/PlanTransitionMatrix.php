@@ -13,11 +13,20 @@ class PlanTransitionMatrix
 
     public function decide(?string $fromKey, ?string $toKey): PlanTransitionDecision
     {
-        $from = $this->plans->definition($fromKey);
+        // A null/blank current plan means the customer has not activated a paid
+        // subscription yet. PlanRegistry intentionally falls back blank keys to
+        // Starter for feature resolution, but transition validation must not use
+        // that fallback or first-time Starter checkout becomes Starter -> Starter.
+        $hasCurrentPlan = trim((string) $fromKey) !== '';
+        $from = $hasCurrentPlan
+            ? $this->plans->definition($fromKey)
+            : $this->plans->definition($toKey);
         $to = $this->plans->definition($toKey);
-        $same = $from->key() === $to->key();
-        $familyChange = $from->family() !== $to->family();
-        $type = $same ? 'same' : ($to->price() > $from->price() ? 'upgrade' : 'downgrade');
+        $same = $hasCurrentPlan && $from->key() === $to->key();
+        $familyChange = $hasCurrentPlan && $from->family() !== $to->family();
+        $type = ! $hasCurrentPlan
+            ? 'new'
+            : ($same ? 'same' : ($to->price() > $from->price() ? 'upgrade' : 'downgrade'));
 
         $warnings = [];
         $requirements = [];
@@ -33,7 +42,7 @@ class PlanTransitionMatrix
             $requirements[] = 'usage_within_target_limits';
         }
 
-        if ($to->family() === 'personal') {
+        if ($hasCurrentPlan && $to->family() === 'personal') {
             $requirements[] = 'single_website_only';
             $requirements[] = 'no_team_members';
         }

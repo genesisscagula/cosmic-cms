@@ -1,0 +1,96 @@
+import { EditableButton } from "../Shared/EditableButton";
+import { EditableText } from "../Shared/EditableText";
+import { getEffectiveTheme } from "../../../../theme/Theme";
+import { colorFamilies } from "../../../../theme/colorFamilies";
+
+export const ServicesFeatureComparisonSchema = {
+    type: "services_feature_comparison",
+    title: "Feature Comparison Premium",
+    category: "Services",
+    purpose: "Compare three service approaches by capability, depth, and ideal use case.",
+    description: "A Pro-only feature comparison section with three editable columns and eight capability rows.",
+    tags: ["services", "features", "comparison", "premium", "capabilities", "pro"],
+    defaults: {
+        eyebrow: "COMPARE THE APPROACH",
+        heading: "Choose the level of capability your next stage needs.",
+        text: "See how each service model differs across strategy, delivery, collaboration, and ongoing support.",
+        option_one_name: "Foundation",
+        option_one_kicker: "Focused project",
+        option_one_text: "A clear, senior-led engagement for one defined priority.",
+        option_two_name: "Growth System",
+        option_two_kicker: "Most versatile",
+        option_two_text: "Connected strategy and delivery for teams building momentum.",
+        option_two_badge: "RECOMMENDED",
+        option_three_name: "Embedded Partner",
+        option_three_kicker: "Ongoing capability",
+        option_three_text: "Flexible senior support across complex, evolving priorities.",
+        feature_one: "Strategic direction", option_one_one: "Focused", option_two_one: "Integrated", option_three_one: "Embedded",
+        feature_two: "Research depth", option_one_two: "Essentials", option_two_two: "Extended", option_three_two: "Continuous",
+        feature_three: "Design systems", option_one_three: "Core", option_two_three: "Scalable", option_three_three: "Multi-brand",
+        feature_four: "Delivery support", option_one_four: "Launch", option_two_four: "Launch + optimise", option_three_four: "Ongoing",
+        feature_five: "Team access", option_one_five: "Lead specialist", option_two_five: "Cross-functional", option_three_five: "Dedicated pod",
+        feature_six: "Reporting", option_one_six: "Wrap-up", option_two_six: "Monthly", option_three_six: "Custom cadence",
+        feature_seven: "Best suited to", option_one_seven: "One clear priority", option_two_seven: "Growing teams", option_three_seven: "Complex programmes",
+        feature_eight: "Engagement style", option_one_eight: "Fixed scope", option_two_eight: "Phased roadmap", option_three_eight: "Flexible retainer",
+        primary_label: "Discuss the right approach",
+        primary_url: "#",
+        footnote: "Every engagement is shaped around your goals, team, and delivery requirements.",
+    },
+};
+
+export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme }) {
+    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
+    const data = { ...ServicesFeatureComparisonSchema.defaults, ...block };
+    const isPrimary = block.resolvedTheme === "primary";
+    const muted = isPrimary ? "text-white/70" : theme.sub;
+    const border = isPrimary ? "border-white/20" : theme.border;
+    const baseCard = isPrimary ? "bg-white/10 text-white" : `${theme.surface} ${theme.text}`;
+    const featuredCard = isPrimary ? "bg-white text-slate-950" : "bg-slate-900 text-white";
+    const buttonClass = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
+    const words = ["one", "two", "three", "four", "five", "six", "seven", "eight"];
+    const save = (key) => (value) => onUpdate({ [key]: value });
+    const options = [
+        { key: "option_one", featured: false },
+        { key: "option_two", featured: true },
+        { key: "option_three", featured: false },
+    ];
+
+    return <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
+        <div className="mx-auto max-w-7xl">
+            <div className="max-w-3xl">
+                <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${muted}`} onSave={save("eyebrow")} />
+                <EditableText value={data.heading} className={`mt-5 block text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl ${theme.text}`} onSave={save("heading")} />
+                <EditableText value={data.text} isTextArea className={`mt-5 block max-w-2xl text-base leading-7 sm:text-lg ${muted}`} onSave={save("text")} />
+            </div>
+
+            <div className={`mt-12 overflow-hidden rounded-[2rem] border shadow-sm ${border}`}>
+                <div className={`grid lg:grid-cols-[1.15fr_repeat(3,1fr)] ${baseCard}`}>
+                    <div className={`hidden border-b p-6 lg:block ${border}`}>
+                        <span className={`text-xs font-bold uppercase tracking-[.22em] ${muted}`}>Capabilities</span>
+                    </div>
+                    {options.map((option) => <article key={option.key} className={`relative border-b p-6 sm:p-7 ${border} ${option.featured ? featuredCard : baseCard}`}>
+                        {option.featured && <EditableText value={data.option_two_badge} className={`mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] ${primaryTheme.bg} ${primaryTheme.text}`} onSave={save("option_two_badge")} />}
+                        <EditableText value={data[`${option.key}_kicker`]} className={`block text-[11px] font-bold uppercase tracking-[.2em] ${option.featured && !isPrimary ? "text-white/65" : muted}`} onSave={save(`${option.key}_kicker`)} />
+                        <EditableText value={data[`${option.key}_name`]} className="mt-3 block text-2xl font-semibold tracking-[-.03em]" onSave={save(`${option.key}_name`)} />
+                        <EditableText value={data[`${option.key}_text`]} isTextArea className={`mt-4 block text-sm leading-6 ${option.featured && !isPrimary ? "text-white/65" : muted}`} onSave={save(`${option.key}_text`)} />
+                    </article>)}
+
+                    {words.map((word) => <div key={word} className="contents">
+                        <div className={`border-b p-5 lg:p-6 ${border} ${baseCard}`}>
+                            <EditableText value={data[`feature_${word}`]} className="text-sm font-semibold" onSave={save(`feature_${word}`)} />
+                        </div>
+                        {options.map((option) => <div key={`${word}-${option.key}`} className={`border-b p-5 text-sm lg:p-6 ${border} ${option.featured ? featuredCard : baseCard}`}>
+                            <EditableText value={data[`${option.key}_${word}`]} className={option.featured && !isPrimary ? "font-semibold text-white" : "font-semibold"} onSave={save(`${option.key}_${word}`)} />
+                        </div>)}
+                    </div>)}
+                </div>
+            </div>
+
+            <div className="mt-8 flex flex-col items-center gap-4 text-center">
+                <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[48px] items-center justify-center rounded-full px-7 text-sm font-bold ${buttonClass}`} onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })} />
+                <EditableText value={data.footnote} isTextArea className={`max-w-3xl text-xs leading-5 ${muted}`} onSave={save("footnote")} />
+            </div>
+        </div>
+    </section>;
+}

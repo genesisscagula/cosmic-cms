@@ -20,7 +20,7 @@ class TrialGenerationController extends Controller
 {
     private const DEMO_WEBSITE_ID = 14;
 
-    private const PLANS = ['starter', 'growth', 'pro'];
+    private const PLANS = ['starter', 'growth', 'pro', 'agency_starter', 'agency_growth', 'agency_pro'];
 
     private const INDUSTRY_FOLDERS = [
         'Automotive' => 'automotive', 'Bakery' => 'bakery', 'Cleaning' => 'cleaning',

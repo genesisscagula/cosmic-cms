@@ -4,7 +4,7 @@ import { useRef } from "react";
 import { showCosmicNotification } from "../../../Components/CosmicNotification";
 import { ACTION_PRICING, getBlockPrice } from "../../../cosmic/pricing";
 import CreditBalanceBadge from "../../../Components/CosmicCredits/CreditBalanceBadge";
-import { useCreditBalance } from "../../../Components/CosmicCredits/CreditBalanceContext";
+import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import CreditPrice from "../../../Components/CosmicCredits/CreditPrice";
 
 import BlockPreviewCard from "./BlockPreviewCard";
@@ -30,6 +30,13 @@ import HeroFloatingGlassPreview from "./Previews/HeroFloatingGlassPreview";
 import HeroSaasDashboardPreview from "./Previews/HeroSaasDashboardPreview";
 import HeroLuxuryFullscreenPreview from "./Previews/HeroLuxuryFullscreenPreview";
 import HeroVideoPremiumPreview from "./Previews/HeroVideoPremiumPreview";
+import HeroAiConversationPreview from "./Previews/HeroAiConversationPreview";
+import HeroAgencyShowcasePreview from "./Previews/HeroAgencyShowcasePreview";
+import HeroBentoPremiumPreview from "./Previews/HeroBentoPremiumPreview";
+import ServicesBentoPremiumPreview from "./Previews/ServicesBentoPremiumPreview";
+import ServicesPricingComparisonPreview from "./Previews/ServicesPricingComparisonPreview";
+import ServicesFeatureComparisonPreview from "./Previews/ServicesFeatureComparisonPreview";
+import ServicesHoverCardsPreview from "./Previews/ServicesHoverCardsPreview";
 import ImageCtaBannerPreview from "./Previews/ImageCtaBannerPreview";
 import HeroFloatingCardsPreview from "./Previews/HeroFloatingCardsPreview";
 import HeroVideoStylePreview from "./Previews/HeroVideoStylePreview";
@@ -497,6 +504,45 @@ export const BlockRegistry = [
     {
         type: "hero_video_premium", theme: "auto", title: "Video Hero Premium", buttonLabel: "Add Premium Video Hero", buttonClass: "bg-emerald-600 hover:bg-emerald-500", preview: HeroVideoPremiumPreview,
         payload: { type: "hero_video_premium", theme: "auto", eyebrow: "A STORY IN MOTION", heading: "Make the first few seconds impossible to forget.", text: "Use cinematic movement, focused copy, and one clear next step to introduce your brand with confidence.", primary_label: "Start the experience", primary_url: "#", secondary_label: "Watch the story", secondary_url: "#", media_badge: "Cinematic brand experience", scroll_label: "Scroll to explore", video_url: "/storage/cms-videos/hero-placeholder.mp4", poster_image_url: "/storage/cms-images/background/background-1.avif" },
+    },
+
+    {
+        type: "hero_ai_conversation", theme: "auto", title: "AI Conversation Hero", buttonLabel: "Add AI Conversation Hero", buttonClass: "bg-emerald-600 hover:bg-emerald-500", preview: HeroAiConversationPreview,
+        payload: { type: "hero_ai_conversation", theme: "auto", eyebrow: "AI THAT WORKS WITH YOU", heading: "Turn a simple prompt into meaningful progress.", text: "Show visitors how your AI listens, responds, and helps them move from idea to action in one focused experience.", primary_label: "Start building", primary_url: "#", secondary_label: "See how it works", secondary_url: "#", assistant_label: "Cosmic AI", assistant_status: "Ready to help", user_message: "Create a polished campaign page for our next launch.", assistant_message: "I’ll shape the structure, write the first draft, and prepare a responsive page you can refine.", prompt_placeholder: "Ask AI to create, improve, or explain...", chip_one: "Strategy-aware", chip_two: "Editable output", chip_three: "Built to publish" },
+    },
+
+    {
+        type: "hero_agency_showcase", theme: "auto", title: "Agency Showcase Hero", buttonLabel: "Add Agency Hero", buttonClass: "bg-emerald-600 hover:bg-emerald-500", preview: HeroAgencyShowcasePreview,
+        payload: { type: "hero_agency_showcase", theme: "auto", eyebrow: "DESIGN THAT MOVES BUSINESS FORWARD", heading: "From overlooked to unforgettable.", text: "Pair strategic thinking with polished execution, then show visitors the difference your agency creates at a glance.", primary_label: "Start a project", primary_url: "#", secondary_label: "View case studies", secondary_url: "#", before_label: "Before", before_caption: "A fragmented digital experience", after_label: "After", after_caption: "A focused brand built to convert", metric_one_value: "48%", metric_one_label: "More qualified enquiries", metric_two_value: "2.4x", metric_two_label: "Higher conversion rate", metric_three_value: "6 weeks", metric_three_label: "From strategy to launch", logo_one: "NORTHSTAR", logo_two: "MORROW & CO", logo_three: "FOUNDRY", logo_four: "KINSHIP", before_image_url: "/storage/cms-images/background/background-2.avif", after_image_url: "/storage/cms-images/background/background-1.avif" },
+    },
+
+
+    {
+        type: "hero_bento_premium", theme: "auto", title: "Bento Hero", buttonLabel: "Add Bento Hero", buttonClass: "bg-emerald-600 hover:bg-emerald-500", preview: HeroBentoPremiumPreview,
+        payload: { type: "hero_bento_premium", theme: "auto", eyebrow: "BUILT TO STAND APART", heading: "One clear idea, expressed from every angle.", text: "Bring your message, proof, imagery, and next step together in a flexible bento composition designed for modern brands.", primary_label: "Start a project", primary_url: "#", secondary_label: "Explore the work", secondary_url: "#", image_url: "/storage/cms-images/background/background-1.avif", image_label: "Featured perspective", metric_value: "3.4x", metric_label: "More engaged visitors", proof_title: "Built around clarity", proof_text: "A modular opening experience with strong hierarchy and deliberate rhythm.", card_one_label: "Strategy-led", card_two_label: "Responsive by design", card_three_label: "Ready to publish" },
+    },
+
+
+    {
+        type: "services_bento_premium", theme: "auto", title: "Bento Services Premium", buttonLabel: "Add Premium Services", buttonClass: "bg-emerald-600 hover:bg-emerald-500", preview: ServicesBentoPremiumPreview,
+        payload: { type: "services_bento_premium", theme: "auto", eyebrow: "SERVICES DESIGNED AROUND MOMENTUM", heading: "Specialist thinking, connected into one clear growth system.", text: "Combine strategy, design, technology, and optimisation in a flexible service model built around the way your business actually works.", primary_label: "Explore our services", primary_url: "#", featured_number: "01", featured_title: "Digital strategy", featured_text: "Clarify the opportunity, align the priorities, and turn ambitious goals into an actionable roadmap.", featured_meta: "Research · Positioning · Roadmaps", service_two_number: "02", service_two_title: "Experience design", service_two_text: "Shape intuitive journeys and interfaces that make every interaction feel considered.", service_three_number: "03", service_three_title: "Web platforms", service_three_text: "Build fast, scalable digital foundations designed to evolve with your team.", service_four_number: "04", service_four_title: "Growth systems", service_four_text: "Connect content, campaigns, and measurement into a repeatable growth engine.", service_five_number: "05", service_five_title: "Ongoing optimisation", service_five_text: "Improve performance continuously through testing, insight, and focused iteration.", proof_value: "5 disciplines", proof_label: "One integrated senior team" },
+    },
+
+    {
+        type: "services_pricing_comparison", theme: "auto", title: "Pricing Comparison Premium", buttonLabel: "Add Pricing Comparison", buttonClass: "bg-emerald-600 hover:bg-emerald-500", preview: ServicesPricingComparisonPreview,
+        payload: { type: "services_pricing_comparison", theme: "auto", eyebrow: "CHOOSE THE RIGHT LEVEL OF SUPPORT", heading: "Clear packages. No hidden complexity.", text: "Compare the level of strategy, delivery, and ongoing support included in each engagement.", starter_name: "Essential", starter_price: "$2,500", starter_period: "from", starter_description: "A focused foundation for one clear business priority.", starter_button_label: "Choose Essential", starter_button_url: "#", growth_name: "Growth", growth_price: "$6,500", growth_period: "from", growth_description: "A complete growth engagement for ambitious teams.", growth_button_label: "Choose Growth", growth_button_url: "#", growth_badge: "MOST POPULAR", pro_name: "Partner", pro_price: "Custom", pro_period: "", pro_description: "Embedded senior support for complex, ongoing work.", pro_button_label: "Talk to our team", pro_button_url: "#", feature_one: "Strategic discovery", starter_one: "Included", growth_one: "Extended", pro_one: "Ongoing", feature_two: "Design direction", starter_two: "1 concept", growth_two: "3 concepts", pro_two: "Unlimited scope", feature_three: "Delivery support", starter_three: "Launch", growth_three: "Launch + optimise", pro_three: "Embedded team", feature_four: "Reporting", starter_four: "Summary", growth_four: "Monthly", pro_four: "Custom dashboard", feature_five: "Response time", starter_five: "3 business days", growth_five: "1 business day", pro_five: "Priority", feature_six: "Best for", starter_six: "Focused projects", growth_six: "Growing teams", pro_six: "Complex programmes", footnote: "Every engagement is tailored before work begins. Prices shown are editable starting points." },
+    },
+
+
+    {
+        type: "services_feature_comparison", theme: "auto", title: "Feature Comparison Premium", buttonLabel: "Add Feature Comparison", buttonClass: "bg-emerald-600 hover:bg-emerald-500", preview: ServicesFeatureComparisonPreview,
+        payload: { type: "services_feature_comparison", theme: "auto", eyebrow: "COMPARE THE APPROACH", heading: "Choose the level of capability your next stage needs.", text: "See how each service model differs across strategy, delivery, collaboration, and ongoing support.", option_one_name: "Foundation", option_one_kicker: "Focused project", option_one_text: "A clear, senior-led engagement for one defined priority.", option_two_name: "Growth System", option_two_kicker: "Most versatile", option_two_text: "Connected strategy and delivery for teams building momentum.", option_two_badge: "RECOMMENDED", option_three_name: "Embedded Partner", option_three_kicker: "Ongoing capability", option_three_text: "Flexible senior support across complex, evolving priorities.", feature_one: "Strategic direction", option_one_one: "Focused", option_two_one: "Integrated", option_three_one: "Embedded", feature_two: "Research depth", option_one_two: "Essentials", option_two_two: "Extended", option_three_two: "Continuous", feature_three: "Design systems", option_one_three: "Core", option_two_three: "Scalable", option_three_three: "Multi-brand", feature_four: "Delivery support", option_one_four: "Launch", option_two_four: "Launch + optimise", option_three_four: "Ongoing", feature_five: "Team access", option_one_five: "Lead specialist", option_two_five: "Cross-functional", option_three_five: "Dedicated pod", feature_six: "Reporting", option_one_six: "Wrap-up", option_two_six: "Monthly", option_three_six: "Custom cadence", feature_seven: "Best suited to", option_one_seven: "One clear priority", option_two_seven: "Growing teams", option_three_seven: "Complex programmes", feature_eight: "Engagement style", option_one_eight: "Fixed scope", option_two_eight: "Phased roadmap", option_three_eight: "Flexible retainer", primary_label: "Discuss the right approach", primary_url: "#", footnote: "Every engagement is shaped around your goals, team, and delivery requirements." },
+    },
+
+
+    {
+        type: "services_hover_cards", theme: "auto", title: "Hover Cards Premium", buttonLabel: "Add Hover Cards", buttonClass: "bg-emerald-600 hover:bg-emerald-500", preview: ServicesHoverCardsPreview,
+        payload: { type: "services_hover_cards", theme: "auto", eyebrow: "EXPLORE OUR CAPABILITIES", heading: "Specialist services, designed to work better together.", text: "Move from first idea to measurable improvement with senior support across strategy, design, technology, and growth.", primary_label: "Discuss your project", primary_url: "#", card_one_number: "01", card_one_title: "Digital strategy", card_one_summary: "Set the direction.", card_one_text: "Clarify the opportunity, align priorities, and turn ambition into a focused roadmap.", card_one_link: "Explore strategy", card_two_number: "02", card_two_title: "Brand systems", card_two_summary: "Build recognition.", card_two_text: "Create a flexible visual and verbal system that keeps every touchpoint consistent.", card_two_link: "Explore branding", card_three_number: "03", card_three_title: "Experience design", card_three_summary: "Make journeys intuitive.", card_three_text: "Shape clear user flows and polished interfaces around the needs of real customers.", card_three_link: "Explore experience", card_four_number: "04", card_four_title: "Web platforms", card_four_summary: "Create a stronger foundation.", card_four_text: "Build fast, responsive websites and platforms designed to evolve with your team.", card_four_link: "Explore platforms", card_five_number: "05", card_five_title: "Growth systems", card_five_summary: "Connect the funnel.", card_five_text: "Bring campaigns, content, conversion, and measurement into one repeatable system.", card_five_link: "Explore growth", card_six_number: "06", card_six_title: "Optimisation", card_six_summary: "Keep improving.", card_six_text: "Use focused testing and insight to improve performance after launch.", card_six_link: "Explore optimisation" },
     },
 
     {

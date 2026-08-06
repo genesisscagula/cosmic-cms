@@ -99,9 +99,21 @@ class SubscriptionManagementService
 
     public function assertCanStartPlanCheckout(User $user, string $planKey): ?PaymentOrder
     {
+        // A newly registered customer has selected a plan for onboarding, but does
+        // not have an activated subscription yet. Do not compare the target plan
+        // against the registry's fallback/default definition (Starter), otherwise
+        // Starter onboarding is incorrectly treated as a same-plan change.
+        $current = $this->currentOrder($user);
+
+        // First paid checkout: no fulfilled PayPal subscription exists yet.
+        // This must remain allowed even when an old database default/accessor
+        // exposes Starter as plan_key before payment has been completed.
+        if (! $current && in_array((string) $user->onboarding_status, ['pending_payment', 'provisioning'], true)) {
+            return null;
+        }
+
         $this->transitions->assertAllowed($user, $planKey);
 
-        $current = $this->currentOrder($user);
         $status = SubscriptionStatus::normalize($user->plan_status);
 
         if ($current && $user->plan_key === $planKey && in_array($status, [
@@ -237,7 +249,10 @@ class SubscriptionManagementService
 
         $user = $order->user;
         $current = $this->currentOrder($user);
-        $mayUpdateAccount = ! $current || $current->id === $order->id;
+        $isUnfulfilledOnboarding = (int) data_get($order->metadata, 'onboarding_id', 0) > 0
+            && ! $order->fulfilled_at;
+        $mayUpdateAccount = (! $current || $current->id === $order->id)
+            && ! $isUnfulfilledOnboarding;
 
         // A delayed sync for an old/replaced subscription may update its own
         // order record, but must never downgrade the user's newer plan.

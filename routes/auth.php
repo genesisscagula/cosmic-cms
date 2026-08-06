@@ -16,7 +16,12 @@ Route::middleware('guest')->group(function () {
     Route::get('register', [RegisteredUserController::class, 'create'])
         ->name('register');
 
-    Route::post('register', [RegisteredUserController::class, 'store'])->middleware('throttle:cosmic-register');
+    // Registration is intentionally not rate-limited through Laravel's cache-backed
+    // limiter. Database/file cache entries can survive logout and silently return 429
+    // before the controller redirects the newly-created account to onboarding/pending.
+    // Validation, unique email/website constraints, CSRF, and the pending-payment state
+    // still protect this flow.
+    Route::post('register', [RegisteredUserController::class, 'store']);
 
     Route::get('login', [AuthenticatedSessionController::class, 'create'])
         ->name('login');
@@ -48,8 +53,11 @@ Route::middleware('auth')->group(function () {
         ->middleware('throttle:3,1')
         ->name('onboarding.recover');
 
+    // Do not rate-limit the onboarding checkout route. The previous database-backed
+    // throttle persisted attempts across logout/new registrations and could block the next
+    // customer with a silent 429 response before PayPal was called. Frontend duplicate-submit
+    // protection and payment idempotency still protect this endpoint.
     Route::post('onboarding/checkout', [PaymentController::class, 'onboardingCheckout'])
-        ->middleware('throttle:8,1')
         ->name('onboarding.checkout');
 
     Route::get('payments/success', [PaymentController::class, 'success'])

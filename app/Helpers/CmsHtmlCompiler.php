@@ -27,10 +27,27 @@ class CmsHtmlCompiler
         $compilerThemeIds = $catalog['compilerThemeIds'] ?? [];
 
         if (in_array($key, $compilerThemeIds, true) && isset($themes[$key])) {
-            return $themes[$key];
+            $theme = $themes[$key];
+        } else {
+            $theme = $themes['midnight'] ?? $themes['amber'];
         }
 
-        return $themes['midnight'] ?? $themes['amber'];
+        // Premium Sparks use semantic aliases so Builder and static export share
+        // the same white / surface / primary vocabulary. Older theme catalog
+        // entries expose `card` instead of `surface`, and do not include the
+        // convenience `soft` / `strongText` keys used by some premium layouts.
+        // Normalise them here so publishing never turns harmless missing-key
+        // warnings into Laravel ErrorExceptions.
+        $theme['surface'] ??= $theme['card'] ?? $theme['bg'] ?? 'bg-white';
+        $theme['card'] ??= $theme['surface'];
+        $theme['soft'] ??= $theme['card'];
+        $theme['strongText'] ??= $theme['text'] ?? 'text-slate-950';
+        $theme['sub'] ??= $theme['text'] ?? 'text-slate-600';
+        $theme['border'] ??= 'border-slate-200';
+        $theme['bg'] ??= 'bg-white';
+        $theme['text'] ??= 'text-slate-950';
+
+        return $theme;
     }
 
     /**
@@ -1155,6 +1172,166 @@ HTML;
 
 
 
+
+
+                case 'services_hover_cards':
+                $d = array_merge([
+                    'eyebrow'=>'EXPLORE OUR CAPABILITIES','heading'=>'Specialist services, designed to work better together.','text'=>'Move from first idea to measurable improvement with senior support across strategy, design, technology, and growth.','primary_label'=>'Discuss your project','primary_url'=>'#',
+                    'card_one_number'=>'01','card_one_title'=>'Digital strategy','card_one_summary'=>'Set the direction.','card_one_text'=>'Clarify the opportunity, align priorities, and turn ambition into a focused roadmap.','card_one_link'=>'Explore strategy',
+                    'card_two_number'=>'02','card_two_title'=>'Brand systems','card_two_summary'=>'Build recognition.','card_two_text'=>'Create a flexible visual and verbal system that keeps every touchpoint consistent.','card_two_link'=>'Explore branding',
+                    'card_three_number'=>'03','card_three_title'=>'Experience design','card_three_summary'=>'Make journeys intuitive.','card_three_text'=>'Shape clear user flows and polished interfaces around the needs of real customers.','card_three_link'=>'Explore experience',
+                    'card_four_number'=>'04','card_four_title'=>'Web platforms','card_four_summary'=>'Create a stronger foundation.','card_four_text'=>'Build fast, responsive websites and platforms designed to evolve with your team.','card_four_link'=>'Explore platforms',
+                    'card_five_number'=>'05','card_five_title'=>'Growth systems','card_five_summary'=>'Connect the funnel.','card_five_text'=>'Bring campaigns, content, conversion, and measurement into one repeatable system.','card_five_link'=>'Explore growth',
+                    'card_six_number'=>'06','card_six_title'=>'Optimisation','card_six_summary'=>'Keep improving.','card_six_text'=>'Use focused testing and insight to improve performance after launch.','card_six_link'=>'Explore optimisation'
+                ], $block);
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $muted = $isPrimarySection ? 'text-white/70' : $theme['sub'];
+                $border = $isPrimarySection ? 'border-white/20' : $theme['border'];
+                $card = $isPrimarySection ? 'bg-white/10 text-white hover:bg-white hover:text-slate-950' : "{$theme['surface']} {$theme['text']} hover:{$primaryTheme['soft']}";
+                $buttonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $buttonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $cardsHtml = '';
+                foreach (['one','two','three','four','five','six'] as $word) {
+                    $cardsHtml .= "<article class='group relative min-h-[300px] overflow-hidden rounded-[1.75rem] border p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl sm:p-7 {$border} {$card}'><div class='flex items-start justify-between gap-4'><span class='text-xs font-black tracking-[.2em] {$muted} group-hover:text-slate-600'>".e($d['card_'.$word.'_number'])."</span><span class='flex h-10 w-10 items-center justify-center rounded-full border text-lg transition group-hover:rotate-45 {$border}'>↗</span></div><div class='mt-14'><h3 class='text-2xl font-semibold tracking-[-.03em]'>".e($d['card_'.$word.'_title'])."</h3><p class='mt-3 text-sm font-semibold {$muted}'>".e($d['card_'.$word.'_summary'])."</p><p class='mt-5 translate-y-3 text-sm leading-6 opacity-75 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100'>".e($d['card_'.$word.'_text'])."</p><span class='mt-7 block text-xs font-black uppercase tracking-[.16em] opacity-70 group-hover:opacity-100'>".e($d['card_'.$word.'_link'])."</span></div></article>";
+                }
+                $html .= "<section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end'><div class='max-w-3xl'><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$muted}'>".e($d['text'])."</p></div><a href='".e($d['primary_url'])."' class='inline-flex min-h-[48px] items-center justify-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><div class='mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3'>{$cardsHtml}</div></div></section>";
+                break;
+
+                case 'services_feature_comparison':
+                $d = array_merge([
+                    'eyebrow'=>'COMPARE THE APPROACH','heading'=>'Choose the level of capability your next stage needs.','text'=>'See how each service model differs across strategy, delivery, collaboration, and ongoing support.',
+                    'option_one_name'=>'Foundation','option_one_kicker'=>'Focused project','option_one_text'=>'A clear, senior-led engagement for one defined priority.',
+                    'option_two_name'=>'Growth System','option_two_kicker'=>'Most versatile','option_two_text'=>'Connected strategy and delivery for teams building momentum.','option_two_badge'=>'RECOMMENDED',
+                    'option_three_name'=>'Embedded Partner','option_three_kicker'=>'Ongoing capability','option_three_text'=>'Flexible senior support across complex, evolving priorities.',
+                    'feature_one'=>'Strategic direction','option_one_one'=>'Focused','option_two_one'=>'Integrated','option_three_one'=>'Embedded',
+                    'feature_two'=>'Research depth','option_one_two'=>'Essentials','option_two_two'=>'Extended','option_three_two'=>'Continuous',
+                    'feature_three'=>'Design systems','option_one_three'=>'Core','option_two_three'=>'Scalable','option_three_three'=>'Multi-brand',
+                    'feature_four'=>'Delivery support','option_one_four'=>'Launch','option_two_four'=>'Launch + optimise','option_three_four'=>'Ongoing',
+                    'feature_five'=>'Team access','option_one_five'=>'Lead specialist','option_two_five'=>'Cross-functional','option_three_five'=>'Dedicated pod',
+                    'feature_six'=>'Reporting','option_one_six'=>'Wrap-up','option_two_six'=>'Monthly','option_three_six'=>'Custom cadence',
+                    'feature_seven'=>'Best suited to','option_one_seven'=>'One clear priority','option_two_seven'=>'Growing teams','option_three_seven'=>'Complex programmes',
+                    'feature_eight'=>'Engagement style','option_one_eight'=>'Fixed scope','option_two_eight'=>'Phased roadmap','option_three_eight'=>'Flexible retainer',
+                    'primary_label'=>'Discuss the right approach','primary_url'=>'#','footnote'=>'Every engagement is shaped around your goals, team, and delivery requirements.'
+                ], $block);
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $muted = $isPrimarySection ? 'text-white/70' : $theme['sub'];
+                $border = $isPrimarySection ? 'border-white/20' : $theme['border'];
+                $baseCard = $isPrimarySection ? 'bg-white/10 text-white' : "{$theme['surface']} {$theme['text']}";
+                $featuredCard = $isPrimarySection ? 'bg-white text-slate-950' : 'bg-slate-900 text-white';
+                $buttonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $buttonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $options = [
+                    ['option_one', false],
+                    ['option_two', true],
+                    ['option_three', false],
+                ];
+                $optionsHtml = '';
+                foreach ($options as [$key, $featured]) {
+                    $cardClass = $featured ? $featuredCard : $baseCard;
+                    $badge = $featured ? "<span class='mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] {$primaryTheme['bg']} {$primaryTheme['text']}'>".e($d['option_two_badge'])."</span>" : '';
+                    $cardMuted = $featured && !$isPrimarySection ? 'text-white/70' : $muted;
+                    $optionsHtml .= "<article class='relative border-b p-6 sm:p-7 {$border} {$cardClass}'>{$badge}<span class='block text-[11px] font-bold uppercase tracking-[.2em] {$cardMuted}'>".e($d[$key.'_kicker'])."</span><h3 class='mt-3 text-2xl font-semibold tracking-[-.03em]'>".e($d[$key.'_name'])."</h3><p class='mt-4 text-sm leading-6 {$cardMuted}'>".e($d[$key.'_text'])."</p></article>";
+                }
+                $rowsHtml = '';
+                foreach (['one','two','three','four','five','six','seven','eight'] as $word) {
+                    $rowsHtml .= "<div class='contents'><div class='border-b p-5 text-sm font-semibold lg:p-6 {$border} {$baseCard}'>".e($d['feature_'.$word])."</div>";
+                    foreach ($options as [$key, $featured]) {
+                        $cardClass = $featured ? $featuredCard : $baseCard;
+                        $valueText = $featured && !$isPrimarySection ? 'text-white' : '';
+                        $rowsHtml .= "<div class='border-b p-5 text-sm font-semibold lg:p-6 {$border} {$cardClass} {$valueText}'>".e($d[$key.'_'.$word])."</div>";
+                    }
+                    $rowsHtml .= "</div>";
+                }
+                $html .= "<section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$muted}'>".e($d['text'])."</p></div><div class='mt-12 overflow-hidden rounded-[2rem] border shadow-sm {$border}'><div class='grid lg:grid-cols-[1.15fr_repeat(3,1fr)] {$baseCard}'><div class='hidden border-b p-6 lg:block {$border}'><span class='text-xs font-bold uppercase tracking-[.22em] {$muted}'>Capabilities</span></div>{$optionsHtml}{$rowsHtml}</div></div><div class='mt-8 flex flex-col items-center gap-4 text-center'><a href='".e($d['primary_url'])."' class='inline-flex min-h-[48px] items-center justify-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a><p class='max-w-3xl text-xs leading-5 {$muted}'>".e($d['footnote'])."</p></div></div></section>";
+                break;
+
+                case 'services_pricing_comparison':
+                $d = array_merge([
+                    'eyebrow'=>'CHOOSE THE RIGHT LEVEL OF SUPPORT','heading'=>'Clear packages. No hidden complexity.','text'=>'Compare the level of strategy, delivery, and ongoing support included in each engagement.',
+                    'starter_name'=>'Essential','starter_price'=>'$2,500','starter_period'=>'from','starter_description'=>'A focused foundation for one clear business priority.','starter_button_label'=>'Choose Essential','starter_button_url'=>'#',
+                    'growth_name'=>'Growth','growth_price'=>'$6,500','growth_period'=>'from','growth_description'=>'A complete growth engagement for ambitious teams.','growth_button_label'=>'Choose Growth','growth_button_url'=>'#','growth_badge'=>'MOST POPULAR',
+                    'pro_name'=>'Partner','pro_price'=>'Custom','pro_period'=>'','pro_description'=>'Embedded senior support for complex, ongoing work.','pro_button_label'=>'Talk to our team','pro_button_url'=>'#',
+                    'feature_one'=>'Strategic discovery','starter_one'=>'Included','growth_one'=>'Extended','pro_one'=>'Ongoing','feature_two'=>'Design direction','starter_two'=>'1 concept','growth_two'=>'3 concepts','pro_two'=>'Unlimited scope','feature_three'=>'Delivery support','starter_three'=>'Launch','growth_three'=>'Launch + optimise','pro_three'=>'Embedded team','feature_four'=>'Reporting','starter_four'=>'Summary','growth_four'=>'Monthly','pro_four'=>'Custom dashboard','feature_five'=>'Response time','starter_five'=>'3 business days','growth_five'=>'1 business day','pro_five'=>'Priority','feature_six'=>'Best for','starter_six'=>'Focused projects','growth_six'=>'Growing teams','pro_six'=>'Complex programmes','footnote'=>'Every engagement is tailored before work begins. Prices shown are editable starting points.'
+                ], $block);
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $muted = $isPrimarySection ? 'text-white/70' : $theme['sub'];
+                $border = $isPrimarySection ? 'border-white/20' : $theme['border'];
+                $baseCard = $isPrimarySection ? 'bg-white/10 text-white' : "{$theme['surface']} {$theme['text']}";
+                $featuredCard = $isPrimarySection ? 'bg-white text-slate-950' : "{$primaryTheme['soft']} {$theme['text']}";
+                $buttonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $buttonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $plans = [
+                    ['starter', $d['starter_name'], $d['starter_price'], $d['starter_period'], $d['starter_description'], $d['starter_button_label'], $d['starter_button_url'], false],
+                    ['growth', $d['growth_name'], $d['growth_price'], $d['growth_period'], $d['growth_description'], $d['growth_button_label'], $d['growth_button_url'], true],
+                    ['pro', $d['pro_name'], $d['pro_price'], $d['pro_period'], $d['pro_description'], $d['pro_button_label'], $d['pro_button_url'], false],
+                ];
+                $plansHtml='';
+                foreach($plans as [$key,$name,$price,$period,$description,$label,$url,$featured]){
+                    $cardClass=$featured?$featuredCard:$baseCard;
+                    $badge=$featured?"<span class='mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] {$primaryTheme['bg']} {$primaryTheme['text']}'>".e($d['growth_badge'])."</span>":'';
+                    $plansHtml.="<article class='border-b p-6 sm:p-7 {$border} {$cardClass}'>{$badge}<h3 class='text-xl font-semibold'>".e($name)."</h3><div class='mt-4 flex items-end gap-2'><strong class='text-4xl font-semibold tracking-[-.04em]'>".e($price)."</strong><span class='mb-1 text-xs font-semibold uppercase tracking-wider {$muted}'>".e($period)."</span></div><p class='mt-4 text-sm leading-6 {$muted}'>".e($description)."</p><a href='".e($url)."' class='mt-6 inline-flex min-h-[46px] w-full items-center justify-center rounded-full px-5 text-sm font-bold {$buttonBg} {$buttonText}'>".e($label)."</a></article>";
+                }
+                $rowsHtml='';
+                foreach(['one','two','three','four','five','six'] as $word){
+                    $rowsHtml.="<div class='contents'><div class='border-b p-5 text-sm font-semibold lg:p-6 {$border} {$baseCard}'>".e($d['feature_'.$word])."</div><div class='border-b p-5 text-sm font-semibold lg:p-6 {$border} {$baseCard}'>".e($d['starter_'.$word])."</div><div class='border-b p-5 text-sm font-semibold lg:p-6 {$border} {$featuredCard}'>".e($d['growth_'.$word])."</div><div class='border-b p-5 text-sm font-semibold lg:p-6 {$border} {$baseCard}'>".e($d['pro_'.$word])."</div></div>";
+                }
+                $html .= "<section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$muted}'>".e($d['text'])."</p></div><div class='mt-12 overflow-hidden rounded-[2rem] border shadow-sm {$border}'><div class='grid lg:grid-cols-[1.15fr_repeat(3,1fr)] {$baseCard}'><div class='hidden border-b p-6 lg:block {$border}'><span class='text-xs font-bold uppercase tracking-[.22em] {$muted}'>Compare packages</span></div>{$plansHtml}{$rowsHtml}</div></div><p class='mx-auto mt-6 max-w-3xl text-center text-xs leading-5 {$muted}'>".e($d['footnote'])."</p></div></section>";
+                break;
+
+                case 'services_bento_premium':
+                $eyebrow = e($block['eyebrow'] ?? 'SERVICES DESIGNED AROUND MOMENTUM');
+                $heading = e($block['heading'] ?? 'Specialist thinking, connected into one clear growth system.');
+                $text = e($block['text'] ?? 'Combine strategy, design, technology, and optimisation in a flexible service model built around the way your business actually works.');
+                $primaryLabel = e($block['primary_label'] ?? 'Explore our services');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $featuredNumber = e($block['featured_number'] ?? '01');
+                $featuredTitle = e($block['featured_title'] ?? 'Digital strategy');
+                $featuredText = e($block['featured_text'] ?? 'Clarify the opportunity, align the priorities, and turn ambitious goals into an actionable roadmap.');
+                $featuredMeta = e($block['featured_meta'] ?? 'Research · Positioning · Roadmaps');
+                $serviceCards = [
+                    [e($block['service_two_number'] ?? '02'), e($block['service_two_title'] ?? 'Experience design'), e($block['service_two_text'] ?? 'Shape intuitive journeys and interfaces that make every interaction feel considered.')],
+                    [e($block['service_three_number'] ?? '03'), e($block['service_three_title'] ?? 'Web platforms'), e($block['service_three_text'] ?? 'Build fast, scalable digital foundations designed to evolve with your team.')],
+                    [e($block['service_four_number'] ?? '04'), e($block['service_four_title'] ?? 'Growth systems'), e($block['service_four_text'] ?? 'Connect content, campaigns, and measurement into a repeatable growth engine.')],
+                    [e($block['service_five_number'] ?? '05'), e($block['service_five_title'] ?? 'Ongoing optimisation'), e($block['service_five_text'] ?? 'Improve performance continuously through testing, insight, and focused iteration.')],
+                ];
+                $proofValue = e($block['proof_value'] ?? '5 disciplines');
+                $proofLabel = e($block['proof_label'] ?? 'One integrated senior team');
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $card = $isPrimarySection ? 'border-white/20 bg-white/10 text-white' : "{$theme['border']} {$theme['surface']} {$theme['text']}";
+                $muted = $isPrimarySection ? 'text-white/70' : $theme['sub'];
+                $soft = $isPrimarySection ? 'border-white/20 bg-slate-950/15 text-white' : "{$theme['border']} {$primaryTheme['soft']} {$theme['text']}";
+                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $smallHtml = '';
+                foreach ($serviceCards as $index => [$number, $title, $description]) {
+                    $span = $index < 2 ? 'lg:col-span-5' : 'lg:col-span-4';
+                    $smallHtml .= "<article class='rounded-[2rem] border p-6 {$span} {$card}'><span class='text-[11px] font-black tracking-[.2em] {$muted}'>{$number}</span><h3 class='mt-8 text-xl font-semibold tracking-[-.02em]'>{$title}</h3><p class='mt-3 text-sm leading-6 {$muted}'>{$description}</p></article>";
+                }
+
+                $html .= "
+                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                    <div class='relative mx-auto max-w-7xl'>
+                        <div class='grid gap-8 lg:grid-cols-[1fr_.72fr] lg:items-end lg:gap-16'>
+                            <div><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>{$eyebrow}</span><h2 class='mt-5 max-w-4xl text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl {$theme['text']}'>{$heading}</h2></div>
+                            <div class='lg:pb-1'><p class='text-base leading-7 sm:text-lg sm:leading-8 {$muted}'>{$text}</p><a href='{$primaryUrl}' class='mt-6 inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a></div>
+                        </div>
+                        <div class='mt-12 grid gap-4 lg:grid-cols-12'>
+                            <article class='rounded-[2rem] border p-7 sm:p-9 lg:col-span-7 lg:row-span-2 {$card}'><div class='flex items-center justify-between gap-4'><span class='text-xs font-black tracking-[.22em] {$muted}'>{$featuredNumber}</span><span class='h-2.5 w-2.5 rounded-full {$primaryTheme['bg']}'></span></div><h3 class='mt-14 max-w-2xl text-3xl font-semibold tracking-[-.035em] sm:text-4xl'>{$featuredTitle}</h3><p class='mt-5 max-w-2xl text-base leading-7 {$muted}'>{$featuredText}</p><div class='mt-10 border-t pt-6 {$theme['border']}'><span class='text-sm font-semibold {$muted}'>{$featuredMeta}</span></div></article>
+                            {$smallHtml}
+                            <article class='rounded-[2rem] border p-6 lg:col-span-4 {$soft}'><strong class='block text-3xl font-semibold tracking-[-.035em]'>{$proofValue}</strong><span class='mt-3 block text-sm leading-6 {$muted}'>{$proofLabel}</span></article>
+                        </div>
+                    </div>
+                </section>";
+                break;
+
                 case 'services_bento':
 
                 $tagline = e($block['tagline'] ?? 'OUR SERVICES');
@@ -2063,6 +2240,123 @@ HTML;
 
                 break;
 
+                case 'hero_ai_conversation':
+                $eyebrow = e($block['eyebrow'] ?? 'AI THAT WORKS WITH YOU');
+                $heading = e($block['heading'] ?? 'Turn a simple prompt into meaningful progress.');
+                $text = e($block['text'] ?? 'Show visitors how your AI listens, responds, and helps them move from idea to action in one focused experience.');
+                $primaryLabel = e($block['primary_label'] ?? 'Start building');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'See how it works');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $assistantLabel = e($block['assistant_label'] ?? 'Cosmic AI');
+                $assistantStatus = e($block['assistant_status'] ?? 'Ready to help');
+                $userMessage = e($block['user_message'] ?? 'Create a polished campaign page for our next launch.');
+                $assistantMessage = e($block['assistant_message'] ?? 'I’ll shape the structure, write the first draft, and prepare a responsive page you can refine.');
+                $promptPlaceholder = e($block['prompt_placeholder'] ?? 'Ask AI to create, improve, or explain...');
+                $chips = array_map('e', [$block['chip_one'] ?? 'Strategy-aware', $block['chip_two'] ?? 'Editable output', $block['chip_three'] ?? 'Built to publish']);
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $assistantBubble = $isPrimarySection ? 'border-white/20 bg-white/12 text-white' : "{$primaryTheme['soft']} {$theme['border']} {$theme['text']}";
+                $chipHtml = ''; foreach ($chips as $chip) { $chipHtml .= "<span class='rounded-full border px-3 py-2 text-xs font-semibold {$theme['border']} {$theme['surface']} {$theme['sub']}'>{$chip}</span>"; }
+
+                $html .= "
+                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                    <div class='relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-16'>
+                        <div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 text-5xl font-semibold leading-[.96] tracking-[-.05em] sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1><p class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div><div class='mt-8 flex flex-wrap gap-2'>{$chipHtml}</div></div>
+                        <div class='relative rounded-[2rem] border p-4 shadow-2xl sm:p-6 {$theme['border']} {$theme['surface']}'>
+                            <div class='flex items-center justify-between border-b pb-4 {$theme['border']}'><div class='flex items-center gap-3'><div class='grid h-11 w-11 place-items-center rounded-2xl {$primaryTheme['bg']} {$primaryTheme['text']}'>✦</div><div><strong class='block text-sm {$theme['text']}'>{$assistantLabel}</strong><span class='mt-1 block text-xs {$theme['sub']}'>{$assistantStatus}</span></div></div><span class='rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[.18em] {$theme['border']} {$theme['bg']} {$theme['sub']}'>Live preview</span></div>
+                            <div class='space-y-4 py-6'><div class='ml-auto max-w-[82%] rounded-[1.4rem] rounded-br-md bg-slate-900 px-5 py-4 text-sm leading-6 text-white'>{$userMessage}</div><div class='max-w-[88%] rounded-[1.4rem] rounded-bl-md border px-5 py-4 text-sm leading-6 {$assistantBubble}'>{$assistantMessage}</div></div>
+                            <div class='flex items-center gap-3 rounded-2xl border p-3 {$theme['border']} {$theme['bg']}'><span class='min-w-0 flex-1 text-sm {$theme['sub']}'>{$promptPlaceholder}</span><span class='grid h-10 w-10 shrink-0 place-items-center rounded-xl {$primaryTheme['bg']} {$primaryTheme['text']}'>↑</span></div>
+                        </div>
+                    </div>
+                </section>";
+                break;
+
+
+                case 'hero_agency_showcase':
+                $eyebrow = e($block['eyebrow'] ?? 'DESIGN THAT MOVES BUSINESS FORWARD');
+                $heading = e($block['heading'] ?? 'From overlooked to unforgettable.');
+                $text = e($block['text'] ?? 'Pair strategic thinking with polished execution, then show visitors the difference your agency creates at a glance.');
+                $primaryLabel = e($block['primary_label'] ?? 'Start a project');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'View case studies');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $beforeLabel = e($block['before_label'] ?? 'Before');
+                $beforeCaption = e($block['before_caption'] ?? 'A fragmented digital experience');
+                $afterLabel = e($block['after_label'] ?? 'After');
+                $afterCaption = e($block['after_caption'] ?? 'A focused brand built to convert');
+                $metricValues = array_map('e', [$block['metric_one_value'] ?? '48%', $block['metric_two_value'] ?? '2.4x', $block['metric_three_value'] ?? '6 weeks']);
+                $metricLabels = array_map('e', [$block['metric_one_label'] ?? 'More qualified enquiries', $block['metric_two_label'] ?? 'Higher conversion rate', $block['metric_three_label'] ?? 'From strategy to launch']);
+                $logos = array_map('e', [$block['logo_one'] ?? 'NORTHSTAR', $block['logo_two'] ?? 'MORROW & CO', $block['logo_three'] ?? 'FOUNDRY', $block['logo_four'] ?? 'KINSHIP']);
+                $beforeImage = e(self::staticAssetUrl($block['before_image_url'] ?? ''));
+                $afterImage = e(self::staticAssetUrl($block['after_image_url'] ?? ''));
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $metricSurface = $isPrimarySection ? 'border-white/20 bg-white/10 text-white' : "{$theme['border']} {$theme['surface']} {$theme['text']}";
+                $metricSub = $isPrimarySection ? 'text-white/70' : $theme['sub'];
+                $beforeStyle = $beforeImage ? "background-image:url('{$beforeImage}');background-size:cover;background-position:center;" : '';
+                $afterStyle = $afterImage ? "background-image:url('{$afterImage}');background-size:cover;background-position:center;" : '';
+                $metricHtml = ''; for ($i=0; $i<3; $i++) { $metricHtml .= "<div class='rounded-2xl border p-5 {$metricSurface}'><strong class='block text-3xl font-semibold tracking-tight'>{$metricValues[$i]}</strong><span class='mt-2 block text-sm {$metricSub}'>{$metricLabels[$i]}</span></div>"; }
+                $logoHtml = ''; foreach ($logos as $logo) { $logoHtml .= "<span class='text-xs font-black tracking-[.15em] {$theme['text']}'>{$logo}</span>"; }
+
+                $html .= "
+                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                    <div class='relative mx-auto max-w-7xl'>
+                        <div class='grid items-end gap-10 lg:grid-cols-[1fr_.72fr] lg:gap-16'><div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.055em] sm:text-6xl lg:text-8xl {$theme['text']}'>{$heading}</h1></div><div class='lg:pb-2'><p class='text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-7 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div></div></div>
+                        <div class='mt-12 rounded-[2rem] border p-3 shadow-2xl sm:p-4 {$theme['border']} {$theme['surface']}'><div class='grid gap-3 md:grid-cols-2'><div class='relative min-h-[300px] overflow-hidden rounded-[1.45rem] grayscale sm:min-h-[390px]' style=\"{$beforeStyle}\"><div class='absolute inset-0 bg-slate-950/50'></div><div class='absolute inset-x-0 bottom-0 p-5 text-white sm:p-7'><span class='text-[11px] font-bold uppercase tracking-[.24em] text-white/70'>{$beforeLabel}</span><strong class='mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl'>{$beforeCaption}</strong></div></div><div class='relative min-h-[300px] overflow-hidden rounded-[1.45rem] sm:min-h-[390px]' style=\"{$afterStyle}\"><div class='absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent'></div><div class='absolute inset-x-0 bottom-0 p-5 text-white sm:p-7'><span class='text-[11px] font-bold uppercase tracking-[.24em] text-white/70'>{$afterLabel}</span><strong class='mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl'>{$afterCaption}</strong></div></div></div></div>
+                        <div class='mt-6 grid gap-3 sm:grid-cols-3'>{$metricHtml}</div>
+                        <div class='mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-t pt-7 {$theme['border']}'><span class='text-[10px] font-bold uppercase tracking-[.24em] {$theme['sub']}'>Selected client work</span><div class='flex flex-wrap items-center gap-x-8 gap-y-3'>{$logoHtml}</div></div>
+                    </div>
+                </section>";
+                break;
+
+
+                case 'hero_bento_premium':
+                $eyebrow = e($block['eyebrow'] ?? 'BUILT TO STAND APART');
+                $heading = e($block['heading'] ?? 'One clear idea, expressed from every angle.');
+                $text = e($block['text'] ?? 'Bring your message, proof, imagery, and next step together in a flexible bento composition designed for modern brands.');
+                $primaryLabel = e($block['primary_label'] ?? 'Start a project');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'Explore the work');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $imageUrl = e(self::staticAssetUrl($block['image_url'] ?? ''));
+                $imageLabel = e($block['image_label'] ?? 'Featured perspective');
+                $metricValue = e($block['metric_value'] ?? '3.4x');
+                $metricLabel = e($block['metric_label'] ?? 'More engaged visitors');
+                $proofTitle = e($block['proof_title'] ?? 'Built around clarity');
+                $proofText = e($block['proof_text'] ?? 'A modular opening experience with strong hierarchy and deliberate rhythm.');
+                $cardLabels = array_map('e', [$block['card_one_label'] ?? 'Strategy-led', $block['card_two_label'] ?? 'Responsive by design', $block['card_three_label'] ?? 'Ready to publish']);
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $softCard = $isPrimarySection ? 'border-white/20 bg-white/10 text-white' : "{$theme['border']} {$theme['surface']} {$theme['text']}";
+                $softSub = $isPrimarySection ? 'text-white/70' : $theme['sub'];
+                $secondaryButton = $isPrimarySection ? 'border-white/25 text-white' : "{$theme['border']} {$theme['text']}";
+                $featureCard = $isPrimarySection ? 'border-white/20 bg-white/10 text-white' : "{$theme['border']} {$theme['bg']} {$theme['text']}";
+                $proofCard = $isPrimarySection ? 'border-white/20 bg-slate-950/20 text-white' : "{$theme['border']} {$primaryTheme['soft']} {$theme['text']}";
+                $imageStyle = $imageUrl ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;" : '';
+                $cardHtml = ''; foreach ($cardLabels as $label) { $cardHtml .= "<div class='rounded-2xl border px-4 py-4 text-sm font-semibold {$featureCard}'>{$label}</div>"; }
+
+                $html .= "
+                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                    <div class='relative mx-auto max-w-7xl'>
+                        <div class='grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_auto]'>
+                            <div class='rounded-[2rem] border p-7 sm:p-10 lg:col-span-7 lg:row-span-2 {$softCard}'><span class='text-xs font-bold uppercase tracking-[.28em] {$softSub}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.055em] sm:text-6xl lg:text-7xl'>{$heading}</h1><p class='mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$softSub}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$secondaryButton}'>{$secondaryLabel}</a></div><div class='mt-10 grid gap-3 sm:grid-cols-3'>{$cardHtml}</div></div>
+                            <div class='relative min-h-[310px] overflow-hidden rounded-[2rem] lg:col-span-5' style=\"{$imageStyle}\"><div class='absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent'></div><div class='absolute inset-x-0 bottom-0 p-6 text-white sm:p-8'><strong class='text-sm font-semibold text-white'>{$imageLabel}</strong></div></div>
+                            <div class='grid gap-4 sm:grid-cols-2 lg:col-span-5'><div class='rounded-[2rem] border p-6 {$softCard}'><strong class='block text-5xl font-semibold tracking-[-.04em]'>{$metricValue}</strong><span class='mt-3 block text-sm leading-6 {$softSub}'>{$metricLabel}</span></div><div class='rounded-[2rem] border p-6 {$proofCard}'><strong class='block text-lg font-semibold'>{$proofTitle}</strong><span class='mt-3 block text-sm leading-6 {$softSub}'>{$proofText}</span></div></div>
+                        </div>
+                    </div>
+                </section>";
+                break;
+
                 case 'hero_luxury_fullscreen':
 
                 $eyebrow = e($block['eyebrow'] ?? 'THE ART OF ARRIVAL');
@@ -2224,7 +2518,7 @@ HTML;
                     <div class='relative mx-auto max-w-7xl'>
                         <div class='mb-10 flex items-center justify-between border-b pb-5 {$theme['border']}'>
                             <span class='text-[11px] font-bold uppercase tracking-[0.34em] {$theme['sub']}'>{$eyebrow}</span>
-                            <span class='font-mono text-xs {$theme['sub']}'>{$editorialIndex}</span>
+                            <span class='text-xs {$theme['sub']}'>{$editorialIndex}</span>
                         </div>
                         <div class='grid items-end gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:gap-16'>
                             <div class='relative z-10 lg:pb-8'>

@@ -4,7 +4,7 @@ import { useMemo, useState } from "react";
 import { BlockRegistry } from "../Websites/Components/SparkRegistry";
 import { ActualSparkPreview } from "../Websites/Components/AddSectionModal";
 import CreditBalanceBadge from "../../Components/CosmicCredits/CreditBalanceBadge";
-import { useCreditBalance } from "../../Components/CosmicCredits/CreditBalanceContext";
+import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { showCosmicNotification } from "../../Components/CosmicNotification";
 
 const tones = [

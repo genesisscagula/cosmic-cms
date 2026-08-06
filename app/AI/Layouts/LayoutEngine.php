@@ -209,8 +209,36 @@ class LayoutEngine
             return 'hero_floating_glass';
         }
 
+        if ($category === 'hero' && $prompt !== null && preg_match('/\b(ai assistant|ai conversation|chatbot|conversational ai|prompt interface|copilot|automation assistant)\b/i', $prompt) === 1) {
+            return 'hero_ai_conversation';
+        }
+
+        if ($category === 'hero' && $prompt !== null && preg_match('/\b(agency hero|creative agency|digital agency|branding agency|web agency|marketing agency|performance agency|before[- ]after|portfolio metrics|client logos)\b/i', $prompt) === 1) {
+            return 'hero_agency_showcase';
+        }
+
+        if ($category === 'hero' && $prompt !== null && preg_match('/\b(bento|bento grid|asymmetrical|asymmetric cards|modular hero|multi-card hero)\b/i', $prompt) === 1) {
+            return 'hero_bento_premium';
+        }
+
         if ($category === 'hero' && $prompt !== null && preg_match('/\b(saas|software|dashboard|platform|app|product-led|fintech|productivity)\b/i', $prompt) === 1) {
             return 'hero_saas_dashboard';
+        }
+
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(hover cards|interactive service cards|service hover|hover services|animated service cards)\b/i', $prompt) === 1) {
+            return 'services_hover_cards';
+        }
+
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(feature comparison|compare features|capability comparison|compare capabilities|service capabilities|approach comparison|compare approaches)\b/i', $prompt) === 1) {
+            return 'services_feature_comparison';
+        }
+
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(pricing comparison|compare packages|service packages|service pricing|retainer plans|package comparison)\b/i', $prompt) === 1) {
+            return 'services_pricing_comparison';
+        }
+
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(premium services|bento services|service bento|asymmetrical services|integrated services|agency services|consulting services|specialist team)\b/i', $prompt) === 1) {
+            return 'services_bento_premium';
         }
 
         $sections = [
@@ -224,10 +252,13 @@ class LayoutEngine
                 'hero_saas_dashboard',
                 'hero_luxury_fullscreen',
                 'hero_video_premium',
+                'hero_ai_conversation',
+                'hero_agency_showcase',
+                'hero_bento_premium',
                 'hero_video_background',
                 'hero_floating_cards',
             ],
-            'services' => ['services_cards', 'services_bento'],
+            'services' => ['services_cards', 'services_bento', 'services_bento_premium', 'services_pricing_comparison', 'services_feature_comparison', 'services_hover_cards'],
             'feature' => ['feature_image_left', 'feature_image_right'],
             'pricing' => ['pricing_cards'],
             'testimonials' => ['testimonials_carousel'],

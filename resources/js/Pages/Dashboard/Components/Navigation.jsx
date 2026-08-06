@@ -1,5 +1,5 @@
 import { Link } from '@inertiajs/react';
-import { useCreditBalance } from '../../../Components/CosmicCredits/CreditBalanceContext';
+import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import CosmicBrandMark from '../../../Components/CosmicBrandMark';
 const baseNavigationItems = [
     { id: "home", label: "Overview", icon: "⌂" },

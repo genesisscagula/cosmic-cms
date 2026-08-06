@@ -29,6 +29,14 @@ import {
 } from "./Blocks/Services/ServicesBentoBlock";
 
 import {
+    ServicesBentoPremiumBlock,
+    ServicesBentoPremiumSchema
+} from "./Blocks/Services/ServicesBentoPremiumBlock";
+import { ServicesPricingComparisonBlock, ServicesPricingComparisonSchema } from "./Blocks/Services/ServicesPricingComparisonBlock";
+import { ServicesFeatureComparisonBlock, ServicesFeatureComparisonSchema } from "./Blocks/Services/ServicesFeatureComparisonBlock";
+import { ServicesHoverCardsBlock, ServicesHoverCardsSchema } from "./Blocks/Services/ServicesHoverCardsBlock";
+
+import {
     ProcessTimelineBlock,
     ProcessTimelineSchema
 } from "./Blocks/Stats/ProcessTimelineBlock";
@@ -80,6 +88,9 @@ import {
 
 import { HeroLuxuryFullscreenBlock, HeroLuxuryFullscreenSchema } from "./Blocks/Hero/HeroLuxuryFullscreenBlock";
 import { HeroVideoPremiumBlock, HeroVideoPremiumSchema } from "./Blocks/Hero/HeroVideoPremiumBlock";
+import { HeroAiConversationBlock, HeroAiConversationSchema } from "./Blocks/Hero/HeroAiConversationBlock";
+import { HeroAgencyShowcaseBlock, HeroAgencyShowcaseSchema } from "./Blocks/Hero/HeroAgencyShowcaseBlock";
+import { HeroBentoPremiumBlock, HeroBentoPremiumSchema } from "./Blocks/Hero/HeroBentoPremiumBlock";
 
 import {
     HeroSplitEditorialBlock,
@@ -231,6 +242,9 @@ export const BlockRegistry = {
 
     hero_luxury_fullscreen: { component: HeroLuxuryFullscreenBlock, schema: HeroLuxuryFullscreenSchema },
     hero_video_premium: { component: HeroVideoPremiumBlock, schema: HeroVideoPremiumSchema },
+    hero_ai_conversation: { component: HeroAiConversationBlock, schema: HeroAiConversationSchema },
+    hero_agency_showcase: { component: HeroAgencyShowcaseBlock, schema: HeroAgencyShowcaseSchema },
+    hero_bento_premium: { component: HeroBentoPremiumBlock, schema: HeroBentoPremiumSchema },
 
     image_cta_banner: {
 
@@ -278,6 +292,26 @@ export const BlockRegistry = {
 
         schema: ServicesBentoSchema
 
+    },
+
+    services_bento_premium: {
+        component: ServicesBentoPremiumBlock,
+        schema: ServicesBentoPremiumSchema
+    },
+
+    services_pricing_comparison: {
+        component: ServicesPricingComparisonBlock,
+        schema: ServicesPricingComparisonSchema
+    },
+
+    services_feature_comparison: {
+        component: ServicesFeatureComparisonBlock,
+        schema: ServicesFeatureComparisonSchema
+    },
+
+    services_hover_cards: {
+        component: ServicesHoverCardsBlock,
+        schema: ServicesHoverCardsSchema
     },
 
 	hero_centered_cta: {

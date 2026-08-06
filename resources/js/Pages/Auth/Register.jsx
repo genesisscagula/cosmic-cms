@@ -62,6 +62,7 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
     const [step, setStep] = useState(1);
     const [clientErrors, setClientErrors] = useState({});
     const [slugTouched, setSlugTouched] = useState(false);
+    const [submitError, setSubmitError] = useState('');
 
     const { data, setData, post, processing, errors, reset } = useForm({
         name: '',
@@ -133,10 +134,24 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
     const submit = (event) => {
         event.preventDefault();
         if (step !== 3) return nextStep();
+
+        setSubmitError('');
         post(route('register'), {
-            preserveScroll: true,
+            preserveScroll: false,
             onSuccess: () => window.localStorage.removeItem(storageKey),
-            onFinish: () => reset('password', 'password_confirmation'),
+            onError: (serverErrors) => {
+                const accountFields = ['name', 'email', 'password', 'password_confirmation'];
+                const businessFields = ['website_name', 'website_url', 'industry', 'business_description', 'location'];
+
+                if (accountFields.some((field) => serverErrors[field])) setStep(1);
+                else if (businessFields.some((field) => serverErrors[field])) setStep(2);
+
+                setSubmitError(
+                    Object.values(serverErrors || {})[0]
+                    || 'We could not create your account. Review the highlighted fields and try again.'
+                );
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            },
         });
     };
 
@@ -154,6 +169,11 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
             )}
 
             <form onSubmit={submit}>
+                {submitError && (
+                    <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700" role="alert">
+                        {submitError}
+                    </div>
+                )}
                 {step === 1 && (
                     <section className="grid gap-5 md:grid-cols-2">
                         <div className="md:col-span-2">
@@ -246,7 +266,7 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
                                     <li>✓ {selectedPlan.welcome}</li>
                                     <li>✓ Your trial landing page is preserved</li>
                                 </ul>
-                                <p className="mt-5 rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-xs leading-5 text-slate-400">PayPal activation is connected in the next onboarding patch. Your entered details are already prepared for that flow.</p>
+                                <p className="mt-5 rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-xs leading-5 text-slate-400">After account creation, you’ll be redirected securely to PayPal to activate this plan.</p>
                             </aside>
                         </div>
                     </section>
@@ -259,8 +279,8 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
                     {step < 3 ? (
                         <button type="button" onClick={nextStep} className="rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-300 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-400/15 transition hover:from-emerald-300 hover:to-cyan-200">Continue</button>
                     ) : (
-                        <button type="submit" disabled={processing} className="rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-300 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-400/15 transition hover:from-emerald-300 hover:to-cyan-200 disabled:cursor-not-allowed disabled:opacity-60">
-                            {processing ? 'Creating account…' : 'Create account & continue'}
+                        <button type="submit" disabled={processing} aria-busy={processing} className="rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-300 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-400/15 transition hover:from-emerald-300 hover:to-cyan-200 disabled:cursor-not-allowed disabled:opacity-60">
+                            {processing ? 'Opening PayPal…' : 'Create account & continue to PayPal'}
                         </button>
                     )}
                 </div>

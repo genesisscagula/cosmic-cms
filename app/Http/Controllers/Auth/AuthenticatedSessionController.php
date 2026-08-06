@@ -49,6 +49,18 @@ class AuthenticatedSessionController extends Controller
     {
         Auth::guard('web')->logout();
 
+        $request->session()->forget([
+            'selected_plan',
+            'checkout_uuid',
+            'pending_checkout_id',
+            'paypal_subscription_id',
+            'paypal_order_id',
+            'paypal_request_id',
+            'paypal_approval_url',
+            'approval_url',
+            'onboarding',
+        ]);
+
         $request->session()->invalidate();
 
         $request->session()->regenerateToken();

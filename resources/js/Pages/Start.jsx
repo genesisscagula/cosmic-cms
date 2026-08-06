@@ -32,6 +32,22 @@ const plans = [
     },
 ];
 
+
+const agencyPlans = [
+    {
+        id: 'agency_starter', icon: '✦', name: 'Starter Agency', price: '$99', summary: '500 Cosmic Credits / month',
+        features: ['Up to 3 websites', '3 Agency templates', '5 free Owned Sparks', 'Website cloning', 'Per-website leads and analytics'],
+    },
+    {
+        id: 'agency_growth', icon: '◆', name: 'Growth Agency', price: '$199', summary: '1,500 Cosmic Credits / month', featured: true,
+        features: ['Everything in Starter Agency', 'Up to 10 websites', 'Agency Insights dashboard', 'Shared Sparks and templates', 'Up to 3 team members'],
+    },
+    {
+        id: 'agency_pro', icon: '✹', name: 'Pro Agency', price: '$399', summary: '5,000 Cosmic Credits / month',
+        features: ['Everything in Growth Agency', 'Unlimited websites under fair use', 'Full Agency Insights', 'Advanced white labeling', 'API access and webhooks'],
+    },
+];
+
 const quickIdeas = [
     { label: 'Restaurant', prompt: 'Create a modern restaurant website for a neighborhood dining spot in New York. Include menus, reservations, testimonials, and a contact page.' },
     { label: 'Coffee Shop', prompt: 'Create a warm website for an independent coffee shop in Brooklyn. Highlight specialty coffee, pastries, the menu, and private event enquiries.' },
@@ -172,6 +188,8 @@ export default function Start({ trial }) {
     const [showLoading, setShowLoading] = useState(false);
     const [loadingStage, setLoadingStage] = useState(startGenerationStages[0].message);
     const [loadingProgress, setLoadingProgress] = useState(0);
+    const [loadingNotice, setLoadingNotice] = useState('');
+    const [planFamily, setPlanFamily] = useState('personal');
     const quickIdeaTimerRef = useRef(null);
     const animatedPrompt = useAnimatedPrompt(prompt.length === 0);
 
@@ -232,6 +250,7 @@ export default function Start({ trial }) {
             finishingTimer = window.setTimeout(() => {
                 if (!cancelled) {
                     setLoadingStage('Still building your draft. This can take up to a minute...');
+                    setLoadingNotice('Please keep this tab open. Cosmic is still working and will take you to the Builder automatically.');
                 }
             }, 9000);
         };
@@ -272,13 +291,20 @@ export default function Start({ trial }) {
 
     const submit = (event) => {
         event.preventDefault();
-    setShowLoading(true);
-    post('/start', {
-        // A successful Inertia redirect replaces this page. Closing the
-        // overlay in `onFinish` makes it flash away before that page renders.
-        onError: () => setShowLoading(false),
-    });
-};
+        if (processing || prompt.trim().length < 20) return;
+
+        setLoadingNotice('');
+        setShowLoading(true);
+        post('/start', {
+            preserveScroll: true,
+            onError: () => {
+                setShowLoading(false);
+                setLoadingProgress(0);
+                setLoadingStage(startGenerationStages[0].message);
+                setLoadingNotice('');
+            },
+        });
+    };
 
     const isReady = trial?.status === 'ready';
     const isFailed = trial?.status === 'failed';
@@ -300,15 +326,15 @@ export default function Start({ trial }) {
                 <section className="relative mx-auto flex min-h-screen w-full max-w-[1440px] items-center justify-center px-5 py-10 sm:px-8 sm:py-16">
                     <div className={`relative w-full ${isReady ? 'max-w-7xl' : 'max-w-4xl'}`}>
                         <div className="pointer-events-none absolute -inset-10 rounded-[3rem] bg-gradient-to-r from-violet-500/20 via-cyan-400/15 to-emerald-400/20 blur-3xl" />
-                        <div className="relative overflow-hidden rounded-[2rem] border border-emerald-200/30 bg-[radial-gradient(circle_at_100%_0%,rgba(20,184,166,0.20),transparent_36%),radial-gradient(circle_at_0%_0%,rgba(124,58,237,0.23),transparent_38%),linear-gradient(145deg,#181627_0%,#0d1017_56%,#10221f_100%)] p-5 shadow-2xl shadow-black/60 sm:p-8 lg:p-12">
-                            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.025)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.025)_1px,transparent_1px)] bg-[size:42px_42px] opacity-30" />
+                        <div className="cosmic-start-panel relative overflow-hidden rounded-[2rem] border border-emerald-200 bg-white/95 p-5 shadow-2xl shadow-slate-900/10 sm:p-8 lg:p-12">
+                            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.035)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.035)_1px,transparent_1px)] bg-[size:42px_42px] opacity-60" />
                             <div className="relative">
                         {isReady ? (
                             <div className="mx-auto max-w-6xl py-5 sm:py-8">
                                 <div className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-400/15 text-xl text-emerald-300">✓</div>
                                 <p className="mt-7 text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">Draft prepared</p>
                                 <h2 className="mt-3 text-3xl font-semibold tracking-tight">Your website direction is ready.</h2>
-                                <p className="mt-4 max-w-lg leading-7 text-slate-300">
+                                <p className="mt-4 max-w-lg leading-7 text-slate-600">
                                     We saved a {trial.blocks_count}-section starting draft for {trial.business_name}. Create an account to review, edit, and publish it from your Cosmic workspace.
                                 </p>
                                 <PlanSelection selectedPlan={selectedPlan?.id} onSelect={selectPlan} />
@@ -332,24 +358,24 @@ export default function Start({ trial }) {
                             <div className="mx-auto max-w-3xl py-5 sm:py-8">
                                 <div className="grid h-12 w-12 place-items-center rounded-2xl bg-rose-400/15 text-xl text-rose-300">!</div>
                                 <h2 className="mt-7 text-3xl font-semibold tracking-tight">We could not prepare that draft.</h2>
-                                <p className="mt-4 max-w-lg leading-7 text-slate-300">{trial.error_message || 'Please try again in a moment.'}</p>
+                                <p className="mt-4 max-w-lg leading-7 text-slate-600">{trial.error_message || 'Please try again in a moment.'}</p>
                                 <Link href="/start" className="mt-8 inline-flex rounded-xl bg-white px-5 py-3 text-sm font-semibold text-[#121217] transition hover:bg-slate-200">Try again</Link>
                             </div>
                         ) : (
                             <form onSubmit={submit} noValidate className="relative mx-auto max-w-3xl">
                                 <div className="mx-auto mb-9 max-w-2xl text-center">
-                                    <Link href="/" className="inline-flex items-center gap-3 font-semibold tracking-tight text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#13151d]">
-                                        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-gradient-to-br from-violet-500 via-cyan-400 to-emerald-400 text-xl font-bold text-[#10121c] shadow-lg shadow-cyan-950/50">C</span>
-                                        <span className="text-2xl">Cosmic <span className="text-emerald-300">CMS</span></span>
+                                    <Link href="/" className="inline-flex items-center gap-3 font-semibold tracking-tight text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#13151d]">
+                                        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-600 text-xl font-bold text-white shadow-lg shadow-cyan-950/50">C</span>
+                                        <span className="text-2xl text-slate-950">Cosmic <span className="text-emerald-700">CMS</span></span>
                                     </Link>
-                                    <p className="mx-auto mt-8 inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/20 px-3.5 py-1.5 text-xs font-medium text-slate-200">
+                                    <p className="mx-auto mt-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-medium text-emerald-800">
                                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.9)]" />
                                         Build your first draft in minutes
                                     </p>
-                                    <h1 className="mt-5 text-balance text-4xl font-semibold leading-[1.04] tracking-[-0.045em] text-white sm:text-5xl">
+                                    <h1 className="mt-5 text-balance text-4xl font-semibold leading-[1.04] tracking-[-0.045em] text-slate-950 sm:text-5xl">
                                         Describe your business. Start with a real website draft.
                                     </h1>
-                                    <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-300 sm:text-lg">
+                                    <p className="mx-auto mt-5 max-w-xl text-base leading-7 text-slate-600 sm:text-lg">
                                         Tell Cosmic what you do, who you serve, and what you want your website to help visitors do.
                                     </p>
                                 </div>
@@ -359,7 +385,7 @@ export default function Start({ trial }) {
                                     <textarea
                                         value={prompt}
                                         onChange={handlePromptChange}
-                                        className={`${fieldClass} min-h-52 resize-y border-white/15 bg-black/20 px-5 py-5 leading-7 shadow-inner shadow-black/20`}
+                                        className={`${fieldClass} min-h-52 resize-y border-emerald-200 bg-white px-5 py-5 leading-7 text-slate-900 shadow-inner shadow-slate-900/5`}
                                         placeholder=""
                                     />
                                     {prompt.length === 0 && animatedPrompt && (
@@ -379,7 +405,7 @@ export default function Start({ trial }) {
                                                 key={idea.label}
                                                 type="button"
                                                 onClick={() => typeQuickIdea(idea.prompt)}
-                                                className="rounded-full border border-white/10 bg-black/20 px-3.5 py-2 text-xs font-medium text-slate-100 transition hover:border-violet-300/60 hover:bg-violet-400/15 hover:text-white focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
+                                                className="cosmic-start-quick-idea rounded-full border border-emerald-200 bg-emerald-50 px-4 py-2 text-xs font-bold text-emerald-800 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-400 hover:bg-emerald-100 hover:text-emerald-950 hover:shadow-md focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-400" style={{ color: '#065f46' }}
                                             >
                                                 {idea.label}
                                             </button>
@@ -387,21 +413,21 @@ export default function Start({ trial }) {
                                     </div>
                                 </div>
 
-                                <button type="submit" disabled={processing || prompt.trim().length < 20} className="mt-8 flex w-full items-center justify-center rounded-xl bg-gradient-to-r from-violet-500 via-cyan-500 to-emerald-400 px-5 py-4 text-base font-semibold text-white shadow-xl shadow-cyan-950/30 transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#13151a]">
+                                <button type="submit" disabled={processing || prompt.trim().length < 20} className="cosmic-start-submit mt-8 flex w-full items-center justify-center rounded-xl bg-emerald-600 px-5 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-900/15 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#13151a]">
                                     {processing ? 'Preparing your draft…' : 'Generate my website draft'}
                                 </button>
-                                <p className="mt-5 text-center text-xs leading-5 text-slate-400">Your private draft is saved for you to review. <span className="text-emerald-300">Nothing is published automatically.</span></p>
+                                <p className="mt-5 text-center text-sm leading-6 text-slate-600">Your private draft is saved for you to review. <span className="font-medium text-emerald-700">Nothing is published automatically.</span></p>
 
                                 {showLoading && (
-                                    <div className="absolute inset-0 z-10 grid place-items-center rounded-2xl bg-[#15151a]/95 px-6 text-center backdrop-blur-sm" role="status" aria-live="polite">
-                                        <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#151519]/95 px-5 py-7 shadow-2xl shadow-black/60 sm:px-8 sm:py-8">
+                                    <div className="fixed inset-0 z-[100] grid place-items-center bg-white/72 px-5 text-center backdrop-blur-sm" role="status" aria-live="polite">
+                                        <div className="w-full max-w-2xl rounded-[28px] border border-emerald-200/90 bg-white/95 px-6 py-8 shadow-[0_35px_100px_-30px_rgba(15,23,42,.35)] ring-1 ring-white sm:px-10 sm:py-10">
                                             <div className="relative mx-auto h-16 w-16" aria-hidden="true">
                                                 <div className="cosmic-start-spinner absolute inset-0 rounded-full" />
-                                                <div className="absolute inset-[3px] grid place-items-center rounded-full bg-[#17171d] text-xl text-cyan-300 shadow-lg shadow-violet-950/50">✦</div>
+                                                <div className="absolute inset-[3px] grid place-items-center rounded-full bg-white text-xl text-emerald-600 shadow-lg shadow-violet-950/50">✦</div>
                                             </div>
-                                            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-violet-300">Cosmic AI</p>
-                                            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-white">Building your page</h3>
-                                            <p className="mt-3 text-sm text-slate-300">{loadingStage}</p>
+                                            <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Cosmic AI</p>
+                                            <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Building your page</h3>
+                                            <p className="mt-3 text-sm text-slate-600">{loadingStage}</p>
 
                                             <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">
                                                 {generationSteps.map((step, index) => {
@@ -413,13 +439,13 @@ export default function Start({ trial }) {
                                                             key={step.label}
                                                             className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[10px] font-medium sm:text-xs ${
                                                                 isComplete
-                                                                    ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200'
+                                                                    ? 'border-emerald-300 bg-emerald-50 text-emerald-800'
                                                                     : isCurrent
-                                                                        ? 'border-violet-400/45 bg-violet-400/10 text-violet-100'
-                                                                        : 'border-white/10 bg-white/[0.02] text-slate-500'
+                                                                        ? 'border-violet-300 bg-violet-50 text-violet-800'
+                                                                        : 'border-slate-200 bg-slate-50 text-slate-500'
                                                             }`}
                                                         >
-                                                            <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] ${isComplete ? 'bg-emerald-400 text-emerald-950' : isCurrent ? 'bg-violet-400 text-white' : 'bg-white/10 text-slate-400'}`}>
+                                                            <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] ${isComplete ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-violet-500 text-white' : 'bg-slate-200 text-slate-500'}`}>
                                                                 {isComplete ? '✓' : index + 1}
                                                             </span>
                                                             <span className="leading-4">{step.label}</span>
@@ -428,23 +454,26 @@ export default function Start({ trial }) {
                                                 })}
                                             </div>
 
-                                            <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
+                                            <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-200">
                                                 <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400 transition-[width] duration-200" style={{ width: `${loadingProgress}%` }} />
                                             </div>
-                                            <div className="mt-3 flex items-center justify-between text-xs text-slate-500">
+                                            <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
                                                 <span>Generating...</span>
                                                 <span>{loadingProgress}%</span>
                                             </div>
+                                            {loadingNotice && (
+                                                <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs leading-5 text-amber-800">{loadingNotice}</p>
+                                            )}
                                         </div>
                                         <div className="hidden">
                                             <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl border border-violet-400/30 bg-violet-400/10 text-2xl shadow-lg shadow-violet-950/40">✨</div>
                                             <p className="mt-6 text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">Cosmic AI is working</p>
                                             <h3 className="mt-2 text-xl font-semibold text-white">Building your website draft</h3>
                                             <p className="mt-3 text-sm leading-6 text-slate-400">Understanding your business, choosing a suitable structure, and writing editable content.</p>
-                                            <div className="mt-6 h-2 overflow-hidden rounded-full bg-white/10">
+                                            <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-200">
                                                 <div className="h-full w-2/3 animate-pulse rounded-full bg-gradient-to-r from-violet-400 via-fuchsia-400 to-cyan-300" />
                                             </div>
-                                            <p className="mt-3 text-xs text-slate-500">Preparing your private preview…</p>
+                                            <p className="mt-3 text-xs text-slate-600">Preparing your private preview…</p>
                                         </div>
                                     </div>
                                 )}
@@ -460,19 +489,27 @@ export default function Start({ trial }) {
     );
 }
 
-function PlanSelection({ selectedPlan, onSelect }) {
+function PlanSelection({ selectedPlan, onSelect, family, onFamilyChange }) {
+    const visiblePlans = family === 'agency' ? agencyPlans : plans;
     return (
         <section id="plans" className="mt-8" aria-labelledby="plan-selection-title">
-            <div className="flex flex-wrap items-end justify-between gap-2">
+            <div className="flex flex-wrap items-end justify-between gap-4">
                 <div>
                     <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">Choose your launch plan</p>
                     <h3 id="plan-selection-title" className="mt-2 text-lg font-semibold text-white">Choose the Cosmic plan that fits your workflow.</h3>
                 </div>
-                <p className="text-xs text-slate-500">No payment on this page</p>
+                <div className="inline-flex rounded-xl border border-slate-200 bg-white p-1 shadow-sm" role="tablist" aria-label="Plan family">
+                    {['personal', 'agency'].map((item) => (
+                        <button key={item} type="button" role="tab" aria-selected={family === item} onClick={() => onFamilyChange(item)} className={`rounded-lg px-4 py-2 text-xs font-bold capitalize transition ${family === item ? 'bg-emerald-700 text-white shadow-sm' : 'text-slate-600 hover:bg-slate-50 hover:text-slate-950'}`} style={family === item ? { color: '#ffffff' } : { color: '#475569' }}>
+                            {item}
+                        </button>
+                    ))}
+                </div>
             </div>
+            <p className="mt-2 text-right text-xs text-slate-500">No payment on this page</p>
 
             <div className="mt-6 grid items-stretch gap-4 lg:grid-cols-3">
-                {plans.map((plan) => {
+                {visiblePlans.map((plan) => {
                     const isSelected = selectedPlan === plan.id;
 
                     return (
@@ -481,20 +518,20 @@ function PlanSelection({ selectedPlan, onSelect }) {
                             key={plan.id}
                             onClick={() => onSelect(plan.id)}
                             aria-pressed={isSelected}
-                            className={`relative flex h-full min-h-[31rem] flex-col rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 sm:p-6 ${isSelected ? 'border-violet-400 bg-violet-500/10 shadow-lg shadow-violet-950/20' : 'border-white/10 bg-black/20 hover:border-white/25 hover:bg-white/[0.03]'}`}
+                            className={`relative flex h-full min-h-[27rem] flex-col rounded-2xl border p-5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-emerald-300 sm:p-6 ${isSelected ? 'border-emerald-400 bg-emerald-50 shadow-lg shadow-emerald-900/10' : 'border-slate-200 bg-white hover:-translate-y-1 hover:border-emerald-300 hover:shadow-lg'}`}
                         >
                             {plan.featured && (
-                                <span className="absolute right-3 top-3 rounded-full bg-violet-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-200">Popular</span>
+                                <span className="absolute right-3 top-3 rounded-full bg-violet-400/15 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-emerald-800">Popular</span>
                             )}
-                            <span className="flex items-center gap-2 text-sm font-semibold text-white"><span aria-hidden="true">{plan.icon}</span>{plan.name}</span>
-                            <span className="mt-1 block text-2xl font-semibold tracking-tight text-white">
-                                {plan.price}<span className="ml-1 text-xs font-medium text-slate-400">/ month</span>
+                            <span className="flex items-center gap-2 text-sm font-bold text-slate-950"><span aria-hidden="true">{plan.icon}</span>{plan.name}</span>
+                            <span className="mt-1 block text-3xl font-bold tracking-tight text-slate-950">
+                                {plan.price}<span className="ml-1 text-xs font-medium text-slate-500">/ month</span>
                             </span>
-                            <span className="mt-2 block text-xs leading-5 text-slate-400">{plan.summary}</span>
-                            <span className="mt-4 block flex-1 space-y-2 border-t border-white/10 pt-4 text-xs leading-5 text-slate-300">
+                            <span className="mt-2 block text-sm leading-6 text-slate-600">{plan.summary}</span>
+                            <span className="mt-4 block flex-1 space-y-2 border-t border-slate-200 pt-4 text-sm leading-6 text-slate-700">
                                 {plan.features.map((feature) => <span key={feature} className="block">✓ {feature}</span>)}
                             </span>
-                            <span className={`mt-6 block border-t border-white/10 pt-4 text-xs font-semibold ${isSelected ? 'text-violet-200' : 'text-slate-400'}`}>
+                            <span className={`mt-6 block border-t border-slate-200 pt-4 text-sm font-bold ${isSelected ? 'text-emerald-700' : 'text-slate-700'}`}>
                                 {isSelected ? 'Selected' : 'Choose plan'}
                             </span>
                         </button>

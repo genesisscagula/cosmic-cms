@@ -31,6 +31,9 @@ class SchemaManager
             'hero_saas_dashboard' => 'heroSaasDashboardSchema',
             'hero_luxury_fullscreen' => 'heroLuxuryFullscreenSchema',
             'hero_video_premium' => 'heroVideoPremiumSchema',
+            'hero_ai_conversation' => 'heroAiConversationSchema',
+            'hero_agency_showcase' => 'heroAgencyShowcaseSchema',
+            'hero_bento_premium' => 'heroBentoPremiumSchema',
 
             'image_cta_banner' => 'imageCtaBannerSchema',
 
@@ -41,6 +44,10 @@ class SchemaManager
             'services_cards' => 'servicesCardsSchema',
 
             'services_bento' => 'servicesBentoSchema',
+            'services_bento_premium' => 'servicesBentoPremiumSchema',
+            'services_pricing_comparison' => 'servicesPricingComparisonSchema',
+            'services_feature_comparison' => 'servicesFeatureComparisonSchema',
+            'services_hover_cards' => 'servicesHoverCardsSchema',
 
             'process_timeline' => 'processTimelineSchema',
 

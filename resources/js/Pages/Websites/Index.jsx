@@ -15,7 +15,7 @@ import HeaderMenuEditor from './Components/HeaderMenuEditor';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 import CreditPrice from '../../Components/CosmicCredits/CreditPrice';
 import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadge';
-import { useCreditBalance } from '../../Components/CosmicCredits/CreditBalanceContext';
+import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { ACTION_PRICING } from '../../cosmic/pricing';
 
 const WebsiteWorkspaceShell = ({ children }) => <>{children}</>;

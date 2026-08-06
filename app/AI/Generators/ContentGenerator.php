@@ -315,6 +315,140 @@ PROMPT;
     TXT;
     }
 
+    private function servicesBentoPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_bento_premium
+
+    - type = services_bento_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - featured_number
+    - featured_title
+    - featured_text
+    - featured_meta
+    - service_two_number
+    - service_two_title
+    - service_two_text
+    - service_three_number
+    - service_three_title
+    - service_three_text
+    - service_four_number
+    - service_four_title
+    - service_four_text
+    - service_five_number
+    - service_five_title
+    - service_five_text
+    - proof_value
+    - proof_label
+
+    Requirements:
+
+    - Write concise premium service copy with five distinct but complementary offers.
+    - Make the featured service the most strategic or commercially important offer.
+    - Keep service numbers short and sequential.
+    - Keep featured_meta as three short capability labels separated by middle dots.
+    - Treat proof_value and proof_label as editable starter content, not verified claims.
+    - Do not invent awards, clients, guarantees, or performance results.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+
+    private function servicesHoverCardsSchema(): string
+    {
+        return <<<TXT
+
+    services_hover_cards
+
+    - type = services_hover_cards
+    - theme = auto
+    - eyebrow, heading, text
+    - primary_label, primary_url
+    - card_one_number through card_six_number
+    - card_one_title through card_six_title
+    - card_one_summary through card_six_summary
+    - card_one_text through card_six_text
+    - card_one_link through card_six_link
+
+    Requirements:
+    - Present exactly six distinct but complementary services.
+    - Keep each summary short enough to scan before hover.
+    - Use the longer card text to explain the outcome and practical value of each service.
+    - Keep link labels concise and action-oriented.
+    - Do not invent clients, awards, guarantees, certifications, or performance results.
+    - Keep primary_url as # when no destination was supplied.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+
+    private function servicesFeatureComparisonSchema(): string
+    {
+        return <<<TXT
+
+    services_feature_comparison
+
+    - type = services_feature_comparison
+    - theme = auto
+    - eyebrow, heading, text
+    - option_one_name, option_one_kicker, option_one_text
+    - option_two_name, option_two_kicker, option_two_text, option_two_badge
+    - option_three_name, option_three_kicker, option_three_text
+    - feature_one through feature_eight
+    - option_one_one through option_one_eight
+    - option_two_one through option_two_eight
+    - option_three_one through option_three_eight
+    - primary_label, primary_url, footnote
+
+    Requirements:
+    - Compare exactly three clearly differentiated service approaches or capability levels.
+    - Keep eight capability rows concise, concrete, and easy to scan.
+    - Highlight option two as the recommended or most versatile approach.
+    - Do not include pricing unless the user explicitly supplied pricing.
+    - Do not invent clients, awards, guarantees, certifications, or performance results.
+    - Keep primary_url as # when no destination was supplied.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+    private function servicesPricingComparisonSchema(): string
+    {
+        return <<<TXT
+
+    services_pricing_comparison
+
+    - type = services_pricing_comparison
+    - theme = auto
+    - eyebrow, heading, text
+    - starter_name, starter_price, starter_period, starter_description, starter_button_label, starter_button_url
+    - growth_name, growth_price, growth_period, growth_description, growth_button_label, growth_button_url, growth_badge
+    - pro_name, pro_price, pro_period, pro_description, pro_button_label, pro_button_url
+    - feature_one through feature_six
+    - starter_one through starter_six
+    - growth_one through growth_six
+    - pro_one through pro_six
+    - footnote
+
+    Requirements:
+    - Present exactly three clearly differentiated service packages.
+    - Keep six comparison rows concise, specific, and useful.
+    - Use editable starter prices only when the user supplied pricing; otherwise use "Custom" or neutral package language.
+    - Do not invent guarantees, clients, awards, or performance results.
+    - Keep button URLs as # when no destination was supplied.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
     private function servicesCardsSchema(): string
     {
         return <<<TXT
@@ -778,6 +912,127 @@ PROMPT;
     - Do not use markdown or placeholder copy.
     - Keep video_url on the provided placeholder unless an existing approved asset is supplied.
     - poster_image_url must remain empty so the existing image-selection flow can provide the poster image.
+
+    TXT;
+    }
+
+    private function heroAiConversationSchema(): string
+    {
+        return <<<TXT
+
+    hero_ai_conversation
+
+    - type = hero_ai_conversation
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - assistant_label
+    - assistant_status
+    - user_message
+    - assistant_message
+    - prompt_placeholder
+    - chip_one
+    - chip_two
+    - chip_three
+
+    Requirements:
+
+    - Write confident, concise copy for a conversational AI or automation product.
+    - The user_message should sound like a realistic customer request.
+    - The assistant_message should explain a useful next step without promising unsupported capabilities.
+    - Keep assistant_status and proof chips short.
+    - Do not invent customer counts, awards, or performance claims.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+
+    private function heroBentoPremiumSchema(): string
+    {
+        return <<<TXT
+
+    hero_bento_premium
+
+    - type = hero_bento_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - image_url = ""
+    - image_label
+    - metric_value
+    - metric_label
+    - proof_title
+    - proof_text
+    - card_one_label
+    - card_two_label
+    - card_three_label
+
+    Requirements:
+
+    - Write concise, premium copy for an asymmetrical bento-style hero.
+    - Keep the three card labels short and complementary.
+    - The metric must be clearly editable starter content, not presented as a verified claim.
+    - Do not invent awards, clients, or guaranteed outcomes.
+    - Leave image_url empty so the image-selection flow can populate it.
+    - Do not use markdown or placeholder copy.
+
+    TXT;
+    }
+
+
+    private function heroAgencyShowcaseSchema(): string
+    {
+        return <<<TXT
+
+    hero_agency_showcase
+
+    - type = hero_agency_showcase
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - before_label
+    - before_caption
+    - after_label
+    - after_caption
+    - metric_one_value
+    - metric_one_label
+    - metric_two_value
+    - metric_two_label
+    - metric_three_value
+    - metric_three_label
+    - logo_one
+    - logo_two
+    - logo_three
+    - logo_four
+    - before_image_url = ""
+    - after_image_url = ""
+
+    Requirements:
+
+    - Write polished, concise copy for a creative, digital, branding, web, or performance agency.
+    - Frame the before/after captions as a transformation in clarity or experience, not an unsupported factual claim.
+    - Metrics must remain editable starter examples unless the user supplied verified figures.
+    - Client logo labels must be neutral placeholders unless real client names were provided.
+    - Keep both calls to action practical and specific.
+    - Do not invent awards, named clients, revenue, or guaranteed results.
+    - Leave image URLs empty so the approved image-selection flow can fill both visuals.
+    - Do not use markdown or placeholder copy.
 
     TXT;
     }

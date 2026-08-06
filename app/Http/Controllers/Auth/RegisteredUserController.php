@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Auth;
 
 use App\Http\Controllers\Controller;
+use App\Models\PaymentOrder;
 use App\Models\PendingOnboarding;
 use App\Models\TrialGeneration;
 use App\Models\User;
@@ -55,8 +56,22 @@ class RegisteredUserController extends Controller
      * Paid access, credits, workspace creation, and trial claiming happen only
      * after verified payment in the following onboarding patches.
      */
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request)
     {
+        // A new registration must never inherit checkout state from a previous
+        // account in the same browser session.
+        $request->session()->forget([
+            'selected_plan',
+            'checkout_uuid',
+            'pending_checkout_id',
+            'paypal_subscription_id',
+            'paypal_order_id',
+            'paypal_request_id',
+            'paypal_approval_url',
+            'approval_url',
+            'onboarding',
+        ]);
+
         $validated = $request->validate([
             'name' => ['required', 'string', 'max:255'],
             'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:'.User::class],
@@ -149,15 +164,24 @@ class RegisteredUserController extends Controller
         Auth::login($user);
         $request->session()->regenerate();
 
-        return redirect()->route('onboarding.pending')
-            ->with('status', 'Your account and business details were saved. Complete payment to activate your plan.');
+        // Complete the server-side account creation first, then land on an
+        // internal Inertia page. That page opens PayPal with a native browser
+        // navigation, avoiding external redirects being swallowed after a
+        // logout/new-registration cycle.
+        return redirect()->route('onboarding.pending', ['checkout' => 'auto']);
     }
 
     public function pending(Request $request): Response|RedirectResponse
     {
         $user = $request->user();
 
-        if (! in_array($user->onboarding_status, ['pending_payment', 'provisioning'], true)) {
+        $hasPaidPlan = $user->paymentOrders()
+            ->where('product_type', 'plan')
+            ->where('status', 'paid')
+            ->whereNotNull('fulfilled_at')
+            ->exists();
+
+        if ($user->onboarding_status === 'complete' && $hasPaidPlan) {
             return redirect()->route('dashboard');
         }
 
@@ -197,6 +221,7 @@ class RegisteredUserController extends Controller
             ],
             'status' => session('status'),
             'paymentError' => session('payment_error'),
+            'autoCheckout' => $request->string('checkout')->toString() === 'auto',
         ]);
     }
 

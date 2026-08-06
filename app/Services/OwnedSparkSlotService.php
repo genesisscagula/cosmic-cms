@@ -6,13 +6,18 @@ use App\Models\User;
 
 final class OwnedSparkSlotService
 {
-    public function __construct(private readonly PlanRegistry $plans)
+    public function __construct(
+        private readonly PlanRegistry $plans,
+        private readonly PlanBuiltInSparkGrantService $builtIns,
+    )
     {
     }
 
     /** @return array<string, mixed> */
     public function usage(User $user, int $increment = 0): array
     {
+        $this->builtIns->ensure($user);
+
         $limit = $this->plans->capabilities($user->plan_key)['max_owned_sparks'] ?? null;
         $used = $user->cosmicUnlocks()
             ->where('unlock_type', 'spark')
