@@ -17,7 +17,7 @@ export default function ClientPreview({ website, pages = [], branding = {} }) {
     );
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-slate-100">
+        <div className="cosmic-ui-shell min-h-screen bg-[#09090b] text-slate-100">
             <Head title={`${website.name} Preview`} />
             <header className="border-b border-white/10 bg-[#111113]">
                 <div className="mx-auto flex max-w-[1600px] flex-wrap items-center justify-between gap-4 px-5 py-4">

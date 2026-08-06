@@ -50,7 +50,7 @@ export default function ThemeSelector({
 
                 </div>
 
-                <span className="text-slate-400">
+                <span className="text-[10px] leading-none text-slate-400">
                     ▼
                 </span>
 

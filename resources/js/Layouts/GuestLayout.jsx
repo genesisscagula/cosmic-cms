@@ -13,7 +13,7 @@ export default function GuestLayout({ children, title = 'Welcome to Cosmic CMS',
 
             <div className={`relative mx-auto flex min-h-[calc(100vh-3rem)] flex-col justify-center ${wide ? 'max-w-4xl' : 'max-w-md'}`}>
                 <Link href="/" className="mb-8 inline-flex w-fit items-center gap-3 rounded-xl outline-none transition hover:opacity-90 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 focus-visible:ring-offset-[#fbfffc]">
-                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 text-lg font-black text-white shadow-sm shadow-emerald-200">✦</span>
+                    <span className="cosmic-guest-brand-mark flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 text-lg font-black text-white shadow-sm shadow-emerald-200" aria-hidden="true">✦</span>
                     <span>
                         <span className="block text-base font-black tracking-tight text-slate-950">Cosmic CMS</span>
                         <span className="block text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">AI website platform</span>

@@ -78,9 +78,9 @@ export default function CosmicNotification() {
     const styles = toneStyles[notification.tone] || toneStyles.info;
 
     return (
-        <div className="fixed inset-0 z-[10050] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
+        <div className="cosmic-alert-overlay fixed inset-0 z-[10050] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
             <button type="button" className="absolute inset-0 cursor-default" aria-label="Close notification" onClick={dismiss} />
-            <section role="dialog" aria-modal="true" aria-labelledby="cosmic-notification-title" className="relative w-full max-w-sm rounded-2xl border border-white/10 bg-[#17171b] p-5 shadow-2xl shadow-black/60">
+            <section role="dialog" aria-modal="true" aria-labelledby="cosmic-notification-title" className="cosmic-notification cosmic-dialog-panel relative w-full max-w-sm rounded-2xl border border-white/10 bg-[#17171b] p-5 shadow-2xl shadow-black/60">
                 <div className="flex items-start gap-3">
                     <span className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-1 ${styles.badge}`} aria-hidden="true">
                         <span className={`h-2 w-2 rounded-full ${styles.dot}`} />

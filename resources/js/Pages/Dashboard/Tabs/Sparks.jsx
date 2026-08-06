@@ -123,11 +123,15 @@ export default function Sparks({ dashboard }) {
 
     const unlockSpark = async (spark) => {
         if (spark.can_install === false) {
-            window.alert(spark.acquisition?.message || (spark.slot_blocked
-                ? "Your Owned Sparks slots are full. Remove a Spark or upgrade your plan."
-                : spark.credit_blocked
-                    ? "You need more Cosmic Credits to purchase this Spark."
-                    : "This Spark is available on a higher plan. Upgrade to add it to Owned Sparks."));
+            showCosmicNotification({
+                title: spark.slot_blocked ? 'Owned Spark slots full' : spark.credit_blocked ? 'More credits required' : 'Spark unavailable',
+                message: spark.acquisition?.message || (spark.slot_blocked
+                    ? 'Your Owned Sparks slots are full. Remove a Spark or upgrade your plan.'
+                    : spark.credit_blocked
+                        ? 'You need more Cosmic Credits to purchase this Spark.'
+                        : 'This Spark is available on a higher plan. Upgrade to add it to Owned Sparks.'),
+                tone: 'info',
+            });
             return;
         }
         setBusyKey(spark.key);
@@ -136,7 +140,7 @@ export default function Sparks({ dashboard }) {
             setMarketItems((items) => items.map((item) => item.key === spark.key ? { ...item, owned: true } : item));
             router.reload({ only: ["dashboard"], preserveScroll: true, preserveState: true });
         } catch (error) {
-            window.alert(error.response?.data?.message || "Could not add this Spark. Please try again.");
+            showCosmicNotification({ title: 'Could not add Spark', message: error.response?.data?.message || 'Please try again.', tone: 'error' });
         } finally {
             setBusyKey(null);
         }
@@ -148,7 +152,7 @@ export default function Sparks({ dashboard }) {
             const { data } = await axios.post(`/sparks/${spark.key}/favorite`);
             setMarketItems((items) => items.map((item) => item.key === spark.key ? { ...item, favorited: data.favorited } : item));
         } catch (error) {
-            window.alert(error.response?.data?.message || "Could not update Favorites.");
+            showCosmicNotification({ title: 'Could not update Favorites', message: error.response?.data?.message || 'Please try again.', tone: 'error' });
         } finally {
             setBusyKey(null);
         }

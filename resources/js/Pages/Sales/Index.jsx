@@ -1,4 +1,5 @@
 import { Head, Link, router, usePage } from '@inertiajs/react';
+import CosmicBrandMark from '@/Components/CosmicBrandMark';
 
 const FEATURES = [
     {
@@ -67,15 +68,13 @@ export default function SalesIndex({ demos = [] }) {
     const logout = () => router.post(route('logout'));
 
     return (
-        <div className="min-h-screen bg-[#090b12] text-slate-100">
+        <div className="cosmic-ui-shell min-h-screen bg-[#090b12] text-slate-100">
             <Head title="Sales" />
 
             <header className="border-b border-white/10 bg-[#111113]">
                 <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-4 sm:px-6 lg:px-8">
                     <div className="flex min-w-0 items-center gap-3">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 font-black text-slate-950">
-                            C
-                        </span>
+                        <CosmicBrandMark />
                         <div className="min-w-0">
                             <p className="truncate font-semibold text-white">Cosmic CMS</p>
                             <p className="truncate text-xs text-slate-500">Sales toolkit</p>

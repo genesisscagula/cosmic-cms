@@ -337,14 +337,14 @@ export default function Insights({ dashboard = {}, onTabChange }) {
     };
 
     if (!insights.available) {
-        return <section><p className="text-sm font-medium text-violet-300">Agency workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Agency Insights</h1><p className="mt-2 max-w-2xl text-sm text-slate-400">One command center for analytics, leads, sales, and future AI recommendations.</p><div className="mt-6"><LockedPanel title="Growth Agency required" message={insights.reason || "Upgrade to Growth Agency to unlock account-wide insights."} showUpgrade /></div></section>;
+        return <section className="cosmic-insights-page"><p className="text-sm font-medium text-violet-300">Agency workspace</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Agency Insights</h1><p className="mt-2 max-w-2xl text-sm text-slate-400">One command center for analytics, leads, sales, and future AI recommendations.</p><div className="mt-6"><LockedPanel title="Growth Agency required" message={insights.reason || "Upgrade to Growth Agency to unlock account-wide insights."} showUpgrade /></div></section>;
     }
 
     const summary = insights.summary || {};
     const leadChange = summary.lead_change_percent;
     const leadDetail = leadChange === null ? "First leads recorded this period" : `${leadChange >= 0 ? "+" : ""}${leadChange}% vs previous 30 days`;
 
-    return <section>
+    return <section className="cosmic-insights-page">
         <div><p className="text-sm font-medium text-violet-300">{capabilities.plan_label || "Agency"}</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white">Agency Insights</h1><p className="mt-2 max-w-2xl text-sm text-slate-400">Monitor delivery, inquiries, and performance across client websites from one account-level workspace.</p></div>
         <div className="mt-6"><ModuleTabs modules={modules} activeModule={activeModule} onChange={setActiveModule} /></div>
 

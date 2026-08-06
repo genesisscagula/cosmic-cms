@@ -304,7 +304,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
         >
             <Head title={`Manage Pages - ${website.name}`} />
 
-            <div className="min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
+            <div className="cosmic-ui-shell min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-6xl space-y-7">
                     <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={visibleInquiryCount} themeSummary={themeSummary} onNewPage={() => openNewPage()} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} onOpenInquiries={() => setIsInquiryInboxOpen(true)} onOpenProfile={() => setIsBusinessProfileOpen(true)} onOpenSettings={() => setIsWebsiteSettingsOpen(true)} creditBalance={creditBalance} />
 
@@ -444,7 +444,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
             {isHeaderModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
                     <button type="button" aria-label="Close header dialog" onClick={() => !isSaving && setIsHeaderModalOpen(false)} className="absolute inset-0 cursor-default" />
-                    <div role="dialog" aria-modal="true" aria-labelledby="edit-header-title" className="relative h-[min(88dvh,900px)] max-h-[calc(100dvh-2rem)] w-full max-w-7xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
+                    <div role="dialog" aria-modal="true" aria-labelledby="edit-header-title" className="cosmic-global-header-modal relative h-[min(88dvh,900px)] max-h-[calc(100dvh-2rem)] w-full max-w-7xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
                         <div className="mb-5 flex items-start justify-between gap-4">
                             <div>
                                 <h2 id="edit-header-title" className="text-xl font-semibold text-white">Edit global header</h2>
@@ -454,7 +454,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                         </div>
 
                         {/* LIVE PREVIEW FIELD */}
-                        <div className="mb-6 rounded-xl border border-white/10 bg-black/20 p-3">
+                        <div className="cosmic-footer-preview mb-6 rounded-xl border border-white/10 bg-black/20 px-3 pb-3 pt-5">
                             <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</h3>
                             {savedHeader ? (
                                 <div className="w-full overflow-hidden rounded-lg">
@@ -651,7 +651,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
             {isFooterModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
                     <button type="button" aria-label="Close footer dialog" onClick={() => !isSaving && setIsFooterModalOpen(false)} className="absolute inset-0 cursor-default" />
-                    <div role="dialog" aria-modal="true" aria-labelledby="edit-footer-title" className="relative max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6">
+                    <div role="dialog" aria-modal="true" aria-labelledby="edit-footer-title" className="cosmic-global-footer-modal relative max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6">
                         <div className="mb-5 flex items-start justify-between gap-4">
                             <div>
                                 <h2 id="edit-footer-title" className="text-xl font-semibold text-white">Edit global footer</h2>
@@ -661,7 +661,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                         </div>
 
                         {/* LIVE PREVIEW FIELD */}
-                        <div className="mb-6 rounded-xl border border-white/10 bg-black/20 p-3">
+                        <div className="cosmic-footer-preview mb-6 rounded-xl border border-white/10 bg-black/20 px-3 pb-3 pt-5">
                             <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</h3>
                             {savedFooter ? (
                                 <div className="w-full">

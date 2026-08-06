@@ -4,10 +4,13 @@ import NavLink from '@/Components/NavLink';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink';
 import { Link, usePage } from '@inertiajs/react';
 import { useState } from 'react';
+import { useCreditBalance } from '@/Components/CosmicCredits/CreditBalanceContext';
 
 export default function AuthenticatedLayout({ header, children }) {
     // Gigamitan nato og optional chaining ang auth?.user
     const user = usePage().props.auth?.user;
+    const { balance: creditBalance } = useCreditBalance();
+    const formattedCredits = Number.isFinite(Number(creditBalance)) ? Number(creditBalance).toLocaleString() : '0';
 
     const [showingNavigationDropdown, setShowingNavigationDropdown] =
         useState(false);
@@ -41,7 +44,7 @@ export default function AuthenticatedLayout({ header, children }) {
                                     href={route('credits.index')}
                                     active={route().current('credits.*')}
                                 >
-                                    ⚡ Credits
+                                    ⚡ {formattedCredits} Credits
                                 </NavLink>
                             </div>
                         </div>
@@ -149,6 +152,12 @@ export default function AuthenticatedLayout({ header, children }) {
                             active={route().current('dashboard')}
                         >
                             Dashboard
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink
+                            href={route('credits.index')}
+                            active={route().current('credits.*')}
+                        >
+                            ⚡ {formattedCredits} Credits
                         </ResponsiveNavLink>
                     </div>
 

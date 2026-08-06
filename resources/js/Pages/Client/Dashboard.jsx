@@ -1,14 +1,15 @@
 import { Head, Link, router } from '@inertiajs/react';
+import CosmicBrandMark from '@/Components/CosmicBrandMark';
 
 export default function ClientDashboard({ websites = [], client = {}, agency_portal_url = null }) {
     const logout = () => router.post(route('logout'));
 
     return (
-        <div className="min-h-screen bg-[#0a0a0b] text-slate-100">
+        <div className="cosmic-ui-shell min-h-screen bg-[#0a0a0b] text-slate-100">
             <Head title="Client Portal" />
             <header className="border-b border-white/10 bg-[#111113]">
                 <div className="mx-auto flex max-w-6xl items-center justify-between px-5 py-4">
-                    <div className="flex items-center gap-3"><span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 font-black text-slate-950">C</span><div><p className="font-semibold text-white">CosmicReact</p><p className="text-xs text-slate-500">Client portal</p></div></div>
+                    <div className="flex items-center gap-3"><CosmicBrandMark /><div><p className="font-semibold text-white">CosmicReact</p><p className="text-xs text-slate-500">Client portal</p></div></div>
                     <div className="flex items-center gap-3"><span className="hidden text-sm text-slate-400 sm:inline">{client.name || client.email}</span><button type="button" onClick={logout} className="rounded-lg border border-white/10 px-3 py-2 text-sm text-slate-300 hover:bg-white/5 hover:text-white">Log out</button></div>
                 </div>
             </header>

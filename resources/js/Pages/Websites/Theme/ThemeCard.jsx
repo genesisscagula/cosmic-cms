@@ -35,9 +35,9 @@ export default function ThemeCard({
             type="button"
             onClick={() => onSelect(theme.id)}
             aria-pressed={selected}
-            className={`group relative overflow-hidden rounded-xl border text-left transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111113] ${
+            className={`cosmic-theme-card group relative overflow-hidden rounded-xl border text-left transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111113] ${
                 selected
-                    ? "border-violet-400/80 bg-violet-500/[0.07] shadow-[0_0_0_1px_rgba(167,139,250,0.22),0_16px_34px_rgba(0,0,0,0.28)]"
+                    ? "is-active border-violet-400/80 bg-violet-500/[0.07] shadow-[0_0_0_1px_rgba(167,139,250,0.22),0_16px_34px_rgba(0,0,0,0.28)]"
                     : "border-white/10 bg-[#171719] hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.035]"
             }`}
         >
@@ -57,7 +57,7 @@ export default function ThemeCard({
                 </div>
 
                 {selected && (
-                    <span className="absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-violet-500 text-sm font-bold text-white shadow-lg shadow-violet-950/60">
+                    <span className="cosmic-theme-active-check absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-violet-500 text-sm font-bold text-white shadow-lg shadow-violet-950/60">
                         ✓
                     </span>
                 )}

@@ -13,7 +13,18 @@ class CreditWalletService
 {
     public function balance(User $user): int
     {
-        return (int) $user->fresh()->credits;
+        $freshUser = $user->fresh();
+
+        // Credit transactions record the authoritative post-mutation wallet balance.
+        // Prefer the newest ledger balance when it exists so stale user model values
+        // cannot reset the UI to zero after a full page refresh.
+        $ledgerBalance = $freshUser->creditTransactions()
+            ->latest('id')
+            ->value('balance_after');
+
+        return $ledgerBalance !== null
+            ? max(0, (int) $ledgerBalance)
+            : max(0, (int) $freshUser->credits);
     }
 
     public function canAfford(User $user, int $amount): bool

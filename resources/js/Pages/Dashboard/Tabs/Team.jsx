@@ -1,5 +1,6 @@
 import { router, useForm } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
+import { showCosmicNotification } from '../../../Components/CosmicNotification';
 
 function Initials({ name = '', email = '' }) {
     const value = (name || email).split(/\s+/).map((part) => part[0]).join('').slice(0, 2).toUpperCase();
@@ -97,7 +98,7 @@ export default function Team({ dashboard = {} }) {
     const toggleInviteWebsite = (websiteId) => form.setData('website_ids', form.data.website_ids.includes(websiteId) ? form.data.website_ids.filter((id) => id !== websiteId) : [...form.data.website_ids, websiteId]);
     const copyInvitation = async (invitation) => {
         await navigator.clipboard.writeText(invitation.accept_url);
-        window.alert('Invitation link copied.');
+        showCosmicNotification({ title: 'Invitation link copied', message: 'The secure invitation link is ready to share.', tone: 'success' });
     };
 
     const updateRole = (member, role) => router.patch(route('workspace.members.role.update', member.id), { role }, { preserveScroll: true });

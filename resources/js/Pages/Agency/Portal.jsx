@@ -4,7 +4,7 @@ export default function AgencyPortal({ client = {}, branding = {}, websites = []
     const initials = String(branding.agency_name || 'Agency').split(/\s+/).map(v => v[0]).join('').slice(0, 2).toUpperCase();
     const logout = () => router.post(route('logout'));
 
-    return <div className="min-h-screen bg-slate-950 text-slate-100">
+    return <div className="cosmic-ui-shell min-h-screen bg-slate-950 text-slate-100">
         <Head title={`${branding.agency_name || 'Agency'} Client Portal`} />
         <header className="border-b border-white/10" style={{background:`linear-gradient(135deg, ${branding.primary_color || '#7C3AED'}, ${branding.accent_color || '#22D3EE'})`}}>
             <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-5 py-5">

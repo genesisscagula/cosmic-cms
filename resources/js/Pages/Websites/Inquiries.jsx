@@ -10,7 +10,7 @@ export default function Inquiries({ website, submissions = [] }) {
     return (
         <>
             <Head title={`Inquiries · ${website.name}`} />
-            <main className="min-h-screen bg-[#09090b] px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
+            <main className="cosmic-ui-shell min-h-screen bg-[#09090b] px-4 py-8 text-slate-100 sm:px-6 lg:px-8">
                 <div className="mx-auto max-w-5xl">
                     <Link href={route('pages.index', website.id)} className="inline-flex rounded-lg px-2 py-2 text-sm font-semibold text-slate-400 transition hover:bg-white/5 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">
                         ← Back to Pages

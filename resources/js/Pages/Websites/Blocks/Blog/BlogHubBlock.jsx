@@ -72,19 +72,19 @@ function CosmicStatusSelect({ value, onChange }) {
                 onClick={() => setIsOpen((current) => !current)}
                 aria-haspopup="listbox"
                 aria-expanded={isOpen}
-                className="inline-flex h-10 min-w-[142px] items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 text-sm font-semibold text-white transition hover:border-violet-400/60 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-violet-400/40"
+                className="cosmic-blog-status-trigger inline-flex h-10 min-w-[142px] items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/20 px-3 text-sm font-semibold text-white transition hover:border-violet-400/60 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-violet-400/40"
             >
                 <span className="inline-flex items-center gap-2">
                     <span className={`h-2.5 w-2.5 rounded-full ${selected.dot}`} />
                     <span className={selected.text}>{selected.label}</span>
                 </span>
-                <span className={`text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}>⌄</span>
+                <span className={`cosmic-blog-status-arrow text-[10px] leading-none text-slate-400 transition-transform ${isOpen ? "rotate-180" : ""}`}>▼</span>
             </button>
 
             {isOpen && (
                 <div
                     role="listbox"
-                    className="absolute right-0 top-full z-[1000010] mt-2 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#202024] p-1.5 shadow-2xl shadow-black/60"
+                    className="cosmic-blog-status-menu absolute right-0 top-full z-[1000010] mt-2 w-48 overflow-hidden rounded-xl border border-white/10 bg-[#202024] p-1.5 shadow-2xl shadow-black/60"
                 >
                     {options.map((option) => {
                         const isSelected = option.value === value;
@@ -98,7 +98,7 @@ function CosmicStatusSelect({ value, onChange }) {
                                     onChange(option.value);
                                     setIsOpen(false);
                                 }}
-                                className={`flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition ${
+                                className={`cosmic-blog-status-option flex w-full items-center justify-between rounded-lg px-3 py-2.5 text-left text-sm font-semibold transition ${
                                     isSelected
                                         ? "bg-violet-500/20 text-white"
                                         : "text-slate-200 hover:bg-white/[0.07] hover:text-white"
@@ -154,8 +154,8 @@ function CosmicRichTextEditor({ value, onChange }) {
     };
 
     return (
-        <div className="overflow-hidden rounded-xl border border-white/10 bg-black/20 focus-within:border-violet-400">
-            <div className="flex flex-wrap gap-1 border-b border-white/10 bg-white/[0.03] p-2">
+        <div className="cosmic-blog-rich-editor overflow-hidden rounded-xl border border-white/10 bg-black/20 focus-within:border-violet-400">
+            <div className="cosmic-blog-editor-toolbar flex flex-wrap gap-1 border-b border-white/10 bg-white/[0.03] p-2">
                 {[
                     ["Bold", "bold"],
                     ["Italic", "italic"],
@@ -166,7 +166,7 @@ function CosmicRichTextEditor({ value, onChange }) {
                     ["Undo", "undo"],
                     ["Redo", "redo"],
                 ].map(([label, command, commandValue]) => (
-                    <button key={label} type="button" onClick={() => runCommand(command, commandValue)} className="rounded-md px-2.5 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">{label}</button>
+                    <button key={label} type="button" onClick={() => runCommand(command, commandValue)} className="cosmic-blog-toolbar-button rounded-md px-2.5 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">{label}</button>
                 ))}
             </div>
             <div
@@ -521,7 +521,7 @@ export function BlogHubBlock({
                         <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl">
                             <div className="flex items-start justify-between gap-4"><div><h3 className="text-lg font-semibold text-white">Write this blog post with AI</h3><p className="mt-1 text-sm text-slate-400">Describe the topic, audience, tone, and key points you want included.</p></div><button type="button" onClick={() => setIsAiPromptOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-2xl leading-none text-slate-400 transition hover:bg-white/10 hover:text-white">×</button></div>
                             <textarea autoFocus value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows="6" placeholder="Example: Write a practical guide for homeowners choosing a construction company for a renovation..." className="mt-5 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none focus:border-violet-400" />
-                            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setIsAiPromptOpen(false)} className="px-3 py-2 text-sm text-slate-300">Cancel</button><button type="button" disabled={!aiPrompt.trim() || isGeneratingPost} onClick={generatePostWithAi} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isGeneratingPost ? <span className="inline-flex items-center gap-2"><span className="cosmic-loading-spinner h-4 w-4 rounded-full" />Generating article...</span> : "Generate Article · 10 Credits"}</button></div>
+                            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setIsAiPromptOpen(false)} className="px-3 py-2 text-sm text-slate-300">Cancel</button><button type="button" disabled={!aiPrompt.trim() || isGeneratingPost} onClick={generatePostWithAi} className="cosmic-blog-save-button rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isGeneratingPost ? <span className="inline-flex items-center gap-2"><span className="cosmic-loading-spinner h-4 w-4 rounded-full" />Generating article...</span> : "Generate Article · 10 Credits"}</button></div>
                         </div>
                     </div>
                     </ModalPortal>
@@ -545,7 +545,7 @@ export function BlogHubBlock({
                 {isComposerOpen && (
                     <ModalPortal>
                     <div className="fixed inset-0 z-[999998] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="blog-post-dialog-title">
-                        <form onSubmit={savePost} className="cosmic-scrollbar max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl">
+                        <form onSubmit={savePost} className="cosmic-blog-editor-modal cosmic-scrollbar max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl">
                             <div className="flex items-start justify-between gap-4">
                                 <div><h3 id="blog-post-dialog-title" className="text-lg font-semibold text-white">{editingPost ? "Edit blog post" : "Add blog post"}</h3><p className="mt-1 text-sm text-slate-400">{editingPost ? "Update the article details and publish state." : "Create a draft article for this Blog Hub."}</p></div>
                                 <div className="flex shrink-0 items-center gap-2">
@@ -556,15 +556,15 @@ export function BlogHubBlock({
                                     <button type="button" onClick={closeComposer} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 text-2xl leading-none text-slate-400 transition hover:border-white/20 hover:bg-white/10 hover:text-white" aria-label="Close">×</button>
                                 </div>
                             </div>
-                            <button type="button" onClick={() => setIsAiPromptOpen(true)} className="mt-5 w-full rounded-xl border border-violet-400/40 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20">✨ Write with AI · 10 Credits</button>
+                            <button type="button" onClick={() => setIsAiPromptOpen(true)} className="cosmic-blog-ai-button mt-5 w-full rounded-xl border border-violet-400/40 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20">✨ Write with AI · 10 Credits</button>
                             <div className="mt-5 grid gap-3">
                                 <input required value={postForm.title} onChange={(event) => setPostForm({ ...postForm, title: event.target.value })} placeholder="Post title" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
                                 <input value={postForm.category} onChange={(event) => setPostForm({ ...postForm, category: event.target.value })} placeholder="Categories, separated by commas" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
                                 <input value={postForm.tags} onChange={(event) => setPostForm({ ...postForm, tags: event.target.value })} placeholder="Tags, separated by commas" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
-                                <div className="rounded-xl border border-white/10 bg-black/20 p-3">
+                                <div className="cosmic-blog-image-panel rounded-xl border border-white/10 bg-black/20 p-3">
                                     <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={uploadFeaturedImage} />
-                                    {postForm.image_url ? <img src={postForm.image_url} alt="Featured preview" className="h-36 w-full rounded-lg object-cover" /> : <div className="flex h-28 items-center justify-center rounded-lg border border-dashed border-white/15 text-sm text-slate-500">No featured image selected</div>}
-                                    <div className="mt-3 flex gap-2"><button type="button" disabled={isUploadingImage} onClick={() => imageInputRef.current?.click()} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isUploadingImage ? "Uploading..." : "Update Image"}</button>{postForm.image_url && <button type="button" onClick={() => setPostForm({ ...postForm, image_url: "" })} className="px-3 py-2 text-sm text-slate-300">Remove</button>}</div>
+                                    {postForm.image_url ? <img src={postForm.image_url} alt="Featured preview" className="h-36 w-full rounded-lg object-cover" /> : <div className="cosmic-blog-image-empty flex h-28 items-center justify-center rounded-lg border border-dashed border-white/15 text-sm text-slate-500">No featured image selected</div>}
+                                    <div className="mt-3 flex gap-2"><button type="button" disabled={isUploadingImage} onClick={() => imageInputRef.current?.click()} className="cosmic-blog-image-button rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isUploadingImage ? "Uploading..." : "Update Image"}</button>{postForm.image_url && <button type="button" onClick={() => setPostForm({ ...postForm, image_url: "" })} className="px-3 py-2 text-sm text-slate-300">Remove</button>}</div>
                                 </div>
                                 <textarea value={postForm.excerpt} onChange={(event) => setPostForm({ ...postForm, excerpt: event.target.value })} placeholder="Short excerpt" rows="3" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
                                 <CosmicRichTextEditor value={postForm.content} onChange={(content) => setPostForm((current) => ({ ...current, content }))} />
@@ -572,7 +572,7 @@ export function BlogHubBlock({
                             {postError && <p className="mt-3 text-sm text-red-300">{postError}</p>}
                             <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
                                 {editingPost ? <button type="button" disabled={isSavingPost} onClick={deletePost} className="text-sm font-semibold text-red-300 hover:text-red-200 disabled:opacity-50">Delete post</button> : <span />}
-                                <div className="flex gap-2"><button type="button" onClick={closeComposer} className="px-3 py-2 text-sm text-slate-300">Cancel</button><button disabled={isSavingPost} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isSavingPost ? "Saving..." : editingPost ? "Save post" : "Create draft post"}</button></div>
+                                <div className="flex gap-2"><button type="button" onClick={closeComposer} className="px-3 py-2 text-sm text-slate-300">Cancel</button><button disabled={isSavingPost} className="cosmic-blog-save-button rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isSavingPost ? "Saving..." : editingPost ? "Save post" : "Create draft post"}</button></div>
                             </div>
                         </form>
                     </div>

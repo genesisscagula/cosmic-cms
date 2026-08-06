@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import axios from 'axios';
 import { useMemo, useState } from 'react';
+import CosmicBrandMark from '@/Components/CosmicBrandMark';
 
 function formatDate(value) {
     if (!value) return '';
@@ -272,13 +273,13 @@ export default function CreditsIndex({
     };
 
     return (
-        <div className="min-h-screen bg-[#0a0a0b] text-slate-100">
+        <div className="cosmic-ui-shell cosmic-credits-page min-h-screen bg-[#0a0a0b] text-slate-100">
             <Head title="Cosmic Credits" />
 
             <header className="border-b border-white/10 bg-[#111113]">
                 <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-5 py-4">
                     <div className="flex items-center gap-3">
-                        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-500 to-cyan-400 font-black text-slate-950">C</span>
+                        <CosmicBrandMark />
                         <div>
                             <p className="font-semibold text-white">Cosmic Credits</p>
                             <p className="text-xs text-slate-500">Wallet, top-ups, and transaction history</p>
@@ -479,7 +480,7 @@ export default function CreditsIndex({
                                             {subscriptionAction === 'sync' ? 'Syncing…' : 'Sync with PayPal'}
                                         </button>
                                         {!cancelAtPeriodEnd && (
-                                            <button type="button" disabled={Boolean(subscriptionAction)} onClick={cancelSubscription} className="rounded-xl border border-rose-400/25 bg-rose-400/10 px-4 py-2 text-sm font-semibold text-rose-200 transition hover:bg-rose-400/15 disabled:opacity-50">
+                                            <button type="button" disabled={Boolean(subscriptionAction)} onClick={cancelSubscription} className="cosmic-cancel-subscription rounded-xl border border-rose-400/40 bg-rose-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-rose-600 disabled:opacity-50">
                                                 {subscriptionAction === 'cancel' ? 'Cancelling…' : 'Cancel Subscription'}
                                             </button>
                                         )}
@@ -586,11 +587,11 @@ export default function CreditsIndex({
                                     return (
                                         <article
                                             key={plan.key}
-                                            className={`relative flex flex-col rounded-2xl p-5 transition ${
+                                            className={`cosmic-plan-card relative flex flex-col rounded-2xl p-5 transition ${
                                                 isCurrent
-                                                    ? 'border border-emerald-300/40 bg-gradient-to-br from-emerald-400/15 via-[#141416] to-cyan-400/10 shadow-lg shadow-emerald-950/20 ring-1 ring-emerald-300/20'
+                                                    ? 'cosmic-plan-card--current border border-emerald-300/40 bg-white shadow-lg ring-1 ring-emerald-300/20'
                                                     : isRecommended
-                                                        ? 'border border-violet-300/45 bg-gradient-to-br from-violet-400/15 via-[#141416] to-fuchsia-400/10 shadow-lg shadow-violet-950/20 ring-1 ring-violet-300/25'
+                                                        ? 'cosmic-plan-card--recommended border border-violet-300/45 bg-white shadow-lg ring-1 ring-violet-300/25'
                                                         : 'border border-white/10 bg-[#141416] hover:-translate-y-0.5 hover:border-violet-300/30 hover:bg-white/[0.06]'
                                             }`}
                                         >
@@ -626,7 +627,7 @@ export default function CreditsIndex({
                                                 type="button"
                                                 disabled={isCurrent || transition?.allowed === false}
                                                 onClick={() => !isCurrent && transition?.allowed !== false && setSelectedPackage(plan)}
-                                                className={`mt-auto pt-5 ${isCurrent || transition?.allowed === false ? 'cursor-default' : ''}`}
+                                                className={`cosmic-plan-action mt-auto pt-5 ${isCurrent || transition?.allowed === false ? 'cursor-default' : ''}`}
                                             >
                                                 <span className={`block rounded-xl px-3 py-2 text-center text-sm font-bold ${
                                                     isCurrent
@@ -784,7 +785,7 @@ export default function CreditsIndex({
                     onMouseDown={() => setSelectedPackage(null)}
                 >
                     <section
-                        className="w-full max-w-md rounded-3xl border border-white/10 bg-[#151519] p-6 shadow-2xl"
+                        className="cosmic-checkout-modal w-full max-w-md rounded-3xl border border-white/10 bg-[#151519] p-6 shadow-2xl"
                         onMouseDown={(event) => event.stopPropagation()}
                     >
                         <p className="text-xs font-semibold uppercase tracking-[0.18em] text-cyan-300">Order summary</p>

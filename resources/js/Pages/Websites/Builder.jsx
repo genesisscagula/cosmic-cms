@@ -607,8 +607,8 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                 </div>
             )}
             <Head title={`Builder — ${page.title}`} />
-            <div className="min-h-screen bg-[#09090b] text-slate-100">
-                <header className="sticky top-0 z-[60] border-b border-white/10 bg-[#09090b]/95 backdrop-blur-xl">
+            <div className="cosmic-builder-shell min-h-screen bg-[#09090b] text-slate-100">
+                <header data-cosmic-builder-header className="sticky top-0 z-[60] border-b border-white/10 bg-[#09090b]/95 backdrop-blur-xl">
                     <div className="mx-auto grid min-h-[64px] max-w-[1760px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-4 py-2.5 sm:px-6">
                         <div className="flex min-w-0 items-center gap-3">
                             {capabilities.canNavigateAway && (
@@ -670,16 +670,16 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                 <button
                                     type="button"
                                     onClick={() => setIsGeneratePageOpen(true)}
-                                    className="hidden h-9 shrink-0 items-center gap-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 px-3 text-xs font-semibold text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-500/20 focus:outline-none focus:ring-2 focus:ring-violet-400 lg:inline-flex"
+                                    className="cosmic-generate-page-trigger hidden h-9 shrink-0 items-center gap-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 px-3 text-xs font-semibold text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-500/20 focus:outline-none focus:ring-2 focus:ring-violet-400 lg:inline-flex"
                                 >
-                                    <span aria-hidden="true">✦</span>
+                                    <span className="cosmic-generate-page-icon" aria-hidden="true">✦</span>
                                     Generate Page
                                 </button>
                             )}
                         </div>
 
                         <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 xl:flex">
-                            <span title={publishError || saveError || undefined} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium ${isPublishing ? 'text-sky-200' : publishError ? 'text-red-200' : pageStatus === 'published' ? 'text-emerald-200' : 'text-amber-200'}`}>
+                            <span title={publishError || saveError || undefined} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium ${isPublishing ? 'text-sky-200' : publishError ? 'text-red-200' : pageStatus === 'published' ? 'cosmic-published-status text-emerald-200' : 'text-amber-200'}`}>
                                 <span className={`h-1.5 w-1.5 rounded-full ${isPublishing ? 'animate-pulse bg-sky-300' : publishError ? 'bg-red-300' : pageStatus === 'published' ? 'bg-emerald-300' : 'bg-amber-300'}`} />
                                 {isPublishing ? 'Publishing…' : publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
                             </span>
@@ -687,18 +687,17 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                             <span className="inline-flex h-8 items-center rounded-lg px-2.5 text-[11px] font-medium text-slate-400">
                                 {data.blocks.length} Sparks
                             </span>
-                            {!trialMode && (
-                                <>
-                                    <span className="h-4 w-px bg-white/10" aria-hidden="true" />
-                                    <CreditBalanceBadge
-                                        balance={creditBalance}
-                                        className="h-8 border-0 bg-transparent px-2.5 hover:bg-white/[0.06]"
-                                    />
-                                </>
-                            )}
+
                         </div>
 
                         <div className="flex min-w-0 items-center justify-end gap-2">
+                            {!trialMode && (
+                                <CreditBalanceBadge
+                                    balance={creditBalance}
+                                    className="cosmic-builder-credit h-9 px-3"
+                                />
+                            )}
+
                             {capabilities.canChangeTheme && (
                                 <ThemeSelector
                                     compact
@@ -714,9 +713,9 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(true)}
-                                    className="inline-flex h-9 shrink-0 items-center rounded-lg border border-violet-400/30 bg-violet-500/20 px-3 text-xs font-semibold text-violet-100 transition hover:bg-violet-500/30 focus:outline-none focus:ring-2 focus:ring-violet-400"
+                                    className="cosmic-add-spark-button inline-flex h-9 shrink-0 items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400"
                                 >
-                                    <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="mr-1.5 h-3.5 w-3.5">
+                                    <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="mr-1.5 h-3.5 w-3.5 text-emerald-600">
                                         <path d="M10 2.5c.28 3.92 1.68 5.32 5.6 5.6-3.92.28-5.32 1.68-5.6 5.6-.28-3.92-1.68-5.32-5.6-5.6 3.92-.28 5.32-1.68 5.6-5.6Zm5.25 9.75c.1 1.4.6 1.9 2 2-1.4.1-1.9.6-2 2-.1-1.4-.6-1.9-2-2 1.4-.1 1.9-.6 2-2Z" />
                                     </svg>
                                     <span className="hidden sm:inline">Add Spark</span>
@@ -761,7 +760,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                     type="button"
                                     onClick={handlePublish}
                                     disabled={isSaving || isPublishing}
-                                    className="inline-flex h-9 shrink-0 items-center rounded-lg bg-emerald-500 px-3.5 text-xs font-bold text-white transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                    className="cosmic-primary-action inline-flex h-9 shrink-0 items-center rounded-lg bg-emerald-600 px-3.5 text-xs font-bold text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
                                 >
                                     {isPublishing ? 'Publishing…' : 'Publish'}
                                 </button>
@@ -795,7 +794,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
                 <main className="px-4 py-5 sm:px-6 sm:py-8">
                     <style>{`html.cosmic-header-menu-active .cosmic-block-toolbar { opacity: 0 !important; pointer-events: none !important; }`}</style>
-                    <div className="mx-auto w-full max-w-[1560px] overflow-visible rounded-xl border border-white/10 bg-white shadow-2xl shadow-black/30 lg:w-[min(86vw,1560px)]">
+                    <div className="cosmic-builder-canvas mx-auto w-full max-w-[1560px] overflow-visible rounded-xl border border-white/10 bg-white shadow-2xl shadow-black/30 lg:w-[min(86vw,1560px)]">
                         <div className="flex w-full flex-col items-stretch overflow-hidden rounded-[11px]">
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}

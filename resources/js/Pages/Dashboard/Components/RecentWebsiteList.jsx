@@ -1,4 +1,4 @@
-const statusStyles = { Published: "bg-emerald-400/10 text-emerald-300", Draft: "bg-amber-300/10 text-amber-200" };
+const statusStyles = { Published: "cosmic-published-status bg-emerald-400/10 text-emerald-300", Draft: "bg-amber-300/10 text-amber-200" };
 
 export default function RecentWebsiteList({ websites, onEdit }) {
     if (!websites.length) return <div className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-slate-500">Your recent websites will appear here.</div>;

@@ -1,4 +1,5 @@
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import CosmicBrandMark from '@/Components/CosmicBrandMark';
 
 export default function AcceptInvitation({ invitation }) {
     const user = usePage().props.auth?.user;
@@ -16,11 +17,11 @@ export default function AcceptInvitation({ invitation }) {
     const wrongAccount = user && user.email?.toLowerCase() !== invitation.email.toLowerCase();
 
     return (
-        <div className="min-h-screen bg-[#09090b] px-5 py-12 text-slate-100">
+        <div className="cosmic-ui-shell min-h-screen bg-[#09090b] px-5 py-12 text-slate-100">
             <Head title="Accept client invitation" />
             <main className="mx-auto max-w-xl">
                 <div className="mb-8 flex items-center gap-3">
-                    <span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-cyan-400 font-black text-slate-950">C</span>
+                    <CosmicBrandMark size="lg" />
                     <div><p className="font-semibold text-white">CosmicReact</p><p className="text-xs text-slate-500">Secure client access</p></div>
                 </div>
 

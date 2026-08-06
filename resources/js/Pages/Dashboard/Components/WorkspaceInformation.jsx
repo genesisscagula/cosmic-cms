@@ -54,7 +54,7 @@ export default function WorkspaceInformation({ workspace = {}, onViewAll }) {
                                 <div className="min-w-0">
                                     <div className="flex items-center gap-2">
                                         <p className="truncate text-sm font-semibold text-white">{website.name}</p>
-                                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${website.status === "Published" ? "bg-emerald-400/10 text-emerald-300" : "bg-amber-300/10 text-amber-200"}`}>{website.status}</span>
+                                        <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold ${website.status === "Published" ? "cosmic-published-status bg-emerald-400/10 text-emerald-300" : "bg-amber-300/10 text-amber-200"}`}>{website.status}</span>
                                     </div>
                                     <p className="mt-1 truncate text-xs text-slate-500">{website.domain}</p>
                                 </div>

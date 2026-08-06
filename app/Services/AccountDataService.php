@@ -9,8 +9,10 @@ use Illuminate\Support\Str;
 
 class AccountDataService
 {
-    public function __construct(private readonly PlanRegistry $plans)
-    {
+    public function __construct(
+        private readonly PlanRegistry $plans,
+        private readonly CreditWalletService $creditWallet,
+    ) {
     }
     public function credits(User $user): array
     {
@@ -28,7 +30,7 @@ class AccountDataService
             ->all();
 
         return [
-            'current_balance' => (int) $user->credits,
+            'current_balance' => $this->creditWallet->balance($user),
             'monthly_included' => (int) ($plan['credits'] ?? 0),
             'purchased_total' => (int) $user->creditTransactions()
                 ->where('type', 'credit')

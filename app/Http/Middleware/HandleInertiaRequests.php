@@ -9,6 +9,7 @@ use App\Services\WebsiteTemplateCatalog;
 use App\Services\SparkCatalog;
 use App\Cosmic\Capabilities\CapabilityEngine;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 use Inertia\Middleware;
 
 class HandleInertiaRequests extends Middleware
@@ -38,6 +39,13 @@ class HandleInertiaRequests extends Middleware
         $user = $request->user();
         $creditBalance = $user ? app(CreditWalletService::class)->balance($user) : 0;
         $planEntitlements = $user ? app(PlanEntitlementService::class)->summary($user) : null;
+        $appearance = 'light';
+
+        // Keep the app bootable while a newly deployed migration is still pending.
+        if ($user && Schema::hasColumn($user->getTable(), 'appearance_preference')) {
+            $candidate = $user->getAttribute('appearance_preference');
+            $appearance = in_array($candidate, ['light', 'dark', 'system'], true) ? $candidate : 'light';
+        }
 
         return [
             ...parent::share($request),
@@ -50,7 +58,7 @@ class HandleInertiaRequests extends Middleware
                 'plan' => $planEntitlements,
                 'planCapabilities' => $user ? app(CapabilityEngine::class)->forClient($user) : null,
                 'planChangeMatrix' => $user ? app(PlanEntitlementService::class)->changeMatrix($user->plan_key) : [],
-                'appearance' => $user?->appearance_preference ?? 'light',
+                'appearance' => $appearance,
             ],
             'cosmicPlans' => fn () => app(PlanRegistry::class)->forClient(),
             'cosmicSparks' => fn () => SparkCatalog::forClient(),

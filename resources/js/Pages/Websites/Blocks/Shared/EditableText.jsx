@@ -21,8 +21,8 @@ export function EditableText({ value, onSave, className, isTextArea = false }) {
 
             {/* OVERLAY MODAL: Fixed portal para dili ma-distort ang layout */}
             {isEditing && createPortal(
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-                    <div className="bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl text-slate-100 font-sans space-y-4">
+                <div className="cosmic-inline-edit-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+                    <div className="cosmic-inline-edit-modal bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl text-slate-100 font-sans space-y-4">
                         <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                             <h3 className="text-sm font-bold text-slate-400 tracking-wider uppercase">✨ Update Text Content</h3>
                             <button type="button" onClick={() => setIsEditing(false)} className="text-lg text-slate-500 hover:text-white">✕</button>

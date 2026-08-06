@@ -229,7 +229,7 @@ export default function AIStudio() {
             </div>
 
             {/* Main prompt */}
-            <div className="relative mt-8 overflow-hidden rounded-3xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.12] via-[#121216] to-cyan-500/[0.06] p-5 shadow-2xl shadow-black/20 sm:p-7">
+            <div className="cosmic-ai-prompt relative mt-8 overflow-hidden rounded-3xl border border-violet-400/20 bg-gradient-to-br from-violet-500/[0.12] via-[#121216] to-cyan-500/[0.06] p-5 shadow-2xl shadow-black/20 sm:p-7">
                 <div className="pointer-events-none absolute -right-28 -top-28 h-72 w-72 rounded-full bg-violet-500/10 blur-3xl" />
                 <div className="pointer-events-none absolute -bottom-32 left-1/3 h-64 w-64 rounded-full bg-cyan-500/10 blur-3xl" />
 
@@ -250,7 +250,7 @@ export default function AIStudio() {
                         </div>
                     </div>
 
-                    <div className="mt-6 rounded-2xl border border-white/10 bg-black/20 p-2 focus-within:border-violet-400/40 focus-within:ring-4 focus-within:ring-violet-500/5">
+                    <div className="cosmic-ai-composer mt-6 rounded-2xl border border-white/10 bg-black/20 p-2 focus-within:border-violet-400/40 focus-within:ring-4 focus-within:ring-violet-500/5">
                         <textarea
                             rows={5}
                             placeholder="Example: Create a modern five-page website for a dental clinic in Cebu. Use a clean blue and white design with services, testimonials, appointment booking, and contact sections."

@@ -30,7 +30,7 @@ createInertiaApp({
             null;
 
         root.render(
-            <AppearanceProvider>
+            <AppearanceProvider initialPage={props.initialPage}>
             <CreditBalanceProvider
                 authenticated={authenticated}
                 initialBalance={initialBalance}

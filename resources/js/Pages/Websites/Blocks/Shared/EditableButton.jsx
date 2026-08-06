@@ -26,8 +26,8 @@ export function EditableButton({ label, url, onSave, className }) {
 
             {/* MODAL CONFIG OVERLAY */}
             {isEditing && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-                    <div className="bg-slate-900 border border-slate-700 p-6 rounded-2xl shadow-2xl text-left w-full max-w-sm space-y-4 font-sans text-slate-100">
+                <div className="cosmic-inline-edit-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+                    <div className="cosmic-inline-edit-modal bg-slate-900 border border-slate-700 p-6 rounded-2xl shadow-2xl text-left w-full max-w-sm space-y-4 font-sans text-slate-100">
                         <div className="flex justify-between items-center border-b border-slate-800 pb-2">
                             <h3 className="text-xs font-bold text-slate-400 tracking-wider uppercase">🔗 Button Configuration</h3>
                             <button type="button" onClick={() => setIsEditing(false)} className="text-slate-500 hover:text-white">✕</button>

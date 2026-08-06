@@ -151,6 +151,7 @@ export const EditableImage = forwardRef(({
 
                 <div
                     className="
+                        cosmic-media-manager-overlay
                         fixed
                         inset-0
                         z-[999999]
@@ -171,7 +172,7 @@ export const EditableImage = forwardRef(({
                 >
 
                     <div
-                        className="w-full
+                        className="cosmic-media-manager-modal w-full
                         max-w-[1700px]
 
                         h-[90vh]
@@ -182,7 +183,7 @@ export const EditableImage = forwardRef(({
 
                         {/* LEFT */}
 
-                        <div className="flex-1 bg-slate-950 flex items-center justify-center p-10">
+                        <div className="cosmic-media-manager-preview flex-1 bg-slate-950 flex items-center justify-center p-10">
 
                             <img
                                 src={preview}
@@ -193,7 +194,7 @@ export const EditableImage = forwardRef(({
 
                         {/* RIGHT */}
 
-                        <div className="w-[380px] bg-slate-900 border-l border-slate-700 flex flex-col">
+                        <div className="cosmic-media-manager-panel w-[380px] bg-slate-900 border-l border-slate-700 flex flex-col">
 
                             <div className="p-8 border-b border-slate-700">
 

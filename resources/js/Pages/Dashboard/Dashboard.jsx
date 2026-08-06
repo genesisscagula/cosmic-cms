@@ -6,7 +6,6 @@ import Websites from "./Tabs/Websites";
 import Templates from "./Tabs/Templates";
 import Sparks from "./Tabs/Sparks";
 import AIStudio from "./Tabs/AIStudio";
-import Publish from "./Tabs/Publish";
 import Settings from "./Tabs/Settings";
 import Insights from "./Tabs/Insights";
 import Team from "./Tabs/Team";
@@ -22,7 +21,6 @@ const tabs = {
     insights: Insights,
     team: Team,
     branding: Branding,
-    publish: Publish,
     settings: Settings,
 };
 

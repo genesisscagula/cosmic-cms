@@ -112,7 +112,7 @@ export default function GeneratePageModal({
                 className="absolute inset-0 bg-black/75 backdrop-blur-sm"
                 aria-label="Close Generate Page"
             />
-            <section role="dialog" aria-modal="true" className="relative z-10 w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#111116] text-white shadow-2xl shadow-black/70">
+            <section role="dialog" aria-modal="true" className="cosmic-generate-page-modal relative z-10 w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#111116] text-white shadow-2xl shadow-black/70">
                 <header className="flex items-start justify-between gap-4 border-b border-white/10 px-6 py-5">
                     <div>
                         <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-300">Cosmic AI</p>
@@ -139,12 +139,12 @@ export default function GeneratePageModal({
                                 <span className="text-xs text-slate-500">{pagePrompt.length}/800</span>
                                 <div className="flex gap-2">
                                     <button type="button" onClick={onClose} className="h-11 rounded-xl border border-white/10 px-5 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button>
-                                    <button type="button" disabled={!pagePrompt.trim()} onClick={generatePage} className="h-11 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 px-5 text-sm font-bold text-white shadow-lg transition hover:scale-[1.01] disabled:cursor-not-allowed disabled:opacity-40">Generate Page ✨</button>
+                                    <button type="button" disabled={!pagePrompt.trim()} onClick={generatePage} className="cosmic-primary-action h-11 rounded-xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">Generate Page ✨</button>
                                 </div>
                             </div>
                         </>
                     ) : (
-                        <div className="px-2 py-4 text-center" role="status" aria-live="polite">
+                        <div className="cosmic-generate-page-progress px-2 py-4 text-center" role="status" aria-live="polite">
                             <div className="relative mx-auto h-16 w-16" aria-hidden="true">
                                 <div className="cosmic-loading-spinner absolute inset-0 rounded-full" />
                                 <div className="absolute inset-[3px] grid place-items-center rounded-full bg-[#17171d] text-xl text-cyan-300 shadow-lg shadow-violet-950/50">✦</div>
