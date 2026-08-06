@@ -25,6 +25,8 @@ import HeroSliderFadePreview from "./Previews/HeroSliderFadePreview";
 import HeroParallaxPreview from "./Previews/HeroParallaxPreview";
 import HeroEditorialOverlayPreview from "./Previews/HeroEditorialOverlayPreview";
 import HeroSplitImagePreview from "./Previews/HeroSplitImagePreview";
+import HeroSplitEditorialPreview from "./Previews/HeroSplitEditorialPreview";
+import HeroFloatingGlassPreview from "./Previews/HeroFloatingGlassPreview";
 import ImageCtaBannerPreview from "./Previews/ImageCtaBannerPreview";
 import HeroFloatingCardsPreview from "./Previews/HeroFloatingCardsPreview";
 import HeroVideoStylePreview from "./Previews/HeroVideoStylePreview";
@@ -419,6 +421,49 @@ export const BlockRegistry = [
             image_url: "/storage/cms-images/background/background-1.avif",
             overlayOpacity: 72,
             height: "screen",
+        },
+    },
+
+    {
+        type: "hero_split_editorial",
+        theme: "auto",
+        title: "Hero Split Editorial",
+        buttonLabel: "Add Editorial Hero",
+        buttonClass: "bg-emerald-600 hover:bg-emerald-500",
+        preview: HeroSplitEditorialPreview,
+        payload: {
+            type: "hero_split_editorial",
+            theme: "auto",
+            eyebrow: "A NEW STANDARD",
+            editorial_index: "01",
+            heading: "Designed to make the right first impression.",
+            text: "A considered digital experience that brings your story, expertise, and next step into one confident opening statement.",
+            primary_label: "Start a conversation",
+            primary_url: "#",
+            secondary_label: "Explore our work",
+            secondary_url: "#",
+            proof_value: "15+",
+            proof_label: "Years of considered craft",
+            image_caption: "Built with clarity, confidence, and care.",
+            image_url: "/storage/cms-images/background/background-1.avif",
+        },
+    },
+
+    {
+        type: "hero_floating_glass",
+        theme: "auto",
+        title: "Floating Glass Hero",
+        buttonLabel: "Add Glass Hero",
+        buttonClass: "bg-emerald-600 hover:bg-emerald-500",
+        preview: HeroFloatingGlassPreview,
+        payload: {
+            type: "hero_floating_glass", theme: "auto", eyebrow: "BUILT FOR MOMENTUM",
+            heading: "A clearer way to move your business forward.",
+            text: "Bring your offer, proof, and next step together in one immersive opening experience.",
+            primary_label: "Start a project", primary_url: "#", secondary_label: "See how it works", secondary_url: "#",
+            glass_title: "Made for decisive teams", glass_text: "A focused digital experience designed to turn attention into action.",
+            metric_value: "3.2x", metric_label: "Faster path to launch", badge_one: "Strategy-led", badge_two: "Conversion-ready",
+            image_url: "/storage/cms-images/background/background-1.avif",
         },
     },
 

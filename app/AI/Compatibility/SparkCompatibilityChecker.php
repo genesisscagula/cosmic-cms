@@ -16,6 +16,8 @@ class SparkCompatibilityChecker
         'hero_parallax',
         'hero_editorial_overlay',
         'hero_split_image',
+        'hero_split_editorial',
+        'hero_floating_glass',
     ];
 
     private const CTA = ['hero_centered_cta', 'image_cta_banner'];

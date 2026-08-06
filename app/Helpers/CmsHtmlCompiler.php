@@ -2025,6 +2025,116 @@ HTML;
 
                 break;
 
+                case 'hero_floating_glass':
+
+                $eyebrow = e($block['eyebrow'] ?? 'BUILT FOR MOMENTUM');
+                $heading = e($block['heading'] ?? 'A clearer way to move your business forward.');
+                $text = e($block['text'] ?? 'Bring your offer, proof, and next step together in one immersive opening experience.');
+                $primaryLabel = e($block['primary_label'] ?? 'Start a project');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'See how it works');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $glassTitle = e($block['glass_title'] ?? 'Made for decisive teams');
+                $glassText = e($block['glass_text'] ?? 'A focused digital experience designed to turn attention into action.');
+                $metricValue = e($block['metric_value'] ?? '3.2x');
+                $metricLabel = e($block['metric_label'] ?? 'Faster path to launch');
+                $badgeOne = e($block['badge_one'] ?? 'Strategy-led');
+                $badgeTwo = e($block['badge_two'] ?? 'Conversion-ready');
+                $imageUrl = e(self::staticAssetUrl($block['image_url'] ?? ''));
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $imageStyle = $imageUrl ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;" : '';
+
+                $html .= "
+                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                    <div class='relative mx-auto max-w-7xl'>
+                        <div class='grid items-center gap-10 lg:grid-cols-[minmax(0,.9fr)_minmax(460px,1.1fr)] lg:gap-14'>
+                            <div class='relative z-20'>
+                                <span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span>
+                                <h1 class='mt-5 max-w-3xl text-5xl font-semibold leading-[.98] tracking-[-.05em] sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1>
+                                <p class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p>
+                                <div class='mt-8 flex flex-col gap-3 sm:flex-row'>
+                                    <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a>
+                                    <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a>
+                                </div>
+                                <div class='mt-8 flex flex-wrap gap-2'><span class='rounded-full border px-4 py-2 text-xs font-semibold {$theme['border']} {$theme['sub']}'>{$badgeOne}</span><span class='rounded-full border px-4 py-2 text-xs font-semibold {$theme['border']} {$theme['sub']}'>{$badgeTwo}</span></div>
+                            </div>
+                            <div class='relative min-h-[480px] sm:min-h-[560px]'>
+                                <div class='absolute inset-4 overflow-hidden rounded-[2.25rem] border shadow-2xl sm:inset-8 {$theme['border']}' style=\"{$imageStyle}\"><div class='absolute inset-0 bg-gradient-to-br from-slate-950/10 via-transparent to-slate-950/45'></div></div>
+                                <div class='absolute left-0 top-10 max-w-[280px] rounded-[1.6rem] border border-white/50 bg-white/65 p-5 text-slate-900 shadow-2xl backdrop-blur-xl sm:left-2 sm:top-14'><strong class='block text-lg'>{$glassTitle}</strong><p class='mt-2 text-sm leading-6 text-slate-600'>{$glassText}</p></div>
+                                <div class='absolute bottom-5 right-0 min-w-[190px] rounded-[1.6rem] border border-white/50 bg-slate-950/60 p-5 text-white shadow-2xl backdrop-blur-xl sm:bottom-8 sm:right-2'><strong class='block text-4xl font-semibold tracking-tight text-white'>{$metricValue}</strong><span class='mt-2 block text-xs font-medium text-white/75'>{$metricLabel}</span></div>
+                                <div class='absolute right-3 top-1/2 h-24 w-24 -translate-y-1/2 rounded-full opacity-85 sm:right-0 {$primaryTheme['bg']}'></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>";
+
+                break;
+
+                case 'hero_split_editorial':
+
+                $eyebrow = e($block['eyebrow'] ?? 'A NEW STANDARD');
+                $editorialIndex = e($block['editorial_index'] ?? '01');
+                $heading = e($block['heading'] ?? 'Designed to make the right first impression.');
+                $text = e($block['text'] ?? 'A considered digital experience that brings your story, expertise, and next step into one confident opening statement.');
+                $primaryLabel = e($block['primary_label'] ?? 'Start a conversation');
+                $primaryUrl = e($block['primary_url'] ?? '#');
+                $secondaryLabel = e($block['secondary_label'] ?? 'Explore our work');
+                $secondaryUrl = e($block['secondary_url'] ?? '#');
+                $proofValue = e($block['proof_value'] ?? '15+');
+                $proofLabel = e($block['proof_label'] ?? 'Years of considered craft');
+                $imageCaption = e($block['image_caption'] ?? 'Built with clarity, confidence, and care.');
+                $imageUrl = e(self::staticAssetUrl($block['image_url'] ?? ''));
+                $primaryTheme = self::getTheme($primaryColor);
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $isPrimarySection = $resolvedTheme === 'primary';
+                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $imageStyle = $imageUrl
+                    ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;"
+                    : '';
+
+                $html .= "
+                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                    <div class='relative mx-auto max-w-7xl'>
+                        <div class='mb-10 flex items-center justify-between border-b pb-5 {$theme['border']}'>
+                            <span class='text-[11px] font-bold uppercase tracking-[0.34em] {$theme['sub']}'>{$eyebrow}</span>
+                            <span class='font-mono text-xs {$theme['sub']}'>{$editorialIndex}</span>
+                        </div>
+                        <div class='grid items-end gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:gap-16'>
+                            <div class='relative z-10 lg:pb-8'>
+                                <h1 class='max-w-4xl text-5xl font-semibold leading-[0.96] tracking-[-0.055em] sm:text-6xl lg:text-[5.5rem] {$theme['text']}'>{$heading}</h1>
+                                <div class='mt-8 grid gap-7 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end'>
+                                    <div>
+                                        <p class='max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p>
+                                        <div class='mt-7 flex flex-col gap-3 sm:flex-row'>
+                                            <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a>
+                                            <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a>
+                                        </div>
+                                    </div>
+                                    <div class='min-w-40 border-l pl-5 {$theme['border']}'>
+                                        <strong class='block text-4xl font-semibold tracking-tight {$theme['text']}'>{$proofValue}</strong>
+                                        <span class='mt-2 block max-w-36 text-xs font-medium leading-5 {$theme['sub']}'>{$proofLabel}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class='relative'>
+                                <div class='relative aspect-[4/5] overflow-hidden rounded-[2rem] border shadow-2xl sm:aspect-[5/4] lg:aspect-[4/5] {$theme['border']}' style=\"{$imageStyle}\">
+                                    <div class='absolute inset-0 bg-gradient-to-t from-slate-950/55 via-transparent to-transparent'></div>
+                                    <span class='absolute bottom-5 left-5 right-5 max-w-sm text-sm font-medium leading-6 text-white'>{$imageCaption}</span>
+                                </div>
+                                <div class='absolute -bottom-5 -left-5 hidden h-24 w-24 rounded-full border sm:block {$theme['border']} {$theme['bg']}'></div>
+                                <div class='absolute -bottom-2 -left-2 hidden h-16 w-16 rounded-full sm:block {$primaryTheme['bg']}'></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>";
+
+                break;
+
                 case 'image_cta_banner':
 
                 $eyebrow = e($block['eyebrow'] ?? 'READY WHEN YOU ARE');

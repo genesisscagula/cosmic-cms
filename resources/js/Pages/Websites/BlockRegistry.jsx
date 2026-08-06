@@ -79,6 +79,16 @@ import {
 } from "./Blocks/Hero/HeroSplitImageBlock";
 
 import {
+    HeroSplitEditorialBlock,
+    HeroSplitEditorialSchema
+} from "./Blocks/Hero/HeroSplitEditorialBlock";
+
+import {
+    HeroFloatingGlassBlock,
+    HeroFloatingGlassSchema
+} from "./Blocks/Hero/HeroFloatingGlassBlock";
+
+import {
     ImageCtaBannerBlock,
     ImageCtaBannerSchema
 } from "./Blocks/Hero/ImageCtaBannerBlock";
@@ -184,6 +194,22 @@ export const BlockRegistry = {
         component: HeroSplitImageBlock,
 
         schema: HeroSplitImageSchema
+
+    },
+
+    hero_split_editorial: {
+
+        component: HeroSplitEditorialBlock,
+
+        schema: HeroSplitEditorialSchema
+
+    },
+
+    hero_floating_glass: {
+
+        component: HeroFloatingGlassBlock,
+
+        schema: HeroFloatingGlassSchema
 
     },
 

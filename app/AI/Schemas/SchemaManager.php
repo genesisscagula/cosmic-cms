@@ -26,6 +26,9 @@ class SchemaManager
 
             'hero_split_image' => 'heroSplitImageSchema',
 
+            'hero_split_editorial' => 'heroSplitEditorialSchema',
+            'hero_floating_glass' => 'heroFloatingGlassSchema',
+
             'image_cta_banner' => 'imageCtaBannerSchema',
 
             'feature_image_left' => 'featureImageLeftSchema',

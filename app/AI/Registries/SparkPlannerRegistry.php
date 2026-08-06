@@ -22,6 +22,8 @@ class SparkPlannerRegistry
             'hero_parallax' => ['category' => 'hero', 'description' => 'High-impact parallax image hero.'],
             'hero_editorial_overlay' => ['category' => 'hero', 'description' => 'Premium editorial hero with overlaid copy.'],
             'hero_split_image' => ['category' => 'hero', 'description' => 'Balanced split layout with copy and image.'],
+            'hero_split_editorial' => ['category' => 'hero', 'description' => 'Pro-only Apple-inspired editorial hero for premium, luxury, creative, architecture, design, technology, and agency brands.'],
+            'hero_floating_glass' => ['category' => 'hero', 'description' => 'Pro-only immersive glassmorphism hero for SaaS, AI, technology, agencies, finance, consulting, and premium service brands.'],
             'feature_image_left' => ['category' => 'feature', 'description' => 'Story or feature with image on the left.'],
             'feature_image_right' => ['category' => 'feature', 'description' => 'Story or feature with image on the right.'],
             'services_cards' => ['category' => 'services', 'description' => 'Scannable service cards for clear offerings.'],

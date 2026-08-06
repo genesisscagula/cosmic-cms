@@ -679,6 +679,76 @@ PROMPT;
     TXT;
     }
 
+    private function heroSplitEditorialSchema(): string
+    {
+        return <<<TXT
+
+    hero_split_editorial
+
+    - type = hero_split_editorial
+    - theme = auto
+    - eyebrow
+    - editorial_index = "01"
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - proof_value
+    - proof_label
+    - image_caption
+    - image_url = ""
+
+    Requirements:
+
+    - Write refined, concise editorial copy suitable for a premium agency-designed homepage.
+    - Heading should feel confident and sophisticated, not promotional or generic.
+    - proof_value and proof_label must be broadly truthful; avoid invented awards or precise claims when unavailable.
+    - Keep both button labels short and actionable.
+    - Keep image_caption to one short sentence.
+    - Do not use markdown or placeholder copy.
+    - image_url must remain an empty string so the existing image-selection flow can provide the image.
+
+    TXT;
+    }
+
+    private function heroFloatingGlassSchema(): string
+    {
+        return <<<TXT
+
+    hero_floating_glass
+
+    - type = hero_floating_glass
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - glass_title
+    - glass_text
+    - metric_value
+    - metric_label
+    - badge_one
+    - badge_two
+    - image_url = ""
+
+    Requirements:
+
+    - Write polished, concise copy for a premium glassmorphism hero.
+    - Use a confident heading and a clear primary action.
+    - glass_title and glass_text should summarize a useful business benefit.
+    - metric_value and metric_label must be broadly truthful; never invent precise performance claims when unavailable.
+    - Keep badges to two or three words each.
+    - Do not use markdown or placeholder copy.
+    - image_url must remain an empty string so the existing image-selection flow can provide the image.
+
+    TXT;
+    }
+
     private function imageCtaBannerSchema(): string
     {
         return <<<TXT

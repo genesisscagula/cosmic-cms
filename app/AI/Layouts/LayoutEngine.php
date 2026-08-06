@@ -169,6 +169,12 @@ class LayoutEngine
      * narrow so ordinary mentions of images or media do not override the
      * normal randomized hero selection.
      */
+    private static function wantsEditorial(?string $prompt): bool
+    {
+        return $prompt !== null
+            && preg_match('/\b(editorial|apple[- ]style|luxury|minimal premium|high[- ]end|architecture|creative agency)\b/i', $prompt) === 1;
+    }
+
     private static function wantsVideo(?string $prompt): bool
     {
         return $prompt !== null
@@ -187,12 +193,22 @@ class LayoutEngine
             return 'hero_video_background';
         }
 
+        if ($category === 'hero' && self::wantsEditorial($prompt)) {
+            return 'hero_split_editorial';
+        }
+
+        if ($category === 'hero' && $prompt !== null && preg_match('/\b(glass|glassmorphism|floating card|frosted|translucent)\b/i', $prompt) === 1) {
+            return 'hero_floating_glass';
+        }
+
         $sections = [
             'hero' => [
                 'hero_headline',
                 'hero_background_image',
                 'hero_editorial_overlay',
                 'hero_split_image',
+                'hero_split_editorial',
+                'hero_floating_glass',
                 'hero_video_background',
                 'hero_floating_cards',
             ],
