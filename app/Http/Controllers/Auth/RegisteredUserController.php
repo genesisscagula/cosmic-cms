@@ -209,14 +209,9 @@ class RegisteredUserController extends Controller
     {
         $user = $request->user();
 
-        $hasPaidPlan = $user->paymentOrders()
-            ->where('product_type', 'plan')
-            ->where('status', 'paid')
-            ->whereNotNull('fulfilled_at')
-            ->exists();
-
         $onboarding = PendingOnboarding::query()
             ->where('user_id', $user->id)
+            ->latest('id')
             ->firstOrFail();
 
         $provisioning = WorkspaceProvisioning::query()
@@ -224,28 +219,34 @@ class RegisteredUserController extends Controller
             ->latest('id')
             ->first();
 
-        $provisioningReady = $provisioning
-            && $provisioning->status === WorkspaceProvisioning::STATUS_COMPLETED
-            && $provisioning->workspace_id
-            && $provisioning->website_id;
+        // The provisioning record is the final source of truth. PayPal return,
+        // webhook and queue requests can complete in a different process, so the
+        // user/payment flags may briefly be stale even though the workspace exists.
+        $workspaceId = (int) ($onboarding->workspace_id ?: $provisioning?->workspace_id ?: 0);
+        $websiteId = (int) ($onboarding->website_id ?: $provisioning?->website_id ?: 0);
+        $provisioningComplete = $provisioning?->status === WorkspaceProvisioning::STATUS_COMPLETED;
+        $onboardingComplete = $onboarding->status === 'completed';
+        $workspaceReady = $workspaceId > 0
+            && $websiteId > 0
+            && ($provisioningComplete || $onboardingComplete);
 
-        // A PayPal webhook can finish provisioning between two polling requests.
-        // Heal any stale onboarding flags before redirecting so the dashboard
-        // middleware cannot send an already-provisioned customer back here.
-        if ($hasPaidPlan && ($user->onboarding_status === 'complete' || $provisioningReady)) {
-            if ($provisioningReady && $user->onboarding_status !== 'complete') {
+        if ($workspaceReady) {
+            if ($onboarding->status !== 'completed'
+                || (int) $onboarding->workspace_id !== $workspaceId
+                || (int) $onboarding->website_id !== $websiteId) {
+                $onboarding->forceFill([
+                    'status' => 'completed',
+                    'workspace_id' => $workspaceId,
+                    'website_id' => $websiteId,
+                    'completed_at' => $onboarding->completed_at ?? now(),
+                ])->save();
+            }
+
+            if ($user->onboarding_status !== 'complete' || $user->plan_status !== SubscriptionStatus::ACTIVE) {
                 $user->forceFill([
                     'onboarding_status' => 'complete',
                     'plan_status' => SubscriptionStatus::ACTIVE,
                 ])->save();
-
-                if ($onboarding->status !== 'completed') {
-                    $onboarding->forceFill([
-                        'status' => 'completed',
-                        'workspace_id' => $onboarding->workspace_id ?: $provisioning->workspace_id,
-                        'website_id' => $onboarding->website_id ?: $provisioning->website_id,
-                    ])->save();
-                }
             }
 
             return redirect()->route('dashboard');
@@ -275,6 +276,8 @@ class RegisteredUserController extends Controller
                 'is_expired' => (bool) ($onboarding->expires_at?->isPast()),
                 'status' => $onboarding->status,
                 'has_pending_checkout' => (bool) ($pendingOrder && data_get($pendingOrder->metadata, 'checkout_url')),
+                'workspace_ready' => $workspaceReady,
+                'redirect_url' => route('dashboard'),
                 'provisioning_status' => $provisioning?->status,
                 'provisioning_error' => $provisioning?->last_error,
                 'can_retry_provisioning' => (bool) ($provisioning && in_array($provisioning->status, ['failed', 'processing'], true)),

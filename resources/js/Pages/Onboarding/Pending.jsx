@@ -30,26 +30,54 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
     const [recovering, setRecovering] = useState(false);
     const [provisioningSeconds, setProvisioningSeconds] = useState(0);
     const autoCheckoutStarted = useRef(false);
+    const redirectStarted = useRef(false);
 
     const paymentConfirmed = ['payment_confirmed', 'subscription_ready', 'completed'].includes(onboarding.status);
     const paymentCancelled = onboarding.status === 'payment_cancelled';
     const provisioningFailed = onboarding.provisioning_status === 'failed';
     const expired = onboarding.is_expired;
+    const workspaceReady = Boolean(onboarding.workspace_ready);
+    const dashboardUrl = onboarding.redirect_url || route('dashboard');
+
+    const redirectToDashboard = () => {
+        if (redirectStarted.current) return;
+        redirectStarted.current = true;
+        window.location.replace(dashboardUrl);
+    };
 
     useEffect(() => {
-        if (!paymentConfirmed || provisioningFailed) return undefined;
+        if (workspaceReady) redirectToDashboard();
+    }, [workspaceReady, dashboardUrl]);
+
+    useEffect(() => {
+        if (!paymentConfirmed || provisioningFailed || workspaceReady) return undefined;
 
         const startedAt = Date.now();
+        let active = true;
+        let checking = false;
+
         const reload = () => {
+            if (!active || checking || redirectStarted.current) return;
+            checking = true;
+
             router.reload({
                 only: ['onboarding', 'status', 'paymentError'],
                 preserveScroll: true,
                 preserveState: true,
+                onSuccess: (page) => {
+                    const latest = page.props?.onboarding;
+                    if (latest?.workspace_ready) {
+                        redirectStarted.current = true;
+                        window.location.replace(latest.redirect_url || dashboardUrl);
+                    }
+                },
+                onFinish: () => {
+                    checking = false;
+                },
             });
         };
 
-        // Keep the wait visibly alive and check quickly because provisioning is
-        // normally completed by the PayPal return request or webhook in seconds.
+        reload();
         const clock = window.setInterval(() => {
             setProvisioningSeconds(Math.floor((Date.now() - startedAt) / 1000));
         }, 1000);
@@ -60,11 +88,12 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
         document.addEventListener('visibilitychange', onVisible);
 
         return () => {
+            active = false;
             window.clearInterval(clock);
             window.clearInterval(poller);
             document.removeEventListener('visibilitychange', onVisible);
         };
-    }, [paymentConfirmed, provisioningFailed]);
+    }, [paymentConfirmed, provisioningFailed, workspaceReady, dashboardUrl]);
 
     const expiryLabel = useMemo(() => {
         if (!onboarding.expires_at) return null;
@@ -174,7 +203,7 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                         <div className="grid gap-3 sm:grid-cols-3">
                             <Step number="1" title="Account saved" complete />
                             <Step number="2" title="Payment approval" active={!paymentConfirmed} complete={paymentConfirmed} />
-                            <Step number="3" title="Workspace ready" active={paymentConfirmed} />
+                            <Step number="3" title="Workspace ready" active={paymentConfirmed && !workspaceReady} complete={workspaceReady} />
                         </div>
 
                         <div className="mt-7 grid gap-4 sm:grid-cols-2">
@@ -222,13 +251,13 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                                         <p className="mt-1 text-sm leading-6 text-emerald-800">We are creating your workspace, applying your plan credits, and transferring your saved website. This page checks progress automatically.</p>
                                         {provisioningSeconds >= 8 && (
                                             <div className="mt-4 flex flex-wrap items-center gap-3">
-                                                <Link
-                                                    href={route('dashboard')}
-                                                    replace
+                                                <button
+                                                    type="button"
+                                                    onClick={redirectToDashboard}
                                                     className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-700 px-4 text-sm font-bold !text-white transition hover:bg-emerald-800"
                                                 >
                                                     Continue to dashboard
-                                                </Link>
+                                                </button>
                                                 <span className="text-xs text-emerald-700">Still checking automatically…</span>
                                             </div>
                                         )}
