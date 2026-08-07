@@ -22,7 +22,7 @@ class CreditController extends Controller
         $user = $request->user();
         $activeSubscriptionOrder = $subscriptions->currentOrder($user);
 
-        $planKey = (string) ($user->plan_key ?? '');
+        $planKey = $user->effectivePlanKey();
         $lifecycleStatus = SubscriptionStatus::normalize($user->plan_status);
         $statusBadge = SubscriptionStatus::badge($lifecycleStatus, (bool) $user->plan_cancel_at_period_end);
         $planConfig = $planKey !== '' ? $plans->find($planKey) : null;

@@ -112,8 +112,9 @@ class WebsiteController extends Controller
             'conversion_end' => $request->query('conversion_end'),
         ]);
         $websitesDashboard = app(WebsiteDashboardService::class)->build($user, $websites, $planCapabilities);
-        $plan = config('payments.plans.' . $user->plan_key, []);
-        $planLabel = $plan['label'] ?? ($user->plan_key ? Str::headline($user->plan_key) : 'No Plan');
+        $effectivePlanKey = $user->effectivePlanKey();
+        $plan = config('payments.plans.' . $effectivePlanKey, []);
+        $planLabel = $plan['label'] ?? Str::headline($effectivePlanKey);
         $monthlyCredits = (int) ($plan['credits'] ?? 0);
         $provider = $user->plan_provider ? Str::headline($user->plan_provider) : 'Not connected';
         $subscriptionStatus = $user->plan_status ? Str::headline(str_replace('_', ' ', $user->plan_status)) : 'Inactive';
@@ -511,7 +512,7 @@ class WebsiteController extends Controller
                 'team_workspace' => $teamWorkspace,
                 'agency_branding' => $agencyBranding,
                 'subscription' => [
-                    'plan_key' => $user->plan_key,
+                    'plan_key' => $user->effectivePlanKey(),
                     'plan_label' => $planLabel,
                     'status' => $user->plan_status,
                     'status_label' => $subscriptionStatus,

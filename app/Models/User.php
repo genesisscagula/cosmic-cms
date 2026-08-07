@@ -223,6 +223,30 @@ class User extends Authenticatable
             || strtolower((string) $this->email) === strtolower((string) config('cosmic.platform_owner_email'));
     }
 
+    /**
+     * Resolve the plan used for feature/limit checks. The platform owner uses a
+     * manual entitlement so late PayPal webhooks can never downgrade owner access.
+     */
+    public function effectivePlanKey(): string
+    {
+        if ($this->isPlatformOwner()) {
+            $ownerPlan = strtolower(trim((string) config('cosmic.platform_owner_plan', 'agency_pro')));
+
+            return $ownerPlan !== '' ? $ownerPlan : 'agency_pro';
+        }
+
+        $plan = strtolower(trim((string) $this->plan_key));
+
+        return $plan !== '' ? $plan : 'starter';
+    }
+
+    public function hasManualOwnerEntitlement(): bool
+    {
+        return $this->isPlatformOwner()
+            && $this->effectivePlanKey() === strtolower(trim((string) $this->plan_key))
+            && strtolower(trim((string) $this->plan_provider)) === 'manual';
+    }
+
     public function isClient(): bool
     {
         return $this->account_type === 'client';

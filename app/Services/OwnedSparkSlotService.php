@@ -18,7 +18,7 @@ final class OwnedSparkSlotService
     {
         $this->builtIns->ensure($user);
 
-        $limit = $this->plans->capabilities($user->plan_key)['max_owned_sparks'] ?? null;
+        $limit = $this->plans->capabilities($user->effectivePlanKey())['max_owned_sparks'] ?? null;
         $used = $user->cosmicUnlocks()
             ->where('unlock_type', 'spark')
             ->where('is_installed', true)

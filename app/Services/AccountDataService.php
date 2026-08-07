@@ -16,7 +16,8 @@ class AccountDataService
     }
     public function credits(User $user): array
     {
-        $plan = $user->plan_key ? ($this->plans->find($user->plan_key) ?? []) : [];
+        $effectivePlanKey = $user->effectivePlanKey();
+        $plan = $this->plans->find($effectivePlanKey) ?? [];
         $monthStart = now()->startOfMonth();
         $monthEnd = now()->endOfMonth();
 
@@ -55,23 +56,23 @@ class AccountDataService
 
     public function subscription(User $user, ?object $order = null): ?array
     {
-        if (! $user->plan_key) {
-            return null;
-        }
-
-        $plan = config("payments.plans.{$user->plan_key}", []);
-        $status = SubscriptionStatus::normalize($user->plan_status);
+        $effectivePlanKey = $user->effectivePlanKey();
+        $plan = config("payments.plans.{$effectivePlanKey}", []);
+        $status = $user->isPlatformOwner()
+            ? SubscriptionStatus::ACTIVE
+            : SubscriptionStatus::normalize($user->plan_status);
 
         return [
-            'key' => $user->plan_key,
-            'label' => $plan['label'] ?? Str::headline($user->plan_key),
+            'key' => $effectivePlanKey,
+            'label' => $plan['label'] ?? Str::headline($effectivePlanKey),
             'credits' => (int) ($plan['credits'] ?? 0),
             'price_usd' => (float) ($plan['price_usd'] ?? 0),
             'billing_cycle' => 'Monthly',
             'status' => $status,
             'status_label' => Str::headline(str_replace('_', ' ', $status)),
             'status_badge' => SubscriptionStatus::badge($status, (bool) $user->plan_cancel_at_period_end),
-            'provider' => $user->plan_provider,
+            'provider' => $user->isPlatformOwner() ? 'manual' : $user->plan_provider,
+            'manual_owner_entitlement' => $user->isPlatformOwner(),
             'renews_at' => $user->plan_renews_at?->toIso8601String(),
             'subscription_id' => $order?->external_subscription_id,
             'order_reference' => $order?->reference,

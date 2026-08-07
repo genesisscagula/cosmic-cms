@@ -11,7 +11,7 @@ final class PlanBuiltInSparkGrantService
     /** @return array<int, string> */
     public function ensure(User $user): array
     {
-        $capabilities = app(PlanRegistry::class)->capabilities($user->plan_key);
+        $capabilities = app(PlanRegistry::class)->capabilities($user->effectivePlanKey());
         $grantCount = max(0, (int) ($capabilities['free_built_in_sparks'] ?? 0));
         if ($grantCount === 0) {
             return [];

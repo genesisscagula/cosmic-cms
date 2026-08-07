@@ -256,7 +256,7 @@ class SubscriptionManagementService
 
         // A delayed sync for an old/replaced subscription may update its own
         // order record, but must never downgrade the user's newer plan.
-        if ($mayUpdateAccount) {
+        if ($mayUpdateAccount && ! $user->isPlatformOwner()) {
             $user->update([
                 'plan_key' => $order->product_key,
                 'plan_status' => $status,

@@ -17,7 +17,7 @@ class PlanCapabilityService
 
     public function forUser(User $user): array
     {
-        $plan = $this->plans->get($user->plan_key);
+        $plan = $this->plans->get($user->effectivePlanKey());
         $capabilities = (array) ($plan['capabilities'] ?? []);
         $websiteLimits = $this->websiteLimits->summary($user);
 

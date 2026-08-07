@@ -100,7 +100,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::patch('/appearance', [AppearancePreferenceController::class, 'update'])
         ->middleware('throttle:30,1')
         ->name('appearance.update');
-    Route::get('/sales', [SalesController::class, 'index'])->name('sales.index');
+    Route::get('/sales', [SalesController::class, 'index'])
+        ->middleware(\App\Http\Middleware\EnsurePlatformOwner::class)
+        ->name('sales.index');
     Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
     Route::get('/credits/balance', [CreditController::class, 'balance'])->name('credits.balance');
     Route::get('/account-data/{section}', [AccountDataController::class, 'show'])

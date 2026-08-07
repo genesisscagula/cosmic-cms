@@ -50,7 +50,7 @@ class PlanEntitlementService
 
     public function canUseTemplate(User $user, string $requiredLevel, ?int $accessibleIndex = null): bool
     {
-        $capabilities = $this->plans->capabilities($user->plan_key);
+        $capabilities = $this->plans->capabilities($user->effectivePlanKey());
         $limit = $capabilities['template_limit'] ?? null;
 
         if ($limit !== null && $accessibleIndex !== null && $accessibleIndex >= (int) $limit) {
@@ -74,7 +74,7 @@ class PlanEntitlementService
     {
         $definition = $catalog->definition($template);
         $index = $catalog->catalogIndex($template);
-        $capabilities = $this->plans->capabilities($user->plan_key);
+        $capabilities = $this->plans->capabilities($user->effectivePlanKey());
         $requiredLevel = (string) ($definition['minimum_plan'] ?? 'pro');
         $accountLevel = (string) ($capabilities['template_access_level'] ?? 'starter');
         $limit = $capabilities['template_limit'] ?? null;
@@ -126,7 +126,7 @@ class PlanEntitlementService
         $preferredFamily = str_starts_with($collection, 'agency') ? 'agency' : 'personal';
         $candidates = collect($this->plans->all())
             ->filter(function (array $plan, string $key) use ($user, $requiredLevel, $catalogIndex, $preferredFamily) {
-                if ($key === $this->plans->normalizeKey($user->plan_key)) {
+                if ($key === $this->plans->normalizeKey($user->effectivePlanKey())) {
                     return false;
                 }
 
@@ -181,7 +181,7 @@ class PlanEntitlementService
      */
     public function sparkPreviewAccess(User $user, int $catalogIndex): array
     {
-        $plan = $this->plans->find($user->plan_key) ?? [];
+        $plan = $this->plans->find($user->effectivePlanKey()) ?? [];
         $capabilities = (array) ($plan['capabilities'] ?? []);
         $family = (string) ($plan['family'] ?? 'personal');
         $limit = $capabilities['marketplace_preview_limit'] ?? null;
@@ -225,7 +225,7 @@ class PlanEntitlementService
      */
     public function sparkAccess(User $user, string $requiredLevel): array
     {
-        $accountLevel = (string) ($this->plans->capabilities($user->plan_key)['spark_access_level'] ?? 'free');
+        $accountLevel = (string) ($this->plans->capabilities($user->effectivePlanKey())['spark_access_level'] ?? 'free');
         $levels = $this->sparkLevelRanks();
         $allowed = $this->levelAllows($accountLevel, $requiredLevel, $levels);
 
@@ -245,7 +245,7 @@ class PlanEntitlementService
     /** @return array<string,mixed>|null */
     public function recommendedSparkUpgrade(User $user, string $requiredLevel, bool $requireFullPreview = false): ?array
     {
-        $current = $this->plans->normalizeKey($user->plan_key);
+        $current = $this->plans->normalizeKey($user->effectivePlanKey());
         $levels = $this->sparkLevelRanks();
         $candidates = collect($this->plans->all())
             ->filter(function (array $plan, string $key) use ($current, $requiredLevel, $requireFullPreview, $levels) {
@@ -265,7 +265,7 @@ class PlanEntitlementService
     /** @return array<string,mixed>|null */
     public function recommendedSparkSlotUpgrade(User $user): ?array
     {
-        $current = $this->plans->normalizeKey($user->plan_key);
+        $current = $this->plans->normalizeKey($user->effectivePlanKey());
         $currentLimit = $this->plans->capabilities($current)['max_owned_sparks'] ?? 0;
         $candidates = collect($this->plans->all())
             ->filter(fn (array $plan, string $key) => $key !== $current && (($plan['capabilities']['max_owned_sparks'] ?? 0) === null || (int) ($plan['capabilities']['max_owned_sparks'] ?? 0) > (int) $currentLimit))
@@ -291,7 +291,7 @@ class PlanEntitlementService
 
     public function canAddOwnedSpark(User $user, int $currentOwnedCount): bool
     {
-        $limit = $this->plans->capabilities($user->plan_key)['max_owned_sparks'] ?? null;
+        $limit = $this->plans->capabilities($user->effectivePlanKey())['max_owned_sparks'] ?? null;
 
         return $limit === null || $currentOwnedCount < (int) $limit;
     }

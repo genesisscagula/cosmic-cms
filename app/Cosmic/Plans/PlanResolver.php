@@ -27,7 +27,7 @@ final class PlanResolver
 
     public function forUser(User|Authenticatable $user): PlanDefinition
     {
-        return $this->plans->definition((string) ($user->plan_key ?? 'starter'));
+        return $this->plans->definition($user instanceof User ? $user->effectivePlanKey() : (string) ($user->plan_key ?? 'starter'));
     }
 
     public function forWorkspace(Workspace $workspace): PlanDefinition

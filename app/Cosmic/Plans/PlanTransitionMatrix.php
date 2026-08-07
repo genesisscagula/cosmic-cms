@@ -61,7 +61,7 @@ class PlanTransitionMatrix
 
     public function forUser(User $user, string $toKey): PlanTransitionDecision
     {
-        return $this->decide($user->plan_key, $toKey);
+        return $this->decide($user->effectivePlanKey(), $toKey);
     }
 
     public function assertAllowed(User $user, string $toKey): PlanTransitionDecision

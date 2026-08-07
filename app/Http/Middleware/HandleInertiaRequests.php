@@ -57,7 +57,7 @@ class HandleInertiaRequests extends Middleware
                 'creditBalance' => $creditBalance,
                 'plan' => $planEntitlements,
                 'planCapabilities' => $user ? app(CapabilityEngine::class)->forClient($user) : null,
-                'planChangeMatrix' => $user ? app(PlanEntitlementService::class)->changeMatrix($user->plan_key) : [],
+                'planChangeMatrix' => $user ? app(PlanEntitlementService::class)->changeMatrix($user->effectivePlanKey()) : [],
                 'appearance' => $appearance,
             ],
             'cosmicPlans' => fn () => app(PlanRegistry::class)->forClient(),

@@ -64,7 +64,7 @@ class PaymentFulfillmentService
                 );
             }
 
-            if ($order->product_type === 'plan') {
+            if ($order->product_type === 'plan' && ! $order->user->isPlatformOwner()) {
                 $nextBilling = data_get($metadata, 'paypal_next_billing_time');
 
                 $order->user->update([
@@ -175,18 +175,20 @@ class PaymentFulfillmentService
                 ? \Illuminate\Support\Carbon::parse($nextBilling)
                 : $fallbackNextBilling;
 
-            $lockedOrder->user->update([
-                'plan_key' => $lockedOrder->product_key,
-                'plan_status' => SubscriptionStatus::ACTIVE,
-                'plan_provider' => 'paypal',
-                'plan_renews_at' => $resolvedNextBilling,
-                'plan_cancel_at_period_end' => false,
-                'plan_cancelled_at' => null,
-                'plan_status_changed_at' => now(),
-                'plan_past_due_at' => null,
-                'plan_suspended_at' => null,
-                'plan_expired_at' => null,
-            ]);
+            if (! $lockedOrder->user->isPlatformOwner()) {
+                $lockedOrder->user->update([
+                    'plan_key' => $lockedOrder->product_key,
+                    'plan_status' => SubscriptionStatus::ACTIVE,
+                    'plan_provider' => 'paypal',
+                    'plan_renews_at' => $resolvedNextBilling,
+                    'plan_cancel_at_period_end' => false,
+                    'plan_cancelled_at' => null,
+                    'plan_status_changed_at' => now(),
+                    'plan_past_due_at' => null,
+                    'plan_suspended_at' => null,
+                    'plan_expired_at' => null,
+                ]);
+            }
 
             $lockedOrder->update([
                 'status' => 'paid',
@@ -243,7 +245,7 @@ class PaymentFulfillmentService
 
         // Do not let a late webhook from an old/replaced subscription overwrite
         // the user's newer active plan.
-        if (! $currentOrder || $currentOrder->id === $order->id) {
+        if ((! $currentOrder || $currentOrder->id === $order->id) && ! $order->user->isPlatformOwner()) {
             $order->user->update([
                 'plan_status' => $status,
                 'plan_cancel_at_period_end' => $cancelled,

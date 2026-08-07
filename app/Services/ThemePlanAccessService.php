@@ -48,11 +48,11 @@ class ThemePlanAccessService
             return;
         }
 
-        if ($this->allows($user->plan_key, $themeKey)) {
+        if ($this->allows($user->effectivePlanKey(), $themeKey)) {
             return;
         }
 
-        $nextPlan = in_array($this->normalizePlanKey($user->plan_key), ['starter', 'agency_starter'], true)
+        $nextPlan = in_array($this->normalizePlanKey($user->effectivePlanKey()), ['starter', 'agency_starter'], true)
             ? 'Growth'
             : 'Pro';
 
