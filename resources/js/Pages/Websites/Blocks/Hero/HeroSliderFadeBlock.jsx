@@ -98,10 +98,33 @@ const CTA_STYLES = [
 export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globalTheme }) {
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
-    const overlayColor = primaryTheme?.palette?.background || '#243447';
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const data = { ...HeroSliderFadeSchema, ...(block || {}) };
+    const resolvedTheme = block?.resolvedTheme || data?.resolvedTheme || data?.theme || 'surface';
+    const isLightMediaTheme = ['white', 'surface', 'stone'].includes(resolvedTheme);
+    const overlayColor = isLightMediaTheme ? '#ffffff' : '#020617';
+    const sliderMediaStyle = isLightMediaTheme
+        ? {
+            overlayOpacity: 0.86,
+            gradientX: 'from-white/98 via-white/90 to-white/70',
+            gradientY: 'from-white/88 via-transparent to-white/62',
+            textWrap: 'text-slate-950',
+            eyebrow: 'text-slate-700',
+            body: 'text-slate-700',
+            primary: `${primaryTheme.bg} text-white hover:opacity-90`,
+            secondary: 'border border-slate-900/20 bg-white/55 text-slate-950 hover:bg-white/80',
+        }
+        : {
+            overlayOpacity: 0.68,
+            gradientX: 'from-slate-950/45 via-slate-950/20 to-transparent',
+            gradientY: 'from-slate-950/70 via-transparent to-slate-950/20',
+            textWrap: 'text-white',
+            eyebrow: 'text-white/70',
+            body: 'text-white/75',
+            primary: 'bg-white text-slate-950 hover:bg-white/90',
+            secondary: 'border border-white/35 bg-black/20 text-white hover:border-white/60 hover:bg-black/35',
+        };
     const rawSlides = Array.isArray(data.slides) && data.slides.length ? data.slides : DEFAULT_SLIDES;
     const slides = useMemo(() => rawSlides.map(normalizeSlide), [rawSlides]);
     getEffectiveTheme(data.theme, globalTheme); // Keep parity with the shared block contract.
@@ -213,21 +236,21 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                 </div>
             ))}
 
-            <div className="absolute inset-0 z-20" style={{ backgroundColor: overlayColor, opacity: 0.68 }} />
-            <div className="absolute inset-0 z-20 bg-gradient-to-r from-slate-950/45 via-slate-950/20 to-transparent" />
-            <div className="absolute inset-0 z-20 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20" />
+            <div className="absolute inset-0 z-20" style={{ backgroundColor: overlayColor, opacity: sliderMediaStyle.overlayOpacity }} />
+            <div className={`absolute inset-0 z-20 bg-gradient-to-r ${sliderMediaStyle.gradientX}`} />
+            <div className={`absolute inset-0 z-20 bg-gradient-to-t ${sliderMediaStyle.gradientY}`} />
 
             <div className="relative z-30 mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-24 sm:min-h-[700px] sm:px-10 lg:min-h-[760px] lg:px-14">
-                <div className="max-w-3xl text-white" aria-live="polite">
+                <div className={`max-w-3xl ${sliderMediaStyle.textWrap}`} aria-live="polite">
                     {activeSlide.eyebrow && (
-                        <p className="mb-5 text-xs font-bold uppercase tracking-[0.32em] text-white/70 sm:text-sm">
+                        <p className={`mb-5 text-xs font-bold uppercase tracking-[0.32em] sm:text-sm ${sliderMediaStyle.eyebrow}`}>
                             {activeSlide.eyebrow}
                         </p>
                     )}
                     <h2 className="max-w-3xl text-5xl font-bold leading-[0.98] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
                         {activeSlide.heading}
                     </h2>
-                    <p className="mt-7 max-w-2xl text-base leading-8 text-white/75 sm:text-lg">
+                    <p className={`mt-7 max-w-2xl text-base leading-8 sm:text-lg ${sliderMediaStyle.body}`}>
                         {activeSlide.description}
                     </p>
                     <div className="mt-9 flex flex-wrap gap-3">
@@ -236,7 +259,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                                 key={`hero-slider-cta-${index}`}
                                 href={cta.url}
                                 onClick={(event) => event.preventDefault()}
-                                className={`rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white ${CTA_STYLES[index]}`}
+                                className={`rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 ${index === 0 ? sliderMediaStyle.primary : sliderMediaStyle.secondary}`}
                             >
                                 {cta.text}
                             </a>

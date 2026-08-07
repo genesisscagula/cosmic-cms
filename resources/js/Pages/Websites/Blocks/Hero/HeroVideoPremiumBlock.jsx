@@ -1,6 +1,9 @@
+import { useState } from "react";
 import { usePage } from "@inertiajs/react";
 import { EditableButton } from "../Shared/EditableButton";
+import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
+import { EditableVideoSource, getVideoEmbedUrl } from "../Shared/EditableVideoSource";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
@@ -9,7 +12,7 @@ export const HeroVideoPremiumSchema = {
     title: "Video Hero Premium",
     category: "Hero",
     purpose: "Create a cinematic first impression with background motion, premium overlays, and a clear scroll cue.",
-    description: "A Pro-only full-screen video hero with gradient overlays, CTA actions, a media badge, and scroll indicator.",
+    description: "A Pro-only full-screen video hero with editable background video, poster fallback, gradient overlays, CTA actions, a media badge, and scroll indicator.",
     tags: ["hero", "premium", "video", "cinematic", "fullscreen", "pro", "motion"],
     defaults: {
         eyebrow: "A STORY IN MOTION",
@@ -31,34 +34,105 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...HeroVideoPremiumSchema.defaults, ...block };
     const { props } = usePage();
-    const isPrimary = block.resolvedTheme === "primary";
-    const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
+    const websiteId = props.page?.website_id || props.website?.id;
+    const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
+    const embeddedVideoUrl = getVideoEmbedUrl(data.video_url);
+    const resolvedTheme = block.resolvedTheme || "surface";
+    const isPrimary = resolvedTheme === "primary";
+    const isLightMediaTheme = ["white", "surface", "stone"].includes(resolvedTheme);
+    const primaryButton = isPrimary
+        ? "bg-white text-slate-950"
+        : `${primaryTheme.bg} text-white`;
+    const mediaStyle = isLightMediaTheme
+        ? {
+            overlayBase: "bg-white/85",
+            overlayX: "bg-gradient-to-r from-white/98 via-white/90 to-white/72",
+            overlayY: "bg-gradient-to-t from-white/90 via-transparent to-white/68",
+            topBorder: "border-slate-900/15",
+            eyebrow: "text-slate-700",
+            badge: "border-slate-900/15 bg-white/65 text-slate-900",
+            heading: "text-slate-950",
+            body: "text-slate-700",
+            secondary: "border-slate-900/20 bg-white/55 text-slate-950 hover:bg-white/80",
+            footerBorder: "border-slate-900/15",
+            scroll: "text-slate-700",
+            edit: "border-slate-900/15 bg-white/60 text-slate-800 hover:bg-white/85 hover:text-slate-950",
+            posterCard: "border-slate-900/15 bg-white/55",
+        }
+        : {
+            overlayBase: "bg-slate-950/35",
+            overlayX: "bg-gradient-to-r from-slate-950/88 via-slate-950/58 to-slate-950/18",
+            overlayY: "bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/25",
+            topBorder: "border-white/25",
+            eyebrow: "text-white/80",
+            badge: "border-white/30 bg-white/10 text-white",
+            heading: "text-white",
+            body: "text-white/75",
+            secondary: "border-white/45 bg-white/5 text-white hover:bg-white/12",
+            footerBorder: "border-white/25",
+            scroll: "text-white/75",
+            edit: "border-white/25 bg-slate-950/35 text-white/85 hover:bg-slate-950/55 hover:text-white",
+            posterCard: "border-white/20 bg-slate-950/35",
+        };
+
+    const openVideoEditor = (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        setIsVideoEditorOpen(true);
+    };
 
     return (
-        <section className={`relative min-h-[84vh] overflow-hidden ${theme.bg}`}>
-            <video className="absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline poster={data.poster_image_url}>
-                <source src={data.video_url} type="video/mp4" />
-            </video>
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/88 via-slate-950/58 to-slate-950/18" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/25" />
-            <div className="relative mx-auto flex min-h-[84vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
-                <div className="flex items-center justify-between border-b border-white/25 pb-5 text-white">
-                    <EditableText value={data.eyebrow} className="text-[11px] font-bold uppercase tracking-[.34em] text-white/80" onSave={(eyebrow)=>onUpdate({eyebrow})}/>
-                    <EditableText value={data.media_badge} className="rounded-full border border-white/30 bg-white/10 px-4 py-2 text-[11px] font-semibold text-white backdrop-blur-md" onSave={(media_badge)=>onUpdate({media_badge})}/>
+        <>
+            <section className={`relative isolate min-h-[84vh] cursor-pointer overflow-hidden ${theme.bg}`}>
+                <div className="absolute inset-0">
+                    <img src={data.poster_image_url} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover sm:hidden" />
+                    {embeddedVideoUrl ? (
+                        <iframe
+                            src={embeddedVideoUrl}
+                            title="Premium background video"
+                            allow="autoplay; fullscreen; picture-in-picture"
+                            className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0 sm:block"
+                        />
+                    ) : (
+                        <video className="hidden h-full w-full object-cover sm:block" autoPlay muted loop playsInline preload="metadata" poster={data.poster_image_url}>
+                            <source src={data.video_url} type="video/mp4" />
+                        </video>
+                    )}
+                    <div className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayBase}`} />
+                    <div className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayX}`} />
+                    <div className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayY}`} />
                 </div>
-                <div className="max-w-4xl py-14 sm:py-20 lg:py-24">
-                    <EditableText value={data.heading} className="block max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.05em] text-white sm:text-7xl lg:text-[6.6rem]" onSave={(heading)=>onUpdate({heading})}/>
-                    <EditableText value={data.text} isTextArea className="mt-7 block max-w-2xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8" onSave={(text)=>onUpdate({text})}/>
-                    <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                        <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label,primary_url)=>onUpdate({primary_label,primary_url})}/>
-                        <EditableButton label={data.secondary_label} url={data.secondary_url} className="inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/45 bg-white/5 px-7 font-bold text-white backdrop-blur-sm" onSave={(secondary_label,secondary_url)=>onUpdate({secondary_label,secondary_url})}/>
+
+                <button type="button" aria-label="Edit background video" onPointerDown={openVideoEditor} className="absolute inset-0 z-[5] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300" />
+
+                <div className="pointer-events-none relative z-10 mx-auto flex min-h-[84vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
+                    <div className={`pointer-events-auto flex items-center justify-between border-b pb-5 ${mediaStyle.topBorder}`}>
+                        <EditableText value={data.eyebrow} className={`text-[11px] font-bold uppercase tracking-[.34em] ${mediaStyle.eyebrow}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
+                        <EditableText value={data.media_badge} className={`rounded-full border px-4 py-2 text-[11px] font-semibold backdrop-blur-md ${mediaStyle.badge}`} onSave={(media_badge) => onUpdate({ media_badge })} />
+                    </div>
+
+                    <div className="pointer-events-auto max-w-4xl py-14 sm:py-20 lg:py-24">
+                        <EditableText value={data.heading} className={`block max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.05em] sm:text-7xl lg:text-[6.6rem] ${mediaStyle.heading}`} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.text} isTextArea className={`mt-7 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${mediaStyle.body}`} onSave={(text) => onUpdate({ text })} />
+                        <div className="mt-9 flex flex-col gap-3 sm:flex-row">
+                            <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label, primary_url) => onUpdate({ primary_label, primary_url })} />
+                            <EditableButton label={data.secondary_label} url={data.secondary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold backdrop-blur-sm transition ${mediaStyle.secondary}`} onSave={(secondary_label, secondary_url) => onUpdate({ secondary_label, secondary_url })} />
+                        </div>
+                    </div>
+
+                    <div className={`pointer-events-auto flex items-end justify-between gap-5 border-t pt-5 ${mediaStyle.footerBorder}`}>
+                        <div className="flex items-center gap-4">
+                            <EditableText value={data.scroll_label} className={`text-xs font-semibold uppercase tracking-[.2em] ${mediaStyle.scroll}`} onSave={(scroll_label) => onUpdate({ scroll_label })} />
+                            <button type="button" onClick={() => setIsVideoEditorOpen(true)} className={`rounded-full border px-4 py-2 text-xs font-semibold backdrop-blur transition ${mediaStyle.edit}`}>Edit video</button>
+                        </div>
+                        <div data-editable-media className={`hidden w-40 overflow-hidden rounded-xl border shadow-xl sm:block ${mediaStyle.posterCard}`}>
+                            <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.poster_image_url} className="aspect-video w-full object-cover opacity-85" onSave={(poster_image_url) => onUpdate({ poster_image_url })} />
+                        </div>
                     </div>
                 </div>
-                <div className="flex items-center justify-between border-t border-white/25 pt-5 text-white">
-                    <EditableText value={data.scroll_label} className="text-xs font-semibold uppercase tracking-[.2em] text-white/75" onSave={(scroll_label)=>onUpdate({scroll_label})}/>
-                    <span className="flex h-10 w-6 items-start justify-center rounded-full border border-white/45 p-1"><span className="h-2 w-1 rounded-full bg-white animate-bounce" /></span>
-                </div>
-            </div>
-        </section>
+            </section>
+
+            <EditableVideoSource value={data.video_url} posterImageUrl={data.poster_image_url} title="Edit premium background video" isOpen={isVideoEditorOpen} onClose={() => setIsVideoEditorOpen(false)} onSave={(video_url) => onUpdate({ video_url })} />
+        </>
     );
 }

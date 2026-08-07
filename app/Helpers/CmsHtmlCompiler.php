@@ -1240,7 +1240,7 @@ HTML;
                 $optionsHtml = '';
                 foreach ($options as [$key, $featured]) {
                     $cardClass = $featured ? $featuredCard : $baseCard;
-                    $badge = $featured ? "<span class='mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] {$primaryTheme['bg']} {$primaryTheme['text']}'>".e($d['option_two_badge'])."</span>" : '';
+                    $badge = $featured ? "<span class='mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] {$primaryTheme['bg']} text-white'>".e($d['option_two_badge'])."</span>" : '';
                     $cardMuted = $featured && !$isPrimarySection ? 'text-white/70' : $muted;
                     $optionsHtml .= "<article class='relative border-b p-6 sm:p-7 {$border} {$cardClass}'>{$badge}<span class='block text-[11px] font-bold uppercase tracking-[.2em] {$cardMuted}'>".e($d[$key.'_kicker'])."</span><h3 class='mt-3 text-2xl font-semibold tracking-[-.03em]'>".e($d[$key.'_name'])."</h3><p class='mt-4 text-sm leading-6 {$cardMuted}'>".e($d[$key.'_text'])."</p></article>";
                 }
@@ -1282,7 +1282,7 @@ HTML;
                 $plansHtml='';
                 foreach($plans as [$key,$name,$price,$period,$description,$label,$url,$featured]){
                     $cardClass=$featured?$featuredCard:$baseCard;
-                    $badge=$featured?"<span class='mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] {$primaryTheme['bg']} {$primaryTheme['text']}'>".e($d['growth_badge'])."</span>":'';
+                    $badge=$featured?"<span class='mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] {$primaryTheme['bg']} text-white'>".e($d['growth_badge'])."</span>":'';
                     $plansHtml.="<article class='border-b p-6 sm:p-7 {$border} {$cardClass}'>{$badge}<h3 class='text-xl font-semibold'>".e($name)."</h3><div class='mt-4 flex items-end gap-2'><strong class='text-4xl font-semibold tracking-[-.04em]'>".e($price)."</strong><span class='mb-1 text-xs font-semibold uppercase tracking-wider {$muted}'>".e($period)."</span></div><p class='mt-4 text-sm leading-6 {$muted}'>".e($description)."</p><a href='".e($url)."' class='mt-6 inline-flex min-h-[46px] w-full items-center justify-center rounded-full px-5 text-sm font-bold {$buttonBg} {$buttonText}'>".e($label)."</a></article>";
                 }
                 $rowsHtml='';
@@ -1317,7 +1317,7 @@ HTML;
                 $muted = $isPrimarySection ? 'text-white/70' : $theme['sub'];
                 $soft = $isPrimarySection ? 'border-white/20 bg-slate-950/15 text-white' : "{$theme['border']} {$primaryTheme['soft']} {$theme['text']}";
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
                 $smallHtml = '';
                 foreach ($serviceCards as $index => [$number, $title, $description]) {
                     $span = $index < 2 ? 'lg:col-span-5' : 'lg:col-span-4';
@@ -1719,15 +1719,15 @@ HTML;
                 $buttonUrl = e($block['button_url'] ?? '#');
 
                 $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 50)));
-                // Match HeroBackgroundImageBlock exactly: tint the image with
-                // the website primary theme using the configured percentage.
-                $overlayStrength = $overlayOpacity / 100;
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'primary');
+                $isLight = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                // Match the Builder: white/surface sections receive a true white
+                // wash with a strong minimum instead of a primary-colour tint.
+                $overlayStrength = ($isLight ? max(82, $overlayOpacity) : $overlayOpacity) / 100;
                 $primaryOverlayTheme = self::getTheme($primaryColor);
+                $overlayClass = $isLight ? 'bg-white' : 'bg-slate-950';
                 $textAlign = $block['textAlign'] ?? 'center';
                 $height = $block['height'] ?? 'screen';
-
-                // Button Logic
-                $isLight = in_array($selectedThemeName, ['white', 'stone']);
 
                 $btnBg = $isLight
                     ? self::getTheme($primaryColor)['bg']
@@ -1736,6 +1736,9 @@ HTML;
                 $btnText = $isLight
                     ? self::getTheme($primaryColor)['text']
                     : 'text-slate-900';
+                $taglineClass = $isLight ? 'text-slate-700' : 'text-white/80';
+                $headingClass = $isLight ? 'text-slate-950' : 'text-white';
+                $bodyClass = $isLight ? 'text-slate-700' : 'text-white/80';
 
                 // Alignment
                 $alignment = match ($textAlign) {
@@ -1764,21 +1767,21 @@ HTML;
                 >
 
                     <div
-                        class='absolute inset-0 {$primaryOverlayTheme['bg']}'
+                        class='absolute inset-0 {$overlayClass}'
                         style='opacity:{$overlayStrength};'>
                     </div>
 
                     <div class='relative z-10 w-full max-w-7xl mx-auto px-6 py-20 sm:px-[8%] sm:py-24 flex flex-col justify-center {$alignment}'>
 
-                        <span class='text-sm uppercase tracking-[0.35em] font-semibold text-white/80 block'>
+                        <span class='text-sm uppercase tracking-[0.35em] font-semibold {$taglineClass} block'>
                             {$tagline}
                         </span>
 
-                        <h1 class='mt-6 text-4xl sm:text-5xl md:text-7xl font-bold leading-tight break-words text-white block'>
+                        <h1 class='mt-6 text-4xl sm:text-5xl md:text-7xl font-bold leading-tight break-words {$headingClass} block'>
                             {$heading}
                         </h1>
 
-                        <div class='mt-6 max-w-2xl text-base leading-7 sm:mt-8 sm:text-xl sm:leading-8 text-white/80'>
+                        <div class='mt-6 max-w-2xl text-base leading-7 sm:mt-8 sm:text-xl sm:leading-8 {$bodyClass}'>
                             {$text}
                         </div>
 
@@ -1843,6 +1846,15 @@ HTML;
 
                     $sliderId = 'cosmic-slider-' . substr(sha1(json_encode($slides)), 0, 10);
                     $interval = max(3000, (int) ($block['autoplay_interval'] ?? $block['interval'] ?? 6000));
+                    $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                    $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                    $sliderOverlayClass = $lightMedia ? 'bg-white/85' : 'bg-slate-950/68';
+                    $sliderGradientX = $lightMedia ? 'from-white/98 via-white/90 to-white/70' : 'from-slate-950/45 via-slate-950/20 to-transparent';
+                    $sliderGradientY = $lightMedia ? 'from-white/88 via-transparent to-white/62' : 'from-slate-950/70 via-transparent to-slate-950/20';
+                    $sliderText = $lightMedia ? 'text-slate-950' : 'text-white';
+                    $sliderEyebrow = $lightMedia ? 'text-slate-700' : 'text-white/70';
+                    $sliderBody = $lightMedia ? 'text-slate-700' : 'text-white/75';
+                    $primaryTheme = self::getTheme($primaryColor);
                     $slideMarkup = '';
                     $dotMarkup = '';
 
@@ -1862,8 +1874,8 @@ HTML;
                             $buttonUrl = e($slide["button_{$buttonNumber}_url"] ?: '#');
                             $buttonLabel = e($label);
                             $buttonClasses = $buttonNumber === 1
-                                ? 'bg-white text-slate-950 hover:bg-white/90'
-                                : 'border border-white/35 bg-black/20 text-white hover:border-white/60 hover:bg-black/35';
+                                ? ($lightMedia ? $primaryTheme['bg'] . ' text-white hover:opacity-90' : 'bg-white text-slate-950 hover:bg-white/90')
+                                : ($lightMedia ? 'border border-slate-900/20 bg-white/55 text-slate-950 hover:bg-white/80' : 'border border-white/35 bg-black/20 text-white hover:border-white/60 hover:bg-black/35');
 
                             $buttons .= "<a href='{$buttonUrl}' class='rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition {$buttonClasses}'>{$buttonLabel}</a>";
                         }
@@ -1884,13 +1896,14 @@ HTML;
                         $slideMarkup .= "
                         <article data-cosmic-slide='{$slideIndex}' aria-hidden='{$ariaHidden}' class='absolute inset-0 transition-opacity duration-700 {$activeClasses}'>
                             {$media}
-                            <div class='absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/65 to-slate-950/25'></div>
-                            <div class='absolute inset-0 bg-gradient-to-t from-slate-950/56 via-transparent to-slate-950/12'></div>
+                            <div class='absolute inset-0 {$sliderOverlayClass}'></div>
+                            <div class='absolute inset-0 bg-gradient-to-r {$sliderGradientX}'></div>
+                            <div class='absolute inset-0 bg-gradient-to-t {$sliderGradientY}'></div>
                             <div class='relative z-10 mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-24 sm:min-h-[700px] sm:px-10 lg:min-h-[760px] lg:px-14'>
-                                <div class='max-w-3xl text-white' aria-live='polite'>
-                                    " . ($eyebrow !== '' ? "<p class='mb-5 text-xs font-bold uppercase tracking-[0.32em] text-white/70 sm:text-sm'>{$eyebrow}</p>" : '') . "
+                                <div class='max-w-3xl {$sliderText}' aria-live='polite'>
+                                    " . ($eyebrow !== '' ? "<p class='mb-5 text-xs font-bold uppercase tracking-[0.32em] sm:text-sm {$sliderEyebrow}'>{$eyebrow}</p>" : '') . "
                                     <h2 class='max-w-3xl text-5xl font-bold leading-[0.98] tracking-[-0.04em] sm:text-6xl lg:text-7xl'>{$heading}</h2>
-                                    <p class='mt-7 max-w-2xl text-base leading-8 text-white/75 sm:text-lg'>{$description}</p>
+                                    <p class='mt-7 max-w-2xl text-base leading-8 sm:text-lg {$sliderBody}'>{$description}</p>
                                     <div class='mt-9 flex flex-wrap gap-3'>{$buttons}</div>
                                 </div>
                             </div>
@@ -2028,9 +2041,14 @@ HTML;
                         ? 'bg-gradient-to-l'
                         : ($contentAlign === 'left' ? 'bg-gradient-to-r' : 'bg-gradient-to-t');
 
-                    $overlayColor = self::getTheme($primaryColor)['bg'];
+                    // Visual test: Emerald Hero Parallax blends 60% slate-950
+                    // with 40% Emerald Grove (#0B5D4B) => #06292C. Keep the
+                    // existing opacity control so Builder and export remain aligned.
+                    $emeraldOverlayTest = !$lightMedia && $primaryColor === 'emerald';
+                    $overlayColor = $lightMedia ? 'bg-white' : ($emeraldOverlayTest ? 'bg-[#06292c]' : 'bg-slate-950');
+                    $effectiveOverlayOpacity = $lightMedia ? max(82, $overlayOpacity) : $overlayOpacity;
                     $gradient = $lightMedia
-                        ? 'from-white/95 via-white/55 to-white/25'
+                        ? 'from-white/98 via-white/84 to-white/62'
                         : 'from-slate-950/85 via-slate-950/20 to-slate-950/25';
                     $badge = $lightMedia ? 'border-slate-900/15 bg-white/60' : 'border-white/20 bg-white/10';
                     $eyebrowClass = $lightMedia ? 'text-slate-700' : 'text-white/85';
@@ -2048,7 +2066,7 @@ HTML;
                         <div data-parallax-media class='absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform' style='transform:translate3d(0,0,0) scale(1.14)'>
                             <img src='{$imageUrl}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async' class='absolute inset-0 h-full w-full object-cover'>
                         </div>
-                        <div class='absolute inset-0 z-10 {$overlayColor}' style='opacity:" . ($overlayOpacity / 100) . "'></div>
+                        <div class='absolute inset-0 z-10 {$overlayColor}' style='opacity:" . ($effectiveOverlayOpacity / 100) . "'></div>
                         <div class='absolute inset-0 z-10 {$gradientDirection} {$gradient}'></div>
                         <div data-parallax-content class='relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-4 transition-opacity duration-150 sm:px-6 lg:px-8 {$alignmentClass}' style='transform:translate3d(0,0,0);will-change:transform,opacity'>
                             <div class='{$contentWidth}'>
@@ -2138,28 +2156,41 @@ HTML;
                 $secondaryUrl = e($block['secondary_url'] ?? '#');
                 $backgroundImage = e(self::staticAssetUrl($block['image_url'] ?? ''));
                 $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 72)));
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'primary');
+                $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                $effectiveOverlayOpacity = $lightMedia ? max(82, $overlayOpacity) : $overlayOpacity;
                 $heroHeight = match ($block['height'] ?? 'large') {
                     'medium' => 'min-h-[520px]',
                     'screen' => 'min-h-[72svh] sm:min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh]',
                     default => 'min-h-[650px]',
                 };
                 $primaryTheme = self::getTheme($primaryColor);
+                $overlayClass = $lightMedia ? 'bg-white' : 'bg-slate-950';
+                $gradientClass = $lightMedia
+                    ? 'from-white/98 via-white/82 to-white/58'
+                    : 'from-slate-950/80 via-slate-950/40 to-transparent';
+                $taglineClass = $lightMedia ? 'text-slate-700' : 'text-white/75';
+                $headingClass = $lightMedia ? 'text-slate-950' : 'text-white';
+                $bodyClass = $lightMedia ? 'text-slate-700' : 'text-white/80';
+                $secondaryClass = $lightMedia
+                    ? 'border-slate-900/20 bg-white/70 text-slate-950'
+                    : 'border-white/40 bg-white/5 text-white';
                 $backgroundStyle = $backgroundImage
                     ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
                     : '';
 
                 $html .= "
                 <section class='relative flex overflow-hidden {$heroHeight}' style=\"{$backgroundStyle}\">
-                    <div class='absolute inset-0 {$primaryTheme['bg']}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
-                    <div class='absolute inset-0 bg-gradient-to-r from-slate-950/80 via-slate-950/40 to-transparent'></div>
+                    <div class='absolute inset-0 {$overlayClass}' style='opacity:" . ($effectiveOverlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 bg-gradient-to-r {$gradientClass}'></div>
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24'>
                         <div class='max-w-3xl'>
-                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] text-white/75'>{$tagline}</span>
-                            <h1 class='mt-5 text-5xl font-bold leading-[1.03] tracking-tight text-white sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
-                            <div class='mt-6 max-w-2xl text-base leading-7 text-white/80 sm:text-lg sm:leading-8'>{$text}</div>
+                            <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$taglineClass}'>{$tagline}</span>
+                            <h1 class='mt-5 text-5xl font-bold leading-[1.03] tracking-tight {$headingClass} sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
+                            <div class='mt-6 max-w-2xl text-base leading-7 {$bodyClass} sm:text-lg sm:leading-8'>{$text}</div>
                             <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
                                 <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
-                                <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border border-white/40 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a>
+                                <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$secondaryClass}'>{$secondaryLabel}</a>
                             </div>
                         </div>
                     </div>
@@ -2182,7 +2213,7 @@ HTML;
                 $primaryTheme = self::getTheme($primaryColor);
                 $isPrimarySection = ($block['resolvedTheme'] ?? null) === 'primary';
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
                 $imageStyle = $imageUrl
                     ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;"
                     : '';
@@ -2221,28 +2252,50 @@ HTML;
                 $secondaryUrl = e($block['secondary_url'] ?? '#');
                 $mediaBadge = e($block['media_badge'] ?? 'Cinematic brand experience');
                 $scrollLabel = e($block['scroll_label'] ?? 'Scroll to explore');
-                $videoUrl = e(self::staticAssetUrl($block['video_url'] ?? '/storage/cms-videos/hero-placeholder.mp4'));
-                $posterUrl = e(self::staticAssetUrl($block['poster_image_url'] ?? ''));
+                $rawVideoUrl = trim((string) ($block['video_url'] ?? '')) ?: '/storage/cms-videos/hero-placeholder.mp4';
+                $premiumVideoEmbedUrl = self::backgroundVideoEmbedUrl($rawVideoUrl);
+                $videoUrl = e(self::staticAssetUrl($rawVideoUrl));
+                $posterUrl = e(self::staticAssetUrl(trim((string) ($block['poster_image_url'] ?? '')) ?: '/storage/cms-images/background/background-1.avif'));
                 $primaryTheme = self::getTheme($primaryColor);
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
+                $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
-                $posterAttr = $posterUrl ? " poster='{$posterUrl}'" : '';
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
+                $premiumOverlayBase = $lightMedia ? 'bg-white/85' : 'bg-slate-950/35';
+                $premiumGradientX = $lightMedia ? 'from-white/98 via-white/90 to-white/72' : 'from-slate-950/88 via-slate-950/58 to-slate-950/18';
+                $premiumGradientY = $lightMedia ? 'from-white/90 via-transparent to-white/68' : 'from-slate-950/75 via-transparent to-slate-950/25';
+                $premiumBorder = $lightMedia ? 'border-slate-900/15' : 'border-white/25';
+                $premiumEyebrow = $lightMedia ? 'text-slate-700' : 'text-white/80';
+                $premiumBadge = $lightMedia ? 'border-slate-900/15 bg-white/65 text-slate-900' : 'border-white/30 bg-white/10 text-white';
+                $premiumHeading = $lightMedia ? 'text-slate-950' : 'text-white';
+                $premiumBody = $lightMedia ? 'text-slate-700' : 'text-white/75';
+                $premiumSecondary = $lightMedia ? 'border-slate-900/20 bg-white/55 text-slate-950' : 'border-white/45 bg-white/5 text-white';
+                $premiumScroll = $lightMedia ? 'text-slate-700' : 'text-white/75';
+                $premiumBackgroundMedia = $premiumVideoEmbedUrl
+                    ? "<div class='absolute inset-0 overflow-hidden'>
+                            <img src='{$posterUrl}' alt='' aria-hidden='true' class='absolute inset-0 h-full w-full object-cover sm:hidden'>
+                            <iframe src='" . e($premiumVideoEmbedUrl) . "' title='Background video' allow='autoplay; fullscreen; picture-in-picture' class='pointer-events-none absolute left-1/2 top-1/2 hidden h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0 sm:block'></iframe>
+                        </div>"
+                    : "<div class='absolute inset-0'>
+                            <img src='{$posterUrl}' alt='' aria-hidden='true' class='absolute inset-0 h-full w-full object-cover sm:hidden'>
+                            <video class='hidden h-full w-full object-cover sm:block' autoplay muted loop playsinline preload='metadata' poster='{$posterUrl}'><source src='{$videoUrl}' type='video/mp4'></video>
+                        </div>";
 
                 $html .= "
                 <section class='relative min-h-[84vh] overflow-hidden {$theme['bg']}'>
-                    <video class='absolute inset-0 h-full w-full object-cover' autoplay muted loop playsinline{$posterAttr}><source src='{$videoUrl}' type='video/mp4'></video>
-                    <div class='absolute inset-0 bg-gradient-to-r from-slate-950/88 via-slate-950/58 to-slate-950/18'></div>
-                    <div class='absolute inset-0 bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/25'></div>
+                    {$premiumBackgroundMedia}
+                    <div class='absolute inset-0 {$premiumOverlayBase}'></div>
+                    <div class='absolute inset-0 bg-gradient-to-r {$premiumGradientX}'></div>
+                    <div class='absolute inset-0 bg-gradient-to-t {$premiumGradientY}'></div>
                     <div class='relative mx-auto flex min-h-[84vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12'>
-                        <div class='flex items-center justify-between border-b border-white/25 pb-5 text-white'><span class='text-[11px] font-bold uppercase tracking-[.34em] text-white/80'>{$eyebrow}</span><span class='rounded-full border border-white/30 bg-white/10 px-4 py-2 text-[11px] font-semibold text-white'>{$mediaBadge}</span></div>
+                        <div class='flex items-center justify-between border-b pb-5 {$premiumBorder}'><span class='text-[11px] font-bold uppercase tracking-[.34em] {$premiumEyebrow}'>{$eyebrow}</span><span class='rounded-full border px-4 py-2 text-[11px] font-semibold {$premiumBadge}'>{$mediaBadge}</span></div>
                         <div class='max-w-4xl py-14 sm:py-20 lg:py-24'>
-                            <h1 class='max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.05em] text-white sm:text-7xl lg:text-[6.6rem]'>{$heading}</h1>
-                            <p class='mt-7 max-w-2xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8'>{$text}</p>
-                            <div class='mt-9 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/45 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a></div>
+                            <h1 class='max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.05em] sm:text-7xl lg:text-[6.6rem] {$premiumHeading}'>{$heading}</h1>
+                            <p class='mt-7 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$premiumBody}'>{$text}</p>
+                            <div class='mt-9 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold {$premiumSecondary}'>{$secondaryLabel}</a></div>
                         </div>
-                        <div class='flex items-center justify-between border-t border-white/25 pt-5 text-white'><span class='text-xs font-semibold uppercase tracking-[.2em] text-white/75'>{$scrollLabel}</span><span class='flex h-10 w-6 items-start justify-center rounded-full border border-white/45 p-1'><span class='h-2 w-1 rounded-full bg-white'></span></span></div>
+                        <div class='flex items-center justify-between border-t pt-5 {$premiumBorder}'><span class='text-xs font-semibold uppercase tracking-[.2em] {$premiumScroll}'>{$scrollLabel}</span><span class='flex h-10 w-6 items-start justify-center rounded-full border p-1 {$premiumBorder}'><span class='h-2 w-1 rounded-full " . ($lightMedia ? "bg-slate-900" : "bg-white") . "'></span></span></div>
                     </div>
                 </section>";
 
@@ -2266,7 +2319,7 @@ HTML;
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
                 $assistantBubble = $isPrimarySection ? 'border-white/20 bg-white/12 text-white' : "{$primaryTheme['soft']} {$theme['border']} {$theme['text']}";
                 $chipHtml = ''; foreach ($chips as $chip) { $chipHtml .= "<span class='rounded-full border px-3 py-2 text-xs font-semibold {$theme['border']} {$theme['surface']} {$theme['sub']}'>{$chip}</span>"; }
 
@@ -2305,7 +2358,7 @@ HTML;
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
                 $metricSurface = $isPrimarySection ? 'border-white/20 bg-white/10 text-white' : "{$theme['border']} {$theme['surface']} {$theme['text']}";
                 $metricSub = $isPrimarySection ? 'text-white/70' : $theme['sub'];
                 $beforeStyle = $beforeImage ? "background-image:url('{$beforeImage}');background-size:cover;background-position:center;" : '';
@@ -2344,7 +2397,7 @@ HTML;
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
                 $softCard = $isPrimarySection ? 'border-white/20 bg-white/10 text-white' : "{$theme['border']} {$theme['surface']} {$theme['text']}";
                 $softSub = $isPrimarySection ? 'text-white/70' : $theme['sub'];
                 $secondaryButton = $isPrimarySection ? 'border-white/25 text-white' : "{$theme['border']} {$theme['text']}";
@@ -2358,7 +2411,7 @@ HTML;
                     <div class='relative mx-auto max-w-7xl'>
                         <div class='grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_auto]'>
                             <div class='rounded-[2rem] border p-7 sm:p-10 lg:col-span-7 lg:row-span-2 {$softCard}'><span class='text-xs font-bold uppercase tracking-[.28em] {$softSub}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.055em] sm:text-6xl lg:text-7xl'>{$heading}</h1><p class='mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$softSub}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$secondaryButton}'>{$secondaryLabel}</a></div><div class='mt-10 grid gap-3 sm:grid-cols-3'>{$cardHtml}</div></div>
-                            <div class='relative min-h-[310px] overflow-hidden rounded-[2rem] lg:col-span-5' style=\"{$imageStyle}\"><div class='absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent'></div><div class='absolute inset-x-0 bottom-0 p-6 text-white sm:p-8'><strong class='text-sm font-semibold text-white'>{$imageLabel}</strong></div></div>
+                            <div class='relative min-h-[310px] overflow-hidden rounded-[2rem] lg:col-span-5' style=\"{$imageStyle}\"><div class='absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent'></div><div class='absolute inset-x-0 bottom-0 p-6 text-white sm:p-8'><strong class='text-sm font-semibold'>{$imageLabel}</strong></div></div>
                             <div class='grid gap-4 sm:grid-cols-2 lg:col-span-5'><div class='rounded-[2rem] border p-6 {$softCard}'><strong class='block text-5xl font-semibold tracking-[-.04em]'>{$metricValue}</strong><span class='mt-3 block text-sm leading-6 {$softSub}'>{$metricLabel}</span></div><div class='rounded-[2rem] border p-6 {$proofCard}'><strong class='block text-lg font-semibold'>{$proofTitle}</strong><span class='mt-3 block text-sm leading-6 {$softSub}'>{$proofText}</span></div></div>
                         </div>
                     </div>
@@ -2381,7 +2434,7 @@ HTML;
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
                 $imageStyle = $imageUrl ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;" : '';
 
                 $html .= "
@@ -2424,7 +2477,7 @@ HTML;
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
                 $metricCards = "<div class='rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-3xl font-semibold tracking-tight {$theme['text']}'>{$metricOneValue}</strong><span class='mt-2 block text-xs font-medium {$theme['sub']}'>{$metricOneLabel}</span></div><div class='rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-3xl font-semibold tracking-tight {$theme['text']}'>{$metricTwoValue}</strong><span class='mt-2 block text-xs font-medium {$theme['sub']}'>{$metricTwoLabel}</span></div><div class='rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-3xl font-semibold tracking-tight {$theme['text']}'>{$metricThreeValue}</strong><span class='mt-2 block text-xs font-medium {$theme['sub']}'>{$metricThreeLabel}</span></div>";
                 $bars = '';
                 foreach ([38,58,48,72,66,88,78,96,84,100] as $index => $height) { $opacity = 0.42 + ($index * 0.045); $bars .= "<span class='flex-1 rounded-t-lg {$primaryTheme['bg']}' style='height:{$height}%;opacity:{$opacity}'></span>"; }
@@ -2469,7 +2522,7 @@ HTML;
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
                 $imageStyle = $imageUrl ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;" : '';
 
                 $html .= "
@@ -2516,7 +2569,7 @@ HTML;
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
+                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
                 $imageStyle = $imageUrl
                     ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;"
                     : '';
@@ -2580,8 +2633,9 @@ HTML;
                     : '';
 
                 $overlayClass = $lightMedia ? 'bg-white' : 'bg-slate-950';
+                $effectiveOverlayOpacity = $lightMedia ? max(82, $overlayOpacity) : $overlayOpacity;
                 $gradientClass = $lightMedia
-                    ? 'from-white/95 via-white/55 to-white/20'
+                    ? 'from-white/98 via-white/84 to-white/62'
                     : 'from-slate-950/65 via-slate-950/25 to-slate-950/15';
                 $eyebrowClass = $lightMedia ? 'text-slate-700' : 'text-white/75';
                 $headingClass = $lightMedia ? 'text-slate-950' : 'text-white';
@@ -2595,7 +2649,7 @@ HTML;
 
                 $html .= "
                 <section class='relative flex min-h-[420px] overflow-hidden sm:min-h-[460px] lg:min-h-[500px]' style=\"{$backgroundStyle}\">
-                    <div class='absolute inset-0 {$overlayClass}' style='opacity:" . ($overlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 {$overlayClass}' style='opacity:" . ($effectiveOverlayOpacity / 100) . ";'></div>
                     <div class='absolute inset-0 bg-gradient-to-r {$gradientClass}'></div>
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20'>
                         <div class='max-w-3xl'>
@@ -2997,17 +3051,21 @@ HTML;
                 // retained as a safe fallback.
                 $videoMedia = $videoEmbedUrl
                     ? "<div class='relative w-full' style='aspect-ratio: 16 / 9;'>
+                            <img src='{$imageUrl}' alt='{$heading}' width='1280' height='720' loading='lazy' decoding='async' class='absolute inset-0 h-full w-full object-cover sm:hidden'>
                             <iframe
                                 src='" . e($videoEmbedUrl) . "'
                                 title='Video preview'
                                 allow='autoplay; fullscreen; picture-in-picture'
-                                class='absolute inset-0 h-full w-full border-0 pointer-events-none'
+                                class='pointer-events-none absolute inset-0 hidden h-full w-full border-0 sm:block'
                             ></iframe>
                         </div>"
                     : ($rawVideoUrl !== '' && $rawVideoUrl !== '#'
-                        ? "<video autoplay muted loop playsinline preload='metadata' poster='{$imageUrl}' class='w-full object-cover' style='aspect-ratio: 16 / 9;'>
-                                <source src='{$staticVideoUrl}' type='video/mp4'>
-                            </video>"
+                        ? "<div class='relative w-full' style='aspect-ratio: 16 / 9;'>
+                                <img src='{$imageUrl}' alt='{$heading}' width='1280' height='720' loading='lazy' decoding='async' class='absolute inset-0 h-full w-full object-cover sm:hidden'>
+                                <video autoplay muted loop playsinline preload='metadata' poster='{$imageUrl}' class='hidden h-full w-full object-cover sm:block'>
+                                    <source src='{$staticVideoUrl}' type='video/mp4'>
+                                </video>
+                            </div>"
                         : "<img src='{$imageUrl}' alt='{$heading}' width='1280' height='720' loading='lazy' decoding='async' class='w-full object-cover transition duration-500 group-hover:scale-[1.03]' style='aspect-ratio: 16 / 9;'>");
 
                 $isLight = in_array(
@@ -3213,30 +3271,37 @@ HTML;
                 $primaryTheme = self::getTheme(
                     $primaryColor
                 );
+                $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
+                $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                $videoOverlayBase = $lightMedia ? 'bg-white/86' : 'bg-slate-950/62';
+                $videoGradientX = $lightMedia ? 'from-white/98 via-white/90 to-white/70' : 'from-slate-950/70 via-slate-950/35 to-transparent';
+                $videoGradientY = $lightMedia ? 'from-white/88 via-transparent to-white/62' : 'from-slate-950/55 via-transparent to-slate-950/15';
+                $videoTagline = $lightMedia ? 'text-slate-700' : 'text-white/70';
+                $videoHeading = $lightMedia ? 'text-slate-950' : 'text-white';
+                $videoBody = $lightMedia ? 'text-slate-700' : 'text-white/75';
+                $videoSecondary = $lightMedia ? 'border-slate-900/20 bg-white/50 text-slate-950' : 'border-white/30 bg-white/10 text-white';
+                $videoPill = $lightMedia ? 'border-slate-900/15 bg-white/55 text-slate-900' : 'border-white/15 bg-slate-950/35 text-white';
+                $videoScroll = $lightMedia ? 'text-slate-700' : 'text-white/70';
+                $videoScrollBorder = $lightMedia ? 'border-slate-900/30' : 'border-white/30';
+                $videoScrollDot = $lightMedia ? 'bg-slate-900' : 'bg-white';
+                $videoMediaCard = $lightMedia ? 'border-slate-900/15 bg-white/45' : 'border-white/20 bg-slate-950/35';
 
                 $backgroundMedia = $backgroundVideoEmbedUrl
                     ? "<div class='absolute inset-0 overflow-hidden'>
+                            <img src='{$posterImageUrl}' alt='' aria-hidden='true' class='absolute inset-0 h-full w-full object-cover sm:hidden'>
                             <iframe
                                 src='" . e($backgroundVideoEmbedUrl) . "'
                                 title='Background video'
                                 allow='autoplay; fullscreen; picture-in-picture'
-                                class='pointer-events-none absolute left-1/2 top-1/2 h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0'
+                                class='pointer-events-none absolute left-1/2 top-1/2 hidden h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0 sm:block'
                             ></iframe>
                         </div>"
-                    : "<video
-                            autoplay
-                            muted
-                            loop
-                            playsinline
-                            preload='metadata'
-                            poster='{$posterImageUrl}'
-                            class='h-full w-full object-cover'
-                        >
-                            <source
-                                src='{$videoUrl}'
-                                type='video/mp4'
-                            >
-                        </video>";
+                    : "<div class='absolute inset-0'>
+                            <img src='{$posterImageUrl}' alt='' aria-hidden='true' class='absolute inset-0 h-full w-full object-cover sm:hidden'>
+                            <video autoplay muted loop playsinline preload='metadata' poster='{$posterImageUrl}' class='hidden h-full w-full object-cover sm:block'>
+                                <source src='{$videoUrl}' type='video/mp4'>
+                            </video>
+                        </div>";
 
                 $html .= "
                 <section class='relative isolate min-h-[680px] overflow-hidden {$theme['bg']}'>
@@ -3245,11 +3310,11 @@ HTML;
 
                         {$backgroundMedia}
 
-                        <div class='absolute inset-0 bg-slate-950/65'></div>
+                        <div class='absolute inset-0 {$videoOverlayBase}'></div>
 
-                        <div class='absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/65 to-slate-950/20'></div>
+                        <div class='absolute inset-0 bg-gradient-to-r {$videoGradientX}'></div>
 
-                        <div class='absolute inset-0 bg-gradient-to-t from-slate-950/56 via-transparent to-slate-950/12'></div>
+                        <div class='absolute inset-0 bg-gradient-to-t {$videoGradientY}'></div>
 
                     </div>
 
@@ -3259,15 +3324,15 @@ HTML;
 
                         <div class='max-w-3xl'>
 
-                            <span class='block text-xs font-semibold uppercase tracking-[0.34em] text-white/70'>
+                            <span class='block text-xs font-semibold uppercase tracking-[0.34em] {$videoTagline}'>
                                 {$tagline}
                             </span>
 
-                            <h1 class='mt-6 block text-5xl font-bold leading-[0.98] tracking-tight text-white sm:text-6xl lg:text-8xl'>
+                            <h1 class='mt-6 block text-5xl font-bold leading-[0.98] tracking-tight sm:text-6xl lg:text-8xl {$videoHeading}'>
                                 {$heading}
                             </h1>
 
-                            <p class='mt-7 block max-w-2xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8'>
+                            <p class='mt-7 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$videoBody}'>
                                 {$text}
                             </p>
 
@@ -3282,7 +3347,7 @@ HTML;
 
                                 <a
                                     href='{$secondaryUrl}'
-                                    class='inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/30 bg-white/10 px-8 font-bold text-white backdrop-blur transition hover:bg-white/20'
+                                    class='inline-flex min-h-[52px] items-center justify-center rounded-full border px-8 font-bold backdrop-blur transition {$videoSecondary}'
                                 >
                                     {$secondaryLabel}
                                 </a>
@@ -3291,7 +3356,7 @@ HTML;
 
                             <div class='mt-10 flex items-center gap-3'>
 
-                                <div class='flex items-center gap-3 rounded-full border border-white/15 bg-slate-950/35 px-4 py-2.5 backdrop-blur'>
+                                <div class='flex items-center gap-3 rounded-full border px-4 py-2.5 backdrop-blur {$videoPill}'>
 
                                     <span class='flex h-8 w-8 items-center justify-center rounded-full {$primaryTheme['bg']} {$primaryTheme['text']}'>
                                         ▶
@@ -3313,10 +3378,10 @@ HTML;
 
                         <div class='mx-auto flex max-w-7xl items-end justify-between gap-6 px-7 pb-7 sm:px-10 lg:px-12'>
 
-                            <div class='flex items-center gap-3 text-white/70'>
+                            <div class='flex items-center gap-3 {$videoScroll}'>
 
-                                <span class='flex h-9 w-6 items-start justify-center rounded-full border border-white/30 p-1.5'>
-                                    <span class='h-1.5 w-1.5 rounded-full bg-white'></span>
+                                <span class='flex h-9 w-6 items-start justify-center rounded-full border p-1.5 {$videoScrollBorder}'>
+                                    <span class='h-1.5 w-1.5 rounded-full {$videoScrollDot}'></span>
                                 </span>
 
                                 <span class='text-xs font-semibold uppercase tracking-[0.24em]'>
@@ -3325,7 +3390,7 @@ HTML;
 
                             </div>
 
-                            <div class='hidden w-48 overflow-hidden rounded-2xl border border-white/20 bg-slate-950/35 shadow-2xl backdrop-blur sm:block'>
+                            <div class='hidden w-48 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur sm:block {$videoMediaCard}'>
 
                                 <img
                                     src='{$posterImageUrl}'

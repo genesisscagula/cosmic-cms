@@ -1,10 +1,10 @@
-import { useEffect, useState } from "react";
-import { createPortal } from "react-dom";
+import { useState } from "react";
 import { usePage } from "@inertiajs/react";
 
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
+import { EditableVideoSource } from "../Shared/EditableVideoSource";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
@@ -77,86 +77,6 @@ function getBackgroundVideoEmbedUrl(videoUrl) {
     return null;
 }
 
-function EditableVideoSource({ value, onSave, isOpen, onClose }) {
-    const [videoUrl, setVideoUrl] = useState(value || "");
-
-    useEffect(() => {
-        if (isOpen) {
-            setVideoUrl(value || "");
-        }
-    }, [isOpen, value]);
-
-    const close = () => {
-        setVideoUrl(value || "");
-        onClose();
-    };
-
-    return (
-        <>
-            {isOpen && createPortal(
-                <div
-                    className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm"
-                    role="presentation"
-                    onMouseDown={close}
-                >
-                    <div
-                        role="dialog"
-                        aria-modal="true"
-                        aria-labelledby="background-video-title"
-                        className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#17181c] p-6 text-left shadow-2xl"
-                        onMouseDown={(event) => event.stopPropagation()}
-                    >
-                        <div className="flex items-start justify-between gap-5">
-                            <div>
-                                <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-violet-300">Background media</p>
-                                <h3 id="background-video-title" className="mt-2 text-xl font-semibold text-white">Edit background video</h3>
-                                <p className="mt-2 text-sm leading-6 text-slate-400">
-                                    Paste a direct MP4, YouTube, or Vimeo link. YouTube and Vimeo play muted in the background.
-                                </p>
-                            </div>
-                            <button type="button" onClick={close} className="rounded-lg p-1 text-slate-400 transition hover:bg-white/5 hover:text-white" aria-label="Close video editor">
-                                ×
-                            </button>
-                        </div>
-
-                        <label className="mt-6 block">
-                            <span className="text-xs font-medium text-slate-300">Video URL</span>
-                            <input
-                                autoFocus
-                                type="url"
-                                value={videoUrl}
-                                onChange={(event) => setVideoUrl(event.target.value)}
-                                placeholder="https://www.youtube.com/watch?v=..."
-                                className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-3 text-sm text-white outline-none placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
-                            />
-                        </label>
-
-                        <p className="mt-3 text-xs leading-5 text-slate-500">
-                            Use a direct .mp4 URL for a self-hosted video. The poster image remains editable from the thumbnail.
-                        </p>
-
-                        <div className="mt-6 flex justify-end gap-3">
-                            <button type="button" onClick={close} className="rounded-lg px-4 py-2.5 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white">Cancel</button>
-                            <button
-                                type="button"
-                                disabled={!videoUrl.trim()}
-                                onClick={() => {
-                                    onSave(videoUrl.trim());
-                                    onClose();
-                                }}
-                                className="rounded-lg bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                Save video
-                            </button>
-                        </div>
-                    </div>
-                </div>,
-                document.body
-            )}
-        </>
-    );
-}
-
 export function HeroVideoBackgroundBlock({
     block,
     blockIndex,
@@ -174,9 +94,9 @@ export function HeroVideoBackgroundBlock({
     const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
     const mediaStyle = isLightMediaTheme
         ? {
-            overlay: "bg-white opacity-[0.72]",
-            gradientX: "from-white/95 via-white/65 to-white/20",
-            gradientY: "from-white/65 via-transparent to-white/20",
+            overlay: "bg-white opacity-[0.86]",
+            gradientX: "from-white/98 via-white/90 to-white/70",
+            gradientY: "from-white/88 via-transparent to-white/62",
             tagline: "text-slate-700",
             heading: "text-slate-950",
             body: "text-slate-700",
@@ -190,7 +110,7 @@ export function HeroVideoBackgroundBlock({
             mediaCard: "border-slate-900/15 bg-white/45",
         }
         : {
-            overlay: `${primaryTheme.bg} opacity-[0.58]`,
+            overlay: "bg-slate-950 opacity-[0.62]",
             gradientX: "from-slate-950/70 via-slate-950/35 to-transparent",
             gradientY: "from-slate-950/55 via-transparent to-slate-950/15",
             tagline: "text-white/70",
@@ -234,30 +154,36 @@ export function HeroVideoBackgroundBlock({
             <div className="absolute inset-0">
                 {embeddedVideoUrl ? (
                     <div className="absolute inset-0 overflow-hidden">
+                        <img src={posterImageUrl} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover sm:hidden" />
                         <iframe
                             key={embeddedVideoUrl}
                             src={embeddedVideoUrl}
                             title="Background video"
                             allow="autoplay; fullscreen; picture-in-picture"
-                            className="pointer-events-none absolute left-1/2 top-1/2 h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0"
+                            className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0 sm:block"
                         />
                     </div>
                 ) : (
-                    <video
-                        key={videoUrl}
-                        autoPlay
-                        muted
-                        loop
-                        playsInline
-                        preload="metadata"
-                        poster={posterImageUrl}
-                        className="h-full w-full object-cover"
-                    >
-                        <source
-                            src={videoUrl}
-                            type="video/mp4"
+                    <>
+                        <img
+                            src={posterImageUrl}
+                            alt=""
+                            aria-hidden="true"
+                            className="absolute inset-0 h-full w-full object-cover sm:hidden"
                         />
-                    </video>
+                        <video
+                            key={videoUrl}
+                            autoPlay
+                            muted
+                            loop
+                            playsInline
+                            preload="metadata"
+                            poster={posterImageUrl}
+                            className="hidden h-full w-full object-cover sm:block"
+                        >
+                            <source src={videoUrl} type="video/mp4" />
+                        </video>
+                    </>
                 )}
 
                 {/* Keep the video readable while letting the website's active primary family tint the hero. */}
@@ -314,7 +240,7 @@ export function HeroVideoBackgroundBlock({
                         <EditableButton
                             label={data.primary_label}
                             url={data.primary_url}
-                            className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-xl transition hover:-translate-y-0.5 hover:opacity-90 ${primaryTheme.bg} ${primaryTheme.text}`}
+                            className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-xl transition hover:-translate-y-0.5 hover:opacity-90 ${primaryTheme.bg} text-white`}
                             onSave={(
                                 primary_label,
                                 primary_url
@@ -345,7 +271,7 @@ export function HeroVideoBackgroundBlock({
                     <div className="mt-10 flex flex-wrap items-center gap-4">
                         <div className={`flex items-center gap-3 rounded-full border px-4 py-2.5 backdrop-blur ${mediaStyle.pill}`}>
                             <span
-                                className={`flex h-8 w-8 items-center justify-center rounded-full ${primaryTheme.bg} ${primaryTheme.text}`}
+                                className={`flex h-8 w-8 items-center justify-center rounded-full ${primaryTheme.bg} text-white`}
                             >
                                 ▶
                             </span>
@@ -408,6 +334,7 @@ export function HeroVideoBackgroundBlock({
 
             <EditableVideoSource
                 value={block.video_url || ""}
+                posterImageUrl={posterImageUrl}
                 isOpen={isVideoEditorOpen}
                 onClose={() => setIsVideoEditorOpen(false)}
                 onSave={(video_url) => onUpdate({ video_url })}

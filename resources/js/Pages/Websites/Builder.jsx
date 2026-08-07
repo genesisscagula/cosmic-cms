@@ -793,10 +793,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                         <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-3 text-xs font-semibold text-slate-700">
                                 <span className="truncate">{mediaProgress.message}</span>
-                                <span>{Math.max(0, Math.min(100, mediaProgress.progress))}%</span>
-                            </div>
-                            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200">
-                                <div className="h-full rounded-full bg-cyan-500 transition-[width] duration-500" style={{ width: `${Math.max(3, Math.min(100, mediaProgress.progress))}%` }} />
+                                <span className="sr-only">{Math.max(0, Math.min(100, mediaProgress.progress))}%</span>
                             </div>
                         </div>
                     </div>

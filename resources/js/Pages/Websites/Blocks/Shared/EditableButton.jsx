@@ -11,7 +11,7 @@ export function EditableButton({ label, url, onSave, className }) {
 
     return (
         <>
-            <div className="relative group/btn inline-block">
+            <div data-cosmic-edit-control="button" className="relative group/btn inline-block">
                 <button 
                     type="button"
                     onClick={() => setIsEditing(true)} 

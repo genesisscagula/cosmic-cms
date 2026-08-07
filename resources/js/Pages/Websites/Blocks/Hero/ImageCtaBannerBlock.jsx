@@ -30,16 +30,16 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
     const imageRef = useRef(null);
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
-    const overlayColor = primaryTheme?.palette?.background || '#243447';
     const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
+    const overlayColor = isLightMediaTheme ? '#ffffff' : '#020617';
     const mediaStyle = isLightMediaTheme
         ? {
             overlay: "bg-white",
-            gradient: "from-white/95 via-white/55 to-white/20",
+            gradient: "from-white/98 via-white/84 to-white/62",
             eyebrow: "text-slate-700",
             heading: "text-slate-950",
             body: "text-slate-700",
-            primary: `${primaryTheme.bg} ${primaryTheme.text}`,
+            primary: `${primaryTheme.bg} text-white`,
             secondary: "border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75",
         }
         : {
@@ -54,12 +54,13 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
     const data = { ...ImageCtaBannerSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
-    const overlayOpacity = Math.max(0, Math.min(100, Number(data.overlayOpacity) || 76));
+    const configuredOverlayOpacity = Math.max(0, Math.min(100, Number(data.overlayOpacity) || 76));
+    const overlayOpacity = isLightMediaTheme ? Math.max(82, configuredOverlayOpacity) : configuredOverlayOpacity;
 
     const handleSectionImageEdit = (event) => {
         // Keep copy, links, and Builder controls independently editable.
         // Clicking the remaining banner canvas opens the background image editor.
-        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable='true'], [role='button']")) {
+        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable='true'], [role='button'], [data-cosmic-edit-control]")) {
             return;
         }
 
@@ -90,7 +91,6 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
 
             <div
                 className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20"
-                onClick={(event) => event.stopPropagation()}
             >
                 <div className="max-w-3xl">
                     <EditableText

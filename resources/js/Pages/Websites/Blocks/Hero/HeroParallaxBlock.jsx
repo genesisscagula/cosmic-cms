@@ -56,8 +56,14 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const websiteId = props.page?.website_id || props.website?.id;
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
-    const overlayColor = primaryTheme?.palette?.background || '#243447';
     const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
+    // Visual test: Emerald Hero Parallax uses a 60% slate / 40% Emerald tint.
+    // Keep light semantic themes on the strong white wash and leave other
+    // colored themes on the universal neutral overlay until this test is approved.
+    const isEmeraldOverlayTest = !isLightMediaTheme && normalizedGlobalTheme.primary === 'emerald';
+    const overlayColor = isLightMediaTheme ? '#ffffff' : (isEmeraldOverlayTest ? '#06292c' : '#020617');
+    const configuredOverlayOpacity = Math.max(20, Math.min(90, Number(data.overlayOpacity) || 64));
+    const effectiveOverlayOpacity = isLightMediaTheme ? Math.max(82, configuredOverlayOpacity) : configuredOverlayOpacity;
     const mediaStyle = isLightMediaTheme
         ? {
             overlay: "bg-white",
@@ -154,7 +160,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const handleSectionImageEdit = (event) => {
         // Keep text, buttons, and other Builder controls independently editable.
         // Any click on the remaining hero canvas opens the background media editor.
-        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable='true'], [role='button']")) {
+        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable='true'], [role='button'], [data-cosmic-edit-control]")) {
             return;
         }
 
@@ -183,14 +189,13 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
                 />
             </div>
 
-            <div className="absolute inset-0 z-10" style={{ backgroundColor: overlayColor, opacity: Number(data.overlayOpacity || 64) / 100 }} />
+            <div className="absolute inset-0 z-10" style={{ backgroundColor: overlayColor, opacity: effectiveOverlayOpacity / 100 }} />
             <div className={`absolute inset-0 z-10 bg-gradient-to-t ${mediaStyle.gradient} ${data.contentAlign === "right" ? "bg-gradient-to-l" : data.contentAlign === "left" ? "bg-gradient-to-r" : ""}`} />
 
             <div
                 ref={contentRef}
                 className={`relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-4 transition-opacity duration-150 sm:px-6 lg:px-8 ${alignment[data.contentAlign] || alignment.left}`}
                 style={{ transform: "translate3d(0, 0, 0)", willChange: "transform, opacity" }}
-                onClick={(event) => event.stopPropagation()}
             >
                 <div className={contentWidth}>
                     <div className={`inline-flex items-center gap-3 rounded-full border px-4 py-2 backdrop-blur-md ${mediaStyle.badge}`}>
@@ -219,7 +224,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
                         <EditableButton
                             label={data.primary_label}
                             url={data.primary_url}
-                            className={`inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition hover:-translate-y-0.5 ${primaryTheme.bg} ${primaryTheme.text}`}
+                            className={`inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition hover:-translate-y-0.5 ${primaryTheme.bg} text-white`}
                             onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })}
                         />
                         <EditableButton

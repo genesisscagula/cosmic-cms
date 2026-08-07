@@ -30,14 +30,14 @@ export const HeroEditorialOverlaySchema = {
 export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalTheme }) {
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
-    const overlayColor = primaryTheme?.palette?.background || '#243447';
     const imageRef = useRef(null);
     const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
     const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
+    const overlayColor = isLightMediaTheme ? '#ffffff' : '#020617';
     const mediaStyle = isLightMediaTheme
         ? {
             overlay: "bg-white",
-            gradient: "from-white/95 via-white/60 to-transparent",
+            gradient: "from-white/98 via-white/82 to-white/58",
             tagline: "text-slate-700",
             heading: "text-slate-950",
             body: "text-slate-700",
@@ -54,14 +54,24 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const data = { ...HeroEditorialOverlaySchema.defaults, ...block };
+    const configuredOverlayOpacity = Math.max(0, Math.min(100, Number(data.overlayOpacity) || 72));
+    const effectiveOverlayOpacity = isLightMediaTheme ? Math.max(82, configuredOverlayOpacity) : configuredOverlayOpacity;
     const height = {
         medium: "min-h-[520px]",
         large: "min-h-[650px]",
         screen: "min-h-[72svh] sm:min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh]",
     }[data.height] || "min-h-[650px]";
 
+    const handleSectionImageEdit = (event) => {
+        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable='true'], [role='button'], [data-cosmic-edit-control]")) {
+            return;
+        }
+
+        imageRef.current?.openEditor();
+    };
+
     return (
-        <section className={`relative flex overflow-hidden ${height}`}>
+        <section className={`relative flex cursor-pointer overflow-hidden ${height}`} onClick={handleSectionImageEdit}>
             <EditableImage
                 ref={imageRef}
                 websiteId={websiteId}
@@ -73,11 +83,10 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
                 onSave={(image_url) => onUpdate({ image_url })}
             />
             <div
-                className="absolute inset-0 z-10"
-                style={{ backgroundColor: overlayColor, opacity: Math.max(0, Math.min(100, Number(data.overlayOpacity) || 72)) / 100 }}
-                onClick={() => imageRef.current?.openEditor()}
+                className="pointer-events-none absolute inset-0 z-10"
+                style={{ backgroundColor: overlayColor, opacity: effectiveOverlayOpacity / 100 }}
             />
-            <div className={`absolute inset-0 z-10 bg-gradient-to-r ${mediaStyle.gradient}`} />
+            <div className={`pointer-events-none absolute inset-0 z-10 bg-gradient-to-r ${mediaStyle.gradient}`} />
 
             <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24">
                 <div className="max-w-3xl">
@@ -101,7 +110,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
                         <EditableButton
                             label={data.primary_label}
                             url={data.primary_url}
-                            className={`inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold ${primaryTheme.bg} ${primaryTheme.text}`}
+                            className={`inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold ${primaryTheme.bg} text-white`}
                             onSave={(primary_label, primary_url) => onUpdate({ primary_label, primary_url })}
                         />
                         <EditableButton

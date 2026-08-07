@@ -154,18 +154,33 @@ export function HeroBackgroundImageBlock({
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary]
         || colorFamilies.midnight;
 
-    // Image heroes always tint the photograph with the website primary color.
-    // This keeps the overlay visually connected to the AI-selected theme instead
-    // of falling back to the same black/white overlay for every website.
-    const overlayColor = primaryTheme?.palette?.background || "#243447";
+    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
+    // Light media themes use a real white wash instead of tinting the image with
+    // the primary colour. Keep a strong minimum so copy remains readable over
+    // bright/busy photography while still allowing the image to show through.
+    const overlayColor = isLightMediaTheme
+        ? "#ffffff"
+        : "#020617";
+    const configuredOverlayOpacity = Math.max(0, Math.min(100, Number(data.overlayOpacity) || 50));
+    const effectiveOverlayOpacity = isLightMediaTheme
+        ? Math.max(82, configuredOverlayOpacity)
+        : configuredOverlayOpacity;
 
-    const buttonStyle = { bg: "bg-white", text: "text-slate-950" };
+    const buttonStyle = isLightMediaTheme
+        ? { bg: primaryTheme.bg, text: "text-white" }
+        : { bg: "bg-white", text: "text-slate-950" };
 
-    const mediaStyle = {
-        tagline: "text-white/85",
-        heading: "text-white",
-        body: "text-white/85",
-    };
+    const mediaStyle = isLightMediaTheme
+        ? {
+            tagline: "text-slate-700",
+            heading: "text-slate-950",
+            body: "text-slate-700",
+        }
+        : {
+            tagline: "text-white/85",
+            heading: "text-white",
+            body: "text-white/85",
+        };
 
     const heroHeight = {
         medium: "min-h-[500px]",
@@ -185,6 +200,14 @@ export function HeroBackgroundImageBlock({
         props.page?.website_id ||
         props.website?.id;
 
+    const handleSectionImageEdit = (event) => {
+        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable='true'], [role='button'], [data-cosmic-edit-control]")) {
+            return;
+        }
+
+        imageRef.current?.openEditor();
+    };
+
 
     return (
 
@@ -193,6 +216,7 @@ export function HeroBackgroundImageBlock({
                 relative
                 overflow-hidden
                 flex
+                cursor-pointer
                 items-center
 
                 min-h-[72svh]
@@ -202,11 +226,7 @@ export function HeroBackgroundImageBlock({
 
                 ${heroHeight[data.height]}
             `}
-            onClick={() => {
-                document
-                    .getElementById(`hero-bg-${blockIndex}`)
-                    ?.click();
-            }}
+            onClick={handleSectionImageEdit}
         >
 
             {/* Background Image */}
@@ -240,18 +260,11 @@ export function HeroBackgroundImageBlock({
                     absolute
                     inset-0
                     z-[25]
-                    cursor-pointer
+                    pointer-events-none
                 `}
                 style={{
                     backgroundColor: overlayColor,
-                    opacity: Math.max(0, Math.min(100, Number(data.overlayOpacity) || 50)) / 100
-                }}
-                onClick={(e) => {
-
-                    e.stopPropagation();
-
-                    imageRef.current?.openEditor();
-
+                    opacity: effectiveOverlayOpacity / 100
                 }}
             />
 
@@ -275,11 +288,6 @@ export function HeroBackgroundImageBlock({
                 justify-center
                 ${alignment[data.textAlign]}
             `}
-            onClick={() => {
-                document
-                    .getElementById(`hero-bg-${blockIndex}`)
-                    ?.click();
-            }}
         >
 
                 <EditableText
