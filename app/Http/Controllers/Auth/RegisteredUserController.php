@@ -215,16 +215,43 @@ class RegisteredUserController extends Controller
             ->whereNotNull('fulfilled_at')
             ->exists();
 
-        if ($user->onboarding_status === 'complete' && $hasPaidPlan) {
-            return redirect()->route('dashboard');
-        }
-
         $onboarding = PendingOnboarding::query()
             ->where('user_id', $user->id)
             ->firstOrFail();
 
+        $provisioning = WorkspaceProvisioning::query()
+            ->where('pending_onboarding_id', $onboarding->id)
+            ->latest('id')
+            ->first();
+
+        $provisioningReady = $provisioning
+            && $provisioning->status === WorkspaceProvisioning::STATUS_COMPLETED
+            && $provisioning->workspace_id
+            && $provisioning->website_id;
+
+        // A PayPal webhook can finish provisioning between two polling requests.
+        // Heal any stale onboarding flags before redirecting so the dashboard
+        // middleware cannot send an already-provisioned customer back here.
+        if ($hasPaidPlan && ($user->onboarding_status === 'complete' || $provisioningReady)) {
+            if ($provisioningReady && $user->onboarding_status !== 'complete') {
+                $user->forceFill([
+                    'onboarding_status' => 'complete',
+                    'plan_status' => SubscriptionStatus::ACTIVE,
+                ])->save();
+
+                if ($onboarding->status !== 'completed') {
+                    $onboarding->forceFill([
+                        'status' => 'completed',
+                        'workspace_id' => $onboarding->workspace_id ?: $provisioning->workspace_id,
+                        'website_id' => $onboarding->website_id ?: $provisioning->website_id,
+                    ])->save();
+                }
+            }
+
+            return redirect()->route('dashboard');
+        }
+
         $plan = config('payments.plans.'.$onboarding->selected_plan, []);
-        $provisioning = WorkspaceProvisioning::query()->where('pending_onboarding_id', $onboarding->id)->latest('id')->first();
 
         $pendingOrder = $user->paymentOrders()
             ->where('provider', 'paypal')

@@ -28,6 +28,7 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState(paymentError || '');
     const [recovering, setRecovering] = useState(false);
+    const [provisioningSeconds, setProvisioningSeconds] = useState(0);
     const autoCheckoutStarted = useRef(false);
 
     const paymentConfirmed = ['payment_confirmed', 'subscription_ready', 'completed'].includes(onboarding.status);
@@ -38,15 +39,31 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
     useEffect(() => {
         if (!paymentConfirmed || provisioningFailed) return undefined;
 
-        const timer = window.setInterval(() => {
+        const startedAt = Date.now();
+        const reload = () => {
             router.reload({
                 only: ['onboarding', 'status', 'paymentError'],
                 preserveScroll: true,
                 preserveState: true,
             });
-        }, 2200);
+        };
 
-        return () => window.clearInterval(timer);
+        // Keep the wait visibly alive and check quickly because provisioning is
+        // normally completed by the PayPal return request or webhook in seconds.
+        const clock = window.setInterval(() => {
+            setProvisioningSeconds(Math.floor((Date.now() - startedAt) / 1000));
+        }, 1000);
+        const poller = window.setInterval(reload, 1200);
+        const onVisible = () => {
+            if (document.visibilityState === 'visible') reload();
+        };
+        document.addEventListener('visibilitychange', onVisible);
+
+        return () => {
+            window.clearInterval(clock);
+            window.clearInterval(poller);
+            document.removeEventListener('visibilitychange', onVisible);
+        };
     }, [paymentConfirmed, provisioningFailed]);
 
     const expiryLabel = useMemo(() => {
@@ -203,6 +220,18 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                                     <div>
                                         <p className="font-bold text-emerald-950">Payment approved</p>
                                         <p className="mt-1 text-sm leading-6 text-emerald-800">We are creating your workspace, applying your plan credits, and transferring your saved website. This page checks progress automatically.</p>
+                                        {provisioningSeconds >= 8 && (
+                                            <div className="mt-4 flex flex-wrap items-center gap-3">
+                                                <Link
+                                                    href={route('dashboard')}
+                                                    replace
+                                                    className="inline-flex min-h-11 items-center justify-center rounded-xl bg-emerald-700 px-4 text-sm font-bold !text-white transition hover:bg-emerald-800"
+                                                >
+                                                    Continue to dashboard
+                                                </Link>
+                                                <span className="text-xs text-emerald-700">Still checking automatically…</span>
+                                            </div>
+                                        )}
                                     </div>
                                 </div>
                             </div>
