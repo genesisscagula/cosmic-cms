@@ -2789,3 +2789,37 @@ body .cosmic-start-quick-idea.rounded-full.border {
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
 }
+
+
+/* Hotfix v1 — Agency upgrade modal CTA contrast + alignment.
+   Dedicated classes intentionally avoid Tailwind hover:bg-* class tokens because
+   the global solid-action contract scans class attributes for bg-* tokens. */
+.cosmic-agency-plan-button {
+    margin-top: auto;
+    border-width: 1px;
+    border-style: solid;
+}
+.cosmic-agency-plan-button--outline {
+    border-color: #047857 !important;
+    background-color: #ffffff !important;
+    color: #065f46 !important;
+}
+.cosmic-agency-plan-button--outline:hover {
+    border-color: #047857 !important;
+    background-color: #047857 !important;
+    color: #ffffff !important;
+}
+.cosmic-agency-plan-button--featured {
+    border-color: #047857 !important;
+    background-color: #047857 !important;
+    color: #ffffff !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .08);
+}
+.cosmic-agency-plan-button--featured:hover {
+    border-color: #065f46 !important;
+    background-color: #065f46 !important;
+    color: #ffffff !important;
+}
+.cosmic-agency-plan-button > * {
+    color: inherit !important;
+}

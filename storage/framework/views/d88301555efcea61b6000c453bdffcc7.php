@@ -6,6 +6,14 @@
 
         <title inertia>Cosmic CMS</title>
 
+        <!-- Cosmic CMS browser branding -->
+        <link rel="icon" type="image/x-icon" href="<?php echo e(asset('favicon.ico')); ?>?v=3">
+        <link rel="icon" type="image/png" sizes="32x32" href="<?php echo e(asset('favicon-32x32.png')); ?>?v=3">
+        <link rel="icon" type="image/png" sizes="16x16" href="<?php echo e(asset('favicon-16x16.png')); ?>?v=3">
+        <link rel="apple-touch-icon" sizes="180x180" href="<?php echo e(asset('apple-touch-icon.png')); ?>?v=3">
+        <link rel="manifest" href="<?php echo e(asset('site.webmanifest')); ?>?v=3">
+        <meta name="theme-color" content="#16a34a">
+
         <!-- Fonts -->
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap" rel="stylesheet" />

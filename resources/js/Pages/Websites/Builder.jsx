@@ -17,6 +17,81 @@ import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
 
 import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 
+const MEDIA_FIELD_PATTERN = /(image|photo|avatar|poster|logo|video|media)/i;
+
+const isWebsiteUploadedMedia = (value, websiteId) => {
+    if (typeof value !== 'string' || !websiteId) return false;
+    const normalized = value.trim();
+    if (!normalized) return false;
+    return normalized.includes(`/storage/websites/${websiteId}/`);
+};
+
+const preserveUploadedMedia = (existing, generated, websiteId, fieldName = '') => {
+    if (isWebsiteUploadedMedia(existing, websiteId) && MEDIA_FIELD_PATTERN.test(fieldName)) {
+        return existing;
+    }
+
+    if (Array.isArray(existing) && Array.isArray(generated)) {
+        return generated.map((item, index) =>
+            preserveUploadedMedia(existing[index], item, websiteId, fieldName)
+        );
+    }
+
+    if (existing && generated && typeof existing === 'object' && typeof generated === 'object' && !Array.isArray(existing) && !Array.isArray(generated)) {
+        const merged = { ...generated };
+        Object.keys(generated).forEach((key) => {
+            if (Object.prototype.hasOwnProperty.call(existing, key)) {
+                merged[key] = preserveUploadedMedia(existing[key], generated[key], websiteId, key);
+            }
+        });
+        return merged;
+    }
+
+    return generated;
+};
+
+const mergeAiBlocksWithProtectedMedia = (existingBlocks = [], generatedBlocks = [], websiteId = null) => {
+    const usedIndexes = new Set();
+    let preservedCount = 0;
+
+    const blocks = generatedBlocks.map((generatedBlock, generatedIndex) => {
+        const generatedType = generatedBlock?.type;
+        let existingIndex = existingBlocks.findIndex((block, index) =>
+            !usedIndexes.has(index) && block?.type === generatedType && index === generatedIndex
+        );
+
+        if (existingIndex < 0) {
+            existingIndex = existingBlocks.findIndex((block, index) =>
+                !usedIndexes.has(index) && block?.type === generatedType
+            );
+        }
+
+        if (existingIndex < 0) return generatedBlock;
+        usedIndexes.add(existingIndex);
+
+        const existingBlock = existingBlocks[existingIndex];
+        const merged = preserveUploadedMedia(existingBlock, generatedBlock, websiteId);
+
+        const countProtected = (before, after, key = '') => {
+            if (isWebsiteUploadedMedia(before, websiteId) && MEDIA_FIELD_PATTERN.test(key) && before === after) {
+                preservedCount += 1;
+                return;
+            }
+            if (Array.isArray(before) && Array.isArray(after)) {
+                after.forEach((item, index) => countProtected(before[index], item, key));
+                return;
+            }
+            if (before && after && typeof before === 'object' && typeof after === 'object' && !Array.isArray(before) && !Array.isArray(after)) {
+                Object.keys(after).forEach((childKey) => countProtected(before[childKey], after[childKey], childKey));
+            }
+        };
+
+        countProtected(existingBlock, merged);
+        return merged;
+    });
+
+    return { blocks, preservedCount };
+};
 
 
 export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [] }) {
@@ -204,16 +279,33 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     };
 
     const replaceBlocks = (newBlocks) => {
+        // AI may replace Spark content/layouts, but customer-uploaded page media
+        // is protected whenever the corresponding Spark still exists. Global
+        // header/footer/navigation live outside this replacement path entirely.
+        const protectedMerge = mergeAiBlocksWithProtectedMedia(
+            data.blocks || [],
+            newBlocks || [],
+            website?.id
+        );
 
         setData(
             "blocks",
-            newBlocks.map(block => ({
+            protectedMerge.blocks.map(block => ({
                 ...block,
                 _renderKey: crypto.randomUUID()
             }))
         );
 
+        if (protectedMerge.preservedCount > 0) {
+            showCosmicNotification({
+                title: 'Brand assets protected',
+                message: `${protectedMerge.preservedCount} uploaded image${protectedMerge.preservedCount === 1 ? '' : 's'} were preserved while Cosmic AI refreshed the Sparks.`,
+                tone: 'success',
+            });
+        }
+
         setIsModalOpen(false);
+        return protectedMerge.preservedCount;
     };
 
     const addBlock = (block) => {

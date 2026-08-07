@@ -128,6 +128,11 @@ class AIController extends Controller
                 'generation_meta' => $generation['diagnostics'],
                 'credits_spent' => $cost,
                 'credit_balance' => $this->credits->balance($request->user()),
+                'builder_protection' => [
+                    'global_shell' => 'preserved',
+                    'navigation' => 'preserved',
+                    'uploaded_media' => 'client_merge_protected',
+                ],
             ]);
         } catch (TransporterException $exception) {
             $this->refundFailedGeneration($request, $cost, $website, $reference, $validated['sections']);

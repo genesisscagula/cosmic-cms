@@ -68,7 +68,7 @@ export default function UpgradePlanModal({ open, onClose, capabilities = {} }) {
 
                 <div className="mt-6 grid gap-3 md:grid-cols-3">
                     {AGENCY_OPTIONS.map((option) => (
-                        <article key={option.key} className={`relative flex min-h-64 flex-col rounded-2xl border p-4 transition ${option.featured ? "border-emerald-400 bg-emerald-50/70 shadow-lg shadow-emerald-900/5" : "border-slate-200 bg-slate-50/70 hover:border-emerald-300"}`}>
+                        <article key={option.key} className={`relative flex min-h-64 h-full flex-col rounded-2xl border p-4 transition sm:p-5 ${option.featured ? "border-emerald-400 bg-emerald-50/70 shadow-lg shadow-emerald-900/5" : "border-slate-200 bg-slate-50/70 hover:border-emerald-300 hover:bg-white"}`}>
                             {option.featured && <span className="absolute right-3 top-3 rounded-full bg-emerald-100 px-2 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-800">Popular</span>}
                             <p className="pr-16 text-xs font-semibold uppercase tracking-[0.14em] text-emerald-700">{option.label}</p>
                             <div className="mt-3 flex items-end justify-between gap-3">
@@ -77,7 +77,11 @@ export default function UpgradePlanModal({ open, onClose, capabilities = {} }) {
                             </div>
                             <p className="mt-2 text-xs font-semibold text-emerald-700">{option.credits}</p>
                             <p className="mt-3 text-sm leading-6 text-slate-500">{option.description}</p>
-                            <button type="button" onClick={() => choosePlan(option.key)} className={`mt-auto rounded-xl px-4 py-2.5 text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${option.featured ? "bg-emerald-700 text-white hover:bg-emerald-800" : "border border-emerald-700 bg-white text-emerald-800 hover:bg-emerald-50"}`}>
+                            <button
+                                type="button"
+                                onClick={() => choosePlan(option.key)}
+                                className={`cosmic-agency-plan-button mt-auto inline-flex min-h-11 w-full items-center justify-center rounded-xl px-4 py-2.5 text-center text-sm font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${option.featured ? "cosmic-agency-plan-button--featured" : "cosmic-agency-plan-button--outline"}`}
+                            >
                                 Choose {option.label}
                             </button>
                         </article>

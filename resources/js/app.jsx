@@ -11,8 +11,19 @@ import { AppearanceProvider } from './Appearance/AppearanceContext';
 
 const appName = 'Cosmic CMS';
 
+const browserTitle = (title) => {
+    const clean = String(title || '').trim();
+
+    if (!clean || clean === appName) return appName;
+
+    // Pages that already spell out the product name keep their intentional marketing title.
+    if (/^Cosmic CMS\b/i.test(clean)) return clean;
+
+    return `${clean} • ${appName}`;
+};
+
 createInertiaApp({
-    title: () => appName,
+    title: (title) => browserTitle(title),
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.jsx`,

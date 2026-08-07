@@ -45,12 +45,9 @@ class MediaAssetSafetyService
             $urls = array_merge($urls, $this->providerUrls($page->blocks ?? []));
         }
 
-        $urls = array_merge(
-            $urls,
-            $this->providerUrls($website->global_header ?? []),
-            $this->providerUrls($website->global_footer ?? []),
-        );
-
+        // Branding shell is intentionally excluded. Header/footer logos,
+        // navigation and brand identity are customer-owned settings and must
+        // never be rewritten or blocked by the AI Spark media lifecycle.
         return collect($urls)->unique()->values()->all();
     }
 
@@ -66,12 +63,9 @@ class MediaAssetSafetyService
             $urls = array_merge($urls, $this->providerUrls(['image_url' => $post->image_url]));
         }
 
-        $urls = array_merge(
-            $urls,
-            $this->providerUrls($website->published_global_header ?? $website->global_header ?? []),
-            $this->providerUrls($website->published_global_footer ?? $website->global_footer ?? []),
-        );
-
+        // Published header/footer branding is deliberately outside the AI
+        // localization contract. Only page Sparks and explicit content media
+        // participate in the remote-provider safety gate.
         return collect($urls)->unique()->values()->all();
     }
 

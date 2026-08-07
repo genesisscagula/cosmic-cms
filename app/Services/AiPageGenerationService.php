@@ -15,6 +15,24 @@ use Illuminate\Support\Str;
 
 class AiPageGenerationService
 {
+    /**
+     * Global website shell blocks are never valid AI-generated page Sparks.
+     * Keeping this deny-list here is a second-line guard in case a future
+     * model/schema accidentally emits branding/navigation structures.
+     *
+     * @var array<int, string>
+     */
+    private const PROTECTED_SHELL_TYPES = [
+        'glassmorphism_header',
+        'dark_cyan_header',
+        'minimal_footer',
+        'detailed_footer',
+        'header',
+        'footer',
+        'navigation',
+        'navbar',
+    ];
+
     public function __construct(
         private readonly SmartImageService $images,
         private readonly AiPipelineOrchestrator $pipeline,
@@ -244,6 +262,14 @@ class AiPageGenerationService
 
         unset($block);
 
+        $beforeProtection = count($blocks);
+        $blocks = $this->protectBrandingShell($blocks);
+        if (count($blocks) !== $beforeProtection) {
+            Log::warning('[AiBrandingProtection] Protected global shell block removed from AI output.', [
+                'removed_count' => $beforeProtection - count($blocks),
+            ]);
+        }
+
         return [
             'blocks' => $blocks,
             'diagnostics' => [
@@ -254,6 +280,25 @@ class AiPageGenerationService
                 'analytics' => $this->analytics->snapshot(),
             ],
         ];
+    }
+
+    /** @param array<int, mixed> $blocks
+     *  @return array<int, mixed>
+     */
+    private function protectBrandingShell(array $blocks): array
+    {
+        return collect($blocks)
+            ->reject(function ($block): bool {
+                if (! is_array($block)) {
+                    return false;
+                }
+
+                $type = strtolower(trim((string) ($block['type'] ?? '')));
+
+                return in_array($type, self::PROTECTED_SHELL_TYPES, true);
+            })
+            ->values()
+            ->all();
     }
 
     public function selectSections(string $prompt): array
