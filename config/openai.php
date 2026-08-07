@@ -54,6 +54,26 @@ return [
     // the full content generator. Falls back to OPENAI_MODEL when omitted.
     'planner_model' => env('OPENAI_PLANNER_MODEL', env('OPENAI_MODEL', 'gpt-5-mini')),
 
+    // Patch 16.1: ultra-light first-stage model used only for business/visual intent.
+    // It intentionally runs before Spark planning so Patch 16.2 can dispatch the
+    // media-pack queue as soon as these keywords are available.
+    'visual_model' => env('OPENAI_VISUAL_MODEL', env('OPENAI_PLANNER_MODEL', env('OPENAI_MODEL', 'gpt-5-mini'))),
+
+    // Each pipeline stage owns its retry boundary so a transient failure in one
+    // stage does not require restarting the whole AI generation pipeline.
+    'pipeline_stage_attempts' => (int) env('OPENAI_PIPELINE_STAGE_ATTEMPTS', 2),
+    'pipeline_retry_delay_ms' => (int) env('OPENAI_PIPELINE_RETRY_DELAY_MS', 150),
+
+    // Patch 16.2: image downloads start immediately after visual analysis on a
+    // dedicated high-priority queue. Run multiple workers against this queue
+    // in production for parallel background media preparation.
+    'media_pack_queue' => env('COSMIC_IMAGE_QUEUE', 'images-high'),
+    'media_pack_initial_target' => (int) env('COSMIC_IMAGE_INITIAL_TARGET', 6),
+
+    // Patch 16.3: independent branch coordinator. Images never block the AI
+    // branch; branch diagnostics are returned for progress/benchmarking.
+    'parallel_engine_enabled' => env('COSMIC_PARALLEL_ENGINE_ENABLED', true),
+
     // Patch 4.1.0.4: the second AI call can use a stronger model without
     // changing the lightweight Spark planner model.
     'content_model' => env('OPENAI_CONTENT_MODEL', env('OPENAI_MODEL', 'gpt-5-mini')),
@@ -62,14 +82,24 @@ return [
     // JSON envelope. API/transport failures still bubble to the controller.
     'content_json_attempts' => (int) env('OPENAI_CONTENT_JSON_ATTEMPTS', 2),
 
+
+    // Patch 16.4: central AI cache. Visual intent, Spark planning and schema
+    // selection are safe reusable stages. Small TTL jitter prevents many hot
+    // keys from expiring simultaneously under load.
+    'visual_cache_enabled' => env('OPENAI_VISUAL_CACHE_ENABLED', true),
+    'visual_cache_ttl' => (int) env('OPENAI_VISUAL_CACHE_TTL', 86400),
+    'schema_cache_enabled' => env('OPENAI_SCHEMA_CACHE_ENABLED', true),
+    'schema_cache_ttl' => (int) env('OPENAI_SCHEMA_CACHE_TTL', 86400),
+    'ai_cache_jitter_percent' => (int) env('OPENAI_AI_CACHE_JITTER_PERCENT', 10),
+
     // Patch 4.1.0.6: cache identical planning requests to reduce latency and
     // planner API usage. The key includes the planner model and registry.
     'planner_cache_enabled' => env('OPENAI_PLANNER_CACHE_ENABLED', true),
     'planner_cache_ttl' => (int) env('OPENAI_PLANNER_CACHE_TTL', 86400),
 
-    // Content caching is intentionally configurable. When enabled, identical
-    // prompt + selected Spark + model requests reuse validated copy while the
-    // Smart Image layer still assigns images for the current generation.
-    'content_cache_enabled' => env('OPENAI_CONTENT_CACHE_ENABLED', true),
+    // Content caching remains opt-in only. Reusing finished copy can make two
+    // customer sites read too similarly; the default cache focuses on planning
+    // and schema/template work instead.
+    'content_cache_enabled' => env('OPENAI_CONTENT_CACHE_ENABLED', false),
     'content_cache_ttl' => (int) env('OPENAI_CONTENT_CACHE_TTL', 3600),
 ];

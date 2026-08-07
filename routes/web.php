@@ -29,6 +29,7 @@ use App\Http\Controllers\AgencyReportController;
 use App\Http\Controllers\AgencyPortalController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\AppearancePreferenceController;
+use App\Http\Controllers\QueueDashboardController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -88,6 +89,10 @@ Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder']
     ->name('pages.builder.save');
 
 Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
+    Route::get('/admin/queues', [QueueDashboardController::class, 'index'])->name('admin.queues.index');
+    Route::get('/admin/queues/status', [QueueDashboardController::class, 'status'])->name('admin.queues.status');
+    Route::post('/admin/queues/retry-failed', [QueueDashboardController::class, 'retryFailed'])->middleware('throttle:10,1')->name('admin.queues.retry-failed');
+    Route::delete('/admin/queues/failed', [QueueDashboardController::class, 'forgetFailed'])->middleware('throttle:5,1')->name('admin.queues.forget-failed');
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
     Route::get('/websites/{website}/media-pack/status', [WebsiteController::class, 'mediaPackStatus'])
         ->middleware('throttle:30,1')

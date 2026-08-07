@@ -198,9 +198,20 @@ class TrialGenerationController extends Controller
                 'industry' => $this->industryResolver->resolve($profile['industry'], 'default'),
             ]);
 
+            // Keep the public Start -> Builder hand-off on the browser's current
+            // origin. Using route() here creates an absolute URL from APP_URL, which
+            // can differ from the actual local/dev origin (localhost vs 127.0.0.1,
+            // custom ports, proxies) and make an otherwise successful generation
+            // appear to stop after the loading overlay disappears.
             $builderUrl = route('pages.builder', [
                 'page' => $page,
                 'token' => $trial->token,
+            ], false);
+
+            Log::info('[TrialGeneration] Builder redirect prepared.', [
+                'trial' => $trial->id,
+                'page' => $page->id,
+                'builder_url' => $builderUrl,
             ]);
 
             // The public Start page submits with Axios. Always return a stable JSON
@@ -258,13 +269,39 @@ class TrialGenerationController extends Controller
     {
         $pack = $trial->mediaPack;
 
+        $status = (string) ($pack?->status ?? 'missing');
+        $imageCount = (int) data_get($pack?->manifest, 'image_count', 0);
+        $target = (int) ($pack?->target_image_count ?? 0);
+        $ratio = $target > 0 ? min(1, $imageCount / $target) : 0;
+        $progress = match ($status) {
+            'pending' => 5,
+            'queued' => 12,
+            'downloading' => min(95, 20 + (int) round($ratio * 75)),
+            'ready', 'partial', 'failed' => 100,
+            default => 0,
+        };
+        $delayed = in_array($status, ['queued', 'downloading'], true)
+            && $pack?->queued_at
+            && $pack->queued_at->lt(now()->subSeconds(45));
+
         return response()->json([
-            'status' => $pack?->status ?? 'missing',
-            'image_count' => (int) data_get($pack?->manifest, 'image_count', 0),
-            'target_image_count' => (int) ($pack?->target_image_count ?? 0),
+            'status' => $status,
+            'queue' => config('openai.media_pack_queue', 'images-high'),
+            'image_count' => $imageCount,
+            'target_image_count' => $target,
+            'progress' => $progress,
             'completed_at' => $pack?->completed_at?->toIso8601String(),
-            'ready' => in_array($pack?->status, ['ready', 'partial'], true),
-            'terminal' => in_array($pack?->status, ['ready', 'partial', 'failed'], true),
+            'ready' => in_array($status, ['ready', 'partial'], true),
+            'terminal' => in_array($status, ['ready', 'partial', 'failed'], true),
+            'delayed' => (bool) $delayed,
+            'message' => match (true) {
+                $status === 'ready' => 'Images ready',
+                $status === 'partial' => 'Using the best available images',
+                $status === 'failed' => 'Using safe fallback images',
+                $delayed => 'Images are taking longer than usual; you can keep editing',
+                $status === 'downloading' => 'Optimizing images in the background',
+                default => 'Preparing images',
+            },
         ]);
     }
 

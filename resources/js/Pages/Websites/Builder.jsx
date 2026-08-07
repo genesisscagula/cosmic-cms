@@ -88,6 +88,12 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const [regenerationUsed, setRegenerationUsed] = useState(Number(trialExperience?.regenerations_used || 0));
     const [pageStatus, setPageStatus] = useState(page.status || 'draft');
     const [publishError, setPublishError] = useState(page.publish_error || '');
+    const [mediaProgress, setMediaProgress] = useState(() => ({
+        status: trialMode ? (trialExperience?.media_pack_status || 'missing') : (websiteMediaPack?.status || 'missing'),
+        progress: ['ready', 'partial', 'failed'].includes(trialMode ? trialExperience?.media_pack_status : websiteMediaPack?.status) ? 100 : 0,
+        message: 'Preparing images',
+        delayed: false,
+    }));
     const [blogPosts, setBlogPosts] = useState(initialBlogPosts);
     const [currentPageStyle, setCurrentPageStyle] = useState(pageStyle || 'auto');
     const [styleOptions, setStyleOptions] = useState(pageStyleOptions || []);
@@ -112,7 +118,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
         let cancelled = false;
         let attempts = 0;
-        const maximumAttempts = 20;
+        const maximumAttempts = 36;
 
         const checkMediaPack = async () => {
             attempts += 1;
@@ -120,8 +126,17 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                 const response = await axios.get(statusUrl);
                 const payload = response?.data ?? response;
 
+                if (!cancelled) {
+                    setMediaProgress({
+                        status: payload?.status || 'missing',
+                        progress: Number(payload?.progress || 0),
+                        message: payload?.message || 'Preparing images',
+                        delayed: Boolean(payload?.delayed),
+                    });
+                }
+
                 if (!cancelled && (payload?.ready || payload?.terminal)) {
-                    window.location.reload();
+                    window.setTimeout(() => window.location.reload(), 350);
                     return;
                 }
             } catch (error) {
@@ -129,7 +144,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             }
 
             if (!cancelled && attempts < maximumAttempts) {
-                window.setTimeout(checkMediaPack, 3000);
+                window.setTimeout(checkMediaPack, 2500);
             }
         };
 
@@ -662,6 +677,22 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                 </div>
             )}
             <Head title={`Builder — ${page.title}`} />
+            {!['ready', 'partial', 'failed', 'missing'].includes(mediaProgress.status) && (
+                <div className={`border-b px-4 py-2.5 ${mediaProgress.delayed ? 'border-amber-200 bg-amber-50' : 'border-cyan-200 bg-cyan-50'}`} role="status" aria-live="polite">
+                    <div className="mx-auto flex max-w-[1760px] items-center gap-3">
+                        <span className={`h-2 w-2 shrink-0 rounded-full ${mediaProgress.delayed ? 'bg-amber-500' : 'animate-pulse bg-cyan-500'}`} />
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between gap-3 text-xs font-semibold text-slate-700">
+                                <span className="truncate">{mediaProgress.message}</span>
+                                <span>{Math.max(0, Math.min(100, mediaProgress.progress))}%</span>
+                            </div>
+                            <div className="mt-1.5 h-1 overflow-hidden rounded-full bg-slate-200">
+                                <div className="h-full rounded-full bg-cyan-500 transition-[width] duration-500" style={{ width: `${Math.max(3, Math.min(100, mediaProgress.progress))}%` }} />
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
             <div className={`cosmic-builder-shell min-h-screen ${trialMode ? 'bg-slate-100 text-slate-900' : 'bg-[#09090b] text-slate-100'}`}>
                 <header data-cosmic-builder-header className={`sticky top-0 z-[60] backdrop-blur-xl ${trialMode ? 'border-b border-slate-200 bg-white/95' : 'border-b border-white/10 bg-[#09090b]/95'}`}>
                     <div className={`mx-auto max-w-[1760px] px-4 py-3 sm:px-6 ${trialMode ? 'flex min-h-[76px] flex-wrap items-center justify-between gap-3' : 'grid min-h-[64px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4'}`}>

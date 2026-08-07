@@ -342,8 +342,20 @@ export default function Start({ trial }) {
                 throw new Error('The Builder URL was not returned.');
             }
 
+            // Keep navigation on the current origin even if an older backend or
+            // cached config returns an absolute builder URL from a mismatched APP_URL.
+            // Relative URLs are already ideal; absolute same-app URLs are reduced to
+            // pathname/search/hash before navigating.
+            let navigationUrl = builderUrl;
+            try {
+                const parsedBuilderUrl = new URL(builderUrl, window.location.origin);
+                navigationUrl = `${parsedBuilderUrl.pathname}${parsedBuilderUrl.search}${parsedBuilderUrl.hash}`;
+            } catch (urlError) {
+                console.warn('Could not normalize Builder URL; using raw value.', urlError);
+            }
+
             // Use native navigation so Inertia state cannot hold the loading overlay.
-            window.location.assign(builderUrl);
+            window.location.href = navigationUrl;
         } catch (requestError) {
             const responseErrors = requestError.response?.data?.errors;
             const message = responseErrors?.prompt?.[0]

@@ -2,8 +2,13 @@
 
 namespace App\AI\Schemas;
 
+use App\AI\Cache\AiCacheManager;
+
 final class SelectedSchemaLoader
 {
+    public function __construct(private readonly ?AiCacheManager $cache = null)
+    {
+    }
     /**
      * Resolve only the schema methods required by the selected Sparks.
      *
@@ -16,7 +21,29 @@ final class SelectedSchemaLoader
      */
     public function resolve(array $sections): array
     {
+        $cache = $this->cache ?? app(AiCacheManager::class);
         $schemaMap = SchemaManager::map();
+        $cached = $cache->remember(
+            'schema-selection',
+            [
+                'sections' => array_values($sections),
+                'schema_map_hash' => hash('sha256', json_encode($schemaMap) ?: serialize($schemaMap)),
+                'version' => '16.4.0',
+            ],
+            (int) config('openai.schema_cache_ttl', 86400),
+            fn () => $this->resolveUncached($sections, $schemaMap),
+            (bool) config('openai.schema_cache_enabled', true),
+        );
+
+        $result = is_array($cached['value']) ? $cached['value'] : [];
+        $result['cache'] = $cached['cache'];
+        $result['cache_key'] = $cache->shortKey($cached['key']);
+
+        return $result;
+    }
+
+    private function resolveUncached(array $sections, array $schemaMap): array
+    {
         $selected = [];
         $methods = [];
         $skipped = [];

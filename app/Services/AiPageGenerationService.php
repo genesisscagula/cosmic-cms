@@ -2,12 +2,15 @@
 
 namespace App\Services;
 
+use App\AI\Cache\AiCacheManager;
 use App\AI\Compatibility\SparkCompatibilityChecker;
 use App\AI\Generators\ContentGenerator;
 use App\AI\Layouts\LayoutEngine;
-use App\AI\Planners\SparkPlanner;
+use App\AI\Pipeline\AiPipelineOrchestrator;
+use App\AI\Pipeline\ParallelProcessingEngine;
 use App\AI\Images\VisualQueryBuilder;
-use Illuminate\Support\Facades\Cache;
+use App\Jobs\PrepareMediaPackJob;
+use App\Models\MediaPack;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 
@@ -15,34 +18,69 @@ class AiPageGenerationService
 {
     public function __construct(
         private readonly SmartImageService $images,
-        private readonly SparkPlanner $sparkPlanner,
+        private readonly AiPipelineOrchestrator $pipeline,
+        private readonly ParallelProcessingEngine $parallelEngine,
         private readonly SparkCompatibilityChecker $compatibilityChecker,
         private readonly AiGenerationAnalytics $analytics,
         private readonly VisualQueryBuilder $visualQueryBuilder,
         private readonly IndustryResolver $industryResolver,
+        private readonly AiCacheManager $cache,
     ) {
     }
 
     public function generateTrialPage(string $prompt, ?int $trialId = null): array
     {
         $startedAt = microtime(true);
-        $selection = $this->selectSections($prompt);
 
-        // Trial pages no longer bind their first render to a curated industry
-        // folder. The permanent website-specific media pack is prepared by
-        // PrepareMediaPackJob and later replaces these generic placeholders.
-        $placeholderFolder = 'default';
+        // Stage 1 is deliberately tiny: understand the business and produce
+        // image-search intent before the heavier Spark/content stages. Patch 16.2
+        // will use this boundary to dispatch the media queue immediately.
+        try {
+            $visualIntent = $this->pipeline->analyzeVisualIntent($prompt);
+        } catch (\Throwable $exception) {
+            Log::warning('[TrialGenerationPipeline] Visual intent analysis failed; using deterministic fallback.', [
+                'message' => $exception->getMessage(),
+            ]);
 
-        Log::info('[TrialGenerationPipeline] Website media-pack mode selected.', [
+            $visualIntent = [
+                'business_type' => trim($prompt),
+                'fallback_industry' => $this->resolveLayoutFolder($prompt),
+                'image_keywords' => [trim($prompt)],
+                'visual_style' => 'professional editorial',
+            ];
+        }
+
+        // Patch 16.3: images are an independent branch. Dispatch them immediately
+        // and continue the required AI branch without waiting for downloads. Spark
+        // planning -> schema-bound content stays correctly dependency ordered.
+        $parallel = $this->parallelEngine->execute(
+            fn () => $this->primeTrialMediaPack($trialId, $visualIntent),
+            function () use ($prompt) {
+                $selection = $this->selectSections($prompt);
+                $placeholderFolder = 'default';
+                $blocks = $this->images->withRemoteDownloadBudget(0, fn () => $this->generateBlocks(
+                    $prompt,
+                    $selection['sections'],
+                    $placeholderFolder
+                ));
+
+                return [
+                    'selection' => $selection,
+                    'placeholder_folder' => $placeholderFolder,
+                    'blocks' => $blocks,
+                ];
+            }
+        );
+
+        $selection = $parallel['result']['selection'];
+        $placeholderFolder = $parallel['result']['placeholder_folder'];
+        $blocks = $parallel['result']['blocks'];
+
+        Log::info('[TrialGenerationPipeline] Parallel branches merged.', [
             'placeholder_folder' => $placeholderFolder,
+            'parallel' => $parallel['diagnostics'],
             'elapsed_ms' => (int) ((microtime(true) - $startedAt) * 1000),
         ]);
-
-        $blocks = $this->images->withRemoteDownloadBudget(0, fn () => $this->generateBlocks(
-            $prompt,
-            $selection['sections'],
-            $placeholderFolder
-        ));
 
         // Never flash a curated/default industry image while the website-specific
         // media pack is being prepared. Every generated image field starts with
@@ -51,11 +89,12 @@ class AiPageGenerationService
         $blocks = $this->useMediaPackLoadingPlaceholders($blocks);
 
         $mediaQueries = $this->learningQueries($prompt, $blocks, $placeholderFolder);
-        $mediaKeywords = collect($mediaQueries)
-            ->pluck('query')
-            ->filter()
+        $mediaKeywords = collect($visualIntent['image_keywords'] ?? [])
+            ->merge(collect($mediaQueries)->pluck('query'))
+            ->filter(fn ($keyword) => is_string($keyword) && trim($keyword) !== '')
+            ->map(fn ($keyword) => trim($keyword))
             ->unique()
-            ->take(5)
+            ->take(6)
             ->values()
             ->all();
         $targetImageCount = min(10, count($mediaQueries));
@@ -74,7 +113,61 @@ class AiPageGenerationService
             'blocks' => $blocks,
             'media_keywords' => $mediaKeywords,
             'target_image_count' => $targetImageCount,
+            'visual_intent' => $visualIntent,
+            'parallel' => $parallel['diagnostics'],
         ];
+    }
+
+
+    private function primeTrialMediaPack(?int $trialId, array $visualIntent): void
+    {
+        if (! $trialId) {
+            return;
+        }
+
+        $pack = MediaPack::query()->where('trial_generation_id', $trialId)->first();
+        if (! $pack) {
+            return;
+        }
+
+        $keywords = collect($visualIntent['image_keywords'] ?? [])
+            ->push($visualIntent['business_type'] ?? null)
+            ->filter(fn ($keyword) => is_string($keyword) && trim($keyword) !== '')
+            ->map(fn ($keyword) => trim($keyword))
+            ->unique()
+            ->take(6)
+            ->values()
+            ->all();
+
+        $initialTarget = max(1, min(10, (int) config('openai.media_pack_initial_target', 6)));
+        $isSync = (string) config('queue.default') === 'sync';
+
+        $pack->forceFill([
+            'keywords' => $keywords,
+            'target_image_count' => max((int) $pack->target_image_count, $initialTarget),
+            'status' => $isSync ? 'pending' : 'queued',
+            'queued_at' => $isSync ? null : now(),
+            'completed_at' => null,
+            'last_error' => null,
+        ])->save();
+
+        if ($isSync) {
+            Log::info('[MediaPack] Early dispatch deferred because queue driver is sync.', [
+                'media_pack_id' => $pack->id,
+                'trial' => $trialId,
+            ]);
+            return;
+        }
+
+        PrepareMediaPackJob::dispatch($pack->id);
+
+        Log::info('[MediaPack] Early image preparation dispatched after visual analysis.', [
+            'media_pack_id' => $pack->id,
+            'trial' => $trialId,
+            'queue' => config('openai.media_pack_queue', 'images-high'),
+            'initial_target' => $initialTarget,
+            'keyword_count' => count($keywords),
+        ]);
     }
 
 
@@ -149,34 +242,37 @@ class AiPageGenerationService
         $this->analytics->increment('content_requests');
 
         $resolvedImageFolder = $imageFolder ?: $this->resolveLayoutFolder($prompt);
-        $cacheKey = $this->contentCacheKey($prompt, $sections);
-        $cacheEnabled = (bool) config('openai.content_cache_enabled', true);
-        $cached = $cacheEnabled ? Cache::get($cacheKey) : null;
+        $cacheEnabled = (bool) config('openai.content_cache_enabled', false);
+        $cached = $this->cache->remember(
+            'content',
+            [
+                'prompt' => $this->cache->normalizePrompt($prompt),
+                'sections' => array_values($sections),
+                'model' => config('openai.content_model'),
+                'version' => '16.4.0',
+            ],
+            (int) config('openai.content_cache_ttl', 3600),
+            function () use ($prompt, $sections) {
+                try {
+                    $content = $this->pipeline->generateContent($prompt, $sections);
+                    $this->analytics->increment('content_successes');
+                    return $content;
+                } catch (\Throwable $exception) {
+                    $this->analytics->increment('content_failures');
+                    throw $exception;
+                }
+            },
+            $cacheEnabled,
+        );
 
-        if (is_array($cached) && is_array($cached['blocks'] ?? null)) {
-            $content = $cached;
-            $cacheStatus = 'hit';
+        $content = is_array($cached['value']) ? $cached['value'] : [];
+        $cacheStatus = $cached['cache'];
+        $cacheKey = $cached['key'];
+
+        if ($cacheStatus === 'hit') {
             $this->analytics->increment('content_cache_hits');
         } else {
             $this->analytics->increment('content_cache_misses');
-
-            try {
-                $content = (new ContentGenerator())->generate($prompt, $sections);
-                $this->analytics->increment('content_successes');
-            } catch (\Throwable $exception) {
-                $this->analytics->increment('content_failures');
-                throw $exception;
-            }
-
-            $cacheStatus = $cacheEnabled ? 'miss' : 'disabled';
-
-            if ($cacheEnabled) {
-                Cache::put(
-                    $cacheKey,
-                    $content,
-                    max(60, (int) config('openai.content_cache_ttl', 3600))
-                );
-            }
         }
 
         $blocks = $content['blocks'] ?? [];
@@ -258,60 +354,58 @@ class AiPageGenerationService
         $this->analytics->increment('planner_requests');
 
         $imageFolder = $this->resolveLayoutFolder($prompt);
-        $cacheKey = $this->plannerCacheKey($prompt);
         $cacheEnabled = (bool) config('openai.planner_cache_enabled', true);
-        $cached = $cacheEnabled ? Cache::get($cacheKey) : null;
-
-        if (is_array($cached) && is_array($cached['sections'] ?? null)) {
-            $result = $cached;
-            $result['cache'] = 'hit';
-            $this->analytics->increment('planner_cache_hits');
-            $result['analytics'] = $this->analytics->snapshot();
-
-            return $result;
-        }
-
-        $this->analytics->increment('planner_cache_misses');
-
-        try {
-            $sections = $this->sparkPlanner->plan($prompt);
-            $planner = 'ai';
-            $this->analytics->increment('planner_ai_successes');
-        } catch (\Throwable $exception) {
-            Log::warning('Spark Planner failed; using deterministic layout fallback', [
-                'message' => $exception->getMessage(),
-                'image_folder' => $imageFolder,
-            ]);
-
-            $sections = LayoutEngine::random($imageFolder, $prompt);
-            $planner = 'fallback';
-            $this->analytics->increment('planner_fallbacks');
-        }
-
-        $compatibility = $this->compatibilityChecker->check($sections, $prompt);
-
-        if ($compatibility['changed']) {
-            $this->analytics->increment('compatibility_repairs');
-        }
-
-        $result = [
-            'sections' => $compatibility['sections'],
-            'image_folder' => $imageFolder,
-            'planner' => $planner,
-            'page_intent' => $compatibility['intent'],
-            'compatibility' => [
-                'changed' => $compatibility['changed'],
-                'changes' => $compatibility['changes'],
+        $cached = $this->cache->remember(
+            'planner',
+            [
+                'prompt' => $this->cache->normalizePrompt($prompt),
+                'model' => config('openai.planner_model'),
+                'registry' => \App\AI\Registries\SparkPlannerRegistry::slugs(),
+                'version' => '16.4.0',
             ],
-            'cache' => $cacheEnabled ? 'miss' : 'disabled',
-        ];
+            (int) config('openai.planner_cache_ttl', 86400),
+            function () use ($prompt, $imageFolder) {
+                try {
+                    $sections = $this->pipeline->selectSparks($prompt);
+                    $planner = 'ai';
+                    $this->analytics->increment('planner_ai_successes');
+                } catch (\Throwable $exception) {
+                    Log::warning('Spark Planner failed; using deterministic layout fallback', [
+                        'message' => $exception->getMessage(),
+                        'image_folder' => $imageFolder,
+                    ]);
 
-        if ($cacheEnabled) {
-            Cache::put(
-                $cacheKey,
-                $result,
-                max(60, (int) config('openai.planner_cache_ttl', 86400))
-            );
+                    $sections = LayoutEngine::random($imageFolder, $prompt);
+                    $planner = 'fallback';
+                    $this->analytics->increment('planner_fallbacks');
+                }
+
+                $compatibility = $this->compatibilityChecker->check($sections, $prompt);
+                if ($compatibility['changed']) {
+                    $this->analytics->increment('compatibility_repairs');
+                }
+
+                return [
+                    'sections' => $compatibility['sections'],
+                    'image_folder' => $imageFolder,
+                    'planner' => $planner,
+                    'page_intent' => $compatibility['intent'],
+                    'compatibility' => [
+                        'changed' => $compatibility['changed'],
+                        'changes' => $compatibility['changes'],
+                    ],
+                ];
+            },
+            $cacheEnabled,
+        );
+
+        $result = is_array($cached['value']) ? $cached['value'] : [];
+        $result['cache'] = $cached['cache'];
+
+        if ($cached['cache'] === 'hit') {
+            $this->analytics->increment('planner_cache_hits');
+        } else {
+            $this->analytics->increment('planner_cache_misses');
         }
 
         $result['analytics'] = $this->analytics->snapshot();
@@ -376,37 +470,6 @@ class AiPageGenerationService
             str_contains($type, 'service') || str_contains($type, 'feature') => 'services',
             default => 'general',
         };
-    }
-
-    private function plannerCacheKey(string $prompt): string
-    {
-        $registry = \App\AI\Registries\SparkPlannerRegistry::slugs();
-
-        return 'cosmic:ai:planner:' . hash('sha256', json_encode([
-            'prompt' => $this->normalizeCachePrompt($prompt),
-            'model' => config('openai.planner_model'),
-            'registry' => $registry,
-            'version' => '4.1.0.8',
-        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-    }
-
-    private function contentCacheKey(string $prompt, array $sections): string
-    {
-        return 'cosmic:ai:content:' . hash('sha256', json_encode([
-            'prompt' => $this->normalizeCachePrompt($prompt),
-            'sections' => array_values($sections),
-            'model' => config('openai.content_model'),
-            'version' => '4.1.0.8',
-        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
-    }
-
-    private function normalizeCachePrompt(string $prompt): string
-    {
-        $prompt = preg_replace('/\s+/', ' ', trim($prompt)) ?? trim($prompt);
-
-        return function_exists('mb_strtolower')
-            ? mb_strtolower($prompt, 'UTF-8')
-            : strtolower($prompt);
     }
 
     private function industryKeywords(): array

@@ -1145,13 +1145,36 @@ define(\"API_TOKEN\", \"" . addslashes($_POST["api_token"]) . "\");
 
         $status = (string) $pack->status;
         $terminal = in_array($status, ['ready', 'partial', 'failed'], true);
+        $imageCount = (int) data_get($pack->manifest, 'image_count', 0);
+        $target = (int) $pack->target_image_count;
+        $ratio = $target > 0 ? min(1, $imageCount / $target) : 0;
+        $progress = match ($status) {
+            'pending' => 5,
+            'queued' => 12,
+            'downloading' => min(95, 20 + (int) round($ratio * 75)),
+            'ready', 'partial', 'failed' => 100,
+            default => 0,
+        };
+        $delayed = in_array($status, ['queued', 'downloading'], true)
+            && $pack->queued_at
+            && $pack->queued_at->lt(now()->subSeconds(45));
 
         return response()->json([
             'status' => $status,
             'ready' => in_array($status, ['ready', 'partial'], true),
             'terminal' => $terminal,
-            'image_count' => (int) data_get($pack->manifest, 'image_count', 0),
-            'target_image_count' => (int) $pack->target_image_count,
+            'image_count' => $imageCount,
+            'target_image_count' => $target,
+            'progress' => $progress,
+            'delayed' => (bool) $delayed,
+            'message' => match (true) {
+                $status === 'ready' => 'Images ready',
+                $status === 'partial' => 'Using the best available images',
+                $status === 'failed' => 'Using safe fallback images',
+                $delayed => 'Images are taking longer than usual; you can keep editing',
+                $status === 'downloading' => 'Optimizing images in the background',
+                default => 'Preparing images',
+            },
             'last_error' => $pack->last_error,
         ]);
     }

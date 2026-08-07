@@ -107,6 +107,7 @@ class MediaPackImageService
                             $this->providers->trackDownload($candidate);
                             $seenSources[] = $candidate->sourceUrl;
                             $images->push($stored);
+                            $this->persistProgressManifest($pack, $directory, $manifest, $images->values()->all(), $target, 'downloading');
                             break;
                         }
                     }
@@ -270,7 +271,9 @@ class MediaPackImageService
             }
         }
 
-        $response = Http::connectTimeout(5)->timeout(12)->retry(1, 250, throw: false)
+        $response = Http::connectTimeout(max(1, (int) config('cosmic-queue.performance.image_connect_timeout', 4)))
+            ->timeout(max(2, (int) config('cosmic-queue.performance.image_download_timeout', 10)))
+            ->retry(max(0, (int) config('cosmic-queue.performance.image_download_retries', 1)), 250, throw: false)
             ->get($result->url, $result->downloadParameters);
 
         if (! $response->successful() || $response->body() === '') {
@@ -313,6 +316,33 @@ class MediaPackImageService
             'query' => $query,
             'created_at' => now()->toIso8601String(),
         ];
+    }
+
+
+    /**
+     * Persist incremental progress so Builder polling shows real percentages
+     * while workers are still downloading provider images.
+     *
+     * @param  array<int, array<string, mixed>>  $images
+     */
+    private function persistProgressManifest(MediaPack $pack, string $directory, array $manifest, array $images, int $target, string $status): void
+    {
+        $manifest['status'] = $status;
+        $manifest['target_image_count'] = $target;
+        $manifest['image_count'] = count($images);
+        $manifest['images'] = $images;
+        $manifest['updated_at'] = now()->toIso8601String();
+        $this->writeManifest($directory, $manifest);
+
+        $pack->forceFill([
+            'status' => $status,
+            'manifest' => [
+                'path' => $pack->storageDirectory().'/manifest.json',
+                'image_count' => count($images),
+                'target_image_count' => $target,
+                'updated_at' => $manifest['updated_at'],
+            ],
+        ])->save();
     }
 
     private function readManifest(string $directory, MediaPack $pack): array

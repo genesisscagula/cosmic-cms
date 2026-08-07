@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Website;
 use App\Models\WorkspaceProvisioning;
 use App\Services\WorkspaceProvisioningService;
+use App\Support\SubscriptionStatus;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;

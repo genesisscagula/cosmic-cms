@@ -17,12 +17,24 @@ class PrepareMediaPackJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 2;
-    public int $timeout = 180;
+    public int $tries = 4;
+    public int $timeout = 150;
 
     public function __construct(public readonly int $mediaPackId)
     {
-        $this->onQueue('images');
+        $this->timeout = max(30, (int) config('cosmic-queue.performance.image_job_timeout', 150));
+        $this->onQueue((string) config('openai.media_pack_queue', 'images-high'));
+    }
+
+    /** @return array<int, int> */
+    public function backoff(): array
+    {
+        return array_values(config('cosmic-queue.performance.image_retry_backoff', [2, 5, 10, 20]));
+    }
+
+    public function retryUntil(): \DateTimeInterface
+    {
+        return now()->addMinutes(max(2, (int) config('cosmic-queue.performance.image_job_retry_window_minutes', 10)));
     }
 
     public function handle(MediaPackImageService $images): void
@@ -34,9 +46,11 @@ class PrepareMediaPackJob implements ShouldQueue
 
         $lock = Cache::lock('media-pack:prepare:'.$pack->id, 240);
         if (! $lock->get()) {
-            Log::info('[MediaPack] Duplicate preparation job skipped.', [
+            Log::info('[MediaPack] Preparation already running; job released for retry.', [
                 'media_pack_id' => $pack->id,
+                'attempt' => $this->attempts(),
             ]);
+            $this->release(2);
             return;
         }
 
@@ -47,10 +61,45 @@ class PrepareMediaPackJob implements ShouldQueue
         }
     }
 
+    private function assignExistingImages(MediaPack $pack, MediaPackImageService $images, array $manifestImages): void
+    {
+        $trial = $pack->trialGeneration;
+
+        if ($trial?->page) {
+            DB::transaction(function () use ($images, $manifestImages, $trial): void {
+                $page = $trial->page()->lockForUpdate()->firstOrFail();
+                $updatedBlocks = $images->assignToBlocks($page->blocks ?? [], $manifestImages);
+                $page->update(['blocks' => $updatedBlocks]);
+                $trial->update(['generated_blocks' => $updatedBlocks]);
+            });
+        }
+
+        if ($pack->website_id) {
+            DB::transaction(function () use ($images, $manifestImages, $pack): void {
+                $pages = $pack->website->pages()->lockForUpdate()->get();
+                foreach ($pages as $page) {
+                    $updatedBlocks = $images->assignToBlocks($page->blocks ?? [], $manifestImages);
+                    if ($updatedBlocks !== ($page->blocks ?? [])) {
+                        $page->update(['blocks' => $updatedBlocks]);
+                    }
+                }
+            });
+        }
+    }
+
     private function prepare(MediaPack $pack, MediaPackImageService $images): void
     {
         $existingCount = count($images->existingImages($pack));
-        if ($pack->status === 'ready' && $existingCount >= (int) $pack->target_image_count) {
+        $pack->loadMissing(['trialGeneration.page', 'website']);
+        $hasAssignableOwner = (bool) $pack->website_id || (bool) $pack->trialGeneration?->page;
+
+        // An early 16.2 job may finish downloading before the trial page exists.
+        // Do not short-circuit the later post-persist job: it still needs to assign
+        // those already-downloaded images into the generated block payload.
+        if ($pack->status === 'ready'
+            && $existingCount >= (int) $pack->target_image_count
+            && $hasAssignableOwner) {
+            $this->assignExistingImages($pack, $images, $images->existingImages($pack));
             return;
         }
 
@@ -58,29 +107,8 @@ class PrepareMediaPackJob implements ShouldQueue
 
         try {
             $manifestImages = $images->populate($pack);
-            $trial = $pack->trialGeneration;
-
-            if ($trial?->page) {
-                DB::transaction(function () use ($images, $manifestImages, $trial): void {
-                    $page = $trial->page()->lockForUpdate()->firstOrFail();
-                    $updatedBlocks = $images->assignToBlocks($page->blocks ?? [], $manifestImages);
-
-                    $page->update(['blocks' => $updatedBlocks]);
-                    $trial->update(['generated_blocks' => $updatedBlocks]);
-                });
-            }
-
-            if ($pack->website_id) {
-                DB::transaction(function () use ($images, $manifestImages, $pack): void {
-                    $pages = $pack->website->pages()->lockForUpdate()->get();
-                    foreach ($pages as $page) {
-                        $updatedBlocks = $images->assignToBlocks($page->blocks ?? [], $manifestImages);
-                        if ($updatedBlocks !== ($page->blocks ?? [])) {
-                            $page->update(['blocks' => $updatedBlocks]);
-                        }
-                    }
-                });
-            }
+            $pack->refresh()->loadMissing(['trialGeneration.page', 'website']);
+            $this->assignExistingImages($pack, $images, $manifestImages);
 
             $pack->refresh();
             $imageCount = count($manifestImages);
