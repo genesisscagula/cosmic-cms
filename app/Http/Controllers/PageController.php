@@ -11,6 +11,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Services\PagePublisher;
 use App\Services\CreditService;
+use App\Services\ThemePlanAccessService;
 use App\Support\PageStyleRegistry;
 use App\Services\BlogSparkRegistry;
 use App\Cosmic\Pricing\ActionPricing;
@@ -450,6 +451,15 @@ class PageController extends Controller
         $validated = $request->validate($rules);
         $website = $page->website;
 
+        if ($trial === null && array_key_exists('theme_settings', $validated)) {
+            $requestedTheme = (string) data_get($validated, 'theme_settings.primary', '');
+            $currentTheme = (string) data_get($website->theme_settings, 'primary', '');
+
+            if ($requestedTheme !== '') {
+                app(ThemePlanAccessService::class)->assertCanUse($request->user(), $requestedTheme, $currentTheme);
+            }
+        }
+
         DB::transaction(function () use ($page, $website, $validated, $trial) {
             $page->blocks = $validated['blocks'] ?? [];
             $page->status = 'draft';
@@ -863,6 +873,7 @@ class PageController extends Controller
             ->where('unlock_key', $theme)
             ->exists();
         $currentTheme = (string) data_get($website->theme_settings, 'primary', '');
+        app(ThemePlanAccessService::class)->assertCanUse($request->user(), $theme, $currentTheme);
         $cost = ($alreadyUnlocked || $currentTheme === $theme) ? 0 : ThemePricingRegistry::cost($theme);
         $reference = 'theme-' . Str::uuid();
 

@@ -7,6 +7,7 @@ export default function ThemeSelector({
     value,
     onChange,
     compact = false,
+    planKey = 'starter',
 }) {
 
     const [open, setOpen] = useState(false);
@@ -62,6 +63,7 @@ export default function ThemeSelector({
                 onClose={() => setOpen(false)}
                 selectedTheme={value}
                 onSelect={onChange}
+                planKey={planKey}
             />
 
         </>

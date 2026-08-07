@@ -3,8 +3,9 @@ import { createPortal } from "react-dom";
 
 import themeMetadata from "./ThemeMetadata";
 import ThemeGrid from "./ThemeGrid";
+import { allowedThemesForPlan, themeLimitForPlan, upgradePlanLabel } from "./ThemeAccess";
 
-export default function ThemeModal({ open, onClose, selectedTheme, onSelect }) {
+export default function ThemeModal({ open, onClose, selectedTheme, onSelect, planKey = "starter" }) {
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("All");
 
@@ -24,6 +25,9 @@ export default function ThemeModal({ open, onClose, selectedTheme, onSelect }) {
     }, [search, category]);
 
     const categories = ["All", ...new Set(themeMetadata.map((theme) => theme.category))];
+    const allowedThemeIds = allowedThemesForPlan(planKey, themeMetadata.map((theme) => theme.id));
+    const themeLimit = themeLimitForPlan(planKey);
+    const nextPlan = upgradePlanLabel(planKey);
 
     if (!open) {
         return null;
@@ -85,6 +89,16 @@ export default function ThemeModal({ open, onClose, selectedTheme, onSelect }) {
                         </label>
                     </div>
 
+                    {themeLimit !== null && (
+                        <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3">
+                            <div>
+                                <p className="text-sm font-semibold text-amber-100">{themeLimit} themes included with your plan</p>
+                                <p className="mt-0.5 text-xs text-amber-200/70">Locked themes unlock when you upgrade to {nextPlan}.</p>
+                            </div>
+                            <span className="shrink-0 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-100">Plan access</span>
+                        </div>
+                    )}
+
                     <div className="mb-5 flex flex-wrap gap-2">
                         {categories.map((item) => (
                             <button
@@ -102,7 +116,7 @@ export default function ThemeModal({ open, onClose, selectedTheme, onSelect }) {
                         ))}
                     </div>
 
-                    <ThemeGrid themes={filteredThemes} selectedTheme={selectedTheme} onSelect={onSelect} />
+                    <ThemeGrid themes={filteredThemes} selectedTheme={selectedTheme} onSelect={onSelect} allowedThemeIds={allowedThemeIds} nextPlan={nextPlan} />
 
                     {filteredThemes.length === 0 && (
                         <div className="rounded-xl border border-dashed border-white/15 px-6 py-14 text-center text-sm text-slate-500">

@@ -34,7 +34,38 @@ export default function WebsiteCard({ website, viewMode = "grid", onEdit, onDupl
                 </div>
             </div>
 
-            {menuOpen && <div className="absolute right-4 top-14 z-40 w-48 rounded-xl border border-white/10 bg-[#1a1a1d] p-1 shadow-2xl shadow-black/40"><button type="button" onClick={() => { onDownloadConnector(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-200 transition hover:bg-white/10">Download connector</button><button type="button" onClick={() => { onConnectLiveSite(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-200 transition hover:bg-white/10">Connect live site</button><button type="button" onClick={() => { onPushLiveUpdate(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-emerald-200 transition hover:bg-emerald-400/10">Push live update</button><button type="button" onClick={() => { onDuplicate(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-slate-200 transition hover:bg-white/10">Duplicate</button>{website.canTransferOwnership && <button type="button" onClick={() => { onTransferOwnership(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-violet-200 transition hover:bg-violet-400/10">Transfer ownership</button>}<button type="button" onClick={() => { onDelete(website); setMenuOpen(false); }} className="w-full rounded-lg px-3 py-2 text-left text-xs font-medium text-red-300 transition hover:bg-red-400/10">Delete</button></div>}
+            {menuOpen && <div className="cosmic-website-actions-menu absolute right-4 top-14 z-40 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl shadow-slate-950/20">
+                <button type="button" onClick={() => { onDownloadConnector(website); setMenuOpen(false); }}>Download connector</button>
+                <button type="button" onClick={() => { onConnectLiveSite(website); setMenuOpen(false); }}>Connect live site</button>
+                <button type="button" data-tone="success" onClick={() => { onPushLiveUpdate(website); setMenuOpen(false); }}>Push live update</button>
+                <button type="button" onClick={() => { onDuplicate(website); setMenuOpen(false); }}>Duplicate</button>
+                {website.canTransferOwnership && <button type="button" data-tone="accent" onClick={() => { onTransferOwnership(website); setMenuOpen(false); }}>Transfer ownership</button>}
+                <div className="my-1 border-t border-slate-100" />
+                <button type="button" data-tone="danger" onClick={() => { onDelete(website); setMenuOpen(false); }}>Delete</button>
+            </div>}
+
+            <style>{`
+                .cosmic-website-actions-menu button {
+                    display: block;
+                    width: 100%;
+                    border-radius: 0.5rem;
+                    padding: 0.625rem 0.75rem;
+                    text-align: left;
+                    font-size: 0.75rem;
+                    line-height: 1rem;
+                    font-weight: 600;
+                    color: #334155 !important;
+                    background: transparent !important;
+                    transition: background-color 150ms ease, color 150ms ease;
+                }
+                .cosmic-website-actions-menu button:hover { background: #f1f5f9 !important; color: #0f172a !important; }
+                .cosmic-website-actions-menu button[data-tone="success"] { color: #047857 !important; }
+                .cosmic-website-actions-menu button[data-tone="success"]:hover { background: #ecfdf5 !important; color: #065f46 !important; }
+                .cosmic-website-actions-menu button[data-tone="accent"] { color: #6d28d9 !important; }
+                .cosmic-website-actions-menu button[data-tone="accent"]:hover { background: #f5f3ff !important; color: #5b21b6 !important; }
+                .cosmic-website-actions-menu button[data-tone="danger"] { color: #e11d48 !important; }
+                .cosmic-website-actions-menu button[data-tone="danger"]:hover { background: #fff1f2 !important; color: #be123c !important; }
+            `}</style>
         </article>
     );
 }

@@ -3,7 +3,9 @@ import ThemeCard from "./ThemeCard";
 export default function ThemeGrid({
     themes,
     selectedTheme,
-    onSelect
+    onSelect,
+    allowedThemeIds = [],
+    nextPlan = null
 }) {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -15,6 +17,8 @@ export default function ThemeGrid({
                     theme={theme}
                     selected={selectedTheme === theme.id}
                     onSelect={onSelect}
+                    locked={!allowedThemeIds.includes(theme.id)}
+                    nextPlan={nextPlan}
                 />
 
             ))}

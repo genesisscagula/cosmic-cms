@@ -27,18 +27,24 @@ export default function ThemeCard({
     theme,
     selected,
     onSelect,
+    locked = false,
+    nextPlan = null,
 }) {
     const [primary, surface, accent, text] = theme.colors;
 
     return (
         <button
             type="button"
-            onClick={() => onSelect(theme.id)}
+            onClick={() => { if (!locked) onSelect(theme.id); }}
             aria-pressed={selected}
+            aria-disabled={locked}
+            disabled={locked}
             className={`cosmic-theme-card group relative overflow-hidden rounded-xl border text-left transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111113] ${
                 selected
                     ? "is-active border-violet-400/80 bg-violet-500/[0.07] shadow-[0_0_0_1px_rgba(167,139,250,0.22),0_16px_34px_rgba(0,0,0,0.28)]"
-                    : "border-white/10 bg-[#171719] hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.035]"
+                    : locked
+                        ? "cursor-not-allowed border-white/10 bg-[#151517] opacity-70"
+                        : "border-white/10 bg-[#171719] hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.035]"
             }`}
         >
             <div
@@ -55,6 +61,14 @@ export default function ThemeCard({
                         <span className="h-4 w-8 rounded border border-white/45" />
                     </div>
                 </div>
+
+                {locked && (
+                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/45 backdrop-blur-[1px]">
+                        <span className="rounded-full border border-white/20 bg-slate-950/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-lg">
+                            🔒 Upgrade to {nextPlan || 'unlock'}
+                        </span>
+                    </div>
+                )}
 
                 {selected && (
                     <span className="cosmic-theme-active-check absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-violet-500 text-sm font-bold text-white shadow-lg shadow-violet-950/60">
@@ -74,8 +88,8 @@ export default function ThemeCard({
                         </div>
                     </div>
 
-                    <span className="shrink-0 rounded-full bg-violet-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] text-violet-300">
-                        {selected ? "Active" : theme.featured ? "Featured" : `⚡${THEME_CREDITS[theme.id] ?? 20}`}
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${locked ? "bg-amber-400/10 text-amber-200" : "bg-violet-400/10 text-violet-300"}`}>
+                        {selected ? "Active" : locked ? "🔒 Locked" : theme.featured ? "Featured" : `⚡${THEME_CREDITS[theme.id] ?? 20}`}
                     </span>
                 </div>
 

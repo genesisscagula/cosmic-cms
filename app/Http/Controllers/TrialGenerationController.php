@@ -21,8 +21,6 @@ use OpenAI\Exceptions\TransporterException;
 
 class TrialGenerationController extends Controller
 {
-    private const DEMO_WEBSITE_ID = 14;
-
     private const PLANS = ['starter', 'growth', 'pro', 'agency_starter', 'agency_growth', 'agency_pro'];
 
     private const INDUSTRY_FOLDERS = [
@@ -150,7 +148,11 @@ class TrialGenerationController extends Controller
             ]);
 
             $page = DB::transaction(function () use ($trial, $profile, $generated) {
-                $website = Website::query()->findOrFail(self::DEMO_WEBSITE_ID);
+                $trialWebsiteId = (int) config('cosmic.trial_website_id', 1);
+
+                abort_if($trialWebsiteId < 1, 500, 'TRIAL_WEBSITE_ID must reference a valid website.');
+
+                $website = Website::query()->findOrFail($trialWebsiteId);
 
                 $website->update([
                     'industry' => $this->industryResolver->resolve($profile['industry'], 'default'),

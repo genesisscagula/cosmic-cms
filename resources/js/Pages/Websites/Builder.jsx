@@ -21,6 +21,7 @@ import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 
 export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [] }) {
     const { props } = usePage();
+    const currentPlanKey = props?.auth?.user?.plan_key || 'starter';
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
 
     const capabilities = {
@@ -756,6 +757,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                 <ThemeSelector
                                     compact
                                     value={globalSelections.primary}
+                                    planKey={currentPlanKey}
                                     onChange={(theme) => {
                                         setGlobalSelections(prev => ({ ...prev, primary: theme }));
                                         setHasUnsavedTheme(true);
@@ -1208,6 +1210,7 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
 
                             <ThemeSelector
                                 value={globalSelections.primary}
+                                planKey={currentPlanKey}
                                 onChange={(theme) => {
 
                                     setGlobalSelections(prev => ({
