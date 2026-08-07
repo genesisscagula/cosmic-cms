@@ -1055,7 +1055,7 @@ HTML;
                 $logoImageUrl = e(self::staticAssetUrl($block['logo_image_url'] ?? ''));
                 $logoHeight = max(24, min(56, (int) ($block['logo_height'] ?? 36)));
                 $logoFilterKey = (string) ($block['logo_filter_key'] ?? $block['theme'] ?? 'midnight');
-                $logoFilter = e($block['logo_filter'] ?? self::logoFilterFor($logoFilterKey));
+                $logoFilter = e($block['logo_filter'] ?? self::logoFilter($logoFilterKey));
                 $stoneTheme = self::getTheme('stone'); // Hardcoded stone theme
                 $footerBrand = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
