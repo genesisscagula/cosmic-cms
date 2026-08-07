@@ -790,8 +790,9 @@ HTML;
                 case 'glassmorphism_header':
                 $logoText = e($block['logo_text'] ?? 'Your Website');
                 $logoImageUrl = e(self::staticAssetUrl($block['logo_image_url'] ?? ''));
+                $logoFilter = e((string) ($block['logo_filter'] ?? self::logoFilter((string) ($block['logo_filter_key'] ?? 'midnight'))));
                 $logo = $logoImageUrl !== ''
-                    ? "<img src='{$logoImageUrl}' alt='{$logoText}' class='h-14 w-auto max-w-[300px] object-contain'>"
+                    ? "<img src='{$logoImageUrl}' alt='{$logoText}' style='filter:{$logoFilter}' class='h-14 w-auto max-w-[300px] object-contain'>"
                     : $logoText;
                 $ctaLabel = e($block['cta_label'] ?? 'Get Started');
                 $ctaUrl = e($block['cta_url'] ?? '#');
@@ -1051,11 +1052,18 @@ HTML;
                 case 'minimal_footer':
                 $brand = e($block['logo_text'] ?? 'CosmicCMS');
                 $copy = e($block['copyright'] ?? '© ' . date('Y') . '. All rights reserved.');
+                $logoImageUrl = e(self::staticAssetUrl($block['logo_image_url'] ?? ''));
+                $logoHeight = max(24, min(56, (int) ($block['logo_height'] ?? 36)));
+                $logoFilterKey = (string) ($block['logo_filter_key'] ?? $block['theme'] ?? 'midnight');
+                $logoFilter = e($block['logo_filter'] ?? self::logoFilterFor($logoFilterKey));
                 $stoneTheme = self::getTheme('stone'); // Hardcoded stone theme
-                
+                $footerBrand = $logoImageUrl !== ''
+                    ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
+                    : "<div class='font-bold text-lg {$stoneTheme['text']}'>{$brand}</div>";
+
                 $html .= "
                 <footer class='w-full {$stoneTheme['bg']} {$stoneTheme['sub']} flex flex-col items-start gap-3 border-t {$stoneTheme['border']} px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-12'>
-                    <div class='font-bold text-lg {$stoneTheme['text']}'>{$brand}</div>
+                    {$footerBrand}
                     <div class='text-sm sm:whitespace-nowrap'>{$copy}</div>
                 </footer>";
                 break;
@@ -1711,9 +1719,9 @@ HTML;
                 $buttonUrl = e($block['button_url'] ?? '#');
 
                 $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 50)));
-                // Match HeroBackgroundImageBlock: the overlay uses the
-                // website primary theme at overlayOpacity / 60.
-                $overlayStrength = min(1, $overlayOpacity / 60);
+                // Match HeroBackgroundImageBlock exactly: tint the image with
+                // the website primary theme using the configured percentage.
+                $overlayStrength = $overlayOpacity / 100;
                 $primaryOverlayTheme = self::getTheme($primaryColor);
                 $textAlign = $block['textAlign'] ?? 'center';
                 $height = $block['height'] ?? 'screen';
@@ -1877,7 +1885,7 @@ HTML;
                         <article data-cosmic-slide='{$slideIndex}' aria-hidden='{$ariaHidden}' class='absolute inset-0 transition-opacity duration-700 {$activeClasses}'>
                             {$media}
                             <div class='absolute inset-0 bg-gradient-to-r from-slate-950/90 via-slate-950/65 to-slate-950/25'></div>
-                            <div class='absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20'></div>
+                            <div class='absolute inset-0 bg-gradient-to-t from-slate-950/56 via-transparent to-slate-950/12'></div>
                             <div class='relative z-10 mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-24 sm:min-h-[700px] sm:px-10 lg:min-h-[760px] lg:px-14'>
                                 <div class='max-w-3xl text-white' aria-live='polite'>
                                     " . ($eyebrow !== '' ? "<p class='mb-5 text-xs font-bold uppercase tracking-[0.32em] text-white/70 sm:text-sm'>{$eyebrow}</p>" : '') . "
@@ -2020,7 +2028,7 @@ HTML;
                         ? 'bg-gradient-to-l'
                         : ($contentAlign === 'left' ? 'bg-gradient-to-r' : 'bg-gradient-to-t');
 
-                    $overlayColor = $lightMedia ? 'bg-white' : 'bg-slate-950';
+                    $overlayColor = self::getTheme($primaryColor)['bg'];
                     $gradient = $lightMedia
                         ? 'from-white/95 via-white/55 to-white/25'
                         : 'from-slate-950/85 via-slate-950/20 to-slate-950/25';
@@ -2378,8 +2386,8 @@ HTML;
 
                 $html .= "
                 <section class='relative min-h-[82vh] overflow-hidden {$theme['bg']}' style=\"{$imageStyle}\">
-                    <div class='absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/48 to-slate-950/12'></div>
-                    <div class='absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20'></div>
+                    <div class='absolute inset-0 bg-gradient-to-r from-slate-950/58 via-slate-950/16 to-transparent'></div>
+                    <div class='absolute inset-0 bg-gradient-to-t from-slate-950/56 via-transparent to-slate-950/12'></div>
                     <div class='relative mx-auto flex min-h-[82vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12'>
                         <div class='flex items-center justify-between border-b border-white/25 pb-5 text-white'><span class='text-[11px] font-bold uppercase tracking-[.34em] text-white/80'>{$eyebrow}</span><span class='text-xs font-medium text-white/70'>{$editionLabel}</span></div>
                         <div class='max-w-5xl py-14 sm:py-20 lg:py-24'>
@@ -3241,7 +3249,7 @@ HTML;
 
                         <div class='absolute inset-0 bg-gradient-to-r from-slate-950/95 via-slate-950/65 to-slate-950/20'></div>
 
-                        <div class='absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20'></div>
+                        <div class='absolute inset-0 bg-gradient-to-t from-slate-950/56 via-transparent to-slate-950/12'></div>
 
                     </div>
 
@@ -3340,4 +3348,24 @@ HTML;
 
         return self::normalizePublishedAssetUrls($html);
     }
+
+    private static function logoFilter(string $theme): string
+    {
+        return match ($theme) {
+            'emerald' => 'brightness(0) saturate(100%) invert(29%) sepia(64%) saturate(610%) hue-rotate(126deg) brightness(94%) contrast(96%)',
+            'coffee' => 'brightness(0) saturate(100%) invert(20%) sepia(44%) saturate(1248%) hue-rotate(356deg) brightness(92%) contrast(95%)',
+            'rose' => 'brightness(0) saturate(100%) invert(33%) sepia(36%) saturate(1248%) hue-rotate(313deg) brightness(93%) contrast(94%)',
+            'ocean' => 'brightness(0) saturate(100%) invert(32%) sepia(44%) saturate(1064%) hue-rotate(174deg) brightness(93%) contrast(94%)',
+            'indigo' => 'brightness(0) saturate(100%) invert(34%) sepia(34%) saturate(1335%) hue-rotate(228deg) brightness(92%) contrast(95%)',
+            'amber' => 'brightness(0) saturate(100%) invert(39%) sepia(88%) saturate(715%) hue-rotate(8deg) brightness(95%) contrast(96%)',
+            'violet' => 'brightness(0) saturate(100%) invert(28%) sepia(55%) saturate(1150%) hue-rotate(244deg) brightness(94%) contrast(94%)',
+            'teal' => 'brightness(0) saturate(100%) invert(30%) sepia(55%) saturate(705%) hue-rotate(145deg) brightness(93%) contrast(95%)',
+            'ruby' => 'brightness(0) saturate(100%) invert(24%) sepia(72%) saturate(1450%) hue-rotate(327deg) brightness(93%) contrast(94%)',
+            'forest' => 'brightness(0) saturate(100%) invert(28%) sepia(33%) saturate(664%) hue-rotate(95deg) brightness(93%) contrast(95%)',
+            'navy' => 'brightness(0) saturate(100%) invert(26%) sepia(38%) saturate(1118%) hue-rotate(177deg) brightness(95%) contrast(92%)',
+            'slate' => 'brightness(0) saturate(100%) invert(36%) sepia(11%) saturate(831%) hue-rotate(175deg) brightness(94%) contrast(92%)',
+            default => 'brightness(0) saturate(100%) invert(20%) sepia(14%) saturate(1108%) hue-rotate(176deg) brightness(94%) contrast(91%)',
+        };
+    }
+
 }

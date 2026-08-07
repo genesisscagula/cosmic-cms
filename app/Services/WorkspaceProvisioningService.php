@@ -90,6 +90,7 @@ class WorkspaceProvisioningService
                 $workspace = $this->workspaceFor($onboarding);
                 $website = $this->websiteFor($onboarding, $workspace, $provisioning);
                 $trialPage = $this->transferTrialDraft($onboarding, $website, $provisioning);
+                app(MediaPackOwnershipService::class)->claimForWebsite($onboarding->trialGeneration, $website);
                 $this->ensureOwnershipAndAccess($onboarding, $workspace, $website);
                 $this->applyDefaultSettingsAndProfile($onboarding, $workspace, $website);
                 $binding = $this->bindCreditsAndSubscription($onboarding, $order, $workspace, $website);
@@ -274,13 +275,20 @@ class WorkspaceProvisioningService
             'global_header' => [
                 'type' => 'glassmorphism_header',
                 'logo_text' => $onboarding->website_name,
+                'logo_image_url' => '/storage/branding/your-logo.png',
+                'logo_height' => 42,
+                'logo_filter_key' => data_get($trial?->preview_theme, 'primary', 'midnight'),
                 'cta_label' => 'Get Started',
                 'cta_url' => '#contact',
                 'menu' => $menu,
             ],
             'global_footer' => [
                 'type' => 'minimal_footer',
+                'theme' => 'white',
                 'logo_text' => $onboarding->website_name,
+                'logo_image_url' => '/storage/branding/your-logo.png',
+                'logo_height' => 36,
+                'logo_filter_key' => data_get($trial?->preview_theme, 'primary', 'midnight'),
                 'copyright' => '© '.now()->year.' '.$onboarding->website_name.'. All rights reserved.',
             ],
         ]);
@@ -395,10 +403,23 @@ class WorkspaceProvisioningService
             $header['menu'] = $menu;
         }
         $header['logo_text'] = $website->name;
+        $header['logo_image_url'] = '/storage/branding/your-logo.png';
+        $header['logo_height'] = 42;
+        $header['logo_filter_key'] = data_get($trial->preview_theme, 'primary', 'midnight');
+
+        $footer = $website->global_footer ?? [];
+        $footer['type'] = $footer['type'] ?? 'minimal_footer';
+        $footer['theme'] = $footer['theme'] ?? 'white';
+        $footer['logo_text'] = $website->name;
+        $footer['logo_image_url'] = $header['logo_image_url'];
+        $footer['logo_height'] = 36;
+        $footer['logo_filter_key'] = $header['logo_filter_key'];
+        $footer['copyright'] = $footer['copyright'] ?? ('© '.now()->year.' '.$website->name.'. All rights reserved.');
 
         $website->forceFill([
             'theme_settings' => $trial->preview_theme ?: $website->theme_settings,
             'global_header' => $header,
+            'global_footer' => $footer,
         ])->save();
     }
 

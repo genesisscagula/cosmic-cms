@@ -9,10 +9,10 @@ import CookieConsent from './Components/CookieConsent';
 import { CreditBalanceProvider } from './Components/CosmicCredits/CreditBalanceContext';
 import { AppearanceProvider } from './Appearance/AppearanceContext';
 
-const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
+const appName = 'Cosmic CMS';
 
 createInertiaApp({
-    title: (title) => `${title} - ${appName}`,
+    title: () => appName,
     resolve: (name) =>
         resolvePageComponent(
             `./Pages/${name}.jsx`,

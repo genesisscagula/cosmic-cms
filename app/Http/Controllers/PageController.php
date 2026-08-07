@@ -359,6 +359,9 @@ class PageController extends Controller
                 ? [
                     'type' => 'glassmorphism_header',
                     'logo_text' => $trial->business_name,
+                    'logo_image_url' => '/storage/branding/your-logo.png',
+                    'logo_height' => 42,
+                    'logo_filter_key' => data_get($trial->preview_theme, 'primary', 'midnight'),
                     'cta_label' => 'Get Started',
                     'cta_url' => '#',
                     'menu' => collect($trial->menu_structure ?? [])
@@ -372,6 +375,10 @@ class PageController extends Controller
                 : $website->global_header,
             'globalFooterBlock' => $website->global_footer,
             'trialToken' => $trial?->token,
+            'websiteMediaPack' => ! $isTrialMode ? [
+                'status' => $website->mediaPack?->status ?? 'missing',
+                'target' => (int) ($website->mediaPack?->target_image_count ?? 0),
+            ] : null,
             'trialExperience' => $trial ? [
                 'email' => $trial->email,
                 'email_captured' => filled($trial->email),
@@ -381,6 +388,8 @@ class PageController extends Controller
                     ->count(),
                 'regenerations_limit' => 2,
                 'regenerations_reset_at' => now()->addDays(7)->toIso8601String(),
+                'media_pack_status' => $trial->mediaPack?->status,
+                'media_pack_target' => (int) ($trial->mediaPack?->target_image_count ?? 0),
             ] : null,
             'cosmicPricing' => [
                 'balance' => (int) ($request->user()?->fresh()?->credits ?? 0),

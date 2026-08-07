@@ -28,9 +28,11 @@ export const HeroEditorialOverlaySchema = {
 };
 
 export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalTheme }) {
+    const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
+    const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
+    const overlayColor = primaryTheme?.palette?.background || '#243447';
     const imageRef = useRef(null);
     const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
-    const primaryTheme = colorFamilies[globalTheme.primary];
     const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
     const mediaStyle = isLightMediaTheme
         ? {
@@ -71,8 +73,8 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
                 onSave={(image_url) => onUpdate({ image_url })}
             />
             <div
-                className={`absolute inset-0 z-10 ${mediaStyle.overlay}`}
-                style={{ opacity: Math.max(0, Math.min(100, Number(data.overlayOpacity) || 72)) / 100 }}
+                className="absolute inset-0 z-10"
+                style={{ backgroundColor: overlayColor, opacity: Math.max(0, Math.min(100, Number(data.overlayOpacity) || 72)) / 100 }}
                 onClick={() => imageRef.current?.openEditor()}
             />
             <div className={`absolute inset-0 z-10 bg-gradient-to-r ${mediaStyle.gradient}`} />

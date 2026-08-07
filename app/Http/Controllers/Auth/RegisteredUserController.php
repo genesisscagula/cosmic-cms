@@ -11,6 +11,7 @@ use App\Models\Website;
 use App\Models\WorkspaceProvisioning;
 use App\Services\WorkspaceProvisioningService;
 use Illuminate\Auth\Events\Registered;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -84,25 +85,13 @@ class RegisteredUserController extends Controller
                 'string',
                 'max:60',
                 'regex:/^[a-z0-9]+(?:-[a-z0-9]+)*$/',
-                Rule::unique('pending_onboardings', 'website_slug'),
             ],
             'industry' => ['required', 'string', 'max:120'],
             'business_description' => ['required', 'string', 'min:20', 'max:1000'],
             'location' => ['required', 'string', 'max:255'],
         ], [
             'website_url.regex' => 'Use lowercase letters, numbers, and single hyphens only.',
-            'website_url.unique' => 'That website address is already reserved. Choose another one.',
         ]);
-
-        $domainAlreadyUsed = Website::query()
-            ->where('domain', 'like', '%://'.$validated['website_url'].'.%')
-            ->exists();
-
-        if ($domainAlreadyUsed) {
-            throw ValidationException::withMessages([
-                'website_url' => 'That website address is already in use. Choose another one.',
-            ]);
-        }
 
         $user = DB::transaction(function () use ($validated) {
             $trial = null;
@@ -140,12 +129,17 @@ class RegisteredUserController extends Controller
                 'plan_provider' => 'paypal',
             ]);
 
+            // Never block checkout because a previous test or abandoned onboarding
+            // reserved the preferred address. Keep the requested base and append the
+            // first available numeric suffix (example: cosmic-cms-2).
+            $websiteSlug = $this->resolveAvailableWebsiteSlug($validated['website_url']);
+
             PendingOnboarding::create([
                 'user_id' => $user->id,
                 'trial_generation_id' => $trial?->id,
                 'selected_plan' => $validated['selected_plan'],
                 'website_name' => trim($validated['website_name']),
-                'website_slug' => $validated['website_url'],
+                'website_slug' => $websiteSlug,
                 'industry' => $validated['industry'],
                 'business_description' => trim($validated['business_description']),
                 'location' => trim($validated['location']),
@@ -168,7 +162,47 @@ class RegisteredUserController extends Controller
         // internal Inertia page. That page opens PayPal with a native browser
         // navigation, avoiding external redirects being swallowed after a
         // logout/new-registration cycle.
-        return redirect()->route('onboarding.pending', ['checkout' => 'auto']);
+        $pendingUrl = route('onboarding.pending', ['checkout' => 'auto']);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'created' => true,
+                'redirect_url' => $pendingUrl,
+            ], 201);
+        }
+
+        return redirect()->to($pendingUrl, 303);
+    }
+
+    private function resolveAvailableWebsiteSlug(string $preferred): string
+    {
+        $base = Str::slug($preferred) ?: 'website';
+        $base = Str::limit($base, 60, '');
+        $candidate = $base;
+        $suffix = 2;
+
+        while ($this->websiteSlugIsReserved($candidate)) {
+            $suffixText = '-'.$suffix++;
+            $candidate = Str::limit($base, 60 - strlen($suffixText), '').$suffixText;
+        }
+
+        return $candidate;
+    }
+
+    private function websiteSlugIsReserved(string $slug): bool
+    {
+        if (PendingOnboarding::query()->where('website_slug', $slug)->exists()) {
+            return true;
+        }
+
+        return Website::query()
+            ->where(function ($query) use ($slug) {
+                $query
+                    ->where('domain', 'like', '%://'.$slug.'.%')
+                    ->orWhere('domain', 'like', $slug.'.%')
+                    ->orWhere('domain', $slug);
+            })
+            ->exists();
     }
 
     public function pending(Request $request): Response|RedirectResponse

@@ -17,6 +17,9 @@ Schedule::command('provisioning:recover --limit=100')
 Schedule::command('cosmic:prune-expired-access')
     ->hourly()->withoutOverlapping(10)->onOneServer()->runInBackground();
 
+Schedule::command('cosmic:prune-media-packs --days=30')
+    ->dailyAt('03:10')->withoutOverlapping(30)->onOneServer()->runInBackground();
+
 Schedule::command('cosmic:queue-health')
     ->everyFiveMinutes()->withoutOverlapping(5)->onOneServer();
 

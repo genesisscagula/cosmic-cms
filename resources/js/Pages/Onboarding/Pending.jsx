@@ -111,7 +111,7 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                 ? 'Payment is confirmed. We are applying your plan, credits, website, and starter Sparks.'
                 : 'Your account and business details are saved. Complete secure PayPal checkout to activate your workspace.'}
         >
-            <Head title="Complete setup" />
+            <Head title="Cosmic CMS" />
 
             {(status || error) && (
                 <div className={`mb-6 rounded-2xl border px-5 py-4 text-sm font-medium ${error
@@ -122,9 +122,9 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                 </div>
             )}
 
-            <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,1.35fr)_minmax(320px,.65fr)]">
-                <section className="overflow-hidden rounded-3xl border border-emerald-100 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
-                    <div className="border-b border-emerald-100 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 px-6 py-6 sm:px-8">
+            <div className="cosmic-pending-grid grid items-start gap-6 lg:grid-cols-[minmax(0,1fr)_340px]">
+                <section className="cosmic-pending-main overflow-hidden rounded-[28px] border border-emerald-100 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.10)]">
+                    <div className="border-b border-emerald-100 bg-[radial-gradient(circle_at_top_right,rgba(16,185,129,.13),transparent_36%),linear-gradient(135deg,#ecfdf5_0%,#ffffff_56%,#ecfeff_100%)] px-6 py-7 sm:px-8">
                         <div className={`inline-flex rounded-full border px-3 py-1 text-xs font-bold uppercase tracking-[0.14em] ${paymentConfirmed
                             ? 'border-emerald-200 bg-white text-emerald-700'
                             : paymentCancelled || expired
@@ -181,7 +181,7 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                                     type="button"
                                     onClick={continueToPayPal}
                                     disabled={loading}
-                                    className="cosmic-paypal-cta inline-flex min-h-12 flex-1 items-center justify-center rounded-xl bg-emerald-700 px-6 text-sm font-black text-white shadow-[0_12px_30px_rgba(5,150,105,0.22)] transition hover:bg-emerald-800 disabled:cursor-not-allowed disabled:opacity-70"
+                                    className="cosmic-paypal-cta inline-flex min-h-14 flex-1 items-center justify-center rounded-2xl bg-gradient-to-r from-emerald-700 to-green-700 px-6 text-sm font-black !text-white shadow-[0_16px_38px_rgba(5,150,105,0.28)] transition hover:-translate-y-0.5 hover:from-emerald-800 hover:to-green-800 disabled:cursor-not-allowed disabled:opacity-70"
                                 >
                                     {loading
                                         ? 'Redirecting to PayPal…'
@@ -226,15 +226,15 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                     </div>
                 </section>
 
-                <aside className="overflow-hidden rounded-3xl border border-emerald-200 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.08)]">
-                    <div className="cosmic-selected-plan-header bg-emerald-950 px-6 py-6 text-white">
-                        <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-300">Selected plan</p>
+                <aside className="cosmic-plan-summary overflow-hidden rounded-[28px] border border-emerald-200 bg-white shadow-[0_28px_90px_rgba(15,23,42,0.10)] lg:sticky lg:top-8">
+                    <div className="cosmic-selected-plan-header relative overflow-hidden bg-emerald-950 px-6 py-7 !text-white">
+                        <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-emerald-400/20 blur-2xl" /><p className="relative text-xs font-bold uppercase tracking-[0.18em] !text-emerald-200">Selected plan</p>
                         <div className="mt-3 flex items-end justify-between gap-4">
-                            <p className="cosmic-selected-plan-name text-3xl font-extrabold">{onboarding.plan_name}</p>
-                            <p className="cosmic-selected-plan-price pb-1 text-sm text-emerald-200">{onboarding.price}/month</p>
+                            <p className="cosmic-selected-plan-name relative text-3xl font-black !text-white">{onboarding.plan_name}</p>
+                            <p className="cosmic-selected-plan-price relative pb-1 text-sm font-bold !text-emerald-200">{onboarding.price}/month</p>
                         </div>
                     </div>
-                    <div className="p-6">
+                    <div className="p-6 sm:p-7">
                         <p className="text-sm font-bold text-slate-900">Your setup includes</p>
                         <ul className="mt-4 space-y-3 text-sm text-slate-600">
                             <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>Your private Cosmic CMS workspace</span></li>
@@ -243,6 +243,10 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                         </ul>
                         <div className="mt-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-800">
                             Your website remains protected until PayPal confirmation and provisioning are complete.
+                        </div>
+                        <div className="mt-6 grid grid-cols-2 gap-2 text-[11px] font-semibold text-slate-600">
+                            <span className="rounded-lg bg-slate-50 px-3 py-2 text-center">Secure PayPal</span>
+                            <span className="rounded-lg bg-slate-50 px-3 py-2 text-center">Cancel anytime</span>
                         </div>
                         <Link
                             href={route('logout')}

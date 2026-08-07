@@ -1,6 +1,8 @@
 import { Head, Link, router, useForm } from '@inertiajs/react';
+import axios from 'axios';
 import { useEffect, useRef, useState } from 'react';
 import '../../css/start.css';
+import ThemeLogo from '@/Branding/ThemeLogo';
 
 const fieldClass = 'mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20';
 
@@ -181,9 +183,10 @@ function useAnimatedPrompt(isEmpty) {
 }
 
 export default function Start({ trial }) {
-    const { data, setData, post, processing, errors } = useForm({
+    const { setData, errors, setError, clearErrors } = useForm({
         prompt: '',
     });
+    const [processing, setProcessing] = useState(false);
     const [prompt, setPrompt] = useState('');
     const [showLoading, setShowLoading] = useState(false);
     const [loadingStage, setLoadingStage] = useState(startGenerationStages[0].message);
@@ -289,21 +292,69 @@ export default function Start({ trial }) {
         };
     }, [showLoading]);
 
-    const submit = (event) => {
-        event.preventDefault();
-        if (processing || prompt.trim().length < 20) return;
+    const resetLoadingState = () => {
+        setShowLoading(false);
+        setLoadingProgress(0);
+        setLoadingStage(startGenerationStages[0].message);
+        setLoadingNotice('');
+    };
 
+    const submit = async (event) => {
+        event.preventDefault();
+
+        const normalizedPrompt = prompt.trim();
+        if (processing || normalizedPrompt.length < 3) return;
+
+        clearErrors();
         setLoadingNotice('');
         setShowLoading(true);
-        post('/start', {
-            preserveScroll: true,
-            onError: () => {
-                setShowLoading(false);
-                setLoadingProgress(0);
-                setLoadingStage(startGenerationStages[0].message);
-                setLoadingNotice('');
-            },
-        });
+        setProcessing(true);
+
+        try {
+            const response = await axios.post('/start', { prompt: normalizedPrompt }, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            // Support both normal Axios responses and projects where an Axios
+            // interceptor already unwraps `response.data` before returning.
+            const rawPayload = response?.data ?? response ?? {};
+            const payload = rawPayload?.data ?? rawPayload;
+            const pageId = payload?.page_id ?? payload?.page?.id;
+            const trialToken = payload?.trial_token ?? payload?.token ?? payload?.trial?.token;
+            const responseHeaders = response?.headers ?? {};
+            const builderUrl = payload?.builder_url
+                ?? payload?.redirect_url
+                ?? payload?.url
+                ?? responseHeaders['x-cosmic-builder-url']
+                ?? (pageId && trialToken
+                    ? `/pages/${pageId}/builder?token=${encodeURIComponent(trialToken)}`
+                    : null);
+
+            if (!builderUrl) {
+                console.error('Unexpected Start generation response:', {
+                    response,
+                    rawPayload,
+                    payload,
+                });
+                throw new Error('The Builder URL was not returned.');
+            }
+
+            // Use native navigation so Inertia state cannot hold the loading overlay.
+            window.location.assign(builderUrl);
+        } catch (requestError) {
+            const responseErrors = requestError.response?.data?.errors;
+            const message = responseErrors?.prompt?.[0]
+                || requestError.response?.data?.message
+                || requestError.message
+                || 'We could not generate this draft. Please try again.';
+
+            setError('prompt', message);
+            setProcessing(false);
+            resetLoadingState();
+        }
     };
 
     const isReady = trial?.status === 'ready';
@@ -365,8 +416,7 @@ export default function Start({ trial }) {
                             <form onSubmit={submit} noValidate className="relative mx-auto max-w-3xl">
                                 <div className="mx-auto mb-9 max-w-2xl text-center">
                                     <Link href="/" className="inline-flex items-center gap-3 font-semibold tracking-tight text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#13151d]">
-                                        <span className="grid h-12 w-12 place-items-center rounded-2xl bg-emerald-600 text-xl font-bold text-white shadow-lg shadow-cyan-950/50">C</span>
-                                        <span className="text-2xl text-slate-950">Cosmic <span className="text-emerald-700">CMS</span></span>
+                                        <ThemeLogo theme={trial?.preview_theme?.primary || 'midnight'} className="h-14 w-auto max-w-[280px] object-contain" alt="Your Logo" />
                                     </Link>
                                     <p className="mx-auto mt-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-medium text-emerald-800">
                                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.9)]" />
@@ -413,7 +463,7 @@ export default function Start({ trial }) {
                                     </div>
                                 </div>
 
-                                <button type="submit" disabled={processing || prompt.trim().length < 20} className="cosmic-start-submit mt-8 flex w-full items-center justify-center rounded-xl bg-emerald-600 px-5 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-900/15 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#13151a]">
+                                <button type="submit" disabled={processing || prompt.trim().length < 3} className="cosmic-start-submit mt-8 flex w-full items-center justify-center rounded-xl bg-emerald-600 px-5 py-4 text-base font-semibold text-white shadow-lg shadow-emerald-900/15 transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60 focus:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200 focus-visible:ring-offset-2 focus-visible:ring-offset-[#13151a]">
                                     {processing ? 'Preparing your draft…' : 'Generate my website draft'}
                                 </button>
                                 <p className="mt-5 text-center text-sm leading-6 text-slate-600">Your private draft is saved for you to review. <span className="font-medium text-emerald-700">Nothing is published automatically.</span></p>

@@ -28,7 +28,8 @@ export const HeroLuxuryFullscreenSchema = {
 
 export function HeroLuxuryFullscreenBlock({ block, blockIndex, onUpdate, globalTheme }) {
     const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
-    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
+    const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
+    const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
     const data = { ...HeroLuxuryFullscreenSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
@@ -38,8 +39,8 @@ export function HeroLuxuryFullscreenBlock({ block, blockIndex, onUpdate, globalT
     return (
         <section className={`relative min-h-[82vh] overflow-hidden ${theme.bg}`}>
             <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} className="absolute inset-0 h-full w-full object-cover" onSave={(image_url)=>onUpdate({image_url})} />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/85 via-slate-950/48 to-slate-950/12" />
-            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-r from-slate-950/58 via-slate-950/16 to-transparent" />
+            <div className="pointer-events-none absolute inset-0 bg-gradient-to-t from-slate-950/56 via-transparent to-slate-950/12" />
             <div className="relative mx-auto flex min-h-[82vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
                 <div className="flex items-center justify-between border-b border-white/25 pb-5 text-white">
                     <EditableText value={data.eyebrow} className="text-[11px] font-bold uppercase tracking-[.34em] text-white/80" onSave={(eyebrow)=>onUpdate({eyebrow})}/>

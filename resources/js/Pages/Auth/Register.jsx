@@ -3,6 +3,7 @@ import InputLabel from '@/Components/InputLabel';
 import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Link, useForm } from '@inertiajs/react';
+import axios from 'axios';
 import { useEffect, useMemo, useState } from 'react';
 
 const fieldClass = 'mt-2 block w-full rounded-xl border-slate-700 bg-[#0f1013] px-3.5 py-3 text-sm text-white shadow-none placeholder:text-slate-600 focus:border-emerald-400 focus:ring-emerald-400';
@@ -59,12 +60,18 @@ function StepIndicator({ currentStep }) {
 export default function Register({ trialToken = '', trialEmail = '', trialPlan = '' }) {
     const storageKey = `cosmic:onboarding:${trialToken || 'new'}`;
     const selectedPlan = plans[trialPlan] || plans.starter;
-    const [step, setStep] = useState(1);
+    const stepStorageKey = `${storageKey}:step`;
+    const [step, setStep] = useState(() => {
+        const storedStep = Number(window.sessionStorage.getItem(stepStorageKey));
+        return [1, 2, 3].includes(storedStep) ? storedStep : 1;
+    });
     const [clientErrors, setClientErrors] = useState({});
     const [slugTouched, setSlugTouched] = useState(false);
     const [submitError, setSubmitError] = useState('');
+    const [submitMessage, setSubmitMessage] = useState('');
+    const [processing, setProcessing] = useState(false);
 
-    const { data, setData, post, processing, errors, reset } = useForm({
+    const { data, setData, errors } = useForm({
         name: '',
         email: trialEmail || '',
         password: '',
@@ -95,6 +102,10 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
         window.localStorage.setItem(storageKey, JSON.stringify(safeDraft));
     }, [data]);
 
+    useEffect(() => {
+        window.sessionStorage.setItem(stepStorageKey, String(step));
+    }, [step, stepStorageKey]);
+
     const websitePreview = useMemo(() => data.website_url ? `${data.website_url}.cosmiccms.com` : 'your-business.cosmiccms.com', [data.website_url]);
 
     const updateWebsiteName = (value) => {
@@ -123,35 +134,75 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
         return Object.keys(next).length === 0;
     };
 
-    const nextStep = () => {
-        const valid = step === 1 ? validateAccount() : validateBusiness();
-        if (!valid) return;
+    const moveToStep = (targetStep) => {
         setClientErrors({});
-        setStep((current) => Math.min(3, current + 1));
+        setSubmitError('');
+        setStep(targetStep);
+        window.sessionStorage.setItem(stepStorageKey, String(targetStep));
         window.scrollTo({ top: 0, behavior: 'smooth' });
+    };
+
+    const nextStep = () => {
+        if (step === 1) {
+            if (!validateAccount()) return;
+            moveToStep(2);
+            return;
+        }
+
+        if (step === 2) {
+            if (!validateBusiness()) return;
+            moveToStep(3);
+        }
     };
 
     const submit = (event) => {
         event.preventDefault();
         if (step !== 3) return nextStep();
 
+        if (processing) return;
+
+        setProcessing(true);
         setSubmitError('');
-        post(route('register'), {
-            preserveScroll: false,
-            onSuccess: () => window.localStorage.removeItem(storageKey),
-            onError: (serverErrors) => {
-                const accountFields = ['name', 'email', 'password', 'password_confirmation'];
-                const businessFields = ['website_name', 'website_url', 'industry', 'business_description', 'location'];
+        setSubmitMessage('Creating your account…');
 
-                if (accountFields.some((field) => serverErrors[field])) setStep(1);
-                else if (businessFields.some((field) => serverErrors[field])) setStep(2);
-
-                setSubmitError(
-                    Object.values(serverErrors || {})[0]
-                    || 'We could not create your account. Review the highlighted fields and try again.'
-                );
-                window.scrollTo({ top: 0, behavior: 'smooth' });
+        axios.post(route('register'), data, {
+            headers: {
+                Accept: 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
             },
+        }).then((response) => {
+            const redirectUrl = response.data?.redirect_url;
+
+            if (!redirectUrl) {
+                throw new Error('The payment setup page was not returned.');
+            }
+
+            window.localStorage.removeItem(storageKey);
+            window.sessionStorage.removeItem(stepStorageKey);
+            setSubmitMessage('Account created. Opening secure checkout…');
+
+            // Use a native browser navigation after the authenticated session has
+            // been created. This avoids Inertia re-hydrating the guest register
+            // page and resetting the wizard back to step 1 after a successful POST.
+            window.location.assign(redirectUrl);
+        }).catch((requestError) => {
+            const serverErrors = requestError.response?.data?.errors || {};
+            const accountFields = ['name', 'email', 'password', 'password_confirmation'];
+            const businessFields = ['website_name', 'website_url', 'industry', 'business_description', 'location'];
+
+            setSubmitMessage('');
+
+            if (accountFields.some((field) => serverErrors[field])) moveToStep(1);
+            else if (businessFields.some((field) => serverErrors[field])) moveToStep(2);
+
+            setSubmitError(
+                Object.values(serverErrors || {}).flat()[0]
+                || requestError.response?.data?.message
+                || requestError.message
+                || 'We could not create your account. Review the highlighted fields and try again.'
+            );
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+            setProcessing(false);
         });
     };
 
@@ -168,7 +219,17 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
                 </div>
             )}
 
-            <form onSubmit={submit}>
+            <form onSubmit={submit} noValidate onKeyDown={(event) => {
+                if (event.key === 'Enter' && step < 3 && event.target.tagName !== 'TEXTAREA') {
+                    event.preventDefault();
+                    nextStep();
+                }
+            }}>
+                {submitMessage && !submitError && (
+                    <div className="mb-6 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800" role="status">
+                        {submitMessage}
+                    </div>
+                )}
                 {submitError && (
                     <div className="mb-6 rounded-xl border border-rose-200 bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700" role="alert">
                         {submitError}
@@ -274,7 +335,7 @@ export default function Register({ trialToken = '', trialEmail = '', trialPlan =
 
                 <div className="mt-8 flex flex-col-reverse gap-3 border-t border-white/10 pt-6 sm:flex-row sm:justify-between">
                     <div>
-                        {step > 1 ? <button type="button" onClick={() => { setClientErrors({}); setStep((current) => current - 1); }} className="w-full rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/5 sm:w-auto">Back</button> : <p className="py-3 text-sm text-slate-400">Already have an account? <Link href={route('login')} className="font-medium text-emerald-300 hover:text-emerald-200">Sign in</Link></p>}
+                        {step > 1 ? <button type="button" onClick={() => moveToStep(Math.max(1, step - 1))} className="w-full rounded-xl border border-white/10 px-5 py-3 text-sm font-semibold text-slate-200 transition hover:bg-white/5 sm:w-auto">Back</button> : <p className="py-3 text-sm text-slate-400">Already have an account? <Link href={route('login')} className="font-medium text-emerald-300 hover:text-emerald-200">Sign in</Link></p>}
                     </div>
                     {step < 3 ? (
                         <button type="button" onClick={nextStep} className="rounded-xl bg-gradient-to-r from-emerald-400 to-cyan-300 px-6 py-3 text-sm font-semibold text-slate-950 shadow-lg shadow-emerald-400/15 transition hover:from-emerald-300 hover:to-cyan-200">Continue</button>

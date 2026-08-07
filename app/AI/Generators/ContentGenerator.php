@@ -883,6 +883,39 @@ PROMPT;
     TXT;
     }
 
+    private function heroLuxuryFullscreenSchema(): string
+    {
+        return <<<TXT
+
+    hero_luxury_fullscreen
+
+    - type = hero_luxury_fullscreen
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - secondary_label
+    - secondary_url
+    - location_label
+    - edition_label
+    - image_url
+
+    Requirements:
+
+    - Write a cinematic, premium full-screen hero for the supplied business and page context.
+    - Keep eyebrow, location_label, and edition_label concise and refined.
+    - heading must be distinctive and suitable for a luxury or premium brand.
+    - text should be one short supporting paragraph.
+    - primary_label and secondary_label must be clear calls to action.
+    - primary_url and secondary_url must be valid URLs or #.
+    - image_url must be an empty string so the application image pipeline can assign the image.
+    - Do not invent awards, rankings, dates, addresses, or unsupported claims.
+
+    TXT;
+    }
+
     private function heroVideoPremiumSchema(): string
     {
         return <<<TXT

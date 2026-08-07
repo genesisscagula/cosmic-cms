@@ -46,6 +46,7 @@ return [
         'cache' => filter_var(env('SMART_IMAGE_CACHE', true), FILTER_VALIDATE_BOOL),
         'cache_ttl' => (int) env('SMART_IMAGE_CACHE_TTL', 2592000),
         'min_score' => (int) env('SMART_IMAGE_MIN_SCORE', 2),
+        'trial_remote_budget' => (int) env('SMART_IMAGE_TRIAL_REMOTE_BUDGET', 0),
         'query_builder_version' => '4.2.0.4',
         'ranking_version' => '4.2.0.4',
     ],

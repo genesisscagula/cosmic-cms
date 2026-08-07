@@ -600,6 +600,9 @@ class WebsiteController extends Controller
 	        'global_header' => [
 	            'type' => 'glassmorphism_header',
 	            'logo_text' => $request->name,
+                'logo_image_url' => '/storage/branding/your-logo.png',
+                'logo_height' => 42,
+                'logo_filter_key' => 'midnight',
 	            'cta_label' => 'Get Started',
 	            'cta_url' => '#',
 	            'menu' => [
@@ -610,7 +613,11 @@ class WebsiteController extends Controller
 	        ],
 	        'global_footer' => [
 	            'type' => 'minimal_footer',
+                'theme' => 'white',
 	            'logo_text' => $request->name,
+                'logo_image_url' => '/storage/branding/your-logo.png',
+                'logo_height' => 36,
+                'logo_filter_key' => 'midnight',
 	            'copyright' => '© ' . now()->year . '. All rights reserved.',
 	        ],
 	    ];
@@ -1121,4 +1128,32 @@ define(\"API_TOKEN\", \"" . addslashes($_POST["api_token"]) . "\");
 
         return back()->with('error', 'Failed to generate ZIP file.');
     }
+    public function mediaPackStatus(Request $request, Website $website)
+    {
+        $this->authorize('view', $website);
+
+        $pack = $website->mediaPack;
+        if (! $pack) {
+            return response()->json([
+                'status' => 'missing',
+                'ready' => false,
+                'terminal' => true,
+                'image_count' => 0,
+                'target_image_count' => 0,
+            ]);
+        }
+
+        $status = (string) $pack->status;
+        $terminal = in_array($status, ['ready', 'partial', 'failed'], true);
+
+        return response()->json([
+            'status' => $status,
+            'ready' => in_array($status, ['ready', 'partial'], true),
+            'terminal' => $terminal,
+            'image_count' => (int) data_get($pack->manifest, 'image_count', 0),
+            'target_image_count' => (int) $pack->target_image_count,
+            'last_error' => $pack->last_error,
+        ]);
+    }
+
 }

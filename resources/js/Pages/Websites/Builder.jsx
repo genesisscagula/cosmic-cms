@@ -19,7 +19,7 @@ import { MinimalFooter, DetailedFooter } from './GenerateFooter';
 
 
 
-export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [] }) {
+export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [] }) {
     const { props } = usePage();
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
 
@@ -37,6 +37,9 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const defaultHeader = {
         type: 'glassmorphism_header',
         logo_text: website?.name || 'Your Website',
+        logo_image_url: '/storage/branding/your-logo.png',
+        logo_height: 42,
+        logo_filter_key: 'midnight',
         cta_label: 'Get Started',
         cta_url: '#',
         menu: [
@@ -50,9 +53,13 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
         blocks: page.blocks || [],
         global_header: props.globalHeaderBlock || page.website?.global_header || defaultHeader,
         global_footer: props.globalFooterBlock || page.website?.global_footer || { 
-            type: 'minimal_footer', 
-            logo_text: website?.name || 'Your Website', 
-            copyright: '© 2026. All rights reserved.' 
+            type: 'minimal_footer',
+            theme: 'white',
+            logo_text: website?.name || 'Your Website',
+            logo_image_url: '/storage/branding/your-logo.png',
+            logo_height: 36,
+            logo_filter_key: 'midnight',
+            copyright: '© 2026. All rights reserved.'
         }
     });
 
@@ -84,6 +91,53 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const [currentPageStyle, setCurrentPageStyle] = useState(pageStyle || 'auto');
     const [styleOptions, setStyleOptions] = useState(pageStyleOptions || []);
     const hasUnsavedChanges = isDirty || hasUnsavedTheme;
+
+    useEffect(() => {
+        const initialStatus = trialMode
+            ? trialExperience?.media_pack_status
+            : websiteMediaPack?.status;
+
+        if (['ready', 'partial', 'failed', 'missing'].includes(initialStatus)) {
+            return undefined;
+        }
+
+        const statusUrl = trialMode
+            ? (trialToken ? `/trials/${encodeURIComponent(trialToken)}/media-pack` : null)
+            : (website?.id ? `/websites/${website.id}/media-pack/status` : null);
+
+        if (!statusUrl) {
+            return undefined;
+        }
+
+        let cancelled = false;
+        let attempts = 0;
+        const maximumAttempts = 20;
+
+        const checkMediaPack = async () => {
+            attempts += 1;
+            try {
+                const response = await axios.get(statusUrl);
+                const payload = response?.data ?? response;
+
+                if (!cancelled && (payload?.ready || payload?.terminal)) {
+                    window.location.reload();
+                    return;
+                }
+            } catch (error) {
+                // Image enrichment is optional; keep the Builder usable if polling fails.
+            }
+
+            if (!cancelled && attempts < maximumAttempts) {
+                window.setTimeout(checkMediaPack, 3000);
+            }
+        };
+
+        const timer = window.setTimeout(checkMediaPack, 1500);
+        return () => {
+            cancelled = true;
+            window.clearTimeout(timer);
+        };
+    }, [trialExperience?.media_pack_status, trialMode, trialToken, website?.id, websiteMediaPack?.status]);
 
     useEffect(() => {
         const serverBalance = Number(cosmicPricing?.balance);
@@ -603,13 +657,13 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             {trialMode && (
                 <div className="border-b border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 px-4 py-3 text-center">
                     <p className="text-sm font-semibold text-slate-900">Turn this landing page into a complete website.</p>
-                    <p className="mt-0.5 text-xs text-slate-600">Sign up to generate more pages, unlock premium tools, and publish your business online. <a href={`${route('start')}?trial=${encodeURIComponent(trialToken)}`} className="font-bold text-emerald-700 hover:text-emerald-800">Create free account →</a></p>
+                    <p className="mt-0.5 text-xs text-slate-600">Sign up to generate more pages, unlock premium tools, and publish your business online. <a href={`${route('pricing')}?token=${encodeURIComponent(trialToken)}`} className="font-bold text-emerald-700 hover:text-emerald-800">Create free account →</a></p>
                 </div>
             )}
             <Head title={`Builder — ${page.title}`} />
             <div className={`cosmic-builder-shell min-h-screen ${trialMode ? 'bg-slate-100 text-slate-900' : 'bg-[#09090b] text-slate-100'}`}>
                 <header data-cosmic-builder-header className={`sticky top-0 z-[60] backdrop-blur-xl ${trialMode ? 'border-b border-slate-200 bg-white/95' : 'border-b border-white/10 bg-[#09090b]/95'}`}>
-                    <div className="mx-auto grid min-h-[64px] max-w-[1760px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4 px-4 py-2.5 sm:px-6">
+                    <div className={`mx-auto max-w-[1760px] px-4 py-3 sm:px-6 ${trialMode ? 'flex min-h-[76px] flex-wrap items-center justify-between gap-3' : 'grid min-h-[64px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4'}`}>
                         <div className="flex min-w-0 items-center gap-3">
                             {capabilities.canNavigateAway && (
                                 <Link
@@ -636,10 +690,10 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                 </Link>
                             )}
 
-                            <div className="min-w-0 border-l border-white/10 pl-3 sm:pl-4">
+                            <div className={`min-w-0 ${trialMode ? 'border-l border-slate-200 pl-3 sm:pl-4' : 'border-l border-white/10 pl-3 sm:pl-4'}`}>
                                 <p className="truncate text-[11px] font-medium text-slate-500">{website.name || 'Cosmic CMS'}</p>
                                 <div className="flex min-w-0 items-center gap-2 leading-tight">
-                                    <span className="truncate text-sm font-semibold text-white">{page.title || 'Untitled page'}</span>
+                                    <span className={`truncate text-sm font-semibold ${trialMode ? 'text-slate-900' : 'text-white'}`}>{page.title || 'Untitled page'}</span>
                                     <span className="hidden text-[11px] text-slate-600 sm:inline">/{page.slug}</span>
                                 </div>
                             </div>
@@ -678,19 +732,19 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                             )}
                         </div>
 
-                        <div className="hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 xl:flex">
+                        <div className={`${trialMode ? 'order-3 flex w-full items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 sm:order-none sm:w-auto' : 'hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 xl:flex'}`}>
                             <span title={publishError || saveError || undefined} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium ${isPublishing ? 'text-sky-200' : publishError ? 'text-red-200' : pageStatus === 'published' ? 'cosmic-published-status text-emerald-200' : 'text-amber-200'}`}>
                                 <span className={`h-1.5 w-1.5 rounded-full ${isPublishing ? 'animate-pulse bg-sky-300' : publishError ? 'bg-red-300' : pageStatus === 'published' ? 'bg-emerald-300' : 'bg-amber-300'}`} />
                                 {isPublishing ? 'Publishing…' : publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
                             </span>
-                            <span className="h-4 w-px bg-white/10" aria-hidden="true" />
-                            <span className="inline-flex h-8 items-center rounded-lg px-2.5 text-[11px] font-medium text-slate-400">
+                            <span className={`h-4 w-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} aria-hidden="true" />
+                            <span className={`inline-flex h-8 items-center rounded-lg px-2.5 text-[11px] font-medium ${trialMode ? 'text-slate-600' : 'text-slate-400'}`}>
                                 {data.blocks.length} Sparks
                             </span>
 
                         </div>
 
-                        <div className="flex min-w-0 items-center justify-end gap-2">
+                        <div className={`flex min-w-0 items-center justify-end gap-2 ${trialMode ? 'ml-auto' : ''}`}>
                             {!trialMode && (
                                 <CreditBalanceBadge
                                     balance={creditBalance}
@@ -727,7 +781,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                     type="button"
                                     onClick={() => setShowRegenerateModal(true)}
                                     disabled={regenerating || regenerationUsed >= 2}
-                                    className="inline-flex h-9 shrink-0 items-center rounded-lg border border-violet-300/30 bg-violet-400/10 px-3 text-xs font-semibold text-violet-100 transition hover:bg-violet-400/20 disabled:cursor-not-allowed disabled:opacity-45"
+                                    className="cosmic-trial-regenerate inline-flex h-9 shrink-0 items-center justify-center rounded-lg border px-3 text-xs font-semibold transition focus:outline-none focus:ring-2 disabled:cursor-not-allowed"
                                     title={`${Math.max(0, 2 - regenerationUsed)} free regenerations remaining this week`}
                                 >
                                     {regenerating ? 'Regenerating…' : `Regenerate (${Math.max(0, 2 - regenerationUsed)} left)`}
@@ -739,8 +793,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                     <button
                                         type="submit"
                                         disabled={isSaving || isPublishing}
-                                        className="inline-flex h-9 shrink-0 items-center rounded-lg border border-white/15 bg-white/[0.055] px-3 text-xs font-semibold text-white transition hover:bg-white/[0.11] focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
-                                    >
+className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-flex h-9 shrink-0 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 disabled:cursor-not-allowed`}                                    >
                                         {isSaving ? 'Saving…' : trialMode ? 'Save changes' : 'Save'}
                                     </button>
                                 </form>
@@ -748,8 +801,8 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
                             {capabilities.canPurchase && trialToken && (
                                 <a
-                                    href={`${route('start')}?trial=${encodeURIComponent(trialToken)}`}
-                                    className="inline-flex h-9 shrink-0 items-center rounded-lg bg-emerald-500 px-4 text-xs font-bold text-white transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300"
+                                    href={`${route('pricing')}?token=${encodeURIComponent(trialToken)}`}
+                                    className="cosmic-trial-buy inline-flex h-10 shrink-0 items-center justify-center rounded-xl px-5 text-sm font-bold shadow-sm transition focus:outline-none focus:ring-2"
                                 >
                                     Buy website
                                 </a>

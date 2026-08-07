@@ -148,26 +148,24 @@ export function HeroBackgroundImageBlock({
 
 
 
-    const primaryTheme = colorFamilies[globalTheme.primary];
-    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
+    const normalizedGlobalTheme = typeof globalTheme === "string"
+        ? { primary: globalTheme }
+        : (globalTheme || {});
+    const primaryTheme = colorFamilies[normalizedGlobalTheme.primary]
+        || colorFamilies.midnight;
 
-    const buttonStyle = isLightMediaTheme
-        ? { bg: primaryTheme.bg, text: primaryTheme.text }
-        : { bg: "bg-white", text: "text-slate-950" };
+    // Image heroes always tint the photograph with the website primary color.
+    // This keeps the overlay visually connected to the AI-selected theme instead
+    // of falling back to the same black/white overlay for every website.
+    const overlayColor = primaryTheme?.palette?.background || "#243447";
 
-    const mediaStyle = isLightMediaTheme
-        ? {
-            overlay: "bg-white",
-            tagline: "text-slate-700",
-            heading: "text-slate-950",
-            body: "text-slate-700",
-        }
-        : {
-            overlay: "bg-slate-950",
-            tagline: "text-white/80",
-            heading: "text-white",
-            body: "text-white/80",
-        };
+    const buttonStyle = { bg: "bg-white", text: "text-slate-950" };
+
+    const mediaStyle = {
+        tagline: "text-white/85",
+        heading: "text-white",
+        body: "text-white/85",
+    };
 
     const heroHeight = {
         medium: "min-h-[500px]",
@@ -242,10 +240,10 @@ export function HeroBackgroundImageBlock({
                     absolute
                     inset-0
                     z-[25]
-                    ${mediaStyle.overlay}
                     cursor-pointer
                 `}
                 style={{
+                    backgroundColor: overlayColor,
                     opacity: Math.max(0, Math.min(100, Number(data.overlayOpacity) || 50)) / 100
                 }}
                 onClick={(e) => {

@@ -7,21 +7,27 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use App\AI\Images\DTO\ImageSearchResult;
 use App\AI\Images\ImageProviderManager;
+use Illuminate\Support\Facades\Log;
 
 class SmartImageService
 {
+    private ?int $remoteDownloadBudget = null;
+
+    private int $remoteDownloadsUsed = 0;
     /**
      * Find a context-aware stock image and return a browser-safe URL.
      *
      * Priority:
-     * 1. Cached/downloaded remote image in public/cosmic-images/remote
-     * 2. Local industry folder in storage/app/public/cms-images/{industry}
+     * 1. Local industry folder (including provider images learned earlier)
+     * 2. Enabled remote providers; successful results are stored in that folder in storage/app/public/cms-images/{industry}
      * 3. Local default folder
      * 4. Local background library
      * 5. Bundled public SVG fallback
      */
     public function __construct(
         private readonly ImageProviderManager $providerManager,
+        private readonly IndustryImageManifest $manifest,
+        private readonly IndustryResolver $industryResolver,
     ) {
     }
 
@@ -29,25 +35,224 @@ class SmartImageService
      * Find a context-aware stock image and return a browser-safe URL.
      *
      * Priority:
-     * 1. Cached/downloaded remote image in public/cosmic-images/remote
-     * 2. Enabled remote providers in configured failover order
-     * 3. Local industry folder in storage/app/public/cms-images/{industry}
+     * 1. Local industry folder (including provider images learned earlier)
+     * 2. Enabled remote providers in configured failover order; results are persisted locally
+     * 3. Local default/background libraries in storage/app/public/cms-images/{industry}
      * 4. Local default/background libraries
      * 5. Bundled public SVG fallback
      */
-    public function find(string $query, string $fallbackFolder = 'default'): string
+    public function provisionIndustry(string $industry): string
+    {
+        return $this->industryResolver->resolve($industry, 'default');
+    }
+
+    public function industryImageCount(string $industry): int
+    {
+        $industry = $this->industryResolver->resolve($industry, 'default');
+
+        return count($this->localImageFiles($industry));
+    }
+
+    public function learnIndustry(string $industry, array $queries): void
+    {
+        $industry = $this->provisionIndustry($industry);
+
+        $slots = collect($queries)
+            ->filter(fn ($item) => is_array($item) && trim((string) ($item['query'] ?? '')) !== '')
+            ->map(fn ($item) => [
+                'query' => trim((string) $item['query']),
+                'role' => Str::slug((string) ($item['role'] ?? 'general')) ?: 'general',
+            ])
+            ->values();
+
+        $required = $slots->count();
+        $existing = count($this->localImageFiles($industry));
+        $missing = max(0, $required - $existing);
+
+        Log::info('[SmartImageService] Industry image requirement calculated.', [
+            'industry' => $industry,
+            'required' => $required,
+            'existing' => $existing,
+            'missing' => $missing,
+        ]);
+
+        if ($missing === 0) {
+            return;
+        }
+
+        // Download only the exact shortage. Existing industry images count
+        // toward the requirement regardless of their original role.
+        $attempt = 0;
+        $maxAttempts = max($missing * 3, $missing);
+
+        while ($missing > 0 && $attempt < $maxAttempts) {
+            $slot = $slots[$attempt % max(1, $required)] ?? [
+                'query' => $industry.' professional business photography',
+                'role' => 'general',
+            ];
+
+            $sequence = $existing + ($attempt + 1);
+            $query = $this->normalizeQuery($slot['query'].' unique photo '.$sequence);
+
+            try {
+                $before = count($this->localImageFiles($industry));
+                $this->downloadLearningImage($query, $industry, $slot['role']);
+                $after = count($this->localImageFiles($industry));
+
+                if ($after > $before) {
+                    $missing--;
+                }
+            } catch (\Throwable $exception) {
+                Log::warning('[SmartImageService] Industry image download failed.', [
+                    'industry' => $industry,
+                    'role' => $slot['role'],
+                    'query' => $query,
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+
+            $attempt++;
+        }
+
+        Log::info('[SmartImageService] Industry image requirement completed.', [
+            'industry' => $industry,
+            'required' => $required,
+            'available' => count($this->localImageFiles($industry)),
+            'remaining_missing' => $missing,
+        ]);
+    }
+
+    public function replaceFallbackImages(array $blocks, string $industry): array
+    {
+        foreach ($blocks as &$block) {
+            if (! is_array($block)) {
+                continue;
+            }
+
+            $type = (string) ($block['type'] ?? '');
+            $role = match (true) {
+                str_starts_with($type, 'hero_') => 'hero',
+                str_contains($type, 'team') || str_contains($type, 'testimonial') => 'people',
+                str_contains($type, 'gallery') || str_contains($type, 'portfolio') || str_contains($type, 'case_stud') => 'gallery',
+                str_contains($type, 'service') || str_contains($type, 'feature') => 'services',
+                default => 'general',
+            };
+
+            foreach (['image_url', 'poster_image_url', 'before_image_url', 'after_image_url'] as $field) {
+                if (! array_key_exists($field, $block) || ! $this->isGenericFallback((string) $block[$field])) {
+                    continue;
+                }
+
+                $replacement = $this->manifest->candidates($industry, $role, $type)[0] ?? null;
+                if ($replacement) {
+                    $block[$field] = $replacement;
+                }
+            }
+
+            if (is_array($block['studies'] ?? null)) {
+                $gallery = $this->manifest->candidates($industry, 'gallery', $type);
+                foreach ($block['studies'] as $index => &$study) {
+                    if (is_array($study) && $this->isGenericFallback((string) ($study['image_url'] ?? '')) && isset($gallery[$index])) {
+                        $study['image_url'] = $gallery[$index];
+                    }
+                }
+                unset($study);
+            }
+        }
+        unset($block);
+
+        return $blocks;
+    }
+
+    private function downloadLearningImage(string $query, string $industry, string $role): ?string
+    {
+        foreach ($this->providerManager->searchCandidates($query, ['orientation' => 'landscape']) as $result) {
+            $url = $this->downloadRemoteImage($result, $query, $industry, $role);
+            if ($url) {
+                $this->providerManager->trackDownload($result);
+                return $url;
+            }
+        }
+
+        return null;
+    }
+
+    private function learningQueryVariants(string $query, string $role, int $count): array
+    {
+        $suffixes = match ($role) {
+            'hero' => ['wide cinematic scene', 'professional exterior'],
+            'services' => ['technician at work', 'service detail'],
+            'people' => ['authentic professional portrait', 'team at work'],
+            'gallery' => ['completed work detail', 'editorial portfolio'],
+            default => ['professional detail'],
+        };
+
+        return collect($suffixes)
+            ->take(max(1, $count))
+            ->map(fn ($suffix) => $this->normalizeQuery($query.' '.$suffix))
+            ->values()
+            ->all();
+    }
+
+    private function isGenericFallback(string $url): bool
+    {
+        return $url === ''
+            || str_contains($url, '/cms-images/default/')
+            || str_contains($url, '/cms-images/background/')
+            || str_contains($url, '/cosmic-images/cosmic-fallback.svg');
+    }
+
+    public function withRemoteDownloadBudget(int $budget, callable $callback): mixed
+    {
+        $previousBudget = $this->remoteDownloadBudget;
+        $previousUsed = $this->remoteDownloadsUsed;
+
+        $this->remoteDownloadBudget = max(0, $budget);
+        $this->remoteDownloadsUsed = 0;
+
+        try {
+            return $callback();
+        } finally {
+            $this->remoteDownloadBudget = $previousBudget;
+            $this->remoteDownloadsUsed = $previousUsed;
+        }
+    }
+
+    public function find(string $query, string $fallbackFolder = 'default', ?string $role = null): string
     {
         $query = $this->normalizeQuery($query);
         $fallbackFolder = Str::slug($fallbackFolder) ?: 'default';
+
+        // Local-first: a Luna/AI-resolved industry library always wins.
+        // Generic default/background assets are intentionally deferred until
+        // after remote providers so a new industry can still get relevant art.
+        $localIndustryUrl = $this->localIndustryImage($fallbackFolder, $role, $query);
+        if ($localIndustryUrl !== null) {
+            logger()->debug('[SmartImageService] Local industry image resolved.', [
+                'industry' => $fallbackFolder,
+                'url' => $localIndustryUrl,
+            ]);
+
+            return $localIndustryUrl;
+        }
 
         if ($query === '' || ! $this->providerManager->hasEnabledProvider()) {
             return $this->localFallback($fallbackFolder);
         }
 
+        if ($this->remoteDownloadBudget !== null && $this->remoteDownloadsUsed >= $this->remoteDownloadBudget) {
+            logger()->debug('[SmartImageService] Remote image budget reached; using local fallback.', [
+                'industry' => $fallbackFolder,
+                'role' => $role,
+                'budget' => $this->remoteDownloadBudget,
+            ]);
+
+            return $this->localFallback($fallbackFolder);
+        }
+
         try {
-            // Ranking changes must not reuse a previously accepted low-relevance result.
             $rankingVersion = (string) config('services.smart_images.ranking_version', '4.2.0.4');
-            $cacheKey = 'cosmic-smart-image-url:v4:' . sha1($rankingVersion . '|' . $query);
+            $cacheKey = 'cosmic-smart-image-url:v5:' . sha1($rankingVersion . '|' . $fallbackFolder . '|' . $query);
             $cacheEnabled = (bool) config('services.smart_images.cache', true);
             $cachedUrl = $cacheEnabled ? Cache::get($cacheKey) : null;
 
@@ -58,7 +263,11 @@ class SmartImageService
             foreach ($this->providerManager->searchCandidates($query, [
                 'orientation' => 'landscape',
             ]) as $result) {
-                $publicUrl = $this->downloadRemoteImage($result, $query);
+                $publicUrl = $this->downloadRemoteImage($result, $query, $fallbackFolder, $role);
+
+                if ($publicUrl && $this->remoteDownloadBudget !== null) {
+                    $this->remoteDownloadsUsed++;
+                }
 
                 if (! $publicUrl) {
                     logger()->info('[SmartImageService] Continuing after provider download failure.', [
@@ -77,6 +286,7 @@ class SmartImageService
 
                 logger()->info('[SmartImageService] Remote image resolved.', [
                     'provider' => $result->provider,
+                    'industry' => $fallbackFolder,
                     'query' => $query,
                     'url' => $publicUrl,
                 ]);
@@ -87,6 +297,7 @@ class SmartImageService
             return $this->localFallback($fallbackFolder);
         } catch (\Throwable $exception) {
             logger()->warning('[SmartImageService] Remote image search failed; using local fallback.', [
+                'industry' => $fallbackFolder,
                 'query' => $query,
                 'message' => $exception->getMessage(),
             ]);
@@ -165,11 +376,29 @@ class SmartImageService
     }
 
     /**
-     * Save a provider result under public/ so generated pages work without a
-     * storage symlink. Provider-specific URL parameters live on the DTO.
+     * Persist a provider result in the resolved local industry library so later
+     * generations can reuse it. Provider-specific URL parameters live on the DTO.
      */
-    private function downloadRemoteImage(ImageSearchResult $result, string $query): ?string
+    private function downloadRemoteImage(ImageSearchResult $result, string $query, string $industry, ?string $role = null): ?string
     {
+        $industry = Str::slug($industry) ?: 'default';
+        $sourceFingerprint = sha1($result->provider . '|' . $result->sourceUrl . '|' . $result->url);
+
+        // New/unknown Luna industries are provisioned lazily. Once an image is
+        // downloaded it lives in the local industry library and is reused by
+        // every later generation before another provider request is attempted.
+        $absoluteDirectory = storage_path('app/public/cms-images/' . $industry);
+        File::ensureDirectoryExists($absoluteDirectory);
+
+        foreach (['avif', 'webp', 'png', 'jpg', 'jpeg'] as $existingExtension) {
+            $existingPath = $absoluteDirectory . DIRECTORY_SEPARATOR . $sourceFingerprint . '.' . $existingExtension;
+            if (File::exists($existingPath) && File::size($existingPath) > 0) {
+                $url = '/storage/cms-images/' . $industry . '/' . basename($existingPath);
+                $this->manifest->record($industry, basename($existingPath), ['role' => $role ?: 'general', 'query' => $query, 'provider' => $result->provider, 'source_url' => $result->sourceUrl]);
+                return $url;
+            }
+        }
+
         $response = \Illuminate\Support\Facades\Http::connectTimeout(5)
             ->timeout(20)
             ->retry(2, 300, throw: false)
@@ -178,6 +407,7 @@ class SmartImageService
         if (! $response->successful() || $response->body() === '') {
             logger()->warning('[SmartImageService] Remote image download failed.', [
                 'provider' => $result->provider,
+                'industry' => $industry,
                 'status' => $response->status(),
                 'query' => $query,
             ]);
@@ -187,26 +417,58 @@ class SmartImageService
 
         $contentType = strtolower((string) $response->header('Content-Type'));
         $extension = match (true) {
+            str_contains($contentType, 'avif') => 'avif',
             str_contains($contentType, 'webp') => 'webp',
             str_contains($contentType, 'png') => 'png',
             default => 'jpg',
         };
 
-        $relativeDirectory = 'cosmic-images/remote/' . now()->format('Y/m');
-        $absoluteDirectory = public_path($relativeDirectory);
-        File::ensureDirectoryExists($absoluteDirectory);
-
-        $filename = Str::limit(Str::slug($query), 70, '') ?: 'cosmic-image';
-        $filename .= '-' . Str::lower(Str::random(10)) . '.' . $extension;
-        $absolutePath = $absoluteDirectory . DIRECTORY_SEPARATOR . $filename;
-
+        $absolutePath = $absoluteDirectory . DIRECTORY_SEPARATOR . $sourceFingerprint . '.' . $extension;
         File::put($absolutePath, $response->body());
 
         if (! File::exists($absolutePath) || File::size($absolutePath) === 0) {
+            File::delete($absolutePath);
             return null;
         }
 
-        return '/' . trim($relativeDirectory, '/') . '/' . $filename;
+        $this->manifest->record($industry, basename($absolutePath), [
+            'role' => $role ?: 'general',
+            'query' => $query,
+            'provider' => $result->provider,
+            'source_url' => $result->sourceUrl,
+        ]);
+
+        logger()->info('[SmartImageService] Industry image stored for reuse.', [
+            'provider' => $result->provider,
+            'industry' => $industry,
+            'query' => $query,
+            'path' => $absolutePath,
+        ]);
+
+        return '/storage/cms-images/' . $industry . '/' . basename($absolutePath);
+    }
+
+    private function localIndustryImage(string $folder, ?string $role = null, ?string $query = null): ?string
+    {
+        if ($folder === 'default' || $folder === 'background') {
+            return null;
+        }
+
+        $this->manifest->syncExisting($folder);
+        $manifestCandidates = $this->manifest->candidates($folder, $role, $query);
+        if ($manifestCandidates !== []) {
+            return $manifestCandidates[array_rand($manifestCandidates)];
+        }
+
+        $files = $this->localImageFiles($folder);
+        if ($files === []) {
+            return null;
+        }
+
+        $file = $files[array_rand($files)];
+        $relativePath = str_replace('\\', '/', Str::after($file, storage_path('app/public/')));
+
+        return '/storage/' . ltrim($relativePath, '/');
     }
 
     private function localImageFiles(string $folder): array
@@ -226,11 +488,16 @@ class SmartImageService
 
     private function publicUrlExists(string $url): bool
     {
-        if (! str_starts_with($url, '/cosmic-images/')) {
-            return false;
+        if (str_starts_with($url, '/storage/cms-images/')) {
+            $relativePath = Str::after($url, '/storage/');
+            return File::exists(storage_path('app/public/' . $relativePath));
         }
 
-        return File::exists(public_path(ltrim($url, '/')));
+        if (str_starts_with($url, '/cosmic-images/')) {
+            return File::exists(public_path(ltrim($url, '/')));
+        }
+
+        return false;
     }
 
     private function normalizeQuery(string $query): string

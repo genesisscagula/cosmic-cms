@@ -51,7 +51,7 @@ Route::get('/', function () {
     ]);
 });
 
-Route::get('/pricing', fn () => Inertia::render('Pricing'))->name('pricing');
+Route::get('/pricing', fn (\Illuminate\Http\Request $request) => Inertia::render('Pricing', ['trialToken' => $request->query('token')]))->name('pricing');
 
 Route::get('/start', [TrialGenerationController::class, 'create'])->name('start');
 Route::post('/start', [TrialGenerationController::class, 'store'])->middleware('throttle:6,1')->name('trial-generations.store');
@@ -64,6 +64,9 @@ Route::post('/trials/{trial:token}/email', [TrialGenerationController::class, 'c
 Route::post('/trials/{trial:token}/regenerate', [TrialGenerationController::class, 'regenerate'])
     ->middleware('throttle:3,1')
     ->name('trial-generations.regenerate');
+Route::get('/trials/{trial:token}/media-pack', [TrialGenerationController::class, 'mediaPackStatus'])
+    ->middleware('throttle:30,1')
+    ->name('trial-generations.media-pack.status');
 
 Route::get('/workspace-invitations/{token}', [WorkspaceInvitationAcceptanceController::class, 'show'])
     ->middleware(['throttle:30,1', \App\Http\Middleware\AddSecurityHeaders::class])
@@ -86,6 +89,9 @@ Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder']
 
 Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
+    Route::get('/websites/{website}/media-pack/status', [WebsiteController::class, 'mediaPackStatus'])
+        ->middleware('throttle:30,1')
+        ->name('websites.media-pack.status');
     Route::patch('/appearance', [AppearancePreferenceController::class, 'update'])
         ->middleware('throttle:30,1')
         ->name('appearance.update');

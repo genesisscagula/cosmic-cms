@@ -5,7 +5,10 @@ namespace App\Http\Controllers\AI;
 use App\Cosmic\Pricing\ActionPricing;
 use App\Cosmic\Pricing\BlockPricingRegistry;
 use App\Http\Controllers\Controller;
+use App\Jobs\PrepareMediaPackJob;
 use App\Models\Website;
+use App\Services\MediaPackImageService;
+use App\Services\MediaPackOwnershipService;
 use App\Services\AiPageGenerationService;
 use App\Services\CreditService;
 use Illuminate\Http\Request;
@@ -18,6 +21,8 @@ class AIController extends Controller
     public function __construct(
         private readonly AiPageGenerationService $pageGenerationService,
         private readonly CreditService $credits,
+        private readonly MediaPackImageService $mediaPackImages,
+        private readonly MediaPackOwnershipService $mediaPackOwnership,
     ) {
     }
 
@@ -60,18 +65,73 @@ class AIController extends Controller
             ],
         );
 
-        $imageFolder = $validated['image_folder']
-            ?? $this->pageGenerationService->resolveLayoutFolder($validated['prompt']);
+        // Logged-in generation must use the website-owned media pack as the
+        // primary source. Curated industry/default libraries are fallback only.
+        $imageFolder = $website ? 'default' : (
+            $validated['image_folder']
+                ?? $this->pageGenerationService->resolveLayoutFolder($validated['prompt'])
+        );
 
         try {
-            $generation = $this->pageGenerationService->generateBlocksDetailed(
-                $validated['prompt'],
-                $validated['sections'],
-                $imageFolder
-            );
+            $generation = $website
+                ? $this->pageGenerationService->imagesWithoutRemoteDownloads(fn () =>
+                    $this->pageGenerationService->generateBlocksDetailed(
+                        $validated['prompt'],
+                        $validated['sections'],
+                        $imageFolder
+                    )
+                )
+                : $this->pageGenerationService->generateBlocksDetailed(
+                    $validated['prompt'],
+                    $validated['sections'],
+                    $imageFolder
+                );
+
+            $blocks = $generation['blocks'];
+
+            if ($website) {
+                $pack = $this->mediaPackOwnership->ensureForWebsite(
+                    $website,
+                    [$validated['prompt']],
+                    $this->mediaPackImages->imageSlotCount($blocks)
+                );
+                if ($pack) {
+                    $existingImages = $this->mediaPackImages->existingImages($pack);
+                    $blocks = $this->mediaPackImages->assignToBlocks($blocks, $existingImages);
+
+                    $required = $this->mediaPackImages->imageSlotCount($blocks);
+                    $currentTarget = (int) $pack->target_image_count;
+                    $newTarget = min(10, max($currentTarget, $required));
+                    $keywords = collect($pack->keywords ?? [])
+                        ->push($validated['prompt'])
+                        ->filter(fn ($keyword) => is_string($keyword) && trim($keyword) !== '')
+                        ->map(fn ($keyword) => trim($keyword))
+                        ->unique()
+                        ->take(8)
+                        ->values()
+                        ->all();
+
+                    $pack->forceFill([
+                        'target_image_count' => $newTarget,
+                        'keywords' => $keywords,
+                        'status' => count($existingImages) >= $newTarget ? $pack->status : 'pending',
+                        'queued_at' => count($existingImages) >= $newTarget ? $pack->queued_at : now(),
+                    ])->save();
+
+                    if (count($existingImages) < $newTarget
+                        && ! in_array($pack->status, ['queued', 'downloading'], true)) {
+                        $pack->forceFill([
+                            'status' => 'queued',
+                            'queued_at' => now(),
+                        ])->save();
+
+                        PrepareMediaPackJob::dispatch($pack->id);
+                    }
+                }
+            }
 
             return response()->json([
-                'blocks' => $generation['blocks'],
+                'blocks' => $blocks,
                 'generation_meta' => $generation['diagnostics'],
                 'credits_spent' => $cost,
                 'credit_balance' => $this->credits->balance($request->user()),

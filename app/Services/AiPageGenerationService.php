@@ -19,7 +19,109 @@ class AiPageGenerationService
         private readonly SparkCompatibilityChecker $compatibilityChecker,
         private readonly AiGenerationAnalytics $analytics,
         private readonly VisualQueryBuilder $visualQueryBuilder,
+        private readonly IndustryResolver $industryResolver,
     ) {
+    }
+
+    public function generateTrialPage(string $prompt, ?int $trialId = null): array
+    {
+        $startedAt = microtime(true);
+        $selection = $this->selectSections($prompt);
+
+        // Trial pages no longer bind their first render to a curated industry
+        // folder. The permanent website-specific media pack is prepared by
+        // PrepareMediaPackJob and later replaces these generic placeholders.
+        $placeholderFolder = 'default';
+
+        Log::info('[TrialGenerationPipeline] Website media-pack mode selected.', [
+            'placeholder_folder' => $placeholderFolder,
+            'elapsed_ms' => (int) ((microtime(true) - $startedAt) * 1000),
+        ]);
+
+        $blocks = $this->images->withRemoteDownloadBudget(0, fn () => $this->generateBlocks(
+            $prompt,
+            $selection['sections'],
+            $placeholderFolder
+        ));
+
+        // Never flash a curated/default industry image while the website-specific
+        // media pack is being prepared. Every generated image field starts with
+        // one neutral animated placeholder, which the queue job replaces with
+        // permanent /cms-images/packs/{uuid}/ assets.
+        $blocks = $this->useMediaPackLoadingPlaceholders($blocks);
+
+        $mediaQueries = $this->learningQueries($prompt, $blocks, $placeholderFolder);
+        $mediaKeywords = collect($mediaQueries)
+            ->pluck('query')
+            ->filter()
+            ->unique()
+            ->take(5)
+            ->values()
+            ->all();
+        $targetImageCount = min(10, count($mediaQueries));
+
+        Log::info('[TrialGenerationPipeline] Trial result ready.', [
+            'placeholder_folder' => $placeholderFolder,
+            'blocks' => count($blocks),
+            'media_keywords' => count($mediaKeywords),
+            'target_image_count' => $targetImageCount,
+            'elapsed_ms' => (int) ((microtime(true) - $startedAt) * 1000),
+        ]);
+
+        return [
+            'sections' => $selection['sections'],
+            'image_folder' => $placeholderFolder,
+            'blocks' => $blocks,
+            'media_keywords' => $mediaKeywords,
+            'target_image_count' => $targetImageCount,
+        ];
+    }
+
+
+    private function useMediaPackLoadingPlaceholders(array $blocks): array
+    {
+        $placeholder = '/cosmic-images/media-pack-loading.svg';
+
+        $replace = function (mixed $value, ?string $key = null) use (&$replace, $placeholder): mixed {
+            if (is_array($value)) {
+                foreach ($value as $childKey => $childValue) {
+                    $value[$childKey] = $replace($childValue, is_string($childKey) ? $childKey : null);
+                }
+
+                return $value;
+            }
+
+            if (! is_string($key) || ! $this->isGeneratedImageField($key)) {
+                return $value;
+            }
+
+            // Team/testimonial portraits are intentionally sourced from the
+            // dedicated avatar library. They must never be replaced by landscape
+            // media-pack images or the visual-loading placeholder.
+            if (is_string($value) && str_contains($value, '/cms-images/avatars/')) {
+                return $value;
+            }
+
+            // Preserve non-string structured values, but normalize every other
+            // string image slot (including empty/default/industry URLs) to loader.
+            return is_string($value) ? $placeholder : $value;
+        };
+
+        return $replace($blocks);
+    }
+
+    private function isGeneratedImageField(string $key): bool
+    {
+        $normalized = strtolower($key);
+
+        return str_contains($normalized, 'image')
+            || str_contains($normalized, 'photo')
+            || str_contains($normalized, 'poster');
+    }
+
+    public function imagesWithoutRemoteDownloads(callable $callback): mixed
+    {
+        return $this->images->withRemoteDownloadBudget(0, $callback);
     }
 
     public function generatePage(string $prompt): array
@@ -100,14 +202,14 @@ class AiPageGenerationService
             ]);
 
             if ($type === 'hero_video_background') {
-                $block['poster_image_url'] = $this->images->find($query, $resolvedImageFolder);
+                $block['poster_image_url'] = $this->images->find($query, $resolvedImageFolder, 'hero');
                 continue;
             }
 
             if ($type === 'hero_agency_showcase') {
                 $images = $this->images->localFallbacks($resolvedImageFolder, 2);
-                $block['before_image_url'] = $images[0] ?? $this->images->find($query.' before redesign', $resolvedImageFolder);
-                $block['after_image_url'] = $images[1] ?? $this->images->find($query.' after redesign', $resolvedImageFolder);
+                $block['before_image_url'] = $images[0] ?? $this->images->find($query.' before redesign', $resolvedImageFolder, 'case-study');
+                $block['after_image_url'] = $images[1] ?? $this->images->find($query.' after redesign', $resolvedImageFolder, 'case-study');
                 continue;
             }
 
@@ -134,7 +236,7 @@ class AiPageGenerationService
                 continue;
             }
 
-            $block['image_url'] = $this->images->find($query, $resolvedImageFolder);
+            $block['image_url'] = $this->images->find($query, $resolvedImageFolder, $this->imageRoleForBlock($type));
         }
 
         unset($block);
@@ -227,35 +329,53 @@ class AiPageGenerationService
 
     public function resolveLayoutFolder(string $prompt): string
     {
-        $normalizedPrompt = trim($prompt);
-        $normalizedPrompt = function_exists('mb_strtolower')
-            ? mb_strtolower($normalizedPrompt, 'UTF-8')
-            : strtolower($normalizedPrompt);
+        return $this->industryResolver->resolve($prompt, 'default');
+    }
 
-        $industryKeywords = $this->industryKeywords();
+    private function learningQueries(string $prompt, array $blocks, string $industry): array
+    {
+        $queries = [];
 
-        if (preg_match('/^industry:\s*([^\r\n.]+)/mi', $prompt, $matches) === 1) {
-            $profileIndustry = trim($matches[1]);
-            $profileIndustry = function_exists('mb_strtolower')
-                ? mb_strtolower($profileIndustry, 'UTF-8')
-                : strtolower($profileIndustry);
+        foreach ($blocks as $block) {
+            if (! is_array($block)) {
+                continue;
+            }
 
-            foreach ($industryKeywords as $folder => $keywords) {
-                if ($profileIndustry === $folder || in_array($profileIndustry, $keywords, true)) {
-                    return $folder;
-                }
+            $type = (string) ($block['type'] ?? 'website section');
+            $baseQuery = $this->visualQueryBuilder->build($prompt, $block, $type, $industry);
+            $role = $this->imageRoleForBlock($type);
+            $slotCount = 0;
+
+            if ($type === 'hero_video_background') {
+                $slotCount = 1;
+            } elseif ($type === 'hero_agency_showcase') {
+                $slotCount = 2;
+            } elseif ($type === 'case_studies_grid' && is_array($block['studies'] ?? null)) {
+                $slotCount = count($block['studies']);
+            } elseif (array_key_exists('image_url', $block)) {
+                $slotCount = 1;
+            }
+
+            for ($slot = 0; $slot < $slotCount; $slot++) {
+                $queries[] = [
+                    'query' => $baseQuery,
+                    'role' => $role,
+                ];
             }
         }
 
-        foreach ($industryKeywords as $folder => $keywords) {
-            foreach ($keywords as $keyword) {
-                if (str_contains($normalizedPrompt, $keyword)) {
-                    return $folder;
-                }
-            }
-        }
+        return $queries;
+    }
 
-        return 'default';
+    private function imageRoleForBlock(string $type): string
+    {
+        return match (true) {
+            str_starts_with($type, 'hero_') => 'hero',
+            str_contains($type, 'team') || str_contains($type, 'testimonial') => 'people',
+            str_contains($type, 'gallery') || str_contains($type, 'portfolio') || str_contains($type, 'case_stud') => 'gallery',
+            str_contains($type, 'service') || str_contains($type, 'feature') => 'services',
+            default => 'general',
+        };
     }
 
     private function plannerCacheKey(string $prompt): string
@@ -266,7 +386,7 @@ class AiPageGenerationService
             'prompt' => $this->normalizeCachePrompt($prompt),
             'model' => config('openai.planner_model'),
             'registry' => $registry,
-            'version' => '4.1.0.6',
+            'version' => '4.1.0.8',
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 
@@ -276,7 +396,7 @@ class AiPageGenerationService
             'prompt' => $this->normalizeCachePrompt($prompt),
             'sections' => array_values($sections),
             'model' => config('openai.content_model'),
-            'version' => '4.1.0.6',
+            'version' => '4.1.0.8',
         ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
     }
 

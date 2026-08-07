@@ -123,13 +123,20 @@ class OnboardingWorkspaceService
             'global_header' => [
                 'type' => 'glassmorphism_header',
                 'logo_text' => $onboarding->website_name,
+                'logo_image_url' => '/storage/branding/your-logo.png',
+                'logo_height' => 42,
+                'logo_filter_key' => data_get($trial?->preview_theme, 'primary', 'midnight'),
                 'cta_label' => 'Get Started',
                 'cta_url' => '#contact',
                 'menu' => $menu,
             ],
             'global_footer' => [
                 'type' => 'minimal_footer',
+                'theme' => 'white',
                 'logo_text' => $onboarding->website_name,
+                'logo_image_url' => '/storage/branding/your-logo.png',
+                'logo_height' => 36,
+                'logo_filter_key' => data_get($trial?->preview_theme, 'primary', 'midnight'),
                 'copyright' => '© '.now()->year.' '.$onboarding->website_name.'. All rights reserved.',
             ],
         ]);

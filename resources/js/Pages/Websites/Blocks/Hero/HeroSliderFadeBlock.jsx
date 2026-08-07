@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { usePage } from '@inertiajs/react';
 import { EditableImage } from '../Shared/EditableImage';
 import { getEffectiveTheme } from '../../../../theme/Theme';
+import { colorFamilies } from '../../../../theme/colorFamilies';
 
 const DEFAULT_SLIDES = [
     {
@@ -95,6 +96,9 @@ const CTA_STYLES = [
 ];
 
 export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globalTheme }) {
+    const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
+    const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
+    const overlayColor = primaryTheme?.palette?.background || '#243447';
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const data = { ...HeroSliderFadeSchema, ...(block || {}) };
@@ -209,7 +213,8 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                 </div>
             ))}
 
-            <div className="absolute inset-0 z-20 bg-gradient-to-r from-slate-950/90 via-slate-950/65 to-slate-950/25" />
+            <div className="absolute inset-0 z-20" style={{ backgroundColor: overlayColor, opacity: 0.68 }} />
+            <div className="absolute inset-0 z-20 bg-gradient-to-r from-slate-950/45 via-slate-950/20 to-transparent" />
             <div className="absolute inset-0 z-20 bg-gradient-to-t from-slate-950/70 via-transparent to-slate-950/20" />
 
             <div className="relative z-30 mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-24 sm:min-h-[700px] sm:px-10 lg:min-h-[760px] lg:px-14">

@@ -149,9 +149,10 @@ function CheckIcon() {
     return <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-xs font-black text-white shadow-sm">✓</span>;
 }
 
-export default function Pricing() {
+export default function Pricing({ trialToken = null }) {
     const [family, setFamily] = useState('personal');
     const plans = useMemo(() => planFamilies[family], [family]);
+    const registrationUrl = (planKey) => `/register?plan=${encodeURIComponent(planKey)}${trialToken ? `&trial=${encodeURIComponent(trialToken)}` : ''}`;
 
     return (
         <>
@@ -168,12 +169,13 @@ export default function Pricing() {
                         </Link>
                         <div className="flex items-center gap-2 sm:gap-3">
                             <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:px-4">Log in</Link>
-                            <Link href="/register?plan=growth" className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 sm:px-5">Get started</Link>
+                            <Link href={registrationUrl(family === 'agency' ? 'agency_growth' : 'growth')} className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 sm:px-5">Get started</Link>
                         </div>
                     </div>
                 </header>
 
                 <main>
+                    {trialToken && <div className="border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-center text-sm font-bold text-emerald-900">Your generated landing page is reserved. Choose a plan to transfer it to your Builder after payment.</div>}
                     <section className="relative overflow-hidden border-b border-emerald-100 bg-[linear-gradient(180deg,#fbfffc_0%,#f3fbf6_62%,#ffffff_100%)] px-5 pb-16 pt-20 text-center sm:px-6 sm:pb-20 sm:pt-24">
                         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(16,185,129,0.045)_1px,transparent_0)] bg-[size:28px_28px]" />
                         <div className="relative mx-auto max-w-4xl">
@@ -211,7 +213,7 @@ export default function Pricing() {
                                     <ul className="mt-7 flex-1 space-y-3.5">
                                         {plan.features.map((feature) => <li key={feature} className="flex gap-3 text-sm font-medium leading-6 text-slate-800"><CheckIcon />{feature}</li>)}
                                     </ul>
-                                    <Link href={`/register?plan=${plan.key}`} className={`cosmic-pricing-cta mt-8 flex items-center justify-center rounded-xl px-5 py-3.5 text-sm font-black transition ${plan.highlight ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`} style={plan.highlight ? { color: '#ffffff' } : { color: '#065f46' }}>Choose {plan.name}</Link>
+                                    <Link href={registrationUrl(plan.key)} className={`cosmic-pricing-cta mt-8 flex items-center justify-center rounded-xl px-5 py-3.5 text-sm font-black transition ${plan.highlight ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`} style={plan.highlight ? { color: '#ffffff' } : { color: '#065f46' }}>Choose {plan.name}</Link>
                                 </article>
                             ))}
                         </div>

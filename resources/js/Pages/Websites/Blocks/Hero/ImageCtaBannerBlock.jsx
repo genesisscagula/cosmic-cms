@@ -28,7 +28,9 @@ export const ImageCtaBannerSchema = {
 
 export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }) {
     const imageRef = useRef(null);
-    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
+    const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
+    const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
+    const overlayColor = primaryTheme?.palette?.background || '#243447';
     const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
     const mediaStyle = isLightMediaTheme
         ? {
@@ -81,8 +83,8 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
             />
 
             <div
-                className={`pointer-events-none absolute inset-0 z-10 ${mediaStyle.overlay}`}
-                style={{ opacity: overlayOpacity / 100 }}
+                className="pointer-events-none absolute inset-0 z-10"
+                style={{ backgroundColor: overlayColor, opacity: overlayOpacity / 100 }}
             />
             <div className={`pointer-events-none absolute inset-0 z-10 bg-gradient-to-r ${mediaStyle.gradient}`} />
 

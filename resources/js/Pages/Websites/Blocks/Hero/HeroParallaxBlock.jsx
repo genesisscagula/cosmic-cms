@@ -54,7 +54,9 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const data = { ...HeroParallaxSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
-    const primaryTheme = colorFamilies[globalTheme.primary];
+    const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
+    const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
+    const overlayColor = primaryTheme?.palette?.background || '#243447';
     const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
     const mediaStyle = isLightMediaTheme
         ? {
@@ -181,7 +183,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
                 />
             </div>
 
-            <div className={`absolute inset-0 z-10 ${mediaStyle.overlay}`} style={{ opacity: Number(data.overlayOpacity || 64) / 100 }} />
+            <div className="absolute inset-0 z-10" style={{ backgroundColor: overlayColor, opacity: Number(data.overlayOpacity || 64) / 100 }} />
             <div className={`absolute inset-0 z-10 bg-gradient-to-t ${mediaStyle.gradient} ${data.contentAlign === "right" ? "bg-gradient-to-l" : data.contentAlign === "left" ? "bg-gradient-to-r" : ""}`} />
 
             <div

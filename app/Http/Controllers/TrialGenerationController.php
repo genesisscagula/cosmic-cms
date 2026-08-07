@@ -3,11 +3,14 @@
 namespace App\Http\Controllers;
 
 use App\AI\Registries\IndustryMenuRegistry;
+use App\Jobs\PrepareMediaPackJob;
 use App\Jobs\SendTrialAccessLinkJob;
+use App\Models\MediaPack;
 use App\Models\Page;
 use App\Models\TrialGeneration;
 use App\Models\Website;
 use App\Services\AiPageGenerationService;
+use App\Services\IndustryResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -50,7 +53,8 @@ class TrialGenerationController extends Controller
     ];
 
     public function __construct(
-        private readonly AiPageGenerationService $pageGenerationService
+        private readonly AiPageGenerationService $pageGenerationService,
+        private readonly IndustryResolver $industryResolver
     ) {
     }
 
@@ -115,14 +119,41 @@ class TrialGenerationController extends Controller
             'preview_theme' => $this->previewThemeForIndustry($profile['industry']),
         ]);
 
+        $mediaPack = MediaPack::create([
+            'uuid' => (string) Str::uuid(),
+            'owner_type' => 'trial',
+            'owner_id' => $trial->id,
+            'trial_generation_id' => $trial->id,
+            'status' => 'pending',
+            'target_image_count' => 0,
+            'keywords' => [],
+        ]);
+
+        $trial->update(['media_pack_id' => $mediaPack->id]);
+
         try {
-            $generated = $this->pageGenerationService->generatePage($generationPrompt);
+            Log::info('[TrialGeneration] Starting synchronous trial generation.', ['trial' => $trial->id]);
+
+            $generated = $this->pageGenerationService->generateTrialPage($generationPrompt, $trial->id);
+
+            Log::info('[TrialGeneration] AI generation completed.', [
+                'trial' => $trial->id,
+                'sections' => count($generated['sections'] ?? []),
+                'blocks' => count($generated['blocks'] ?? []),
+            ]);
+
+            $mediaPack->update([
+                'keywords' => array_values($generated['media_keywords'] ?? []),
+                'target_image_count' => min(10, max(0, (int) ($generated['target_image_count'] ?? 0))),
+                'status' => 'queued',
+                'queued_at' => now(),
+            ]);
 
             $page = DB::transaction(function () use ($trial, $profile, $generated) {
                 $website = Website::query()->findOrFail(self::DEMO_WEBSITE_ID);
 
                 $website->update([
-                    'industry' => self::INDUSTRY_FOLDERS[$profile['industry']] ?? 'default',
+                    'industry' => $this->industryResolver->resolve($profile['industry'], 'default'),
                     'location' => $profile['location'],
                     'business_description' => $profile['business_description'],
                 ]);
@@ -148,10 +179,43 @@ class TrialGenerationController extends Controller
                 return $page;
             });
 
-            return redirect()->route('pages.builder', [
+            Log::info('[TrialGeneration] Trial page persisted and ready.', [
+                'trial' => $trial->id,
+                'page' => $page->id,
+            ]);
+
+            // Dispatch only after the page and trial blocks exist. This also works
+            // when QUEUE_CONNECTION=sync and guarantees that the worker can assign
+            // provider or fallback images to a real page instead of completing early.
+            PrepareMediaPackJob::dispatch($mediaPack->id);
+
+            Log::info('[MediaPack] Preparation job dispatched.', [
+                'media_pack_id' => $mediaPack->id,
+                'trial' => $trial->id,
+                'page' => $page->id,
+                'industry' => $this->industryResolver->resolve($profile['industry'], 'default'),
+            ]);
+
+            $builderUrl = route('pages.builder', [
                 'page' => $page,
                 'token' => $trial->token,
             ]);
+
+            // The public Start page submits with Axios. Always return a stable JSON
+            // contract here instead of relying on content-negotiation, which can be
+            // affected by Inertia headers and leave the client without builder_url.
+            return response()->json([
+                'status' => 'ready',
+                'trial_id' => $trial->id,
+                'page_id' => $page->id,
+                'token' => $trial->token,
+                'trial_token' => $trial->token,
+                'builder_url' => $builderUrl,
+                'redirect_url' => $builderUrl,
+                'url' => $builderUrl,
+                'media_pack_uuid' => $mediaPack->uuid,
+                'media_pack_status' => $mediaPack->fresh()->status,
+            ])->header('X-Cosmic-Builder-Url', $builderUrl);
         } catch (TransporterException $exception) {
             Log::warning('Public trial generation unavailable', [
                 'trial' => $trial->id,
@@ -178,7 +242,28 @@ class TrialGenerationController extends Controller
             ]);
         }
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => $trial->error_message ?: 'We could not generate this draft. Please try again later.',
+                'trial' => $trial->token,
+            ], 500);
+        }
+
         return redirect()->route('start', ['trial' => $trial->token]);
+    }
+
+    public function mediaPackStatus(TrialGeneration $trial)
+    {
+        $pack = $trial->mediaPack;
+
+        return response()->json([
+            'status' => $pack?->status ?? 'missing',
+            'image_count' => (int) data_get($pack?->manifest, 'image_count', 0),
+            'target_image_count' => (int) ($pack?->target_image_count ?? 0),
+            'completed_at' => $pack?->completed_at?->toIso8601String(),
+            'ready' => in_array($pack?->status, ['ready', 'partial'], true),
+            'terminal' => in_array($pack?->status, ['ready', 'partial', 'failed'], true),
+        ]);
     }
 
     public function selectPlan(Request $request, TrialGeneration $trial)
@@ -329,17 +414,16 @@ class TrialGenerationController extends Controller
 
     private function profileFromPrompt(string $prompt): array
     {
-        $normalized = Str::lower($prompt);
-        $industry = 'Technology';
+        $industrySource = $prompt;
 
-        foreach (self::INDUSTRY_KEYWORDS as $candidate => $keywords) {
-            foreach ($keywords as $keyword) {
-                if (str_contains($normalized, $keyword)) {
-                    $industry = $candidate;
-                    break 2;
-                }
-            }
+        // Prefer the business phrase supplied by the user. This lets Luna's
+        // inferred industry become a stable reusable folder even when it is
+        // outside the original hard-coded industry list.
+        if (preg_match('/\bfor\s+(?:an?\s+)?(.+?)(?:\s+in\s+[^,.]+|[,.])/i', $prompt, $matches) === 1) {
+            $industrySource = Str::of($matches[1])->squish()->limit(80, '')->toString();
         }
+
+        $industry = $this->industryResolver->displayName($industrySource, 'Technology');
 
         $businessName = 'Your new website';
         if (preg_match('/\bfor\s+(?:an?\s+)?(.+?)(?:\s+in\s+[^,.]+|[,.])/i', $prompt, $matches)) {

@@ -9,6 +9,7 @@ class TrialGeneration extends Model
     protected $fillable = [
         'token',
         'page_id',
+        'media_pack_id',
         'email',
         'business_name',
         'industry',
@@ -40,6 +41,11 @@ class TrialGeneration extends Model
         'email_captured_at' => 'datetime',
         'last_saved_at' => 'datetime',
     ];
+
+    public function mediaPack()
+    {
+        return $this->belongsTo(MediaPack::class);
+    }
 
     public function page()
     {

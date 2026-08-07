@@ -2670,11 +2670,11 @@ html[data-theme] .cosmic-app-shell main {
     background-color: #2f936b !important;
     opacity: .58 !important;
 }
-.cosmic-public-light .cosmic-pricing-cta {
+body .cosmic-public-light .cosmic-pricing-cta.mt-8 {
     color: #065f46 !important;
     border-width: 1px !important;
 }
-.cosmic-public-light .cosmic-pricing-cta[class*="bg-emerald-700"] {
+body .cosmic-public-light .cosmic-pricing-cta.mt-8[class*="bg-emerald-700"] {
     color: #ffffff !important;
 }
 .cosmic-public-light .cosmic-paypal-cta,
@@ -2693,4 +2693,99 @@ html[data-theme] .cosmic-app-shell main {
 }
 .cosmic-public-light .cosmic-selected-plan-header .text-emerald-300 {
     color: #6ee7b7 !important;
+}
+
+
+/* Patch 1.0.7 — pending checkout polish and title-safe contrast */
+.cosmic-force-light .cosmic-pending-main,
+.cosmic-force-light .cosmic-plan-summary {
+    isolation: isolate;
+}
+.cosmic-force-light .cosmic-paypal-cta,
+.cosmic-force-light .cosmic-paypal-cta:hover,
+.cosmic-force-light .cosmic-paypal-cta:focus,
+.cosmic-force-light .cosmic-paypal-cta:disabled {
+    color: #fff !important;
+}
+.cosmic-force-light .cosmic-selected-plan-header,
+.cosmic-force-light .cosmic-selected-plan-header p,
+.cosmic-force-light .cosmic-selected-plan-header span {
+    color: #fff !important;
+}
+.cosmic-force-light .cosmic-selected-plan-header .cosmic-selected-plan-price {
+    color: #a7f3d0 !important;
+}
+
+body .cosmic-start-quick-idea.rounded-full.border {
+    color: rgb(6, 95, 70) !important;
+}
+
+@media (max-width: 1023px) {
+    .cosmic-pending-grid { grid-template-columns: minmax(0,1fr) !important; }
+}
+
+
+/* Patch 1.0.38 — Token Builder action visibility hotfix */
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-regenerate {
+    background-color: #f5f3ff !important;
+    border-color: #c4b5fd !important;
+    color: #6d28d9 !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-regenerate:hover:not(:disabled) {
+    background-color: #ede9fe !important;
+    border-color: #8b5cf6 !important;
+    color: #5b21b6 !important;
+}
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-regenerate:disabled {
+    background-color: #f8fafc !important;
+    border-color: #d8dee8 !important;
+    color: #64748b !important;
+    opacity: .72 !important;
+}
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-builder-save,
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-save {
+    background-color: #ffffff !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-builder-save:hover:not(:disabled),
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-save:hover:not(:disabled) {
+    background-color: #ecfdf5 !important;
+    border-color: #34d399 !important;
+    color: #065f46 !important;
+}
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-builder-save:disabled,
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-save:disabled {
+    background-color: #f8fafc !important;
+    border-color: #d8dee8 !important;
+    color: #64748b !important;
+    opacity: .72 !important;
+}
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-buy {
+    background-color: #16845f !important;
+    border: 1px solid #16845f !important;
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-buy:hover {
+    background-color: #0f7654 !important;
+    border-color: #0f7654 !important;
+    color: #ffffff !important;
+}
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-buy *,
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-regenerate *,
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-save * {
+    color: inherit !important;
+}
+
+
+/* Hotfix: header editor preview CTA must keep white text in light mode. */
+.cosmic-global-header-modal .cosmic-header-cta,
+.cosmic-global-header-modal .cosmic-header-cta *,
+.cosmic-header-cta,
+.cosmic-header-cta * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
 }
