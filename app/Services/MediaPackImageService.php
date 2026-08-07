@@ -30,6 +30,217 @@ class MediaPackImageService
             ->all();
     }
 
+    /**
+     * Download the exact remote preview assets captured during trial generation.
+     * Returns both localized manifest entries and an exact remote->local URL map.
+     * Failed remote URLs are omitted here; populate() can fill any shortfall using
+     * the normal provider + curated fallback chain.
+     *
+     * @return array{images: array<int, array<string, mixed>>, replacements: array<string, string>}
+     */
+    public function localizeRemoteTrialAssets(MediaPack $pack): array
+    {
+        $remoteManifest = is_array($pack->manifest) ? $pack->manifest : [];
+        $remoteImages = collect($remoteManifest['images'] ?? [])
+            ->filter(fn ($item) => is_array($item) && filter_var($item['url'] ?? null, FILTER_VALIDATE_URL))
+            ->values();
+
+        if ($remoteImages->isEmpty()) {
+            return ['images' => [], 'replacements' => []];
+        }
+
+        $directory = storage_path('app/public/'.$pack->storageDirectory());
+        File::ensureDirectoryExists($directory);
+
+        $images = collect();
+        $replacements = [];
+        $target = max(0, min(10, (int) $pack->target_image_count));
+        $diskManifest = [
+            'uuid' => $pack->uuid,
+            'status' => 'localizing',
+            'industry_key' => $this->resolveIndustry($pack),
+            'source_mode' => 'remote_trial_preview',
+            'target_image_count' => $target,
+            'keywords' => $pack->keywords ?? [],
+            'images' => [],
+        ];
+
+        foreach ($remoteImages as $index => $remote) {
+            $remoteUrl = (string) ($remote['url'] ?? '');
+            $stored = $this->downloadRemoteUrl($pack, $directory, $remote, $index + 1);
+
+            if ($stored === null) {
+                Log::warning('[MediaPack] Trial remote asset failed to localize; fallback will fill the slot.', [
+                    'media_pack_id' => $pack->id,
+                    'remote_url' => $remoteUrl,
+                    'position' => $index + 1,
+                ]);
+                continue;
+            }
+
+            $images->push($stored);
+            $replacements[$remoteUrl] = $stored['url'];
+
+            $diskManifest['status'] = 'localizing';
+            $diskManifest['image_count'] = $images->count();
+            $diskManifest['images'] = $images->values()->all();
+            $diskManifest['updated_at'] = now()->toIso8601String();
+            $this->writeManifest($directory, $diskManifest);
+
+            // Preserve the original remote manifest in the DB until localization
+            // finishes. If the worker is killed mid-capture, a retry can still
+            // recover the exact trial URLs instead of losing its source list.
+            $pack->forceFill([
+                'status' => 'localizing',
+                'manifest' => array_merge($remoteManifest, [
+                    'localization_status' => 'localizing',
+                    'localized_image_count' => $images->count(),
+                    'local_manifest_path' => $pack->storageDirectory().'/manifest.json',
+                    'localization_updated_at' => $diskManifest['updated_at'],
+                ]),
+            ])->save();
+        }
+
+        // Persist a normal on-disk manifest before populate() so any missing remote
+        // assets are topped up rather than causing all trial assets to be searched again.
+        $diskManifest['status'] = 'localizing';
+        $diskManifest['image_count'] = $images->count();
+        $diskManifest['images'] = $images->values()->all();
+        $diskManifest['updated_at'] = now()->toIso8601String();
+        $this->writeManifest($directory, $diskManifest);
+
+        return [
+            'images' => $images->values()->all(),
+            'replacements' => $replacements,
+        ];
+    }
+
+    public function replaceRemoteUrls(array $blocks, array $replacements): array
+    {
+        if ($replacements === []) {
+            return $blocks;
+        }
+
+        $walk = function (mixed $value) use (&$walk, $replacements): mixed {
+            if (is_array($value)) {
+                foreach ($value as $key => $child) {
+                    $value[$key] = $walk($child);
+                }
+
+                return $value;
+            }
+
+            if (is_string($value) && isset($replacements[$value])) {
+                return $replacements[$value];
+            }
+
+            return $value;
+        };
+
+        return $walk($blocks);
+    }
+
+    public function replaceExternalImageUrls(array $blocks, array $images): array
+    {
+        $urls = collect($images)->pluck('url')->filter()->values()->all();
+        if ($urls === []) {
+            return $blocks;
+        }
+
+        $cursor = 0;
+        $walk = function (mixed $value, ?string $key = null) use (&$walk, &$cursor, $urls): mixed {
+            if (is_array($value)) {
+                foreach ($value as $childKey => $child) {
+                    $value[$childKey] = $walk($child, is_string($childKey) ? $childKey : null);
+                }
+                return $value;
+            }
+
+            if (! is_string($value) || ! $this->isImageField($key)) {
+                return $value;
+            }
+
+            if (! str_starts_with($value, 'http://') && ! str_starts_with($value, 'https://')) {
+                return $value;
+            }
+
+            $replacement = $urls[$cursor % count($urls)];
+            $cursor++;
+            return $replacement;
+        };
+
+        return $walk($blocks);
+    }
+
+    private function downloadRemoteUrl(MediaPack $pack, string $directory, array $remote, int $position): ?array
+    {
+        $url = (string) ($remote['url'] ?? '');
+        if (! filter_var($url, FILTER_VALIDATE_URL)) {
+            return null;
+        }
+
+        $provider = (string) ($remote['provider'] ?? 'remote');
+        $sourceUrl = (string) ($remote['source_url'] ?? $url);
+        $fingerprint = sha1('purchase-capture|'.$provider.'|'.$sourceUrl.'|'.$url);
+
+        foreach (['avif', 'webp', 'png', 'jpg', 'jpeg'] as $extension) {
+            $existing = $directory.DIRECTORY_SEPARATOR.$fingerprint.'.'.$extension;
+            if (File::exists($existing) && File::size($existing) > 0) {
+                return [
+                    'filename' => basename($existing),
+                    'url' => $pack->publicBaseUrl().'/'.basename($existing),
+                    'provider' => $provider,
+                    'source_url' => $sourceUrl,
+                    'remote_preview_url' => $url,
+                    'query' => (string) ($remote['query'] ?? ''),
+                    'created_at' => now()->toIso8601String(),
+                ];
+            }
+        }
+
+        $response = Http::connectTimeout(max(1, (int) config('cosmic-queue.performance.image_connect_timeout', 4)))
+            ->timeout(max(2, (int) config('cosmic-queue.performance.image_download_timeout', 10)))
+            ->retry(max(0, (int) config('cosmic-queue.performance.image_download_retries', 1)), 250, throw: false)
+            ->get($url);
+
+        if (! $response->successful() || $response->body() === '') {
+            return null;
+        }
+
+        $contentType = strtolower((string) $response->header('Content-Type'));
+        $extension = match (true) {
+            str_contains($contentType, 'avif') => 'avif',
+            str_contains($contentType, 'webp') => 'webp',
+            str_contains($contentType, 'png') => 'png',
+            default => 'jpg',
+        };
+
+        $path = $directory.DIRECTORY_SEPARATOR.$fingerprint.'.'.$extension;
+        File::put($path, $response->body());
+
+        if (! File::exists($path) || File::size($path) === 0) {
+            File::delete($path);
+            return null;
+        }
+
+        Log::info('[MediaPack] Purchased trial image localized.', [
+            'media_pack_id' => $pack->id,
+            'provider' => $provider,
+            'position' => $position,
+            'file' => basename($path),
+        ]);
+
+        return [
+            'filename' => basename($path),
+            'url' => $pack->publicBaseUrl().'/'.basename($path),
+            'provider' => $provider,
+            'source_url' => $sourceUrl,
+            'remote_preview_url' => $url,
+            'query' => (string) ($remote['query'] ?? ''),
+            'created_at' => now()->toIso8601String(),
+        ];
+    }
+
     public function imageSlotCount(array $blocks): int
     {
         $count = 0;

@@ -373,6 +373,23 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
         try {
             const response = await axios.post(route('pages.publish', page.id));
+
+            if (response.status === 202 || response.data?.status === 'localizing') {
+                setMediaProgress({
+                    status: response.data?.media_pack_status || 'queued',
+                    progress: 12,
+                    message: response.data?.message || 'Securing your website images locally before publishing.',
+                    delayed: false,
+                });
+                showCosmicNotification({
+                    title: 'Securing website images',
+                    message: 'Your remote preview images are being saved locally. Publishing will be ready as soon as this finishes.',
+                    tone: 'success',
+                });
+                window.setTimeout(() => window.location.reload(), 1200);
+                return;
+            }
+
             setPageStatus(response.data.status || 'published');
             setCreditBalance(response.data.credit_balance);
             setPublishError('');

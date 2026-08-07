@@ -61,6 +61,93 @@ class PrepareMediaPackJob implements ShouldQueue
         }
     }
 
+    private function localizeRemoteAssets(MediaPack $pack, MediaPackImageService $images): void
+    {
+        $pack->forceFill(['status' => 'localizing', 'last_error' => null])->save();
+
+        try {
+            $capture = $images->localizeRemoteTrialAssets($pack);
+            $localized = $capture['images'];
+            $replacements = $capture['replacements'];
+
+            // Fill any failed remote downloads with the existing provider/local
+            // fallback chain, keeping purchase completion resilient.
+            if (count($localized) < (int) $pack->target_image_count) {
+                $localized = $images->populate($pack);
+            }
+
+            $pack->refresh()->loadMissing(['trialGeneration.page', 'website']);
+
+            DB::transaction(function () use ($pack, $images, $localized, $replacements): void {
+                if ($pack->website_id && $pack->website) {
+                    $pages = $pack->website->pages()->lockForUpdate()->get();
+                    foreach ($pages as $page) {
+                        $blocks = $images->replaceRemoteUrls($page->blocks ?? [], $replacements);
+                        // Any exact remote download that failed is replaced from
+                        // the localized fallback pool, so paid pages never retain
+                        // third-party trial URLs after capture completes.
+                        $blocks = $images->replaceExternalImageUrls($blocks, $localized);
+                        if ($blocks !== ($page->blocks ?? [])) {
+                            $page->update(['blocks' => $blocks]);
+                        }
+                    }
+                }
+
+                $trial = $pack->trialGeneration;
+                if ($trial?->page) {
+                    $page = $trial->page()->lockForUpdate()->first();
+                    if ($page) {
+                        $blocks = $images->replaceRemoteUrls($page->blocks ?? [], $replacements);
+                        $blocks = $images->replaceExternalImageUrls($blocks, $localized);
+                        $page->update(['blocks' => $blocks]);
+                        $trial->update(['generated_blocks' => $blocks]);
+                    }
+                }
+            });
+
+            $imageCount = count($localized);
+            $target = (int) $pack->target_image_count;
+            $status = $imageCount >= $target ? 'ready' : ($imageCount > 0 ? 'partial' : 'failed');
+
+            $pack->forceFill([
+                'status' => $status,
+                'completed_at' => now(),
+                'manifest' => [
+                    'mode' => 'owned_local_assets',
+                    'remote_only' => false,
+                    'path' => $pack->storageDirectory().'/manifest.json',
+                    'image_count' => $imageCount,
+                    'target_image_count' => $target,
+                    'localized_at' => now()->toIso8601String(),
+                ],
+                'last_error' => $status === 'failed' ? 'Remote preview assets could not be localized.' : null,
+            ])->save();
+
+            Log::info('[MediaPack] Remote asset localization completed.', [
+                'media_pack_id' => $pack->id,
+                'website_id' => $pack->website_id,
+                'status' => $status,
+                'image_count' => $imageCount,
+                'target_image_count' => $target,
+                'exact_replacements' => count($replacements),
+            ]);
+        } catch (\Throwable $exception) {
+            $pack->forceFill([
+                'status' => 'failed',
+                'completed_at' => now(),
+                'last_error' => mb_substr($exception->getMessage(), 0, 1000),
+            ])->save();
+
+            Log::error('[MediaPack] Remote asset localization failed.', [
+                'media_pack_id' => $pack->id,
+                'website_id' => $pack->website_id,
+                'message' => $exception->getMessage(),
+            ]);
+
+            throw $exception;
+        }
+    }
+
     private function assignExistingImages(MediaPack $pack, MediaPackImageService $images, array $manifestImages): void
     {
         $trial = $pack->trialGeneration;
@@ -89,6 +176,21 @@ class PrepareMediaPackJob implements ShouldQueue
 
     private function prepare(MediaPack $pack, MediaPackImageService $images): void
     {
+        $remoteManifest = is_array($pack->manifest) ? $pack->manifest : [];
+        $hasRemotePreviewAssets = (bool) ($remoteManifest['remote_only'] ?? false)
+            && collect($remoteManifest['images'] ?? [])->contains(
+                fn ($item) => is_array($item) && filter_var($item['url'] ?? null, FILTER_VALIDATE_URL)
+            );
+
+        if ($hasRemotePreviewAssets) {
+            $pack->loadMissing(['trialGeneration.page', 'website']);
+            $hasOwner = (bool) $pack->website_id || (bool) $pack->trialGeneration?->page;
+            if ($hasOwner) {
+                $this->localizeRemoteAssets($pack, $images);
+                return;
+            }
+        }
+
         $existingCount = count($images->existingImages($pack));
         $pack->loadMissing(['trialGeneration.page', 'website']);
         $hasAssignableOwner = (bool) $pack->website_id || (bool) $pack->trialGeneration?->page;

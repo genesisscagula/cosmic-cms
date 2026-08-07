@@ -8,6 +8,7 @@ use App\Models\Website;
 
 class PagePublisher
 {
+    public function __construct(private readonly MediaAssetSafetyService $mediaSafety) {}
     /**
      * Compile the approved Builder state into the snapshot stored by Laravel.
      *
@@ -16,6 +17,11 @@ class PagePublisher
      */
     public function publish(Page $page, Website $website): string
     {
+        $remote = $this->mediaSafety->providerUrls($page->blocks ?? []);
+        if ($remote !== []) {
+            throw new \RuntimeException('Publish blocked: remote preview images must be localized first.');
+        }
+
         $theme = $website->theme_settings ?? [];
         $primaryColor = $theme['primary'] ?? 'midnight';
         return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['page_style' => $page->page_style]);
@@ -29,6 +35,11 @@ class PagePublisher
      */
     public function publishedPackage(Website $website): array
     {
+        $remainingRemote = $this->mediaSafety->publishedProviderUrls($website);
+        if ($remainingRemote !== []) {
+            throw new \RuntimeException('Export blocked: published content still contains remote Unsplash/Pexels image URLs.');
+        }
+
         $theme = $website->published_theme_settings ?? $website->theme_settings ?? [];
         $primaryColor = $theme['primary'] ?? 'midnight';
         $header = $website->published_global_header ?? $website->global_header;

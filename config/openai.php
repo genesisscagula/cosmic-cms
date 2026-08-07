@@ -70,6 +70,12 @@ return [
     'media_pack_queue' => env('COSMIC_IMAGE_QUEUE', 'images-high'),
     'media_pack_initial_target' => (int) env('COSMIC_IMAGE_INITIAL_TARGET', 6),
 
+    // Builder previews hotlink Unsplash and defer local asset capture until the
+    // user commits the page (trial Save, purchase, or logged-in Publish). The
+    // legacy trial env remains the fallback for backwards-compatible deploys.
+    'trial_remote_images_enabled' => (bool) env('COSMIC_TRIAL_REMOTE_IMAGES', true),
+    'remote_preview_images_enabled' => (bool) env('COSMIC_REMOTE_PREVIEW_IMAGES', env('COSMIC_TRIAL_REMOTE_IMAGES', true)),
+
     // Patch 16.3: independent branch coordinator. Images never block the AI
     // branch; branch diagnostics are returned for progress/benchmarking.
     'parallel_engine_enabled' => env('COSMIC_PARALLEL_ENGINE_ENABLED', true),

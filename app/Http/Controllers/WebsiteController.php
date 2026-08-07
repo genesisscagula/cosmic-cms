@@ -872,7 +872,14 @@ class WebsiteController extends Controller
             ], 422);
         }
 
-        $package = $publisher->publishedPackage($website);
+        try {
+            $package = $publisher->publishedPackage($website);
+        } catch (\RuntimeException $exception) {
+            return response()->json([
+                'status' => 'media_not_ready',
+                'message' => $exception->getMessage(),
+            ], 409);
+        }
 
         if ($package['pages'] === []) {
             return response()->json(['message' => 'Publish at least one page before pushing a live update.'], 422);
@@ -1145,17 +1152,19 @@ define(\"API_TOKEN\", \"" . addslashes($_POST["api_token"]) . "\");
 
         $status = (string) $pack->status;
         $terminal = in_array($status, ['ready', 'partial', 'failed'], true);
-        $imageCount = (int) data_get($pack->manifest, 'image_count', 0);
+        $imageCount = $status === 'localizing'
+            ? (int) data_get($pack->manifest, 'localized_image_count', 0)
+            : (int) data_get($pack->manifest, 'image_count', 0);
         $target = (int) $pack->target_image_count;
         $ratio = $target > 0 ? min(1, $imageCount / $target) : 0;
         $progress = match ($status) {
             'pending' => 5,
             'queued' => 12,
-            'downloading' => min(95, 20 + (int) round($ratio * 75)),
+            'downloading', 'localizing' => min(95, 20 + (int) round($ratio * 75)),
             'ready', 'partial', 'failed' => 100,
             default => 0,
         };
-        $delayed = in_array($status, ['queued', 'downloading'], true)
+        $delayed = in_array($status, ['queued', 'downloading', 'localizing'], true)
             && $pack->queued_at
             && $pack->queued_at->lt(now()->subSeconds(45));
 
@@ -1172,6 +1181,7 @@ define(\"API_TOKEN\", \"" . addslashes($_POST["api_token"]) . "\");
                 $status === 'partial' => 'Using the best available images',
                 $status === 'failed' => 'Using safe fallback images',
                 $delayed => 'Images are taking longer than usual; you can keep editing',
+                $status === 'localizing' => 'Securing your website images in the background',
                 $status === 'downloading' => 'Optimizing images in the background',
                 default => 'Preparing images',
             },

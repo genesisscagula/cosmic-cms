@@ -9,7 +9,6 @@ use App\AI\Layouts\LayoutEngine;
 use App\AI\Pipeline\AiPipelineOrchestrator;
 use App\AI\Pipeline\ParallelProcessingEngine;
 use App\AI\Images\VisualQueryBuilder;
-use App\Jobs\PrepareMediaPackJob;
 use App\Models\MediaPack;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -25,6 +24,7 @@ class AiPageGenerationService
         private readonly VisualQueryBuilder $visualQueryBuilder,
         private readonly IndustryResolver $industryResolver,
         private readonly AiCacheManager $cache,
+        private readonly TrialRemoteImageService $trialRemoteImages,
     ) {
     }
 
@@ -54,7 +54,7 @@ class AiPageGenerationService
         // and continue the required AI branch without waiting for downloads. Spark
         // planning -> schema-bound content stays correctly dependency ordered.
         $parallel = $this->parallelEngine->execute(
-            fn () => $this->primeTrialMediaPack($trialId, $visualIntent),
+            fn () => ['status' => 'remote-preview', 'trial_id' => $trialId],
             function () use ($prompt) {
                 $selection = $this->selectSections($prompt);
                 $placeholderFolder = 'default';
@@ -82,13 +82,13 @@ class AiPageGenerationService
             'elapsed_ms' => (int) ((microtime(true) - $startedAt) * 1000),
         ]);
 
-        // Never flash a curated/default industry image while the website-specific
-        // media pack is being prepared. Every generated image field starts with
-        // one neutral animated placeholder, which the queue job replaces with
-        // permanent /cms-images/packs/{uuid}/ assets.
-        $blocks = $this->useMediaPackLoadingPlaceholders($blocks);
-
+        // Patch A: trial previews hotlink a small Unsplash pool instead of
+        // downloading media into Cosmic storage. The generated local/curated
+        // image values remain as a safe fallback if Unsplash is unavailable.
         $mediaQueries = $this->learningQueries($prompt, $blocks, $placeholderFolder);
+        $targetImageCount = min(10, count($mediaQueries));
+        $remoteImages = $this->trialRemoteImages->resolve($visualIntent, $targetImageCount);
+        $blocks = $this->trialRemoteImages->assignToBlocks($blocks, $remoteImages);
         $mediaKeywords = collect($visualIntent['image_keywords'] ?? [])
             ->merge(collect($mediaQueries)->pluck('query'))
             ->filter(fn ($keyword) => is_string($keyword) && trim($keyword) !== '')
@@ -97,13 +97,12 @@ class AiPageGenerationService
             ->take(6)
             ->values()
             ->all();
-        $targetImageCount = min(10, count($mediaQueries));
-
         Log::info('[TrialGenerationPipeline] Trial result ready.', [
             'placeholder_folder' => $placeholderFolder,
             'blocks' => count($blocks),
             'media_keywords' => count($mediaKeywords),
             'target_image_count' => $targetImageCount,
+            'remote_image_count' => count($remoteImages),
             'elapsed_ms' => (int) ((microtime(true) - $startedAt) * 1000),
         ]);
 
@@ -114,103 +113,11 @@ class AiPageGenerationService
             'media_keywords' => $mediaKeywords,
             'target_image_count' => $targetImageCount,
             'visual_intent' => $visualIntent,
+            'remote_images' => $remoteImages,
             'parallel' => $parallel['diagnostics'],
         ];
     }
 
-
-    private function primeTrialMediaPack(?int $trialId, array $visualIntent): void
-    {
-        if (! $trialId) {
-            return;
-        }
-
-        $pack = MediaPack::query()->where('trial_generation_id', $trialId)->first();
-        if (! $pack) {
-            return;
-        }
-
-        $keywords = collect($visualIntent['image_keywords'] ?? [])
-            ->push($visualIntent['business_type'] ?? null)
-            ->filter(fn ($keyword) => is_string($keyword) && trim($keyword) !== '')
-            ->map(fn ($keyword) => trim($keyword))
-            ->unique()
-            ->take(6)
-            ->values()
-            ->all();
-
-        $initialTarget = max(1, min(10, (int) config('openai.media_pack_initial_target', 6)));
-        $isSync = (string) config('queue.default') === 'sync';
-
-        $pack->forceFill([
-            'keywords' => $keywords,
-            'target_image_count' => max((int) $pack->target_image_count, $initialTarget),
-            'status' => $isSync ? 'pending' : 'queued',
-            'queued_at' => $isSync ? null : now(),
-            'completed_at' => null,
-            'last_error' => null,
-        ])->save();
-
-        if ($isSync) {
-            Log::info('[MediaPack] Early dispatch deferred because queue driver is sync.', [
-                'media_pack_id' => $pack->id,
-                'trial' => $trialId,
-            ]);
-            return;
-        }
-
-        PrepareMediaPackJob::dispatch($pack->id);
-
-        Log::info('[MediaPack] Early image preparation dispatched after visual analysis.', [
-            'media_pack_id' => $pack->id,
-            'trial' => $trialId,
-            'queue' => config('openai.media_pack_queue', 'images-high'),
-            'initial_target' => $initialTarget,
-            'keyword_count' => count($keywords),
-        ]);
-    }
-
-
-    private function useMediaPackLoadingPlaceholders(array $blocks): array
-    {
-        $placeholder = '/cosmic-images/media-pack-loading.svg';
-
-        $replace = function (mixed $value, ?string $key = null) use (&$replace, $placeholder): mixed {
-            if (is_array($value)) {
-                foreach ($value as $childKey => $childValue) {
-                    $value[$childKey] = $replace($childValue, is_string($childKey) ? $childKey : null);
-                }
-
-                return $value;
-            }
-
-            if (! is_string($key) || ! $this->isGeneratedImageField($key)) {
-                return $value;
-            }
-
-            // Team/testimonial portraits are intentionally sourced from the
-            // dedicated avatar library. They must never be replaced by landscape
-            // media-pack images or the visual-loading placeholder.
-            if (is_string($value) && str_contains($value, '/cms-images/avatars/')) {
-                return $value;
-            }
-
-            // Preserve non-string structured values, but normalize every other
-            // string image slot (including empty/default/industry URLs) to loader.
-            return is_string($value) ? $placeholder : $value;
-        };
-
-        return $replace($blocks);
-    }
-
-    private function isGeneratedImageField(string $key): bool
-    {
-        $normalized = strtolower($key);
-
-        return str_contains($normalized, 'image')
-            || str_contains($normalized, 'photo')
-            || str_contains($normalized, 'poster');
-    }
 
     public function imagesWithoutRemoteDownloads(callable $callback): mixed
     {

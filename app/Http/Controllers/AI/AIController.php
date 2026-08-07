@@ -5,10 +5,11 @@ namespace App\Http\Controllers\AI;
 use App\Cosmic\Pricing\ActionPricing;
 use App\Cosmic\Pricing\BlockPricingRegistry;
 use App\Http\Controllers\Controller;
-use App\Jobs\PrepareMediaPackJob;
 use App\Models\Website;
 use App\Services\MediaPackImageService;
 use App\Services\MediaPackOwnershipService;
+use App\Services\MediaAssetLifecycleService;
+use App\Services\TrialRemoteImageService;
 use App\Services\AiPageGenerationService;
 use App\Services\CreditService;
 use Illuminate\Http\Request;
@@ -23,6 +24,8 @@ class AIController extends Controller
         private readonly CreditService $credits,
         private readonly MediaPackImageService $mediaPackImages,
         private readonly MediaPackOwnershipService $mediaPackOwnership,
+        private readonly MediaAssetLifecycleService $mediaAssets,
+        private readonly TrialRemoteImageService $remoteImages,
     ) {
     }
 
@@ -90,44 +93,34 @@ class AIController extends Controller
             $blocks = $generation['blocks'];
 
             if ($website) {
+                $target = $this->mediaPackImages->imageSlotCount($blocks);
+                $remoteImages = $this->remoteImages->resolve([
+                    'business_type' => $validated['prompt'],
+                    'image_keywords' => [$validated['prompt']],
+                    'visual_style' => 'professional editorial website photography',
+                ], $target);
+
+                $blocks = $this->remoteImages->assignToBlocks($blocks, $remoteImages);
+
                 $pack = $this->mediaPackOwnership->ensureForWebsite(
                     $website,
                     [$validated['prompt']],
-                    $this->mediaPackImages->imageSlotCount($blocks)
+                    0
                 );
-                if ($pack) {
-                    $existingImages = $this->mediaPackImages->existingImages($pack);
-                    $blocks = $this->mediaPackImages->assignToBlocks($blocks, $existingImages);
 
-                    $required = $this->mediaPackImages->imageSlotCount($blocks);
-                    $currentTarget = (int) $pack->target_image_count;
-                    $newTarget = min(10, max($currentTarget, $required));
-                    $keywords = collect($pack->keywords ?? [])
-                        ->push($validated['prompt'])
-                        ->filter(fn ($keyword) => is_string($keyword) && trim($keyword) !== '')
-                        ->map(fn ($keyword) => trim($keyword))
-                        ->unique()
-                        ->take(8)
-                        ->values()
-                        ->all();
+                $this->mediaAssets->syncRemoteManifest(
+                    $pack,
+                    $blocks,
+                    'remote_logged_in_preview',
+                    $remoteImages
+                );
 
-                    $pack->forceFill([
-                        'target_image_count' => $newTarget,
-                        'keywords' => $keywords,
-                        'status' => count($existingImages) >= $newTarget ? $pack->status : 'pending',
-                        'queued_at' => count($existingImages) >= $newTarget ? $pack->queued_at : now(),
-                    ])->save();
-
-                    if (count($existingImages) < $newTarget
-                        && ! in_array($pack->status, ['queued', 'downloading'], true)) {
-                        $pack->forceFill([
-                            'status' => 'queued',
-                            'queued_at' => now(),
-                        ])->save();
-
-                        PrepareMediaPackJob::dispatch($pack->id);
-                    }
-                }
+                Log::info('[MediaAssets] Logged-in Builder is using remote preview images; local download deferred until publish.', [
+                    'website_id' => $website->id,
+                    'media_pack_id' => $pack->id,
+                    'remote_image_count' => count($remoteImages),
+                    'target_image_count' => $target,
+                ]);
             }
 
             return response()->json([

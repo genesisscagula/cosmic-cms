@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\AI\Registries\IndustryMenuRegistry;
-use App\Jobs\PrepareMediaPackJob;
 use App\Jobs\SendTrialAccessLinkJob;
 use App\Models\MediaPack;
 use App\Models\Page;
@@ -140,11 +139,25 @@ class TrialGenerationController extends Controller
                 'blocks' => count($generated['blocks'] ?? []),
             ]);
 
+            $remoteImages = array_values($generated['remote_images'] ?? []);
+            $targetImageCount = min(10, max(0, (int) ($generated['target_image_count'] ?? 0)));
+
             $mediaPack->update([
                 'keywords' => array_values($generated['media_keywords'] ?? []),
-                'target_image_count' => min(10, max(0, (int) ($generated['target_image_count'] ?? 0))),
-                'status' => 'queued',
-                'queued_at' => now(),
+                'target_image_count' => $targetImageCount,
+                'status' => 'ready',
+                'manifest' => [
+                    'mode' => 'remote_trial_preview',
+                    'provider' => 'unsplash',
+                    'remote_only' => true,
+                    'image_count' => count($remoteImages),
+                    'target_image_count' => $targetImageCount,
+                    'images' => $remoteImages,
+                    'updated_at' => now()->toIso8601String(),
+                ],
+                'queued_at' => null,
+                'completed_at' => now(),
+                'last_error' => null,
             ]);
 
             $page = DB::transaction(function () use ($trial, $profile, $generated) {
@@ -186,16 +199,13 @@ class TrialGenerationController extends Controller
                 'page' => $page->id,
             ]);
 
-            // Dispatch only after the page and trial blocks exist. This also works
-            // when QUEUE_CONNECTION=sync and guarantees that the worker can assign
-            // provider or fallback images to a real page instead of completing early.
-            PrepareMediaPackJob::dispatch($mediaPack->id);
-
-            Log::info('[MediaPack] Preparation job dispatched.', [
+            Log::info('[MediaPack] Trial remote preview ready; local download deferred until purchase.', [
                 'media_pack_id' => $mediaPack->id,
                 'trial' => $trial->id,
                 'page' => $page->id,
-                'industry' => $this->industryResolver->resolve($profile['industry'], 'default'),
+                'provider' => 'unsplash',
+                'remote_image_count' => count($remoteImages),
+                'target_image_count' => $targetImageCount,
             ]);
 
             // Keep the public Start -> Builder hand-off on the browser's current
@@ -270,17 +280,19 @@ class TrialGenerationController extends Controller
         $pack = $trial->mediaPack;
 
         $status = (string) ($pack?->status ?? 'missing');
-        $imageCount = (int) data_get($pack?->manifest, 'image_count', 0);
+        $imageCount = $status === 'localizing'
+            ? (int) data_get($pack?->manifest, 'localized_image_count', 0)
+            : (int) data_get($pack?->manifest, 'image_count', 0);
         $target = (int) ($pack?->target_image_count ?? 0);
         $ratio = $target > 0 ? min(1, $imageCount / $target) : 0;
         $progress = match ($status) {
             'pending' => 5,
             'queued' => 12,
-            'downloading' => min(95, 20 + (int) round($ratio * 75)),
+            'downloading', 'localizing' => min(95, 20 + (int) round($ratio * 75)),
             'ready', 'partial', 'failed' => 100,
             default => 0,
         };
-        $delayed = in_array($status, ['queued', 'downloading'], true)
+        $delayed = in_array($status, ['queued', 'downloading', 'localizing'], true)
             && $pack?->queued_at
             && $pack->queued_at->lt(now()->subSeconds(45));
 
@@ -295,10 +307,12 @@ class TrialGenerationController extends Controller
             'terminal' => in_array($status, ['ready', 'partial', 'failed'], true),
             'delayed' => (bool) $delayed,
             'message' => match (true) {
+                $status === 'ready' && data_get($pack?->manifest, 'remote_only') => 'Preview images ready',
                 $status === 'ready' => 'Images ready',
                 $status === 'partial' => 'Using the best available images',
                 $status === 'failed' => 'Using safe fallback images',
                 $delayed => 'Images are taking longer than usual; you can keep editing',
+                $status === 'localizing' => 'Saving your preview images securely in the background',
                 $status === 'downloading' => 'Optimizing images in the background',
                 default => 'Preparing images',
             },
@@ -370,7 +384,7 @@ class TrialGenerationController extends Controller
         ];
 
         try {
-            $generated = $this->pageGenerationService->generatePage($this->buildPrompt($profile));
+            $generated = $this->pageGenerationService->generateTrialPage($this->buildPrompt($profile), $trial->id);
             $newToken = (string) Str::uuid();
 
             DB::transaction(function () use ($trial, $generated, $validated, $newToken) {
@@ -379,6 +393,28 @@ class TrialGenerationController extends Controller
                     'status' => 'draft',
                     'publish_error' => null,
                 ]);
+
+                $remoteImages = array_values($generated['remote_images'] ?? []);
+                $targetImageCount = min(10, max(0, (int) ($generated['target_image_count'] ?? 0)));
+                if ($trial->mediaPack) {
+                    $trial->mediaPack->update([
+                        'keywords' => array_values($generated['media_keywords'] ?? []),
+                        'target_image_count' => $targetImageCount,
+                        'status' => 'ready',
+                        'manifest' => [
+                            'mode' => 'remote_trial_preview',
+                            'provider' => 'unsplash',
+                            'remote_only' => true,
+                            'image_count' => count($remoteImages),
+                            'target_image_count' => $targetImageCount,
+                            'images' => $remoteImages,
+                            'updated_at' => now()->toIso8601String(),
+                        ],
+                        'queued_at' => null,
+                        'completed_at' => now(),
+                        'last_error' => null,
+                    ]);
+                }
 
                 DB::table('trial_regenerations')->insert([
                     'trial_generation_id' => $trial->id,

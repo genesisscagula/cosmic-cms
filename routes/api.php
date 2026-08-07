@@ -68,7 +68,14 @@ Route::get('/v1/published-package', function (Request $request) {
         return $website;
     }
 
-    return response()->json(app(PagePublisher::class)->publishedPackage($website));
+    try {
+        return response()->json(app(PagePublisher::class)->publishedPackage($website));
+    } catch (\RuntimeException $exception) {
+        return response()->json([
+            'status' => 'media_not_ready',
+            'message' => $exception->getMessage(),
+        ], 409);
+    }
 })->middleware('throttle:120,1');
 Route::post('/payments/webhooks/paypal', [PaymentWebhookController::class, 'paypal'])->middleware(['throttle:120,1', \App\Http\Middleware\RejectOversizedRequest::class . ':512']);
 Route::post('/payments/webhooks/stripe', [PaymentWebhookController::class, 'stripe'])->middleware('throttle:120,1');

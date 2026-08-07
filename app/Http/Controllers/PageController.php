@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\DB;
 use App\Services\PagePublisher;
 use App\Services\CreditService;
 use App\Services\ThemePlanAccessService;
+use App\Services\MediaAssetLifecycleService;
+use App\Services\MediaAssetSafetyService;
 use App\Support\PageStyleRegistry;
 use App\Services\BlogSparkRegistry;
 use App\Cosmic\Pricing\ActionPricing;
@@ -477,6 +479,10 @@ class PageController extends Controller
             $website->save();
         });
 
+        if ($trial !== null) {
+            app(MediaAssetLifecycleService::class)->queueTrialSave($trial->fresh(['mediaPack', 'page']));
+        }
+
         return response()->json([
             'status' => 'success',
             'credits_spent' => 0,
@@ -573,6 +579,27 @@ class PageController extends Controller
         $this->authorize('update', $page->website);
 
         $website = $page->website;
+
+        $localizationQueued = app(MediaAssetLifecycleService::class)->queueWebsitePublish($website);
+        if ($localizationQueued) {
+            return response()->json([
+                'status' => 'localizing',
+                'message' => 'Securing your remote images locally before publishing.',
+                'media_pack_status' => $website->mediaPack()->value('status') ?: 'queued',
+                'retry_publish' => true,
+            ], 202);
+        }
+
+        $remainingRemoteUrls = app(MediaAssetSafetyService::class)->draftProviderUrls($website->fresh());
+        if ($remainingRemoteUrls !== []) {
+            return response()->json([
+                'status' => 'media_not_ready',
+                'message' => 'Some remote preview images are still being secured. Retry publishing in a moment.',
+                'remote_image_count' => count($remainingRemoteUrls),
+                'retry_publish' => true,
+            ], 409);
+        }
+
         $themeKey = (string) data_get($website->theme_settings, 'primary', '');
         $publishedThemeKey = (string) data_get($website->published_theme_settings, 'primary', '');
         $themeCost = 0;
