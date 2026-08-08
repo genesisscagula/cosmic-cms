@@ -4,7 +4,19 @@ import { createPortal } from "react-dom";
 import themeMetadata from "./ThemeMetadata";
 import ThemeGrid from "./ThemeGrid";
 
-export default function ThemeModal({ open, onClose, selectedTheme, onSelect, themeAccess = null, signupUrl = null, customTheme = null }) {
+export default function ThemeModal({
+    open,
+    onClose,
+    selectedTheme,
+    onSelect,
+    themeAccess = null,
+    signupUrl = null,
+    customTheme = null,
+    hasLogo = false,
+    brandMatchNeeded = false,
+    onMatchBrandToLogo = null,
+    brandMatchBusy = false,
+}) {
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("All");
 
@@ -72,6 +84,15 @@ export default function ThemeModal({ open, onClose, selectedTheme, onSelect, the
         setCategory("All");
     }, [open, themeAccess?.unlimited, themeLimit]);
 
+    const handleMatchBrandToLogo = async () => {
+        if (typeof onMatchBrandToLogo !== 'function' || brandMatchBusy) return;
+        // Close the Theme chooser first so the Builder AI overlay and the
+        // follow-up Apply Theme preview become the only visible modal layers.
+        onClose();
+        await Promise.resolve();
+        await onMatchBrandToLogo();
+    };
+
     if (!open) {
         return null;
     }
@@ -91,7 +112,7 @@ export default function ThemeModal({ open, onClose, selectedTheme, onSelect, the
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="theme-modal-title"
-                className="relative flex h-[min(84dvh,720px)] max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111113] text-white shadow-2xl shadow-black/50"
+                className="cosmic-theme-modal relative flex h-[min(86dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111113] text-white shadow-2xl shadow-black/50"
             >
                 <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#18181b] px-4 py-4 sm:px-6">
                     <div className="flex min-w-0 items-center gap-3">
@@ -163,7 +184,17 @@ export default function ThemeModal({ open, onClose, selectedTheme, onSelect, the
                         ))}
                     </div>
 
-                    <ThemeGrid themes={filteredThemes} selectedTheme={selectedTheme} onSelect={onSelect} allowedThemeIds={allowedThemeIds} nextPlan={nextPlan} />
+                    <ThemeGrid
+                        themes={filteredThemes}
+                        selectedTheme={selectedTheme}
+                        onSelect={onSelect}
+                        allowedThemeIds={allowedThemeIds}
+                        nextPlan={nextPlan}
+                        hasLogo={hasLogo}
+                        brandMatchNeeded={brandMatchNeeded}
+                        onMatchBrandToLogo={handleMatchBrandToLogo}
+                        brandMatchBusy={brandMatchBusy}
+                    />
 
                     {filteredThemes.length === 0 && (
                         <div className="rounded-xl border border-dashed border-white/15 px-6 py-14 text-center text-sm text-slate-500">

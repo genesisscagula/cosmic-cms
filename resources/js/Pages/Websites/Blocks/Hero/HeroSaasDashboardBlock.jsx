@@ -73,7 +73,7 @@ export function HeroSaasDashboardBlock({ block, onUpdate, globalTheme }) {
                     </div>
                     <div className={`grid gap-0 lg:grid-cols-[240px_minmax(0,1fr)] ${theme.surface}`}>
                         <aside className={`hidden border-r p-5 lg:block ${theme.border}`}>
-                            <div className={`rounded-xl px-3 py-2 text-xs font-semibold ${primaryTheme.soft} ${primaryTheme.strongText}`}>Overview</div>
+                            <div className={`rounded-xl px-3 py-2 text-xs font-semibold ${primaryTheme.soft} ${theme.text}`}>Overview</div>
                             {["Projects","Analytics","Customers","Automations"].map((label)=><div key={label} className={`mt-2 rounded-xl px-3 py-2 text-xs ${theme.sub}`}>{label}</div>)}
                         </aside>
                         <div className="p-5 sm:p-7">

@@ -29,16 +29,28 @@ export default function ThemeCard({
     onSelect,
     locked = false,
     nextPlan = null,
+    hasLogo = false,
+    brandMatchNeeded = false,
+    onMatchBrandToLogo = null,
+    brandMatchBusy = false,
 }) {
     const [primary, surface, accent, text] = theme.colors;
+    const isMyBrand = theme.id === 'my-brand';
+    const canMatchBrandToLogo = isMyBrand && hasLogo && brandMatchNeeded && typeof onMatchBrandToLogo === 'function';
 
     return (
-        <button
-            type="button"
+        <div
+            role="button"
             onClick={() => { if (!locked) onSelect(theme.id); }}
+            onKeyDown={(event) => {
+                if (!locked && (event.key === 'Enter' || event.key === ' ')) {
+                    event.preventDefault();
+                    onSelect(theme.id);
+                }
+            }}
             aria-pressed={selected}
             aria-disabled={locked}
-            disabled={locked}
+            tabIndex={0}
             className={`cosmic-theme-card group relative overflow-hidden rounded-xl border text-left transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111113] ${
                 selected
                     ? "is-active border-violet-400/80 bg-violet-500/[0.07] shadow-[0_0_0_1px_rgba(167,139,250,0.22),0_16px_34px_rgba(0,0,0,0.28)]"
@@ -47,15 +59,8 @@ export default function ThemeCard({
                         : "border-white/10 bg-[#171719] hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.035]"
             }`}
         >
-            {locked && (
-                <div
-                    aria-hidden="true"
-                    className="pointer-events-none absolute inset-0 z-[5] bg-slate-950/30"
-                />
-            )}
-
             <div
-                className="relative h-28 overflow-hidden border-b border-black/15 p-3"
+                className={`cosmic-theme-preview relative h-28 overflow-hidden border-b border-black/15 p-3 ${locked ? 'is-locked' : ''}`}
                 style={{ backgroundColor: primary }}
             >
                 <div className="absolute inset-0 bg-gradient-to-br from-white/10 via-transparent to-black/25" />
@@ -70,14 +75,38 @@ export default function ThemeCard({
                 </div>
 
                 {locked && (
-                    <span className="absolute left-1/2 top-3 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-white bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800 shadow-lg shadow-black/20">
+                    <div
+                        aria-hidden="true"
+                        className="cosmic-theme-lock-veil pointer-events-none absolute inset-0 z-10 bg-slate-950/20 backdrop-blur-[1.5px]"
+                    />
+                )}
+
+                {locked && (
+                    <span className="cosmic-theme-unlock-cta absolute left-1/2 top-3 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-white bg-white px-3.5 py-1.5 text-[10px] font-extrabold uppercase tracking-[0.14em] text-amber-800 shadow-[0_8px_22px_rgba(15,23,42,.28)] ring-1 ring-amber-200/80">
                         {nextPlan === 'Sign up' ? '🔒 Sign up to unlock' : `🔒 Upgrade to ${nextPlan || 'unlock'}`}
                     </span>
                 )}
 
                 {selected && (
-                    <span className="cosmic-theme-active-check absolute right-2.5 top-2.5 flex h-6 w-6 items-center justify-center rounded-full bg-violet-500 text-sm font-bold text-white shadow-lg shadow-violet-950/60">
-                        ✓
+                    <span
+                        className="cosmic-theme-active-check absolute right-2.5 top-2.5 z-30 flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-emerald-600 text-white shadow-[0_4px_12px_rgba(5,150,105,.38)] ring-1 ring-emerald-300/70"
+                        aria-label="Current theme"
+                        title="Current theme"
+                    >
+                        <svg
+                            aria-hidden="true"
+                            viewBox="0 0 20 20"
+                            className="h-4 w-4"
+                            fill="none"
+                        >
+                            <path
+                                d="M5.25 10.25 8.3 13.3 14.75 6.85"
+                                stroke="currentColor"
+                                strokeWidth="2.25"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            />
+                        </svg>
                     </span>
                 )}
             </div>
@@ -85,10 +114,10 @@ export default function ThemeCard({
             <div className="p-3.5">
                 <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                        <div className="truncate text-sm font-semibold text-white">
+                        <div className="cosmic-theme-card-name truncate text-sm font-semibold text-white">
                             {theme.name}
                         </div>
-                        <div className="mt-1 text-xs text-slate-400">
+                        <div className="cosmic-theme-card-category mt-1 text-xs text-slate-400">
                             {theme.category}
                         </div>
                     </div>
@@ -98,7 +127,7 @@ export default function ThemeCard({
                     </span>
                 </div>
 
-                <p className="mt-2 line-clamp-2 min-h-8 text-[11px] leading-4 text-slate-500">{theme.description}</p>
+                <p className="cosmic-theme-card-description mt-2 line-clamp-2 min-h-8 text-[11px] leading-4 text-slate-500">{theme.description}</p>
 
                 <div className="mt-3 flex items-center gap-1.5" aria-label={`${theme.name} color palette`}>
                     {[primary, surface, accent, text].map((color, index) => (
@@ -108,9 +137,45 @@ export default function ThemeCard({
                             style={{ backgroundColor: color }}
                         />
                     ))}
-                    <span className="ml-1 text-[10px] font-medium text-slate-500">Background · Surface · Accent · Text</span>
+                    <span className="cosmic-theme-card-palette-label ml-1 text-[10px] font-medium text-slate-500">Background · Surface · Accent · Text</span>
                 </div>
+
+                {isMyBrand && (
+                    <div className="mt-3 border-t border-white/10 pt-3">
+                        {canMatchBrandToLogo ? (
+                            <span
+                                role="button"
+                                tabIndex={0}
+                                aria-disabled={brandMatchBusy}
+                                onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    if (!brandMatchBusy) onMatchBrandToLogo();
+                                }}
+                                onKeyDown={(event) => {
+                                    if ((event.key === 'Enter' || event.key === ' ') && !brandMatchBusy) {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        onMatchBrandToLogo();
+                                    }
+                                }}
+                                className="cosmic-brand-match-cta inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-extrabold text-white shadow-sm transition hover:bg-emerald-500"
+                            >
+                                {brandMatchBusy ? 'Matching…' : '✨ Match to Logo'}
+                            </span>
+                        ) : hasLogo ? (
+                            <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold text-emerald-800">
+                                <span aria-hidden="true">✓</span>
+                                <span>Matched to current logo</span>
+                            </span>
+                        ) : (
+                            <span className="block text-[10px] leading-4 text-slate-500">
+                                Upload a logo to match this brand theme.
+                            </span>
+                        )}
+                    </div>
+                )}
             </div>
-        </button>
+        </div>
     );
 }

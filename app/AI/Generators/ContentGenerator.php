@@ -312,6 +312,10 @@ PROMPT;
     - title
     - desc
 
+    Icon requirements:
+    - Use a recognizable, strongly colored emoji/icon that remains visible on light, surface, primary, and dark Spark backgrounds.
+    - Avoid predominantly white, near-white, pale-gray, transparent-looking, or low-contrast icons.
+
     TXT;
     }
 
@@ -445,6 +449,12 @@ PROMPT;
     - Do not invent guarantees, clients, awards, or performance results.
     - Keep button URLs as # when no destination was supplied.
     - Do not use markdown or placeholder copy.
+    - ICON CONTRAST RULE: icons must remain clearly visible on any Spark theme slot: primary, white, surface, dark, or light.
+    - Never choose a plain white, near-white, pale-gray, transparent, or washed-out icon for a white/light card.
+    - White/light icons are allowed only when the actual icon container/background is dark enough for strong contrast.
+    - On white/light/surface cards prefer a saturated, dark, or primary-compatible emoji/icon with a clearly visible silhouette.
+    - Avoid icons whose dominant color visually disappears into their container. Readability is more important than decorative palette matching.
+    - Icon identity/content should remain usable after theme switching; do not depend on a specific page background to make the icon visible.
 
     TXT;
     }
@@ -472,6 +482,8 @@ PROMPT;
 
     - Generate exactly 3 cards.
     - Choose an emoji that best represents the service.
+    - Choose an emoji with a strong visible silhouette and enough intrinsic color contrast for both light and dark theme contexts.
+    - Avoid predominantly white or near-white emoji/icon choices that can disappear on white cards.
     - Do not repeat the same emoji.
 
     TXT;

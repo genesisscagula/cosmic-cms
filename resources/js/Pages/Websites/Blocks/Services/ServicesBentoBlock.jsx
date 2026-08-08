@@ -268,7 +268,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                                     w-20
                                     h-20
                                     rounded-3xl
-                                    bg-white/5
+                                    cosmic-adaptive-icon-tile
                                     border
                                     flex
                                     items-center

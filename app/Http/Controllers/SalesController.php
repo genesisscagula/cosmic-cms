@@ -18,29 +18,6 @@ class SalesController extends Controller
         // Defense-in-depth: keep the owner CRM private even if route middleware changes later.
         abort_unless($request->user()?->isPlatformOwner(), 403);
 
-        $demos = TrialGeneration::query()
-            ->where('status', 'ready')
-            ->whereNotNull('page_id')
-            ->latest('updated_at')
-            ->limit(24)
-            ->get()
-            ->map(fn (TrialGeneration $trial) => [
-                'id' => $trial->id,
-                'business_name' => $trial->business_name ?: 'Untitled demo',
-                'industry' => $trial->industry ?: 'General Business',
-                'location' => $trial->location ?: 'Location not specified',
-                'theme' => data_get($trial->preview_theme, 'primary', 'midnight'),
-                'blocks_count' => is_array($trial->generated_blocks)
-                    ? count($trial->generated_blocks)
-                    : 0,
-                'updated_at' => $trial->updated_at?->diffForHumans(),
-                'demo_url' => route('pages.builder', [
-                    'page' => $trial->page_id,
-                    'token' => $trial->token,
-                ]),
-            ])
-            ->values();
-
         $registered = PendingOnboarding::query()
             ->with([
                 'user:id,name,email,plan_key,plan_status,onboarding_status,created_at',
@@ -128,7 +105,6 @@ class SalesController extends Controller
         ];
 
         return Inertia::render('Sales/Index', [
-            'demos' => $demos,
             'leads' => $leads,
             'leadStats' => $leadStats,
         ]);

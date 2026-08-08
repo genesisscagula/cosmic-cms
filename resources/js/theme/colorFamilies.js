@@ -21,6 +21,8 @@ export function installCustomBrandTheme(customTheme) {
         surface: safeHex(palette.surface, '#30475E'),
         text: safeHex(palette.text, '#F8FAFC'),
         muted: safeHex(palette.muted, '#CBD5E1'),
+        surfaceText: safeHex(palette.surface_text, safeHex(palette.text, '#F8FAFC')),
+        buttonText: safeHex(palette.button_text, '#FFFFFF'),
         border: safeHex(palette.border, '#475569'),
     };
 
@@ -44,6 +46,8 @@ export function installCustomBrandTheme(customTheme) {
         root.style.setProperty('--cosmic-brand-surface', normalized.surface);
         root.style.setProperty('--cosmic-brand-text', normalized.text);
         root.style.setProperty('--cosmic-brand-muted', normalized.muted);
+        root.style.setProperty('--cosmic-brand-surface-text', normalized.surfaceText);
+        root.style.setProperty('--cosmic-brand-button-text', normalized.buttonText);
         root.style.setProperty('--cosmic-brand-border', normalized.border);
         root.style.setProperty('--cosmic-brand-accent', normalized.accent);
     }

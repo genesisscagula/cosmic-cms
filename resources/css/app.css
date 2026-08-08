@@ -2851,3 +2851,282 @@ body .cosmic-start-quick-idea.rounded-full.border {
 .cosmic-brand-text { color: var(--cosmic-brand-text) !important; }
 .cosmic-brand-muted { color: var(--cosmic-brand-muted) !important; }
 .cosmic-brand-border { border-color: var(--cosmic-brand-border) !important; }
+
+
+/* ================================================================
+   H11 — Logo + Theme modal layout/readability hardening
+   Keep portal modals readable in Appearance: Light without hiding
+   locked previews or disabled action labels.
+   ================================================================ */
+
+/* Theme modal has its own light presentation because it is portaled to body. */
+:root[data-theme="light"] .cosmic-theme-modal {
+    background: #f8fbf9 !important;
+    color: #0f172a !important;
+    border-color: #cbdad2 !important;
+    box-shadow: 0 28px 80px rgba(15,23,42,.24) !important;
+}
+:root[data-theme="light"] .cosmic-theme-modal > header,
+:root[data-theme="light"] .cosmic-theme-modal > footer {
+    background: #ffffff !important;
+    border-color: #d8e5de !important;
+}
+:root[data-theme="light"] .cosmic-theme-modal > div {
+    background: #f6faf7 !important;
+}
+:root[data-theme="light"] .cosmic-theme-modal :is(h2,h3,.text-white) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-theme-modal :is(.text-slate-400,.text-slate-500) {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+}
+:root[data-theme="light"] .cosmic-theme-modal input {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+}
+
+/* Locked cards stay fully previewable; entitlement lock only blocks selection. */
+:root[data-theme="light"] .cosmic-theme-card {
+    background: #ffffff !important;
+    border-color: #cbdad2 !important;
+    color: #0f172a !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-theme-card[aria-disabled="true"] {
+    background: #ffffff !important;
+    border-color: #d5dfda !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+:root[data-theme="light"] .cosmic-theme-card-name {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-theme-card-category {
+    color: #64748b !important;
+}
+:root[data-theme="light"] .cosmic-theme-card-description,
+:root[data-theme="light"] .cosmic-theme-card-palette-label {
+    color: #64748b !important;
+}
+:root[data-theme="light"] .cosmic-theme-card[aria-disabled="true"] > div:first-of-type {
+    opacity: 1 !important;
+    filter: none !important;
+}
+:root[data-theme="light"] .cosmic-theme-card[aria-disabled="true"] > div:first-of-type > .absolute.inset-0 {
+    opacity: .55 !important;
+}
+
+/* Logo dialog action cards must never inherit white text on white surfaces. */
+:root[data-theme="light"] .cosmic-logo-modal {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-logo-upload-card {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-logo-upload-card:hover {
+    background: #ecfdf5 !important;
+    border-color: #34d399 !important;
+}
+:root[data-theme="light"] .cosmic-logo-upload-title {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-logo-upload-help {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+}
+:root[data-theme="light"] .cosmic-logo-brand-light {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-logo-brand-light :is(.text-slate-500,.text-slate-600) {
+    color: #64748b !important;
+}
+:root[data-theme="light"] .cosmic-logo-generate-card,
+:root[data-theme="light"] .cosmic-logo-generate-card * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+
+/* ================================================================
+   H12 — Locked theme emphasis + branding card readability
+   ================================================================ */
+
+.cosmic-theme-preview.is-locked > :not(.cosmic-theme-lock-veil):not(.cosmic-theme-unlock-cta) {
+    filter: saturate(.78);
+}
+.cosmic-theme-lock-veil {
+    background: rgba(15, 23, 42, .22);
+    backdrop-filter: blur(1.5px);
+    -webkit-backdrop-filter: blur(1.5px);
+}
+.cosmic-theme-unlock-cta {
+    opacity: 1 !important;
+    filter: none !important;
+    -webkit-filter: none !important;
+}
+.cosmic-theme-active-check {
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+}
+
+/* Active theme marker stays obvious in both application appearances. */
+:root[data-theme="light"] .cosmic-theme-active-check,
+:root[data-theme="dark"] .cosmic-theme-active-check {
+    background: #059669 !important;
+    border-color: #fff !important;
+    color: #fff !important;
+    box-shadow: 0 6px 18px rgba(5,150,105,.45) !important;
+}
+
+/* Keep locked preview visibly premium while preserving the unlock CTA. */
+:root[data-theme="light"] .cosmic-theme-lock-veil {
+    background: rgba(15, 23, 42, .19) !important;
+}
+:root[data-theme="dark"] .cosmic-theme-lock-veil {
+    background: rgba(2, 6, 23, .32) !important;
+}
+
+/* Brand matching cards: explicit contrast wins over global appearance rules. */
+:root[data-theme="light"] .cosmic-logo-brand-light,
+:root[data-theme="dark"] .cosmic-logo-brand-light {
+    background: #fff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-logo-brand-light-title,
+:root[data-theme="dark"] .cosmic-logo-brand-light-title {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-logo-brand-light-help,
+:root[data-theme="dark"] .cosmic-logo-brand-light-help {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}
+.cosmic-logo-brand-dark,
+.cosmic-logo-brand-dark * {
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+}
+
+
+/* ================================================================
+   H15 — My Brand Theme contextual Match-to-Logo action
+   ================================================================ */
+.cosmic-brand-match-cta {
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+}
+:root[data-theme="light"] .cosmic-brand-match-cta,
+:root[data-theme="dark"] .cosmic-brand-match-cta {
+    background: #059669 !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+}
+:root[data-theme="light"] .cosmic-brand-match-cta:hover,
+:root[data-theme="dark"] .cosmic-brand-match-cta:hover {
+    background: #047857 !important;
+}
+
+
+/* ================================================================
+   H17.2 — Contact form editor CTA + active theme marker polish
+   ================================================================ */
+.cosmic-contact-edit-fields {
+    -webkit-text-fill-color: currentColor;
+}
+:root[data-theme="light"] .cosmic-contact-edit-fields {
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+}
+:root[data-theme="light"] .cosmic-contact-edit-fields:hover {
+    color: #065f46 !important;
+    -webkit-text-fill-color: #065f46 !important;
+}
+.cosmic-theme-active-check,
+.cosmic-theme-active-check svg {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+.cosmic-theme-active-check svg {
+    display: block;
+    flex: none;
+}
+
+
+/* ================================================================
+   H21 — My Brand Theme deterministic contrast protection
+   ================================================================ */
+.cosmic-brand-text {
+    color: var(--cosmic-brand-text, #F8FAFC) !important;
+    -webkit-text-fill-color: var(--cosmic-brand-text, #F8FAFC) !important;
+}
+.cosmic-brand-muted {
+    color: var(--cosmic-brand-muted, #CBD5E1) !important;
+    -webkit-text-fill-color: var(--cosmic-brand-muted, #CBD5E1) !important;
+}
+.cosmic-brand-surface {
+    color: var(--cosmic-brand-surface-text, var(--cosmic-brand-text, #F8FAFC));
+}
+.cosmic-brand-surface .cosmic-brand-text,
+.cosmic-brand-surface .cosmic-brand-muted {
+    color: var(--cosmic-brand-surface-text, var(--cosmic-brand-text, #F8FAFC)) !important;
+    -webkit-text-fill-color: var(--cosmic-brand-surface-text, var(--cosmic-brand-text, #F8FAFC)) !important;
+}
+.cosmic-brand-primary-button,
+.cosmic-brand-primary-button * {
+    color: var(--cosmic-brand-button-text, #FFFFFF) !important;
+    -webkit-text-fill-color: var(--cosmic-brand-button-text, #FFFFFF) !important;
+}
+
+
+/* ================================================================
+   H22 — Form editor visibility + theme-safe icon containers
+   ================================================================ */
+.cosmic-contact-add-field {
+    color: #047857 !important;
+    -webkit-text-fill-color: #047857 !important;
+    background: #ffffff !important;
+    border-color: #10b981 !important;
+    opacity: 1 !important;
+}
+.cosmic-contact-add-field:hover {
+    color: #065f46 !important;
+    -webkit-text-fill-color: #065f46 !important;
+    background: #ecfdf5 !important;
+}
+
+/*
+ * Emoji/SVG artwork can contain its own white pixels, so CSS `color` alone
+ * cannot guarantee visibility. This adaptive tile gives every generated icon
+ * a neutral contrasting frame on both light and dark Spark backgrounds.
+ */
+.cosmic-adaptive-icon-tile {
+    position: relative;
+    isolation: isolate;
+    background:
+        linear-gradient(135deg, rgba(15, 23, 42, 0.08), rgba(255, 255, 255, 0.16));
+    box-shadow:
+        inset 0 0 0 1px rgba(100, 116, 139, 0.18),
+        0 1px 2px rgba(15, 23, 42, 0.04);
+}
+.cosmic-adaptive-icon-tile::before {
+    content: "";
+    position: absolute;
+    inset: 5px;
+    z-index: -1;
+    border-radius: inherit;
+    background: rgba(148, 163, 184, 0.10);
+}

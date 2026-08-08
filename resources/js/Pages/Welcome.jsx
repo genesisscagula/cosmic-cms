@@ -227,7 +227,7 @@ export default function Welcome() {
                         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
                             <p className="text-center text-xs font-black uppercase tracking-[0.24em] text-slate-400">A modern workflow built on technology teams already trust</p>
                             <div className="mt-8 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
-                                {['Laravel', 'React', 'Tailwind', 'Inertia', 'PayPal', 'Static HTML'].map((item) => (
+                                {['Cosmic CMS', 'React', 'Tailwind', 'Inertia', 'PayPal', 'Static HTML'].map((item) => (
                                     <div key={item} className="flex h-14 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-sm font-black text-slate-500">
                                         {item}
                                     </div>

@@ -7,7 +7,7 @@ return [
             'tier' => 'starter',
             'rank' => 10,
             'price_usd' => 49,
-            'credits' => 150,
+            'credits' => 500,
             'description' => 'Launch one complete business website with essential AI and Sparks.',
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_PERSONAL_STARTER_ID', env('PAYPAL_PLAN_STARTER_ID'))],
             'capabilities' => [
@@ -32,7 +32,7 @@ return [
             'tier' => 'growth',
             'rank' => 20,
             'price_usd' => 79,
-            'credits' => 350,
+            'credits' => 1000,
             'description' => 'More pages, premium creative access, and marketing tools for a growing business.',
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_PERSONAL_GROWTH_ID', env('PAYPAL_PLAN_GROWTH_ID'))],
             'capabilities' => [
@@ -57,7 +57,7 @@ return [
             'tier' => 'pro',
             'rank' => 30,
             'price_usd' => 129,
-            'credits' => 750,
+            'credits' => 2000,
             'description' => 'The complete single-website Cosmic experience with advanced AI, analytics, leads, and sales.',
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_PERSONAL_PRO_ID', env('PAYPAL_PLAN_PRO_ID'))],
             'capabilities' => [
@@ -82,7 +82,7 @@ return [
             'tier' => 'starter',
             'rank' => 110,
             'price_usd' => 99,
-            'credits' => 500,
+            'credits' => 750,
             'description' => 'Manage up to 3 client websites with shared credits, previews, and essential agency tools.',
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_AGENCY_STARTER_ID', env('PAYPAL_PLAN_AGENCY_BASIC_ID'))],
             'capabilities' => [
@@ -138,7 +138,7 @@ return [
             'tier' => 'pro',
             'rank' => 130,
             'price_usd' => 399,
-            'credits' => 5000,
+            'credits' => 3000,
             'description' => 'Unlimited websites with full agency insights, teams, sales, leads, white label, API, and webhooks.',
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_AGENCY_PRO_ID')],
             'capabilities' => [

@@ -791,11 +791,11 @@ HTML;
 
                     $title = e($card['title'] ?? '');
                     $desc = e($card['desc'] ?? '');
-                    $icon = $icons[$i % count($icons)];
+                    $icon = e($card['icon'] ?? $icons[$i % count($icons)]);
 
                     $cardHtml .= "
                     <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-8 h-full flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl'>
-                        <div class='w-16 h-16 rounded-2xl border {$theme['border']} bg-white/5 flex items-center justify-center text-2xl mb-6'>
+                        <div class='cosmic-adaptive-icon-tile w-16 h-16 rounded-2xl border {$theme['border']} flex items-center justify-center text-2xl mb-6'>
                             {$icon}
                         </div>
                         <h3 class='text-2xl font-bold tracking-tight {$theme['text']}'>
@@ -2572,7 +2572,7 @@ HTML;
                         </div>
                         <div class='mt-14 overflow-hidden rounded-[2rem] border shadow-2xl {$theme['border']}'>
                             <div class='flex items-center justify-between border-b px-5 py-4 sm:px-7 {$theme['border']} {$theme['surface']}'><div><strong class='block text-sm {$theme['text']}'>{$dashboardTitle}</strong><span class='mt-1 block text-xs {$theme['sub']}'>{$dashboardSubtitle}</span></div><div class='flex gap-1.5'><span class='h-2.5 w-2.5 rounded-full bg-rose-400'></span><span class='h-2.5 w-2.5 rounded-full bg-amber-400'></span><span class='h-2.5 w-2.5 rounded-full bg-emerald-400'></span></div></div>
-                            <div class='grid lg:grid-cols-[240px_minmax(0,1fr)] {$theme['surface']}'><aside class='hidden border-r p-5 lg:block {$theme['border']}'><div class='rounded-xl px-3 py-2 text-xs font-semibold {$primaryTheme['soft']} {$primaryTheme['strongText']}'>Overview</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Projects</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Analytics</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Customers</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Automations</div></aside><div class='p-5 sm:p-7'><div class='grid gap-4 md:grid-cols-3'>{$metricCards}</div><div class='mt-4 rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-sm {$theme['text']}'>{$chartLabel}</strong><div class='mt-7 flex h-40 items-end gap-2 sm:gap-3'>{$bars}</div></div></div></div>
+                            <div class='grid lg:grid-cols-[240px_minmax(0,1fr)] {$theme['surface']}'><aside class='hidden border-r p-5 lg:block {$theme['border']}'><div class='rounded-xl px-3 py-2 text-xs font-semibold {$primaryTheme['soft']} {$theme['text']}'>Overview</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Projects</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Analytics</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Customers</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Automations</div></aside><div class='p-5 sm:p-7'><div class='grid gap-4 md:grid-cols-3'>{$metricCards}</div><div class='mt-4 rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-sm {$theme['text']}'>{$chartLabel}</strong><div class='mt-7 flex h-40 items-end gap-2 sm:gap-3'>{$bars}</div></div></div></div>
                         </div>
                         <div class='mt-8 border-t pt-7 text-center {$theme['border']}'><p class='text-[11px] font-bold uppercase tracking-[.26em] {$theme['sub']}'>Trusted by teams building what comes next</p><div class='mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4'>{$logoHtml}</div></div>
                     </div>

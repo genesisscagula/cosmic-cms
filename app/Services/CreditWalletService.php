@@ -48,6 +48,54 @@ class CreditWalletService
         return $this->mutate($user, $amount, 'refund', $description, $category, $website, $reference, $metadata);
     }
 
+    /**
+     * Set the wallet to an exact balance. Used for the first paid plan allocation
+     * so guest/trial or pre-payment credits are replaced rather than stacked.
+     */
+    public function setBalance(User $user, int $balance, string $description, string $category = 'subscription', ?string $reference = null, array $metadata = []): CreditTransaction
+    {
+        if ($balance < 0) {
+            throw new InvalidArgumentException('Credit balance cannot be negative.');
+        }
+
+        return DB::transaction(function () use ($user, $balance, $description, $category, $reference, $metadata) {
+            if ($reference) {
+                $existing = CreditTransaction::query()
+                    ->where('user_id', $user->id)
+                    ->where('reference', $reference)
+                    ->first();
+
+                if ($existing) {
+                    $user->setAttribute('credits', $existing->balance_after);
+                    return $existing;
+                }
+            }
+
+            $lockedUser = User::query()->lockForUpdate()->findOrFail($user->id);
+            $before = (int) $lockedUser->credits;
+            $lockedUser->credits = $balance;
+            $lockedUser->save();
+
+            $transaction = $lockedUser->creditTransactions()->create([
+                'website_id' => null,
+                'type' => 'credit',
+                'category' => $category,
+                'amount' => $balance - $before,
+                'balance_after' => $balance,
+                'description' => $description,
+                'reference' => $reference,
+                'metadata' => array_merge($metadata, [
+                    'balance_before' => $before,
+                    'balance_replaced' => true,
+                ]),
+            ]);
+
+            $user->setAttribute('credits', $balance);
+
+            return $transaction;
+        });
+    }
+
     private function mutate(User $user, int $signedAmount, string $type, string $description, string $category, ?Website $website, ?string $reference, array $metadata): CreditTransaction
     {
         $this->assertPositiveAmount(abs($signedAmount));

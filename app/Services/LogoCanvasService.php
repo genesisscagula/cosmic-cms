@@ -4,10 +4,11 @@ namespace App\Services;
 
 class LogoCanvasService
 {
-    public const WIDTH = 650;
-    public const HEIGHT = 150;
-
-    public function normalizePng(string $bytes): string
+    /**
+     * Remove transparent excess only. Visible pixels are never cropped.
+     * A tiny transparent safety pad keeps anti-aliased edge pixels intact.
+     */
+    public function trimTransparentPng(string $bytes, int $padding = 6): string
     {
         if (! function_exists('imagecreatefromstring')) {
             return $bytes;
@@ -18,49 +19,97 @@ class LogoCanvasService
             return $bytes;
         }
 
-        $sourceWidth = imagesx($source);
-        $sourceHeight = imagesy($source);
-        if ($sourceWidth < 1 || $sourceHeight < 1) {
+        $width = imagesx($source);
+        $height = imagesy($source);
+        $left = $width;
+        $top = $height;
+        $right = -1;
+        $bottom = -1;
+
+        // GD alpha: 0 opaque -> 127 transparent. Treat faint anti-alias pixels as visible.
+        for ($y = 0; $y < $height; $y++) {
+            for ($x = 0; $x < $width; $x++) {
+                $rgba = imagecolorat($source, $x, $y);
+                $alpha = ($rgba & 0x7F000000) >> 24;
+                $r = ($rgba >> 16) & 0xFF;
+                $g = ($rgba >> 8) & 0xFF;
+                $b = $rgba & 0xFF;
+
+                // Ignore ultra-faint AI glow/noise around the canvas. Alpha 0 is
+                // fully opaque and 127 fully transparent in GD.
+                $opacity = 1 - ($alpha / 127);
+                $brightness = max($r, $g, $b) / 255;
+                $significance = $opacity * max(0.35, $brightness);
+
+                if ($alpha < 116 && $significance >= 0.075) {
+                    $left = min($left, $x);
+                    $right = max($right, $x);
+                    $top = min($top, $y);
+                    $bottom = max($bottom, $y);
+                }
+            }
+        }
+
+        if ($right < $left || $bottom < $top) {
             imagedestroy($source);
             return $bytes;
         }
 
-        $canvas = imagecreatetruecolor(self::WIDTH, self::HEIGHT);
-        imagealphablending($canvas, false);
-        imagesavealpha($canvas, true);
-        $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
-        imagefilledrectangle($canvas, 0, 0, self::WIDTH, self::HEIGHT, $transparent);
+        $left = max(0, $left - $padding);
+        $top = max(0, $top - $padding);
+        $right = min($width - 1, $right + $padding);
+        $bottom = min($height - 1, $bottom + $padding);
+        $targetWidth = $right - $left + 1;
+        $targetHeight = $bottom - $top + 1;
 
-        $paddingX = 18;
-        $paddingY = 12;
-        $maxWidth = self::WIDTH - ($paddingX * 2);
-        $maxHeight = self::HEIGHT - ($paddingY * 2);
-        $scale = min($maxWidth / $sourceWidth, $maxHeight / $sourceHeight);
-        $targetWidth = max(1, (int) round($sourceWidth * $scale));
-        $targetHeight = max(1, (int) round($sourceHeight * $scale));
-        $x = (int) floor((self::WIDTH - $targetWidth) / 2);
-        $y = (int) floor((self::HEIGHT - $targetHeight) / 2);
-
-        imagecopyresampled($canvas, $source, $x, $y, 0, 0, $targetWidth, $targetHeight, $sourceWidth, $sourceHeight);
-        ob_start();
-        imagepng($canvas, null, 9);
-        $normalized = (string) ob_get_clean();
-        imagedestroy($source);
-        imagedestroy($canvas);
-
-        return $normalized !== '' ? $normalized : $bytes;
-    }
-    public function normalizePngToPrimary(string $bytes, string $primaryHex): string
-    {
-        $bytes = $this->normalizePng($bytes);
-
-        if (! function_exists('imagecreatefromstring')) {
+        // Already tight enough.
+        if ($left === 0 && $top === 0 && $targetWidth === $width && $targetHeight === $height) {
+            imagedestroy($source);
             return $bytes;
         }
 
-        $primaryHex = strtoupper(trim($primaryHex));
-        if (! preg_match('/^#[0-9A-F]{6}$/', $primaryHex)) {
-            return $bytes;
+        $canvas = imagecreatetruecolor($targetWidth, $targetHeight);
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+        $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+        imagefilledrectangle($canvas, 0, 0, $targetWidth, $targetHeight, $transparent);
+        imagecopy($canvas, $source, 0, 0, $left, $top, $targetWidth, $targetHeight);
+
+        ob_start();
+        imagepng($canvas, null, 9);
+        $result = (string) ob_get_clean();
+        imagedestroy($source);
+        imagedestroy($canvas);
+
+        return $result !== '' ? $result : $bytes;
+    }
+
+    /**
+     * Snap chromatic AI output to the nearest exact palette color.
+     * Neutral black/white/gray pixels are preserved.
+     */
+    public function normalizePngToPalette(string $bytes, array $palette): string
+    {
+        if (! function_exists('imagecreatefromstring')) {
+            return $this->trimTransparentPng($bytes);
+        }
+
+        $targets = [];
+        foreach (['primary', 'secondary', 'tertiary'] as $key) {
+            $hex = strtoupper(trim((string) ($palette[$key] ?? '')));
+            if (preg_match('/^#[0-9A-F]{6}$/', $hex)) {
+                $targets[] = [
+                    'role' => $key,
+                    'hex' => $hex,
+                    'r' => hexdec(substr($hex, 1, 2)),
+                    'g' => hexdec(substr($hex, 3, 2)),
+                    'b' => hexdec(substr($hex, 5, 2)),
+                ];
+            }
+        }
+
+        if ($targets === []) {
+            return $this->trimTransparentPng($bytes);
         }
 
         $image = @imagecreatefromstring($bytes);
@@ -68,18 +117,11 @@ class LogoCanvasService
             return $bytes;
         }
 
-        $targetR = hexdec(substr($primaryHex, 1, 2));
-        $targetG = hexdec(substr($primaryHex, 3, 2));
-        $targetB = hexdec(substr($primaryHex, 5, 2));
+        imagealphablending($image, false);
+        imagesavealpha($image, true);
         $width = imagesx($image);
         $height = imagesy($image);
 
-        imagealphablending($image, false);
-        imagesavealpha($image, true);
-
-        // Recolor meaningful chromatic logo pixels to the exact theme primary.
-        // Neutral black/gray/white wordmark pixels stay untouched. Alpha is preserved
-        // so anti-aliased edges and the transparent canvas remain clean.
         for ($y = 0; $y < $height; $y++) {
             for ($x = 0; $x < $width; $x++) {
                 $rgba = imagecolorat($image, $x, $y);
@@ -95,23 +137,67 @@ class LogoCanvasService
                 $min = min($r, $g, $b);
                 $chroma = $max - $min;
 
-                // Only replace pixels that visibly carry a hue. This avoids turning
-                // black/gray/white typography into the theme color.
-                if ($chroma < 18) {
+                // Preserve neutral typography, white highlights and black details.
+                if ($chroma < 20) {
                     continue;
                 }
 
-                $replacement = imagecolorallocatealpha($image, $targetR, $targetG, $targetB, $alpha);
+                $nearest = $targets[0];
+                $nearestDistance = PHP_INT_MAX;
+
+                foreach ($targets as $target) {
+                    $distance = (($r - $target['r']) ** 2)
+                        + (($g - $target['g']) ** 2)
+                        + (($b - $target['b']) ** 2);
+
+                    // Bias mapping toward PRIMARY so the saved logo keeps the
+                    // website theme's visual identity even when the image model
+                    // overuses a supporting palette color.
+                    $weight = match ($target['role'] ?? 'primary') {
+                        'primary' => 0.62,
+                        'secondary' => 1.08,
+                        'tertiary' => 1.42,
+                        default => 1.0,
+                    };
+                    $weightedDistance = $distance * $weight;
+
+                    if ($weightedDistance < $nearestDistance) {
+                        $nearestDistance = $weightedDistance;
+                        $nearest = $target;
+                    }
+                }
+
+                $replacement = imagecolorallocatealpha(
+                    $image,
+                    $nearest['r'],
+                    $nearest['g'],
+                    $nearest['b'],
+                    $alpha
+                );
                 imagesetpixel($image, $x, $y, $replacement);
             }
         }
 
         ob_start();
         imagepng($image, null, 9);
-        $result = (string) ob_get_clean();
+        $mapped = (string) ob_get_clean();
         imagedestroy($image);
 
-        return $result !== '' ? $result : $bytes;
+        return $this->trimTransparentPng($mapped !== '' ? $mapped : $bytes);
     }
 
+    // Backward-compatible helpers used by older code paths.
+    public function normalizePng(string $bytes): string
+    {
+        return $this->trimTransparentPng($bytes);
+    }
+
+    public function normalizePngToPrimary(string $bytes, string $primaryHex): string
+    {
+        return $this->normalizePngToPalette($bytes, [
+            'primary' => $primaryHex,
+            'secondary' => $primaryHex,
+            'tertiary' => $primaryHex,
+        ]);
+    }
 }

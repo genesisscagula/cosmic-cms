@@ -75,6 +75,9 @@ Route::post('/trials/{trial:token}/branding/logo/upload', [TrialBrandingControll
 Route::post('/trials/{trial:token}/branding/logo/generate', [TrialBrandingController::class, 'generateLogo'])
     ->middleware('throttle:4,1')
     ->name('trial-branding.logo.generate');
+Route::post('/trials/{trial:token}/branding/logo/crop', [TrialBrandingController::class, 'cropLogo'])
+    ->middleware('throttle:30,1')
+    ->name('trial-branding.logo.crop');
 Route::post('/trials/{trial:token}/branding/logo/match-theme', [TrialBrandingController::class, 'matchLogoToTheme'])
     ->middleware('throttle:4,1')
     ->name('trial-branding.logo.match-theme');
@@ -215,6 +218,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/api/upload-block-image', [ImageController::class, 'uploadImage'])->middleware('throttle:cosmic-upload');
     Route::post('/api/upload-logo', [ImageController::class, 'uploadLogo'])->middleware('throttle:cosmic-upload')->name('websites.logo.upload');
     Route::post('/websites/{website}/branding/logo/generate', [ImageController::class, 'generateLogo'])->middleware('throttle:4,1')->name('websites.logo.generate');
+    Route::post('/websites/{website}/branding/logo/crop', [ImageController::class, 'cropLogo'])->middleware('throttle:30,1')->name('websites.logo.crop');
     Route::post('/websites/{website}/branding/logo/match-theme', [ImageController::class, 'matchLogoToTheme'])->middleware('throttle:4,1')->name('websites.logo.match-theme');
     Route::post('/websites/{website}/branding/theme/match-logo', [ImageController::class, 'matchThemeToLogo'])->middleware('throttle:4,1')->name('websites.theme.match-logo');
     Route::post('/api/update-block-data', [ImageController::class, 'update'])->middleware('throttle:cosmic-upload');

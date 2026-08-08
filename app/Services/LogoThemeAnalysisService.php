@@ -57,11 +57,19 @@ class LogoThemeAnalysisService
         $prompt = implode("\n", [
             'Analyze this company logo and return only a JSON object.',
             'Identify meaningful brand colors, not incidental pixels.',
-            'PRIORITY RULE: choose the darkest prominent meaningful brand color as primary.',
+            'PRIMARY EXTRACTION IS STRICT: choose one prominent meaningful brand color that visibly exists in the logo and return its exact sampled six-digit HEX value. Do not approximate, beautify, darken, lighten, mute, normalize, hue-shift, or replace it.',
+            'Prefer the darkest prominent meaningful chromatic brand color when multiple real brand colors are present, but the returned primary must still be an exact color visibly present in the logo.',
             'Ignore transparent areas, white backgrounds, neutral black/gray outlines, shadows, anti-aliasing pixels, and tiny decorative colors unless they are clearly part of the brand identity.',
-            'Choose a secondary color and an accent color that genuinely occur in or strongly match the logo.',
-            'Build a complete usable website color family around those brand colors. Keep primary/background dark enough for white solid-button text where possible, create a distinct surface, a readable foreground text color, a muted text color, and a subtle border color.',
-            'Return six-digit HEX values only. Ensure text/background and text/surface combinations have strong readable contrast.',
+            'Choose secondary and accent from real meaningful logo colors where possible. Do not let either override the primary identity.',
+            'MANDATORY WEBSITE RULE: set background equal to the exact primary HEX. The custom website theme must visually read as the same PRIMARY-colored brand first.',
+            'READABILITY OVERRIDES DECORATIVE COLOR CHOICES: never use a foreground/text color that becomes low-contrast against its section or card background.',
+            'On dark or saturated backgrounds, headings and primary text must be white or near-white; paragraphs, labels, nav text, helper text, and secondary text must use a high-contrast light neutral.',
+            'On light backgrounds, headings and primary text must use a dark neutral; muted text must remain clearly readable.',
+            'Never reuse the PRIMARY brand HEX as body text, muted text, navigation text, or labels if that reduces contrast.',
+            'Solid primary buttons must use white text/icons. Nested cards and dashboard mockups must choose readable foregrounds against their own card/surface background, not only the parent section background.',
+            'Target WCAG AA contrast where practical. Brand matching controls palette identity; accessibility/readability controls foreground colors.',
+            'Build surface, text, muted, and border around that exact primary without changing the primary/background HEX itself.',
+            'Return six-digit HEX values only. primary and background must be exactly identical HEX strings.',
             'Schema: {"primary":"#RRGGBB","secondary":"#RRGGBB","accent":"#RRGGBB","background":"#RRGGBB","surface":"#RRGGBB","text":"#RRGGBB","muted":"#RRGGBB","border":"#RRGGBB","reason":"short explanation"}',
         ]);
 
@@ -146,11 +154,44 @@ class LogoThemeAnalysisService
         $secondary = $this->normalizeHex((string) ($palette['secondary'] ?? $primary));
         $accent = $this->normalizeHex((string) ($palette['accent'] ?? $secondary));
 
-        $background = $this->normalizeHex((string) ($palette['background'] ?? $primary));
+        // My Brand Theme must preserve the exact detected logo primary.
+        // Never allow the model to silently shift the website background away
+        // from the brand's primary HEX.
+        $background = $primary;
         $surface = $this->normalizeHex((string) ($palette['surface'] ?? $this->mixHex($background, '#FFFFFF', 0.14)));
-        $text = $this->normalizeHex((string) ($palette['text'] ?? ($this->luminance($background) < 150 ? '#FFFFFF' : '#0F172A')));
-        $muted = $this->normalizeHex((string) ($palette['muted'] ?? ($this->luminance($background) < 150 ? '#CBD5E1' : '#475569')));
-        $border = $this->normalizeHex((string) ($palette['border'] ?? $this->mixHex($surface, $text, 0.18)));
+
+        // Deterministic readability engine. The model may suggest foregrounds,
+        // but low-contrast values are never allowed to become the saved theme.
+        $preferredText = $this->normalizeHex((string) ($palette['text'] ?? '#FFFFFF'));
+        $preferredMuted = $this->normalizeHex((string) ($palette['muted'] ?? '#CBD5E1'));
+
+        $text = $this->ensureReadableForeground(
+            $background,
+            $preferredText,
+            '#FFFFFF',
+            '#0F172A',
+            4.5
+        );
+
+        $muted = $this->ensureReadableForeground(
+            $background,
+            $preferredMuted,
+            '#CBD5E1',
+            '#475569',
+            3.2
+        );
+
+        $surfaceText = $this->ensureReadableForeground(
+            $surface,
+            $text,
+            '#FFFFFF',
+            '#0F172A',
+            4.5
+        );
+
+        // If the surface requires the opposite foreground from the section,
+        // store an explicit surface_text token for nested cards/dashboard UI.
+        $border = $this->normalizeHex((string) ($palette['border'] ?? $this->mixHex($surface, $surfaceText, 0.18)));
 
         return [
             'primary' => $primary,
@@ -160,9 +201,59 @@ class LogoThemeAnalysisService
             'surface' => $surface,
             'text' => $text,
             'muted' => $muted,
+            'surface_text' => $surfaceText,
+            'button_text' => '#FFFFFF',
             'border' => $border,
             'reason' => trim((string) ($palette['reason'] ?? '')),
         ];
+    }
+
+    private function ensureReadableForeground(
+        string $background,
+        string $candidate,
+        string $lightFallback,
+        string $darkFallback,
+        float $minimumRatio
+    ): string {
+        $background = $this->normalizeHex($background);
+        $candidate = $this->normalizeHex($candidate);
+        $lightFallback = $this->normalizeHex($lightFallback);
+        $darkFallback = $this->normalizeHex($darkFallback);
+
+        if ($this->contrastRatio($background, $candidate) >= $minimumRatio) {
+            return $candidate;
+        }
+
+        $lightRatio = $this->contrastRatio($background, $lightFallback);
+        $darkRatio = $this->contrastRatio($background, $darkFallback);
+
+        return $lightRatio >= $darkRatio ? $lightFallback : $darkFallback;
+    }
+
+    private function contrastRatio(string $firstHex, string $secondHex): float
+    {
+        $first = $this->relativeLuminance($firstHex);
+        $second = $this->relativeLuminance($secondHex);
+
+        $lighter = max($first, $second);
+        $darker = min($first, $second);
+
+        return ($lighter + 0.05) / ($darker + 0.05);
+    }
+
+    private function relativeLuminance(string $hex): float
+    {
+        [$r, $g, $b] = $this->rgb($this->normalizeHex($hex));
+
+        $channels = array_map(static function (int $value): float {
+            $channel = $value / 255;
+
+            return $channel <= 0.03928
+                ? $channel / 12.92
+                : (($channel + 0.055) / 1.055) ** 2.4;
+        }, [$r, $g, $b]);
+
+        return (0.2126 * $channels[0]) + (0.7152 * $channels[1]) + (0.0722 * $channels[2]);
     }
 
     private function nearestThemeFamily(string $primaryHex, ?array $allowedFamilyKeys = null): array

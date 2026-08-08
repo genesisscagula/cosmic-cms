@@ -11,6 +11,7 @@ use App\Services\TrialCreditService;
 use App\Models\Website;
 use App\Services\AiPageGenerationService;
 use App\Services\IndustryResolver;
+use App\Services\MyBrandThemeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -52,7 +53,8 @@ class TrialGenerationController extends Controller
 
     public function __construct(
         private readonly AiPageGenerationService $pageGenerationService,
-        private readonly IndustryResolver $industryResolver
+        private readonly IndustryResolver $industryResolver,
+        private readonly MyBrandThemeService $myBrandThemes
     ) {
     }
 
@@ -61,6 +63,20 @@ class TrialGenerationController extends Controller
         $trial = null;
         if ($request->filled('trial')) {
             $trial = TrialGeneration::where('token', $request->string('trial'))->first();
+
+            // H14: every trial owns one persistent My Brand Theme from first load.
+            // Backfill older local/test tokens so the Theme modal is never empty.
+            if ($trial) {
+                $themeSettings = is_array($trial->preview_theme)
+                    ? $trial->preview_theme
+                    : $this->previewThemeForIndustry($trial->industry);
+                $seededSettings = $this->myBrandThemes->ensureInSettings($themeSettings);
+
+                if ($seededSettings !== $themeSettings) {
+                    $trial->update(['preview_theme' => $seededSettings]);
+                    $trial->setAttribute('preview_theme', $seededSettings);
+                }
+            }
         }
 
         return Inertia::render('Start', [
@@ -107,6 +123,10 @@ class TrialGenerationController extends Controller
         $profile = $this->profileFromPrompt($validated['prompt']);
         $generationPrompt = $this->buildPrompt($profile);
 
+        $initialThemeSettings = $this->myBrandThemes->ensureInSettings(
+            $this->previewThemeForIndustry($profile['industry'])
+        );
+
         $trial = TrialGeneration::create([
             ...$profile,
             'token' => (string) Str::uuid(),
@@ -114,7 +134,7 @@ class TrialGenerationController extends Controller
             'status' => 'generating',
             'ip_hash' => hash('sha256', (string) $request->ip()),
             'menu_structure' => IndustryMenuRegistry::for($profile['industry']),
-            'preview_theme' => $this->previewThemeForIndustry($profile['industry']),
+            'preview_theme' => $initialThemeSettings,
             'guest_credits' => TrialCreditService::STARTING_BALANCE,
         ]);
 
@@ -363,19 +383,9 @@ class TrialGenerationController extends Controller
     {
         set_time_limit(240);
         abort_unless($trial->status === 'ready' && ! $trial->claimed_at && $trial->page_id, 404);
-        abort_if(blank($trial->email), 422, 'Save your page with an email address before regenerating.');
-
         $validated = $request->validate([
             'prompt' => ['required', 'string', 'min:10', 'max:2000'],
         ]);
-
-        $windowStart = now()->startOfDay();
-        $used = DB::table('trial_regenerations')
-            ->where('email', Str::lower($trial->email))
-            ->where('created_at', '>=', $windowStart)
-            ->count();
-
-        abort_if($used >= 2, 429, 'You have used your two regenerations for today. Create an account to keep generating.');
 
         $trialCredits->ensureCanSpend($trial, TrialCreditService::REGENERATE_PAGE, 'Page regeneration');
 
@@ -438,7 +448,7 @@ class TrialGenerationController extends Controller
 
                 DB::table('trial_regenerations')->insert([
                     'trial_generation_id' => $trial->id,
-                    'email' => Str::lower($trial->email),
+                    'email' => Str::lower($trial->email ?: ('guest-'.$trial->id.'@trial.local')),
                     'prompt' => $validated['prompt'],
                     'created_at' => now(),
                     'updated_at' => now(),
@@ -464,8 +474,6 @@ class TrialGenerationController extends Controller
                 'credit_balance' => $balance,
                 'redirect_url' => route('pages.builder', ['page' => $trial->page_id, 'token' => $trial->token]),
                 'token' => $trial->token,
-                'remaining' => max(0, 1 - $used),
-                'resets_at' => now()->addDays(7)->toIso8601String(),
             ]);
         } catch (TransporterException $exception) {
             Log::warning('Trial regeneration unavailable', ['trial' => $trial->id, 'message' => $exception->getMessage()]);

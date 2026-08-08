@@ -216,7 +216,7 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
                                     rounded-2xl
                                     border
                                     ${theme.border}
-                                    bg-white/5
+                                    cosmic-adaptive-icon-tile
                                     flex
                                     items-center
                                     justify-center

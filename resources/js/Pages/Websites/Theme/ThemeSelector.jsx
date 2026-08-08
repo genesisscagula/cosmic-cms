@@ -10,6 +10,10 @@ export default function ThemeSelector({
     themeAccess = null,
     signupUrl = null,
     customTheme = null,
+    hasLogo = false,
+    brandMatchNeeded = false,
+    onMatchBrandToLogo = null,
+    brandMatchBusy = false,
 }) {
 
     const [open, setOpen] = useState(false);
@@ -71,6 +75,10 @@ export default function ThemeSelector({
                 themeAccess={themeAccess}
                 signupUrl={signupUrl}
                 customTheme={customTheme}
+                hasLogo={hasLogo}
+                brandMatchNeeded={brandMatchNeeded}
+                onMatchBrandToLogo={onMatchBrandToLogo}
+                brandMatchBusy={brandMatchBusy}
             />
 
         </>

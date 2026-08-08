@@ -5,7 +5,11 @@ export default function ThemeGrid({
     selectedTheme,
     onSelect,
     allowedThemeIds = [],
-    nextPlan = null
+    nextPlan = null,
+    hasLogo = false,
+    brandMatchNeeded = false,
+    onMatchBrandToLogo = null,
+    brandMatchBusy = false
 }) {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -23,6 +27,10 @@ export default function ThemeGrid({
                     // account's current plan allowance.
                     locked={selectedTheme !== theme.id && !allowedThemeIds.includes(theme.id)}
                     nextPlan={nextPlan}
+                    hasLogo={hasLogo}
+                    brandMatchNeeded={brandMatchNeeded}
+                    onMatchBrandToLogo={onMatchBrandToLogo}
+                    brandMatchBusy={brandMatchBusy}
                 />
 
             ))}

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Services\MyBrandThemeService;
 use App\Models\Website;
 use App\Models\Page;
 use App\Models\TrialGeneration;
@@ -321,6 +322,15 @@ class PageController extends Controller
 
         $builderThemeAccess = null;
         if ($isTrialMode) {
+            // H14: direct token Builder links must also always expose the
+            // persistent My Brand Theme, including older trials created before H14.
+            $themeSettings = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+            $seededThemeSettings = app(MyBrandThemeService::class)->ensureInSettings($themeSettings);
+            if ($seededThemeSettings !== $themeSettings) {
+                $trial->update(['preview_theme' => $seededThemeSettings]);
+                $trial->setAttribute('preview_theme', $seededThemeSettings);
+            }
+
             // Guest trials intentionally expose only three themes. Always include
             // the theme selected during generation so the active theme never
             // appears locked, then fill the remaining slots with curated defaults.
@@ -441,11 +451,8 @@ class PageController extends Controller
             'trialExperience' => $trial ? [
                 'email' => $trial->email,
                 'email_captured' => filled($trial->email),
-                'regenerations_used' => DB::table('trial_regenerations')
-                    ->where('email', Str::lower((string) $trial->email))
-                    ->where('created_at', '>=', now()->startOfDay())
-                    ->count(),
-                'regenerations_limit' => 2,
+                'regenerations_used' => 0,
+                'regenerations_limit' => null,
                 'regenerations_reset_at' => now()->addDay()->startOfDay()->toIso8601String(),
                 'logo_regenerations_used' => DB::table('trial_logo_generations')
                     ->where('trial_generation_id', $trial->id)
@@ -461,10 +468,10 @@ class PageController extends Controller
                 'logo_theme_sync_state' => $trial->logo_theme_sync_state ?: (filled($trial->logo_url) ? (in_array($trial->logo_source, ['ai', 'ai-theme-match', 'svg-theme-match'], true) ? 'synced' : 'logo_changed') : null),
                 'logo_theme_sync_source' => $trial->logo_theme_sync_source,
                 'logo_theme_synced_theme' => $trial->logo_theme_synced_theme,
-                'guest_credits' => (int) $trial->guest_credits,
+                'guest_credits' => $trial ? app(TrialCreditService::class)->balance($trial) : 0,
             ] : null,
             'cosmicPricing' => [
-                'balance' => $trial ? (int) $trial->guest_credits : (int) ($request->user()?->fresh()?->credits ?? 0),
+                'balance' => $trial ? app(TrialCreditService::class)->balance($trial) : (int) ($request->user()?->fresh()?->credits ?? 0),
                 'guest' => (bool) $trial,
                 'actions' => ActionPricing::all(),
                 'trial_actions' => [
@@ -550,13 +557,31 @@ class PageController extends Controller
             $requestedTheme = (string) data_get($validated, 'theme_settings.primary', '');
             $activeTrialTheme = (string) data_get($trial->preview_theme, 'primary', 'midnight');
             $allowedTrialThemes = data_get($trial->preview_theme, 'trial_theme_keys');
-            if (! is_array($allowedTrialThemes) || count($allowedTrialThemes) !== 3) {
+
+            // trial_theme_keys contains the unlocked preset themes only.
+            // My Brand Theme is a separate first-class trial theme created from
+            // the user's logo and must not consume/replace a preset slot.
+            if (! is_array($allowedTrialThemes) || count($allowedTrialThemes) < 1) {
                 $allowedTrialThemes = collect([$activeTrialTheme, 'midnight', 'emerald', 'ocean'])
-                    ->filter()->unique()->take(3)->values()->all();
+                    ->filter(fn ($theme) => filled($theme) && $theme !== 'my-brand')
+                    ->unique()
+                    ->take(3)
+                    ->values()
+                    ->all();
             }
 
+            $submittedCustomBrandTheme = data_get($validated, 'theme_settings.custom_brand_theme');
+            $savedCustomBrandTheme = data_get($trial->preview_theme, 'custom_brand_theme');
+            $canUseMyBrandTheme = $requestedTheme === 'my-brand'
+                && (
+                    is_array($submittedCustomBrandTheme)
+                    || is_array($savedCustomBrandTheme)
+                );
+
             abort_if(
-                $requestedTheme !== '' && ! in_array($requestedTheme, $allowedTrialThemes, true),
+                $requestedTheme !== ''
+                    && ! $canUseMyBrandTheme
+                    && ! in_array($requestedTheme, $allowedTrialThemes, true),
                 403,
                 'Sign up to unlock more themes.'
             );
@@ -734,7 +759,12 @@ class PageController extends Controller
         $isCustomBrandTheme = $requestedTheme === 'my-brand' && $hasCustomBrandTheme;
         abort_unless($isCustomBrandTheme || in_array($requestedTheme, $allowedThemes, true), 403, 'Sign up to unlock more themes.');
 
-        if ($requestedTheme === $activeTheme) {
+        $syncSource = (string) $request->input('sync_source', 'manual_theme_change');
+
+        // Applying My Brand Theme after Match to Logo may target the theme that
+        // is already active. We must still persist the new logo/theme sync state;
+        // otherwise the Match to Logo CTA reappears forever after refresh.
+        if ($requestedTheme === $activeTheme && $syncSource !== 'theme_to_logo') {
             return response()->json(['status' => 'success', 'theme' => $requestedTheme, 'credits_spent' => 0, 'credit_balance' => $trialCredits->balance($trial)]);
         }
 
@@ -745,10 +775,17 @@ class PageController extends Controller
 
         $themeSettings = is_array($trial->preview_theme) ? $trial->preview_theme : [];
         $themeSettings['primary'] = $requestedTheme;
-        $syncSource = (string) $request->input('sync_source', 'manual_theme_change');
         $syncUpdate = [];
         if (filled($trial->logo_url)) {
             if ($syncSource === 'theme_to_logo') {
+                if ($requestedTheme === 'my-brand' && is_array(data_get($themeSettings, 'custom_brand_theme'))) {
+                    $customTheme = (array) data_get($themeSettings, 'custom_brand_theme');
+                    $customTheme['source_logo_url'] = $trial->logo_url;
+                    $themeSettings['custom_brand_theme'] = $customTheme;
+                    $themeSettings['brand_palette'] = $customTheme['palette'] ?? data_get($themeSettings, 'brand_palette', []);
+                    $themeSettings['brand_source'] = 'logo';
+                }
+
                 $syncUpdate = [
                     'logo_theme_sync_state' => 'synced',
                     'logo_theme_sync_source' => 'theme_to_logo',

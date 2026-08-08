@@ -16,17 +16,43 @@ class TrialCreditService
 
     public function balance(TrialGeneration $trial): int
     {
-        return max(0, (int) $trial->fresh()->guest_credits);
+        return $this->ensureInitialized($trial);
+    }
+
+    public function ensureInitialized(TrialGeneration $trial): int
+    {
+        $fresh = $trial->fresh();
+        $balance = (int) ($fresh->guest_credits ?? 0);
+
+        // Legacy trials created before guest-credit initialization can appear as 0.
+        // Only restore 500 when there is no spend history, so a genuinely depleted
+        // guest balance is never reset.
+        if ($balance <= 0) {
+            $hasTransactions = DB::table('trial_credit_transactions')
+                ->where('trial_generation_id', $fresh->id)
+                ->exists();
+
+            if (! $hasTransactions) {
+                $fresh->guest_credits = self::STARTING_BALANCE;
+                $fresh->save();
+                $trial->setAttribute('guest_credits', self::STARTING_BALANCE);
+                return self::STARTING_BALANCE;
+            }
+        }
+
+        return max(0, $balance);
     }
 
     public function ensureCanSpend(TrialGeneration $trial, int $cost, string $label): void
     {
-        $available = max(0, (int) $trial->fresh()->guest_credits);
+        $available = $this->ensureInitialized($trial);
         abort_if($available < $cost, 422, "Not enough Guest Cosmic Credits. {$label} costs {$cost} credits. Sign up to keep customizing.");
     }
 
     public function consume(TrialGeneration $trial, int $cost, string $action, array $metadata = []): int
     {
+        $this->ensureInitialized($trial);
+
         return DB::transaction(function () use ($trial, $cost, $action, $metadata) {
             $locked = TrialGeneration::query()->lockForUpdate()->findOrFail($trial->id);
             $available = max(0, (int) $locked->guest_credits);

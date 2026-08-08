@@ -13,6 +13,7 @@ use App\Services\LogoThemeAnalysisService;
 use App\Services\ThemePlanAccessService;
 use App\Services\LogoCanvasService;
 use App\Services\ThemeColorResolver;
+use App\Services\ThemeLogoPaletteService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Intervention\Image\Facades\Image; // Import ni sa taas sa imong controller
@@ -21,7 +22,7 @@ class ImageController extends Controller
 {
 
 
-    public function generateLogo(Request $request, Website $website, CreditWalletService $wallet, LogoCanvasService $canvas, ThemeColorResolver $themeColors)
+    public function generateLogo(Request $request, Website $website, CreditWalletService $wallet, LogoCanvasService $canvas, ThemeColorResolver $themeColors, ThemeLogoPaletteService $logoPalettes)
     {
         $this->authorize('update', $website);
 
@@ -57,10 +58,17 @@ class ImageController extends Controller
             "Create a clean professional horizontal brand logo for {$company}.",
             "Industry: {$industry}.",
             "Current website theme: {$themeKey}.",
-            "EXACT primary brand HEX: {$primary}.",
-            'Use the exact supplied primary HEX as the dominant chromatic brand color. Do not reinterpret it, lighten it, darken it, desaturate it, shift its hue, or substitute a similar color.',
-            'Use a simple icon plus readable company wordmark. Keep the composition compact and suitable for a website header.',
-            'Design for a wide 650 by 150 pixel website-header canvas. Keep the icon and wordmark horizontally balanced with generous transparent breathing room.',
+            "Logo palette — use these exact colors intelligently:",
+            "Primary (dominant): {$logoPalette['primary']}.",
+            "Secondary (supporting): {$logoPalette['secondary']}.",
+            "Tertiary (small accents): {$logoPalette['tertiary']}.",
+            'STRICT COLOR HIERARCHY: PRIMARY must visually dominate roughly 75–80% of chromatic brand artwork; SECONDARY is supporting only; TERTIARY is tiny accents only.',
+            'Use the exact supplied PRIMARY HEX as a flat/solid color on the main icon/symbol and main company wordmark wherever readable.',
+            'Do not create lighter/darker/muted/gray/near-match versions of PRIMARY. No gradients, metallic shading, glow recoloring, transparency-based color shifts, or blended variants on main brand elements.',
+            'SECONDARY and TERTIARY must never visually overpower PRIMARY. If artistic styling conflicts with the palette, exact PRIMARY wins.',
+            'Use all supplied colors only where appropriate and never substitute them with approximate colors.',
+            'Use a simple icon plus readable company wordmark. Favor a horizontal website-header composition.',
+            'Keep the entire icon, wordmark, every letter, and any tagline fully inside the generated canvas with safe margins. Nothing may touch or cross an image edge.',
             'Transparent background. No mockup, no card, no scene, no watermark, no slogan unless it is part of the company name.',
         ]);
 
@@ -87,7 +95,8 @@ class ImageController extends Controller
             return response()->json(['message' => 'Cosmic AI returned an invalid logo image. No credits were charged.'], 502);
         }
 
-        $bytes = $canvas->normalizePngToPrimary($bytes, $primary);
+        $bytes = $canvas->normalizePngToPalette($bytes, $logoPalette);
+        $logoDimensions = @getimagesizefromstring($bytes);
 
         $filename = 'luna-logo-'.Str::lower(Str::random(10)).'.png';
         $path = "websites/{$website->id}/logos/{$filename}";
@@ -109,24 +118,57 @@ class ImageController extends Controller
             'company_name' => $company,
             'cost' => $cost,
             'balance' => $wallet->balance($user),
-            'logo_width' => LogoCanvasService::WIDTH,
-            'logo_height' => LogoCanvasService::HEIGHT,
+            'logo_width' => (int) ($logoDimensions[0] ?? 0),
+            'logo_height' => (int) ($logoDimensions[1] ?? 0),
             'sync_state' => 'synced',
             'sync_source' => 'generated_from_theme',
             'synced_theme' => $themeKey,
-            'primary_hex' => $primary,
+            'primary_hex' => $logoPalette['primary'],
+            'logo_palette' => $logoPalette,
         ]);
     }
 
 
-    public function matchLogoToTheme(Request $request, Website $website, CreditWalletService $wallet, LogoThemeMatchService $matcher, LogoCanvasService $canvas)
+    public function cropLogo(Request $request, Website $website)
+    {
+        $this->authorize('update', $website);
+
+        $validated = $request->validate([
+            'image_data' => ['required', 'string', 'max:8000000'],
+        ]);
+
+        if (! preg_match('/^data:image\/png;base64,([A-Za-z0-9+\/=\r\n]+)$/', $validated['image_data'], $matches)) {
+            return response()->json(['message' => 'The cropped logo data is invalid.'], 422);
+        }
+
+        $bytes = base64_decode(preg_replace('/\s+/', '', $matches[1]), true);
+        $dimensions = $bytes !== false ? $this->pngDimensions($bytes) : null;
+        if ($bytes === false || strlen($bytes) < 100 || $dimensions === null) {
+            return response()->json(['message' => 'The cropped logo could not be processed.'], 422);
+        }
+
+        $filename = 'cropped-logo-'.Str::lower(Str::random(10)).'.png';
+        $path = "websites/{$website->id}/logos/{$filename}";
+        Storage::disk('public')->put($path, $bytes);
+        return response()->json([
+            'status' => 'success',
+            'url' => rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path,
+            'logo_width' => (int) ($dimensions['width'] ?? 650),
+            'logo_height' => (int) ($dimensions['height'] ?? 150),
+        ]);
+    }
+
+    public function matchLogoToTheme(Request $request, Website $website, CreditWalletService $wallet, LogoThemeMatchService $matcher, LogoCanvasService $canvas, ThemeLogoPaletteService $logoPalettes)
     {
         $this->authorize('update', $website);
 
         $validated = $request->validate([
             'logo_url' => ['required', 'string', 'max:2048'],
-            'theme_name' => ['nullable', 'string', 'max:60'],
+            'theme_key' => ['nullable', 'string', 'max:60'],
+            'theme_name' => ['nullable', 'string', 'max:80'],
             'primary_hex' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'secondary_hex' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'tertiary_hex' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
             'accent_hex' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ]);
 
@@ -141,18 +183,31 @@ class ImageController extends Controller
         }
 
         try {
+            $themeKey = (string) ($validated['theme_key'] ?? 'midnight');
+            $themeName = (string) ($validated['theme_name'] ?? $themeKey);
+            $settings = is_array($website->theme_settings) ? $website->theme_settings : (json_decode((string) $website->theme_settings, true) ?: []);
+            $customPalette = $themeKey === 'my-brand'
+                ? (array) data_get($settings, 'custom_brand_theme.palette', [])
+                : [];
+
+            $logoPalette = $logoPalettes->forPrimary($themeKey, $validated['primary_hex']);
+            $logoPalette['secondary'] = strtoupper((string) ($validated['secondary_hex'] ?? ($customPalette['secondary'] ?? $customPalette['surface'] ?? $logoPalette['secondary'])));
+            $logoPalette['tertiary'] = strtoupper((string) ($validated['tertiary_hex'] ?? ($customPalette['tertiary'] ?? $customPalette['accent'] ?? $logoPalette['tertiary'])));
+
             $result = $matcher->match(
                 $validated['logo_url'],
-                $validated['primary_hex'],
-                $validated['accent_hex'] ?? '',
-                $validated['theme_name'] ?? ''
+                $logoPalette,
+                $themeName
             );
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage().' No credits were charged.'], 422);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json(['message' => 'Cosmic AI could not match this logo to the theme. No credits were charged.'], 500);
         }
 
         if (($result['extension'] ?? '') === 'png') {
-            $result['bytes'] = $canvas->normalizePngToPrimary($result['bytes'], $validated['primary_hex']);
+            $result['bytes'] = $canvas->normalizePngToPalette($result['bytes'], $logoPalette);
         }
 
         $filename = 'theme-matched-logo-'.Str::lower(Str::random(10)).'.'.$result['extension'];
@@ -166,7 +221,7 @@ class ImageController extends Controller
             'ai_generation',
             $website,
             'logo-theme-match:'.Str::uuid(),
-            ['theme' => $validated['theme_name'] ?? null, 'primary_hex' => $validated['primary_hex']]
+            ['theme' => $themeKey, 'theme_name' => $themeName, 'primary_hex' => $validated['primary_hex'], 'palette' => $logoPalette]
         );
 
         return response()->json([
@@ -177,7 +232,8 @@ class ImageController extends Controller
             'source' => $result['ai'] ? 'ai-theme-match' : 'svg-theme-match',
             'sync_state' => 'synced',
             'sync_source' => 'logo_to_theme',
-            'synced_theme' => $validated['theme_name'] ?? null,
+            'synced_theme' => $themeKey,
+            'logo_palette' => $logoPalette,
         ]);
     }
 
@@ -204,19 +260,29 @@ class ImageController extends Controller
             $themeAccess = app(ThemePlanAccessService::class);
             $allowedThemes = $themeAccess->allowedThemeKeysForWebsite($user->effectivePlanKey(), $website);
             $result = $analyzer->analyze($validated['logo_url'], $allowedThemes);
-        } catch (\RuntimeException $e) {
-            return response()->json(['message' => $e->getMessage().' No credits were charged.'], 422);
-        }
 
-        $settings = is_array($website->theme_settings) ? $website->theme_settings : (json_decode((string) $website->theme_settings, true) ?: []);
-        $customTheme = is_array($result['custom_theme'] ?? null) ? $result['custom_theme'] : null;
-        if ($customTheme) {
+            $settings = is_array($website->theme_settings)
+                ? $website->theme_settings
+                : (json_decode((string) $website->theme_settings, true) ?: []);
+            $customTheme = is_array($result['custom_theme'] ?? null) ? $result['custom_theme'] : null;
+
+            if (! $customTheme) {
+                return response()->json(['message' => 'Cosmic AI did not return a usable My Brand Theme. No credits were charged.'], 422);
+            }
+
             $customTheme['source_logo_url'] = $validated['logo_url'];
             $customTheme['updated_at'] = now()->toIso8601String();
             $settings['custom_brand_theme'] = $customTheme;
+            $settings['brand_palette'] = $customTheme['palette'] ?? ($result['palette'] ?? []);
+            $settings['brand_source'] = 'logo';
             $website->theme_settings = $settings;
             $website->save();
             $result['custom_theme'] = $customTheme;
+        } catch (\RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage().' No credits were charged.'], 422);
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json(['message' => 'Cosmic AI could not match My Brand Theme to this logo. No credits were charged.'], 500);
         }
 
         $wallet->debit(
@@ -413,4 +479,38 @@ class ImageController extends Controller
 	    // I-return lang ang URL
 	    return response()->json(['url' => $imageUrl]);
 	}
+
+    /**
+     * Validate a PNG and read dimensions without requiring the GD extension.
+     * PNG signature is 8 bytes; IHDR begins immediately after and stores
+     * width/height as unsigned big-endian 32-bit integers.
+     */
+    private function pngDimensions(string $bytes): ?array
+    {
+        if (strlen($bytes) < 24 || substr($bytes, 0, 8) !== "\x89PNG\r\n\x1a\n") {
+            return null;
+        }
+
+        if (substr($bytes, 12, 4) !== 'IHDR') {
+            return null;
+        }
+
+        $width = unpack('N', substr($bytes, 16, 4))[1] ?? 0;
+        $height = unpack('N', substr($bytes, 20, 4))[1] ?? 0;
+
+        if ($width < 1 || $height < 1 || $width > 4096 || $height > 4096) {
+            return null;
+        }
+
+        // H7 browser canvas contract: final crop is exactly 650 × 150.
+        if ($width !== 650 || $height !== 150) {
+            return null;
+        }
+
+        return [
+            'width' => $width,
+            'height' => $height,
+        ];
+    }
+
 }

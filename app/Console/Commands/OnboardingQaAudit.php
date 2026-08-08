@@ -166,6 +166,14 @@ class OnboardingQaAudit extends Command
                         $this->add('error', 'website_ownership_mismatch', 'The onboarding website owner or workspace binding is inconsistent.', ['onboarding_id' => $row->id, 'website_id' => $row->website_id]);
                     }
 
+                    if ($website) {
+                        $themeSettingsRaw = DB::table('websites')->where('id', $row->website_id)->value('theme_settings');
+                        $themeSettings = is_array($themeSettingsRaw) ? $themeSettingsRaw : json_decode((string) $themeSettingsRaw, true);
+                        if (! is_array(data_get($themeSettings, 'custom_brand_theme'))) {
+                            $this->add('error', 'paid_site_missing_my_brand_theme', 'A completed onboarding website is missing My Brand Theme.', ['onboarding_id' => $row->id, 'website_id' => $row->website_id]);
+                        }
+                    }
+
                     if (Schema::hasTable('workspace_user')) {
                         $role = DB::table('workspace_user')->where('workspace_id', $row->workspace_id)->where('user_id', $row->user_id)->value('role');
                         if ($role !== 'owner') {

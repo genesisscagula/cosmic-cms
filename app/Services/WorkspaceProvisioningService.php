@@ -12,6 +12,7 @@ use App\Models\Workspace;
 use App\Models\WorkspaceProvisioning;
 use App\Models\WorkspaceProvisioningLog;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use App\Support\SubscriptionStatus;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -256,7 +257,31 @@ class WorkspaceProvisioningService
             ];
         }
 
-        return Website::query()->create([
+        $themeSettings = $trial?->preview_theme;
+        if (! is_array($themeSettings) || $themeSettings === []) {
+            // Direct Pricing purchase: Midnight is the default preset and its
+            // exact family palette is also registered immediately as My Brand Theme.
+            $themeSettings = app(MyBrandThemeService::class)->ensureInSettings([
+                'primary' => 'midnight',
+                'secondary' => 'white',
+                'tertiary' => 'stone',
+                'auto' => true,
+            ], 'midnight');
+        } else {
+            // Trial purchase: preserve every theme/custom-brand edit from Builder.
+            $themeSettings = app(MyBrandThemeService::class)->ensureInSettings(
+                $themeSettings,
+                (string) data_get($themeSettings, 'custom_brand_theme.base_family', 'midnight')
+            );
+        }
+
+        $entitlementSeed = (string) (
+            data_get($themeSettings, 'primary') === 'my-brand'
+                ? data_get($themeSettings, 'custom_brand_theme.base_family', 'midnight')
+                : data_get($themeSettings, 'primary', 'midnight')
+        );
+
+        $website = Website::query()->create([
             'user_id' => $onboarding->user_id,
             'workspace_id' => $workspace->id,
             'name' => $onboarding->website_name,
@@ -266,15 +291,10 @@ class WorkspaceProvisioningService
             'business_description' => $onboarding->business_description,
             'contact_email' => $onboarding->user->email,
             'api_token' => Str::random(60),
-            'settings' => array_filter([
-                'theme_entitlement_seed' => data_get($trial?->preview_theme, 'primary'),
-            ]),
-            'theme_settings' => $trial?->preview_theme ?: [
-                'primary' => 'midnight',
-                'secondary' => 'white',
-                'tertiary' => 'stone',
-                'auto' => true,
+            'settings' => [
+                'theme_entitlement_seed' => $entitlementSeed,
             ],
+            'theme_settings' => $themeSettings,
             'global_header' => [
                 'type' => 'glassmorphism_header',
                 'logo_text' => $onboarding->website_name,
@@ -295,6 +315,14 @@ class WorkspaceProvisioningService
                 'copyright' => '© '.now()->year.' '.$onboarding->website_name.'. All rights reserved.',
             ],
         ]);
+
+        // Promote a trial logo into permanent website branding storage after the
+        // paid website has an ID, then sync header/footer/custom theme references.
+        if ($trial && filled($trial->logo_url)) {
+            $this->syncTrialWebsiteSettings($trial, $website);
+        }
+
+        return $website->fresh();
     }
 
     /**
@@ -401,41 +429,101 @@ class WorkspaceProvisioningService
             ->values()
             ->all();
 
+        $themeSettings = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+        $themeSettings = app(MyBrandThemeService::class)->ensureInSettings(
+            $themeSettings,
+            (string) data_get($themeSettings, 'custom_brand_theme.base_family', 'midnight')
+        );
+
+        $paidLogoUrl = $this->promoteTrialLogo($trial, $website);
+
+        // If My Brand Theme was derived from the trial logo, point it at the
+        // permanent paid-site logo URL so future sync-state checks remain valid.
+        if (filled($paidLogoUrl) && is_array(data_get($themeSettings, 'custom_brand_theme'))) {
+            $customTheme = (array) data_get($themeSettings, 'custom_brand_theme');
+            if (filled($customTheme['source_logo_url'] ?? null)) {
+                $customTheme['source_logo_url'] = $paidLogoUrl;
+            }
+            $themeSettings['custom_brand_theme'] = $customTheme;
+        }
+
         $header = $website->global_header ?? [];
         if ($menu !== []) {
             $header['menu'] = $menu;
         }
-        $header['logo_text'] = $website->name;
-        $header['logo_image_url'] = '/storage/branding/your-logo.png';
-        $header['logo_height'] = 42;
-        $header['logo_filter_key'] = data_get($trial->preview_theme, 'primary', 'midnight');
+        $header['logo_text'] = $trial->logo_company_name ?: $website->name;
+        $header['logo_image_url'] = $paidLogoUrl ?: '/storage/branding/your-logo.png';
+        $header['logo_height'] = $header['logo_height'] ?? 42;
+        $header['logo_filter_key'] = data_get($themeSettings, 'primary', 'midnight');
 
         $footer = $website->global_footer ?? [];
         $footer['type'] = $footer['type'] ?? 'minimal_footer';
         $footer['theme'] = $footer['theme'] ?? 'white';
-        $footer['logo_text'] = $website->name;
+        $footer['logo_text'] = $header['logo_text'];
         $footer['logo_image_url'] = $header['logo_image_url'];
-        $footer['logo_height'] = 36;
+        $footer['logo_height'] = $footer['logo_height'] ?? 36;
         $footer['logo_filter_key'] = $header['logo_filter_key'];
         $footer['copyright'] = $footer['copyright'] ?? ('© '.now()->year.' '.$website->name.'. All rights reserved.');
 
         $settings = is_array($website->settings) ? $website->settings : [];
         $seed = trim((string) data_get($settings, 'theme_entitlement_seed', ''));
         if ($seed === '') {
-            $trialTheme = trim((string) data_get($trial->preview_theme, 'primary', ''));
-            if ($trialTheme !== '') {
-                $settings['theme_entitlement_seed'] = $trialTheme;
-            }
+            $trialTheme = trim((string) (
+                data_get($themeSettings, 'primary') === 'my-brand'
+                    ? data_get($themeSettings, 'custom_brand_theme.base_family', 'midnight')
+                    : data_get($themeSettings, 'primary', 'midnight')
+            ));
+            $settings['theme_entitlement_seed'] = $trialTheme ?: 'midnight';
         }
 
         $website->forceFill([
-            // Preserve the original trial/start theme as a stable entitlement
-            // seed across callback/webhook retries and existing-website reuse.
+            // The paid website receives the exact latest trial Builder state.
             'settings' => $settings,
-            'theme_settings' => $trial->preview_theme ?: $website->theme_settings,
+            'theme_settings' => $themeSettings,
             'global_header' => $header,
             'global_footer' => $footer,
         ])->save();
+    }
+
+    /**
+     * Copy a trial-scoped logo into permanent website branding storage.
+     * Idempotent across PayPal callback/webhook retries.
+     */
+    private function promoteTrialLogo(TrialGeneration $trial, Website $website): ?string
+    {
+        $logoUrl = trim((string) $trial->logo_url);
+        if ($logoUrl === '') {
+            return null;
+        }
+
+        $urlPath = parse_url($logoUrl, PHP_URL_PATH) ?: $logoUrl;
+        $urlPath = '/'.ltrim((string) $urlPath, '/');
+
+        // Already points at a permanent paid-site asset.
+        if (str_starts_with($urlPath, '/storage/website-branding/')) {
+            return $urlPath;
+        }
+
+        if (! str_starts_with($urlPath, '/storage/')) {
+            return $logoUrl;
+        }
+
+        $source = ltrim(substr($urlPath, strlen('/storage/')), '/');
+        if ($source === '' || str_contains($source, '..') || ! Storage::disk('public')->exists($source)) {
+            return null;
+        }
+
+        $extension = strtolower(pathinfo($source, PATHINFO_EXTENSION));
+        if (! in_array($extension, ['png', 'svg', 'jpg', 'jpeg', 'webp'], true)) {
+            $extension = 'png';
+        }
+
+        $destination = "website-branding/logos/website-{$website->id}-trial-logo.{$extension}";
+        if (! Storage::disk('public')->exists($destination)) {
+            Storage::disk('public')->copy($source, $destination);
+        }
+
+        return Storage::disk('public')->url($destination);
     }
 
     private function claimTrial(

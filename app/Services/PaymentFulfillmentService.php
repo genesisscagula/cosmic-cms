@@ -49,19 +49,32 @@ class PaymentFulfillmentService
             $creditReference = 'payment:'.$order->provider.':'.$order->reference;
 
             if (! CreditTransaction::query()->where('reference', $creditReference)->exists()) {
-                app(CreditService::class)->grant(
-                    $order->user,
-                    (int) $order->credits,
-                    $order->product_type === 'plan'
-                        ? ucfirst($order->product_key).' plan credits'
-                        : 'Credit purchase: '.$order->product_key,
-                    $creditReference,
-                    [
-                        'payment_order_id' => $order->id,
-                        'provider' => $order->provider,
-                        'product_type' => $order->product_type,
-                    ],
-                );
+                $creditMetadata = [
+                    'payment_order_id' => $order->id,
+                    'provider' => $order->provider,
+                    'product_type' => $order->product_type,
+                ];
+
+                if ($order->product_type === 'plan') {
+                    // First paid plan allocation is authoritative: replace any
+                    // guest/trial/pre-payment balance instead of stacking it.
+                    app(CreditWalletService::class)->setBalance(
+                        $order->user,
+                        (int) $order->credits,
+                        ucfirst(str_replace('_', ' ', $order->product_key)).' initial plan credit allocation',
+                        'subscription',
+                        $creditReference,
+                        array_merge($creditMetadata, ['allocation' => 'initial_plan_reset']),
+                    );
+                } else {
+                    app(CreditService::class)->grant(
+                        $order->user,
+                        (int) $order->credits,
+                        'Credit purchase: '.$order->product_key,
+                        $creditReference,
+                        $creditMetadata,
+                    );
+                }
             }
 
             if ($order->product_type === 'plan' && ! $order->user->isPlatformOwner()) {
