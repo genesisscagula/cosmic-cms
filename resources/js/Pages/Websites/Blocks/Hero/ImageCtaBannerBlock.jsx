@@ -1,5 +1,6 @@
 import { usePage } from "@inertiajs/react";
 import { useRef } from "react";
+import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
@@ -30,21 +31,22 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
     const imageRef = useRef(null);
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
-    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
-    const overlayColor = isLightMediaTheme ? '#ffffff' : '#020617';
+    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const isLightMediaTheme = mediaOverlay.isLight;
+    const overlayColor = mediaOverlay.overlayColor;
     const mediaStyle = isLightMediaTheme
         ? {
             overlay: "bg-white",
-            gradient: "from-white/98 via-white/84 to-white/62",
+            gradient: "from-white/100 via-white/96 to-white/82",
             eyebrow: "text-slate-700",
             heading: "text-slate-950",
             body: "text-slate-700",
             primary: `${primaryTheme.bg} text-white`,
-            secondary: "border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75",
+            secondary: "border-slate-900/20 bg-white/78 text-slate-950 hover:bg-white/95",
         }
         : {
             overlay: "bg-slate-950",
-            gradient: "from-slate-950/65 via-slate-950/25 to-slate-950/15",
+            gradient: "from-slate-950/48 via-slate-950/18 to-slate-950/10",
             eyebrow: "text-white/75",
             heading: "text-white",
             body: "text-white/85",
@@ -55,7 +57,10 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const configuredOverlayOpacity = Math.max(0, Math.min(100, Number(data.overlayOpacity) || 76));
-    const overlayOpacity = isLightMediaTheme ? Math.max(82, configuredOverlayOpacity) : configuredOverlayOpacity;
+    const overlayOpacity = effectiveMediaOverlayOpacity(configuredOverlayOpacity, {
+        isLight: isLightMediaTheme,
+        lightMinimum: 90,
+    });
 
     const handleSectionImageEdit = (event) => {
         // Keep copy, links, and Builder controls independently editable.

@@ -1,5 +1,6 @@
 import { usePage } from "@inertiajs/react";
 import { useEffect, useRef } from "react";
+import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
@@ -56,30 +57,30 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const websiteId = props.page?.website_id || props.website?.id;
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
-    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
-    // Visual test: Emerald Hero Parallax uses a 60% slate / 40% Emerald tint.
-    // Keep light semantic themes on the strong white wash and leave other
-    // colored themes on the universal neutral overlay until this test is approved.
-    const isEmeraldOverlayTest = !isLightMediaTheme && normalizedGlobalTheme.primary === 'emerald';
-    const overlayColor = isLightMediaTheme ? '#ffffff' : (isEmeraldOverlayTest ? '#06292c' : '#020617');
+    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const isLightMediaTheme = mediaOverlay.isLight;
+    const overlayColor = mediaOverlay.overlayColor;
     const configuredOverlayOpacity = Math.max(20, Math.min(90, Number(data.overlayOpacity) || 64));
-    const effectiveOverlayOpacity = isLightMediaTheme ? Math.max(82, configuredOverlayOpacity) : configuredOverlayOpacity;
+    const effectiveOverlayOpacity = effectiveMediaOverlayOpacity(configuredOverlayOpacity, {
+        isLight: isLightMediaTheme,
+        lightMinimum: 88,
+    });
     const mediaStyle = isLightMediaTheme
         ? {
             overlay: "bg-white",
-            gradient: "from-white/95 via-white/55 to-white/25",
-            badge: "border-slate-900/15 bg-white/60",
+            gradient: "from-white/99 via-white/88 to-white/68",
+            badge: "border-slate-900/15 bg-white/72",
             eyebrow: "text-slate-700",
             heading: "text-slate-950",
             body: "text-slate-700",
-            secondary: "border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75",
+            secondary: "border-slate-900/20 bg-white/72 text-slate-950 hover:bg-white/90",
             scroll: "text-slate-700",
             scrollLine: "bg-slate-900/25",
             scrollDot: "bg-slate-900",
         }
         : {
             overlay: "bg-slate-950",
-            gradient: "from-slate-950/85 via-slate-950/20 to-slate-950/25",
+            gradient: "from-slate-950/55 via-slate-950/12 to-slate-950/16",
             badge: "border-white/20 bg-white/10",
             eyebrow: "text-white/85",
             heading: "text-white",

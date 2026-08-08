@@ -68,14 +68,18 @@ class AIController extends Controller
             ],
         );
 
-        // Logged-in generation must use the website-owned media pack as the
-        // primary source. Curated industry/default libraries are fallback only.
-        $imageFolder = $website ? 'default' : (
-            $validated['image_folder']
-                ?? $this->pageGenerationService->resolveLayoutFolder($validated['prompt'])
-        );
+        // Registered Builder generation follows the same visual model as /start:
+        // remote Unsplash URLs are primary, while the resolved industry library
+        // is fallback-only. The content pass is forbidden from downloading remote
+        // provider images into Cosmic storage.
+        $imageFolder = $validated['image_folder']
+            ?? $this->pageGenerationService->resolveLayoutFolder($validated['prompt']);
 
         try {
+            // Generate the content/schema first. For authenticated Builder requests,
+            // image_url values are subsequently replaced by the same remote Unsplash
+            // search pipeline used by /start. website_id is authorization/context only;
+            // it is not an image source.
             $generation = $website
                 ? $this->pageGenerationService->imagesWithoutRemoteDownloads(fn () =>
                     $this->pageGenerationService->generateBlocksDetailed(
@@ -93,34 +97,30 @@ class AIController extends Controller
             $blocks = $generation['blocks'];
 
             if ($website) {
-                $target = $this->mediaPackImages->imageSlotCount($blocks);
-                $remoteImages = $this->remoteImages->resolve([
-                    'business_type' => $validated['prompt'],
-                    'image_keywords' => [$validated['prompt']],
-                    'visual_style' => 'professional editorial website photography',
-                ], $target);
+                // Registered Builder intentionally uses the exact same image
+                // resolution path as /start. website_id is not consulted for
+                // generated imagery; it remains authorization/context only.
+                try {
+                    $remoteResult = $this->pageGenerationService->applyStartPageRemoteImages(
+                        $validated['prompt'],
+                        $blocks,
+                        $imageFolder
+                    );
 
-                $blocks = $this->remoteImages->assignToBlocks($blocks, $remoteImages);
+                    $blocks = $remoteResult['blocks'];
 
-                $pack = $this->mediaPackOwnership->ensureForWebsite(
-                    $website,
-                    [$validated['prompt']],
-                    0
-                );
-
-                $this->mediaAssets->syncRemoteManifest(
-                    $pack,
-                    $blocks,
-                    'remote_logged_in_preview',
-                    $remoteImages
-                );
-
-                Log::info('[MediaAssets] Logged-in Builder is using remote preview images; local download deferred until publish.', [
-                    'website_id' => $website->id,
-                    'media_pack_id' => $pack->id,
-                    'remote_image_count' => count($remoteImages),
-                    'target_image_count' => $target,
-                ]);
+                    Log::info('[RegisteredRemoteImages] Builder image_url values now mirror /start.', [
+                        'website_id' => $website->id,
+                        'remote_image_count' => count($remoteResult['remote_images'] ?? []),
+                        'target_image_count' => (int) ($remoteResult['target_image_count'] ?? 0),
+                        'image_source' => 'start_page_unsplash_flow',
+                    ]);
+                } catch (\Throwable $mediaException) {
+                    Log::warning('[RegisteredRemoteImages] /start Unsplash flow failed; returning generated fallback images.', [
+                        'website_id' => $website->id,
+                        'message' => $mediaException->getMessage(),
+                    ]);
+                }
             }
 
             return response()->json([

@@ -7,6 +7,7 @@ use App\Services\PlanEntitlementService;
 use App\Services\PlanRegistry;
 use App\Services\WebsiteTemplateCatalog;
 use App\Services\SparkCatalog;
+use App\Services\ThemePlanAccessService;
 use App\Cosmic\Capabilities\CapabilityEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
@@ -39,6 +40,19 @@ class HandleInertiaRequests extends Middleware
         $user = $request->user();
         $creditBalance = $user ? app(CreditWalletService::class)->balance($user) : 0;
         $planEntitlements = $user ? app(PlanEntitlementService::class)->summary($user) : null;
+        $themeAccess = null;
+        if ($user) {
+            $themeAccessService = app(ThemePlanAccessService::class);
+            $themeKeys = $themeAccessService->allowedThemeKeys($user->effectivePlanKey());
+            $themeAccess = [
+                'keys' => $themeKeys,
+                'count' => $themeKeys === null ? null : count($themeKeys),
+                'unlimited' => $themeKeys === null,
+                'next_plan' => in_array($user->effectivePlanKey(), ['starter', 'agency_starter'], true)
+                    ? 'Growth'
+                    : (in_array($user->effectivePlanKey(), ['growth', 'agency_growth'], true) ? 'Pro' : null),
+            ];
+        }
         $appearance = 'light';
 
         // Keep the app bootable while a newly deployed migration is still pending.
@@ -52,10 +66,15 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
                 'accountType' => $request->user()?->account_type,
+                // Always expose the canonical entitlement plan rather than the raw
+                // database plan_key. Platform-owner/manual overrides and future plan
+                // aliases must behave exactly like the server-side access checks.
+                'effectivePlanKey' => $request->user()?->effectivePlanKey(),
                 'isPlatformOwner' => $request->user()?->isPlatformOwner() ?? false,
                 'isClient' => $request->user()?->isClient() ?? false,
                 'creditBalance' => $creditBalance,
                 'plan' => $planEntitlements,
+                'themeAccess' => $themeAccess,
                 'planCapabilities' => $user ? app(CapabilityEngine::class)->forClient($user) : null,
                 'planChangeMatrix' => $user ? app(PlanEntitlementService::class)->changeMatrix($user->effectivePlanKey()) : [],
                 'appearance' => $appearance,

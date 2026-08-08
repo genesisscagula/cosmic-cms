@@ -244,19 +244,45 @@ class MediaPackImageService
     public function imageSlotCount(array $blocks): int
     {
         $count = 0;
-        $walk = function (mixed $value, ?string $key = null) use (&$walk, &$count): void {
+
+        $walk = function (
+            mixed $value,
+            ?string $key = null,
+            bool $insideImageCollection = false
+        ) use (&$walk, &$count): void {
+            $currentIsImageField = is_string($key) && $this->isImageField($key);
+            $imageContext = $insideImageCollection || $currentIsImageField;
+
             if (is_array($value)) {
                 foreach ($value as $childKey => $childValue) {
-                    $walk($childValue, is_string($childKey) ? $childKey : null);
+                    $walk(
+                        $childValue,
+                        is_string($childKey) ? $childKey : null,
+                        $imageContext
+                    );
                 }
                 return;
             }
 
-            if (is_string($key) && $this->isImageField($key)) {
-                // Dedicated people portraits are not website media-pack slots.
-                if (is_string($value) && str_contains($value, '/cms-images/avatars/')) {
-                    return;
-                }
+            if (! is_string($value) || ! $imageContext) {
+                return;
+            }
+
+            $normalizedKey = strtolower((string) $key);
+            if (
+                str_contains($normalizedKey, 'logo')
+                || str_contains($value, '/cms-images/avatars/')
+                || str_contains($value, '/storage/branding/')
+            ) {
+                return;
+            }
+
+            if (
+                str_starts_with(trim($value), 'http://')
+                || str_starts_with(trim($value), 'https://')
+                || str_starts_with(trim($value), '/')
+                || preg_match('/\.(?:avif|gif|jpe?g|png|svg|webp)(?:\?.*)?$/i', trim($value)) === 1
+            ) {
                 $count++;
             }
         };

@@ -14,6 +14,10 @@ export default function PageStyleSelector({
     suggestions = [],
     blocks,
     disabled = false,
+    trialMode = false,
+    trialToken = null,
+    creditBalance = 0,
+    creditCost = 20,
     onApplied,
 }) {
     const [open, setOpen] = useState(false);
@@ -45,14 +49,19 @@ export default function PageStyleSelector({
 
         const confirmed = await confirmCosmicAction({
             title: `Apply ${style.label}?`,
-            message: 'Cosmic will reset every Spark to Auto and apply this creative direction across the page. Cost: 20 Credits.',
-            confirmLabel: 'Apply style · 20 Credits',
+            message: trialMode
+                ? `Cosmic will reset every Spark to Auto and preview this creative direction. Cost: ${creditCost} Cosmic Credits. Balance: ${creditBalance} → ${Math.max(0, Number(creditBalance || 0) - creditCost)}.`
+                : `Cosmic will reset every Spark to Auto and apply this creative direction across the page. Cost: ${creditCost} Credits.`,
+            confirmLabel: `Use ${creditCost} Credits`,
         });
         if (!confirmed) return;
 
         setApplying(style.key);
         try {
-            const response = await axios.post(route('pages.style.apply', pageId), {
+            const targetRoute = trialMode
+                ? route('trial-pages.style.apply', { trial: trialToken, page: pageId })
+                : route('pages.style.apply', pageId);
+            const response = await axios.post(targetRoute, {
                 style: style.key,
                 blocks,
             });
@@ -75,12 +84,12 @@ export default function PageStyleSelector({
     };
 
     return (
-        <div ref={rootRef} className="relative ml-5 hidden min-w-0 lg:block">
+        <div ref={rootRef} className={`relative hidden min-w-0 lg:block ${trialMode ? 'ml-2' : 'ml-5'}`}>
             <button
                 type="button"
                 disabled={disabled || applying !== ''}
                 onClick={() => setOpen((value) => !value)}
-                className="cosmic-page-style-trigger inline-flex h-9 max-w-[190px] items-center gap-2 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-slate-200 transition hover:border-violet-400/35 hover:bg-violet-500/10 focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+                className={`cosmic-page-style-trigger inline-flex h-9 max-w-[190px] items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50 ${trialMode ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200' : 'border-white/10 bg-white/[0.045] text-slate-200 hover:border-violet-400/35 hover:bg-violet-500/10'}`}
                 title="Creative Direction"
             >
                 <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-violet-300">
@@ -96,7 +105,7 @@ export default function PageStyleSelector({
                 <div className="cosmic-page-style-menu absolute left-0 top-11 z-[90] w-[360px] overflow-hidden rounded-2xl border border-white/10 bg-[#15151a] shadow-2xl shadow-black/60">
                     <div className="border-b border-white/10 px-4 py-3.5">
                         <p className="text-sm font-bold text-white">Make AI style your page</p>
-                        <p className="mt-1 text-xs leading-5 text-slate-400">Three curated directions based on this website’s industry. Applying one costs 20 Credits.</p>
+                        <p className="mt-1 text-xs leading-5 text-slate-400">{trialMode ? `Three curated directions based on this website’s industry. Applying one costs ${creditCost} Guest Cosmic Credits.` : `Three curated directions based on this website’s industry. Applying one costs ${creditCost} Credits.`}</p>
                     </div>
                     <div className="space-y-2 p-3">
                         {suggestions.map((style) => {
@@ -115,7 +124,7 @@ export default function PageStyleSelector({
                                             <p className="cosmic-page-style-title mt-1 text-sm font-bold text-white">{style.label}</p>
                                         </div>
                                         <span className={`cosmic-page-style-cost rounded-full px-2 py-1 text-[10px] font-bold ${selected ? 'bg-violet-400/15 text-violet-200' : 'bg-white/[0.06] text-slate-400'}`}>
-                                            {selected ? 'Current' : '20 Credits'}
+                                            {selected ? 'Current' : `${creditCost} Credits`}
                                         </span>
                                     </div>
                                 </button>

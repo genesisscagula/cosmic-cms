@@ -14,6 +14,7 @@ use App\Services\CreditService;
 use App\Services\ThemePlanAccessService;
 use App\Services\MediaAssetLifecycleService;
 use App\Services\MediaAssetSafetyService;
+use App\Services\TrialCreditService;
 use App\Support\PageStyleRegistry;
 use App\Services\BlogSparkRegistry;
 use App\Cosmic\Pricing\ActionPricing;
@@ -318,7 +319,62 @@ class PageController extends Controller
             $websiteMessaging !== '' ? "Existing website messaging: {$websiteMessaging}" : null,
         ])));
 
+        $builderThemeAccess = null;
+        if ($isTrialMode) {
+            // Guest trials intentionally expose only three themes. Always include
+            // the theme selected during generation so the active theme never
+            // appears locked, then fill the remaining slots with curated defaults.
+            $activeTrialTheme = (string) data_get($trial->preview_theme, 'primary', 'midnight');
+            $savedTrialThemeKeys = data_get($trial->preview_theme, 'trial_theme_keys');
+            $trialThemeKeys = is_array($savedTrialThemeKeys) && count($savedTrialThemeKeys) === 3
+                ? array_values(array_unique(array_map('strval', $savedTrialThemeKeys)))
+                : collect([$activeTrialTheme, 'midnight', 'emerald', 'ocean'])
+                    ->filter()
+                    ->unique()
+                    ->take(3)
+                    ->values()
+                    ->all();
+
+            if (! is_array($savedTrialThemeKeys) || $savedTrialThemeKeys !== $trialThemeKeys) {
+                $themeSettings = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+                $themeSettings['trial_theme_keys'] = $trialThemeKeys;
+                $trial->update(['preview_theme' => $themeSettings]);
+                $trial->setAttribute('preview_theme', $themeSettings);
+            }
+
+            $customThemeExists = is_array(data_get($trial->preview_theme, 'custom_brand_theme'));
+            $trialAccessibleThemeKeys = $customThemeExists
+                ? array_values(array_unique(['my-brand', ...$trialThemeKeys]))
+                : $trialThemeKeys;
+
+            $builderThemeAccess = [
+                'keys' => $trialAccessibleThemeKeys,
+                'count' => count($trialThemeKeys),
+                'unlimited' => false,
+                'next_plan' => 'Sign up',
+                'plan_key' => 'guest_trial',
+                'trial' => true,
+            ];
+        } elseif ($request->user()) {
+            $themeAccessService = app(ThemePlanAccessService::class);
+            $effectivePlanKey = $request->user()->effectivePlanKey();
+            $themeKeys = $themeAccessService->allowedThemeKeysForWebsite($effectivePlanKey, $website);
+            $builderThemeAccess = [
+                'keys' => $themeKeys,
+                'count' => $themeKeys === null ? null : count($themeKeys),
+                'unlimited' => $themeKeys === null,
+                'next_plan' => in_array($effectivePlanKey, ['starter', 'agency_starter'], true)
+                    ? 'Growth'
+                    : (in_array($effectivePlanKey, ['growth', 'agency_growth'], true) ? 'Pro' : null),
+                'plan_key' => $effectivePlanKey,
+            ];
+        }
+
         return Inertia::render('Websites/Builder', [
+            // Builder is token-aware and intentionally lives outside the normal
+            // authenticated route group, so pass theme access explicitly instead
+            // of relying only on shared Inertia auth props.
+            'themeAccess' => $builderThemeAccess,
             'page' => $page,
             'website' => $website,
             'websitePages' => $isTrialMode
@@ -362,7 +418,7 @@ class PageController extends Controller
                 ? [
                     'type' => 'glassmorphism_header',
                     'logo_text' => $trial->business_name,
-                    'logo_image_url' => '/storage/branding/your-logo.png',
+                    'logo_image_url' => $trial->logo_url ?: '/storage/branding/your-logo.png',
                     'logo_height' => 42,
                     'logo_filter_key' => data_get($trial->preview_theme, 'primary', 'midnight'),
                     'cta_label' => 'Get Started',
@@ -387,22 +443,43 @@ class PageController extends Controller
                 'email_captured' => filled($trial->email),
                 'regenerations_used' => DB::table('trial_regenerations')
                     ->where('email', Str::lower((string) $trial->email))
-                    ->where('created_at', '>=', now()->subDays(7))
+                    ->where('created_at', '>=', now()->startOfDay())
                     ->count(),
                 'regenerations_limit' => 2,
-                'regenerations_reset_at' => now()->addDays(7)->toIso8601String(),
+                'regenerations_reset_at' => now()->addDay()->startOfDay()->toIso8601String(),
+                'logo_regenerations_used' => DB::table('trial_logo_generations')
+                    ->where('trial_generation_id', $trial->id)
+                    ->where('action', 'regenerate')
+                    ->where('created_at', '>=', now()->startOfDay())
+                    ->count(),
+                'logo_regenerations_limit' => 2,
                 'media_pack_status' => $trial->mediaPack?->status,
                 'media_pack_target' => (int) ($trial->mediaPack?->target_image_count ?? 0),
+                'logo_url' => $trial->logo_url,
+                'logo_company_name' => $trial->logo_company_name,
+                'logo_source' => $trial->logo_source,
+                'logo_theme_sync_state' => $trial->logo_theme_sync_state ?: (filled($trial->logo_url) ? (in_array($trial->logo_source, ['ai', 'ai-theme-match', 'svg-theme-match'], true) ? 'synced' : 'logo_changed') : null),
+                'logo_theme_sync_source' => $trial->logo_theme_sync_source,
+                'logo_theme_synced_theme' => $trial->logo_theme_synced_theme,
+                'guest_credits' => (int) $trial->guest_credits,
             ] : null,
             'cosmicPricing' => [
-                'balance' => (int) ($request->user()?->fresh()?->credits ?? 0),
+                'balance' => $trial ? (int) $trial->guest_credits : (int) ($request->user()?->fresh()?->credits ?? 0),
+                'guest' => (bool) $trial,
                 'actions' => ActionPricing::all(),
+                'trial_actions' => [
+                    'page_style' => TrialCreditService::PAGE_STYLE,
+                    'regenerate_page' => TrialCreditService::REGENERATE_PAGE,
+                    'generate_logo' => TrialCreditService::GENERATE_LOGO,
+                    'match_logo_to_theme' => TrialCreditService::MATCH_LOGO_TO_THEME,
+                    'match_theme_to_logo' => TrialCreditService::MATCH_THEME_TO_LOGO,
+                ],
                 'blocks' => BlockPricingRegistry::all(),
                 'themes' => ThemePricingRegistry::all(),
             ],
             'trialCapabilities' => [
                 'canNavigateAway' => ! $isTrialMode,
-                'canChangeTheme' => ! $isTrialMode,
+                'canChangeTheme' => true,
                 'canGenerateAi' => ! $isTrialMode,
                 'canPublish' => ! $isTrialMode,
                 'canManageBlocks' => ! $isTrialMode,
@@ -443,11 +520,13 @@ class PageController extends Controller
             $this->authorize('update', $page->website);
         }
 
-        $rules = ['blocks' => ['nullable', 'array']];
+        $rules = [
+            'blocks' => ['nullable', 'array'],
+            'theme_settings' => ['nullable', 'array'],
+        ];
         if ($trial === null) {
             $rules['global_header'] = ['nullable', 'array'];
             $rules['global_footer'] = ['nullable', 'array'];
-            $rules['theme_settings'] = ['nullable', 'array'];
         }
 
         $validated = $request->validate($rules);
@@ -458,8 +537,29 @@ class PageController extends Controller
             $currentTheme = (string) data_get($website->theme_settings, 'primary', '');
 
             if ($requestedTheme !== '') {
-                app(ThemePlanAccessService::class)->assertCanUse($request->user(), $requestedTheme, $currentTheme);
+                app(ThemePlanAccessService::class)->assertCanUse(
+                    $request->user(),
+                    $requestedTheme,
+                    $currentTheme,
+                    app(ThemePlanAccessService::class)->includedThemeKeyForWebsite($website),
+                );
             }
+        }
+
+        if ($trial !== null && array_key_exists('theme_settings', $validated)) {
+            $requestedTheme = (string) data_get($validated, 'theme_settings.primary', '');
+            $activeTrialTheme = (string) data_get($trial->preview_theme, 'primary', 'midnight');
+            $allowedTrialThemes = data_get($trial->preview_theme, 'trial_theme_keys');
+            if (! is_array($allowedTrialThemes) || count($allowedTrialThemes) !== 3) {
+                $allowedTrialThemes = collect([$activeTrialTheme, 'midnight', 'emerald', 'ocean'])
+                    ->filter()->unique()->take(3)->values()->all();
+            }
+
+            abort_if(
+                $requestedTheme !== '' && ! in_array($requestedTheme, $allowedTrialThemes, true),
+                403,
+                'Sign up to unlock more themes.'
+            );
         }
 
         DB::transaction(function () use ($page, $website, $validated, $trial) {
@@ -469,7 +569,11 @@ class PageController extends Controller
             $page->save();
 
             if ($trial !== null) {
-                $trial->update(['generated_blocks' => $page->blocks, 'last_saved_at' => now()]);
+                $trialUpdate = ['generated_blocks' => $page->blocks, 'last_saved_at' => now()];
+                if (array_key_exists('theme_settings', $validated)) {
+                    $trialUpdate['preview_theme'] = $validated['theme_settings'];
+                }
+                $trial->update($trialUpdate);
                 return;
             }
 
@@ -550,6 +654,127 @@ class PageController extends Controller
         }
     }
 
+    public function applyTrialPageStyle(Request $request, TrialGeneration $trial, Page $page, TrialCreditService $trialCredits)
+    {
+        abort_unless(
+            $trial->status === 'ready'
+            && ! $trial->claimed_at
+            && (int) $trial->page_id === (int) $page->id,
+            404
+        );
+
+        $expiresAt = filled($trial->email)
+            ? $trial->created_at->copy()->addDays(30)
+            : $trial->created_at->copy()->addHours(24);
+        abort_if($expiresAt->isPast(), 410, 'This trial link has expired.');
+
+        $validated = $request->validate([
+            'style' => ['required', 'string', 'max:40'],
+            'blocks' => ['required', 'array'],
+        ]);
+
+        abort_unless(PageStyleRegistry::exists($validated['style']), 422, 'That page style is not available.');
+        $trialCredits->ensureCanSpend($trial, TrialCreditService::PAGE_STYLE, 'Page Style');
+
+        $blocks = collect($validated['blocks'])
+            ->map(function ($block) {
+                if (! is_array($block)) return $block;
+                $block['theme'] = 'auto';
+                unset($block['resolvedTheme']);
+                return $block;
+            })
+            ->values()
+            ->all();
+
+        DB::transaction(function () use ($page, $trial, $validated, $blocks) {
+            $page->page_style = $validated['style'];
+            $page->blocks = $blocks;
+            $page->status = 'draft';
+            $page->publish_error = null;
+            $page->save();
+
+            $trial->update([
+                'generated_blocks' => $blocks,
+                'last_saved_at' => now(),
+            ]);
+        });
+
+        $balance = $trialCredits->consume($trial, TrialCreditService::PAGE_STYLE, 'page_style', ['style' => $validated['style']]);
+
+        return response()->json([
+            'status' => 'success',
+            'page_style' => $page->page_style,
+            'style' => ['key' => $page->page_style, ...PageStyleRegistry::all()[$page->page_style]],
+            'blocks' => $blocks,
+            'page_status' => 'draft',
+            'credits_spent' => TrialCreditService::PAGE_STYLE,
+            'credit_balance' => $balance,
+            'suggestions' => PageStyleRegistry::suggestions($page->website->industry, $page->page_style),
+        ]);
+    }
+
+    public function applyTrialTheme(Request $request, TrialGeneration $trial, Page $page, TrialCreditService $trialCredits)
+    {
+        abort_unless(
+            $trial->status === 'ready' && ! $trial->claimed_at && (int) $trial->page_id === (int) $page->id,
+            404
+        );
+
+        $expiresAt = filled($trial->email) ? $trial->created_at->copy()->addDays(30) : $trial->created_at->copy()->addHours(24);
+        abort_if($expiresAt->isPast(), 410, 'This trial link has expired.');
+
+        $validated = $request->validate(['theme' => ['required', 'string', 'max:40']]);
+        $requestedTheme = $validated['theme'];
+        $activeTheme = (string) data_get($trial->preview_theme, 'primary', 'midnight');
+        $allowedThemes = data_get($trial->preview_theme, 'trial_theme_keys');
+        if (! is_array($allowedThemes) || count($allowedThemes) !== 3) {
+            $allowedThemes = collect([$activeTheme, 'midnight', 'emerald', 'ocean'])->filter(fn ($key) => $key !== 'my-brand')->unique()->take(3)->values()->all();
+        }
+        $hasCustomBrandTheme = is_array(data_get($trial->preview_theme, 'custom_brand_theme'));
+        $isCustomBrandTheme = $requestedTheme === 'my-brand' && $hasCustomBrandTheme;
+        abort_unless($isCustomBrandTheme || in_array($requestedTheme, $allowedThemes, true), 403, 'Sign up to unlock more themes.');
+
+        if ($requestedTheme === $activeTheme) {
+            return response()->json(['status' => 'success', 'theme' => $requestedTheme, 'credits_spent' => 0, 'credit_balance' => $trialCredits->balance($trial)]);
+        }
+
+        $cost = $isCustomBrandTheme ? 0 : ThemePricingRegistry::cost($requestedTheme);
+        if ($cost > 0) {
+            $trialCredits->ensureCanSpend($trial, $cost, 'Theme change');
+        }
+
+        $themeSettings = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+        $themeSettings['primary'] = $requestedTheme;
+        $syncSource = (string) $request->input('sync_source', 'manual_theme_change');
+        $syncUpdate = [];
+        if (filled($trial->logo_url)) {
+            if ($syncSource === 'theme_to_logo') {
+                $syncUpdate = [
+                    'logo_theme_sync_state' => 'synced',
+                    'logo_theme_sync_source' => 'theme_to_logo',
+                    'logo_theme_synced_theme' => $requestedTheme,
+                ];
+            } else {
+                $syncUpdate = [
+                    'logo_theme_sync_state' => 'theme_changed',
+                    'logo_theme_sync_source' => 'manual_theme_change',
+                    'logo_theme_synced_theme' => null,
+                ];
+            }
+        }
+        $trial->update(['preview_theme' => $themeSettings, 'last_saved_at' => now(), ...$syncUpdate]);
+        $balance = $cost > 0
+            ? $trialCredits->consume($trial, $cost, 'change_theme', ['theme' => $requestedTheme])
+            : $trialCredits->balance($trial);
+
+        return response()->json([
+            'status' => 'success',
+            'theme' => $requestedTheme,
+            'credits_spent' => $cost,
+            'credit_balance' => $balance,
+        ]);
+    }
+
     private function resolveTrialAccess(Request $request, Page $page): ?TrialGeneration
     {
         if ($request->user()) {
@@ -590,14 +815,16 @@ class PageController extends Controller
             ], 202);
         }
 
-        $remainingRemoteUrls = app(MediaAssetSafetyService::class)->draftProviderUrls($website->fresh());
-        if ($remainingRemoteUrls !== []) {
-            return response()->json([
-                'status' => 'media_not_ready',
-                'message' => 'Some remote preview images are still being secured. Retry publishing in a moment.',
-                'remote_image_count' => count($remainingRemoteUrls),
-                'retry_publish' => true,
-            ], 409);
+        if (config('cosmic_media.localize_remote_images', false)) {
+            $remainingRemoteUrls = app(MediaAssetSafetyService::class)->draftProviderUrls($website->fresh());
+            if ($remainingRemoteUrls !== []) {
+                return response()->json([
+                    'status' => 'media_not_ready',
+                    'message' => 'Some remote preview images are still being secured. Retry publishing in a moment.',
+                    'remote_image_count' => count($remainingRemoteUrls),
+                    'retry_publish' => true,
+                ], 409);
+            }
         }
 
         $themeKey = (string) data_get($website->theme_settings, 'primary', '');
@@ -900,7 +1127,12 @@ class PageController extends Controller
             ->where('unlock_key', $theme)
             ->exists();
         $currentTheme = (string) data_get($website->theme_settings, 'primary', '');
-        app(ThemePlanAccessService::class)->assertCanUse($request->user(), $theme, $currentTheme);
+        app(ThemePlanAccessService::class)->assertCanUse(
+            $request->user(),
+            $theme,
+            $currentTheme,
+            app(ThemePlanAccessService::class)->includedThemeKeyForWebsite($website),
+        );
         $cost = ($alreadyUnlocked || $currentTheme === $theme) ? 0 : ThemePricingRegistry::cost($theme);
         $reference = 'theme-' . Str::uuid();
 

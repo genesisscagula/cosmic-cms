@@ -266,6 +266,9 @@ class WorkspaceProvisioningService
             'business_description' => $onboarding->business_description,
             'contact_email' => $onboarding->user->email,
             'api_token' => Str::random(60),
+            'settings' => array_filter([
+                'theme_entitlement_seed' => data_get($trial?->preview_theme, 'primary'),
+            ]),
             'theme_settings' => $trial?->preview_theme ?: [
                 'primary' => 'midnight',
                 'secondary' => 'white',
@@ -416,7 +419,19 @@ class WorkspaceProvisioningService
         $footer['logo_filter_key'] = $header['logo_filter_key'];
         $footer['copyright'] = $footer['copyright'] ?? ('© '.now()->year.' '.$website->name.'. All rights reserved.');
 
+        $settings = is_array($website->settings) ? $website->settings : [];
+        $seed = trim((string) data_get($settings, 'theme_entitlement_seed', ''));
+        if ($seed === '') {
+            $trialTheme = trim((string) data_get($trial->preview_theme, 'primary', ''));
+            if ($trialTheme !== '') {
+                $settings['theme_entitlement_seed'] = $trialTheme;
+            }
+        }
+
         $website->forceFill([
+            // Preserve the original trial/start theme as a stable entitlement
+            // seed across callback/webhook retries and existing-website reuse.
+            'settings' => $settings,
             'theme_settings' => $trial->preview_theme ?: $website->theme_settings,
             'global_header' => $header,
             'global_footer' => $footer,

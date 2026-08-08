@@ -114,6 +114,9 @@ class OnboardingWorkspaceService
             'business_description' => $onboarding->business_description,
             'contact_email' => $onboarding->user->email,
             'api_token' => Str::random(60),
+            'settings' => array_filter([
+                'theme_entitlement_seed' => data_get($trial?->preview_theme, 'primary'),
+            ]),
             'theme_settings' => $trial?->preview_theme ?: [
                 'primary' => 'midnight',
                 'secondary' => 'white',
@@ -198,6 +201,15 @@ class OnboardingWorkspaceService
             'location' => $onboarding->location,
         ])->save();
 
+        $settings = is_array($website->settings) ? $website->settings : [];
+        $seed = trim((string) data_get($settings, 'theme_entitlement_seed', ''));
+        if ($seed === '') {
+            $trialTheme = trim((string) data_get($onboarding->trialGeneration?->preview_theme, 'primary', ''));
+            if ($trialTheme !== '') {
+                $settings['theme_entitlement_seed'] = $trialTheme;
+            }
+        }
+
         $website->forceFill([
             'name' => $onboarding->website_name,
             'domain' => $this->preferredDomain($onboarding->website_slug),
@@ -205,6 +217,9 @@ class OnboardingWorkspaceService
             'location' => $onboarding->location,
             'business_description' => $onboarding->business_description,
             'contact_email' => $user->email,
+            // Existing/recovered websites may have been created before the
+            // seed existed. Backfill it exactly once from the linked trial.
+            'settings' => $settings,
         ])->save();
     }
 

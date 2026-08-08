@@ -7,15 +7,20 @@ export default function ThemeSelector({
     value,
     onChange,
     compact = false,
-    planKey = 'starter',
+    themeAccess = null,
+    signupUrl = null,
+    customTheme = null,
 }) {
 
     const [open, setOpen] = useState(false);
 
-    const currentTheme =
-        themeMetadata.find(
-            theme => theme.id === value
-        );
+    const customThemeMetadata = customTheme ? {
+        id: 'my-brand',
+        name: customTheme.name || 'My Brand Theme',
+    } : null;
+    const currentTheme = value === 'my-brand'
+        ? customThemeMetadata
+        : themeMetadata.find(theme => theme.id === value);
 
     return (
         <>
@@ -63,7 +68,9 @@ export default function ThemeSelector({
                 onClose={() => setOpen(false)}
                 selectedTheme={value}
                 onSelect={onChange}
-                planKey={planKey}
+                themeAccess={themeAccess}
+                signupUrl={signupUrl}
+                customTheme={customTheme}
             />
 
         </>

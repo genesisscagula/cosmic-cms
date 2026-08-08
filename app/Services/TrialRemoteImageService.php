@@ -19,12 +19,36 @@ class TrialRemoteImageService
      */
     public function resolve(array $visualIntent, int $target): array
     {
-        if (! (bool) config('openai.remote_preview_images_enabled', config('openai.trial_remote_images_enabled', true)) || $target < 1) {
+        return $this->resolveUnsplashPool(
+            $visualIntent,
+            $target,
+            (bool) config('openai.remote_preview_images_enabled', config('openai.trial_remote_images_enabled', true)),
+            'TrialRemoteImages'
+        );
+    }
+
+    /**
+     * Logged-in Builder equivalent of the /start remote image flow.
+     * Images remain provider-hosted URLs; no Cosmic storage write occurs here.
+     */
+    public function resolveForRegistered(array $visualIntent, int $target): array
+    {
+        return $this->resolveUnsplashPool(
+            $visualIntent,
+            $target,
+            (bool) config('openai.registered_remote_images_enabled', true),
+            'RegisteredRemoteImages'
+        );
+    }
+
+    private function resolveUnsplashPool(array $visualIntent, int $target, bool $enabled, string $logChannel): array
+    {
+        if (! $enabled || $target < 1) {
             return [];
         }
 
         if (! $this->unsplash->isEnabled()) {
-            Log::notice('[TrialRemoteImages] Unsplash is unavailable; keeping generated local fallbacks.');
+            Log::notice('['.$logChannel.'] Unsplash is unavailable; keeping industry fallbacks.');
             return [];
         }
 
@@ -62,7 +86,7 @@ class TrialRemoteImageService
                 ->values()
                 ->all();
 
-            Log::info('[TrialRemoteImages] Remote preview pool resolved.', [
+            Log::info('['.$logChannel.'] Remote preview pool resolved.', [
                 'provider' => 'unsplash',
                 'query' => $query,
                 'requested' => $target,
@@ -72,7 +96,7 @@ class TrialRemoteImageService
 
             return $results;
         } catch (\Throwable $exception) {
-            Log::warning('[TrialRemoteImages] Remote preview lookup failed; keeping local fallbacks.', [
+            Log::warning('['.$logChannel.'] Remote preview lookup failed; keeping industry fallbacks.', [
                 'provider' => 'unsplash',
                 'query' => $query,
                 'message' => $exception->getMessage(),
@@ -90,22 +114,42 @@ class TrialRemoteImageService
         }
 
         $cursor = 0;
-        $assign = function (mixed $value, ?string $key = null) use (&$assign, &$cursor, $urls): mixed {
+        $assign = function (
+            mixed $value,
+            ?string $key = null,
+            bool $insideImageCollection = false
+        ) use (&$assign, &$cursor, $urls): mixed {
+            $currentIsImageField = is_string($key) && $this->isImageField($key);
+            $imageContext = $insideImageCollection || $currentIsImageField;
+
             if (is_array($value)) {
                 foreach ($value as $childKey => $childValue) {
-                    $value[$childKey] = $assign($childValue, is_string($childKey) ? $childKey : null);
+                    $childName = is_string($childKey) ? $childKey : null;
+                    $value[$childKey] = $assign($childValue, $childName, $imageContext);
                 }
 
                 return $value;
             }
 
-            if (! is_string($key) || ! $this->isImageField($key) || ! is_string($value)) {
+            if (! is_string($value) || (! $imageContext && ! $currentIsImageField)) {
                 return $value;
             }
 
-            // People portraits keep the curated avatar library. Remote trial
-            // images are for website photography, banners and feature visuals.
-            if (str_contains($value, '/cms-images/avatars/')) {
+            // Branding and deliberately curated people assets are not generated
+            // page photography and must never be replaced by provider imagery.
+            $normalizedKey = strtolower((string) $key);
+            if (
+                str_contains($normalizedKey, 'logo')
+                || str_contains($value, '/cms-images/avatars/')
+                || str_contains($value, '/storage/branding/')
+            ) {
+                return $value;
+            }
+
+            // Only image-like scalar values inside image fields/collections are
+            // candidates. This prevents captions/alt text nested beside images
+            // from being mistaken for URLs.
+            if (! $this->looksLikeImageReference($value)) {
                 return $value;
             }
 
@@ -136,6 +180,19 @@ class TrialRemoteImageService
         $separator = str_contains($url, '?') ? '&' : '?';
 
         return $url.$separator.http_build_query($parameters);
+    }
+
+    private function looksLikeImageReference(string $value): bool
+    {
+        $trimmed = trim($value);
+        if ($trimmed === '') {
+            return false;
+        }
+
+        return str_starts_with($trimmed, 'http://')
+            || str_starts_with($trimmed, 'https://')
+            || str_starts_with($trimmed, '/')
+            || preg_match('/\.(?:avif|gif|jpe?g|png|svg|webp)(?:\?.*)?$/i', $trimmed) === 1;
     }
 
     private function isImageField(string $key): bool

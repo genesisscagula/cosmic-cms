@@ -17,7 +17,11 @@ export default function ThemeGrid({
                     theme={theme}
                     selected={selectedTheme === theme.id}
                     onSelect={onSelect}
-                    locked={!allowedThemeIds.includes(theme.id)}
+                    // The backend permits a downgraded/grandfathered site to
+                    // keep its current theme. Mirror that rule in the UI so the
+                    // active theme never appears locked even if it is outside the
+                    // account's current plan allowance.
+                    locked={selectedTheme !== theme.id && !allowedThemeIds.includes(theme.id)}
                     nextPlan={nextPlan}
                 />
 

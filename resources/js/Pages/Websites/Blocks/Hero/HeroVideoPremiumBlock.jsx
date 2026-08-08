@@ -6,6 +6,7 @@ import { EditableText } from "../Shared/EditableText";
 import { EditableVideoSource, getVideoEmbedUrl } from "../Shared/EditableVideoSource";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 
 export const HeroVideoPremiumSchema = {
     type: "hero_video_premium",
@@ -39,30 +40,31 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
     const embeddedVideoUrl = getVideoEmbedUrl(data.video_url);
     const resolvedTheme = block.resolvedTheme || "surface";
     const isPrimary = resolvedTheme === "primary";
-    const isLightMediaTheme = ["white", "surface", "stone"].includes(resolvedTheme);
+    const mediaOverlay = resolveMediaOverlay(globalTheme, resolvedTheme);
+    const isLightMediaTheme = mediaOverlay.isLight;
     const primaryButton = isPrimary
         ? "bg-white text-slate-950"
         : `${primaryTheme.bg} text-white`;
     const mediaStyle = isLightMediaTheme
         ? {
-            overlayBase: "bg-white/85",
-            overlayX: "bg-gradient-to-r from-white/98 via-white/90 to-white/72",
-            overlayY: "bg-gradient-to-t from-white/90 via-transparent to-white/68",
+            overlayBase: "bg-white/90",
+            overlayX: "bg-gradient-to-r from-white/100 via-white/96 to-white/82",
+            overlayY: "bg-gradient-to-t from-white/94 via-white/36 to-white/78",
             topBorder: "border-slate-900/15",
             eyebrow: "text-slate-700",
             badge: "border-slate-900/15 bg-white/65 text-slate-900",
             heading: "text-slate-950",
             body: "text-slate-700",
-            secondary: "border-slate-900/20 bg-white/55 text-slate-950 hover:bg-white/80",
+            secondary: "border-slate-900/20 bg-white/78 text-slate-950 hover:bg-white/95",
             footerBorder: "border-slate-900/15",
             scroll: "text-slate-700",
             edit: "border-slate-900/15 bg-white/60 text-slate-800 hover:bg-white/85 hover:text-slate-950",
             posterCard: "border-slate-900/15 bg-white/55",
         }
         : {
-            overlayBase: "bg-slate-950/35",
-            overlayX: "bg-gradient-to-r from-slate-950/88 via-slate-950/58 to-slate-950/18",
-            overlayY: "bg-gradient-to-t from-slate-950/75 via-transparent to-slate-950/25",
+            overlayBase: "",
+            overlayX: "bg-gradient-to-r from-slate-950/62 via-slate-950/34 to-slate-950/10",
+            overlayY: "bg-gradient-to-t from-slate-950/52 via-transparent to-slate-950/16",
             topBorder: "border-white/25",
             eyebrow: "text-white/80",
             badge: "border-white/30 bg-white/10 text-white",
@@ -98,7 +100,10 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
                             <source src={data.video_url} type="video/mp4" />
                         </video>
                     )}
-                    <div className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayBase}`} />
+                    <div
+                        className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayBase}`}
+                        style={isLightMediaTheme ? undefined : { backgroundColor: mediaOverlay.overlayColor, opacity: 0.26 }}
+                    />
                     <div className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayX}`} />
                     <div className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayY}`} />
                 </div>

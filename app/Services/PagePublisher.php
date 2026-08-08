@@ -17,9 +17,11 @@ class PagePublisher
      */
     public function publish(Page $page, Website $website): string
     {
-        $remote = $this->mediaSafety->providerUrls($page->blocks ?? []);
-        if ($remote !== []) {
-            throw new \RuntimeException('Publish blocked: remote preview images must be localized first.');
+        if (config('cosmic_media.localize_remote_images', false)) {
+            $remote = $this->mediaSafety->providerUrls($page->blocks ?? []);
+            if ($remote !== []) {
+                throw new \RuntimeException('Publish blocked: remote preview images must be localized first.');
+            }
         }
 
         $theme = $website->theme_settings ?? [];
@@ -35,9 +37,11 @@ class PagePublisher
      */
     public function publishedPackage(Website $website): array
     {
-        $remainingRemote = $this->mediaSafety->publishedProviderUrls($website);
-        if ($remainingRemote !== []) {
-            throw new \RuntimeException('Export blocked: published content still contains remote Unsplash/Pexels image URLs.');
+        if (config('cosmic_media.localize_remote_images', false)) {
+            $remainingRemote = $this->mediaSafety->publishedProviderUrls($website);
+            if ($remainingRemote !== []) {
+                throw new \RuntimeException('Export blocked: published content still contains remote Unsplash/Pexels image URLs.');
+            }
         }
 
         $theme = $website->published_theme_settings ?? $website->theme_settings ?? [];

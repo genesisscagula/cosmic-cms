@@ -46,7 +46,7 @@ class AiPageGenerationService
     ) {
     }
 
-    public function generateTrialPage(string $prompt, ?int $trialId = null): array
+    public function generateTrialPage(string $prompt, ?int $trialId = null, ?array $regenerationContext = null): array
     {
         $startedAt = microtime(true);
 
@@ -73,8 +73,26 @@ class AiPageGenerationService
         // planning -> schema-bound content stays correctly dependency ordered.
         $parallel = $this->parallelEngine->execute(
             fn () => ['status' => 'remote-preview', 'trial_id' => $trialId],
-            function () use ($prompt) {
-                $selection = $this->selectSections($prompt);
+            function () use ($prompt, $regenerationContext) {
+                $selectionPrompt = $prompt;
+                if (is_array($regenerationContext)) {
+                    $previous = collect($regenerationContext['previous_sections'] ?? [])
+                        ->filter(fn ($section) => is_string($section) && trim($section) !== '')
+                        ->map(fn ($section) => trim($section))
+                        ->values()
+                        ->all();
+
+                    $selectionPrompt .= "\n\nREGENERATION LAYOUT DIRECTIVE:"
+                        ." Choose a materially different page composition and Spark/layout combination from the previous version."
+                        ." Do not simply rewrite content inside the same structure."
+                        .($previous ? " Previous Spark types to vary away from where compatible: ".implode(', ', $previous)."." : '')
+                        ." Preserve the same business intent, but vary section ordering, compatible Spark variants, and visual rhythm."
+                        ." Regeneration nonce: ".($regenerationContext['nonce'] ?? uniqid('', true));
+                }
+
+                // The regeneration-only directive is used for Spark planning only.
+                // Content generation still receives the customer's clean prompt.
+                $selection = $this->selectSections($selectionPrompt);
                 $placeholderFolder = 'default';
                 $blocks = $this->images->withRemoteDownloadBudget(0, fn () => $this->generateBlocks(
                     $prompt,
@@ -136,6 +154,68 @@ class AiPageGenerationService
         ];
     }
 
+
+    /**
+     * Resolve registered Builder page imagery through the exact same remote
+     * Unsplash flow used by /start. Local/industry image values in $blocks are
+     * fallback-only and remain untouched if Unsplash is unavailable.
+     *
+     * @return array{blocks: array, remote_images: array, target_image_count: int, visual_intent: array, media_keywords: array}
+     */
+    public function applyStartPageRemoteImages(string $prompt, array $blocks, ?string $imageFolder = null): array
+    {
+        $resolvedImageFolder = $imageFolder ?: $this->resolveLayoutFolder($prompt);
+
+        try {
+            $visualIntent = $this->pipeline->analyzeVisualIntent($prompt);
+        } catch (\Throwable $exception) {
+            Log::warning('[RegisteredRemoteImages] Visual intent analysis failed; using /start deterministic fallback.', [
+                'message' => $exception->getMessage(),
+            ]);
+
+            $visualIntent = [
+                'business_type' => trim($prompt),
+                'fallback_industry' => $resolvedImageFolder,
+                'image_keywords' => [trim($prompt)],
+                'visual_style' => 'professional editorial',
+            ];
+        }
+
+        // Keep target calculation identical to /start so the registered Builder
+        // receives the same number/style of remote provider images.
+        $mediaQueries = $this->learningQueries($prompt, $blocks, $resolvedImageFolder);
+        $targetImageCount = min(10, count($mediaQueries));
+
+        // IMPORTANT: use resolve(), not a separate registered resolver/flag.
+        // This makes registered AI generation follow the same Unsplash behavior
+        // and configuration as the public /start flow.
+        $remoteImages = $this->trialRemoteImages->resolve($visualIntent, $targetImageCount);
+        $blocks = $this->trialRemoteImages->assignToBlocks($blocks, $remoteImages);
+
+        $mediaKeywords = collect($visualIntent['image_keywords'] ?? [])
+            ->merge(collect($mediaQueries)->pluck('query'))
+            ->filter(fn ($keyword) => is_string($keyword) && trim($keyword) !== '')
+            ->map(fn ($keyword) => trim($keyword))
+            ->unique()
+            ->take(6)
+            ->values()
+            ->all();
+
+        Log::info('[RegisteredRemoteImages] Applied exact /start Unsplash flow.', [
+            'image_folder_fallback' => $resolvedImageFolder,
+            'target_image_count' => $targetImageCount,
+            'remote_image_count' => count($remoteImages),
+            'media_keywords' => count($mediaKeywords),
+        ]);
+
+        return [
+            'blocks' => $blocks,
+            'remote_images' => $remoteImages,
+            'target_image_count' => $targetImageCount,
+            'visual_intent' => $visualIntent,
+            'media_keywords' => $mediaKeywords,
+        ];
+    }
 
     public function imagesWithoutRemoteDownloads(callable $callback): mixed
     {

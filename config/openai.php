@@ -75,6 +75,13 @@ return [
     // legacy trial env remains the fallback for backwards-compatible deploys.
     'trial_remote_images_enabled' => (bool) env('COSMIC_TRIAL_REMOTE_IMAGES', true),
     'remote_preview_images_enabled' => (bool) env('COSMIC_REMOTE_PREVIEW_IMAGES', env('COSMIC_TRIAL_REMOTE_IMAGES', true)),
+    // Registered Builder generation uses the same remote Unsplash preview model
+    // as /start. Provider results remain remote URLs; local industry media is
+    // fallback-only and customer uploads continue to use local storage.
+    'registered_remote_images_enabled' => (bool) env(
+        'COSMIC_REGISTERED_REMOTE_IMAGES',
+        env('COSMIC_REMOTE_PREVIEW_IMAGES', env('COSMIC_TRIAL_REMOTE_IMAGES', true))
+    ),
 
     // Patch 16.3: independent branch coordinator. Images never block the AI
     // branch; branch diagnostics are returned for progress/benchmarking.

@@ -7,6 +7,7 @@ use App\Jobs\SendTrialAccessLinkJob;
 use App\Models\MediaPack;
 use App\Models\Page;
 use App\Models\TrialGeneration;
+use App\Services\TrialCreditService;
 use App\Models\Website;
 use App\Services\AiPageGenerationService;
 use App\Services\IndustryResolver;
@@ -114,6 +115,7 @@ class TrialGenerationController extends Controller
             'ip_hash' => hash('sha256', (string) $request->ip()),
             'menu_structure' => IndustryMenuRegistry::for($profile['industry']),
             'preview_theme' => $this->previewThemeForIndustry($profile['industry']),
+            'guest_credits' => TrialCreditService::STARTING_BALANCE,
         ]);
 
         $mediaPack = MediaPack::create([
@@ -357,7 +359,7 @@ class TrialGenerationController extends Controller
         ]);
     }
 
-    public function regenerate(Request $request, TrialGeneration $trial)
+    public function regenerate(Request $request, TrialGeneration $trial, TrialCreditService $trialCredits)
     {
         set_time_limit(240);
         abort_unless($trial->status === 'ready' && ! $trial->claimed_at && $trial->page_id, 404);
@@ -367,13 +369,15 @@ class TrialGenerationController extends Controller
             'prompt' => ['required', 'string', 'min:10', 'max:2000'],
         ]);
 
-        $windowStart = now()->subDays(7);
+        $windowStart = now()->startOfDay();
         $used = DB::table('trial_regenerations')
             ->where('email', Str::lower($trial->email))
             ->where('created_at', '>=', $windowStart)
             ->count();
 
-        abort_if($used >= 2, 429, 'You have used your two free regenerations for this 7-day period. Create an account to keep generating.');
+        abort_if($used >= 2, 429, 'You have used your two regenerations for today. Create an account to keep generating.');
+
+        $trialCredits->ensureCanSpend($trial, TrialCreditService::REGENERATE_PAGE, 'Page regeneration');
 
         $profile = [
             'business_name' => $trial->business_name,
@@ -384,7 +388,23 @@ class TrialGenerationController extends Controller
         ];
 
         try {
-            $generated = $this->pageGenerationService->generateTrialPage($this->buildPrompt($profile), $trial->id);
+            $currentPage = $trial->page()->firstOrFail();
+            $previousSections = collect($currentPage->blocks ?? [])
+                ->filter(fn ($block) => is_array($block))
+                ->map(fn ($block) => (string) ($block['type'] ?? ''))
+                ->filter()
+                ->values()
+                ->all();
+
+            $generated = $this->pageGenerationService->generateTrialPage(
+                $this->buildPrompt($profile),
+                $trial->id,
+                [
+                    'previous_sections' => $previousSections,
+                    // Forces a fresh planner-cache key on each regeneration.
+                    'nonce' => (string) Str::uuid(),
+                ]
+            );
             $newToken = (string) Str::uuid();
 
             DB::transaction(function () use ($trial, $generated, $validated, $newToken) {
@@ -435,10 +455,13 @@ class TrialGenerationController extends Controller
             });
 
             $trial->refresh();
+            $balance = $trialCredits->consume($trial, TrialCreditService::REGENERATE_PAGE, 'regenerate_page', ['prompt' => $validated['prompt']]);
             $this->sendTrialAccessEmail($trial, true);
 
             return response()->json([
                 'message' => 'Your landing page was regenerated successfully.',
+                'cost' => TrialCreditService::REGENERATE_PAGE,
+                'credit_balance' => $balance,
                 'redirect_url' => route('pages.builder', ['page' => $trial->page_id, 'token' => $trial->token]),
                 'token' => $trial->token,
                 'remaining' => max(0, 1 - $used),

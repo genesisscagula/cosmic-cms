@@ -2763,6 +2763,27 @@ body .cosmic-start-quick-idea.rounded-full.border {
     color: #64748b !important;
     opacity: .72 !important;
 }
+
+/* Revised hotfix: trial purchase CTA must remain Cosmic green with white text in every app appearance. */
+[data-cosmic-builder-header] .cosmic-trial-buy {
+    background-color: #16845f !important;
+    border: 1px solid #16845f !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 1 !important;
+}
+[data-cosmic-builder-header] .cosmic-trial-buy:hover {
+    background-color: #0f7654 !important;
+    border-color: #0f7654 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+[data-cosmic-builder-header] .cosmic-trial-buy *,
+[data-cosmic-builder-header] .cosmic-trial-buy:hover * {
+    color: inherit !important;
+    -webkit-text-fill-color: inherit !important;
+}
+
 :root[data-theme="light"] [data-cosmic-builder-header] .cosmic-trial-buy {
     background-color: #16845f !important;
     border: 1px solid #16845f !important;
@@ -2823,3 +2844,10 @@ body .cosmic-start-quick-idea.rounded-full.border {
 .cosmic-agency-plan-button > * {
     color: inherit !important;
 }
+
+/* H2 — runtime My Brand Theme generated from a customer's uploaded logo. */
+.cosmic-brand-bg { background-color: var(--cosmic-brand-bg) !important; }
+.cosmic-brand-surface { background-color: var(--cosmic-brand-surface) !important; }
+.cosmic-brand-text { color: var(--cosmic-brand-text) !important; }
+.cosmic-brand-muted { color: var(--cosmic-brand-muted) !important; }
+.cosmic-brand-border { border-color: var(--cosmic-brand-border) !important; }

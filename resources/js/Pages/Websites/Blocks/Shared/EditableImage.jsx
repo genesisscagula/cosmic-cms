@@ -16,13 +16,16 @@ export const EditableImage = forwardRef(({
     className,
     src,
     showOverlay = true,
-    isBackground = false
+    isBackground = false,
+    imageQuery = '',
+    blockType = ''
 }, ref) => {
 
     const [isEditing, setIsEditing] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [preview, setPreview] = useState(src);
     const [uploading, setUploading] = useState(false);
+    const [findingRemote, setFindingRemote] = useState(false);
 
     useEffect(() => {
         setPreview(src);
@@ -104,6 +107,42 @@ export const EditableImage = forwardRef(({
 
         }
 
+    };
+
+
+    const handleFindRemote = async () => {
+        if (!websiteId || findingRemote) return;
+
+        setFindingRemote(true);
+
+        try {
+            const response = await axios.post(`/api/websites/${websiteId}/remote-image`, {
+                query: imageQuery || '',
+                block_type: blockType || '',
+            }, { headers: { Accept: 'application/json' } });
+
+            const url = response.data?.url;
+            if (!url) throw new Error('No remote image URL returned.');
+
+            setSelectedFile(null);
+            setPreview(url);
+            onSave(url);
+
+            showCosmicNotification({
+                title: 'Unsplash image ready',
+                message: 'The Builder is using the remote image URL. Save the page when you are ready.',
+                tone: 'success',
+            });
+        } catch (error) {
+            console.error(error);
+            showCosmicNotification({
+                title: 'Unable to find an image',
+                message: error.response?.data?.message ?? 'Unsplash is temporarily unavailable. Your current image was kept.',
+                tone: 'error',
+            });
+        } finally {
+            setFindingRemote(false);
+        }
     };
 
     useImperativeHandle(ref, () => ({
@@ -203,7 +242,7 @@ export const EditableImage = forwardRef(({
                                 </h2>
 
                                 <p className="text-slate-400 text-sm mt-2">
-                                    Replace or upload a new image.
+                                    Choose a fresh Unsplash image or upload your own file.
                                 </p>
 
                             </div>
@@ -253,6 +292,20 @@ export const EditableImage = forwardRef(({
                                     </>
 
                                 )}
+
+
+                                <button
+                                    type="button"
+                                    onClick={handleFindRemote}
+                                    disabled={findingRemote}
+                                    className="w-full rounded-xl bg-emerald-600 px-4 py-3 font-semibold text-white transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-50"
+                                >
+                                    {findingRemote ? 'Finding image…' : '✨ Find on Unsplash'}
+                                </button>
+
+                                <p className="text-xs leading-5 text-slate-500">
+                                    Unsplash stays remote. Uploading your own image still saves it locally.
+                                </p>
 
                                 <label className="block">
 

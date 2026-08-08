@@ -43,10 +43,17 @@ export default function ThemeCard({
                 selected
                     ? "is-active border-violet-400/80 bg-violet-500/[0.07] shadow-[0_0_0_1px_rgba(167,139,250,0.22),0_16px_34px_rgba(0,0,0,0.28)]"
                     : locked
-                        ? "cursor-not-allowed border-white/10 bg-[#151517] opacity-70"
+                        ? "cursor-not-allowed border-amber-300/20 bg-[#151517]"
                         : "border-white/10 bg-[#171719] hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.035]"
             }`}
         >
+            {locked && (
+                <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-0 z-[5] bg-slate-950/30"
+                />
+            )}
+
             <div
                 className="relative h-28 overflow-hidden border-b border-black/15 p-3"
                 style={{ backgroundColor: primary }}
@@ -63,11 +70,9 @@ export default function ThemeCard({
                 </div>
 
                 {locked && (
-                    <div className="absolute inset-0 z-10 flex items-center justify-center bg-slate-950/45 backdrop-blur-[1px]">
-                        <span className="rounded-full border border-white/20 bg-slate-950/80 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-white shadow-lg">
-                            🔒 Upgrade to {nextPlan || 'unlock'}
-                        </span>
-                    </div>
+                    <span className="absolute left-1/2 top-3 z-20 -translate-x-1/2 whitespace-nowrap rounded-full border border-white bg-white px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-800 shadow-lg shadow-black/20">
+                        {nextPlan === 'Sign up' ? '🔒 Sign up to unlock' : `🔒 Upgrade to ${nextPlan || 'unlock'}`}
+                    </span>
                 )}
 
                 {selected && (
@@ -88,7 +93,7 @@ export default function ThemeCard({
                         </div>
                     </div>
 
-                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${locked ? "bg-amber-400/10 text-amber-200" : "bg-violet-400/10 text-violet-300"}`}>
+                    <span className={`relative z-10 shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${locked ? "bg-amber-400/10 text-amber-200" : "bg-violet-400/10 text-violet-300"}`}>
                         {selected ? "Active" : locked ? "🔒 Locked" : theme.featured ? "Featured" : `⚡${THEME_CREDITS[theme.id] ?? 20}`}
                     </span>
                 </div>

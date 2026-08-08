@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { getEffectiveTheme } from '../../theme/Theme';
-import { logoFilterFor } from '@/Branding/logoFilters';
+import { logoFilterForImage } from '@/Branding/logoFilters';
 
 function EditableText({ value, onSave, className }) {
     const [isEditing, setIsEditing] = useState(false);
@@ -50,7 +50,7 @@ export function DarkCyanHeader({ block, onUpdate, pageTargets = [], onLogoClick 
     return (
         <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b px-5 py-4 sm:px-6 sm:py-5 lg:flex-nowrap transition-colors duration-500`}>
             {logoImageUrl ? (
-                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "60px", filter: block.logo_filter || logoFilterFor(block.logo_filter_key || block.theme || 'midnight') }} className="w-auto max-w-[250px] object-contain" /></button>
+                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "60px", filter: logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto max-w-[250px] object-contain" /></button>
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
@@ -93,7 +93,7 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets 
     return (
         <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-4 sm:px-6 sm:py-5 lg:flex-nowrap`}>
             {logoImageUrl ? (
-                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "60px", filter: block.logo_filter || logoFilterFor(block.logo_filter_key || block.theme || 'midnight') }} className="w-auto max-w-[250px] object-contain" /></button>
+                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "60px", filter: logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto max-w-[250px] object-contain" /></button>
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 

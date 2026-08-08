@@ -97,19 +97,24 @@ class MediaAssetLifecycleService
             return false;
         }
 
+        $pack = $this->syncRemoteManifest($pack, $page->blocks ?? [], 'remote_trial_saved');
+
+        if (! config('cosmic_media.localize_remote_images', false)) {
+            $this->markRemoteReady($pack, 'trial_save_remote_only');
+            return false;
+        }
+
         if (in_array($pack->status, ['queued', 'downloading', 'localizing'], true)) {
             return true;
         }
-
-        $pack = $this->syncRemoteManifest($pack, $page->blocks ?? [], 'remote_trial_saved');
 
         return $this->queueLocalization($pack, 'trial_save');
     }
 
     public function queueWebsitePublish(Website $website): bool
     {
-        // Re-sync across the website before publishing. The DB is canonical, and
-        // a MediaPack may not exist yet for manually-created or older websites.
+        // Re-sync across the website before publishing. Remote provider URLs
+        // are valid V1 publish assets unless localization is explicitly enabled.
         $blocks = $website->pages()->get(['blocks'])->pluck('blocks')->filter()->values()->all();
         $remoteUrls = collect($blocks)->flatMap(fn ($blockSet) => $this->remoteImageUrls((array) $blockSet))->unique()->values();
 
@@ -120,19 +125,29 @@ class MediaAssetLifecycleService
 
         if (! $pack) {
             $pack = $this->syncWebsiteRemoteManifest($website, $blocks);
+        } else {
+            $pack = $this->syncRemoteManifest($pack, $blocks, 'remote_logged_in_publish');
+        }
+
+        if (! config('cosmic_media.localize_remote_images', false)) {
+            $this->markRemoteReady($pack, 'publish_remote_only');
+            return false;
         }
 
         if (in_array($pack->status, ['queued', 'downloading', 'localizing'], true)) {
             return true;
         }
 
-        $pack = $this->syncRemoteManifest($pack, $blocks, 'remote_logged_in_publish');
-
         return $this->queueLocalization($pack, 'publish');
     }
 
     public function queueLocalization(MediaPack $pack, string $reason, bool $force = false): bool
     {
+        if (! config('cosmic_media.localize_remote_images', false)) {
+            $this->markRemoteReady($pack, $reason.'_remote_only');
+            return false;
+        }
+
         $manifest = is_array($pack->manifest) ? $pack->manifest : [];
         $hasRemote = collect($manifest['images'] ?? [])->contains(
             fn ($item) => is_array($item) && filter_var($item['url'] ?? null, FILTER_VALIDATE_URL)
@@ -176,6 +191,23 @@ class MediaAssetLifecycleService
         }
 
         return true;
+    }
+
+    private function markRemoteReady(MediaPack $pack, string $mode): void
+    {
+        $manifest = is_array($pack->manifest) ? $pack->manifest : [];
+        $pack->forceFill([
+            'status' => 'ready',
+            'queued_at' => null,
+            'completed_at' => now(),
+            'last_error' => null,
+            'manifest' => array_merge($manifest, [
+                'remote_only' => true,
+                'localization_status' => 'disabled',
+                'mode' => $mode,
+                'updated_at' => now()->toIso8601String(),
+            ]),
+        ])->save();
     }
 
     /** @return array<int, string> */

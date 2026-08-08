@@ -350,11 +350,12 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
 }
 
 // EDITABLE IMAGE COMPONENT
-export function EditableImage({ websiteId, blockIndex, onSave, className, src }) {
+export function EditableImage({ websiteId, blockIndex, onSave, className, src, imageQuery = '', blockType = '' }) {
     const [isEditing, setIsEditing] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
     const [preview, setPreview] = useState(src);
     const [uploading, setUploading] = useState(false);
+    const [findingRemote, setFindingRemote] = useState(false);
 
     useEffect(() => {
         return () => {
@@ -363,6 +364,25 @@ export function EditableImage({ websiteId, blockIndex, onSave, className, src })
             }
         };
     }, [preview]);
+
+
+    const handleFindRemote = async (event) => {
+        event?.stopPropagation?.();
+        if (!websiteId || findingRemote) return;
+        setFindingRemote(true);
+        try {
+            const response = await axios.post(`/api/websites/${websiteId}/remote-image`, { query: imageQuery, block_type: blockType });
+            const url = response.data?.url;
+            if (!url) throw new Error('No remote image URL returned.');
+            setSelectedFile(null);
+            setPreview(url);
+            onSave(url);
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to find an image', message: error.response?.data?.message ?? 'Unsplash is temporarily unavailable.', tone: 'error' });
+        } finally {
+            setFindingRemote(false);
+        }
+    };
 
     const handleFileChange = (e) => {
         const file = e.target.files[0];
@@ -405,6 +425,10 @@ export function EditableImage({ websiteId, blockIndex, onSave, className, src })
                         <img src={preview} className="w-full h-32 object-cover rounded-lg mb-4" />
                         
                         <div className="flex gap-2">
+                            <button type="button" onClick={handleFindRemote} disabled={findingRemote} className="flex-1 bg-emerald-600 py-2 rounded-lg text-white font-bold hover:bg-emerald-700 disabled:opacity-50">
+                                {findingRemote ? 'Finding…' : 'Unsplash'}
+                            </button>
+                            
                             <label className="flex-1 bg-blue-600 py-2 rounded-lg text-white text-center cursor-pointer hover:bg-blue-700">
                                 Select Image
                                 <input type="file" className="hidden" onChange={handleFileChange} />

@@ -1,7 +1,7 @@
 import React from 'react';
 import { EditableText } from "./Blocks/Shared/EditableText";
 import themeCatalog from "../../../theme/theme-families.json";
-import { logoFilterFor } from '@/Branding/logoFilters';
+import { logoFilterForImage } from '@/Branding/logoFilters';
 
 export const themeConfig = themeCatalog.legacyFooterFamilies;
 
@@ -26,13 +26,13 @@ export function MinimalFooter({ block, onUpdate }) {
                         style={{
                             height: `${logoHeight}px`,
                             maxHeight: '56px',
-                            filter: block.logo_filter || logoFilterFor(block.logo_filter_key || block.theme || 'midnight'),
+                            filter: logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter),
                         }}
                         className="w-auto max-w-[250px] object-contain"
                     />
                 ) : (
                     <EditableText
-                        value={block.logo_text || 'CosmicCMS'}
+                        value={block.logo_text || 'Your Logo'}
                         className={`font-bold cursor-pointer ${text} transition whitespace-nowrap`}
                         onSave={(val) => onUpdate({ logo_text: val })}
                     />
@@ -77,13 +77,13 @@ export function DetailedFooter({ block, onUpdate }) {
                             alt={block.logo_text || 'Website logo'}
                             style={{
                                 height: `${Math.min(56, Math.max(24, Number(block.logo_height || 36)))}px`,
-                                filter: block.logo_filter || logoFilterFor(block.logo_filter_key || block.theme || 'midnight'),
+                                filter: logoFilterForImage(block.logo_image_url, block.logo_filter_key || block.theme || 'midnight', block.logo_filter),
                             }}
                             className="w-auto max-w-[250px] object-contain"
                         />
                     ) : (
                         <EditableText
-                            value={block.logo_text || 'CosmicCMS'}
+                            value={block.logo_text || 'Your Logo'}
                             className={`${text} font-bold text-lg cursor-pointer`}
                             onSave={(val) => onUpdate({ logo_text: val })}
                         />

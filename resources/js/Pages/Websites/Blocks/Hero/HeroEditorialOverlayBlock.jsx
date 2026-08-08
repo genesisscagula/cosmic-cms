@@ -5,6 +5,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 
 export const HeroEditorialOverlaySchema = {
     type: "hero_editorial_overlay",
@@ -32,20 +33,21 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
     const imageRef = useRef(null);
     const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
-    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
-    const overlayColor = isLightMediaTheme ? '#ffffff' : '#020617';
+    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const isLightMediaTheme = mediaOverlay.isLight;
+    const overlayColor = mediaOverlay.overlayColor;
     const mediaStyle = isLightMediaTheme
         ? {
             overlay: "bg-white",
-            gradient: "from-white/98 via-white/82 to-white/58",
+            gradient: "from-white/99 via-white/92 to-white/76",
             tagline: "text-slate-700",
             heading: "text-slate-950",
             body: "text-slate-700",
-            secondary: "border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75",
+            secondary: "border-slate-900/20 bg-white/72 text-slate-950 hover:bg-white/90",
         }
         : {
             overlay: "bg-slate-950",
-            gradient: "from-slate-950/80 via-slate-950/40 to-transparent",
+            gradient: "from-slate-950/55 via-slate-950/22 to-transparent",
             tagline: "text-white/75",
             heading: "text-white",
             body: "text-white/80",
@@ -55,7 +57,10 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
     const websiteId = props.page?.website_id || props.website?.id;
     const data = { ...HeroEditorialOverlaySchema.defaults, ...block };
     const configuredOverlayOpacity = Math.max(0, Math.min(100, Number(data.overlayOpacity) || 72));
-    const effectiveOverlayOpacity = isLightMediaTheme ? Math.max(82, configuredOverlayOpacity) : configuredOverlayOpacity;
+    const effectiveOverlayOpacity = effectiveMediaOverlayOpacity(configuredOverlayOpacity, {
+        isLight: isLightMediaTheme,
+        lightMinimum: 88,
+    });
     const height = {
         medium: "min-h-[520px]",
         large: "min-h-[650px]",

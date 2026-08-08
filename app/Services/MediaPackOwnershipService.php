@@ -35,13 +35,13 @@ class MediaPackOwnershipService
             'owner_id' => $website->id,
             'website_id' => $website->id,
             'trial_generation_id' => $trial->id,
-            'status' => $hasRemoteTrialAssets ? 'queued' : $pack->status,
-            'queued_at' => $hasRemoteTrialAssets ? now() : $pack->queued_at,
-            'completed_at' => $hasRemoteTrialAssets ? null : $pack->completed_at,
+            'status' => $hasRemoteTrialAssets && config('cosmic_media.localize_remote_images', false) ? 'queued' : 'ready',
+            'queued_at' => $hasRemoteTrialAssets && config('cosmic_media.localize_remote_images', false) ? now() : null,
+            'completed_at' => $hasRemoteTrialAssets && config('cosmic_media.localize_remote_images', false) ? null : now(),
             'last_error' => null,
         ])->save();
 
-        if ($hasRemoteTrialAssets) {
+        if ($hasRemoteTrialAssets && config('cosmic_media.localize_remote_images', false)) {
             // Provisioning runs inside a transaction. Dispatch only after commit so
             // the worker always sees the transferred website/page ownership.
             DB::afterCommit(function () use ($pack): void {
@@ -52,6 +52,11 @@ class MediaPackOwnershipService
                     'queue' => (string) config('openai.media_pack_queue', 'images-high'),
                 ]);
             });
+        } elseif ($hasRemoteTrialAssets) {
+            Log::info('[MediaPack] Remote provider images retained after purchase; localization disabled.', [
+                'media_pack_id' => $pack->id,
+                'website_id' => $website->id,
+            ]);
         }
 
         Log::info('[MediaPack] Ownership transferred to website.', [

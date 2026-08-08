@@ -1,4 +1,4 @@
-export const STARTER_THEMES = ['midnight', 'emerald', 'ocean', 'coffee', 'rose'];
+export const STARTER_THEMES = ['midnight', 'emerald', 'ocean', 'coffee', 'terracotta'];
 export const GROWTH_THEMES = [
     ...STARTER_THEMES,
     'indigo',
@@ -8,7 +8,13 @@ export const GROWTH_THEMES = [
     'teal',
 ];
 
-const normalizePlanKey = (planKey) => String(planKey || 'starter').toLowerCase().trim();
+const normalizePlanKey = (planKey) => {
+    const key = String(planKey || 'starter').toLowerCase().trim();
+    if (['agency_basic', 'basic_agency', 'business'].includes(key)) return 'agency_starter';
+    if (key === 'agency') return 'agency_growth';
+    if (['', 'free', 'basic'].includes(key)) return 'starter';
+    return key;
+};
 
 export function themeLimitForPlan(planKey) {
     const key = normalizePlanKey(planKey);

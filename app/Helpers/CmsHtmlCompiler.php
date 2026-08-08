@@ -51,6 +51,55 @@ class CmsHtmlCompiler
     }
 
     /**
+     * Blend the active media theme with slate for a premium branded overlay.
+     * Colored themes keep most of their identity; neutral/dark families lean
+     * further into slate. White/surface/stone are handled separately as a wash.
+     */
+    private static function mediaOverlayColor(string $resolvedTheme, string $primaryColor): string
+    {
+        if (in_array($resolvedTheme, ['white', 'surface', 'stone'], true)) {
+            return '#ffffff';
+        }
+
+        $catalog = self::themeCatalog();
+        $themes = $catalog['families'] ?? [];
+        $themeKey = isset($themes[$resolvedTheme]) ? $resolvedTheme : $primaryColor;
+        $theme = $themes[$themeKey] ?? $themes['midnight'] ?? [];
+        $primaryHex = (string) ($theme['palette']['background'] ?? '#243447');
+        $neutralDarkThemes = ['midnight', 'obsidian', 'void', 'charcoal', 'asphalt', 'navy', 'slate', 'dark'];
+        $primaryWeight = in_array($themeKey, $neutralDarkThemes, true) ? 0.35 : 0.72;
+
+        return self::blendHexColors($primaryHex, '#020617', $primaryWeight);
+    }
+
+    private static function blendHexColors(string $primaryHex, string $neutralHex, float $primaryWeight): string
+    {
+        $normalize = static function (string $hex): string {
+            $hex = trim($hex);
+            if (preg_match('/^#[0-9a-f]{6}$/i', $hex)) {
+                return strtolower($hex);
+            }
+            if (preg_match('/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i', $hex, $matches)) {
+                return '#' . strtolower($matches[1] . $matches[1] . $matches[2] . $matches[2] . $matches[3] . $matches[3]);
+            }
+            return '#243447';
+        };
+
+        $primary = $normalize($primaryHex);
+        $neutral = $normalize($neutralHex);
+        $weight = max(0.0, min(1.0, $primaryWeight));
+        $channels = [];
+
+        foreach ([1, 3, 5] as $offset) {
+            $a = hexdec(substr($primary, $offset, 2));
+            $b = hexdec(substr($neutral, $offset, 2));
+            $channels[] = (int) round(($a * $weight) + ($b * (1 - $weight)));
+        }
+
+        return sprintf('#%02x%02x%02x', $channels[0], $channels[1], $channels[2]);
+    }
+
+    /**
      * Static sites live outside Laravel's public directory, so relative CMS
      * storage paths must resolve back to the CMS asset host.
      */
@@ -789,8 +838,11 @@ HTML;
 
                 case 'glassmorphism_header':
                 $logoText = e($block['logo_text'] ?? 'Your Website');
-                $logoImageUrl = e(self::staticAssetUrl($block['logo_image_url'] ?? ''));
-                $logoFilter = e((string) ($block['logo_filter'] ?? self::logoFilter((string) ($block['logo_filter_key'] ?? 'midnight'))));
+                $rawLogoImageUrl = (string) ($block['logo_image_url'] ?? '');
+                $logoImageUrl = e(self::staticAssetUrl($rawLogoImageUrl));
+                $logoFilter = e(self::isDefaultLogoPlaceholder($rawLogoImageUrl)
+                    ? (string) ($block['logo_filter'] ?? self::logoFilter((string) ($block['logo_filter_key'] ?? 'midnight')))
+                    : 'none');
                 $logo = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$logoText}' style='filter:{$logoFilter}' class='h-14 w-auto max-w-[300px] object-contain'>"
                     : $logoText;
@@ -1050,12 +1102,15 @@ HTML;
                 break;
 
                 case 'minimal_footer':
-                $brand = e($block['logo_text'] ?? 'CosmicCMS');
+                $brand = e($block['logo_text'] ?? 'Your Logo');
                 $copy = e($block['copyright'] ?? '© ' . date('Y') . '. All rights reserved.');
-                $logoImageUrl = e(self::staticAssetUrl($block['logo_image_url'] ?? ''));
+                $rawLogoImageUrl = (string) ($block['logo_image_url'] ?? '');
+                $logoImageUrl = e(self::staticAssetUrl($rawLogoImageUrl));
                 $logoHeight = max(24, min(56, (int) ($block['logo_height'] ?? 36)));
                 $logoFilterKey = (string) ($block['logo_filter_key'] ?? $block['theme'] ?? 'midnight');
-                $logoFilter = e($block['logo_filter'] ?? self::logoFilter($logoFilterKey));
+                $logoFilter = e(self::isDefaultLogoPlaceholder($rawLogoImageUrl)
+                    ? (string) ($block['logo_filter'] ?? self::logoFilter($logoFilterKey))
+                    : 'none');
                 $stoneTheme = self::getTheme('stone'); // Hardcoded stone theme
                 $footerBrand = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
@@ -1723,9 +1778,15 @@ HTML;
                 $isLight = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                 // Match the Builder: white/surface sections receive a true white
                 // wash with a strong minimum instead of a primary-colour tint.
-                $overlayStrength = ($isLight ? max(82, $overlayOpacity) : $overlayOpacity) / 100;
+                // Hero Background Image uses a stronger contrast floor than the
+                // generic media overlay so the dynamic primary+slate blend stays
+                // visible over bright photography. Match the Builder exactly.
+                $overlayStrength = ($isLight
+                    ? max(90, $overlayOpacity)
+                    : max(46, min(68, (int) round($overlayOpacity * 0.90)))) / 100;
                 $primaryOverlayTheme = self::getTheme($primaryColor);
-                $overlayClass = $isLight ? 'bg-white' : 'bg-slate-950';
+                $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
+                $overlayClass = $isLight ? 'bg-white' : '';
                 $textAlign = $block['textAlign'] ?? 'center';
                 $height = $block['height'] ?? 'screen';
 
@@ -1768,7 +1829,7 @@ HTML;
 
                     <div
                         class='absolute inset-0 {$overlayClass}'
-                        style='opacity:{$overlayStrength};'>
+                        style='background-color:{$overlayHex};opacity:{$overlayStrength};'>
                     </div>
 
                     <div class='relative z-10 w-full max-w-7xl mx-auto px-6 py-20 sm:px-[8%] sm:py-24 flex flex-col justify-center {$alignment}'>
@@ -1848,9 +1909,11 @@ HTML;
                     $interval = max(3000, (int) ($block['autoplay_interval'] ?? $block['interval'] ?? 6000));
                     $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                     $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
-                    $sliderOverlayClass = $lightMedia ? 'bg-white/85' : 'bg-slate-950/68';
-                    $sliderGradientX = $lightMedia ? 'from-white/98 via-white/90 to-white/70' : 'from-slate-950/45 via-slate-950/20 to-transparent';
-                    $sliderGradientY = $lightMedia ? 'from-white/88 via-transparent to-white/62' : 'from-slate-950/70 via-transparent to-slate-950/20';
+                    $sliderOverlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
+                    $sliderOverlayClass = $lightMedia ? 'bg-white/90' : '';
+                    $sliderOverlayStyle = $lightMedia ? '' : "background-color:{$sliderOverlayHex};opacity:0.50;";
+                    $sliderGradientX = $lightMedia ? 'from-white/100 via-white/96 to-white/82' : 'from-slate-950/32 via-slate-950/12 to-transparent';
+                    $sliderGradientY = $lightMedia ? 'from-white/94 via-white/36 to-white/76' : 'from-slate-950/48 via-transparent to-slate-950/12';
                     $sliderText = $lightMedia ? 'text-slate-950' : 'text-white';
                     $sliderEyebrow = $lightMedia ? 'text-slate-700' : 'text-white/70';
                     $sliderBody = $lightMedia ? 'text-slate-700' : 'text-white/75';
@@ -1896,7 +1959,7 @@ HTML;
                         $slideMarkup .= "
                         <article data-cosmic-slide='{$slideIndex}' aria-hidden='{$ariaHidden}' class='absolute inset-0 transition-opacity duration-700 {$activeClasses}'>
                             {$media}
-                            <div class='absolute inset-0 {$sliderOverlayClass}'></div>
+                            <div class='absolute inset-0 {$sliderOverlayClass}' style='{$sliderOverlayStyle}'></div>
                             <div class='absolute inset-0 bg-gradient-to-r {$sliderGradientX}'></div>
                             <div class='absolute inset-0 bg-gradient-to-t {$sliderGradientY}'></div>
                             <div class='relative z-10 mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-24 sm:min-h-[700px] sm:px-10 lg:min-h-[760px] lg:px-14'>
@@ -2041,15 +2104,12 @@ HTML;
                         ? 'bg-gradient-to-l'
                         : ($contentAlign === 'left' ? 'bg-gradient-to-r' : 'bg-gradient-to-t');
 
-                    // Visual test: Emerald Hero Parallax blends 60% slate-950
-                    // with 40% Emerald Grove (#0B5D4B) => #06292C. Keep the
-                    // existing opacity control so Builder and export remain aligned.
-                    $emeraldOverlayTest = !$lightMedia && $primaryColor === 'emerald';
-                    $overlayColor = $lightMedia ? 'bg-white' : ($emeraldOverlayTest ? 'bg-[#06292c]' : 'bg-slate-950');
-                    $effectiveOverlayOpacity = $lightMedia ? max(82, $overlayOpacity) : $overlayOpacity;
+                    $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
+                    $overlayColor = $lightMedia ? 'bg-white' : '';
+                    $effectiveOverlayOpacity = $lightMedia ? max(88, $overlayOpacity) : max(32, min(56, (int) round($overlayOpacity * 0.72)));
                     $gradient = $lightMedia
-                        ? 'from-white/98 via-white/84 to-white/62'
-                        : 'from-slate-950/85 via-slate-950/20 to-slate-950/25';
+                        ? 'from-white/99 via-white/90 to-white/72'
+                        : 'from-slate-950/55 via-slate-950/12 to-slate-950/16';
                     $badge = $lightMedia ? 'border-slate-900/15 bg-white/60' : 'border-white/20 bg-white/10';
                     $eyebrowClass = $lightMedia ? 'text-slate-700' : 'text-white/85';
                     $headingClass = $lightMedia ? 'text-slate-950' : 'text-white';
@@ -2066,7 +2126,7 @@ HTML;
                         <div data-parallax-media class='absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform' style='transform:translate3d(0,0,0) scale(1.14)'>
                             <img src='{$imageUrl}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async' class='absolute inset-0 h-full w-full object-cover'>
                         </div>
-                        <div class='absolute inset-0 z-10 {$overlayColor}' style='opacity:" . ($effectiveOverlayOpacity / 100) . "'></div>
+                        <div class='absolute inset-0 z-10 {$overlayColor}' style='background-color:{$overlayHex};opacity:" . ($effectiveOverlayOpacity / 100) . "'></div>
                         <div class='absolute inset-0 z-10 {$gradientDirection} {$gradient}'></div>
                         <div data-parallax-content class='relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-4 transition-opacity duration-150 sm:px-6 lg:px-8 {$alignmentClass}' style='transform:translate3d(0,0,0);will-change:transform,opacity'>
                             <div class='{$contentWidth}'>
@@ -2158,17 +2218,18 @@ HTML;
                 $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 72)));
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'primary');
                 $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
-                $effectiveOverlayOpacity = $lightMedia ? max(82, $overlayOpacity) : $overlayOpacity;
+                $effectiveOverlayOpacity = $lightMedia ? max(88, $overlayOpacity) : max(32, min(56, (int) round($overlayOpacity * 0.72)));
                 $heroHeight = match ($block['height'] ?? 'large') {
                     'medium' => 'min-h-[520px]',
                     'screen' => 'min-h-[72svh] sm:min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh]',
                     default => 'min-h-[650px]',
                 };
                 $primaryTheme = self::getTheme($primaryColor);
-                $overlayClass = $lightMedia ? 'bg-white' : 'bg-slate-950';
+                $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
+                $overlayClass = $lightMedia ? 'bg-white' : '';
                 $gradientClass = $lightMedia
-                    ? 'from-white/98 via-white/82 to-white/58'
-                    : 'from-slate-950/80 via-slate-950/40 to-transparent';
+                    ? 'from-white/99 via-white/92 to-white/76'
+                    : 'from-slate-950/55 via-slate-950/22 to-transparent';
                 $taglineClass = $lightMedia ? 'text-slate-700' : 'text-white/75';
                 $headingClass = $lightMedia ? 'text-slate-950' : 'text-white';
                 $bodyClass = $lightMedia ? 'text-slate-700' : 'text-white/80';
@@ -2181,7 +2242,7 @@ HTML;
 
                 $html .= "
                 <section class='relative flex overflow-hidden {$heroHeight}' style=\"{$backgroundStyle}\">
-                    <div class='absolute inset-0 {$overlayClass}' style='opacity:" . ($effectiveOverlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 {$overlayClass}' style='background-color:{$overlayHex};opacity:" . ($effectiveOverlayOpacity / 100) . ";'></div>
                     <div class='absolute inset-0 bg-gradient-to-r {$gradientClass}'></div>
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24'>
                         <div class='max-w-3xl'>
@@ -2262,9 +2323,11 @@ HTML;
                 $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
                 $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
-                $premiumOverlayBase = $lightMedia ? 'bg-white/85' : 'bg-slate-950/35';
-                $premiumGradientX = $lightMedia ? 'from-white/98 via-white/90 to-white/72' : 'from-slate-950/88 via-slate-950/58 to-slate-950/18';
-                $premiumGradientY = $lightMedia ? 'from-white/90 via-transparent to-white/68' : 'from-slate-950/75 via-transparent to-slate-950/25';
+                $premiumOverlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
+                $premiumOverlayBase = $lightMedia ? 'bg-white/90' : '';
+                $premiumOverlayStyle = $lightMedia ? '' : "background-color:{$premiumOverlayHex};opacity:0.26;";
+                $premiumGradientX = $lightMedia ? 'from-white/100 via-white/96 to-white/82' : 'from-slate-950/62 via-slate-950/34 to-slate-950/10';
+                $premiumGradientY = $lightMedia ? 'from-white/94 via-white/36 to-white/78' : 'from-slate-950/52 via-transparent to-slate-950/16';
                 $premiumBorder = $lightMedia ? 'border-slate-900/15' : 'border-white/25';
                 $premiumEyebrow = $lightMedia ? 'text-slate-700' : 'text-white/80';
                 $premiumBadge = $lightMedia ? 'border-slate-900/15 bg-white/65 text-slate-900' : 'border-white/30 bg-white/10 text-white';
@@ -2285,7 +2348,7 @@ HTML;
                 $html .= "
                 <section class='relative min-h-[84vh] overflow-hidden {$theme['bg']}'>
                     {$premiumBackgroundMedia}
-                    <div class='absolute inset-0 {$premiumOverlayBase}'></div>
+                    <div class='absolute inset-0 {$premiumOverlayBase}' style='{$premiumOverlayStyle}'></div>
                     <div class='absolute inset-0 bg-gradient-to-r {$premiumGradientX}'></div>
                     <div class='absolute inset-0 bg-gradient-to-t {$premiumGradientY}'></div>
                     <div class='relative mx-auto flex min-h-[84vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12'>
@@ -2433,22 +2496,37 @@ HTML;
                 $primaryTheme = self::getTheme($primaryColor);
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
-                $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
-                $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
+                $isLightMediaTheme = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
+                $overlayOpacity = $isLightMediaTheme ? 0.90 : 0.52;
+                $primaryButtonBg = $isLightMediaTheme ? $primaryTheme['bg'] : ($isPrimarySection ? 'bg-white' : $primaryTheme['bg']);
+                $primaryButtonText = $isLightMediaTheme ? 'text-white' : ($isPrimarySection ? 'text-slate-950' : 'text-white');
+                $borderClass = $isLightMediaTheme ? 'border-slate-900/15' : 'border-white/25';
+                $eyebrowClass = $isLightMediaTheme ? 'text-slate-700' : 'text-white/80';
+                $editionClass = $isLightMediaTheme ? 'text-slate-600' : 'text-white/70';
+                $headingClass = $isLightMediaTheme ? 'text-slate-950' : 'text-white';
+                $bodyClass = $isLightMediaTheme ? 'text-slate-700' : 'text-white/75';
+                $secondaryClass = $isLightMediaTheme ? 'border-slate-900/20 bg-white/72 text-slate-950' : 'border-white/45 bg-white/5 text-white';
+                $locationClass = $isLightMediaTheme ? 'text-slate-700' : 'text-white/75';
+                $dividerClass = $isLightMediaTheme ? 'bg-slate-900/25' : 'bg-white/35';
                 $imageStyle = $imageUrl ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;" : '';
+                $overlayStyle = "background-color:{$overlayHex};opacity:{$overlayOpacity};";
+                $horizontalGradient = $isLightMediaTheme ? 'bg-gradient-to-r from-white/45 via-white/10 to-transparent' : 'bg-gradient-to-r from-slate-950/30 via-transparent to-transparent';
+                $verticalGradient = $isLightMediaTheme ? 'bg-gradient-to-t from-white/30 via-transparent to-white/10' : 'bg-gradient-to-t from-slate-950/34 via-transparent to-slate-950/8';
 
                 $html .= "
                 <section class='relative min-h-[82vh] overflow-hidden {$theme['bg']}' style=\"{$imageStyle}\">
-                    <div class='absolute inset-0 bg-gradient-to-r from-slate-950/58 via-slate-950/16 to-transparent'></div>
-                    <div class='absolute inset-0 bg-gradient-to-t from-slate-950/56 via-transparent to-slate-950/12'></div>
+                    <div class='absolute inset-0' style=\"{$overlayStyle}\"></div>
+                    <div class='absolute inset-0 {$horizontalGradient}'></div>
+                    <div class='absolute inset-0 {$verticalGradient}'></div>
                     <div class='relative mx-auto flex min-h-[82vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12'>
-                        <div class='flex items-center justify-between border-b border-white/25 pb-5 text-white'><span class='text-[11px] font-bold uppercase tracking-[.34em] text-white/80'>{$eyebrow}</span><span class='text-xs font-medium text-white/70'>{$editionLabel}</span></div>
+                        <div class='flex items-center justify-between border-b pb-5 {$borderClass}'><span class='text-[11px] font-bold uppercase tracking-[.34em] {$eyebrowClass}'>{$eyebrow}</span><span class='text-xs font-medium {$editionClass}'>{$editionLabel}</span></div>
                         <div class='max-w-5xl py-14 sm:py-20 lg:py-24'>
-                            <h1 class='max-w-5xl text-5xl font-medium leading-[.92] tracking-[-.055em] text-white sm:text-7xl lg:text-[7.2rem]'>{$heading}</h1>
-                            <p class='mt-7 max-w-xl text-base leading-7 text-white/75 sm:text-lg sm:leading-8'>{$text}</p>
-                            <div class='mt-9 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full border border-white/45 bg-white/5 px-7 font-bold text-white'>{$secondaryLabel}</a></div>
+                            <h1 class='max-w-5xl text-5xl font-medium leading-[.92] tracking-[-.055em] sm:text-7xl lg:text-[7.2rem] {$headingClass}'>{$heading}</h1>
+                            <p class='mt-7 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$bodyClass}'>{$text}</p>
+                            <div class='mt-9 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold {$secondaryClass}'>{$secondaryLabel}</a></div>
                         </div>
-                        <div class='flex items-end justify-between border-t border-white/25 pt-5 text-white'><span class='text-xs font-semibold uppercase tracking-[.2em] text-white/75'>{$locationLabel}</span><span class='h-10 w-px bg-white/35'></span></div>
+                        <div class='flex items-end justify-between border-t pt-5 {$borderClass}'><span class='text-xs font-semibold uppercase tracking-[.2em] {$locationClass}'>{$locationLabel}</span><span class='h-10 w-px {$dividerClass}'></span></div>
                     </div>
                 </section>";
 
@@ -2632,24 +2710,25 @@ HTML;
                     ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
                     : '';
 
-                $overlayClass = $lightMedia ? 'bg-white' : 'bg-slate-950';
-                $effectiveOverlayOpacity = $lightMedia ? max(82, $overlayOpacity) : $overlayOpacity;
+                $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
+                $overlayClass = $lightMedia ? 'bg-white' : '';
+                $effectiveOverlayOpacity = $lightMedia ? max(90, $overlayOpacity) : max(32, min(56, (int) round($overlayOpacity * 0.72)));
                 $gradientClass = $lightMedia
-                    ? 'from-white/98 via-white/84 to-white/62'
-                    : 'from-slate-950/65 via-slate-950/25 to-slate-950/15';
+                    ? 'from-white/100 via-white/96 to-white/82'
+                    : 'from-slate-950/48 via-slate-950/18 to-slate-950/10';
                 $eyebrowClass = $lightMedia ? 'text-slate-700' : 'text-white/75';
                 $headingClass = $lightMedia ? 'text-slate-950' : 'text-white';
                 $bodyClass = $lightMedia ? 'text-slate-700' : 'text-white/85';
                 $primaryButtonClass = $lightMedia
-                    ? "{$primaryTheme['bg']} {$primaryTheme['text']}"
+                    ? "{$primaryTheme['bg']} text-white"
                     : 'bg-white text-slate-950';
                 $secondaryButtonClass = $lightMedia
-                    ? 'border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75'
+                    ? 'border-slate-900/20 bg-white/78 text-slate-950 hover:bg-white/95'
                     : 'border-white/45 bg-white/5 text-white hover:bg-white/10';
 
                 $html .= "
                 <section class='relative flex min-h-[420px] overflow-hidden sm:min-h-[460px] lg:min-h-[500px]' style=\"{$backgroundStyle}\">
-                    <div class='absolute inset-0 {$overlayClass}' style='opacity:" . ($effectiveOverlayOpacity / 100) . ";'></div>
+                    <div class='absolute inset-0 {$overlayClass}' style='background-color:{$overlayHex};opacity:" . ($effectiveOverlayOpacity / 100) . ";'></div>
                     <div class='absolute inset-0 bg-gradient-to-r {$gradientClass}'></div>
                     <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20'>
                         <div class='max-w-3xl'>
@@ -3273,13 +3352,15 @@ HTML;
                 );
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
-                $videoOverlayBase = $lightMedia ? 'bg-white/86' : 'bg-slate-950/62';
-                $videoGradientX = $lightMedia ? 'from-white/98 via-white/90 to-white/70' : 'from-slate-950/70 via-slate-950/35 to-transparent';
-                $videoGradientY = $lightMedia ? 'from-white/88 via-transparent to-white/62' : 'from-slate-950/55 via-transparent to-slate-950/15';
+                $videoOverlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
+                $videoOverlayBase = $lightMedia ? 'bg-white/90' : '';
+                $videoOverlayStyle = $lightMedia ? '' : "background-color:{$videoOverlayHex};opacity:0.50;";
+                $videoGradientX = $lightMedia ? 'from-white/100 via-white/96 to-white/82' : 'from-slate-950/48 via-slate-950/20 to-transparent';
+                $videoGradientY = $lightMedia ? 'from-white/94 via-white/36 to-white/76' : 'from-slate-950/40 via-transparent to-slate-950/10';
                 $videoTagline = $lightMedia ? 'text-slate-700' : 'text-white/70';
                 $videoHeading = $lightMedia ? 'text-slate-950' : 'text-white';
                 $videoBody = $lightMedia ? 'text-slate-700' : 'text-white/75';
-                $videoSecondary = $lightMedia ? 'border-slate-900/20 bg-white/50 text-slate-950' : 'border-white/30 bg-white/10 text-white';
+                $videoSecondary = $lightMedia ? 'border-slate-900/20 bg-white/78 text-slate-950' : 'border-white/30 bg-white/10 text-white';
                 $videoPill = $lightMedia ? 'border-slate-900/15 bg-white/55 text-slate-900' : 'border-white/15 bg-slate-950/35 text-white';
                 $videoScroll = $lightMedia ? 'text-slate-700' : 'text-white/70';
                 $videoScrollBorder = $lightMedia ? 'border-slate-900/30' : 'border-white/30';
@@ -3310,7 +3391,7 @@ HTML;
 
                         {$backgroundMedia}
 
-                        <div class='absolute inset-0 {$videoOverlayBase}'></div>
+                        <div class='absolute inset-0 {$videoOverlayBase}' style='{$videoOverlayStyle}'></div>
 
                         <div class='absolute inset-0 bg-gradient-to-r {$videoGradientX}'></div>
 
@@ -3412,6 +3493,21 @@ HTML;
         $html = preg_replace('/<section(?![^>]*data-cosmic-spark)/i', '<section data-cosmic-spark', $html) ?? $html;
 
         return self::normalizePublishedAssetUrls($html);
+    }
+
+    private static function isDefaultLogoPlaceholder(string $url): bool
+    {
+        $normalized = strtolower(str_replace('\\', '/', trim($url)));
+        if ($normalized === '') {
+            return false;
+        }
+
+        $path = parse_url($normalized, PHP_URL_PATH);
+        if (! is_string($path) || $path === '') {
+            $path = $normalized;
+        }
+
+        return '/' . ltrim($path, '/') === '/storage/branding/your-logo.png';
     }
 
     private static function logoFilter(string $theme): string

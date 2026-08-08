@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { usePage } from "@inertiajs/react";
+import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
@@ -91,16 +92,17 @@ export function HeroVideoBackgroundBlock({
     const primaryTheme =
         colorFamilies[globalTheme?.primary] ||
         colorFamilies.emerald;
-    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
+    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const isLightMediaTheme = mediaOverlay.isLight;
     const mediaStyle = isLightMediaTheme
         ? {
-            overlay: "bg-white opacity-[0.86]",
-            gradientX: "from-white/98 via-white/90 to-white/70",
-            gradientY: "from-white/88 via-transparent to-white/62",
+            overlay: "bg-white opacity-[0.90]",
+            gradientX: "from-white/100 via-white/96 to-white/82",
+            gradientY: "from-white/94 via-white/36 to-white/76",
             tagline: "text-slate-700",
             heading: "text-slate-950",
             body: "text-slate-700",
-            secondary: "border-slate-900/20 bg-white/50 text-slate-950 hover:bg-white/75",
+            secondary: "border-slate-900/20 bg-white/78 text-slate-950 hover:bg-white/95",
             pill: "border-slate-900/15 bg-white/55",
             pillText: "text-slate-900",
             editButton: "border-slate-900/15 bg-white/55 text-slate-800 hover:bg-white/80 hover:text-slate-950 focus-visible:ring-slate-900/50",
@@ -110,9 +112,9 @@ export function HeroVideoBackgroundBlock({
             mediaCard: "border-slate-900/15 bg-white/45",
         }
         : {
-            overlay: "bg-slate-950 opacity-[0.62]",
-            gradientX: "from-slate-950/70 via-slate-950/35 to-transparent",
-            gradientY: "from-slate-950/55 via-transparent to-slate-950/15",
+            overlay: "",
+            gradientX: "from-slate-950/48 via-slate-950/20 to-transparent",
+            gradientY: "from-slate-950/40 via-transparent to-slate-950/10",
             tagline: "text-white/70",
             heading: "text-white",
             body: "text-white/75",
@@ -189,6 +191,7 @@ export function HeroVideoBackgroundBlock({
                 {/* Keep the video readable while letting the website's active primary family tint the hero. */}
                 <div
                     className={`absolute inset-0 ${mediaStyle.overlay}`}
+                    style={isLightMediaTheme ? undefined : { backgroundColor: mediaOverlay.overlayColor, opacity: 0.50 }}
                 />
 
                 <div

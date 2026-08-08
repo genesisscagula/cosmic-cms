@@ -4,6 +4,7 @@ import { usePage } from '@inertiajs/react';
 import { EditableImage } from '../Shared/EditableImage';
 import { getEffectiveTheme } from '../../../../theme/Theme';
 import { colorFamilies } from '../../../../theme/colorFamilies';
+import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 
 const DEFAULT_SLIDES = [
     {
@@ -102,23 +103,24 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
     const websiteId = props.page?.website_id || props.website?.id;
     const data = { ...HeroSliderFadeSchema, ...(block || {}) };
     const resolvedTheme = block?.resolvedTheme || data?.resolvedTheme || data?.theme || 'surface';
-    const isLightMediaTheme = ['white', 'surface', 'stone'].includes(resolvedTheme);
-    const overlayColor = isLightMediaTheme ? '#ffffff' : '#020617';
+    const mediaOverlay = resolveMediaOverlay(globalTheme, resolvedTheme);
+    const isLightMediaTheme = mediaOverlay.isLight;
+    const overlayColor = mediaOverlay.overlayColor;
     const sliderMediaStyle = isLightMediaTheme
         ? {
-            overlayOpacity: 0.86,
-            gradientX: 'from-white/98 via-white/90 to-white/70',
-            gradientY: 'from-white/88 via-transparent to-white/62',
+            overlayOpacity: 0.90,
+            gradientX: 'from-white/100 via-white/96 to-white/82',
+            gradientY: 'from-white/94 via-white/36 to-white/76',
             textWrap: 'text-slate-950',
             eyebrow: 'text-slate-700',
             body: 'text-slate-700',
             primary: `${primaryTheme.bg} text-white hover:opacity-90`,
-            secondary: 'border border-slate-900/20 bg-white/55 text-slate-950 hover:bg-white/80',
+            secondary: 'border border-slate-900/20 bg-white/78 text-slate-950 hover:bg-white/95',
         }
         : {
-            overlayOpacity: 0.68,
-            gradientX: 'from-slate-950/45 via-slate-950/20 to-transparent',
-            gradientY: 'from-slate-950/70 via-transparent to-slate-950/20',
+            overlayOpacity: 0.50,
+            gradientX: 'from-slate-950/32 via-slate-950/12 to-transparent',
+            gradientY: 'from-slate-950/48 via-transparent to-slate-950/12',
             textWrap: 'text-white',
             eyebrow: 'text-white/70',
             body: 'text-white/75',

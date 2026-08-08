@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
@@ -9,6 +9,7 @@ import AddSectionModal from "./Components/AddSectionModal";
 import GeneratePageModal from "./Components/GeneratePageModal";
 
 import ThemeSelector from "./Theme/ThemeSelector";
+import { colorFamilies, installCustomBrandTheme } from "../../theme/colorFamilies";
 import PageStyleSelector from "./PageStyle/PageStyleSelector";
 
 import { BlockRegistry } from "./BlockRegistry";
@@ -93,10 +94,38 @@ const mergeAiBlocksWithProtectedMedia = (existingBlocks = [], generatedBlocks = 
     return { blocks, preservedCount };
 };
 
+const createRenderKey = () => globalThis.crypto?.randomUUID?.()
+    || `cosmic-${Date.now()}-${Math.random().toString(36).slice(2)}`;
 
-export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [] }) {
+const normalizeRenderKeys = (blocks = []) => {
+    const used = new Set();
+
+    return (blocks || []).map((block) => {
+        let renderKey = block?._renderKey;
+
+        if (!renderKey || used.has(renderKey)) {
+            renderKey = createRenderKey();
+        }
+
+        used.add(renderKey);
+
+        return {
+            ...block,
+            _renderKey: renderKey,
+        };
+    });
+};
+
+const stripClientBlockFields = (blocks = []) => (blocks || []).map(({ _renderKey, ...block }) => block);
+
+
+export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [], themeAccess: builderThemeAccess = null }) {
     const { props } = usePage();
-    const currentPlanKey = props?.auth?.user?.plan_key || 'starter';
+    const currentPlanKey = builderThemeAccess?.plan_key || props?.auth?.effectivePlanKey || props?.auth?.user?.plan_key || 'starter';
+    // The Builder receives a route-specific entitlement payload because this
+    // token-aware route can be rendered outside the normal auth route group.
+    // Shared auth remains a backwards-compatible fallback only.
+    const themeAccess = builderThemeAccess ?? props?.auth?.themeAccess ?? null;
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
 
     const capabilities = {
@@ -112,7 +141,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     };
     const defaultHeader = {
         type: 'glassmorphism_header',
-        logo_text: website?.name || 'Your Website',
+        logo_text: trialMode ? 'Your Logo' : (website?.name || 'Your Website'),
         logo_image_url: '/storage/branding/your-logo.png',
         logo_height: 42,
         logo_filter_key: 'midnight',
@@ -126,12 +155,12 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     };
     // Gi-apil na ang global_header sa form state
     const { data, setData, setDefaults, isDirty } = useForm({
-        blocks: page.blocks || [],
+        blocks: normalizeRenderKeys(page.blocks || []),
         global_header: props.globalHeaderBlock || page.website?.global_header || defaultHeader,
         global_footer: props.globalFooterBlock || page.website?.global_footer || { 
             type: 'minimal_footer',
             theme: 'white',
-            logo_text: website?.name || 'Your Website',
+            logo_text: trialMode ? 'Your Logo' : (website?.name || 'Your Website'),
             logo_image_url: '/storage/branding/your-logo.png',
             logo_height: 36,
             logo_filter_key: 'midnight',
@@ -160,82 +189,38 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const [showRegenerateModal, setShowRegenerateModal] = useState(false);
     const [regeneratePrompt, setRegeneratePrompt] = useState('');
     const [regenerating, setRegenerating] = useState(false);
+    const [regenerateProgress, setRegenerateProgress] = useState(0);
+    const [regenerateStage, setRegenerateStage] = useState('Understanding your new direction...');
     const [regenerationUsed, setRegenerationUsed] = useState(Number(trialExperience?.regenerations_used || 0));
+    const [showLogoModal, setShowLogoModal] = useState(false);
+    const [showLogoGenerateForm, setShowLogoGenerateForm] = useState(false);
+    const [logoCompanyName, setLogoCompanyName] = useState(trialExperience?.logo_company_name || website?.name || '');
+    const [logoBusy, setLogoBusy] = useState(false);
+    const [logoRegenerationsUsed, setLogoRegenerationsUsed] = useState(Number(trialExperience?.logo_regenerations_used || 0));
+    const [logoSyncState, setLogoSyncState] = useState(() => {
+        if (trialMode) return trialExperience?.logo_theme_sync_state || null;
+        const raw = website?.theme_settings;
+        if (raw && typeof raw === 'object') return raw.logo_theme_sync_state || null;
+        if (typeof raw === 'string') {
+            try { return JSON.parse(raw)?.logo_theme_sync_state || null; } catch (_) { return null; }
+        }
+        return null;
+    });
+    const [themeFromLogoPreview, setThemeFromLogoPreview] = useState(null);
+    const logoUploadRef = useRef(null);
     const [pageStatus, setPageStatus] = useState(page.status || 'draft');
     const [publishError, setPublishError] = useState(page.publish_error || '');
-    const [mediaProgress, setMediaProgress] = useState(() => ({
-        status: trialMode ? (trialExperience?.media_pack_status || 'missing') : (websiteMediaPack?.status || 'missing'),
-        progress: ['ready', 'partial', 'failed'].includes(trialMode ? trialExperience?.media_pack_status : websiteMediaPack?.status) ? 100 : 0,
-        message: 'Preparing images',
-        delayed: false,
-    }));
     const [blogPosts, setBlogPosts] = useState(initialBlogPosts);
     const [currentPageStyle, setCurrentPageStyle] = useState(pageStyle || 'auto');
     const [styleOptions, setStyleOptions] = useState(pageStyleOptions || []);
     const hasUnsavedChanges = isDirty || hasUnsavedTheme;
 
     useEffect(() => {
-        const initialStatus = trialMode
-            ? trialExperience?.media_pack_status
-            : websiteMediaPack?.status;
-
-        if (['ready', 'partial', 'failed', 'missing'].includes(initialStatus)) {
-            return undefined;
-        }
-
-        const statusUrl = trialMode
-            ? (trialToken ? `/trials/${encodeURIComponent(trialToken)}/media-pack` : null)
-            : (website?.id ? `/websites/${website.id}/media-pack/status` : null);
-
-        if (!statusUrl) {
-            return undefined;
-        }
-
-        let cancelled = false;
-        let attempts = 0;
-        const maximumAttempts = 36;
-
-        const checkMediaPack = async () => {
-            attempts += 1;
-            try {
-                const response = await axios.get(statusUrl);
-                const payload = response?.data ?? response;
-
-                if (!cancelled) {
-                    setMediaProgress({
-                        status: payload?.status || 'missing',
-                        progress: Number(payload?.progress || 0),
-                        message: payload?.message || 'Preparing images',
-                        delayed: Boolean(payload?.delayed),
-                    });
-                }
-
-                if (!cancelled && (payload?.ready || payload?.terminal)) {
-                    window.setTimeout(() => window.location.reload(), 350);
-                    return;
-                }
-            } catch (error) {
-                // Image enrichment is optional; keep the Builder usable if polling fails.
-            }
-
-            if (!cancelled && attempts < maximumAttempts) {
-                window.setTimeout(checkMediaPack, 2500);
-            }
-        };
-
-        const timer = window.setTimeout(checkMediaPack, 1500);
-        return () => {
-            cancelled = true;
-            window.clearTimeout(timer);
-        };
-    }, [trialExperience?.media_pack_status, trialMode, trialToken, website?.id, websiteMediaPack?.status]);
-
-    useEffect(() => {
         const serverBalance = Number(cosmicPricing?.balance);
-        if (!trialMode && Number.isFinite(serverBalance)) {
+        if (Number.isFinite(serverBalance)) {
             setCreditBalance(serverBalance);
         }
-    }, [cosmicPricing?.balance, setCreditBalance, trialMode]);
+    }, [cosmicPricing?.balance, setCreditBalance]);
 
     useEffect(() => {
         const warnBeforeLeaving = (event) => {
@@ -259,6 +244,280 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             .then(({ data: responseData }) => setSparkCatalog(responseData.sparks || []))
             .catch(() => setSparkCatalog([]));
     }, [capabilities.canManageBlocks]);
+
+    const trialActionCosts = {
+        page_style: Number(cosmicPricing?.trial_actions?.page_style || 20),
+        regenerate_page: Number(cosmicPricing?.trial_actions?.regenerate_page || 50),
+        generate_logo: Number(cosmicPricing?.trial_actions?.generate_logo || 50),
+        match_logo_to_theme: Number(cosmicPricing?.trial_actions?.match_logo_to_theme || 50),
+        match_theme_to_logo: Number(cosmicPricing?.trial_actions?.match_theme_to_logo || 50),
+    };
+
+    const creditMessage = (cost) => `Cost: ${cost} Cosmic Credits. Balance: ${creditBalance} → ${Math.max(0, Number(creditBalance || 0) - cost)}.`;
+
+    const handleThemeChange = async (theme) => {
+        if (!theme || theme === globalSelections?.primary) return;
+        const isBrandTheme = theme === 'my-brand' && globalSelections?.custom_brand_theme;
+        const cost = isBrandTheme ? 0 : Number(cosmicPricing?.themes?.[theme]?.credits || 20);
+        const confirmed = await confirmCosmicAction({
+            title: `Change theme to ${colorFamilies[theme]?.name || (isBrandTheme ? 'My Brand Theme' : theme)}?`,
+            message: isBrandTheme
+                ? 'Apply your saved custom brand colors. No additional Cosmic Credits are required.'
+                : (trialMode
+                    ? creditMessage(cost)
+                    : `This theme costs ${cost} Cosmic Credits if it has not already been unlocked. The credit charge is finalized when you publish.`),
+            confirmLabel: isBrandTheme ? 'Apply Theme' : (trialMode ? `Use ${cost} Credits` : `Select theme · ${cost} Credits`),
+        });
+        if (!confirmed) return;
+
+        try {
+            const hasRealLogo = data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png');
+            const brandThemeMatchesCurrentLogo = Boolean(
+                isBrandTheme
+                && hasRealLogo
+                && globalSelections?.custom_brand_theme?.source_logo_url
+                && String(globalSelections.custom_brand_theme.source_logo_url) === String(data.global_header.logo_image_url)
+            );
+            if (trialMode) {
+                const response = await axios.post(route('trial-pages.theme.apply', { trial: trialToken, page: page.id }), {
+                    theme,
+                    sync_source: brandThemeMatchesCurrentLogo ? 'theme_to_logo' : 'manual_theme_change',
+                });
+                if (Number.isFinite(Number(response.data.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
+            }
+            setGlobalSelections((prev) => ({
+                ...prev,
+                primary: theme,
+                ...(hasRealLogo ? (brandThemeMatchesCurrentLogo
+                    ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'theme_to_logo', logo_theme_synced_theme: theme }
+                    : { logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'manual_theme_change', logo_theme_synced_theme: null }) : {}),
+            }));
+            if (hasRealLogo) setLogoSyncState(brandThemeMatchesCurrentLogo ? 'synced' : 'theme_changed');
+            setHasUnsavedTheme(true);
+        } catch (error) {
+            showCosmicNotification({ title: 'Theme change unavailable', message: error.response?.data?.message || 'Cosmic could not apply this theme.', tone: 'error' });
+        }
+    };
+
+    const applyTrialLogo = (url, companyName = null) => {
+        const nextLogoText = companyName || data.global_header?.logo_text || website?.name || 'Your Logo';
+        const nextHeader = {
+            ...data.global_header,
+            logo_image_url: url,
+            logo_text: nextLogoText,
+            logo_filter: 'none',
+        };
+        const nextFooter = {
+            ...(data.global_footer || {}),
+            logo_image_url: url,
+            logo_text: nextLogoText,
+            logo_filter: 'none',
+            logo_filter_key: nextHeader.logo_filter_key || data.global_footer?.logo_filter_key || globalSelections?.primary || 'midnight',
+        };
+
+        // Header logo is the single source of truth. Every logo action updates
+        // both shell locations immediately so preview/save/export never drift.
+        setData({
+            ...data,
+            global_header: nextHeader,
+            global_footer: nextFooter,
+        });
+        setShowLogoModal(false);
+        setShowLogoGenerateForm(false);
+    };
+
+    const uploadTrialLogo = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file) return;
+
+        const allowedTypes = ['image/svg+xml', 'image/png', 'image/jpeg', 'image/webp'];
+        if (!allowedTypes.includes(file.type)) {
+            showCosmicNotification({ title: 'Unsupported logo format', message: 'Upload an SVG, PNG, JPG, or WebP logo.', tone: 'error' });
+            return;
+        }
+        if (file.size > 2 * 1024 * 1024) {
+            showCosmicNotification({ title: 'Logo is too large', message: 'Choose a logo smaller than 2 MB.', tone: 'error' });
+            return;
+        }
+
+        setLogoBusy(true);
+        try {
+            const form = new FormData();
+            form.append('image', file);
+            let response;
+            if (trialMode) {
+                if (!trialToken) return;
+                response = await axios.post(route('trial-branding.logo.upload', trialToken), form);
+            } else {
+                form.append('website_id', website.id);
+                response = await axios.post(route('websites.logo.upload'), form);
+            }
+            applyTrialLogo(response.data.url);
+            setLogoSyncState('logo_changed');
+            setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'logo_changed', logo_theme_sync_source: 'upload', logo_theme_synced_theme: null }));
+            setHasUnsavedTheme(true);
+            showCosmicNotification({ title: 'Logo uploaded', message: trialMode ? 'Your logo is now applied to this trial website.' : 'Your logo is now applied. Save the Builder to keep it.', tone: 'success' });
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to upload logo', message: error.response?.data?.message || 'Please try another logo file.', tone: 'error' });
+        } finally {
+            setLogoBusy(false);
+        }
+    };
+
+    const generateTrialLogo = async () => {
+        if (logoCompanyName.trim().length < 2) return;
+        if (trialMode && !trialToken) return;
+        const hasLogo = data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png');
+        const cost = trialMode ? trialActionCosts.generate_logo : 50;
+        const confirmed = await confirmCosmicAction({
+            title: hasLogo ? 'Regenerate this logo?' : 'Generate this logo?',
+            message: creditMessage(cost),
+            confirmLabel: `Use ${cost} Credits`,
+        });
+        if (!confirmed) return;
+        setLogoBusy(true);
+        try {
+            const response = trialMode
+                ? await axios.post(route('trial-branding.logo.generate', trialToken), { company_name: logoCompanyName.trim() })
+                : await axios.post(route('websites.logo.generate', website.id), {
+                    company_name: logoCompanyName.trim(),
+                    primary: globalSelections?.primary,
+                    primary_hex: globalSelections?.primary === 'my-brand' ? globalSelections?.custom_brand_theme?.palette?.background : undefined,
+                });
+            applyTrialLogo(response.data.url, response.data.company_name);
+            setLogoSyncState('synced');
+            setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'synced', logo_theme_sync_source: 'generated_from_theme', logo_theme_synced_theme: prev.primary }));
+            setHasUnsavedTheme(true);
+            if (trialMode) {
+                setLogoRegenerationsUsed(Number(response.data.regenerations_used_today || logoRegenerationsUsed));
+                if (Number.isFinite(Number(response.data.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
+            } else if (Number.isFinite(Number(response.data.balance))) {
+                setCreditBalance(Number(response.data.balance));
+            }
+            showCosmicNotification({ title: 'Logo generated', message: trialMode ? 'Cosmic AI created and applied a logo for your trial website.' : `Cosmic AI created and applied your logo. ${response.data.cost || 50} credits used.`, tone: 'success' });
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to generate logo', message: error.response?.data?.message || 'Cosmic AI could not create the logo. Please try again.', tone: 'error' });
+        } finally {
+            setLogoBusy(false);
+        }
+    };
+
+
+    const matchLogoToTheme = async () => {
+        const logoUrl = data.global_header?.logo_image_url;
+        if (!logoUrl || String(logoUrl).includes('your-logo.png')) return;
+        const themeKey = globalSelections?.primary || 'midnight';
+        const family = colorFamilies[themeKey] || colorFamilies.midnight;
+        const payload = {
+            logo_url: logoUrl,
+            theme_name: family?.name || themeKey,
+            primary_hex: family?.palette?.background || '#243447',
+            accent_hex: family?.palette?.accent || family?.palette?.background || '#60A5FA',
+        };
+
+        const matchCost = trialMode ? trialActionCosts.match_logo_to_theme : 50;
+        const matchConfirmed = await confirmCosmicAction({
+            title: 'Match logo to this theme?',
+            message: creditMessage(matchCost),
+            confirmLabel: `Use ${matchCost} Credits`,
+        });
+        if (!matchConfirmed) return;
+
+        setLogoBusy(true);
+        try {
+            const response = trialMode
+                ? await axios.post(route('trial-branding.logo.match-theme', trialToken), payload)
+                : await axios.post(route('websites.logo.match-theme', website.id), payload);
+
+            applyTrialLogo(response.data.url);
+            setLogoSyncState('synced');
+            setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'synced', logo_theme_sync_source: 'logo_to_theme', logo_theme_synced_theme: prev.primary }));
+            setHasUnsavedTheme(true);
+            if (trialMode) {
+                setLogoRegenerationsUsed(Number(response.data.regenerations_used_today || logoRegenerationsUsed));
+                if (Number.isFinite(Number(response.data.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
+            } else if (Number.isFinite(Number(response.data.balance))) {
+                setCreditBalance(Number(response.data.balance));
+            }
+            showCosmicNotification({
+                title: 'Logo matched to theme',
+                message: trialMode
+                    ? `Your logo now matches ${family?.name || 'the current theme'}.`
+                    : `Your logo now matches ${family?.name || 'the current theme'}. ${response.data.cost || 50} credits used.`,
+                tone: 'success',
+            });
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to match logo', message: error.response?.data?.message || 'Cosmic AI could not match this logo to the current theme.', tone: 'error' });
+        } finally {
+            setLogoBusy(false);
+        }
+    };
+
+    const matchThemeToLogo = async () => {
+        const logoUrl = data.global_header?.logo_image_url;
+        if (!logoUrl || String(logoUrl).includes('your-logo.png')) return;
+
+        const analysisCost = trialMode ? trialActionCosts.match_theme_to_logo : 50;
+        const analysisConfirmed = await confirmCosmicAction({
+            title: 'Match theme to this logo?',
+            message: creditMessage(analysisCost),
+            confirmLabel: `Use ${analysisCost} Credits`,
+        });
+        if (!analysisConfirmed) return;
+
+        setLogoBusy(true);
+        try {
+            const response = trialMode
+                ? await axios.post(route('trial-branding.theme.match-logo', trialToken), { logo_url: logoUrl })
+                : await axios.post(route('websites.theme.match-logo', website.id), { logo_url: logoUrl });
+
+            if (trialMode && Number.isFinite(Number(response.data.credit_balance))) {
+                setCreditBalance(Number(response.data.credit_balance));
+            } else if (!trialMode && Number.isFinite(Number(response.data.balance))) {
+                setCreditBalance(Number(response.data.balance));
+            }
+            setThemeFromLogoPreview(response.data);
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to analyze logo', message: error.response?.data?.message || 'Cosmic AI could not build a theme from this logo.', tone: 'error' });
+        } finally {
+            setLogoBusy(false);
+        }
+    };
+
+    const applyThemeFromLogo = async () => {
+        const customTheme = themeFromLogoPreview?.custom_theme;
+        if (!customTheme) return;
+        const family = 'my-brand';
+        try {
+            installCustomBrandTheme(customTheme);
+            if (trialMode) {
+                const response = await axios.post(route('trial-pages.theme.apply', { trial: trialToken, page: page.id }), { theme: family, sync_source: 'theme_to_logo' });
+                if (Number.isFinite(Number(response.data.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
+            }
+            setGlobalSelections((current) => ({
+                ...current,
+                primary: family,
+                custom_brand_theme: customTheme,
+                brand_palette: customTheme.palette || themeFromLogoPreview.palette,
+                brand_source: 'logo',
+                logo_theme_sync_state: 'synced',
+                logo_theme_sync_source: 'theme_to_logo',
+                logo_theme_synced_theme: family,
+            }));
+            setLogoSyncState('synced');
+            setHasUnsavedTheme(true);
+            setThemeFromLogoPreview(null);
+            setShowLogoModal(false);
+            showCosmicNotification({
+                title: 'My Brand Theme applied',
+                message: 'Your custom logo colors are now the active website theme and are saved as My Brand Theme.',
+                tone: 'success',
+            });
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to apply matched theme', message: error.response?.data?.message || 'Cosmic could not apply My Brand Theme.', tone: 'error' });
+        }
+    };
 
     // Update logic para sa mga blocks
     const updateBlockContent = (index, updatedFields) => {
@@ -292,7 +551,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             "blocks",
             protectedMerge.blocks.map(block => ({
                 ...block,
-                _renderKey: crypto.randomUUID()
+                _renderKey: createRenderKey()
             }))
         );
 
@@ -312,7 +571,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
         const newBlock = {
             ...block,
             theme: block.theme || "auto",
-            _renderKey: crypto.randomUUID(),
+            _renderKey: createRenderKey(),
         };
 
         const blocks = [...data.blocks];
@@ -367,7 +626,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                 : route('pages.builder.save', page.id);
 
             const response = await axios.post(saveUrl, {
-                blocks: data.blocks,
+                blocks: stripClientBlockFields(data.blocks),
                 global_header: data.global_header,
                 global_footer: data.global_footer,
                 theme_settings: globalSelections,
@@ -415,6 +674,31 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
         }
     };
 
+    useEffect(() => {
+        if (!regenerating) {
+            setRegenerateProgress(0);
+            setRegenerateStage('Understanding your new direction...');
+            return undefined;
+        }
+
+        const stages = [
+            { at: 10, text: 'Understanding your new direction...' },
+            { at: 30, text: 'Choosing a different layout and Sparks...' },
+            { at: 68, text: 'Writing fresh page content...' },
+            { at: 88, text: 'Rebuilding your page...' },
+        ];
+        let progress = 4;
+        setRegenerateProgress(progress);
+        const timer = window.setInterval(() => {
+            progress = Math.min(94, progress + (progress < 35 ? 4 : progress < 75 ? 2 : 1));
+            setRegenerateProgress(progress);
+            const stage = [...stages].reverse().find((item) => progress >= item.at);
+            if (stage) setRegenerateStage(stage.text);
+        }, 450);
+
+        return () => window.clearInterval(timer);
+    }, [regenerating]);
+
     const handleRegenerate = async (event) => {
         event.preventDefault();
         if (!trialEmailCaptured) {
@@ -423,12 +707,21 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             return;
         }
         if (!regeneratePrompt.trim()) return;
+        const regenCost = trialActionCosts.regenerate_page;
+        const confirmed = await confirmCosmicAction({
+            title: 'Regenerate this page?',
+            message: `${creditMessage(regenCost)} Your current page stays safe if generation fails.`,
+            confirmLabel: `Use ${regenCost} Credits`,
+        });
+        if (!confirmed) return;
         setRegenerating(true);
         setSaveError('');
         try {
             const response = await axios.post(route('trial-generations.regenerate', trialToken), { prompt: regeneratePrompt.trim() });
             setRegenerationUsed((value) => value + 1);
-            window.location.assign(response.data.redirect_url);
+            setRegenerateProgress(100);
+            setRegenerateStage('Your new layout is ready.');
+            window.setTimeout(() => window.location.assign(response.data.redirect_url), 250);
         } catch (error) {
             const message = error.response?.data?.message || 'Regeneration failed. Your current page was preserved.';
             setSaveError(message);
@@ -465,22 +758,6 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
         try {
             const response = await axios.post(route('pages.publish', page.id));
-
-            if (response.status === 202 || response.data?.status === 'localizing') {
-                setMediaProgress({
-                    status: response.data?.media_pack_status || 'queued',
-                    progress: 12,
-                    message: response.data?.message || 'Securing your website images locally before publishing.',
-                    delayed: false,
-                });
-                showCosmicNotification({
-                    title: 'Securing website images',
-                    message: 'Your remote preview images are being saved locally. Publishing will be ready as soon as this finishes.',
-                    tone: 'success',
-                });
-                window.setTimeout(() => window.location.reload(), 1200);
-                return;
-            }
 
             setPageStatus(response.data.status || 'published');
             setCreditBalance(response.data.credit_balance);
@@ -545,6 +822,49 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
         return { ...defaults, ...savedSettings, secondary: 'white', tertiary: 'stone'};
     });
 
+    useEffect(() => {
+        if (globalSelections?.custom_brand_theme) {
+            installCustomBrandTheme(globalSelections.custom_brand_theme);
+        }
+    }, [globalSelections?.custom_brand_theme]);
+
+
+    useEffect(() => {
+        const header = data.global_header;
+        const footer = data.global_footer;
+        if (!header || !footer) return;
+
+        const rawHeaderLogoUrl = typeof header.logo_image_url === 'string' ? header.logo_image_url.trim() : '';
+        const headerLogoUrl = rawHeaderLogoUrl || (trialMode ? '/storage/branding/your-logo.png' : '');
+        const isPlaceholder = headerLogoUrl.includes('your-logo.png');
+        const headerLogoText = isPlaceholder
+            ? 'Your Logo'
+            : (header.logo_text || website?.name || 'Your Logo');
+        const headerLogoFilter = isPlaceholder ? header.logo_filter : 'none';
+        const headerLogoFilterKey = header.logo_filter_key || globalSelections?.primary || 'midnight';
+
+        if (
+            footer.logo_image_url === headerLogoUrl &&
+            footer.logo_text === headerLogoText &&
+            footer.logo_filter === headerLogoFilter &&
+            footer.logo_filter_key === headerLogoFilterKey
+        ) return;
+
+        setData('global_footer', {
+            ...footer,
+            logo_image_url: headerLogoUrl,
+            logo_text: headerLogoText,
+            logo_filter: headerLogoFilter,
+            logo_filter_key: headerLogoFilterKey,
+        });
+    }, [
+        data.global_header?.logo_image_url,
+        data.global_header?.logo_text,
+        data.global_header?.logo_filter,
+        data.global_header?.logo_filter_key,
+        globalSelections?.primary,
+    ]);
+
 
     const resolveBlockTheme = (block, index) => {
 
@@ -576,6 +896,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
         // keep auto as default if missing
         duplicated.theme = duplicated.theme || "auto";
+        duplicated._renderKey = createRenderKey();
 
         // insert directly below current block
         blocks.splice(index + 1, 0, duplicated);
@@ -644,7 +965,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             blocks[index] = {
                 ...currentBlock,
                 layout_variant: layout.layoutVariant,
-                _renderKey: crypto.randomUUID(),
+                _renderKey: createRenderKey(),
             };
 
             setData('blocks', blocks);
@@ -677,7 +998,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
             ...sharedContent,
             type: layout.type,
             theme: currentBlock.theme || 'auto',
-            _renderKey: crypto.randomUUID(),
+            _renderKey: createRenderKey(),
         };
 
         setData('blocks', blocks);
@@ -786,19 +1107,6 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                 </div>
             )}
             <Head title={`Builder — ${page.title}`} />
-            {!['ready', 'partial', 'failed', 'missing'].includes(mediaProgress.status) && (
-                <div className={`border-b px-4 py-2.5 ${mediaProgress.delayed ? 'border-amber-200 bg-amber-50' : 'border-cyan-200 bg-cyan-50'}`} role="status" aria-live="polite">
-                    <div className="mx-auto flex max-w-[1760px] items-center gap-3">
-                        <span className={`h-2 w-2 shrink-0 rounded-full ${mediaProgress.delayed ? 'bg-amber-500' : 'animate-pulse bg-cyan-500'}`} />
-                        <div className="min-w-0 flex-1">
-                            <div className="flex items-center justify-between gap-3 text-xs font-semibold text-slate-700">
-                                <span className="truncate">{mediaProgress.message}</span>
-                                <span className="sr-only">{Math.max(0, Math.min(100, mediaProgress.progress))}%</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
             <div className={`cosmic-builder-shell min-h-screen ${trialMode ? 'bg-slate-100 text-slate-900' : 'bg-[#09090b] text-slate-100'}`}>
                 <header data-cosmic-builder-header className={`sticky top-0 z-[60] backdrop-blur-xl ${trialMode ? 'border-b border-slate-200 bg-white/95' : 'border-b border-white/10 bg-[#09090b]/95'}`}>
                     <div className={`mx-auto max-w-[1760px] px-4 py-3 sm:px-6 ${trialMode ? 'flex min-h-[76px] flex-wrap items-center justify-between gap-3' : 'grid min-h-[64px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4'}`}>
@@ -836,18 +1144,22 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                 </div>
                             </div>
 
-                            {!trialMode && capabilities.canGenerateAi && (
+                            {(trialMode || capabilities.canGenerateAi) && (
                                 <PageStyleSelector
                                     pageId={page.id}
                                     currentStyle={currentPageStyle}
                                     suggestions={styleOptions}
                                     blocks={data.blocks}
                                     disabled={isSaving || isPublishing}
+                                    trialMode={trialMode}
+                                    trialToken={trialToken}
+                                    creditBalance={creditBalance}
+                                    creditCost={trialMode ? trialActionCosts.page_style : 20}
                                     onApplied={(response) => {
                                         setData('blocks', (response.blocks || []).map((block) => ({
                                             ...block,
                                             theme: 'auto',
-                                            _renderKey: crypto.randomUUID(),
+                                            _renderKey: createRenderKey(),
                                         })));
                                         setCurrentPageStyle(response.page_style || 'auto');
                                         setStyleOptions(response.suggestions || styleOptions);
@@ -883,7 +1195,11 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                         </div>
 
                         <div className={`flex min-w-0 items-center justify-end gap-2 ${trialMode ? 'ml-auto' : ''}`}>
-                            {!trialMode && (
+                            {trialMode ? (
+                                <span title="Guest Cosmic Credits" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-extrabold text-amber-800">
+                                    <span aria-hidden="true">⚡</span><span>{Number(creditBalance || 0).toLocaleString()}</span><span className="hidden font-semibold sm:inline">Guest Credits</span>
+                                </span>
+                            ) : (
                                 <CreditBalanceBadge
                                     balance={creditBalance}
                                     className="cosmic-builder-credit h-9 px-3"
@@ -894,11 +1210,10 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                 <ThemeSelector
                                     compact
                                     value={globalSelections.primary}
-                                    planKey={currentPlanKey}
-                                    onChange={(theme) => {
-                                        setGlobalSelections(prev => ({ ...prev, primary: theme }));
-                                        setHasUnsavedTheme(true);
-                                    }}
+                                    themeAccess={themeAccess}
+                                    signupUrl={trialMode && trialToken ? `${route('pricing')}?token=${encodeURIComponent(trialToken)}` : null}
+                                    customTheme={globalSelections?.custom_brand_theme}
+                                    onChange={handleThemeChange}
                                 />
                             )}
 
@@ -993,7 +1308,7 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
                     {data.global_header && (
                         <div className="w-full bg-white z-40">
                             {data.global_header.type === 'dark_cyan_header' && (
-                                <DarkCyanHeader block={data.global_header} onUpdate={updateHeader} pageTargets={websitePages} />
+                                <DarkCyanHeader block={data.global_header} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={() => setShowLogoModal(true)} />
                             )}
                             {data.global_header.type === 'glassmorphism_header' && (
                                 <GlassmorphismHeader
@@ -1001,6 +1316,7 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
                                     onUpdate={updateHeader}
                                     globalTheme={globalSelections}
                                     pageTargets={websitePages}
+                                    onLogoClick={() => setShowLogoModal(true)}
                                 />
                             )}
                         </div>
@@ -1347,7 +1663,8 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
 
                             <ThemeSelector
                                 value={globalSelections.primary}
-                                planKey={currentPlanKey}
+                                themeAccess={themeAccess}
+                                customTheme={globalSelections?.custom_brand_theme}
                                 onChange={(theme) => {
 
                                     setGlobalSelections(prev => ({
@@ -1431,6 +1748,114 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
 
             {/* AI MODAL INJECTOR CONFIG */}
             
+            {showLogoModal && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+                            <div>
+                                <h3 className="text-lg font-bold text-slate-900">Customize your logo</h3>
+                                <p className="mt-1 text-sm text-slate-500">{data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Regenerate with Cosmic AI or replace your current logo.' : 'Generate a logo with Cosmic AI or upload your existing brand logo.'}</p>
+                            </div>
+                            <button type="button" onClick={() => { if (!logoBusy) { setShowLogoModal(false); setShowLogoGenerateForm(false); } }} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close logo dialog">✕</button>
+                        </div>
+
+                        <div className="space-y-4 p-6">
+                            {!showLogoGenerateForm ? (
+                                <div className="grid gap-3 sm:grid-cols-2">
+                                    <button type="button" disabled={logoBusy} onClick={() => setShowLogoGenerateForm(true)} className="rounded-xl bg-emerald-600 px-5 py-5 text-left text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60">
+                                        <span className="block text-base font-bold">✨ {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Regenerate Logo' : 'Generate Logo'}</span>
+                                        <span className="mt-1 block text-xs text-emerald-50">Let Cosmic AI create a logo for this website.</span>
+                                    </button>
+                                    <button type="button" disabled={logoBusy} onClick={() => logoUploadRef.current?.click()} className="rounded-xl border border-slate-200 bg-slate-50 px-5 py-5 text-left text-slate-900 transition hover:border-emerald-300 hover:bg-emerald-50 disabled:opacity-60">
+                                        <span className="block text-base font-bold">↑ {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Replace Logo' : 'Upload Logo'}</span>
+                                        <span className="mt-1 block text-xs text-slate-500">SVG, PNG, JPG or WebP up to 2 MB.</span>
+                                    </button>
+                                    <input ref={logoUploadRef} type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" onChange={uploadTrialLogo} className="hidden" />
+                                    {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') && logoSyncState && logoSyncState !== 'synced' && (
+                                        <div className="sm:col-span-2 mt-1 border-t border-slate-200 pt-4">
+                                            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Brand Matching</p>
+                                            {logoSyncState === 'theme_changed' ? (
+                                                <button type="button" disabled={logoBusy || (trialMode && logoRegenerationsUsed >= 2)} onClick={matchLogoToTheme} className="w-full rounded-xl bg-slate-900 px-5 py-4 text-left text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
+                                                    <span className="block text-sm font-bold">🎨 Match Logo to Theme</span>
+                                                    <span className="mt-1 block text-xs text-slate-300">You changed the website theme. Update the logo to the exact active theme color.</span>
+                                                </button>
+                                            ) : (
+                                                <div className="grid gap-3 sm:grid-cols-2">
+                                                    <button type="button" disabled={logoBusy} onClick={matchThemeToLogo} className="w-full rounded-xl border border-slate-200 bg-slate-50 px-5 py-4 text-left text-slate-900 transition hover:border-emerald-300 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:opacity-50">
+                                                        <span className="block text-sm font-bold">✨ Match Theme to Logo</span>
+                                                        <span className="mt-1 block text-xs text-slate-500">Build or update My Brand Theme from this logo and save it to your website.</span>
+                                                    </button>
+                                                    <button type="button" disabled={logoBusy || (trialMode && logoRegenerationsUsed >= 2)} onClick={matchLogoToTheme} className="w-full rounded-xl bg-slate-900 px-5 py-4 text-left text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-50">
+                                                        <span className="block text-sm font-bold">🎨 Match Logo to Theme</span>
+                                                        <span className="mt-1 block text-xs text-slate-300">Keep this website theme and recolor the logo to its exact primary HEX.</span>
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </div>
+                                    )}
+                                    <p className="sm:col-span-2 text-xs text-slate-500">{trialMode ? `AI logo actions use Guest Cosmic Credits. ${Math.max(0, 2 - logoRegenerationsUsed)} of 2 logo regenerations remain today. Current balance: ${creditBalance} credits. Upload/replace is free.` : `AI logo generation and brand matching cost 50 credits per action. Current balance: ${creditBalance} credits. Upload/replace is free.`}</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="mb-2 block text-sm font-semibold text-slate-800">Company name</label>
+                                        <input type="text" maxLength={80} value={logoCompanyName} onChange={(event) => setLogoCompanyName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !logoBusy && logoCompanyName.trim().length >= 2) generateTrialLogo(); }} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-emerald-500" placeholder="e.g. Northstar Construction" autoFocus />
+                                    </div>
+                                    <div className="flex items-center justify-between gap-3">
+                                        <button type="button" disabled={logoBusy} onClick={() => setShowLogoGenerateForm(false)} className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50">Back</button>
+                                        <button type="button" disabled={logoBusy || logoCompanyName.trim().length < 2} onClick={generateTrialLogo} className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{logoBusy ? 'Cosmic AI is creating…' : (data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Regenerate Logo' : 'Generate Logo')}</button>
+                                    </div>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
+
+
+            {themeFromLogoPreview && (
+                <div className="fixed inset-0 z-[230] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+                        <div className="flex items-start justify-between gap-4">
+                            <div>
+                                <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">Cosmic AI Brand Match</p>
+                                <h3 className="mt-1 text-xl font-bold text-slate-900">Theme preview from your logo</h3>
+                                <p className="mt-1 text-sm text-slate-500">Cosmic AI built a complete custom color family from your logo. Applying it updates the saved My Brand Theme instead of creating duplicates.</p>
+                            </div>
+                            <button type="button" onClick={() => setThemeFromLogoPreview(null)} className="rounded-lg p-2 text-slate-400 hover:bg-slate-100 hover:text-slate-700" aria-label="Close theme preview">✕</button>
+                        </div>
+
+                        <div className="mt-5 grid grid-cols-3 gap-3">
+                            {[['Primary', themeFromLogoPreview.palette?.primary], ['Secondary', themeFromLogoPreview.palette?.secondary], ['Accent', themeFromLogoPreview.palette?.accent]].map(([label, hex]) => (
+                                <div key={label} className="rounded-xl border border-slate-200 p-3">
+                                    <div className="h-12 rounded-lg border border-black/5" style={{ backgroundColor: hex || '#ffffff' }} />
+                                    <p className="mt-2 text-xs font-semibold text-slate-700">{label}</p>
+                                    <p className="text-xs text-slate-500">{hex}</p>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="mt-5 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+                            <p className="text-xs font-bold uppercase tracking-[0.16em] text-emerald-700">Custom Brand Theme</p>
+                            <div className="mt-2 flex items-center gap-3">
+                                <div className="h-12 w-12 rounded-xl border border-black/5" style={{ backgroundColor: themeFromLogoPreview.custom_theme?.palette?.background || themeFromLogoPreview.palette?.background || '#1e293b' }} />
+                                <div>
+                                    <p className="font-bold text-slate-900">{themeFromLogoPreview.custom_theme?.name || 'My Brand Theme'}</p>
+                                    <p className="text-xs text-slate-600">{themeFromLogoPreview.reason}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <p className="mt-4 text-xs leading-5 text-slate-500">Your exact HEX palette is saved as one reusable My Brand Theme. Running Match Theme to Logo again updates this same theme instead of adding another card.</p>
+
+                        <div className="mt-6 flex justify-end gap-3">
+                            <button type="button" onClick={() => setThemeFromLogoPreview(null)} className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100">Cancel</button>
+                            <button type="button" onClick={applyThemeFromLogo} className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700">Apply Theme</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showTrialEmailModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
                     <form onSubmit={captureTrialEmailAndSave} className="w-full max-w-md rounded-2xl border border-white/10 bg-[#111318] p-6 shadow-2xl">
@@ -1446,16 +1871,53 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
                 </div>
             )}
 
+            {regenerating && (
+                <div className="fixed inset-0 z-[260] grid place-items-center bg-white/75 px-5 text-center backdrop-blur-sm" role="status" aria-live="polite">
+                    <div className="w-full max-w-2xl rounded-[28px] border border-emerald-200/90 bg-white/95 px-6 py-8 shadow-[0_35px_100px_-30px_rgba(15,23,42,.35)] ring-1 ring-white sm:px-10 sm:py-10">
+                        <div className="relative mx-auto h-16 w-16" aria-hidden="true">
+                            <div className="cosmic-start-spinner absolute inset-0 rounded-full" />
+                            <div className="absolute inset-[3px] grid place-items-center rounded-full bg-white text-xl text-emerald-600 shadow-lg">✦</div>
+                        </div>
+                        <p className="mt-5 text-xs font-semibold uppercase tracking-[0.2em] text-emerald-700">Cosmic AI</p>
+                        <h3 className="mt-2 text-2xl font-semibold tracking-tight text-slate-950">Regenerating your page</h3>
+                        <p className="mt-3 text-sm text-slate-600">{regenerateStage}</p>
+                        <div className="mt-7 grid grid-cols-2 gap-2 sm:grid-cols-4">
+                            {[
+                                ['Understand brief', 10],
+                                ['Plan new layout', 30],
+                                ['Create content', 68],
+                                ['Build page', 94],
+                            ].map(([label, threshold], index) => {
+                                const complete = regenerateProgress >= threshold;
+                                return (
+                                    <div key={label} className={`flex items-center gap-2 rounded-lg border px-2.5 py-2 text-left text-[10px] font-medium sm:text-xs ${complete ? 'border-emerald-300 bg-emerald-50 text-emerald-800' : 'border-slate-200 bg-slate-50 text-slate-500'}`}>
+                                        <span className={`grid h-4 w-4 shrink-0 place-items-center rounded-full text-[9px] ${complete ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-500'}`}>{complete ? '✓' : index + 1}</span>
+                                        <span className="leading-4">{label}</span>
+                                    </div>
+                                );
+                            })}
+                        </div>
+                        <div className="mt-6 h-2 overflow-hidden rounded-full bg-slate-200">
+                            <div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400 transition-[width] duration-300" style={{ width: `${regenerateProgress}%` }} />
+                        </div>
+                        <div className="mt-3 flex items-center justify-between text-xs text-slate-600">
+                            <span>Generating a fresh layout...</span>
+                            <span>{regenerateProgress}%</span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {showRegenerateModal && (
-                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-                    <form onSubmit={handleRegenerate} className="w-full max-w-lg rounded-2xl border border-white/10 bg-[#111318] p-6 shadow-2xl">
-                        <p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-300">Regenerate landing page</p>
-                        <h2 className="mt-2 text-xl font-bold text-white">Describe the new direction</h2>
-                        <p className="mt-2 text-sm text-slate-400">You have {Math.max(0, 2 - regenerationUsed)} of 2 free regenerations remaining for this 7-day period. Your current page is preserved if generation fails.</p>
-                        <textarea required minLength={10} value={regeneratePrompt} onChange={(event) => setRegeneratePrompt(event.target.value)} rows={5} placeholder="Make it more premium, modern, and focused on corporate clients…" className="mt-5 w-full resize-none rounded-xl border border-white/10 bg-black/30 px-4 py-3 text-white outline-none focus:border-violet-300" />
+                <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
+                    <form onSubmit={handleRegenerate} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                        <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-600">Regenerate landing page</p>
+                        <h2 className="mt-2 text-xl font-bold text-slate-900">Describe the new direction</h2>
+                        <p className="mt-2 text-sm leading-6 text-slate-500">You have {Math.max(0, 2 - regenerationUsed)} of 2 regenerations remaining today. Your current page is preserved if generation fails.</p>
+                        <textarea required minLength={10} value={regeneratePrompt} onChange={(event) => setRegeneratePrompt(event.target.value)} rows={5} placeholder="Make it more premium, modern, and focused on corporate clients…" className="mt-5 w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
                         <div className="mt-5 flex justify-end gap-3">
-                            <button type="button" onClick={() => setShowRegenerateModal(false)} className="rounded-lg border border-white/10 px-4 py-2 text-sm text-slate-300">Cancel</button>
-                            <button type="submit" disabled={regenerating || regenerationUsed >= 2} className="rounded-lg bg-violet-300 px-4 py-2 text-sm font-bold text-slate-950 disabled:opacity-50">{regenerating ? 'Regenerating…' : 'Regenerate page'}</button>
+                            <button type="button" onClick={() => setShowRegenerateModal(false)} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Cancel</button>
+                            <button type="submit" disabled={regenerating || regenerationUsed >= 2} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{regenerating ? 'Regenerating…' : 'Regenerate page'}</button>
                         </div>
                     </form>
                 </div>

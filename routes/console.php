@@ -24,11 +24,13 @@ Schedule::command('cosmic:queue-health')
     ->everyFiveMinutes()->withoutOverlapping(5)->onOneServer();
 
 
-Schedule::command('cosmic:retry-media-localizations --minutes=5 --limit=50')
-    ->everyFiveMinutes()->withoutOverlapping(5)->onOneServer()->runInBackground();
+if (config('cosmic_media.localize_remote_images', false)) {
+    Schedule::command('cosmic:retry-media-localizations --minutes=5 --limit=50')
+        ->everyFiveMinutes()->withoutOverlapping(5)->onOneServer()->runInBackground();
 
-Schedule::command('cosmic:media-safety-audit')
-    ->dailyAt('03:25')->withoutOverlapping(10)->onOneServer()->runInBackground();
+    Schedule::command('cosmic:media-safety-audit')
+        ->dailyAt('03:25')->withoutOverlapping(10)->onOneServer()->runInBackground();
+}
 
 Schedule::command('queue:prune-failed --hours='.(int) config('cosmic-queue.retention.failed_job_hours', 336))
     ->dailyAt('03:20')->withoutOverlapping(30)->onOneServer()->runInBackground();

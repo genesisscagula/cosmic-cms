@@ -35,11 +35,11 @@ class SendTrialAccessLinkJob implements ShouldQueue
 
         $url = route('pages.builder', ['page' => $trial->page_id, 'token' => $trial->token]);
         $subject = $this->regenerated ? 'Your updated Cosmic CMS landing page is ready' : 'Your Cosmic CMS landing page is ready';
-        $intro = $this->regenerated
-            ? 'Your landing page has been regenerated and your private editing link was refreshed.'
-            : 'Welcome to Cosmic CMS! Your landing page has been saved successfully.';
-
-        Mail::raw($intro."\n\nOpen your private editing link:\n{$url}\n\nCreate a free Cosmic CMS account to generate more pages, unlock premium tools, and publish your business online.", function ($message) use ($trial, $subject): void {
+        Mail::send('emails.trial-access', [
+            'trial' => $trial,
+            'url' => $url,
+            'regenerated' => $this->regenerated,
+        ], function ($message) use ($trial, $subject): void {
             $message->to($trial->email)->subject($subject);
         });
     }

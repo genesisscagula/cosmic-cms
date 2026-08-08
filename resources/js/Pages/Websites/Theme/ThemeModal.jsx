@@ -1,18 +1,32 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import themeMetadata from "./ThemeMetadata";
 import ThemeGrid from "./ThemeGrid";
-import { allowedThemesForPlan, themeLimitForPlan, upgradePlanLabel } from "./ThemeAccess";
 
-export default function ThemeModal({ open, onClose, selectedTheme, onSelect, planKey = "starter" }) {
+export default function ThemeModal({ open, onClose, selectedTheme, onSelect, themeAccess = null, signupUrl = null, customTheme = null }) {
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("All");
+
+    const customThemeMetadata = useMemo(() => customTheme ? {
+        id: 'my-brand',
+        name: customTheme.name || 'My Brand Theme',
+        category: 'Brand',
+        description: customTheme.description || 'A custom Cosmic color family generated from your logo.',
+        featured: true,
+        colors: [
+            customTheme.palette?.background || customTheme.palette?.primary || '#243447',
+            customTheme.palette?.surface || '#30475E',
+            customTheme.palette?.accent || '#60A5FA',
+            customTheme.palette?.text || '#F8FAFC',
+        ],
+    } : null, [customTheme]);
+    const allThemes = useMemo(() => customThemeMetadata ? [customThemeMetadata, ...themeMetadata] : themeMetadata, [customThemeMetadata]);
 
     const filteredThemes = useMemo(() => {
         const keyword = search.toLowerCase().trim();
 
-        return themeMetadata.filter((theme) => {
+        return allThemes.filter((theme) => {
             const matchesCategory = category === "All" || theme.category === category;
             const matchesSearch = !keyword
                 || theme.name.toLowerCase().includes(keyword)
@@ -22,18 +36,47 @@ export default function ThemeModal({ open, onClose, selectedTheme, onSelect, pla
 
             return matchesCategory && matchesSearch;
         });
-    }, [search, category]);
+    }, [search, category, allThemes]);
 
-    const categories = ["All", ...new Set(themeMetadata.map((theme) => theme.category))];
-    const allowedThemeIds = allowedThemesForPlan(planKey, themeMetadata.map((theme) => theme.id));
-    const themeLimit = themeLimitForPlan(planKey);
-    const nextPlan = upgradePlanLabel(planKey);
+    const categories = ["All", ...new Set(allThemes.map((theme) => theme.category))];
+    const allThemeIds = allThemes.map((theme) => theme.id);
+    const catalogThemeIds = useMemo(() => new Set(allThemeIds), [allThemeIds.join("|")]);
+    const allowedThemeIds = useMemo(() => {
+        if (themeAccess?.unlimited) {
+            return allThemeIds;
+        }
+
+        if (!Array.isArray(themeAccess?.keys)) {
+            return [];
+        }
+
+        // The backend entitlement keys are the source of truth, but the visible
+        // count must always match themes that actually exist in this Builder
+        // bundle. This prevents a stale/renamed theme id from making the banner
+        // disagree with the cards that are really unlocked.
+        const allowed = [...new Set(themeAccess.keys)]
+            .map((key) => String(key || "").trim())
+            .filter((key) => catalogThemeIds.has(key));
+        if (customThemeMetadata && !allowed.includes('my-brand')) allowed.unshift('my-brand');
+        return allowed;
+    }, [themeAccess?.unlimited, themeAccess?.keys, catalogThemeIds, allThemeIds, customThemeMetadata]);
+    const themeLimit = themeAccess?.unlimited ? null : allowedThemeIds.length;
+    const nextPlan = themeAccess?.next_plan || null;
+
+    useEffect(() => {
+        if (!open) return;
+
+        // Do not carry a previous modal session's filters into a newly opened
+        // entitlement view after an upgrade/downgrade or an Inertia refresh.
+        setSearch("");
+        setCategory("All");
+    }, [open, themeAccess?.unlimited, themeLimit]);
 
     if (!open) {
         return null;
     }
 
-    const selectedThemeData = themeMetadata.find((theme) => theme.id === selectedTheme);
+    const selectedThemeData = allThemes.find((theme) => theme.id === selectedTheme);
 
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-3 sm:p-6">
@@ -92,10 +135,14 @@ export default function ThemeModal({ open, onClose, selectedTheme, onSelect, pla
                     {themeLimit !== null && (
                         <div className="mb-5 flex items-center justify-between gap-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.07] px-4 py-3">
                             <div>
-                                <p className="text-sm font-semibold text-amber-100">{themeLimit} themes included with your plan</p>
-                                <p className="mt-0.5 text-xs text-amber-200/70">Locked themes unlock when you upgrade to {nextPlan}.</p>
+                                <p className="text-sm font-semibold text-amber-100">{themeAccess?.trial ? `${themeLimit} themes available in your trial` : `${themeLimit} themes included with your plan`}</p>
+                                <p className="mt-0.5 text-xs text-amber-200/70">{themeAccess?.trial ? 'Sign up to unlock more themes and keep customizing this website.' : `Locked themes unlock when you upgrade to ${nextPlan}.`}</p>
                             </div>
-                            <span className="shrink-0 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-100">Plan access</span>
+                            {themeAccess?.trial && signupUrl ? (
+                                <a href={signupUrl} className="shrink-0 rounded-lg bg-emerald-600 px-3 py-2 text-xs font-bold text-white transition hover:bg-emerald-500">Sign Up to Unlock More Themes</a>
+                            ) : (
+                                <span className="shrink-0 rounded-full border border-amber-300/25 bg-amber-300/10 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.14em] text-amber-100">Plan access</span>
+                            )}
                         </div>
                     )}
 

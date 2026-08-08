@@ -11,6 +11,7 @@ use App\Http\Controllers\ClientPreviewController;
 use App\Http\Controllers\ContactSubmissionController;
 use App\Http\Controllers\BlogPostController;
 use App\Http\Controllers\TrialGenerationController;
+use App\Http\Controllers\TrialBrandingController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\CreditController;
 use App\Http\Controllers\AccountDataController;
@@ -68,6 +69,24 @@ Route::post('/trials/{trial:token}/regenerate', [TrialGenerationController::clas
 Route::get('/trials/{trial:token}/media-pack', [TrialGenerationController::class, 'mediaPackStatus'])
     ->middleware('throttle:30,1')
     ->name('trial-generations.media-pack.status');
+Route::post('/trials/{trial:token}/branding/logo/upload', [TrialBrandingController::class, 'uploadLogo'])
+    ->middleware(['throttle:10,1', \App\Http\Middleware\RejectOversizedRequest::class . ':3072'])
+    ->name('trial-branding.logo.upload');
+Route::post('/trials/{trial:token}/branding/logo/generate', [TrialBrandingController::class, 'generateLogo'])
+    ->middleware('throttle:4,1')
+    ->name('trial-branding.logo.generate');
+Route::post('/trials/{trial:token}/branding/logo/match-theme', [TrialBrandingController::class, 'matchLogoToTheme'])
+    ->middleware('throttle:4,1')
+    ->name('trial-branding.logo.match-theme');
+Route::post('/trials/{trial:token}/branding/theme/match-logo', [TrialBrandingController::class, 'matchThemeToLogo'])
+    ->middleware('throttle:4,1')
+    ->name('trial-branding.theme.match-logo');
+Route::post('/trials/{trial:token}/pages/{page}/style', [PageController::class, 'applyTrialPageStyle'])
+    ->middleware(['throttle:20,1', \App\Http\Middleware\RejectOversizedRequest::class . ':1024'])
+    ->name('trial-pages.style.apply');
+Route::post('/trials/{trial:token}/pages/{page}/theme', [PageController::class, 'applyTrialTheme'])
+    ->middleware(['throttle:30,1', \App\Http\Middleware\RejectOversizedRequest::class . ':64'])
+    ->name('trial-pages.theme.apply');
 
 Route::get('/workspace-invitations/{token}', [WorkspaceInvitationAcceptanceController::class, 'show'])
     ->middleware(['throttle:30,1', \App\Http\Middleware\AddSecurityHeaders::class])
@@ -192,8 +211,12 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/ai/generate-content', [AIController::class, 'generateContent'])->middleware('throttle:cosmic-ai')->name('ai.generate-content');
 
     // Keep the existing browser-session image URLs while protecting the writes.
+    Route::post('/api/websites/{website}/remote-image', [ImageController::class, 'remoteImage'])->middleware('throttle:cosmic-ai')->name('websites.remote-image');
     Route::post('/api/upload-block-image', [ImageController::class, 'uploadImage'])->middleware('throttle:cosmic-upload');
     Route::post('/api/upload-logo', [ImageController::class, 'uploadLogo'])->middleware('throttle:cosmic-upload')->name('websites.logo.upload');
+    Route::post('/websites/{website}/branding/logo/generate', [ImageController::class, 'generateLogo'])->middleware('throttle:4,1')->name('websites.logo.generate');
+    Route::post('/websites/{website}/branding/logo/match-theme', [ImageController::class, 'matchLogoToTheme'])->middleware('throttle:4,1')->name('websites.logo.match-theme');
+    Route::post('/websites/{website}/branding/theme/match-logo', [ImageController::class, 'matchThemeToLogo'])->middleware('throttle:4,1')->name('websites.theme.match-logo');
     Route::post('/api/update-block-data', [ImageController::class, 'update'])->middleware('throttle:cosmic-upload');
 
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');

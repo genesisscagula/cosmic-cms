@@ -1,5 +1,6 @@
 import { usePage } from "@inertiajs/react";
 import { useRef } from "react";
+import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
@@ -154,17 +155,20 @@ export function HeroBackgroundImageBlock({
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary]
         || colorFamilies.midnight;
 
-    const isLightMediaTheme = ["white", "surface", "stone"].includes(block.resolvedTheme);
-    // Light media themes use a real white wash instead of tinting the image with
-    // the primary colour. Keep a strong minimum so copy remains readable over
-    // bright/busy photography while still allowing the image to show through.
-    const overlayColor = isLightMediaTheme
-        ? "#ffffff"
-        : "#020617";
+    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const isLightMediaTheme = mediaOverlay.isLight;
+    // Light sections keep a strong white wash. Colored/dark sections blend the
+    // active theme background with slate so the image stays branded without a
+    // heavy monochrome filter.
+    const overlayColor = mediaOverlay.overlayColor;
     const configuredOverlayOpacity = Math.max(0, Math.min(100, Number(data.overlayOpacity) || 50));
+    // Hero Background Image needs a stronger contrast floor than the generic
+    // media overlay. Bright photos otherwise make the theme blend look absent.
+    // Keep light themes as a strong white wash; colored/dark themes retain the
+    // dynamic primary+slate blend but in a clearly visible premium range.
     const effectiveOverlayOpacity = isLightMediaTheme
-        ? Math.max(82, configuredOverlayOpacity)
-        : configuredOverlayOpacity;
+        ? Math.max(90, configuredOverlayOpacity)
+        : Math.max(46, Math.min(68, Math.round(configuredOverlayOpacity * 0.90)));
 
     const buttonStyle = isLightMediaTheme
         ? { bg: primaryTheme.bg, text: "text-white" }
