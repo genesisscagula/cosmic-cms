@@ -166,25 +166,6 @@ if (config('cosmic_preview.mode') === 'local') {
 if (config('cosmic_preview.mode') === 'subdomain' && filled(config('cosmic_preview.domain'))) {
     $previewDomain = config('cosmic_preview.domain');
 
-    // Keep www reserved for the main Cosmic CMS website. Without this explicit
-    // route, the wildcard preview host would interpret "www" as a website slug.
-    Route::domain('www.'.$previewDomain)
-        ->get('/{path?}', function (?string $path = null) use ($previewDomain) {
-            $url = config('cosmic_preview.scheme', 'https').'://'.$previewDomain;
-
-            if (filled($path)) {
-                $url .= '/'.ltrim($path, '/');
-            }
-
-            if ($query = request()->getQueryString()) {
-                $url .= '?'.$query;
-            }
-
-            return redirect()->away($url, 301);
-        })
-        ->where('path', '.*')
-        ->name('cosmic.www.redirect');
-
     $reservedPreviewSlugs = collect(config('cosmic_preview.reserved_slugs', []))
         ->filter(fn ($slug) => is_string($slug) && $slug !== '')
         ->map(fn ($slug) => preg_quote(strtolower($slug), '/'))
