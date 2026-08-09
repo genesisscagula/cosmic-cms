@@ -161,22 +161,40 @@ if (config('cosmic_preview.mode') === 'local') {
         ->name('preview.local');
 }
 
-// In production one wildcard DNS record (*.cosmiccms.com, or the configured domain)
-// points to this Laravel app. Reserved infrastructure hosts such as `www` must
-// never be treated as generated website preview slugs.
+// In production one wildcard DNS record (*.cosmiccms.com) points to this Laravel app.
+// No DigitalOcean DNS API request is needed when an individual website is published.
 if (config('cosmic_preview.mode') === 'subdomain' && filled(config('cosmic_preview.domain'))) {
-    $reservedPreviewSlugs = array_values(array_filter(array_map(
-        static fn ($slug) => preg_quote(strtolower(trim((string) $slug)), '/'),
-        (array) config('cosmic_preview.reserved_slugs', [])
-    )));
+    $previewDomain = config('cosmic_preview.domain');
 
-    $previewSlugPattern = '[a-z0-9][a-z0-9-]{0,59}';
+    // Keep www reserved for the main Cosmic CMS website. Without this explicit
+    // route, the wildcard preview host would interpret "www" as a website slug.
+    Route::domain('www.'.$previewDomain)
+        ->get('/{path?}', function (?string $path = null) use ($previewDomain) {
+            $url = config('cosmic_preview.scheme', 'https').'://'.$previewDomain;
 
-    if ($reservedPreviewSlugs !== []) {
-        $previewSlugPattern = '(?!(?:'.implode('|', $reservedPreviewSlugs).')$)'.$previewSlugPattern;
-    }
+            if (filled($path)) {
+                $url .= '/'.ltrim($path, '/');
+            }
 
-    Route::domain('{preview}.'.config('cosmic_preview.domain'))
+            if ($query = request()->getQueryString()) {
+                $url .= '?'.$query;
+            }
+
+            return redirect()->away($url, 301);
+        })
+        ->where('path', '.*')
+        ->name('cosmic.www.redirect');
+
+    $reservedPreviewSlugs = collect(config('cosmic_preview.reserved_slugs', []))
+        ->filter(fn ($slug) => is_string($slug) && $slug !== '')
+        ->map(fn ($slug) => preg_quote(strtolower($slug), '/'))
+        ->implode('|');
+
+    $previewSlugPattern = $reservedPreviewSlugs !== ''
+        ? '(?!(?:'.$reservedPreviewSlugs.')\\.)[a-z0-9][a-z0-9-]{0,59}'
+        : '[a-z0-9][a-z0-9-]{0,59}';
+
+    Route::domain('{preview}.'.$previewDomain)
         ->get('/{path?}', [PreviewController::class, 'subdomain'])
         ->where('preview', $previewSlugPattern)
         ->where('path', '.*')
