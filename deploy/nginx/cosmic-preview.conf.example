@@ -1,0 +1,29 @@
+# Cosmic CMS wildcard preview host — merge into the live Laravel server config.
+# DNS (one time): *.preview.cosmiccms.com -> YOUR_DROPLET_IP
+# TLS (one time): certificate must cover *.preview.cosmiccms.com
+
+server {
+    listen 80;
+    listen [::]:80;
+    server_name *.preview.cosmiccms.com;
+
+    # Keep the same Laravel public root used by cosmiccms.com.
+    root /var/www/cosmiccms/cosmic-cms/public;
+    index index.php;
+
+    location / {
+        try_files $uri $uri/ /index.php?$query_string;
+    }
+
+    location ~ \.php$ {
+        include snippets/fastcgi-php.conf;
+        fastcgi_pass unix:/run/php/php8.2-fpm.sock;
+    }
+
+    location ~ /\.ht {
+        deny all;
+    }
+}
+
+# After TLS is installed, redirect HTTP to HTTPS and use the same Laravel root
+# in the 443 server block. Do not create one Nginx vhost per preview website.

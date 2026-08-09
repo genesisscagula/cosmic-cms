@@ -29,6 +29,7 @@ export default function WebsiteCard({ website, viewMode = "grid", onEdit, onDupl
                 </dl>
 
                 <div className={`${compact ? "flex shrink-0 items-center gap-1" : "absolute right-4 top-4 flex shrink-0 items-center gap-1"}`}>
+                    {website.previewReady && website.previewUrl && <a href={website.previewUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-slate-200 transition hover:border-violet-400/35 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Preview ↗</a>}
                     <button type="button" onClick={() => onEdit(website)} className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400">Open Builder</button>
                     <button type="button" aria-label={`More actions for ${website.name}`} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)} className="flex h-8 w-8 items-center justify-center rounded-lg pr-[3px] leading-none tracking-[-0.3em] text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">•••</button>
                 </div>

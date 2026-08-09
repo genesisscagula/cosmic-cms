@@ -12,6 +12,7 @@ final class BulkWebsiteActionService
     public function __construct(
         private readonly AgencyWebsiteLimitService $websiteLimits,
         private readonly WebsiteDuplicationService $duplicator,
+        private readonly PreviewDeploymentService $previews,
     ) {
     }
 
@@ -30,7 +31,7 @@ final class BulkWebsiteActionService
                 match ($action) {
                     'duplicate' => $this->duplicate($user, $website, $workspace),
                     'disconnect' => $this->disconnect($website),
-                    'delete' => $website->deleteOrFail(),
+                    'delete' => $this->delete($website),
                     default => throw new \InvalidArgumentException('Unsupported bulk website action.'),
                 };
 
@@ -66,6 +67,12 @@ final class BulkWebsiteActionService
         }
 
         $this->duplicator->duplicate($website, $user, $workspace);
+    }
+
+    private function delete(Website $website): void
+    {
+        $this->previews->remove($website);
+        $website->deleteOrFail();
     }
 
     private function disconnect(Website $website): void

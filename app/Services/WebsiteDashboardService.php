@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Storage;
 
 class WebsiteDashboardService
 {
+    public function __construct(private readonly PreviewDeploymentService $previews) {}
+
     public function build(User $user, Collection $websites, array $capabilities = []): array
     {
         $cards = $websites->values()->map(function (Website $website, int $index) use ($user, $capabilities) {
@@ -37,7 +39,10 @@ class WebsiteDashboardService
                 'updated_at' => $website->updated_at?->toIso8601String(),
                 'updated_label' => $website->updated_at?->timezone($user->timezone ?: config('app.timezone'))->format('M j, Y'),
                 'builder_url' => route('pages.index', $website),
-                'preview_url' => null,
+                'preview_url' => filled($website->preview_slug) && filled($website->last_preview_deployed_at)
+                    ? $this->previews->url($website)
+                    : null,
+                'preview_ready' => filled($website->preview_slug) && filled($website->last_preview_deployed_at),
                 'settings_url' => route('dashboard', ['tab' => 'settings', 'website' => $website->id]),
                 'can_transfer_ownership' => (int) $website->user_id === (int) $user->id
                     && (bool) data_get($capabilities, 'capabilities.ownership_transfer', false),

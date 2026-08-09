@@ -119,7 +119,7 @@ const normalizeRenderKeys = (blocks = []) => {
 const stripClientBlockFields = (blocks = []) => (blocks || []).map(({ _renderKey, ...block }) => block);
 
 
-export default function Builder({ page, website, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [], themeAccess: builderThemeAccess = null }) {
+export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [], themeAccess: builderThemeAccess = null }) {
     const { props } = usePage();
     const currentPlanKey = builderThemeAccess?.plan_key || props?.auth?.effectivePlanKey || props?.auth?.user?.plan_key || 'starter';
     // The Builder receives a route-specific entitlement payload because this
@@ -180,6 +180,9 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const [sparkInsertTarget, setSparkInsertTarget] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
+    const [previewUrl, setPreviewUrl] = useState(initialPreviewUrl);
+    const [previewDeployedAt, setPreviewDeployedAt] = useState(initialPreviewDeployment?.deployed_at || null);
+    const [previewDeploymentError, setPreviewDeploymentError] = useState(initialPreviewDeployment?.error || '');
     const [saveError, setSaveError] = useState('');
     const [hasUnsavedTheme, setHasUnsavedTheme] = useState(false);
     const [showTrialEmailModal, setShowTrialEmailModal] = useState(false);
@@ -233,6 +236,14 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const [currentPageStyle, setCurrentPageStyle] = useState(pageStyle || 'auto');
     const [styleOptions, setStyleOptions] = useState(pageStyleOptions || []);
     const hasUnsavedChanges = isDirty || hasUnsavedTheme;
+    const previewIsStale = Boolean(previewUrl) && (hasUnsavedChanges || pageStatus !== 'published');
+    const previewStatusLabel = previewDeploymentError
+        ? 'Preview issue'
+        : !previewUrl || !previewDeployedAt
+            ? 'Preview not deployed'
+            : previewIsStale
+                ? 'Preview outdated'
+                : 'Preview synced';
 
     useEffect(() => {
         // Trial email capture is prompted once on the first Builder landing.
@@ -1099,11 +1110,18 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
             setPageStatus(response.data.status || 'published');
             setCreditBalance(response.data.credit_balance);
+            if (response.data.preview_url) setPreviewUrl(response.data.preview_url);
+            if (response.data.preview_deployed_at) setPreviewDeployedAt(response.data.preview_deployed_at);
+            setPreviewDeploymentError(response.data.preview_deployment_failed
+                ? (response.data.preview_deployment_message || 'Preview deployment failed.')
+                : '');
             setPublishError('');
             showCosmicNotification({
-                title: 'Page published',
-                message: 'The latest Builder version is now live.',
-                tone: 'success',
+                title: response.data.preview_deployment_failed ? 'Page published' : 'Published',
+                message: response.data.preview_deployment_failed
+                    ? (response.data.preview_deployment_message || 'Published successfully, but the preview could not be refreshed.')
+                    : 'Published and preview deployed successfully.',
+                tone: response.data.preview_deployment_failed ? 'warning' : 'success',
             });
         } catch (error) {
             const message = error.response?.data?.message ||
@@ -1571,6 +1589,15 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                 <span className={`h-1.5 w-1.5 rounded-full ${isPublishing ? 'animate-pulse bg-sky-300' : publishError ? 'bg-red-300' : pageStatus === 'published' ? 'bg-emerald-300' : 'bg-amber-300'}`} />
                                 {isPublishing ? 'Publishing…' : publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
                             </span>
+                            {!trialMode && capabilities.canPublish && (
+                                <span
+                                    title={previewDeploymentError || (previewIsStale ? 'Publish your latest changes to refresh the deployed preview.' : previewDeployedAt ? 'The deployed preview matches your latest published version.' : 'Publish once to create a preview link.')}
+                                    className={`hidden h-8 items-center gap-1.5 rounded-lg px-2 text-[11px] font-medium 2xl:inline-flex ${previewDeploymentError ? 'text-red-200' : previewIsStale ? 'text-amber-200' : previewDeployedAt ? 'text-emerald-200' : 'text-slate-500'}`}
+                                >
+                                    <span className={`h-1.5 w-1.5 rounded-full ${previewDeploymentError ? 'bg-red-300' : previewIsStale ? 'bg-amber-300' : previewDeployedAt ? 'bg-emerald-300' : 'bg-slate-600'}`} />
+                                    {previewStatusLabel}
+                                </span>
+                            )}
                             <span className={`h-4 w-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} aria-hidden="true" />
                             <span className={`inline-flex h-8 items-center rounded-lg px-2.5 text-[11px] font-medium ${trialMode ? 'text-slate-600' : 'text-slate-400'}`}>
                                 {data.blocks.length} Sparks
@@ -1652,6 +1679,19 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
                                 </button>
                             )}
 
+                            {capabilities.canPublish && previewUrl && (
+                                <a
+                                    href={previewUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    title={previewDeploymentError || (previewIsStale ? 'Publish your latest changes to refresh this preview.' : 'Open the latest deployed preview in a new tab.')}
+                                    className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border px-3.5 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-violet-300 ${previewDeploymentError ? 'border-red-400/20 bg-red-400/[0.06] text-red-200 hover:bg-red-400/[0.10]' : previewIsStale ? 'border-amber-400/20 bg-amber-400/[0.06] text-amber-100 hover:bg-amber-400/[0.10]' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:text-white'}`}
+                                >
+                                    <span className={`h-1.5 w-1.5 rounded-full ${previewDeploymentError ? 'bg-red-300' : previewIsStale ? 'bg-amber-300' : 'bg-emerald-300'}`} />
+                                    Preview
+                                </a>
+                            )}
+
                             {capabilities.canPublish && (
                                 <button
                                     type="button"
@@ -1670,6 +1710,8 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
                             <span className={publishError ? 'text-red-300' : pageStatus === 'published' ? 'text-emerald-300' : 'text-amber-200'}>
                                 {publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
                             </span>
+                            <span className="text-slate-600">•</span>
+                            <span className={previewDeploymentError ? 'text-red-300' : previewIsStale ? 'text-amber-200' : previewDeployedAt ? 'text-emerald-300' : 'text-slate-500'}>{previewStatusLabel}</span>
                             <span className="text-slate-600">•</span>
                             <span className="text-slate-500">{data.blocks.length} Sparks</span>
                             {hasUnsavedChanges && <span className="hidden text-amber-200 sm:inline">• Unsaved changes</span>}

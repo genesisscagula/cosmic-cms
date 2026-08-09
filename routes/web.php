@@ -37,6 +37,7 @@ use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\PreviewController;
 use Inertia\Inertia;
 
 
@@ -139,6 +140,35 @@ Route::get('/seo-health', function () {
     ], $healthy ? 200 : 503)
         ->header('X-Robots-Tag', 'noindex, nofollow');
 })->name('seo.health');
+
+
+// Public UUID preview links must be registered before the generic local site preview.
+// The UUID constraint prevents a normal slug such as /preview/my-coffee-shop from
+// being mistaken for an Agency branded preview token.
+Route::get('/preview/{token}', [BrandedPreviewLinkController::class, 'show'])
+    ->whereUuid('token')
+    ->middleware(['throttle:cosmic-public-preview', \App\Http\Middleware\AddSecurityHeaders::class])
+    ->name('preview-links.show');
+
+// Cosmic published previews intentionally have one public surface per environment:
+// local/path mode uses /preview/{slug}; production/subdomain mode uses the wildcard host.
+// This prevents production sites from also being reachable through the main app domain.
+if (config('cosmic_preview.mode') === 'local') {
+    Route::get('/preview/{slug}/{path?}', [PreviewController::class, 'local'])
+        ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
+        ->where('path', '.*')
+        ->name('preview.local');
+}
+
+// In production one wildcard DNS record (*.preview.cosmiccms.com) points to this Laravel app.
+// No DigitalOcean DNS API request is needed when an individual website is published.
+if (config('cosmic_preview.mode') === 'subdomain' && filled(config('cosmic_preview.domain'))) {
+    Route::domain('{preview}.'.config('cosmic_preview.domain'))
+        ->get('/{path?}', [PreviewController::class, 'subdomain'])
+        ->where('preview', '[a-z0-9][a-z0-9-]{0,59}')
+        ->where('path', '.*')
+        ->name('preview.subdomain');
+}
 
 Route::get('/', function () {
     return Inertia::render('Welcome', [
@@ -274,11 +304,6 @@ Route::get('/workspace-invitations/{token}', [WorkspaceInvitationAcceptanceContr
 Route::post('/workspace-invitations/{token}/accept', [WorkspaceInvitationAcceptanceController::class, 'accept'])
     ->middleware(['throttle:10,1', \App\Http\Middleware\AddSecurityHeaders::class, \App\Http\Middleware\RejectOversizedRequest::class . ':64'])
     ->name('workspace-invitations.accept');
-
-Route::get('/preview/{token}', [BrandedPreviewLinkController::class, 'show'])
-    ->middleware(['throttle:cosmic-public-preview', \App\Http\Middleware\AddSecurityHeaders::class])
-    ->name('preview-links.show');
-
 
 // Token-aware Builder routes. Signed-in users keep normal policy checks;
 // logged-out visitors need a valid token that belongs to the requested page.

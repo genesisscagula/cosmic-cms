@@ -11,6 +11,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
 use App\Services\PagePublisher;
+use App\Services\PreviewDeploymentService;
 use App\Services\CreditService;
 use App\Services\ThemePlanAccessService;
 use App\Services\MediaAssetLifecycleService;
@@ -387,6 +388,14 @@ class PageController extends Controller
             'themeAccess' => $builderThemeAccess,
             'page' => $page,
             'website' => $website,
+            'previewUrl' => $isTrialMode || ! $website->last_preview_deployed_at
+                ? null
+                : app(PreviewDeploymentService::class)->urlForPage($website, $page),
+            'previewDeployment' => $isTrialMode ? null : [
+                'deployed_at' => $website->last_preview_deployed_at?->toISOString(),
+                'error' => $website->preview_deployment_error,
+                'ready' => filled($website->preview_slug) && filled($website->last_preview_deployed_at),
+            ],
             'websitePages' => $isTrialMode
                 ? collect($trial->menu_structure ?? [])
                     ->map(fn (array $menuPage, int $index) => [
@@ -929,10 +938,28 @@ class PageController extends Controller
             ], 502);
         }
 
+        $previewService = app(PreviewDeploymentService::class);
+        $previewUrl = $previewService->urlForPage($website->fresh(), $page->fresh());
+        $previewDeploymentFailed = false;
+        $previewDeploymentMessage = null;
+
+        try {
+            $previewService->deploy($website->fresh());
+            $previewUrl = $previewService->urlForPage($website->fresh(), $page->fresh());
+        } catch (Throwable $exception) {
+            report($exception);
+            $previewDeploymentFailed = true;
+            $previewDeploymentMessage = 'The page was published, but the preview deployment failed. Your previous preview remains available.';
+        }
+
         return response()->json([
             'status' => 'published',
             'published_at' => $page->published_at?->toISOString(),
             'last_published_at' => $page->last_published_at?->toISOString(),
+            'preview_url' => $previewUrl,
+            'preview_deployment_failed' => $previewDeploymentFailed,
+            'preview_deployment_message' => $previewDeploymentMessage,
+            'preview_deployed_at' => $website->fresh()->last_preview_deployed_at?->toISOString(),
             'credits_spent' => $themeCost,
             'credit_balance' => $credits->balance($request->user()),
         ]);

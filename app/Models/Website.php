@@ -12,6 +12,7 @@ class Website extends Model
         'workspace_id',
         'name',
         'domain',
+        'preview_slug',
         'industry',
         'location',
         'business_description',
@@ -24,7 +25,9 @@ class Website extends Model
         'deployment_secret',
         'deployment_verified_at',
         'last_deployed_at',
+        'last_preview_deployed_at',
         'deployment_error',
+        'preview_deployment_error',
         'theme_settings',
         'global_header',
         'global_footer',
@@ -45,6 +48,7 @@ class Website extends Model
         'deployment_secret' => 'encrypted',
         'deployment_verified_at' => 'datetime',
         'last_deployed_at' => 'datetime',
+        'last_preview_deployed_at' => 'datetime',
     ];
 
     public function workspace()

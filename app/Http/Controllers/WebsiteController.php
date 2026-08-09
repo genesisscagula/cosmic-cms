@@ -730,10 +730,13 @@ class WebsiteController extends Controller
             ->with('handoff_url', route('website-handoffs.show', $transfer->token));
     }
 
-    public function destroy(Website $website)
+    public function destroy(Website $website, \App\Services\PreviewDeploymentService $previews)
     {
         $this->authorize('delete', $website);
 
+        // Remove the generated preview package before deleting the database row
+        // so abandoned preview files cannot accumulate on the server.
+        $previews->remove($website);
         $website->delete();
 
         // Inertia must follow a DELETE response with a GET request. A 302 can
