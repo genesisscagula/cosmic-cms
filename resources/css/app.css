@@ -3231,3 +3231,15 @@ body .cosmic-start-quick-idea.rounded-full.border {
     color: #065f46 !important;
     -webkit-text-fill-color: #065f46 !important;
 }
+
+
+/* Publish split-button hotfix: keep dropdown chevron white in every appearance mode. */
+.cosmic-builder-shell .cosmic-publish-menu-trigger,
+.cosmic-builder-shell .cosmic-publish-menu-trigger svg {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+.cosmic-builder-shell .cosmic-publish-menu-trigger svg,
+.cosmic-builder-shell .cosmic-publish-menu-trigger svg [fill="currentColor"] {
+    fill: #ffffff !important;
+}

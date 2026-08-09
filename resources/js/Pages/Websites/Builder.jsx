@@ -237,13 +237,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [styleOptions, setStyleOptions] = useState(pageStyleOptions || []);
     const hasUnsavedChanges = isDirty || hasUnsavedTheme;
     const previewIsStale = Boolean(previewUrl) && (hasUnsavedChanges || pageStatus !== 'published');
-    const previewStatusLabel = previewDeploymentError
-        ? 'Preview issue'
-        : !previewUrl || !previewDeployedAt
-            ? 'Preview not deployed'
-            : previewIsStale
-                ? 'Preview outdated'
-                : 'Preview synced';
 
     useEffect(() => {
         // Trial email capture is prompted once on the first Builder landing.
@@ -1589,15 +1582,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 <span className={`h-1.5 w-1.5 rounded-full ${isPublishing ? 'animate-pulse bg-sky-300' : publishError ? 'bg-red-300' : pageStatus === 'published' ? 'bg-emerald-300' : 'bg-amber-300'}`} />
                                 {isPublishing ? 'Publishing…' : publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
                             </span>
-                            {!trialMode && capabilities.canPublish && (
-                                <span
-                                    title={previewDeploymentError || (previewIsStale ? 'Publish your latest changes to refresh the deployed preview.' : previewDeployedAt ? 'The deployed preview matches your latest published version.' : 'Publish once to create a preview link.')}
-                                    className={`hidden h-8 items-center gap-1.5 rounded-lg px-2 text-[11px] font-medium 2xl:inline-flex ${previewDeploymentError ? 'text-red-200' : previewIsStale ? 'text-amber-200' : previewDeployedAt ? 'text-emerald-200' : 'text-slate-500'}`}
-                                >
-                                    <span className={`h-1.5 w-1.5 rounded-full ${previewDeploymentError ? 'bg-red-300' : previewIsStale ? 'bg-amber-300' : previewDeployedAt ? 'bg-emerald-300' : 'bg-slate-600'}`} />
-                                    {previewStatusLabel}
-                                </span>
-                            )}
                             <span className={`h-4 w-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} aria-hidden="true" />
                             <span className={`inline-flex h-8 items-center rounded-lg px-2.5 text-[11px] font-medium ${trialMode ? 'text-slate-600' : 'text-slate-400'}`}>
                                 {data.blocks.length} Sparks
@@ -1693,7 +1677,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
                                     <details className="group relative">
                                         <summary
-                                            className="inline-flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-r-lg border-l border-emerald-500 bg-emerald-600 text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 [&::-webkit-details-marker]:hidden"
+                                            className="cosmic-publish-menu-trigger inline-flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-r-lg border-l border-emerald-500 bg-emerald-600 text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 [&::-webkit-details-marker]:hidden"
                                             aria-label="More publish actions"
                                             title="More actions"
                                         >
@@ -1749,8 +1733,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                             <span className={publishError ? 'text-red-300' : pageStatus === 'published' ? 'text-emerald-300' : 'text-amber-200'}>
                                 {publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
                             </span>
-                            <span className="text-slate-600">•</span>
-                            <span className={previewDeploymentError ? 'text-red-300' : previewIsStale ? 'text-amber-200' : previewDeployedAt ? 'text-emerald-300' : 'text-slate-500'}>{previewStatusLabel}</span>
                             <span className="text-slate-600">•</span>
                             <span className="text-slate-500">{data.blocks.length} Sparks</span>
                             {hasUnsavedChanges && <span className="hidden text-amber-200 sm:inline">• Unsaved changes</span>}
