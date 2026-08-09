@@ -8,7 +8,9 @@ import { useCreditBalance } from '@/Hooks/useCreditBalance';
 
 export default function AuthenticatedLayout({ header, children }) {
     // Gigamitan nato og optional chaining ang auth?.user
-    const user = usePage().props.auth?.user;
+    const page = usePage();
+    const user = page.props.auth?.user;
+    const isPlatformOwner = Boolean(page.props.auth?.isPlatformOwner);
     const { balance: creditBalance } = useCreditBalance();
     const formattedCredits = Number.isFinite(Number(creditBalance)) ? Number(creditBalance).toLocaleString() : '0';
 
@@ -46,6 +48,14 @@ export default function AuthenticatedLayout({ header, children }) {
                                 >
                                     ⚡ {formattedCredits} Credits
                                 </NavLink>
+                                {isPlatformOwner && (
+                                    <NavLink
+                                        href={route('admin.chat.index')}
+                                        active={route().current('admin.chat.*')}
+                                    >
+                                        💬 Customer Chats
+                                    </NavLink>
+                                )}
                             </div>
                         </div>
 
@@ -159,6 +169,14 @@ export default function AuthenticatedLayout({ header, children }) {
                         >
                             ⚡ {formattedCredits} Credits
                         </ResponsiveNavLink>
+                        {isPlatformOwner && (
+                            <ResponsiveNavLink
+                                href={route('admin.chat.index')}
+                                active={route().current('admin.chat.*')}
+                            >
+                                💬 Customer Chats
+                            </ResponsiveNavLink>
+                        )}
                     </div>
 
                     <div className="border-t border-gray-200 pb-1 pt-4">

@@ -31,11 +31,28 @@ use App\Http\Controllers\AgencyPortalController;
 use App\Http\Controllers\LegalController;
 use App\Http\Controllers\AppearancePreferenceController;
 use App\Http\Controllers\QueueDashboardController;
+use App\Http\Controllers\CosmicPublicChatController;
+use App\Http\Controllers\CosmicChatInboxController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
+
+
+// Public Cosmic CMS AI assistant. Conversation access uses an unguessable per-session token.
+Route::post('/support/chat/start', [CosmicPublicChatController::class, 'start'])
+    ->middleware(['throttle:10,1', \App\Http\Middleware\RejectOversizedRequest::class . ':32'])
+    ->name('support.chat.start');
+Route::post('/support/chat/message', [CosmicPublicChatController::class, 'message'])
+    ->middleware(['throttle:20,1', \App\Http\Middleware\RejectOversizedRequest::class . ':32'])
+    ->name('support.chat.message');
+Route::post('/support/chat/history', [CosmicPublicChatController::class, 'history'])
+    ->middleware(['throttle:60,1', \App\Http\Middleware\RejectOversizedRequest::class . ':16'])
+    ->name('support.chat.history');
+Route::post('/support/chat/lead', [CosmicPublicChatController::class, 'captureLead'])
+    ->middleware(['throttle:10,1', \App\Http\Middleware\RejectOversizedRequest::class . ':16'])
+    ->name('support.chat.lead');
 
 Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
@@ -271,6 +288,19 @@ Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder']
     ->name('pages.builder.save');
 
 Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
+    Route::prefix('admin/chat')->middleware(\App\Http\Middleware\EnsurePlatformOwner::class)->group(function () {
+        Route::get('/', [CosmicChatInboxController::class, 'index'])->name('admin.chat.index');
+        Route::get('/{conversation}', [CosmicChatInboxController::class, 'show'])->name('admin.chat.show');
+        Route::patch('/{conversation}', [CosmicChatInboxController::class, 'update'])
+            ->middleware('throttle:60,1')
+            ->name('admin.chat.update');
+        Route::post('/{conversation}/reply', [CosmicChatInboxController::class, 'reply'])
+            ->middleware('throttle:30,1')
+            ->name('admin.chat.reply');
+        Route::patch('/{conversation}/takeover', [CosmicChatInboxController::class, 'takeover'])
+            ->middleware('throttle:30,1')
+            ->name('admin.chat.takeover');
+    });
     Route::get('/admin/queues', [QueueDashboardController::class, 'index'])->name('admin.queues.index');
     Route::get('/admin/queues/status', [QueueDashboardController::class, 'status'])->name('admin.queues.status');
     Route::post('/admin/queues/retry-failed', [QueueDashboardController::class, 'retryFailed'])->middleware('throttle:10,1')->name('admin.queues.retry-failed');

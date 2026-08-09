@@ -372,6 +372,52 @@
     'failed_webhook_warning_count' => 1,
     'schedule_daily_at' => '09:15',
   ),
+  'cosmic-chat' => 
+  array (
+    'enabled' => true,
+    'model' => 'gpt-5.6-luna',
+    'max_user_chars' => 1000,
+    'history_messages' => 12,
+    'welcome' => 'Hi! I’m the Cosmic CMS assistant. Ask me about building a website, plans, features, or the free trial.',
+    'unknown_reply' => 'I don’t have a verified Cosmic CMS answer for that yet. I can keep your question in this chat for the Cosmic CMS team to review.',
+  ),
+  'cosmic-chat-knowledge' => 
+  array (
+    'version' => '1.2',
+    'product' => 
+    array (
+      'name' => 'Cosmic CMS',
+      'website' => 'https://www.cosmiccms.com',
+      'start_url' => 'https://www.cosmiccms.com/start',
+      'pricing_url' => 'https://www.cosmiccms.com/pricing',
+      'summary' => 'Cosmic CMS is an AI-assisted website builder that creates an editable business website starting point from a prompt.',
+    ),
+    'verified_facts' => 
+    array (
+      0 => 'Generated websites remain editable in the Cosmic CMS visual builder.',
+      1 => 'Cosmic CMS uses reusable website sections called Sparks.',
+      2 => 'The builder supports website-wide theme customization plus header and footer editing when the active plan permits those capabilities.',
+      3 => 'Cosmic CMS supports contact forms on the personal plans currently configured in the application.',
+      4 => 'Personal plan capabilities and limits differ by tier; use the live plan data supplied in this knowledge context.',
+      5 => 'Static HTML export is enabled on the currently configured Starter, Growth, and Pro personal plans.',
+      6 => 'The Pro personal plan currently includes custom-domain capability; do not imply custom-domain support for another tier unless the live plan data says so.',
+      7 => 'Agency plans are separate from personal plans and have their own website, template, Spark, analytics, leads, team, and agency-tool limits.',
+      8 => 'The public trial begins at /start and uses Guest Cosmic Credits for supported trial customization actions.',
+    ),
+    'terminology' => 
+    array (
+      'Sparks' => 'Reusable website sections/layouts available in Cosmic CMS.',
+      'Guest Cosmic Credits' => 'Credits assigned to the public trial for supported customization actions before signup.',
+      'Owned Sparks' => 'Sparks attached to a customer account/library under the applicable plan rules.',
+    ),
+    'answer_boundaries' => 
+    array (
+      0 => 'Do not promise a ranking position, traffic result, lead volume, revenue result, or delivery timeline.',
+      1 => 'Do not invent discounts, refunds, promotional offers, integrations, hosting terms, domain-registration terms, or support response times.',
+      2 => 'Do not claim a feature is available on a plan unless the supplied live capability data supports it.',
+      3 => 'For account-specific billing, payment failures, private account data, or a request requiring human review, say the Cosmic CMS team needs to review it.',
+    ),
+  ),
   'cosmic-industries' => 
   array (
     'default' => 

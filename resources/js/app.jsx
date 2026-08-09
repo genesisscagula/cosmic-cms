@@ -9,6 +9,7 @@ import CookieConsent from './Components/CookieConsent';
 import { CreditBalanceProvider } from './Components/CosmicCredits/CreditBalanceContext';
 import { AppearanceProvider } from './Appearance/AppearanceContext';
 import CosmicTracking from './Analytics/CosmicTracking';
+import CosmicPublicChat from './Components/CosmicPublicChat';
 
 const appName = 'Cosmic CMS';
 
@@ -51,6 +52,7 @@ createInertiaApp({
                 <CosmicTracking tracking={props.initialPage?.props?.tracking ?? {}} />
                 <CosmicNotification />
                 <CookieConsent />
+                <CosmicPublicChat />
             </CreditBalanceProvider>
             </AppearanceProvider>,
         );
