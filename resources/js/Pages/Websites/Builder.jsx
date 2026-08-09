@@ -649,8 +649,8 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
 
 
     const matchLogoToTheme = async () => {
-        const logoUrl = data.global_header?.logo_image_url;
-        if (!logoUrl || String(logoUrl).includes('your-logo.png')) return;
+        const logoUrl = data.global_header?.logo_image_url || '/storage/branding/your-logo.png';
+        if (!logoUrl) return;
         const themeKey = globalSelections?.primary || 'midnight';
         const family = colorFamilies[themeKey] || colorFamilies.midnight;
         const activePalette = themeKey === 'my-brand'
@@ -713,8 +713,8 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     };
 
     const matchThemeToLogo = async () => {
-        const logoUrl = data.global_header?.logo_image_url;
-        if (!logoUrl || String(logoUrl).includes('your-logo.png')) return;
+        const logoUrl = data.global_header?.logo_image_url || '/storage/branding/your-logo.png';
+        if (!logoUrl) return;
 
         // This action belongs to My Brand Theme, not Customize Logo.
         // Never allow the old logo modal to reappear during this transition.
@@ -1165,7 +1165,6 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     // JavaScript's temporal dead zone and crashes the entire Builder.
     const hasRealBrandLogo = Boolean(
         data.global_header?.logo_image_url
-        && !String(data.global_header.logo_image_url).includes('your-logo.png')
     );
     const customThemeMatchesCurrentLogo = Boolean(
         hasRealBrandLogo
@@ -2314,15 +2313,13 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
                                         <span className="cosmic-logo-upload-help mt-1 block text-xs font-medium text-slate-600">SVG, PNG, JPG or WebP up to 2 MB.</span>
                                     </button>
                                     <input ref={logoUploadRef} type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" onChange={uploadTrialLogo} className="hidden" />
-                                    {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') && logoSyncState === 'theme_changed' && (
-                                        <div className="sm:col-span-2 mt-1 border-t border-slate-200 pt-4">
-                                            <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Brand Matching</p>
-                                            <button type="button" disabled={logoBusy} onClick={matchLogoToTheme} className="cosmic-logo-brand-dark min-h-[106px] w-full rounded-xl bg-slate-900 px-5 py-4 text-left text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
-                                                <span className="block text-sm font-bold">🎨 Match Logo to Theme</span>
-                                                <span className="mt-1 block text-xs text-slate-300">This logo is out of sync. Recolor it to the exact active theme palette, led by the current primary HEX.</span>
-                                            </button>
-                                        </div>
-                                    )}
+                                    <div className="sm:col-span-2 mt-1 border-t border-slate-200 pt-4">
+                                        <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Brand Matching</p>
+                                        <button type="button" disabled={logoBusy} onClick={matchLogoToTheme} className="cosmic-logo-brand-dark min-h-[106px] w-full rounded-xl bg-slate-900 px-5 py-4 text-left text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
+                                            <span className="block text-sm font-bold">🎨 Match Logo to Theme</span>
+                                            <span className="mt-1 block text-xs text-slate-300">Recolor the current logo—including the default Your Logo placeholder—to the exact active theme palette.</span>
+                                        </button>
+                                    </div>
                                     <p className="sm:col-span-2 text-xs text-slate-500">{trialMode ? `AI logo actions use Guest Cosmic Credits. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 500} credits. Upload/replace is free.` : `AI logo generation and brand matching cost 50 credits per action. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 0} credits. Upload/replace is free.`}</p>
                                 </div>
                             ) : (

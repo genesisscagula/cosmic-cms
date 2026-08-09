@@ -234,9 +234,9 @@ class TrialBrandingController extends Controller
     public function matchLogoToTheme(Request $request, TrialGeneration $trial, LogoThemeMatchService $matcher, TrialCreditService $trialCredits, LogoCanvasService $canvas, ThemeLogoPaletteService $logoPalettes)
     {
         $this->assertTrialAvailable($trial);
-        abort_if(! filled($trial->logo_url), 422, 'Add a logo before matching it to the theme.');
 
         $validated = $request->validate([
+            'logo_url' => ['nullable', 'string', 'max:2048'],
             'theme_key' => ['nullable', 'string', 'max:60'],
             'theme_name' => ['nullable', 'string', 'max:80'],
             'primary_hex' => ['required', 'regex:/^#[0-9A-Fa-f]{6}$/'],
@@ -259,8 +259,9 @@ class TrialBrandingController extends Controller
             $logoPalette['secondary'] = strtoupper((string) ($validated['secondary_hex'] ?? ($customPalette['secondary'] ?? $customPalette['surface'] ?? $logoPalette['secondary'])));
             $logoPalette['tertiary'] = strtoupper((string) ($validated['tertiary_hex'] ?? ($customPalette['tertiary'] ?? $customPalette['accent'] ?? $logoPalette['tertiary'])));
 
+            $sourceLogoUrl = trim((string) ($trial->logo_url ?: ($validated['logo_url'] ?? '/storage/branding/your-logo.png')));
             $result = $matcher->match(
-                $trial->logo_url,
+                $sourceLogoUrl,
                 $logoPalette,
                 $themeName
             );
@@ -319,12 +320,12 @@ class TrialBrandingController extends Controller
     public function matchThemeToLogo(Request $request, TrialGeneration $trial, LogoThemeAnalysisService $analyzer, TrialCreditService $trialCredits)
     {
         $this->assertTrialAvailable($trial);
-        abort_if(! filled($trial->logo_url), 422, 'Add a logo before matching the theme to it.');
+        $sourceLogoUrl = trim((string) ($trial->logo_url ?: '/storage/branding/your-logo.png'));
 
         $trialCredits->ensureCanSpend($trial, TrialCreditService::MATCH_THEME_TO_LOGO, 'Match Theme to Logo');
 
         try {
-            $result = $analyzer->analyze($trial->logo_url);
+            $result = $analyzer->analyze($sourceLogoUrl);
 
             $themeSettings = is_array($trial->preview_theme) ? $trial->preview_theme : [];
             $customTheme = is_array($result['custom_theme'] ?? null) ? $result['custom_theme'] : null;
@@ -333,7 +334,7 @@ class TrialBrandingController extends Controller
                 return response()->json(['message' => 'Cosmic AI did not return a usable My Brand Theme. No credits were used.'], 422);
             }
 
-            $customTheme['source_logo_url'] = $trial->logo_url;
+            $customTheme['source_logo_url'] = $sourceLogoUrl;
             $customTheme['updated_at'] = now()->toIso8601String();
             $themeSettings['custom_brand_theme'] = $customTheme;
             $themeSettings['brand_palette'] = $customTheme['palette'] ?? ($result['palette'] ?? []);

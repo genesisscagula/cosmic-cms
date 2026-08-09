@@ -36,7 +36,7 @@ export default function ThemeCard({
 }) {
     const [primary, surface, accent, text] = theme.colors;
     const isMyBrand = theme.id === 'my-brand';
-    const canMatchBrandToLogo = isMyBrand && hasLogo && brandMatchNeeded && typeof onMatchBrandToLogo === 'function';
+    const canMatchBrandToLogo = isMyBrand && typeof onMatchBrandToLogo === 'function';
 
     return (
         <div
@@ -142,37 +142,30 @@ export default function ThemeCard({
 
                 {isMyBrand && (
                     <div className="mt-3 border-t border-white/10 pt-3">
-                        {canMatchBrandToLogo ? (
-                            <span
-                                role="button"
-                                tabIndex={0}
-                                aria-disabled={brandMatchBusy}
-                                onClick={(event) => {
+                        <span
+                            role="button"
+                            tabIndex={0}
+                            aria-disabled={brandMatchBusy || !canMatchBrandToLogo}
+                            onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                if (!brandMatchBusy && canMatchBrandToLogo) onMatchBrandToLogo();
+                            }}
+                            onKeyDown={(event) => {
+                                if ((event.key === 'Enter' || event.key === ' ') && !brandMatchBusy && canMatchBrandToLogo) {
                                     event.preventDefault();
                                     event.stopPropagation();
-                                    if (!brandMatchBusy) onMatchBrandToLogo();
-                                }}
-                                onKeyDown={(event) => {
-                                    if ((event.key === 'Enter' || event.key === ' ') && !brandMatchBusy) {
-                                        event.preventDefault();
-                                        event.stopPropagation();
-                                        onMatchBrandToLogo();
-                                    }
-                                }}
-                                className="cosmic-brand-match-cta inline-flex w-full items-center justify-center rounded-lg bg-emerald-600 px-3 py-2 text-[11px] font-extrabold text-white shadow-sm transition hover:bg-emerald-500"
-                            >
-                                {brandMatchBusy ? 'Matching…' : '✨ Match to Logo'}
-                            </span>
-                        ) : hasLogo ? (
-                            <span className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 py-2 text-[10px] font-bold text-emerald-800">
-                                <span aria-hidden="true">✓</span>
-                                <span>Matched to current logo</span>
-                            </span>
-                        ) : (
-                            <span className="block text-[10px] leading-4 text-slate-500">
-                                Upload a logo to match this brand theme.
-                            </span>
-                        )}
+                                    onMatchBrandToLogo();
+                                }
+                            }}
+                            className={`cosmic-brand-match-cta inline-flex w-full items-center justify-center rounded-lg px-3 py-2 text-[11px] font-extrabold text-white shadow-sm transition ${
+                                canMatchBrandToLogo
+                                    ? 'bg-emerald-600 hover:bg-emerald-500'
+                                    : 'cursor-not-allowed bg-slate-600 opacity-60'
+                            }`}
+                        >
+                            {brandMatchBusy ? 'Matching…' : '✨ Match Theme to Logo'}
+                        </span>
                     </div>
                 )}
             </div>

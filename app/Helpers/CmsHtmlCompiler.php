@@ -2383,7 +2383,9 @@ HTML;
                 $isPrimarySection = $resolvedTheme === 'primary';
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
                 $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
-                $assistantBubble = $isPrimarySection ? 'border-white/20 bg-white/12 text-white' : "{$primaryTheme['soft']} {$theme['border']} {$theme['text']}";
+                $userBubble = $isPrimarySection ? 'bg-white text-slate-950' : "{$primaryTheme['bg']} text-white";
+                $assistantBubble = $isPrimarySection ? 'border-white/20 bg-white/12 text-white' : "{$theme['card']} {$theme['border']} {$theme['text']}";
+                $composerSurface = $isPrimarySection ? 'border-white/20 bg-white/10 text-white' : "{$theme['card']} {$theme['border']} {$theme['text']}";
                 $chipHtml = ''; foreach ($chips as $chip) { $chipHtml .= "<span class='rounded-full border px-3 py-2 text-xs font-semibold {$theme['border']} {$theme['surface']} {$theme['sub']}'>{$chip}</span>"; }
 
                 $html .= "
@@ -2392,8 +2394,8 @@ HTML;
                         <div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 text-5xl font-semibold leading-[.96] tracking-[-.05em] sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1><p class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div><div class='mt-8 flex flex-wrap gap-2'>{$chipHtml}</div></div>
                         <div class='relative rounded-[2rem] border p-4 shadow-2xl sm:p-6 {$theme['border']} {$theme['surface']}'>
                             <div class='flex items-center justify-between border-b pb-4 {$theme['border']}'><div class='flex items-center gap-3'><div class='grid h-11 w-11 place-items-center rounded-2xl {$primaryTheme['bg']} {$primaryTheme['text']}'>✦</div><div><strong class='block text-sm {$theme['text']}'>{$assistantLabel}</strong><span class='mt-1 block text-xs {$theme['sub']}'>{$assistantStatus}</span></div></div><span class='rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[.18em] {$theme['border']} {$theme['bg']} {$theme['sub']}'>Live preview</span></div>
-                            <div class='space-y-4 py-6'><div class='ml-auto max-w-[82%] rounded-[1.4rem] rounded-br-md bg-slate-900 px-5 py-4 text-sm leading-6 text-white'>{$userMessage}</div><div class='max-w-[88%] rounded-[1.4rem] rounded-bl-md border px-5 py-4 text-sm leading-6 {$assistantBubble}'>{$assistantMessage}</div></div>
-                            <div class='flex items-center gap-3 rounded-2xl border p-3 {$theme['border']} {$theme['bg']}'><span class='min-w-0 flex-1 text-sm {$theme['sub']}'>{$promptPlaceholder}</span><span class='grid h-10 w-10 shrink-0 place-items-center rounded-xl {$primaryTheme['bg']} {$primaryTheme['text']}'>↑</span></div>
+                            <div class='space-y-4 py-6'><div class='ml-auto max-w-[82%] rounded-[1.4rem] rounded-br-md px-5 py-4 text-sm leading-6 {$userBubble}'>{$userMessage}</div><div class='max-w-[88%] rounded-[1.4rem] rounded-bl-md border px-5 py-4 text-sm leading-6 {$assistantBubble}'>{$assistantMessage}</div></div>
+                            <div class='flex items-center gap-3 rounded-2xl border p-3 {$composerSurface}'><span class='min-w-0 flex-1 text-sm {$theme['sub']}'>{$promptPlaceholder}</span><span class='grid h-10 w-10 shrink-0 place-items-center rounded-xl {$primaryTheme['bg']} text-white'>↑</span></div>
                         </div>
                     </div>
                 </section>";

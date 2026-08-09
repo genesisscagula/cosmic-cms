@@ -35,7 +35,15 @@ export function HeroAiConversationBlock({ block, onUpdate, globalTheme }) {
     const data = { ...HeroAiConversationSchema.defaults, ...block };
     const isPrimary = block.resolvedTheme === "primary";
     const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
-    const assistantBubble = isPrimary ? "bg-white/12 border-white/20 text-white" : `${primaryTheme.soft} ${theme.border} ${theme.text}`;
+    const userBubble = isPrimary
+        ? "bg-white text-slate-950"
+        : `${primaryTheme.bg} text-white`;
+    const assistantBubble = isPrimary
+        ? "bg-white/12 border-white/20 text-white"
+        : `${theme.card} ${theme.border} ${theme.text}`;
+    const composerSurface = isPrimary
+        ? "bg-white/10 border-white/20 text-white"
+        : `${theme.card} ${theme.border} ${theme.text}`;
 
     return (
         <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
@@ -67,15 +75,15 @@ export function HeroAiConversationBlock({ block, onUpdate, globalTheme }) {
                     </div>
 
                     <div className="space-y-4 py-6">
-                        <div className="ml-auto max-w-[82%] rounded-[1.4rem] rounded-br-md bg-slate-900 px-5 py-4 text-sm leading-6 text-white">
-                            <EditableText value={data.user_message} isTextArea className="block text-white" onSave={(user_message)=>onUpdate({user_message})}/>
+                        <div className={`ml-auto max-w-[82%] rounded-[1.4rem] rounded-br-md px-5 py-4 text-sm leading-6 ${userBubble}`}>
+                            <EditableText value={data.user_message} isTextArea className="block" onSave={(user_message)=>onUpdate({user_message})}/>
                         </div>
                         <div className={`max-w-[88%] rounded-[1.4rem] rounded-bl-md border px-5 py-4 text-sm leading-6 ${assistantBubble}`}>
                             <EditableText value={data.assistant_message} isTextArea className="block" onSave={(assistant_message)=>onUpdate({assistant_message})}/>
                         </div>
                     </div>
 
-                    <div className={`flex items-center gap-3 rounded-2xl border p-3 ${theme.border} ${theme.bg}`}>
+                    <div className={`flex items-center gap-3 rounded-2xl border p-3 ${composerSurface}`}>
                         <EditableText value={data.prompt_placeholder} className={`min-w-0 flex-1 text-sm ${theme.sub}`} onSave={(prompt_placeholder)=>onUpdate({prompt_placeholder})}/>
                         <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${primaryTheme.bg} ${primaryTheme.text}`}>↑</span>
                     </div>
