@@ -1657,12 +1657,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 </button>
                             )}
 
-                            {capabilities.canSave && (
+                            {capabilities.canSave && (!capabilities.canPublish || trialMode) && (
                                 <form onSubmit={handleSubmit}>
                                     <button
                                         type="submit"
                                         disabled={isSaving || isPublishing}
-className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-flex h-9 shrink-0 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 disabled:cursor-not-allowed`}                                    >
+                                        className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-flex h-9 shrink-0 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 disabled:cursor-not-allowed`}
+                                    >
                                         {isSaving ? 'Saving…' : trialMode ? 'Save changes' : 'Save Draft'}
                                     </button>
                                 </form>
@@ -1679,28 +1680,66 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
                                 </button>
                             )}
 
-                            {capabilities.canPublish && previewUrl && (
-                                <a
-                                    href={previewUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    title={previewDeploymentError || (previewIsStale ? 'Publish your latest changes to refresh this preview.' : 'Open the latest deployed preview in a new tab.')}
-                                    className={`inline-flex h-9 shrink-0 items-center gap-2 rounded-lg border px-3.5 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-violet-300 ${previewDeploymentError ? 'border-red-400/20 bg-red-400/[0.06] text-red-200 hover:bg-red-400/[0.10]' : previewIsStale ? 'border-amber-400/20 bg-amber-400/[0.06] text-amber-100 hover:bg-amber-400/[0.10]' : 'border-white/10 bg-white/[0.04] text-slate-200 hover:bg-white/[0.08] hover:text-white'}`}
-                                >
-                                    <span className={`h-1.5 w-1.5 rounded-full ${previewDeploymentError ? 'bg-red-300' : previewIsStale ? 'bg-amber-300' : 'bg-emerald-300'}`} />
-                                    Preview
-                                </a>
-                            )}
-
                             {capabilities.canPublish && (
-                                <button
-                                    type="button"
-                                    onClick={handlePublish}
-                                    disabled={isSaving || isPublishing}
-                                    className="cosmic-primary-action inline-flex h-9 shrink-0 items-center rounded-lg bg-emerald-600 px-3.5 text-xs font-bold text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
-                                >
-                                    {isPublishing ? 'Publishing…' : 'Publish'}
-                                </button>
+                                <div className="relative inline-flex h-9 shrink-0 items-stretch">
+                                    <button
+                                        type="button"
+                                        onClick={handlePublish}
+                                        disabled={isSaving || isPublishing}
+                                        className="cosmic-primary-action inline-flex min-w-[88px] items-center justify-center rounded-l-lg bg-emerald-600 px-4 text-xs font-bold text-white transition hover:bg-emerald-500 focus:z-10 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                    >
+                                        {isPublishing ? 'Publishing…' : 'Publish'}
+                                    </button>
+
+                                    <details className="group relative">
+                                        <summary
+                                            className="inline-flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-r-lg border-l border-emerald-500 bg-emerald-600 text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 [&::-webkit-details-marker]:hidden"
+                                            aria-label="More publish actions"
+                                            title="More actions"
+                                        >
+                                            <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 transition-transform group-open:rotate-180">
+                                                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.1 1.02l-4.25 4.5a.75.75 0 0 1-1.1 0l-4.25-4.5a.75.75 0 0 1 .02-1.04Z" clipRule="evenodd" />
+                                            </svg>
+                                        </summary>
+
+                                        <div className="absolute right-0 z-[10020] mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl">
+                                            {capabilities.canSave && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => saveDraft()}
+                                                    disabled={isSaving || isPublishing}
+                                                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                                >
+                                                    {isSaving ? 'Saving…' : 'Save Draft'}
+                                                </button>
+                                            )}
+
+                                            {previewUrl ? (
+                                                <a
+                                                    href={previewUrl}
+                                                    target="_blank"
+                                                    rel="noopener noreferrer"
+                                                    title={previewDeploymentError || (previewIsStale ? 'Publish your latest changes to refresh this preview.' : 'Open the latest deployed preview in a new tab.')}
+                                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                                                >
+                                                    <span className="inline-flex items-center gap-2">
+                                                        <span className={`h-1.5 w-1.5 rounded-full ${previewDeploymentError ? 'bg-red-400' : previewIsStale ? 'bg-amber-400' : 'bg-emerald-500'}`} />
+                                                        Preview
+                                                    </span>
+                                                    <span aria-hidden="true" className="text-slate-400">↗</span>
+                                                </a>
+                                            ) : (
+                                                <span
+                                                    title="Publish once to create a preview link."
+                                                    className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-slate-400"
+                                                >
+                                                    <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
+                                                    Preview
+                                                </span>
+                                            )}
+                                        </div>
+                                    </details>
+                                </div>
                             )}
                         </div>
                     </div>
