@@ -48,7 +48,7 @@ createInertiaApp({
                 initialBalance={initialBalance}
             >
                 <App {...props} />
-                <CosmicTracking />
+                <CosmicTracking tracking={props.initialPage?.props?.tracking ?? {}} />
                 <CosmicNotification />
                 <CookieConsent />
             </CreditBalanceProvider>

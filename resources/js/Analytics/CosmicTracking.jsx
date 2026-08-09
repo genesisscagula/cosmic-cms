@@ -1,4 +1,4 @@
-import { router, usePage } from '@inertiajs/react';
+import { router } from '@inertiajs/react';
 import { useEffect, useRef } from 'react';
 import { readCosmicConsent } from './tracking';
 
@@ -16,8 +16,7 @@ const ensureDataLayer = () => {
     window.gtag = window.gtag || function gtag(){ window.dataLayer.push(arguments); };
 };
 
-export default function CosmicTracking() {
-    const { tracking = {} } = usePage().props;
+export default function CosmicTracking({ tracking = {} }) {
     const consentRef = useRef(readCosmicConsent());
     const initializedRef = useRef(false);
 
