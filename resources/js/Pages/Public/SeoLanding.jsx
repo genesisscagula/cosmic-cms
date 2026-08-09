@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import SeoHead from '@/Components/Seo/SeoHead';
+import PublicHeader from '@/Components/Public/PublicHeader';
 
 const Check = ({ children }) => <li className="flex gap-3"><span className="mt-0.5 font-black text-emerald-700">✓</span><span>{children}</span></li>;
 
@@ -51,12 +52,7 @@ export default function SeoLanding({ page }) {
     return <>
         <SeoHead title={page.title} description={page.description} path={page.path} schema={schema} />
         <div className="min-h-screen bg-white text-slate-900">
-            <header className="border-b border-slate-200 bg-white/95">
-                <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-6 lg:px-8">
-                    <Link href="/" className="flex items-center gap-3 font-black text-slate-950"><span className="flex h-10 w-10 items-center justify-center rounded-xl bg-emerald-700 text-white">✦</span>Cosmic CMS</Link>
-                    <nav className="flex items-center gap-3"><Link href="/pricing" className="hidden px-4 py-2 text-sm font-bold text-slate-600 sm:block">Pricing</Link><Link href="/start" className="rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white">Get started</Link></nav>
-                </div>
-            </header>
+            <PublicHeader />
 
             <main>
                 <section className="border-b border-slate-200 bg-gradient-to-b from-emerald-50/70 to-white">

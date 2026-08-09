@@ -52,6 +52,19 @@ class ImageController extends Controller
             : ($themeKey === 'my-brand'
                 ? (string) data_get($website->theme_settings, 'custom_brand_theme.palette.background', '#243447')
                 : $themeColors->primaryHex($themeKey));
+        $customPalette = $themeKey === 'my-brand'
+            ? [
+                'primary' => data_get($website->theme_settings, 'brand_palette.primary'),
+                'secondary' => data_get($website->theme_settings, 'brand_palette.secondary'),
+                'tertiary' => data_get($website->theme_settings, 'brand_palette.accent'),
+            ]
+            : null;
+        $logoPalette = $themeKey === 'my-brand'
+            ? $logoPalettes->randomFor($themeKey, $customPalette)
+            : $logoPalettes->forPrimary($themeKey, $primary);
+        // The requested/active theme primary is authoritative for logo generation.
+        $logoPalette['primary'] = strtoupper($primary);
+
         $industry = trim((string) ($website->industry ?: 'business'));
 
         $prompt = implode("\n", [
@@ -62,13 +75,14 @@ class ImageController extends Controller
             "Primary (dominant): {$logoPalette['primary']}.",
             "Secondary (supporting): {$logoPalette['secondary']}.",
             "Tertiary (small accents): {$logoPalette['tertiary']}.",
-            'STRICT COLOR HIERARCHY: PRIMARY must visually dominate roughly 75–80% of chromatic brand artwork; SECONDARY is supporting only; TERTIARY is tiny accents only.',
-            'Use the exact supplied PRIMARY HEX as a flat/solid color on the main icon/symbol and main company wordmark wherever readable.',
-            'Do not create lighter/darker/muted/gray/near-match versions of PRIMARY. No gradients, metallic shading, glow recoloring, transparency-based color shifts, or blended variants on main brand elements.',
-            'SECONDARY and TERTIARY must never visually overpower PRIMARY. If artistic styling conflicts with the palette, exact PRIMARY wins.',
-            'Use all supplied colors only where appropriate and never substitute them with approximate colors.',
-            'Use a simple icon plus readable company wordmark. Favor a horizontal website-header composition.',
-            'Keep the entire icon, wordmark, every letter, and any tagline fully inside the generated canvas with safe margins. Nothing may touch or cross an image edge.',
+            'EXACT PRIMARY COLOR CONTRACT: the supplied PRIMARY HEX must be used exactly at 100% opacity on the dominant brand elements.',
+            'Never lower PRIMARY opacity. Never lighten, darken, tint, shade, mute, desaturate, blend, recolor, or substitute PRIMARY with a near-match. Exact HEX wins over artistic styling.',
+            'PRIMARY must remain the unmistakable dominant brand color. SECONDARY is optional supporting design color. TERTIARY is optional and only for small accents/details.',
+            'SECONDARY and TERTIARY may add contrast and personality but must never change the appearance of PRIMARY or visually overpower it.',
+            'Design the logo specifically for a 650 × 150 pixel horizontal website-header crop box (13:3 aspect ratio).',
+            'The complete visible logo artwork must FIT INSIDE that 650 × 150 safe frame: horizontal symbol + wordmark preferred, centered, with comfortable transparent padding on every side.',
+            'Do not make a tall, square, stacked, poster-like, or oversized composition. Do not require cropping or zooming to fit the 650 × 150 header frame.',
+            'Keep the entire icon, wordmark, every letter, and any intentional detail inside the safe frame. Nothing may touch or cross an edge.',
             'Transparent background. No mockup, no card, no scene, no watermark, no slogan unless it is part of the company name.',
         ]);
 

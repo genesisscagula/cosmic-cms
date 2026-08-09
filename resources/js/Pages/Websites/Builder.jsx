@@ -341,7 +341,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     const openLogoCrop = (url, companyName = null) => {
         setLogoCropSource(url);
         setLogoCropCompanyName(companyName || logoCompanyName || data.global_header?.logo_text || website?.name || 'Your Logo');
-        setLogoCropZoom(1.15);
+        setLogoCropZoom(1);
         setLogoCropX(0);
         setLogoCropY(0);
         setLogoCropNatural({ width: 0, height: 0 });
@@ -358,7 +358,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
     };
 
     const resetLogoCrop = () => {
-        setLogoCropZoom(1.15);
+        setLogoCropZoom(1);
         setLogoCropX(0);
         setLogoCropY(0);
     };
@@ -1636,7 +1636,7 @@ export default function Builder({ page, website, blogPosts: initialBlogPosts = [
                                         type="submit"
                                         disabled={isSaving || isPublishing}
 className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-flex h-9 shrink-0 items-center justify-center rounded-lg border px-4 text-sm font-semibold shadow-sm transition-all duration-200 focus:outline-none focus:ring-2 disabled:cursor-not-allowed`}                                    >
-                                        {isSaving ? 'Saving…' : trialMode ? 'Save changes' : 'Save'}
+                                        {isSaving ? 'Saving…' : trialMode ? 'Save changes' : 'Save Draft'}
                                     </button>
                                 </form>
                             )}
@@ -2148,7 +2148,7 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
                         <div className="border-b border-slate-200 px-5 py-4 sm:px-7 sm:py-5">
                             <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-600">Logo framing</p>
                             <h3 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">Crop & position your logo</h3>
-                            <p className="mt-1 text-sm text-slate-500">Drag and zoom like a profile-photo cropper. Keep the important artwork inside the green header frame.</p>
+                            <p className="mt-1 text-sm text-slate-500">Your full logo starts fitted at 100%. Drag or zoom only if you want to fine-tune its position inside the 650 × 150 header frame.</p>
                         </div>
 
                         <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
@@ -2170,7 +2170,7 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
                                             const naturalWidth = event.currentTarget.naturalWidth;
                                             const naturalHeight = event.currentTarget.naturalHeight;
                                             setLogoCropNatural({ width: naturalWidth, height: naturalHeight });
-                                            setLogoCropZoom(1.15);
+                                            setLogoCropZoom(1);
                                             setLogoCropX(0);
                                             setLogoCropY(0);
                                         }}
@@ -2211,7 +2211,7 @@ className={`cosmic-builder-save ${trialMode ? 'cosmic-trial-save' : ''} inline-f
                                     />
                                     <span className="w-12 text-right text-xs font-semibold text-slate-600">{Math.round(logoCropZoom * 100)}%</span>
                                 </div>
-                                <p className="mt-2 text-center text-xs text-slate-500">The original image stays untouched. Only the final header crop is saved.</p>
+                                <p className="mt-2 text-center text-xs text-slate-500">Starts fully contained at 100%. The original image stays untouched; only the final 650 × 150 header crop is saved.</p>
                             </div>
 
                             <div className="mx-auto mt-5 flex max-w-[700px] flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">

@@ -1,6 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
 import SeoHead from '@/Components/Seo/SeoHead';
+import PublicHeader from '@/Components/Public/PublicHeader';
 import { trackCosmicEvent } from '@/Analytics/tracking';
 
 const planFamilies = {
@@ -160,21 +161,7 @@ export default function Pricing({ trialToken = null }) {
         <>
             <SeoHead title="AI Website Builder Pricing & Plans | Cosmic CMS" description="Compare Cosmic CMS AI website builder plans for small businesses, growing teams, and agencies. Generate a website with AI, customize it visually, and scale when you are ready." path="/pricing" />
             <div className="cosmic-public-light min-h-screen bg-[#fbfefc] text-slate-900 selection:bg-emerald-100 selection:text-emerald-950">
-                <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
-                    <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-6 lg:px-8">
-                        <Link href="/" className="flex items-center gap-3">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 text-lg font-black text-white shadow-sm shadow-emerald-200">✦</span>
-                            <span>
-                                <span className="block text-lg font-black tracking-tight text-slate-950">Cosmic CMS</span>
-                                <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">AI website platform</span>
-                            </span>
-                        </Link>
-                        <div className="flex items-center gap-2 sm:gap-3">
-                            <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:px-4">Log in</Link>
-                            <Link href={registrationUrl(family === 'agency' ? 'agency_growth' : 'growth')} className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-800 sm:px-5">Get started</Link>
-                        </div>
-                    </div>
-                </header>
+                <PublicHeader getStartedHref={registrationUrl(family === 'agency' ? 'agency_growth' : 'growth')} />
 
                 <main>
                     {trialToken && <div className="border-b border-emerald-200 bg-emerald-50 px-5 py-3 text-center text-sm font-bold text-emerald-900">Your generated landing page is reserved. Choose a plan to transfer it to your Builder after payment.</div>}

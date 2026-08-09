@@ -1,5 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
+import { Link } from '@inertiajs/react';
 import SeoHead from '@/Components/Seo/SeoHead';
+import PublicHeader from '@/Components/Public/PublicHeader';
 
 const features = [
     {
@@ -60,6 +61,7 @@ function CheckIcon() {
 }
 
 export default function Welcome() {
+
     return (
         <>
             <SeoHead
@@ -85,35 +87,8 @@ export default function Welcome() {
                 ]}
             />
 
-            <div className="min-h-screen bg-white text-slate-900 selection:bg-emerald-100 selection:text-emerald-950">
-                <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
-                    <div className="mx-auto flex h-18 max-w-7xl items-center justify-between px-5 py-4 sm:px-6 lg:px-8">
-                        <Link href="/" className="flex items-center gap-3" aria-label="Cosmic CMS home">
-                            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 text-lg font-black text-white shadow-sm shadow-emerald-200">
-                                ✦
-                            </span>
-                            <span>
-                                <span className="block text-lg font-black tracking-tight text-slate-950">Cosmic CMS</span>
-                                <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">AI website platform</span>
-                            </span>
-                        </Link>
-
-                        <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary navigation">
-                            <a href="#features" className="text-sm font-semibold text-slate-600 transition hover:text-slate-950">Features</a>
-                            <a href="#workflow" className="text-sm font-semibold text-slate-600 transition hover:text-slate-950">Workflow</a>
-                            <Link href="/pricing" className="text-sm font-semibold text-slate-600 transition hover:text-slate-950">Pricing</Link>
-                        </nav>
-
-                        <div className="flex items-center gap-2 sm:gap-3">
-                            <Link href="/login" className="rounded-lg px-3 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950 sm:px-4">
-                                Log in
-                            </Link>
-                            <Link href="/pricing" className="rounded-lg bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm shadow-emerald-100 transition hover:bg-emerald-800 sm:px-5">
-                                Get started
-                            </Link>
-                        </div>
-                    </div>
-                </header>
+            <div className="cosmic-public-light cosmic-welcome-page min-h-screen bg-white text-slate-900 selection:bg-emerald-100 selection:text-emerald-950">
+                <PublicHeader />
 
                 <main>
                     <section className="relative overflow-hidden border-b border-slate-200 bg-[linear-gradient(180deg,#fbfffc_0%,#f6fcf8_48%,#ffffff_100%)]">
@@ -144,7 +119,7 @@ export default function Welcome() {
                                         Generate a free concept
                                         <span className="ml-2">→</span>
                                     </Link>
-                                    <a href="#workflow" className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-base font-black text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 sm:w-auto">
+                                    <a href="/#workflow" className="inline-flex w-full items-center justify-center rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-base font-black text-slate-800 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 sm:w-auto">
                                         See how it works
                                     </a>
                                 </div>
@@ -258,7 +233,7 @@ export default function Welcome() {
                         </div>
                     </section>
 
-                    <section id="features" data-perf="deferred" className="cosmic-defer-render bg-white py-24 sm:py-28">
+                    <section id="features" data-perf="deferred" className="bg-white py-16 sm:py-20 lg:py-24">
                         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
                             <div className="max-w-3xl">
                                 <span className="text-sm font-black uppercase tracking-[0.2em] text-emerald-700">One connected platform</span>
@@ -268,7 +243,7 @@ export default function Welcome() {
 
                             <div className="mt-14 grid gap-6 lg:grid-cols-3">
                                 {features.map((feature) => (
-                                    <article key={feature.title} className="group rounded-3xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl hover:shadow-slate-200/60 sm:p-8">
+                                    <article key={feature.title} className="group flex h-full flex-col rounded-3xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-1 hover:border-emerald-200 hover:shadow-xl hover:shadow-slate-200/60 sm:p-7">
                                         <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-xl font-black text-emerald-700 transition group-hover:bg-emerald-700 group-hover:text-white">{feature.icon}</div>
                                         <p className="mt-7 text-xs font-black uppercase tracking-[0.18em] text-emerald-700">{feature.label}</p>
                                         <h3 className="mt-3 text-2xl font-black tracking-tight text-slate-950">{feature.title}</h3>
@@ -303,7 +278,7 @@ export default function Welcome() {
                         </div>
                     </section>
 
-                    <section id="workflow" data-perf="deferred" className="cosmic-defer-render border-y border-slate-200 bg-slate-50 py-24 sm:py-28">
+                    <section id="workflow" data-perf="deferred" className="border-y border-slate-200 bg-slate-50 py-16 sm:py-20 lg:py-24">
                         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
                             <div className="grid gap-14 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
                                 <div className="lg:sticky lg:top-28">
@@ -319,7 +294,7 @@ export default function Welcome() {
                                             <div className="flex h-14 w-14 items-center justify-center rounded-xl bg-emerald-100 text-sm font-black text-emerald-700">{number}</div>
                                             <div>
                                                 <h3 className="text-xl font-black text-slate-950">{title}</h3>
-                                                <p className="mt-2 leading-7 text-slate-600">{description}</p>
+                                                <p className="cosmic-welcome-guide-copy mt-2 leading-7 text-slate-600">{description}</p>
                                             </div>
                                         </div>
                                     ))}
@@ -328,7 +303,7 @@ export default function Welcome() {
                         </div>
                     </section>
 
-                    <section className="border-b border-slate-200 bg-white py-20 sm:py-24" aria-labelledby="website-builder-guides-heading">
+                    <section className="border-b border-slate-200 bg-white py-16 sm:py-20" aria-labelledby="website-builder-guides-heading">
                         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
                             <div className="max-w-3xl">
                                 <span className="text-sm font-black uppercase tracking-[0.2em] text-emerald-700">Website builder guides</span>
@@ -343,17 +318,17 @@ export default function Welcome() {
                                     ['/website-builder-for-small-business', 'Small Business Website Builder', 'Create a professional website designed around small-business needs.'],
                                     ['/no-code-website-builder', 'No-Code Website Builder', 'Customize content and design visually without starting from code.'],
                                 ].map(([href, title, description]) => (
-                                    <Link key={href} href={href} className="group rounded-2xl border border-slate-200 bg-slate-50 p-6 transition hover:border-emerald-300 hover:bg-emerald-50/60">
-                                        <h3 className="text-lg font-black text-slate-950 group-hover:text-emerald-800">{title}</h3>
+                                    <Link key={href} href={href} className="cosmic-welcome-guide-card group flex min-h-[190px] flex-col rounded-2xl border border-slate-200 bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:border-emerald-300 hover:bg-emerald-50/60 hover:shadow-lg">
+                                        <h3 className="cosmic-welcome-guide-title text-lg font-black text-slate-950 group-hover:text-emerald-800">{title}</h3>
                                         <p className="mt-2 leading-7 text-slate-600">{description}</p>
-                                        <span className="mt-4 inline-flex text-sm font-black text-emerald-700">Read guide →</span>
+                                        <span className="cosmic-welcome-guide-cta mt-auto inline-flex pt-4 text-sm font-black text-emerald-700">Read guide →</span>
                                     </Link>
                                 ))}
                             </div>
                         </div>
                     </section>
 
-                    <section id="pricing" className="bg-white py-24 sm:py-28">
+                    <section id="pricing" className="bg-white py-16 sm:py-20 lg:py-24">
                         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
                             <div className="mx-auto max-w-3xl text-center">
                                 <span className="text-sm font-black uppercase tracking-[0.2em] text-emerald-700">Simple monthly plans</span>
@@ -363,7 +338,7 @@ export default function Welcome() {
 
                             <div className="mt-14 grid gap-6 lg:grid-cols-3">
                                 {plans.map((plan) => (
-                                    <article key={plan.name} className={`relative rounded-3xl border p-7 sm:p-8 ${plan.featured ? 'border-emerald-300 bg-emerald-50/60 shadow-xl shadow-emerald-100' : 'border-slate-200 bg-white shadow-sm'}`}>
+                                    <article key={plan.name} className={`relative flex h-full flex-col rounded-3xl border p-7 sm:p-8 ${plan.featured ? 'border-emerald-300 bg-emerald-50/60 shadow-xl shadow-emerald-100' : 'border-slate-200 bg-white shadow-sm'}`}>
                                         {plan.featured && <span className="absolute right-6 top-6 rounded-full bg-emerald-700 px-3 py-1 text-[11px] font-black uppercase tracking-[0.12em] text-white">Most popular</span>}
                                         <h3 className="text-xl font-black text-slate-950">{plan.name}</h3>
                                         <div className="mt-5 flex items-end gap-2">
@@ -371,7 +346,7 @@ export default function Welcome() {
                                             <span className="pb-1 text-sm font-bold text-slate-500">/ month</span>
                                         </div>
                                         <p className="mt-4 min-h-[56px] leading-7 text-slate-600">{plan.description}</p>
-                                        <ul className="mt-7 space-y-3">
+                                        <ul className="mt-7 flex-1 space-y-3">
                                             {plan.features.map((feature) => (
                                                 <li key={feature} className="flex items-center gap-3 text-sm font-semibold text-slate-700"><CheckIcon />{feature}</li>
                                             ))}
@@ -385,7 +360,7 @@ export default function Welcome() {
                         </div>
                     </section>
 
-                    <section className="px-5 pb-24 sm:px-6 sm:pb-28 lg:px-8">
+                    <section className="px-5 pb-16 sm:px-6 sm:pb-20 lg:px-8">
                         <div className="relative mx-auto max-w-7xl overflow-hidden rounded-[32px] border border-emerald-200 bg-gradient-to-br from-emerald-50 via-green-50 to-lime-50 px-6 py-14 text-center text-slate-950 shadow-2xl shadow-emerald-100 sm:px-10 sm:py-16">
                             <div className="absolute left-1/2 top-[-220px] h-96 w-96 -translate-x-1/2 rounded-full bg-emerald-500/30 blur-3xl" />
                             <div className="relative mx-auto max-w-3xl">
@@ -394,7 +369,7 @@ export default function Welcome() {
                                 <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">Build the starting point with AI, refine it visually, and keep full control of what gets published.</p>
                                 <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
                                     <Link href="/start" className="rounded-xl bg-emerald-700 px-7 py-3.5 text-base font-black text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-800">Generate a free concept</Link>
-                                    <Link href="/pricing" className="rounded-xl border border-emerald-300 bg-white px-7 py-3.5 text-base font-black text-emerald-800 transition hover:bg-emerald-50">View plans</Link>
+                                    <Link href="/pricing" className="cosmic-welcome-view-plans rounded-xl border border-emerald-300 bg-white px-7 py-3.5 text-base font-black text-emerald-800 transition hover:bg-emerald-50">View plans</Link>
                                 </div>
                             </div>
                         </div>

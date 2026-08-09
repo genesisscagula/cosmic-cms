@@ -5,6 +5,7 @@ import '../../css/start.css';
 import ThemeLogo from '@/Branding/ThemeLogo';
 import SeoHead from '@/Components/Seo/SeoHead';
 import { trackCosmicEvent } from '@/Analytics/tracking';
+import PublicHeader from '@/Components/Public/PublicHeader';
 
 const fieldClass = 'mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20';
 
@@ -395,6 +396,7 @@ export default function Start({ trial }) {
         <>
             <SeoHead title="Free AI Website Generator | Create a Website Draft | Cosmic CMS" description="Describe your business and generate a free AI website draft with Cosmic CMS. Get a responsive starting point you can customize with your content, branding, pages, and design." path="/start" />
 
+            <PublicHeader />
             <main className="cosmic-start cosmic-start-light relative min-h-screen overflow-hidden bg-[#fbfffc] text-slate-900">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(circle_at_50%_-10%,rgba(124,58,237,0.25),transparent_48%),radial-gradient(circle_at_78%_12%,rgba(16,185,129,0.15),transparent_32%)]" />
 

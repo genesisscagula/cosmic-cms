@@ -3149,3 +3149,85 @@ body .cosmic-start-quick-idea.rounded-full.border {
         scroll-behavior: auto !important;
     }
 }
+
+
+/* ================================================================
+   Homepage responsive polish
+   ================================================================ */
+@media (max-width: 1023px) {
+    body:has([aria-label="Mobile navigation"]) {
+        overscroll-behavior-y: contain;
+    }
+}
+
+@media (max-width: 640px) {
+    #features,
+    #workflow,
+    #pricing {
+        scroll-margin-top: 76px;
+    }
+}
+
+
+/* ================================================================
+   Welcome homepage hotfix — public-light links/content visibility
+   ================================================================ */
+.cosmic-welcome-page,
+.cosmic-welcome-page a,
+.cosmic-welcome-page button {
+    -webkit-text-fill-color: currentColor;
+}
+
+.cosmic-welcome-mobile-link {
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+.cosmic-welcome-mobile-link:hover {
+    color: #065f46 !important;
+    -webkit-text-fill-color: #065f46 !important;
+}
+
+.cosmic-welcome-guide-card {
+    color: #0f172a !important;
+    -webkit-text-fill-color: initial !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+.cosmic-welcome-guide-title {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+.cosmic-welcome-guide-copy {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}
+.cosmic-welcome-guide-cta {
+    color: #047857 !important;
+    -webkit-text-fill-color: #047857 !important;
+}
+.cosmic-welcome-view-plans {
+    color: #065f46 !important;
+    -webkit-text-fill-color: #065f46 !important;
+    background-color: #ffffff !important;
+    opacity: 1 !important;
+}
+.cosmic-welcome-view-plans:hover {
+    color: #064e3b !important;
+    -webkit-text-fill-color: #064e3b !important;
+    background-color: #ecfdf5 !important;
+}
+
+
+/* Shared public mobile navigation: keep labels visible regardless of app theme. */
+.cosmic-public-mobile-link {
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+.cosmic-public-mobile-link:hover {
+    color: #065f46 !important;
+    -webkit-text-fill-color: #065f46 !important;
+}
