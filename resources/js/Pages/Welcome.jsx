@@ -1,4 +1,5 @@
 import { Head, Link } from '@inertiajs/react';
+import SeoHead from '@/Components/Seo/SeoHead';
 
 const features = [
     {
@@ -61,7 +62,28 @@ function CheckIcon() {
 export default function Welcome() {
     return (
         <>
-            <Head title="Cosmic CMS | AI Website Builder" />
+            <SeoHead
+                title="AI Website Builder for Modern Business Websites | Cosmic CMS"
+                description="Create modern, responsive business websites with Cosmic CMS. Generate a website with AI, customize it in the builder, and launch faster without starting from scratch."
+                path="/"
+                schema={[
+                    {
+                        '@context': 'https://schema.org',
+                        '@type': 'Organization',
+                        name: 'Cosmic CMS',
+                        url: 'https://www.cosmiccms.com/',
+                    },
+                    {
+                        '@context': 'https://schema.org',
+                        '@type': 'SoftwareApplication',
+                        name: 'Cosmic CMS',
+                        applicationCategory: 'BusinessApplication',
+                        operatingSystem: 'Web',
+                        url: 'https://www.cosmiccms.com/',
+                        description: 'AI website builder for generating and customizing modern business websites.',
+                    },
+                ]}
+            />
 
             <div className="min-h-screen bg-white text-slate-900 selection:bg-emerald-100 selection:text-emerald-950">
                 <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
@@ -236,7 +258,7 @@ export default function Welcome() {
                         </div>
                     </section>
 
-                    <section id="features" className="bg-white py-24 sm:py-28">
+                    <section id="features" data-perf="deferred" className="cosmic-defer-render bg-white py-24 sm:py-28">
                         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
                             <div className="max-w-3xl">
                                 <span className="text-sm font-black uppercase tracking-[0.2em] text-emerald-700">One connected platform</span>
@@ -281,7 +303,7 @@ export default function Welcome() {
                         </div>
                     </section>
 
-                    <section id="workflow" className="border-y border-slate-200 bg-slate-50 py-24 sm:py-28">
+                    <section id="workflow" data-perf="deferred" className="cosmic-defer-render border-y border-slate-200 bg-slate-50 py-24 sm:py-28">
                         <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
                             <div className="grid gap-14 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
                                 <div className="lg:sticky lg:top-28">
@@ -302,6 +324,31 @@ export default function Welcome() {
                                         </div>
                                     ))}
                                 </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <section className="border-b border-slate-200 bg-white py-20 sm:py-24" aria-labelledby="website-builder-guides-heading">
+                        <div className="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+                            <div className="max-w-3xl">
+                                <span className="text-sm font-black uppercase tracking-[0.2em] text-emerald-700">Website builder guides</span>
+                                <h2 id="website-builder-guides-heading" className="mt-4 text-3xl font-black tracking-[-0.035em] text-slate-950 sm:text-4xl">Explore the right way to build your website with AI.</h2>
+                                <p className="mt-5 text-lg leading-8 text-slate-600">Learn how Cosmic CMS approaches AI-assisted website generation, modern visual editing, no-code workflows, and small-business website creation.</p>
+                            </div>
+                            <div className="mt-10 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                                {[
+                                    ['/ai-website-builder', 'AI Website Builder', 'Generate a structured, editable business website with AI assistance.'],
+                                    ['/ai-website-generator', 'AI Website Generator', 'Turn a short business description into a responsive website starting point.'],
+                                    ['/modern-website-builder', 'Modern Website Builder', 'Build responsive, conversion-focused pages with a modern editing workflow.'],
+                                    ['/website-builder-for-small-business', 'Small Business Website Builder', 'Create a professional website designed around small-business needs.'],
+                                    ['/no-code-website-builder', 'No-Code Website Builder', 'Customize content and design visually without starting from code.'],
+                                ].map(([href, title, description]) => (
+                                    <Link key={href} href={href} className="group rounded-2xl border border-slate-200 bg-slate-50 p-6 transition hover:border-emerald-300 hover:bg-emerald-50/60">
+                                        <h3 className="text-lg font-black text-slate-950 group-hover:text-emerald-800">{title}</h3>
+                                        <p className="mt-2 leading-7 text-slate-600">{description}</p>
+                                        <span className="mt-4 inline-flex text-sm font-black text-emerald-700">Read guide →</span>
+                                    </Link>
+                                ))}
                             </div>
                         </div>
                     </section>

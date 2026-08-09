@@ -4,7 +4,18 @@
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
 
-        <title inertia>Cosmic CMS</title>
+        <title inertia>{{ config('cosmic-seo.default_title') }}</title>
+        <meta name="description" content="{{ config('cosmic-seo.default_description') }}">
+        @if (app()->environment('production'))
+            <meta name="robots" content="index,follow,max-image-preview:large,max-snippet:-1,max-video-preview:-1">
+        @else
+            <meta name="robots" content="noindex,nofollow,noarchive">
+        @endif
+        <meta property="og:site_name" content="Cosmic CMS">
+        <meta property="og:type" content="website">
+        @if (config('cosmic-tracking.google_site_verification'))
+            <meta name="google-site-verification" content="{{ config('cosmic-tracking.google_site_verification') }}">
+        @endif
 
         <!-- Cosmic CMS browser branding -->
         <link rel="icon" type="image/x-icon" href="{{ asset('favicon.ico') }}?v=3">
@@ -15,7 +26,8 @@
         <meta name="theme-color" content="#16a34a">
 
         <!-- Fonts -->
-        <link rel="preconnect" href="https://fonts.bunny.net">
+        <link rel="dns-prefetch" href="//fonts.bunny.net">
+        <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
         <link href="https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap" rel="stylesheet" />
 
         <!-- Apply the saved appearance before CSS/React paint to prevent flashes. -->

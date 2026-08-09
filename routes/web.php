@@ -44,6 +44,85 @@ Route::post('/legal/consent', [LegalController::class, 'consent'])
     ->middleware(['throttle:20,1', \App\Http\Middleware\RejectOversizedRequest::class . ':32'])
     ->name('legal.consent');
 
+// Public search-engine discovery endpoints. Keep these outside auth middleware.
+Route::get('/robots.txt', function () {
+    $baseUrl = rtrim(config('cosmic-seo.base_url'), '/');
+
+    $robots = [
+        'User-agent: *',
+        'Allow: /',
+        'Disallow: /dashboard',
+        'Disallow: /profile',
+        'Disallow: /api/',
+        'Disallow: /admin/',
+        'Disallow: /builder/',
+        'Disallow: /pages/',
+        'Disallow: /websites/',
+        'Disallow: /checkout/',
+        'Disallow: /payment/',
+        '',
+        "Sitemap: {$baseUrl}/sitemap.xml",
+        "Host: " . parse_url($baseUrl, PHP_URL_HOST),
+        '',
+    ];
+
+    return response(implode("\n", $robots), 200)
+        ->header('Content-Type', 'text/plain; charset=UTF-8');
+})->name('seo.robots');
+
+Route::get('/sitemap.xml', function () {
+    $baseUrl = rtrim(config('cosmic-seo.base_url'), '/');
+    $pages = [
+        ['path' => '/', 'priority' => '1.0', 'frequency' => 'weekly'],
+        ['path' => '/start', 'priority' => '0.9', 'frequency' => 'weekly'],
+        ['path' => '/pricing', 'priority' => '0.8', 'frequency' => 'monthly'],
+        ['path' => '/ai-website-builder', 'priority' => '0.9', 'frequency' => 'monthly'],
+        ['path' => '/ai-website-generator', 'priority' => '0.9', 'frequency' => 'monthly'],
+        ['path' => '/modern-website-builder', 'priority' => '0.8', 'frequency' => 'monthly'],
+        ['path' => '/website-builder-for-small-business', 'priority' => '0.8', 'frequency' => 'monthly'],
+        ['path' => '/no-code-website-builder', 'priority' => '0.8', 'frequency' => 'monthly'],
+        ['path' => '/terms', 'priority' => '0.2', 'frequency' => 'yearly'],
+        ['path' => '/privacy', 'priority' => '0.2', 'frequency' => 'yearly'],
+        ['path' => '/cookies', 'priority' => '0.2', 'frequency' => 'yearly'],
+    ];
+
+    $urls = collect($pages)->map(function ($page) use ($baseUrl) {
+        $loc = htmlspecialchars($baseUrl . $page['path'], ENT_XML1);
+        return "  <url>\n    <loc>{$loc}</loc>\n    <changefreq>{$page['frequency']}</changefreq>\n    <priority>{$page['priority']}</priority>\n  </url>";
+    })->implode("\n");
+
+    $xml = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n{$urls}\n</urlset>\n";
+
+    return response($xml, 200)->header('Content-Type', 'application/xml; charset=UTF-8');
+})->name('seo.sitemap');
+
+
+// SEO A6: lightweight production diagnostics. No credentials or tracking IDs are exposed.
+Route::get('/seo-health', function () {
+    $baseUrl = rtrim((string) config('cosmic-seo.base_url'), '/');
+    $host = parse_url($baseUrl, PHP_URL_HOST);
+    $production = app()->environment('production');
+
+    $checks = [
+        'https_base_url' => str_starts_with($baseUrl, 'https://'),
+        'canonical_host' => $host === 'www.cosmiccms.com',
+        'default_title' => filled(config('cosmic-seo.default_title')),
+        'default_description' => filled(config('cosmic-seo.default_description')),
+    ];
+
+    $healthy = !in_array(false, $checks, true);
+
+    return response()->json([
+        'status' => $healthy ? 'ok' : 'attention',
+        'environment' => app()->environment(),
+        'indexing_expected' => $production && $healthy,
+        'checks' => $checks,
+        'sitemap' => "{$baseUrl}/sitemap.xml",
+        'robots' => "{$baseUrl}/robots.txt",
+    ], $healthy ? 200 : 503)
+        ->header('X-Robots-Tag', 'noindex, nofollow');
+})->name('seo.health');
+
 Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
@@ -54,6 +133,87 @@ Route::get('/', function () {
 });
 
 Route::get('/pricing', fn (\Illuminate\Http\Request $request) => Inertia::render('Pricing', ['trialToken' => $request->query('token')]))->name('pricing');
+
+
+// SEO A2: focused, useful search landing pages. One intent per URL prevents keyword cannibalization.
+$seoLandingPages = [
+    '/ai-website-builder' => [
+        'title' => 'AI Website Builder for Modern Business Websites | Cosmic CMS',
+        'description' => 'Use Cosmic CMS to generate a modern business website with AI, then edit the content, sections, images, and design in a visual builder.',
+        'eyebrow' => 'AI Website Builder',
+        'h1' => 'Build a modern business website with AI',
+        'intro' => 'Cosmic CMS turns a short business brief into a structured, responsive website starting point that stays fully editable.',
+        'body' => 'Instead of beginning with an empty canvas, start with AI-assisted page structure, content direction, imagery, and design. Cosmic CMS is built for businesses and creators who want a faster first draft without giving up control of the finished website.',
+        'benefits' => ['Generate a complete website starting point from a business brief','Edit sections, copy, imagery, calls to action, headers, and footers','Preview responsive layouts before publishing','Use reusable Sparks to expand and refine pages'],
+        'faqs' => [
+            ['q'=>'What is an AI website builder?','a'=>'An AI website builder uses artificial intelligence to help create a website structure, content, and design from information you provide about a business or project.'],
+            ['q'=>'Can I edit the website after AI generates it?','a'=>'Yes. Cosmic CMS creates an editable starting point, so you can refine content, images, sections, themes, and other website elements.'],
+            ['q'=>'Is Cosmic CMS suitable for business websites?','a'=>'Cosmic CMS is designed around modern business websites, including service businesses, agencies, restaurants, professional services, and other small-business use cases.'],
+        ],
+    ],
+    '/ai-website-generator' => [
+        'title' => 'AI Website Generator — Create an Editable Website | Cosmic CMS',
+        'description' => 'Generate an editable business website from a prompt with Cosmic CMS. Start with AI-created structure and content, then customize it visually.',
+        'eyebrow' => 'AI Website Generator',
+        'h1' => 'Generate an editable website from your business idea',
+        'intro' => 'Describe what your business does and let Cosmic create a polished website concept instead of starting from a blank page.',
+        'body' => 'Cosmic combines AI-assisted planning with a visual builder. The generated result is a starting point rather than a locked image: you can continue changing the copy, layout, images, calls to action, and site-wide design.',
+        'benefits' => ['Prompt-based website generation','Business-focused page structure','Responsive website output','Visual editing after generation'],
+        'faqs' => [
+            ['q'=>'How does an AI website generator work?','a'=>'You describe the website you need. The generator uses that context to create a suitable structure and initial content that can then be reviewed and edited.'],
+            ['q'=>'Do I need to write all of the website copy first?','a'=>'No. Cosmic can create an initial content direction from your brief, and you can replace or refine the copy afterward.'],
+            ['q'=>'Can I change the generated design?','a'=>'Yes. The generated website is intended to be customized in the Cosmic CMS builder.'],
+        ],
+    ],
+    '/modern-website-builder' => [
+        'title' => 'Modern Website Builder for Responsive Business Sites | Cosmic CMS',
+        'description' => 'Create responsive, modern business websites with Cosmic CMS. Start faster with AI assistance and customize your website in a visual builder.',
+        'eyebrow' => 'Modern Website Builder',
+        'h1' => 'A modern website builder built for faster launches',
+        'intro' => 'Create a clean, responsive business website with an AI-assisted workflow and an editor designed to keep customization straightforward.',
+        'body' => 'Modern websites need more than attractive colors. Cosmic CMS focuses on responsive layouts, clear content hierarchy, reusable sections, and an efficient workflow from generation through editing and launch preparation.',
+        'benefits' => ['Responsive layouts for desktop, tablet, and mobile','Reusable section system for consistent pages','Modern visual themes and typography','AI-assisted content and website planning'],
+        'faqs' => [
+            ['q'=>'What makes a website builder modern?','a'=>'A modern website builder should support responsive layouts, fast editing, reusable design systems, accessible content structure, and efficient publishing workflows.'],
+            ['q'=>'Can I use Cosmic CMS without starting from scratch?','a'=>'Yes. Cosmic can generate a website starting point based on your business description.'],
+            ['q'=>'Are generated websites responsive?','a'=>'Cosmic CMS is designed around responsive website layouts that can be reviewed across common device sizes in the builder.'],
+        ],
+    ],
+    '/website-builder-for-small-business' => [
+        'title' => 'AI Website Builder for Small Business | Cosmic CMS',
+        'description' => 'Build a professional small-business website faster with Cosmic CMS. Generate a starting point with AI, customize it, and prepare it for launch.',
+        'eyebrow' => 'For Small Business',
+        'h1' => 'Build your small-business website without the blank-canvas work',
+        'intro' => 'Give Cosmic a description of your business and get a professional website concept you can customize around your services, customers, and brand.',
+        'body' => 'Small businesses need clear pages, strong calls to action, mobile-friendly design, and an easy way to keep information current. Cosmic CMS brings those pieces into one workflow while using AI to speed up the first draft.',
+        'benefits' => ['Built for service and local-business websites','Create service-focused page structures','Edit calls to action and business information visually','Start with AI instead of an empty template'],
+        'faqs' => [
+            ['q'=>'Is Cosmic CMS suitable for a small business?','a'=>'Yes. The workflow is designed to help small businesses create professional websites without beginning every page from an empty canvas.'],
+            ['q'=>'What information should I provide to generate a website?','a'=>'A short description of your business, services, audience, and preferred style gives the AI useful context for the first draft.'],
+            ['q'=>'Can I customize the website for my brand?','a'=>'Yes. You can refine content, imagery, themes, and other visual elements after generation.'],
+        ],
+    ],
+    '/no-code-website-builder' => [
+        'title' => 'No-Code AI Website Builder for Business | Cosmic CMS',
+        'description' => 'Create and customize a business website visually with Cosmic CMS. AI helps produce the starting point so you can focus on content and design.',
+        'eyebrow' => 'Visual Website Builder',
+        'h1' => 'Create a business website visually, with AI doing the first-draft work',
+        'intro' => 'Cosmic CMS combines AI generation with a visual editing workflow so routine website creation does not have to begin with code.',
+        'body' => 'Use AI to establish the initial website direction, then work through editable sections and site settings. The goal is to make common business-site changes approachable while preserving a structured website underneath.',
+        'benefits' => ['Visual editing for common website content','AI-generated starting structure','Reusable Sparks instead of rebuilding sections','Responsive preview workflow'],
+        'faqs' => [
+            ['q'=>'Do I need to code to create a website with Cosmic CMS?','a'=>'The core website creation and editing workflow is visual, so common content and design changes do not require writing code.'],
+            ['q'=>'What can I edit visually?','a'=>'Depending on the page and section, you can edit content, imagery, calls to action, sections, and site-wide design settings.'],
+            ['q'=>'Does no-code mean I lose control of the design?','a'=>'No. Cosmic uses structured sections and themes while still allowing you to customize the generated starting point.'],
+        ],
+    ],
+];
+
+foreach ($seoLandingPages as $path => $page) {
+    Route::get($path, fn () => Inertia::render('Public/SeoLanding', [
+        'page' => array_merge($page, ['path' => $path]),
+    ]));
+}
 
 Route::get('/start', [TrialGenerationController::class, 'create'])->name('start');
 Route::post('/start', [TrialGenerationController::class, 'store'])->middleware('throttle:6,1')->name('trial-generations.store');

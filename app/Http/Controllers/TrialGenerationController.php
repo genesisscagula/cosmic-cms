@@ -365,17 +365,26 @@ class TrialGenerationController extends Controller
             'email' => ['required', 'email:rfc', 'max:255'],
         ]);
 
+        $email = Str::lower($validated['email']);
+        $welcomeAlreadySentToThisEmail = $trial->welcome_email_sent_at
+            && Str::lower((string) $trial->welcome_email_address) === $email;
+
         $trial->update([
-            'email' => Str::lower($validated['email']),
+            'email' => $email,
             'email_captured_at' => now(),
             'last_saved_at' => now(),
         ]);
 
-        $this->sendTrialAccessEmail($trial, false);
+        if (! $welcomeAlreadySentToThisEmail) {
+            $this->sendTrialAccessEmail($trial, false);
+        }
 
         return response()->json([
-            'message' => 'Your private editing link has been sent to your email.',
+            'message' => $welcomeAlreadySentToThisEmail
+                ? 'Your email is saved and your private Builder link is still active.'
+                : 'Your Cosmic CMS welcome email and private Builder link are on the way.',
             'email' => $trial->email,
+            'welcome_email_queued' => ! $welcomeAlreadySentToThisEmail,
         ]);
     }
 

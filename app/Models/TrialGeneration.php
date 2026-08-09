@@ -36,6 +36,11 @@ class TrialGeneration extends Model
         'selected_plan',
         'plan_selected_at',
         'email_captured_at',
+        'welcome_email_sent_at',
+        'welcome_email_address',
+        'welcome_email_attempts',
+        'welcome_email_last_attempt_at',
+        'welcome_email_last_error',
         'last_saved_at',
     ];
 
@@ -49,6 +54,9 @@ class TrialGeneration extends Model
         'claimed_at' => 'datetime',
         'plan_selected_at' => 'datetime',
         'email_captured_at' => 'datetime',
+        'welcome_email_sent_at' => 'datetime',
+        'welcome_email_attempts' => 'integer',
+        'welcome_email_last_attempt_at' => 'datetime',
         'last_saved_at' => 'datetime',
     ];
 

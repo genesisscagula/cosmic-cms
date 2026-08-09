@@ -1,5 +1,7 @@
 import { Head, Link } from '@inertiajs/react';
 import { useMemo, useState } from 'react';
+import SeoHead from '@/Components/Seo/SeoHead';
+import { trackCosmicEvent } from '@/Analytics/tracking';
 
 const planFamilies = {
     personal: [
@@ -156,7 +158,7 @@ export default function Pricing({ trialToken = null }) {
 
     return (
         <>
-            <Head title="Pricing | Cosmic CMS" />
+            <SeoHead title="AI Website Builder Pricing & Plans | Cosmic CMS" description="Compare Cosmic CMS AI website builder plans for small businesses, growing teams, and agencies. Generate a website with AI, customize it visually, and scale when you are ready." path="/pricing" />
             <div className="cosmic-public-light min-h-screen bg-[#fbfefc] text-slate-900 selection:bg-emerald-100 selection:text-emerald-950">
                 <header className="sticky top-0 z-50 border-b border-slate-200/80 bg-white/90 backdrop-blur-xl">
                     <div className="mx-auto flex max-w-7xl items-center justify-between px-5 py-4 sm:px-6 lg:px-8">
@@ -213,7 +215,7 @@ export default function Pricing({ trialToken = null }) {
                                     <ul className="mt-7 flex-1 space-y-3.5">
                                         {plan.features.map((feature) => <li key={feature} className="flex gap-3 text-sm font-medium leading-6 text-slate-800"><CheckIcon />{feature}</li>)}
                                     </ul>
-                                    <Link href={registrationUrl(plan.key)} className={`cosmic-pricing-cta mt-8 flex items-center justify-center rounded-xl px-5 py-3.5 text-sm font-black transition ${plan.highlight ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`} style={plan.highlight ? { color: '#ffffff' } : { color: '#065f46' }}>Choose {plan.name}</Link>
+                                    <Link href={registrationUrl(plan.key)} onClick={() => trackCosmicEvent('plan_selected', { plan_key: plan.key, plan_family: family, plan_name: plan.name, source: 'pricing_page' })} className={`cosmic-pricing-cta mt-8 flex items-center justify-center rounded-xl px-5 py-3.5 text-sm font-black transition ${plan.highlight ? 'bg-emerald-700 text-white hover:bg-emerald-800' : 'border border-emerald-600 bg-emerald-50 text-emerald-800 hover:bg-emerald-100'}`} style={plan.highlight ? { color: '#ffffff' } : { color: '#065f46' }}>Choose {plan.name}</Link>
                                 </article>
                             ))}
                         </div>
@@ -259,7 +261,13 @@ export default function Pricing({ trialToken = null }) {
                             <p className="mx-auto mt-4 max-w-2xl leading-7 text-slate-600">Generate a free website concept first. You can review the direction before selecting a paid Personal or Agency plan.</p>
                             <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
                                 <Link href="/start" className="rounded-xl bg-emerald-700 px-7 py-3.5 text-base font-black text-white transition hover:bg-emerald-800">Generate a free concept</Link>
-                                <Link href="/" className="rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-base font-black text-slate-800 transition hover:bg-slate-50">Back to home</Link>
+                                <Link href="/ai-website-builder" className="rounded-xl border border-slate-300 bg-white px-7 py-3.5 text-base font-black text-slate-800 transition hover:bg-slate-50">Explore AI website builder</Link>
+                            </div>
+                            <div className="mt-6 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-bold text-slate-500">
+                                <Link href="/ai-website-generator" className="hover:text-emerald-700">AI website generator</Link>
+                                <Link href="/modern-website-builder" className="hover:text-emerald-700">Modern website builder</Link>
+                                <Link href="/website-builder-for-small-business" className="hover:text-emerald-700">Small business website builder</Link>
+                                <Link href="/no-code-website-builder" className="hover:text-emerald-700">No-code website builder</Link>
                             </div>
                         </div>
                     </section>

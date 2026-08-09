@@ -1,7 +1,17 @@
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Head, Link } from '@inertiajs/react';
+import { useEffect } from 'react';
+import { trackCosmicEvent } from '@/Analytics/tracking';
 
 export default function Success({ onboarding, status }) {
+    useEffect(() => {
+        trackCosmicEvent('subscription_activated', {
+            plan_name: onboarding?.plan_name,
+            trial_transferred: Boolean(onboarding?.trial_transferred),
+            source: 'onboarding_success',
+        });
+    }, [onboarding?.plan_name, onboarding?.trial_transferred]);
+
     return (
         <GuestLayout
             wide

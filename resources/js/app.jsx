@@ -8,6 +8,7 @@ import CosmicNotification from './Components/CosmicNotification';
 import CookieConsent from './Components/CookieConsent';
 import { CreditBalanceProvider } from './Components/CosmicCredits/CreditBalanceContext';
 import { AppearanceProvider } from './Appearance/AppearanceContext';
+import CosmicTracking from './Analytics/CosmicTracking';
 
 const appName = 'Cosmic CMS';
 
@@ -47,6 +48,7 @@ createInertiaApp({
                 initialBalance={initialBalance}
             >
                 <App {...props} />
+                <CosmicTracking />
                 <CosmicNotification />
                 <CookieConsent />
             </CreditBalanceProvider>

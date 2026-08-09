@@ -79,6 +79,13 @@ class HandleInertiaRequests extends Middleware
                 'planChangeMatrix' => $user ? app(PlanEntitlementService::class)->changeMatrix($user->effectivePlanKey()) : [],
                 'appearance' => $appearance,
             ],
+            'tracking' => [
+                // Public IDs only. Optional Google scripts still require explicit
+                // browser consent before CosmicTracking loads or sends events.
+                'googleAnalyticsId' => config('cosmic-tracking.google_analytics_id'),
+                'googleTagManagerId' => config('cosmic-tracking.google_tag_manager_id'),
+                'googleAdsId' => config('cosmic-tracking.google_ads_id'),
+            ],
             'cosmicPlans' => fn () => app(PlanRegistry::class)->forClient(),
             'cosmicSparks' => fn () => SparkCatalog::forClient(),
             'cosmicTemplates' => fn () => [

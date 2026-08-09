@@ -3,6 +3,8 @@ import axios from 'axios';
 import { useEffect, useRef, useState } from 'react';
 import '../../css/start.css';
 import ThemeLogo from '@/Branding/ThemeLogo';
+import SeoHead from '@/Components/Seo/SeoHead';
+import { trackCosmicEvent } from '@/Analytics/tracking';
 
 const fieldClass = 'mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20';
 
@@ -310,6 +312,11 @@ export default function Start({ trial }) {
         setShowLoading(true);
         setProcessing(true);
 
+        trackCosmicEvent('trial_generation_started', {
+            source: 'start_page',
+            prompt_length: normalizedPrompt.length,
+        });
+
         try {
             const response = await axios.post('/start', { prompt: normalizedPrompt }, {
                 headers: {
@@ -354,6 +361,11 @@ export default function Start({ trial }) {
                 console.warn('Could not normalize Builder URL; using raw value.', urlError);
             }
 
+            trackCosmicEvent('trial_created', {
+                source: 'start_page',
+                page_id: pageId || undefined,
+            });
+
             // Use native navigation so Inertia state cannot hold the loading overlay.
             window.location.href = navigationUrl;
         } catch (requestError) {
@@ -381,7 +393,7 @@ export default function Start({ trial }) {
 
     return (
         <>
-            <Head title="Start building with Cosmic CMS" />
+            <SeoHead title="Free AI Website Generator | Create a Website Draft | Cosmic CMS" description="Describe your business and generate a free AI website draft with Cosmic CMS. Get a responsive starting point you can customize with your content, branding, pages, and design." path="/start" />
 
             <main className="cosmic-start cosmic-start-light relative min-h-screen overflow-hidden bg-[#fbfffc] text-slate-900">
                 <div className="pointer-events-none absolute inset-x-0 top-0 h-[42rem] bg-[radial-gradient(circle_at_50%_-10%,rgba(124,58,237,0.25),transparent_48%),radial-gradient(circle_at_78%_12%,rgba(16,185,129,0.15),transparent_32%)]" />
@@ -546,6 +558,17 @@ export default function Start({ trial }) {
             </div>
                 </section>
 
+                <section className="border-t border-slate-200 bg-white px-5 py-10 sm:px-6">
+                    <div className="mx-auto max-w-5xl text-center">
+                        <p className="text-sm font-bold text-slate-500">Learn more before you generate</p>
+                        <div className="mt-4 flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm font-black">
+                            <Link href="/ai-website-builder" className="text-slate-700 hover:text-emerald-700">AI Website Builder</Link>
+                            <Link href="/ai-website-generator" className="text-slate-700 hover:text-emerald-700">AI Website Generator</Link>
+                            <Link href="/modern-website-builder" className="text-slate-700 hover:text-emerald-700">Modern Website Builder</Link>
+                            <Link href="/website-builder-for-small-business" className="text-slate-700 hover:text-emerald-700">Small Business Website Builder</Link>
+                        </div>
+                    </div>
+                </section>
             </main>
         </>
     );

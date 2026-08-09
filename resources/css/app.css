@@ -3130,3 +3130,22 @@ body .cosmic-start-quick-idea.rounded-full.border {
     border-radius: inherit;
     background: rgba(148, 163, 184, 0.10);
 }
+
+/* SEO-A4: defer below-the-fold rendering without changing layout. */
+@supports (content-visibility: auto) {
+    .cosmic-defer-render {
+        content-visibility: auto;
+        contain-intrinsic-size: auto 760px;
+    }
+}
+
+/* Respect reduced-motion users and avoid unnecessary animation work. */
+@media (prefers-reduced-motion: reduce) {
+    html:focus-within { scroll-behavior: auto; }
+    *, *::before, *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+        scroll-behavior: auto !important;
+    }
+}
