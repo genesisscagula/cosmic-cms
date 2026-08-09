@@ -38,7 +38,7 @@ class AIController extends Controller
             'sections' => ['required', 'array', 'min:1'],
             'sections.*' => ['required', 'string'],
             'image_folder' => ['nullable', 'string'],
-            'generation_type' => ['nullable', 'string', 'in:page,section'],
+            'generation_type' => ['nullable', 'string', 'in:page,section,template'],
             'website_id' => ['nullable', 'integer', 'exists:websites,id'],
         ]);
 
@@ -49,22 +49,24 @@ class AIController extends Controller
         }
 
         $generationType = $validated['generation_type'] ?? (count($validated['sections']) > 1 ? 'page' : 'section');
-        $cost = $generationType === 'page'
-            ? ActionPricing::GENERATE_PAGE
-            : ActionPricing::SPARK_AI_PERSONALIZE;
+        $cost = match ($generationType) {
+            'page' => ActionPricing::GENERATE_PAGE,
+            'template' => ActionPricing::TEMPLATE_AI_PERSONALIZE,
+            default => ActionPricing::SPARK_AI_PERSONALIZE,
+        };
         $reference = 'ai-' . Str::uuid();
 
         $this->credits->consume(
             $request->user(),
             $cost,
-            $generationType === 'page' ? 'Generate page with Cosmic AI' : 'Generate section with Cosmic AI',
+            $generationType === 'page' ? 'Generate page with Cosmic AI' : ($generationType === 'template' ? 'Personalize page template with Cosmic AI' : 'Generate section with Cosmic AI'),
             $website,
             $reference,
             [
                 'generation_type' => $generationType,
                 'sections' => $validated['sections'],
                 'estimated_cost' => $cost,
-                'pricing_rule' => $generationType === 'section' ? 'spark_ai_personalize' : 'generate_page',
+                'pricing_rule' => $generationType === 'section' ? 'spark_ai_personalize' : ($generationType === 'template' ? 'template_ai_personalize' : 'generate_page'),
             ],
         );
 

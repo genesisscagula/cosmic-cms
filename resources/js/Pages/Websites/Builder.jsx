@@ -6,6 +6,7 @@ import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadg
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 
 import AddSectionModal from "./Components/AddSectionModal";
+import PageTemplatesModal from "./Components/PageTemplatesModal";
 import GeneratePageModal from "./Components/GeneratePageModal";
 
 import ThemeSelector from "./Theme/ThemeSelector";
@@ -169,6 +170,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     });
 
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
     const [isGeneratePageOpen, setIsGeneratePageOpen] = useState(false);
     const [aiResult, setAiResult] = useState(null);
     const [aiLoading, setAiLoading] = useState(false);
@@ -1575,6 +1577,18 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     Generate Page
                                 </button>
                             )}
+
+                            {!trialMode && capabilities.canGenerateAi && (
+                                <button
+                                    type="button"
+                                    onClick={() => setIsTemplatesOpen(true)}
+                                    className="cosmic-templates-trigger hidden h-9 shrink-0 items-center gap-1.5 rounded-lg border border-fuchsia-300/35 bg-gradient-to-r from-violet-500/20 via-fuchsia-500/15 to-cyan-400/10 px-3 text-xs font-bold text-fuchsia-50 shadow-[0_0_20px_rgba(168,85,247,0.12)] transition hover:border-fuchsia-300/60 hover:from-violet-500/30 hover:via-fuchsia-500/25 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 lg:inline-flex"
+                                >
+                                    <span aria-hidden="true">▣</span>
+                                    Templates
+                                    <span className="rounded-full bg-fuchsia-300 px-1.5 py-0.5 text-[8px] font-black tracking-wide text-fuchsia-950">NEW</span>
+                                </button>
+                            )}
                         </div>
 
                         <div className={`${trialMode ? 'order-3 flex w-full items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 sm:order-none sm:w-auto' : 'hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 xl:flex'}`}>
@@ -2190,6 +2204,30 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     ownedOnly={Boolean(sparkInsertTarget)}
                     contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : null}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
+                />
+            )}
+
+            {!trialMode && capabilities.canGenerateAi && (
+                <PageTemplatesModal
+                    open={isTemplatesOpen}
+                    onClose={() => setIsTemplatesOpen(false)}
+                    onInstall={(blocks, template) => {
+                        if ((data.blocks?.length ?? 0) > 0 && !window.confirm(`Install ${template.name}? This will replace the current page layout. Your changes are not saved until you click Save Draft.`)) return false;
+                        replaceBlocks(blocks);
+                        setIsTemplatesOpen(false);
+                        return true;
+                    }}
+                    websiteContext={websiteContext}
+                    websiteId={website?.id}
+                    websiteTheme={globalSelections}
+                    themeValue={globalSelections.primary}
+                    onThemeChange={handleThemeChange}
+                    themeAccess={themeAccess}
+                    customTheme={globalSelections?.custom_brand_theme}
+                    hasLogo={hasRealBrandLogo}
+                    brandMatchNeeded={brandMatchNeeded}
+                    onMatchBrandToLogo={matchThemeToLogo}
+                    brandMatchBusy={logoBusy && logoAiAction === 'theme_to_logo'}
                 />
             )}
 

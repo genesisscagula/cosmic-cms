@@ -10,6 +10,7 @@ class ActionPricing
     public const GENERATE_WEBSITE = 100;
     public const AI_REWRITE = 10;
     public const SPARK_AI_PERSONALIZE = 20;
+    public const TEMPLATE_AI_PERSONALIZE = 50;
 
     public static function all(): array
     {
@@ -20,6 +21,7 @@ class ActionPricing
             'generate_website' => self::GENERATE_WEBSITE,
             'ai_rewrite' => self::AI_REWRITE,
             'spark_ai_personalize' => self::SPARK_AI_PERSONALIZE,
+            'template_ai_personalize' => self::TEMPLATE_AI_PERSONALIZE,
         ];
     }
 }

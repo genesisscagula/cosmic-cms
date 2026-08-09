@@ -2,6 +2,7 @@
 
 use App\Helpers\CmsHtmlCompiler;
 use App\Http\Controllers\AI\AIController;
+use App\Http\Controllers\PageTemplateController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
@@ -160,12 +161,24 @@ if (config('cosmic_preview.mode') === 'local') {
         ->name('preview.local');
 }
 
-// In production one wildcard DNS record (*.preview.cosmiccms.com) points to this Laravel app.
-// No DigitalOcean DNS API request is needed when an individual website is published.
+// In production one wildcard DNS record (*.cosmiccms.com, or the configured domain)
+// points to this Laravel app. Reserved infrastructure hosts such as `www` must
+// never be treated as generated website preview slugs.
 if (config('cosmic_preview.mode') === 'subdomain' && filled(config('cosmic_preview.domain'))) {
+    $reservedPreviewSlugs = array_values(array_filter(array_map(
+        static fn ($slug) => preg_quote(strtolower(trim((string) $slug)), '/'),
+        (array) config('cosmic_preview.reserved_slugs', [])
+    )));
+
+    $previewSlugPattern = '[a-z0-9][a-z0-9-]{0,59}';
+
+    if ($reservedPreviewSlugs !== []) {
+        $previewSlugPattern = '(?!(?:'.implode('|', $reservedPreviewSlugs).')$)'.$previewSlugPattern;
+    }
+
     Route::domain('{preview}.'.config('cosmic_preview.domain'))
         ->get('/{path?}', [PreviewController::class, 'subdomain'])
-        ->where('preview', '[a-z0-9][a-z0-9-]{0,59}')
+        ->where('preview', $previewSlugPattern)
         ->where('path', '.*')
         ->name('preview.subdomain');
 }
@@ -363,6 +376,10 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
         ->middleware('throttle:5,1')
         ->name('payments.subscription.recover');
     Route::get('/cosmic-pricing', [CosmicPricingController::class, 'index'])->name('cosmic-pricing.index');
+    Route::get('/page-templates/catalog', [PageTemplateController::class, 'catalog'])->name('page-templates.catalog');
+    Route::post('/page-templates/{key}/unlock', [PageTemplateController::class, 'unlock'])->name('page-templates.unlock');
+    Route::post('/page-templates/{key}/favorite', [PageTemplateController::class, 'toggleFavorite'])->name('page-templates.favorite.toggle');
+
     Route::get('/sparks', [SparkController::class, 'index'])->name('sparks.index');
     Route::get('/sparks/catalog', [SparkController::class, 'catalog'])->name('sparks.catalog');
     Route::post('/sparks/{key}/unlock', [SparkController::class, 'unlockKey'])->name('sparks.unlock');

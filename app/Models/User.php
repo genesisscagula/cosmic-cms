@@ -160,6 +160,11 @@ class User extends Authenticatable
         return $this->hasMany(CosmicSparkFavorite::class);
     }
 
+    public function templateFavorites()
+    {
+        return $this->hasMany(\App\Models\CosmicTemplateFavorite::class);
+    }
+
     public function cosmicUnlocks()
     {
         return $this->hasMany(CosmicUnlock::class);
