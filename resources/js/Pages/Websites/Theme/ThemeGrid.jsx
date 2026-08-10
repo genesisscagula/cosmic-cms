@@ -9,7 +9,10 @@ export default function ThemeGrid({
     hasLogo = false,
     brandMatchNeeded = false,
     onMatchBrandToLogo = null,
-    brandMatchBusy = false
+    brandMatchBusy = false,
+    logoMatchPending = false,
+    onMatchLogoToTheme = null,
+    logoMatchBusy = false
 }) {
     return (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -31,6 +34,9 @@ export default function ThemeGrid({
                     brandMatchNeeded={brandMatchNeeded}
                     onMatchBrandToLogo={onMatchBrandToLogo}
                     brandMatchBusy={brandMatchBusy}
+                    logoMatchPending={logoMatchPending}
+                    onMatchLogoToTheme={onMatchLogoToTheme}
+                    logoMatchBusy={logoMatchBusy}
                 />
 
             ))}

@@ -8,7 +8,7 @@ import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../t
 
 const DEFAULT_SLIDES = [
     {
-        image_url: '',
+        image_url: '/storage/cms-images/background/background-1.avif',
         eyebrow: 'Built for what is next',
         heading: 'Make a confident first impression',
         description: 'Present your business with clear messaging, purposeful imagery, and a direct next step.',
@@ -22,7 +22,7 @@ const DEFAULT_SLIDES = [
         button_4_url: '#',
     },
     {
-        image_url: '',
+        image_url: '/storage/cms-images/background/background-2.avif',
         eyebrow: 'Designed around your audience',
         heading: 'Turn attention into meaningful action',
         description: 'Guide visitors from their first impression to the information and action that matter most.',
@@ -36,7 +36,7 @@ const DEFAULT_SLIDES = [
         button_4_url: '#',
     },
     {
-        image_url: '',
+        image_url: '/storage/cms-images/background/background-3.avif',
         eyebrow: 'Ready when you are',
         heading: 'Build trust with every visit',
         description: 'Use focused content and a polished experience to make your business easier to choose.',

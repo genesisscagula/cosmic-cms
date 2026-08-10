@@ -1,0 +1,16 @@
+{
+  "patch": "IMG-P2",
+  "resolver": "app/Services/ImageSlotResolver.php",
+  "resolved_gap_examples": {
+    "hero_slider_fade": "slides.0/1/2.image_url -> 3 hero slots",
+    "hero_video_premium": "poster_image_url -> 1 hero slot",
+    "team_modern": "members.*.image_url -> people slots",
+    "testimonials_carousel": "testimonials.*.avatar -> people slots"
+  },
+  "assignment_behavior": {
+    "empty_image_fields_are_assignable": true,
+    "nested_arrays_supported": true,
+    "logo_and_branding_paths_protected": true,
+    "curated_local_avatar_files_preserved_until_IMG_P3": true
+  }
+}

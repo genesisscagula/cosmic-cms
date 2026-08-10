@@ -4,7 +4,7 @@ import CosmicBrandMark from '../../../Components/CosmicBrandMark';
 const baseNavigationItems = [
     { id: "home", label: "Overview", icon: "⌂" },
     { id: "websites", label: "Websites", icon: "◈" },
-    { id: "templates", label: "Templates", icon: "▧" },
+    { id: "templates", label: "Starter Kits", icon: "▧" },
     { id: "sparks", label: "Sparks", icon: "✦" },
     { id: "aiStudio", label: "AI Studio", icon: "✦" },
 ];

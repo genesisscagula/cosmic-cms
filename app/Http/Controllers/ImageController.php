@@ -14,6 +14,7 @@ use App\Services\ThemePlanAccessService;
 use App\Services\LogoCanvasService;
 use App\Services\ThemeColorResolver;
 use App\Services\ThemeLogoPaletteService;
+use App\Services\SmartLogoPromptService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Str;
 use Intervention\Image\Facades\Image; // Import ni sa taas sa imong controller
@@ -22,7 +23,7 @@ class ImageController extends Controller
 {
 
 
-    public function generateLogo(Request $request, Website $website, CreditWalletService $wallet, LogoCanvasService $canvas, ThemeColorResolver $themeColors, ThemeLogoPaletteService $logoPalettes)
+    public function generateLogo(Request $request, Website $website, CreditWalletService $wallet, LogoCanvasService $canvas, ThemeColorResolver $themeColors, ThemeLogoPaletteService $logoPalettes, SmartLogoPromptService $logoPrompt)
     {
         $this->authorize('update', $website);
 
@@ -64,27 +65,28 @@ class ImageController extends Controller
             : $logoPalettes->forPrimary($themeKey, $primary);
         // The requested/active theme primary is authoritative for logo generation.
         $logoPalette['primary'] = strtoupper($primary);
+        $resolvedThemePalette = $themeColors->palette($themeKey);
+        $accent = strtoupper((string) ($themeKey === 'my-brand'
+            ? ($logoPalette['secondary'] ?? $primary)
+            : ($resolvedThemePalette['accent'] ?? $primary)));
+        $surface = strtoupper((string) ($resolvedThemePalette['surface'] ?? $primary));
+        $headerBackground = '#FFFFFF';
 
         $industry = trim((string) ($website->industry ?: 'business'));
 
-        $prompt = implode("\n", [
-            "Create a clean professional horizontal brand logo for {$company}.",
-            "Industry: {$industry}.",
-            "Current website theme: {$themeKey}.",
-            "Logo palette — use these exact colors intelligently:",
-            "Primary (dominant): {$logoPalette['primary']}.",
-            "Secondary (supporting): {$logoPalette['secondary']}.",
-            "Tertiary (small accents): {$logoPalette['tertiary']}.",
-            'EXACT PRIMARY COLOR CONTRACT: the supplied PRIMARY HEX must be used exactly at 100% opacity on the dominant brand elements.',
-            'Never lower PRIMARY opacity. Never lighten, darken, tint, shade, mute, desaturate, blend, recolor, or substitute PRIMARY with a near-match. Exact HEX wins over artistic styling.',
-            'PRIMARY must remain the unmistakable dominant brand color. SECONDARY is optional supporting design color. TERTIARY is optional and only for small accents/details.',
-            'SECONDARY and TERTIARY may add contrast and personality but must never change the appearance of PRIMARY or visually overpower it.',
-            'Design the logo specifically for a 650 × 150 pixel horizontal website-header crop box (13:3 aspect ratio).',
-            'The complete visible logo artwork must FIT INSIDE that 650 × 150 safe frame: horizontal symbol + wordmark preferred, centered, with comfortable transparent padding on every side.',
-            'Do not make a tall, square, stacked, poster-like, or oversized composition. Do not require cropping or zooming to fit the 650 × 150 header frame.',
-            'Keep the entire icon, wordmark, every letter, and any intentional detail inside the safe frame. Nothing may touch or cross an edge.',
-            'Transparent background. No mockup, no card, no scene, no watermark, no slogan unless it is part of the company name.',
-        ]);
+        $brandMemory = (array) data_get($website->settings, 'brand_memory', []);
+        $prompt = $logoPrompt->build(
+            company: $company,
+            industry: $industry,
+            primary: $primary,
+            themeKey: $themeKey,
+            accent: $accent,
+            headerBackground: $headerBackground,
+            surface: $surface,
+            brandPrompt: (string) ($brandMemory['brand_prompt'] ?? $website->business_description ?? ''),
+            brandContext: (array) ($brandMemory['brand_context'] ?? []),
+            latestUserPrompt: (string) ($brandMemory['latest_user_prompt'] ?? ''),
+        );
 
         $response = Http::withToken($apiKey)
             ->acceptJson()
@@ -109,11 +111,13 @@ class ImageController extends Controller
             return response()->json(['message' => 'Cosmic AI returned an invalid logo image. No credits were charged.'], 502);
         }
 
-        $bytes = $canvas->normalizePngToPalette($bytes, $logoPalette);
+        $bytes = $canvas->trimTransparentPng($bytes, 6);
         $logoDimensions = @getimagesizefromstring($bytes);
 
         $filename = 'luna-logo-'.Str::lower(Str::random(10)).'.png';
-        $path = "websites/{$website->id}/logos/{$filename}";
+        // AI output is staged as a temporary local upload so the frontend can
+        // pass it through the exact same cropper path as a computer-uploaded raster.
+        $path = "websites/{$website->id}/logos/tmp/{$filename}";
         Storage::disk('public')->put($path, $bytes);
 
         $wallet->debit(
@@ -126,9 +130,14 @@ class ImageController extends Controller
             ['company_name' => $company]
         );
 
+        $logoUrl = rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path;
+        // Do NOT make the Luna file active yet. It is only a temporary raster
+        // source. The user's confirmed crop is the first point where branding
+        // is committed, matching the normal upload-logo behavior.
+
         return response()->json([
             'status' => 'success',
-            'url' => rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path,
+            'url' => $logoUrl,
             'company_name' => $company,
             'cost' => $cost,
             'balance' => $wallet->balance($user),
@@ -138,17 +147,18 @@ class ImageController extends Controller
             'sync_source' => 'generated_from_theme',
             'synced_theme' => $themeKey,
             'primary_hex' => $logoPalette['primary'],
-            'logo_palette' => $logoPalette,
+            'logo_palette' => ['primary' => strtoupper($primary), 'secondary' => 'ai-selected', 'tertiary' => 'ai-selected'],
         ]);
     }
 
 
-    public function cropLogo(Request $request, Website $website)
+    public function cropLogo(Request $request, Website $website, LogoCanvasService $canvas)
     {
         $this->authorize('update', $website);
 
         $validated = $request->validate([
             'image_data' => ['required', 'string', 'max:8000000'],
+            'source_url' => ['nullable', 'string', 'max:2048'],
         ]);
 
         if (! preg_match('/^data:image\/png;base64,([A-Za-z0-9+\/=\r\n]+)$/', $validated['image_data'], $matches)) {
@@ -161,14 +171,38 @@ class ImageController extends Controller
             return response()->json(['message' => 'The cropped logo could not be processed.'], 422);
         }
 
+        // 650x200 is a cropper working frame, not the permanent logo canvas.
+        // Save tight artwork bounds so transparent safety padding does not make
+        // the visible logo microscopic in the website header.
+        $bytes = $canvas->trimTransparentPng($bytes, 8);
+        $dimensions = $this->pngDimensions($bytes) ?: $dimensions;
+
         $filename = 'cropped-logo-'.Str::lower(Str::random(10)).'.png';
         $path = "websites/{$website->id}/logos/{$filename}";
         Storage::disk('public')->put($path, $bytes);
+        $logoUrl = rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path;
+        $themeSettings = is_array($website->theme_settings) ? $website->theme_settings : (json_decode((string) $website->theme_settings, true) ?: []);
+        $themeSettings['brand_original_logo_url'] = $logoUrl;
+        $themeSettings['brand_active_logo_url'] = $logoUrl;
+        $themeSettings['brand_favicon_url'] = $logoUrl;
+        $themeSettings['brand_logo_variants'] = [];
+        $website->theme_settings = $themeSettings;
+        $website->save();
+
+        // Successful crop commits the logo; now the staged Luna source can be removed.
+        $sourceUrl = trim((string) ($validated['source_url'] ?? ''));
+        $tmpPrefix = '/storage/websites/'.$website->id.'/logos/tmp/';
+        if ($sourceUrl !== '' && str_contains($sourceUrl, $tmpPrefix)) {
+            $relative = ltrim((string) parse_url($sourceUrl, PHP_URL_PATH), '/');
+            if (str_starts_with($relative, 'storage/')) $relative = substr($relative, 8);
+            Storage::disk('public')->delete($relative);
+        }
+
         return response()->json([
             'status' => 'success',
-            'url' => rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path,
+            'url' => $logoUrl,
             'logo_width' => (int) ($dimensions['width'] ?? 650),
-            'logo_height' => (int) ($dimensions['height'] ?? 150),
+            'logo_height' => (int) ($dimensions['height'] ?? 200),
         ]);
     }
 
@@ -208,10 +242,19 @@ class ImageController extends Controller
             $logoPalette['secondary'] = strtoupper((string) ($validated['secondary_hex'] ?? ($customPalette['secondary'] ?? $customPalette['surface'] ?? $logoPalette['secondary'])));
             $logoPalette['tertiary'] = strtoupper((string) ($validated['tertiary_hex'] ?? ($customPalette['tertiary'] ?? $customPalette['accent'] ?? $logoPalette['tertiary'])));
 
+            $brandMemory = (array) data_get($website->settings, 'brand_memory', []);
+            $sourceLogoUrl = trim((string) ($settings['brand_original_logo_url'] ?? $validated['logo_url']));
+            if ($sourceLogoUrl === '') $sourceLogoUrl = $validated['logo_url'];
+            if (empty($settings['brand_original_logo_url'])) {
+                $settings['brand_original_logo_url'] = $validated['logo_url'];
+            }
             $result = $matcher->match(
-                $validated['logo_url'],
+                $sourceLogoUrl,
                 $logoPalette,
-                $themeName
+                $themeName,
+                $brandMemory,
+                (string) ($website->name ?? ''),
+                (string) ($website->industry ?: 'business'),
             );
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage().' No credits were charged.'], 422);
@@ -221,12 +264,21 @@ class ImageController extends Controller
         }
 
         if (($result['extension'] ?? '') === 'png') {
-            $result['bytes'] = $canvas->normalizePngToPalette($result['bytes'], $logoPalette);
+            // Match Logo now has design freedom, so normalize every AI result
+            // back to the same navbar-safe canvas used by Generate Logo.
+            $result['bytes'] = $canvas->trimTransparentPng($result['bytes'], 6);
         }
 
         $filename = 'theme-matched-logo-'.Str::lower(Str::random(10)).'.'.$result['extension'];
         $path = "websites/{$website->id}/logos/{$filename}";
         Storage::disk('public')->put($path, $result['bytes']);
+
+        $settings['brand_active_logo_url'] = rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path;
+        $settings['brand_favicon_url'] = $settings['brand_active_logo_url'];
+        $variants = (array) ($settings['brand_logo_variants'] ?? []);
+        $variants[$themeKey] = $settings['brand_active_logo_url'];
+        $settings['brand_logo_variants'] = $variants;
+        $website->forceFill(['theme_settings' => $settings])->save();
 
         $wallet->debit(
             $user,
@@ -258,11 +310,40 @@ class ImageController extends Controller
 
         $validated = $request->validate([
             'logo_url' => ['required', 'string', 'max:2048'],
+            'automatic_upload' => ['nullable', 'boolean'],
         ]);
 
         $user = $request->user();
-        $cost = 50;
-        if (! $wallet->canAfford($user, $cost)) {
+        $automaticUpload = (bool) ($validated['automatic_upload'] ?? false);
+
+        if ($automaticUpload) {
+            $logoPath = (string) parse_url($validated['logo_url'], PHP_URL_PATH);
+            $expectedPrefix = '/storage/websites/'.$website->id.'/logos/';
+            if (! str_starts_with($logoPath, $expectedPrefix)) {
+                return response()->json(['message' => 'Automatic brand matching is only available for a logo uploaded to this website.'], 422);
+            }
+
+            $settings = is_array($website->theme_settings)
+                ? $website->theme_settings
+                : (json_decode((string) $website->theme_settings, true) ?: []);
+            $existingCustomTheme = (array) data_get($settings, 'custom_brand_theme', []);
+            if ($existingCustomTheme !== []
+                && hash_equals((string) ($existingCustomTheme['source_logo_url'] ?? ''), (string) $validated['logo_url'])) {
+                return response()->json([
+                    'status' => 'success',
+                    'custom_theme' => $existingCustomTheme,
+                    'palette' => $existingCustomTheme['palette'] ?? [],
+                    'recommended_family' => 'my-brand',
+                    'reason' => 'Reused the existing brand theme for this uploaded logo.',
+                    'cost' => 0,
+                    'automatic_upload' => true,
+                    'balance' => $wallet->balance($user),
+                ]);
+            }
+        }
+
+        $cost = $automaticUpload ? 0 : 50;
+        if ($cost > 0 && ! $wallet->canAfford($user, $cost)) {
             return response()->json([
                 'message' => "Not enough Cosmic Credits. Theme-from-logo analysis costs {$cost} credits.",
                 'required_credits' => $cost,
@@ -289,6 +370,7 @@ class ImageController extends Controller
             $settings['custom_brand_theme'] = $customTheme;
             $settings['brand_palette'] = $customTheme['palette'] ?? ($result['palette'] ?? []);
             $settings['brand_source'] = 'logo';
+            unset($settings['brand_pre_upload_snapshot']);
             $website->theme_settings = $settings;
             $website->save();
             $result['custom_theme'] = $customTheme;
@@ -299,20 +381,23 @@ class ImageController extends Controller
             return response()->json(['message' => 'Cosmic AI could not match My Brand Theme to this logo. No credits were charged.'], 500);
         }
 
-        $wallet->debit(
-            $user,
-            $cost,
-            'Match theme to logo',
-            'ai_generation',
-            $website,
-            'theme-from-logo:'.Str::uuid(),
-            ['recommended_family' => $result['recommended_family'], 'palette' => $result['palette'], 'custom_theme' => $customTheme]
-        );
+        if ($cost > 0) {
+            $wallet->debit(
+                $user,
+                $cost,
+                'Match theme to logo',
+                'ai_generation',
+                $website,
+                'theme-from-logo:'.Str::uuid(),
+                ['recommended_family' => $result['recommended_family'], 'palette' => $result['palette'], 'custom_theme' => $customTheme]
+            );
+        }
 
         return response()->json([
             'status' => 'success',
             ...$result,
             'cost' => $cost,
+            'automatic_upload' => $automaticUpload,
             'balance' => $wallet->balance($user),
         ]);
     }
@@ -367,6 +452,57 @@ class ImageController extends Controller
         ]);
     }
 
+    public function rollbackUploadedLogo(Request $request, Website $website)
+    {
+        $this->authorize('update', $website);
+        $settings = is_array($website->theme_settings) ? $website->theme_settings : (json_decode((string) $website->theme_settings, true) ?: []);
+        $snapshot = is_array($settings['brand_pre_upload_snapshot'] ?? null)
+            ? $settings['brand_pre_upload_snapshot']
+            : null;
+
+        if (! $snapshot) {
+            return response()->json(['message' => 'No previous logo is available to restore.'], 422);
+        }
+
+        foreach (['brand_original_logo_url', 'brand_active_logo_url', 'brand_favicon_url', 'brand_logo_variants', 'logo_theme_sync_state', 'logo_theme_sync_source', 'logo_theme_synced_theme'] as $key) {
+            if (array_key_exists($key, $snapshot) && $snapshot[$key] !== null) {
+                $settings[$key] = $snapshot[$key];
+            } else {
+                unset($settings[$key]);
+            }
+        }
+        unset($settings['brand_pre_upload_snapshot']);
+
+        $website->theme_settings = $settings;
+        $website->save();
+
+        $restoreUrl = trim((string) ($settings['brand_active_logo_url'] ?? $settings['brand_original_logo_url'] ?? ''));
+        if ($restoreUrl === '') {
+            $restoreUrl = '/storage/branding/your-logo.png';
+        }
+
+        return response()->json([
+            'status' => 'success',
+            'url' => $restoreUrl,
+            'sync_state' => $settings['logo_theme_sync_state'] ?? null,
+            'sync_source' => $settings['logo_theme_sync_source'] ?? null,
+            'synced_theme' => $settings['logo_theme_synced_theme'] ?? null,
+        ]);
+    }
+
+    public function restoreOriginalLogo(Request $request, Website $website)
+    {
+        $this->authorize('update', $website);
+        $settings = is_array($website->theme_settings) ? $website->theme_settings : (json_decode((string) $website->theme_settings, true) ?: []);
+        $original = trim((string) ($settings['brand_original_logo_url'] ?? ''));
+        if ($original === '') return response()->json(['message' => 'No original logo is available to restore.'], 422);
+        $settings['brand_active_logo_url'] = $original;
+        $settings['brand_favicon_url'] = $original;
+        $website->theme_settings = $settings;
+        $website->save();
+        return response()->json(['status' => 'success', 'url' => $original]);
+    }
+
     public function uploadLogo(Request $request)
     {
         $request->validate([
@@ -389,11 +525,35 @@ class ImageController extends Controller
             }
         }
 
-        $path = $file->store("websites/{$website->id}/logos", 'public');
+        // Preserve the currently active brand until automatic theme analysis
+        // succeeds. This lets a throttled upload roll back cleanly.
+        $themeSettings = is_array($website->theme_settings) ? $website->theme_settings : (json_decode((string) $website->theme_settings, true) ?: []);
+        if (! isset($themeSettings['brand_pre_upload_snapshot'])) {
+            $themeSettings['brand_pre_upload_snapshot'] = [
+                'brand_original_logo_url' => $themeSettings['brand_original_logo_url'] ?? null,
+                'brand_active_logo_url' => $themeSettings['brand_active_logo_url'] ?? null,
+                'brand_favicon_url' => $themeSettings['brand_favicon_url'] ?? null,
+                'brand_logo_variants' => $themeSettings['brand_logo_variants'] ?? [],
+                'logo_theme_sync_state' => $themeSettings['logo_theme_sync_state'] ?? null,
+                'logo_theme_sync_source' => $themeSettings['logo_theme_sync_source'] ?? null,
+                'logo_theme_synced_theme' => $themeSettings['logo_theme_synced_theme'] ?? null,
+            ];
+            $website->theme_settings = $themeSettings;
+            $website->save();
+        }
 
-        return response()->json([
-            'url' => rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path,
-        ]);
+        $path = $file->store("websites/{$website->id}/logos", 'public');
+        $url = rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path;
+        if (strtolower($file->getClientOriginalExtension()) === 'svg') {
+            $themeSettings['brand_original_logo_url'] = $url;
+            $themeSettings['brand_active_logo_url'] = $url;
+            $themeSettings['brand_favicon_url'] = $url;
+            $themeSettings['brand_logo_variants'] = [];
+            $website->theme_settings = $themeSettings;
+            $website->save();
+        }
+
+        return response()->json(['url' => $url]);
     }
 
     // Function para sa pag-upload sa file
@@ -516,8 +676,8 @@ class ImageController extends Controller
             return null;
         }
 
-        // H7 browser canvas contract: final crop is exactly 650 × 150.
-        if ($width !== 650 || $height !== 150) {
+        // Header crop contract: final crop is exactly 650 × 200.
+        if ($width !== 650 || $height !== 200) {
             return null;
         }
 

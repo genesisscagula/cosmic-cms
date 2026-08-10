@@ -14,6 +14,7 @@ use App\Services\TrialCreditService;
 use App\Services\LogoCanvasService;
 use App\Services\ThemeColorResolver;
 use App\Services\ThemeLogoPaletteService;
+use App\Services\SmartLogoPromptService;
 
 class TrialBrandingController extends Controller
 {
@@ -35,11 +36,37 @@ class TrialBrandingController extends Controller
             }
         }
 
+        // Snapshot the brand that was active BEFORE this upload. The upload +
+        // automatic theme analysis behaves transactionally: if the analysis is
+        // throttled ("Too many attempts") the Builder can restore this exact
+        // logo instead of leaving the newly uploaded asset half-applied.
+        $previewTheme = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+        if (! isset($previewTheme['brand_pre_upload_snapshot'])) {
+            $previewTheme['brand_pre_upload_snapshot'] = [
+                'logo_url' => $trial->logo_url,
+                'logo_source' => $trial->logo_source,
+                'logo_theme_sync_state' => $trial->logo_theme_sync_state,
+                'logo_theme_sync_source' => $trial->logo_theme_sync_source,
+                'logo_theme_synced_theme' => $trial->logo_theme_synced_theme,
+                'brand_original_logo_url' => $previewTheme['brand_original_logo_url'] ?? $trial->logo_url,
+                'brand_active_logo_url' => $previewTheme['brand_active_logo_url'] ?? $trial->logo_url,
+                'brand_favicon_url' => $previewTheme['brand_favicon_url'] ?? $trial->logo_url,
+                'brand_logo_variants' => $previewTheme['brand_logo_variants'] ?? [],
+            ];
+        }
+
         $path = $file->store("trials/{$trial->id}/branding", 'public');
         $url = '/storage/'.$path;
 
+        if ($extension === 'svg') {
+            $previewTheme['brand_original_logo_url'] = $url;
+            $previewTheme['brand_active_logo_url'] = $url;
+            $previewTheme['brand_favicon_url'] = $url;
+            $previewTheme['brand_logo_variants'] = [];
+        }
         $trial->update([
             'logo_url' => $url,
+            'preview_theme' => $previewTheme,
             'logo_company_name' => $trial->business_name,
             'logo_source' => 'upload',
             'logo_theme_sync_state' => 'logo_changed',
@@ -55,12 +82,17 @@ class TrialBrandingController extends Controller
         ]);
     }
 
-    public function generateLogo(Request $request, TrialGeneration $trial, TrialCreditService $trialCredits, LogoCanvasService $canvas, ThemeColorResolver $themeColors, ThemeLogoPaletteService $logoPalettes)
+    public function generateLogo(Request $request, TrialGeneration $trial, TrialCreditService $trialCredits, LogoCanvasService $canvas, ThemeColorResolver $themeColors, ThemeLogoPaletteService $logoPalettes, SmartLogoPromptService $logoPrompt)
     {
         $this->assertTrialAvailable($trial);
 
         $validated = $request->validate([
             'company_name' => ['required', 'string', 'min:2', 'max:80'],
+            // Trial theme changes can still be unsaved in the Builder. Accept the
+            // live Builder state so logo generation never falls back to the
+            // stale theme stored on TrialGeneration.
+            'theme_key' => ['nullable', 'string', 'max:40'],
+            'primary_hex' => ['nullable', 'regex:/^#[0-9A-Fa-f]{6}$/'],
         ]);
 
         $isRegeneration = filled($trial->logo_url);
@@ -79,10 +111,20 @@ class TrialBrandingController extends Controller
         abort_if($apiKey === '', 503, 'AI logo generation is not configured.');
 
         $company = trim($validated['company_name']);
-        $themeKey = (string) data_get($trial->preview_theme, 'primary', 'midnight');
-        $primary = $themeKey === 'my-brand'
-            ? (string) data_get($trial->preview_theme, 'custom_brand_theme.palette.background', '#243447')
-            : $themeColors->primaryHex($themeKey);
+        $themeKey = trim((string) ($validated['theme_key'] ?? data_get($trial->preview_theme, 'primary', 'midnight')));
+        if ($themeKey === '') {
+            $themeKey = 'midnight';
+        }
+
+        // primary_hex from the request is the source of truth for trial logo
+        // generation because it represents the theme currently visible in the
+        // Builder (Emerald, Midnight, etc.), even before Save Theme is clicked.
+        $primary = strtoupper((string) ($validated['primary_hex'] ?? ''));
+        if (! preg_match('/^#[0-9A-F]{6}$/', $primary)) {
+            $primary = $themeKey === 'my-brand'
+                ? strtoupper((string) data_get($trial->preview_theme, 'custom_brand_theme.palette.background', '#243447'))
+                : strtoupper($themeColors->primaryHex($themeKey));
+        }
         $customPalette = $themeKey === 'my-brand'
             ? [
                 'primary' => data_get($trial->preview_theme, 'brand_palette.primary'),
@@ -93,26 +135,26 @@ class TrialBrandingController extends Controller
         $logoPalette = $themeKey === 'my-brand'
             ? $logoPalettes->randomFor($themeKey, $customPalette)
             : $logoPalettes->forPrimary($themeKey, $primary);
+        $resolvedThemePalette = $themeColors->palette($themeKey);
+        $accent = strtoupper((string) ($themeKey === 'my-brand'
+            ? ($logoPalette['secondary'] ?? $primary)
+            : ($resolvedThemePalette['accent'] ?? $primary)));
+        $surface = strtoupper((string) ($resolvedThemePalette['surface'] ?? $primary));
+        $headerBackground = '#FFFFFF';
         $industry = trim((string) ($trial->industry ?: 'business'));
 
-        $prompt = implode("\n", [
-            "Create a clean professional horizontal brand logo for {$company}.",
-            "Industry: {$industry}.",
-            "Current website theme: {$themeKey}.",
-            "Logo palette — use these exact colors intelligently:",
-            "Primary (dominant): {$logoPalette['primary']}.",
-            "Secondary (supporting): {$logoPalette['secondary']}.",
-            "Tertiary (small accents): {$logoPalette['tertiary']}.",
-            'EXACT PRIMARY COLOR CONTRACT: the supplied PRIMARY HEX must be used exactly at 100% opacity on the dominant brand elements.',
-            'Never lower PRIMARY opacity. Never lighten, darken, tint, shade, mute, desaturate, blend, recolor, or substitute PRIMARY with a near-match. Exact HEX wins over artistic styling.',
-            'PRIMARY must remain the unmistakable dominant brand color. SECONDARY is optional supporting design color. TERTIARY is optional and only for small accents/details.',
-            'SECONDARY and TERTIARY may add contrast and personality but must never change the appearance of PRIMARY or visually overpower it.',
-            'Design the logo specifically for a 650 × 150 pixel horizontal website-header crop box (13:3 aspect ratio).',
-            'The complete visible logo artwork must FIT INSIDE that 650 × 150 safe frame: horizontal symbol + wordmark preferred, centered, with comfortable transparent padding on every side.',
-            'Do not make a tall, square, stacked, poster-like, or oversized composition. Do not require cropping or zooming to fit the 650 × 150 header frame.',
-            'Keep the entire icon, wordmark, every letter, and any intentional detail inside the safe frame. Nothing may touch or cross an edge.',
-            'Transparent background. No mockup, no card, no scene, no watermark, no slogan unless it is part of the company name.',
-        ]);
+        $prompt = $logoPrompt->build(
+            company: $company,
+            industry: $industry,
+            primary: $primary,
+            themeKey: $themeKey,
+            accent: $accent,
+            headerBackground: $headerBackground,
+            surface: $surface,
+            brandPrompt: $trial->brand_prompt ?: $trial->prompt,
+            brandContext: is_array($trial->brand_context) ? $trial->brand_context : [],
+            latestUserPrompt: $trial->latest_user_prompt,
+        );
 
         $response = Http::withToken($apiKey)
             ->acceptJson()
@@ -141,23 +183,18 @@ class TrialBrandingController extends Controller
             return response()->json(['message' => 'Cosmic AI returned an invalid logo image. Please try again.'], 502);
         }
 
-        $bytes = $canvas->normalizePngToPalette($bytes, $logoPalette);
+        $bytes = $canvas->trimTransparentPng($bytes, 6);
         $logoDimensions = @getimagesizefromstring($bytes);
 
         $filename = 'luna-logo-'.Str::lower(Str::random(10)).'.png';
-        $path = "trials/{$trial->id}/branding/{$filename}";
+        // Stage Luna output as a temporary local raster. The cropper will treat
+        // this file exactly like a computer upload and only commit after Save Crop.
+        $path = "trials/{$trial->id}/branding/tmp/{$filename}";
         Storage::disk('public')->put($path, $bytes);
         $url = '/storage/'.$path;
 
-        $trial->update([
-            'logo_url' => $url,
-            'logo_company_name' => $company,
-            'logo_source' => 'ai',
-            'logo_theme_sync_state' => 'synced',
-            'logo_theme_sync_source' => 'generated_from_theme',
-            'logo_theme_synced_theme' => $themeKey,
-            'logo_updated_at' => now(),
-        ]);
+        // Keep the currently active logo untouched while the crop modal is open.
+        // This mirrors upload-logo behavior and also makes Cancel/failure safe.
 
         DB::table('trial_logo_generations')->insert([
             'trial_generation_id' => $trial->id,
@@ -187,20 +224,22 @@ class TrialBrandingController extends Controller
             'sync_source' => 'generated_from_theme',
             'synced_theme' => $themeKey,
             'primary_hex' => $logoPalette['primary'],
-            'logo_palette' => $logoPalette,
+            'logo_palette' => ['primary' => strtoupper($primary), 'secondary' => 'ai-selected', 'tertiary' => 'ai-selected'],
             'regenerations_used_today' => $regenerationsUsedToday,
             'regenerations_remaining_today' => max(0, 2 - $regenerationsUsedToday),
         ]);
     }
 
 
-    public function cropLogo(Request $request, TrialGeneration $trial)
+    public function cropLogo(Request $request, TrialGeneration $trial, LogoCanvasService $canvas)
     {
         $this->assertTrialAvailable($trial);
 
         $validated = $request->validate([
             'image_data' => ['required', 'string', 'max:8000000'],
             'company_name' => ['nullable', 'string', 'max:80'],
+            'source_url' => ['nullable', 'string', 'max:2048'],
+            'source_kind' => ['nullable', 'in:ai,upload,theme_match'],
         ]);
 
         if (! preg_match('/^data:image\/png;base64,([A-Za-z0-9+\/=\r\n]+)$/', $validated['image_data'], $matches)) {
@@ -213,26 +252,92 @@ class TrialBrandingController extends Controller
             return response()->json(['message' => 'The cropped logo could not be processed.'], 422);
         }
 
+        // The 650x200 canvas is only the cropper/header-safe working frame.
+        // Never persist that whole transparent canvas: otherwise the browser
+        // sizes the empty pixels together with the artwork and the visible logo
+        // looks tiny. Trim transparency only AFTER the user confirms the crop,
+        // preserving every visible pixel plus a small anti-alias safety margin.
+        $bytes = $canvas->trimTransparentPng($bytes, 8);
+        $dimensions = $this->pngDimensions($bytes) ?: $dimensions;
+
         $filename = 'cropped-logo-'.Str::lower(Str::random(10)).'.png';
         $path = "trials/{$trial->id}/branding/{$filename}";
         Storage::disk('public')->put($path, $bytes);
         $url = '/storage/'.$path;
 
+        $previewTheme = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+        $sourceKind = (string) ($validated['source_kind'] ?? 'upload');
+        $activeThemeKey = (string) data_get($previewTheme, 'primary', 'midnight');
+
+        if ($sourceKind === 'theme_match') {
+            // Preserve the original brand source; only the active theme variant
+            // changes after the user explicitly confirms the crop.
+            if (empty($previewTheme['brand_original_logo_url'])) {
+                $previewTheme['brand_original_logo_url'] = $trial->logo_url ?: $url;
+            }
+            $previewTheme['brand_active_logo_url'] = $url;
+            $previewTheme['brand_favicon_url'] = $url;
+            $variants = (array) ($previewTheme['brand_logo_variants'] ?? []);
+            $variants[$activeThemeKey] = $url;
+            $previewTheme['brand_logo_variants'] = $variants;
+        } else {
+            $previewTheme['brand_original_logo_url'] = $url;
+            $previewTheme['brand_active_logo_url'] = $url;
+            $previewTheme['brand_favicon_url'] = $url;
+            $previewTheme['brand_logo_variants'] = [];
+        }
+
+        $previewTheme['brand_logo_crop_confirmed'] = true;
+        $previewTheme['brand_logo_crop_dismissed'] = false;
+        $isThemeMatch = $sourceKind === 'theme_match';
+        $isGeneratedFromTheme = $sourceKind === 'ai';
         $trial->update([
             'logo_url' => $url,
+            'preview_theme' => $previewTheme,
             'logo_company_name' => trim((string) ($validated['company_name'] ?? $trial->logo_company_name ?: $trial->business_name)),
+            'logo_source' => $isThemeMatch ? 'ai-theme-match' : ($isGeneratedFromTheme ? 'ai' : ($trial->logo_source ?: 'upload')),
+            'logo_theme_sync_state' => ($isThemeMatch || $isGeneratedFromTheme) ? 'synced' : 'logo_changed',
+            'logo_theme_sync_source' => $isThemeMatch ? 'logo_to_theme' : ($isGeneratedFromTheme ? 'generated_from_theme' : 'upload'),
+            'logo_theme_synced_theme' => ($isThemeMatch || $isGeneratedFromTheme) ? $activeThemeKey : null,
             'logo_updated_at' => now(),
         ]);
+
+        $sourceUrl = trim((string) ($validated['source_url'] ?? ''));
+        $tmpPrefix = '/storage/trials/'.$trial->id.'/branding/tmp/';
+        if ($sourceUrl !== '' && str_contains($sourceUrl, $tmpPrefix)) {
+            $relative = ltrim((string) parse_url($sourceUrl, PHP_URL_PATH), '/');
+            if (str_starts_with($relative, 'storage/')) $relative = substr($relative, 8);
+            Storage::disk('public')->delete($relative);
+        }
 
         return response()->json([
             'status' => 'success',
             'url' => $url,
             'logo_width' => (int) ($dimensions['width'] ?? 650),
-            'logo_height' => (int) ($dimensions['height'] ?? 150),
+            'logo_height' => (int) ($dimensions['height'] ?? 200),
+            'sync_state' => ($isThemeMatch || $isGeneratedFromTheme) ? 'synced' : 'logo_changed',
+            'sync_source' => $isThemeMatch ? 'logo_to_theme' : ($isGeneratedFromTheme ? 'generated_from_theme' : 'upload'),
+            'synced_theme' => ($isThemeMatch || $isGeneratedFromTheme) ? $activeThemeKey : null,
+            'source_kind' => $sourceKind,
         ]);
     }
 
-    public function matchLogoToTheme(Request $request, TrialGeneration $trial, LogoThemeMatchService $matcher, TrialCreditService $trialCredits, LogoCanvasService $canvas, ThemeLogoPaletteService $logoPalettes)
+    public function dismissLogoCrop(Request $request, TrialGeneration $trial)
+    {
+        $this->assertTrialAvailable($trial);
+
+        $previewTheme = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+        $previewTheme['brand_logo_crop_confirmed'] = true;
+        $previewTheme['brand_logo_crop_dismissed'] = true;
+        $trial->update(['preview_theme' => $previewTheme]);
+
+        return response()->json([
+            'status' => 'success',
+            'dismissed' => true,
+        ]);
+    }
+
+    public function matchLogoToTheme(Request $request, TrialGeneration $trial, LogoThemeMatchService $matcher, TrialCreditService $trialCredits, LogoCanvasService $canvas, ThemeColorResolver $themeColors)
     {
         $this->assertTrialAvailable($trial);
 
@@ -252,19 +357,38 @@ class TrialBrandingController extends Controller
             $themeKey = (string) ($validated['theme_key'] ?? data_get($trial->preview_theme, 'primary', 'midnight'));
             $themeName = (string) ($validated['theme_name'] ?? $themeKey);
 
-            $customPalette = $themeKey === 'my-brand'
-                ? (array) data_get($trial->preview_theme, 'custom_brand_theme.palette', [])
-                : [];
+            // Theme matching must use the exact FINAL website palette, just like
+            // initial trial-logo generation. Never introduce a random curated
+            // logo palette here: that was the cause of unrelated blue/teal/orange
+            // variants after a manual theme change.
+            $resolvedThemePalette = $themeColors->palette($themeKey);
+            $logoPalette = [
+                'primary' => strtoupper((string) $validated['primary_hex']),
+                'secondary' => strtoupper((string) ($validated['accent_hex'] ?? $resolvedThemePalette['accent'])),
+                'tertiary' => strtoupper((string) ($validated['secondary_hex'] ?? $resolvedThemePalette['surface'])),
+                'accent' => strtoupper((string) ($validated['accent_hex'] ?? $resolvedThemePalette['accent'])),
+                'surface' => strtoupper((string) ($validated['secondary_hex'] ?? $resolvedThemePalette['surface'])),
+                'header_background' => '#FFFFFF',
+            ];
 
-            $logoPalette = $logoPalettes->forPrimary($themeKey, $validated['primary_hex']);
-            $logoPalette['secondary'] = strtoupper((string) ($validated['secondary_hex'] ?? ($customPalette['secondary'] ?? $customPalette['surface'] ?? $logoPalette['secondary'])));
-            $logoPalette['tertiary'] = strtoupper((string) ($validated['tertiary_hex'] ?? ($customPalette['tertiary'] ?? $customPalette['accent'] ?? $logoPalette['tertiary'])));
-
-            $sourceLogoUrl = trim((string) ($trial->logo_url ?: ($validated['logo_url'] ?? '/storage/branding/your-logo.png')));
+            $currentLogoUrl = trim((string) ($trial->logo_url ?: ($validated['logo_url'] ?? '/storage/branding/your-logo.png')));
+            $themeSettings = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+            $sourceLogoUrl = trim((string) ($themeSettings['brand_original_logo_url'] ?? $currentLogoUrl));
+            if ($sourceLogoUrl === '') $sourceLogoUrl = $currentLogoUrl;
+            if (empty($themeSettings['brand_original_logo_url'])) {
+                $themeSettings['brand_original_logo_url'] = $currentLogoUrl;
+            }
             $result = $matcher->match(
                 $sourceLogoUrl,
                 $logoPalette,
-                $themeName
+                $themeName,
+                [
+                    'brand_prompt' => (string) ($trial->brand_prompt ?? $trial->prompt ?? ''),
+                    'latest_user_prompt' => (string) ($trial->latest_user_prompt ?? ''),
+                    'brand_context' => (array) ($trial->brand_context ?? []),
+                ],
+                (string) ($trial->logo_company_name ?: $trial->business_name),
+                (string) ($trial->industry ?: data_get($trial->brand_context, 'industry', 'business')),
             );
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage()], 422);
@@ -274,22 +398,16 @@ class TrialBrandingController extends Controller
         }
 
         if (($result['extension'] ?? '') === 'png') {
-            $result['bytes'] = $canvas->normalizePngToPalette($result['bytes'], $logoPalette);
+            $result['bytes'] = $canvas->trimTransparentPng($result['bytes'], 6);
         }
 
+        // Stage the matched result exactly like a generated/uploaded raster.
+        // It must NOT become the active logo until the user confirms the same
+        // 650x200 cropper used by the trial-start logo flow.
         $filename = 'theme-matched-logo-'.Str::lower(Str::random(10)).'.'.$result['extension'];
-        $path = "trials/{$trial->id}/branding/{$filename}";
+        $path = "trials/{$trial->id}/branding/tmp/{$filename}";
         Storage::disk('public')->put($path, $result['bytes']);
         $url = '/storage/'.$path;
-
-        $trial->update([
-            'logo_url' => $url,
-            'logo_source' => $result['ai'] ? 'ai-theme-match' : 'svg-theme-match',
-            'logo_theme_sync_state' => 'synced',
-            'logo_theme_sync_source' => 'logo_to_theme',
-            'logo_theme_synced_theme' => $themeKey,
-            'logo_updated_at' => now(),
-        ]);
 
         DB::table('trial_logo_generations')->insert([
             'trial_generation_id' => $trial->id,
@@ -308,22 +426,118 @@ class TrialBrandingController extends Controller
         return response()->json([
             'status' => 'success',
             'url' => $url,
-            'source' => $trial->logo_source,
-            'sync_state' => 'synced',
-            'sync_source' => 'logo_to_theme',
-            'synced_theme' => $themeKey,
+            'source' => $result['ai'] ? 'ai-theme-match' : 'svg-theme-match',
+            'sync_state' => 'theme_changed',
+            'sync_source' => 'logo_to_theme_pending_crop',
+            'synced_theme' => null,
+            'pending_theme' => $themeKey,
             'logo_palette' => $logoPalette,
             'cost' => TrialCreditService::MATCH_LOGO_TO_THEME,
             'credit_balance' => $balance,
         ]);
     }
 
+    public function rollbackUploadedLogo(Request $request, TrialGeneration $trial)
+    {
+        $this->assertTrialAvailable($trial);
+        $theme = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+        $snapshot = is_array($theme['brand_pre_upload_snapshot'] ?? null)
+            ? $theme['brand_pre_upload_snapshot']
+            : null;
+
+        if (! $snapshot) {
+            return response()->json(['message' => 'No previous logo is available to restore.'], 422);
+        }
+
+        $restoreUrl = trim((string) ($snapshot['logo_url'] ?? $snapshot['brand_active_logo_url'] ?? ''));
+        if ($restoreUrl === '') {
+            $restoreUrl = '/storage/branding/your-logo.png';
+        }
+
+        foreach (['brand_original_logo_url', 'brand_active_logo_url', 'brand_favicon_url', 'brand_logo_variants'] as $key) {
+            if (array_key_exists($key, $snapshot)) {
+                $theme[$key] = $snapshot[$key];
+            } else {
+                unset($theme[$key]);
+            }
+        }
+        unset($theme['brand_pre_upload_snapshot']);
+
+        $trial->update([
+            'logo_url' => $restoreUrl,
+            'preview_theme' => $theme,
+            'logo_source' => $snapshot['logo_source'] ?? null,
+            'logo_theme_sync_state' => $snapshot['logo_theme_sync_state'] ?? null,
+            'logo_theme_sync_source' => $snapshot['logo_theme_sync_source'] ?? null,
+            'logo_theme_synced_theme' => $snapshot['logo_theme_synced_theme'] ?? null,
+            'logo_updated_at' => now(),
+        ]);
+
+        return response()->json([
+            'status' => 'success',
+            'url' => $restoreUrl,
+            'sync_state' => $trial->fresh()->logo_theme_sync_state,
+            'sync_source' => $trial->fresh()->logo_theme_sync_source,
+            'synced_theme' => $trial->fresh()->logo_theme_synced_theme,
+        ]);
+    }
+
+    public function restoreOriginalLogo(Request $request, TrialGeneration $trial)
+    {
+        $this->assertTrialAvailable($trial);
+        $theme = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+        $original = trim((string) ($theme['brand_original_logo_url'] ?? ''));
+        if ($original === '') return response()->json(['message' => 'No original logo is available to restore.'], 422);
+        $theme['brand_active_logo_url'] = $original;
+        $theme['brand_favicon_url'] = $original;
+        $trial->update([
+            'logo_url' => $original,
+            'preview_theme' => $theme,
+            'logo_source' => 'original',
+            'logo_theme_sync_state' => 'logo_changed',
+            'logo_theme_sync_source' => 'restore_original',
+            'logo_theme_synced_theme' => null,
+            'logo_updated_at' => now(),
+        ]);
+        return response()->json(['status' => 'success', 'url' => $original]);
+    }
+
     public function matchThemeToLogo(Request $request, TrialGeneration $trial, LogoThemeAnalysisService $analyzer, TrialCreditService $trialCredits)
     {
         $this->assertTrialAvailable($trial);
-        $sourceLogoUrl = trim((string) ($trial->logo_url ?: '/storage/branding/your-logo.png'));
+        $validated = $request->validate([
+            'logo_url' => ['nullable', 'string', 'max:2048'],
+            'automatic_upload' => ['nullable', 'boolean'],
+        ]);
+        $sourceLogoUrl = trim((string) ($validated['logo_url'] ?? $trial->logo_url ?: '/storage/branding/your-logo.png'));
+        $automaticUpload = (bool) ($validated['automatic_upload'] ?? false);
+        $freeUploadAnalysis = $automaticUpload
+            && $trial->logo_source === 'upload'
+            && hash_equals((string) $trial->logo_url, $sourceLogoUrl);
 
-        $trialCredits->ensureCanSpend($trial, TrialCreditService::MATCH_THEME_TO_LOGO, 'Match Theme to Logo');
+        if ($automaticUpload && ! $freeUploadAnalysis) {
+            return response()->json(['message' => 'Automatic brand matching is only available immediately from the uploaded trial logo.'], 422);
+        }
+
+        $existingCustomTheme = (array) data_get($trial->preview_theme, 'custom_brand_theme', []);
+        if ($freeUploadAnalysis
+            && $existingCustomTheme !== []
+            && hash_equals((string) ($existingCustomTheme['source_logo_url'] ?? ''), $sourceLogoUrl)) {
+            return response()->json([
+                'status' => 'success',
+                'custom_theme' => $existingCustomTheme,
+                'palette' => $existingCustomTheme['palette'] ?? [],
+                'recommended_family' => 'my-brand',
+                'reason' => 'Reused the existing brand theme for this uploaded logo.',
+                'cost' => 0,
+                'automatic_upload' => true,
+                'credit_balance' => $trialCredits->balance($trial),
+            ]);
+        }
+
+        if (! $freeUploadAnalysis) {
+            $trialCredits->ensureCanSpend($trial, TrialCreditService::MATCH_THEME_TO_LOGO, 'Match Theme to Logo');
+        }
 
         try {
             $result = $analyzer->analyze($sourceLogoUrl);
@@ -340,6 +554,8 @@ class TrialBrandingController extends Controller
             $themeSettings['custom_brand_theme'] = $customTheme;
             $themeSettings['brand_palette'] = $customTheme['palette'] ?? ($result['palette'] ?? []);
             $themeSettings['brand_source'] = 'logo';
+            // Brand analysis succeeded, so the uploaded logo is now committed.
+            unset($themeSettings['brand_pre_upload_snapshot']);
 
             $trial->update([
                 'preview_theme' => $themeSettings,
@@ -367,17 +583,20 @@ class TrialBrandingController extends Controller
             return response()->json(['message' => 'Cosmic AI could not match My Brand Theme to this logo. No credits were used.'], 500);
         }
 
-        $balance = $trialCredits->consume(
-            $trial,
-            TrialCreditService::MATCH_THEME_TO_LOGO,
-            'match_theme_to_logo',
-            ['recommended_family' => $result['recommended_family'] ?? null, 'custom_theme' => $customTheme]
-        );
+        $balance = $freeUploadAnalysis
+            ? $trialCredits->balance($trial)
+            : $trialCredits->consume(
+                $trial,
+                TrialCreditService::MATCH_THEME_TO_LOGO,
+                'match_theme_to_logo',
+                ['recommended_family' => $result['recommended_family'] ?? null, 'custom_theme' => $customTheme]
+            );
 
         return response()->json([
             'status' => 'success',
             ...$result,
-            'cost' => TrialCreditService::MATCH_THEME_TO_LOGO,
+            'cost' => $freeUploadAnalysis ? 0 : TrialCreditService::MATCH_THEME_TO_LOGO,
+            'automatic_upload' => $freeUploadAnalysis,
             'credit_balance' => $balance,
         ]);
     }
@@ -413,8 +632,10 @@ class TrialBrandingController extends Controller
             return null;
         }
 
-        // H7 browser canvas contract: final crop is exactly 650 × 150.
-        if ($width !== 650 || $height !== 150) {
+        // The browser may alpha-trim the 650 × 200 working frame before upload.
+        // Accept either the full crop frame or any tighter PNG produced from it.
+        // Reject only images that exceed the crop contract bounds.
+        if ($width > 650 || $height > 200) {
             return null;
         }
 

@@ -1,0 +1,13 @@
+{
+  "patch": "IMG-P3",
+  "features": {
+    "per_slot_queries": true,
+    "distinct_source_tracking": true,
+    "slider_distinct_images": true,
+    "people_portrait_orientation": true,
+    "path_aware_assignment": true,
+    "slot_failure_does_not_shift_later_images": true,
+    "trial_registered_shared_strategy": true,
+    "branding_protected": true
+  }
+}

@@ -1,0 +1,19 @@
+{
+  "patch": "IMG-P4",
+  "final_checks": {
+    "ai_supported_sparks": 39,
+    "recursive_slot_resolver": true,
+    "nested_slider_images": true,
+    "poster_images": true,
+    "before_after_images": true,
+    "team_portraits": true,
+    "testimonial_avatars": true,
+    "distinct_provider_sources": true,
+    "path_aware_assignment": true,
+    "trial_and_registered_shared_strategy": true,
+    "page_blocks_array_cast": true,
+    "publish_remote_safety_recursive": true,
+    "localization_avatar_support": true,
+    "branding_protected": true
+  }
+}

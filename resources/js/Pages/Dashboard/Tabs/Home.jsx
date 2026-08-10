@@ -33,8 +33,8 @@ export default function Home({ dashboard = {}, onTabChange }) {
                     <span className="mt-1 block text-xs text-slate-500">Start from a blank canvas</span>
                 </button>
                 <button type="button" onClick={() => onTabChange?.("templates")} className="rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-left transition hover:border-violet-400/35 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-violet-400">
-                    <span className="text-sm font-semibold text-white">Browse Templates</span>
-                    <span className="mt-1 block text-xs text-slate-500">Explore starting points</span>
+                    <span className="text-sm font-semibold text-white">Browse Starter Kits</span>
+                    <span className="mt-1 block text-xs text-slate-500">Explore prebuilt website starting points</span>
                 </button>
                 <button type="button" onClick={() => onTabChange?.("aiStudio")} className="rounded-xl border border-white/10 bg-white/[0.035] px-4 py-3 text-left transition hover:border-violet-400/35 hover:bg-white/[0.06] focus:outline-none focus:ring-2 focus:ring-violet-400">
                     <span className="text-sm font-semibold text-white">✦ Open AI Studio</span>

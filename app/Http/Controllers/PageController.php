@@ -451,7 +451,17 @@ class PageController extends Controller
                         ->all(),
                 ]
                 : $website->global_header,
-            'globalFooterBlock' => $website->global_footer,
+            'globalFooterBlock' => $isTrialMode
+                ? [
+                    'type' => 'minimal_footer',
+                    'theme' => 'white',
+                    'logo_text' => $trial->business_name,
+                    'logo_image_url' => $trial->logo_url ?: '/storage/branding/your-logo.png',
+                    'logo_height' => 36,
+                    'logo_filter_key' => data_get($trial->preview_theme, 'primary', 'midnight'),
+                    'copyright' => '© '.now()->year.'. All rights reserved.',
+                ]
+                : $website->global_footer,
             'trialToken' => $trial?->token,
             'websiteMediaPack' => ! $isTrialMode ? [
                 'status' => $website->mediaPack?->status ?? 'missing',
@@ -474,6 +484,8 @@ class PageController extends Controller
                 'logo_url' => $trial->logo_url,
                 'logo_company_name' => $trial->logo_company_name,
                 'logo_source' => $trial->logo_source,
+                'logo_crop_confirmed' => (bool) data_get($trial->preview_theme, 'brand_logo_crop_confirmed', false),
+                'logo_crop_dismissed' => (bool) data_get($trial->preview_theme, 'brand_logo_crop_dismissed', false),
                 'logo_theme_sync_state' => $trial->logo_theme_sync_state ?: (filled($trial->logo_url) ? (in_array($trial->logo_source, ['ai', 'ai-theme-match', 'svg-theme-match'], true) ? 'synced' : 'logo_changed') : null),
                 'logo_theme_sync_source' => $trial->logo_theme_sync_source,
                 'logo_theme_synced_theme' => $trial->logo_theme_synced_theme,

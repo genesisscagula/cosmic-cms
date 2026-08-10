@@ -19,9 +19,9 @@ export default function TemplateToolbar({
         <div className="space-y-3 rounded-2xl border border-white/10 bg-white/[0.025] p-3">
             <div className="flex flex-col gap-3 lg:flex-row">
                 <label className="relative block min-w-0 flex-1">
-                    <span className="sr-only">Search templates</span>
+                    <span className="sr-only">Search starter kits</span>
                     <span className="pointer-events-none absolute inset-y-0 left-4 flex items-center text-slate-500" aria-hidden="true">⌕</span>
-                    <input type="search" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search by template, industry, or tag..." className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] py-2 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-slate-500 hover:border-white/20 focus:border-violet-400/70 focus:ring-2 focus:ring-violet-400/15" />
+                    <input type="search" value={query} onChange={(event) => onQueryChange(event.target.value)} placeholder="Search by starter kit, industry, or tag..." className="h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] py-2 pl-10 pr-4 text-sm text-white outline-none transition placeholder:text-slate-500 hover:border-white/20 focus:border-violet-400/70 focus:ring-2 focus:ring-violet-400/15" />
                 </label>
                 <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:flex">
                     <select value={theme} onChange={(event) => onThemeChange(event.target.value)} className="h-10 min-w-0 rounded-xl border border-white/10 bg-[#18181b] px-3 text-sm text-slate-300 outline-none transition hover:border-white/20 focus:border-violet-400/70 focus:ring-2 focus:ring-violet-400/15">

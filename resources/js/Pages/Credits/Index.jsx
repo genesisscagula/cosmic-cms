@@ -267,6 +267,17 @@ export default function CreditsIndex({
         if (!activePlanKey) return 'Subscribe';
         if (planKey === activePlanKey) return hasPlanAccess ? 'Current Plan' : 'Resume Plan';
 
+        const transition = transitionByTarget[planKey];
+        if (transition?.family_change) return 'Switch Plan';
+        if (transition?.type === 'downgrade') return 'Downgrade';
+        if (transition?.type === 'upgrade') return 'Upgrade';
+
+        const targetPlan = planRows.find((plan) => plan.key === planKey);
+        const activePlan = planRows.find((plan) => plan.key === activePlanKey);
+        if (targetPlan && activePlan && (targetPlan.family || 'personal') !== (activePlan.family || 'personal')) {
+            return 'Switch Plan';
+        }
+
         return (planOrder[planKey] ?? 0) > (planOrder[activePlanKey] ?? 0)
             ? 'Upgrade'
             : 'Downgrade';
@@ -571,11 +582,13 @@ export default function CreditsIndex({
                                     const transition = transitionByTarget[plan.key];
                                     const actionLabel = isCurrent
                                         ? 'Current plan'
-                                        : transition?.type === 'downgrade'
-                                            ? 'Downgrade'
-                                            : transition?.family_change
-                                                ? `Switch to ${plan.family === 'agency' ? 'Agency' : 'Personal'}`
-                                                : 'Upgrade';
+                                        : transition?.family_change
+                                            ? 'Switch Plan'
+                                            : transition?.type === 'downgrade'
+                                                ? 'Downgrade'
+                                                : transition?.type === 'upgrade'
+                                                    ? 'Upgrade'
+                                                    : planActionLabel(plan.key);
                                     const maxSites = plan.capabilities?.max_sites;
                                     const sitesLabel = maxSites == null ? 'Unlimited websites' : `${maxSites} website${Number(maxSites) === 1 ? '' : 's'}`;
                                     const featureHighlights = [

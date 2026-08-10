@@ -1,1 +1,13 @@
-export default function ServicesPricingComparisonPreview(){return <div className="h-40 overflow-hidden rounded-xl border border-slate-200 bg-white p-3"><div className="mb-3 h-2 w-1/2 rounded bg-slate-800"/><div className="grid grid-cols-4 overflow-hidden rounded-lg border border-slate-200"><div className="bg-slate-50 p-2"/>{[1,2,3].map(i=><div key={i} className={i===2?'bg-emerald-50 p-2':'bg-white p-2'}><div className="h-1.5 w-2/3 rounded bg-slate-500"/><div className="mt-2 h-3 w-1/2 rounded bg-slate-800"/></div>)}{[1,2,3,4].map(r=><div key={r} className="contents">{[0,1,2,3].map(c=><div key={c} className={`h-5 border-t border-slate-200 p-1 ${c===2?'bg-emerald-50':'bg-white'}`}><div className="h-1 w-3/4 rounded bg-slate-300"/></div>)}</div>)}</div></div>}
+import ContentPreviewShell from "./ContentPreviewShell";
+
+export default function ServicesPricingComparisonPreview({ previewVariant = "primary", websiteTheme = "midnight" }) {
+    return (
+        <ContentPreviewShell
+            previewVariant={previewVariant}
+            websiteTheme={websiteTheme}
+            pattern="comparison"
+            imageSide="left"
+            badge="Pricing"
+        />
+    );
+}

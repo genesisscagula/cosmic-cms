@@ -1,1 +1,12 @@
-export default function HeroFloatingGlassPreview(){return <div className="relative h-full w-full overflow-hidden bg-slate-100 p-3 text-slate-900"><div className="grid h-full grid-cols-[.85fr_1.15fr] items-center gap-3"><div><div className="text-[5px] font-bold uppercase tracking-[.2em] text-slate-500">Built for momentum</div><div className="mt-2 text-[14px] font-semibold leading-[.95]">A clearer way to move forward.</div><div className="mt-2 h-1.5 w-4/5 rounded bg-slate-300"/><div className="mt-1 h-1.5 w-3/5 rounded bg-slate-200"/><div className="mt-3 inline-block rounded-full bg-emerald-600 px-2 py-1 text-[5px] font-bold text-white">Start a project</div></div><div className="relative h-[86%] rounded-2xl bg-gradient-to-br from-emerald-200 via-slate-300 to-slate-700 shadow-lg"><div className="absolute -left-2 top-3 w-20 rounded-lg border border-white/60 bg-white/70 p-2 shadow-lg backdrop-blur"><div className="h-1.5 w-12 rounded bg-slate-700"/><div className="mt-1 h-1 w-14 rounded bg-slate-300"/></div><div className="absolute -bottom-2 right-0 rounded-lg border border-white/30 bg-slate-950/65 px-3 py-2 text-[7px] font-bold text-white">3.2x</div></div></div></div>}
+import HeroPreviewShell from "./HeroPreviewShell";
+
+export default function HeroFloatingGlassPreview({ previewVariant = "primary", websiteTheme = "midnight" }) {
+    return (
+        <HeroPreviewShell
+            previewVariant={previewVariant}
+            websiteTheme={websiteTheme}
+            pattern="bento"
+            badge="Glass"
+        />
+    );
+}

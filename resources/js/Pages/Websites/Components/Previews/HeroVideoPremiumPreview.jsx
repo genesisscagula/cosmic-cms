@@ -1,1 +1,12 @@
-export default function HeroVideoPremiumPreview(){return <div className="relative h-40 overflow-hidden rounded-xl bg-slate-950 p-4 text-white"><div className="absolute inset-0 bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950"/><div className="relative flex h-full flex-col justify-between"><div className="flex justify-between text-[7px] uppercase tracking-[.22em] text-white/70"><span>A Story in Motion</span><span className="rounded-full border border-white/25 px-2 py-1">Video</span></div><div><div className="max-w-[80%] text-xl font-semibold leading-tight">Make the first seconds unforgettable.</div><div className="mt-3 flex gap-2"><span className="rounded-full bg-emerald-500 px-3 py-1 text-[8px] font-bold">Start</span><span className="rounded-full border border-white/30 px-3 py-1 text-[8px]">Watch</span></div></div></div></div>}
+import HeroPreviewShell from "./HeroPreviewShell";
+
+export default function HeroVideoPremiumPreview({ previewVariant = "primary", websiteTheme = "midnight" }) {
+    return (
+        <HeroPreviewShell
+            previewVariant={previewVariant}
+            websiteTheme={websiteTheme}
+            pattern="cinematic"
+            badge="Premium Video"
+        />
+    );
+}

@@ -1,1 +1,12 @@
-export default function HeroLuxuryFullscreenPreview(){return <div className="relative h-full w-full overflow-hidden bg-gradient-to-br from-slate-900 via-slate-700 to-amber-700 p-3 text-white"><div className="absolute inset-0 bg-black/25"/><div className="relative flex h-full flex-col justify-between"><div className="flex justify-between border-b border-white/30 pb-1 text-[5px] uppercase tracking-[.2em] text-white/75"><span>The art of arrival</span><span>Edition 01</span></div><div><div className="max-w-[80%] text-[18px] font-medium leading-[.9] tracking-[-.05em]">Quiet confidence, made unforgettable.</div><div className="mt-2 h-1.5 w-3/5 rounded bg-white/35"/><div className="mt-3 flex gap-1"><span className="rounded-full bg-white px-2 py-1 text-[5px] font-bold text-slate-900">Discover</span><span className="rounded-full border border-white/50 px-2 py-1 text-[5px] font-bold">Our story</span></div></div><div className="border-t border-white/30 pt-1 text-[5px] uppercase tracking-[.18em] text-white/70">Crafted in exceptional detail</div></div></div>}
+import HeroPreviewShell from "./HeroPreviewShell";
+
+export default function HeroLuxuryFullscreenPreview({ previewVariant = "primary", websiteTheme = "midnight" }) {
+    return (
+        <HeroPreviewShell
+            previewVariant={previewVariant}
+            websiteTheme={websiteTheme}
+            pattern="editorial"
+            badge="Luxury"
+        />
+    );
+}

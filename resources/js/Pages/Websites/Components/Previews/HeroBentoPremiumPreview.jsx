@@ -1,1 +1,12 @@
-export default function HeroBentoPremiumPreview(){return <div className="h-40 rounded-xl bg-slate-50 p-3"><div className="grid h-full grid-cols-5 gap-2"><div className="col-span-3 rounded-xl bg-white p-3 shadow-sm"><div className="text-[6px] font-bold uppercase tracking-[.18em] text-emerald-700">Bento hero</div><div className="mt-1 text-base font-semibold leading-tight text-slate-950">One clear idea, expressed from every angle.</div><div className="mt-3 h-4 w-14 rounded bg-emerald-500"/><div className="mt-3 grid grid-cols-3 gap-1"><div className="h-4 rounded bg-slate-100"/><div className="h-4 rounded bg-slate-100"/><div className="h-4 rounded bg-slate-100"/></div></div><div className="col-span-2 grid grid-rows-2 gap-2"><div className="rounded-xl bg-gradient-to-br from-emerald-200 to-slate-700"/><div className="grid grid-cols-2 gap-2"><div className="rounded-xl bg-white shadow-sm"/><div className="rounded-xl bg-emerald-100"/></div></div></div></div>}
+import HeroPreviewShell from "./HeroPreviewShell";
+
+export default function HeroBentoPremiumPreview({ previewVariant = "primary", websiteTheme = "midnight" }) {
+    return (
+        <HeroPreviewShell
+            previewVariant={previewVariant}
+            websiteTheme={websiteTheme}
+            pattern="bento"
+            badge="Bento"
+        />
+    );
+}

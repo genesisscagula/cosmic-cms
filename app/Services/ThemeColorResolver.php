@@ -24,6 +24,23 @@ class ThemeColorResolver
         return strtoupper((string) $hex);
     }
 
+    public function palette(?string $themeKey, string $fallbackTheme = 'midnight'): array
+    {
+        $families = $this->families();
+        $key = trim((string) $themeKey) ?: $fallbackTheme;
+        $palette = data_get($families, $key.'.palette');
+        if (! is_array($palette)) {
+            $palette = data_get($families, $fallbackTheme.'.palette', []);
+        }
+
+        return [
+            'primary' => strtoupper((string) ($palette['background'] ?? '#243447')),
+            'accent' => strtoupper((string) ($palette['accent'] ?? '#60A5FA')),
+            'surface' => strtoupper((string) ($palette['surface'] ?? '#30475E')),
+            'text' => strtoupper((string) ($palette['text'] ?? '#F8FAFC')),
+        ];
+    }
+
     private function families(): array
     {
         if ($this->families !== null) {

@@ -3,6 +3,7 @@
 use App\Helpers\CmsHtmlCompiler;
 use App\Http\Controllers\AI\AIController;
 use App\Http\Controllers\PageTemplateController;
+use App\Http\Controllers\TrialAssetLibraryController;
 use App\Http\Controllers\ImageController;
 use App\Http\Controllers\PageController;
 use App\Http\Controllers\ProfileController;
@@ -297,6 +298,15 @@ Route::post('/trials/{trial:token}/branding/logo/generate', [TrialBrandingContro
 Route::post('/trials/{trial:token}/branding/logo/crop', [TrialBrandingController::class, 'cropLogo'])
     ->middleware('throttle:30,1')
     ->name('trial-branding.logo.crop');
+Route::post('/trials/{trial:token}/branding/logo/crop-dismiss', [TrialBrandingController::class, 'dismissLogoCrop'])
+    ->middleware('throttle:30,1')
+    ->name('trial-branding.logo.crop-dismiss');
+Route::post('/trials/{trial:token}/branding/logo/restore-original', [TrialBrandingController::class, 'restoreOriginalLogo'])
+    ->middleware('throttle:20,1')
+    ->name('trial-branding.logo.restore-original');
+Route::post('/trials/{trial:token}/branding/logo/rollback-upload', [TrialBrandingController::class, 'rollbackUploadedLogo'])
+    ->middleware('throttle:30,1')
+    ->name('trial-branding.logo.rollback-upload');
 Route::post('/trials/{trial:token}/branding/logo/match-theme', [TrialBrandingController::class, 'matchLogoToTheme'])
     ->middleware('throttle:4,1')
     ->name('trial-branding.logo.match-theme');
@@ -323,6 +333,15 @@ Route::get('/pages/{page}/builder', [PageController::class, 'builder'])->name('p
 Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder'])
     ->middleware(['throttle:60,1', \App\Http\Middleware\RejectOversizedRequest::class . ':1024'])
     ->name('pages.builder.save');
+
+Route::prefix('trial-assets/{token}')->middleware('throttle:60,1')->group(function () {
+    Route::get('/templates', [TrialAssetLibraryController::class, 'templates']);
+    Route::post('/templates/{key}/unlock', [TrialAssetLibraryController::class, 'unlockTemplate']);
+    Route::post('/templates/{key}/favorite', [TrialAssetLibraryController::class, 'favoriteTemplate']);
+    Route::get('/sparks', [TrialAssetLibraryController::class, 'sparks']);
+    Route::post('/sparks/{key}/unlock', [TrialAssetLibraryController::class, 'unlockSpark']);
+    Route::post('/sparks/{key}/favorite', [TrialAssetLibraryController::class, 'favoriteSpark']);
+});
 
 Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
     Route::prefix('admin/chat')->middleware(\App\Http\Middleware\EnsurePlatformOwner::class)->group(function () {
@@ -450,6 +469,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/api/upload-logo', [ImageController::class, 'uploadLogo'])->middleware('throttle:cosmic-upload')->name('websites.logo.upload');
     Route::post('/websites/{website}/branding/logo/generate', [ImageController::class, 'generateLogo'])->middleware('throttle:4,1')->name('websites.logo.generate');
     Route::post('/websites/{website}/branding/logo/crop', [ImageController::class, 'cropLogo'])->middleware('throttle:30,1')->name('websites.logo.crop');
+    Route::post('/websites/{website}/branding/logo/restore-original', [ImageController::class, 'restoreOriginalLogo'])->middleware('throttle:20,1')->name('websites.logo.restore-original');
+    Route::post('/websites/{website}/branding/logo/rollback-upload', [ImageController::class, 'rollbackUploadedLogo'])->middleware('throttle:30,1')->name('websites.logo.rollback-upload');
     Route::post('/websites/{website}/branding/logo/match-theme', [ImageController::class, 'matchLogoToTheme'])->middleware('throttle:4,1')->name('websites.logo.match-theme');
     Route::post('/websites/{website}/branding/theme/match-logo', [ImageController::class, 'matchThemeToLogo'])->middleware('throttle:4,1')->name('websites.theme.match-logo');
     Route::post('/api/update-block-data', [ImageController::class, 'update'])->middleware('throttle:cosmic-upload');

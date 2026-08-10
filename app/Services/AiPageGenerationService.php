@@ -43,6 +43,7 @@ class AiPageGenerationService
         private readonly IndustryResolver $industryResolver,
         private readonly AiCacheManager $cache,
         private readonly TrialRemoteImageService $trialRemoteImages,
+        private readonly ImageSlotResolver $imageSlots,
     ) {
     }
 
@@ -122,8 +123,9 @@ class AiPageGenerationService
         // downloading media into Cosmic storage. The generated local/curated
         // image values remain as a safe fallback if Unsplash is unavailable.
         $mediaQueries = $this->learningQueries($prompt, $blocks, $placeholderFolder);
+        $mediaQueries = $this->prioritizeRemoteImageQueries($mediaQueries);
         $targetImageCount = min(10, count($mediaQueries));
-        $remoteImages = $this->trialRemoteImages->resolve($visualIntent, $targetImageCount);
+        $remoteImages = $this->trialRemoteImages->resolveForQueries($visualIntent, $mediaQueries, 'TrialRemoteImages');
         $blocks = $this->trialRemoteImages->assignToBlocks($blocks, $remoteImages);
         $mediaKeywords = collect($visualIntent['image_keywords'] ?? [])
             ->merge(collect($mediaQueries)->pluck('query'))
@@ -184,12 +186,12 @@ class AiPageGenerationService
         // Keep target calculation identical to /start so the registered Builder
         // receives the same number/style of remote provider images.
         $mediaQueries = $this->learningQueries($prompt, $blocks, $resolvedImageFolder);
+        $mediaQueries = $this->prioritizeRemoteImageQueries($mediaQueries);
         $targetImageCount = min(10, count($mediaQueries));
 
-        // IMPORTANT: use resolve(), not a separate registered resolver/flag.
-        // This makes registered AI generation follow the same Unsplash behavior
-        // and configuration as the public /start flow.
-        $remoteImages = $this->trialRemoteImages->resolve($visualIntent, $targetImageCount);
+        // Registered generation follows the same slot-aware provider strategy
+        // as /start so nested/multiple image fields receive equivalent imagery.
+        $remoteImages = $this->trialRemoteImages->resolveForQueries($visualIntent, $mediaQueries, 'RegisteredRemoteImages');
         $blocks = $this->trialRemoteImages->assignToBlocks($blocks, $remoteImages);
 
         $mediaKeywords = collect($visualIntent['image_keywords'] ?? [])
@@ -201,11 +203,21 @@ class AiPageGenerationService
             ->values()
             ->all();
 
+        $sliderRequestedSlots = collect($mediaQueries)
+            ->where('block_type', 'hero_slider_fade')
+            ->count();
+        $sliderResolvedSlots = collect($remoteImages)
+            ->where('block_type', 'hero_slider_fade')
+            ->count();
+
         Log::info('[RegisteredRemoteImages] Applied exact /start Unsplash flow.', [
             'image_folder_fallback' => $resolvedImageFolder,
             'target_image_count' => $targetImageCount,
             'remote_image_count' => count($remoteImages),
             'media_keywords' => count($mediaKeywords),
+            'slider_requested_slots' => $sliderRequestedSlots,
+            'slider_resolved_slots' => $sliderResolvedSlots,
+            'slider_fallback_slots' => max(0, $sliderRequestedSlots - $sliderResolvedSlots),
         ]);
 
         return [
@@ -311,6 +323,43 @@ class AiPageGenerationService
                 $images = $this->images->localFallbacks($resolvedImageFolder, 2);
                 $block['before_image_url'] = $images[0] ?? $this->images->find($query.' before redesign', $resolvedImageFolder, 'case-study');
                 $block['after_image_url'] = $images[1] ?? $this->images->find($query.' after redesign', $resolvedImageFolder, 'case-study');
+                continue;
+            }
+
+            // Slider Showcase keeps its images inside slides[].image_url rather
+            // than on the block root. Seed those nested slots with stable local
+            // fallbacks before the registered/trial Unsplash pass. This prevents
+            // a personalized template from rendering blank when Luna correctly
+            // returns empty image_url values or when one provider lookup fails.
+            if ($type === 'hero_slider_fade') {
+                $slides = is_array($block['slides'] ?? null) ? array_values($block['slides']) : [];
+
+                while (count($slides) < 3) {
+                    $slides[] = [];
+                }
+
+                $fallbacks = $this->images->localFallbacks($resolvedImageFolder, count($slides));
+
+                foreach ($slides as $slideIndex => &$slide) {
+                    if (! is_array($slide)) {
+                        $slide = [];
+                    }
+
+                    $existing = trim((string) ($slide['image_url'] ?? $slide['image'] ?? $slide['background_image'] ?? ''));
+                    $slide['image_url'] = $existing !== ''
+                        ? $existing
+                        : ($fallbacks[$slideIndex] ?? '/cosmic-images/cosmic-fallback.svg');
+                }
+
+                unset($slide);
+                $block['slides'] = $slides;
+
+                Log::debug('[SliderShowcaseImages] Nested image slots prepared.', [
+                    'slide_count' => count($slides),
+                    'image_slot_count' => $this->imageSlots->count($block),
+                    'image_folder' => $resolvedImageFolder,
+                ]);
+
                 continue;
             }
 
@@ -462,35 +511,75 @@ class AiPageGenerationService
     {
         $queries = [];
 
-        foreach ($blocks as $block) {
+        foreach ($blocks as $blockIndex => $block) {
             if (! is_array($block)) {
                 continue;
             }
 
             $type = (string) ($block['type'] ?? 'website section');
             $baseQuery = $this->visualQueryBuilder->build($prompt, $block, $type, $industry);
-            $role = $this->imageRoleForBlock($type);
-            $slotCount = 0;
+            $slots = $this->imageSlots->slots($block);
 
-            if ($type === 'hero_video_background') {
-                $slotCount = 1;
-            } elseif ($type === 'hero_agency_showcase') {
-                $slotCount = 2;
-            } elseif ($type === 'case_studies_grid' && is_array($block['studies'] ?? null)) {
-                $slotCount = count($block['studies']);
-            } elseif (array_key_exists('image_url', $block)) {
-                $slotCount = 1;
-            }
+            foreach ($slots as $slotIndex => $slot) {
+                $role = (string) ($slot['role'] ?? $this->imageRoleForBlock($type));
+                $path = (string) ($slot['path'] ?? '');
+                $query = $this->slotSpecificQuery($baseQuery, $type, $path, $slotIndex);
 
-            for ($slot = 0; $slot < $slotCount; $slot++) {
                 $queries[] = [
-                    'query' => $baseQuery,
+                    'query' => $query,
                     'role' => $role,
+                    'path' => $path,
+                    'block_type' => $type,
+                    'block_index' => $blockIndex,
+                    'slot_index' => $slotIndex,
                 ];
             }
         }
 
         return $queries;
+    }
+
+    /**
+     * Keep hero slider imagery inside the 10-slot remote preview budget even on
+     * image-heavy templates. Assignment remains path-based, so reordering query
+     * work here cannot shift images into the wrong block.
+     *
+     * @param array<int, array<string,mixed>> $queries
+     * @return array<int, array<string,mixed>>
+     */
+    private function prioritizeRemoteImageQueries(array $queries): array
+    {
+        return collect($queries)
+            ->sortBy(fn (array $query) => ($query['block_type'] ?? '') === 'hero_slider_fade' ? 0 : 1)
+            ->values()
+            ->all();
+    }
+
+    private function slotSpecificQuery(string $baseQuery, string $type, string $path, int $slotIndex): string
+    {
+        if ($type === 'hero_slider_fade') {
+            return trim($baseQuery.' editorial hero scene '.($slotIndex + 1));
+        }
+
+        if ($type === 'hero_agency_showcase') {
+            if (str_contains($path, 'before_image_url')) {
+                return trim($baseQuery.' before transformation');
+            }
+
+            if (str_contains($path, 'after_image_url')) {
+                return trim($baseQuery.' after transformation');
+            }
+        }
+
+        if (str_contains($type, 'team') || str_contains($type, 'testimonial')) {
+            return trim($baseQuery.' professional portrait '.($slotIndex + 1));
+        }
+
+        if (str_contains($type, 'case_stud')) {
+            return trim($baseQuery.' project case study '.($slotIndex + 1));
+        }
+
+        return $baseQuery;
     }
 
     private function imageRoleForBlock(string $type): string

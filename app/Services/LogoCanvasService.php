@@ -10,12 +10,55 @@ class LogoCanvasService
      */
     public function trimTransparentPng(string $bytes, int $padding = 6): string
     {
+        // Prefer Imagick when available. This avoids making logo correctness
+        // depend on GD alone and keeps alpha-bound trimming deterministic on
+        // hosts that provide ImageMagick instead.
+        if (class_exists(\Imagick::class)) {
+            try {
+                $image = new \Imagick();
+                $image->readImageBlob($bytes);
+                $image->setImageFormat('png');
+                $image->setImageAlphaChannel(\Imagick::ALPHACHANNEL_ACTIVATE);
+
+                // trimImage uses the transparent border as the reference.
+                // A small fuzz ignores ultra-faint generator noise/glow.
+                if (defined('Imagick::FUZZ')) {
+                    $image->setImageArtifact('trim:fuzz', '4%');
+                }
+                $image->trimImage(0.04 * \Imagick::getQuantum());
+
+                $width = $image->getImageWidth();
+                $height = $image->getImageHeight();
+                if ($width > 0 && $height > 0 && $padding > 0) {
+                    $image->borderImage(new \ImagickPixel('transparent'), $padding, $padding);
+                }
+
+                $result = $image->getImagesBlob();
+                $image->clear();
+                $image->destroy();
+
+                if (is_string($result) && $result !== '') {
+                    return $result;
+                }
+            } catch (\Throwable $exception) {
+                logger()->warning('Logo alpha trim failed with Imagick; trying GD.', [
+                    'message' => $exception->getMessage(),
+                ]);
+            }
+        }
+
         if (! function_exists('imagecreatefromstring')) {
+            // The browser crop-save path performs the same alpha-bound trim
+            // before sending the PNG, so this is a safety fallback rather than
+            // a silent dependency. Log it so production configuration issues
+            // are visible instead of being mistaken for a successful trim.
+            logger()->warning('Logo alpha trim backend unavailable: install GD or Imagick. Browser-trimmed PNG retained.');
             return $bytes;
         }
 
         $source = @imagecreatefromstring($bytes);
         if (! $source) {
+            logger()->warning('Logo alpha trim could not decode PNG with GD. Browser-trimmed PNG retained.');
             return $bytes;
         }
 
@@ -35,13 +78,11 @@ class LogoCanvasService
                 $g = ($rgba >> 8) & 0xFF;
                 $b = $rgba & 0xFF;
 
-                // Ignore ultra-faint AI glow/noise around the canvas. Alpha 0 is
-                // fully opaque and 127 fully transparent in GD.
                 $opacity = 1 - ($alpha / 127);
                 $brightness = max($r, $g, $b) / 255;
                 $significance = $opacity * max(0.35, $brightness);
 
-                if ($alpha < 116 && $significance >= 0.075) {
+                if ($alpha < 121 && $significance >= 0.045) {
                     $left = min($left, $x);
                     $right = max($right, $x);
                     $top = min($top, $y);
@@ -52,6 +93,7 @@ class LogoCanvasService
 
         if ($right < $left || $bottom < $top) {
             imagedestroy($source);
+            logger()->warning('Logo alpha trim found no significant visible pixels; original PNG retained.');
             return $bytes;
         }
 
@@ -62,7 +104,6 @@ class LogoCanvasService
         $targetWidth = $right - $left + 1;
         $targetHeight = $bottom - $top + 1;
 
-        // Already tight enough.
         if ($left === 0 && $top === 0 && $targetWidth === $width && $targetHeight === $height) {
             imagedestroy($source);
             return $bytes;
@@ -81,7 +122,81 @@ class LogoCanvasService
         imagedestroy($source);
         imagedestroy($canvas);
 
-        return $result !== '' ? $result : $bytes;
+        if ($result === '') {
+            logger()->warning('Logo alpha trim produced an empty GD result; browser-trimmed PNG retained.');
+            return $bytes;
+        }
+
+        return $result;
+    }
+
+    /**
+     * Place a transparent PNG inside an exact transparent canvas without
+     * changing its aspect ratio. This is used for website-header logos so the
+     * saved asset has predictable 650x200 dimensions while preserving every
+     * visible pixel.
+     */
+    public function fitTransparentPngToCanvas(string $bytes, int $canvasWidth = 650, int $canvasHeight = 200, int|float $padding = 0.12): string
+    {
+        if (! function_exists('imagecreatefromstring')) {
+            return $bytes;
+        }
+
+        $trimmed = $this->trimTransparentPng($bytes, 2);
+        $source = @imagecreatefromstring($trimmed);
+        if (! $source) {
+            return $trimmed;
+        }
+
+        $sourceWidth = imagesx($source);
+        $sourceHeight = imagesy($source);
+
+        // A fractional padding value is interpreted per-axis. 0.12 means 12%
+        // transparent safety space on the left/right AND top/bottom, matching
+        // the Cosmic 650x200 header cropper contract. Integer values remain
+        // backward-compatible pixel padding.
+        if (is_float($padding) && $padding > 0 && $padding < 0.5) {
+            $paddingX = (int) round($canvasWidth * $padding);
+            $paddingY = (int) round($canvasHeight * $padding);
+        } else {
+            $paddingX = max(0, (int) round($padding));
+            $paddingY = $paddingX;
+        }
+
+        $availableWidth = max(1, $canvasWidth - ($paddingX * 2));
+        $availableHeight = max(1, $canvasHeight - ($paddingY * 2));
+        $scale = min($availableWidth / max(1, $sourceWidth), $availableHeight / max(1, $sourceHeight));
+        $targetWidth = max(1, (int) floor($sourceWidth * $scale));
+        $targetHeight = max(1, (int) floor($sourceHeight * $scale));
+        $targetX = (int) floor(($canvasWidth - $targetWidth) / 2);
+        $targetY = (int) floor(($canvasHeight - $targetHeight) / 2);
+
+        $canvas = imagecreatetruecolor($canvasWidth, $canvasHeight);
+        imagealphablending($canvas, false);
+        imagesavealpha($canvas, true);
+        $transparent = imagecolorallocatealpha($canvas, 0, 0, 0, 127);
+        imagefilledrectangle($canvas, 0, 0, $canvasWidth, $canvasHeight, $transparent);
+
+        imagecopyresampled(
+            $canvas,
+            $source,
+            $targetX,
+            $targetY,
+            0,
+            0,
+            $targetWidth,
+            $targetHeight,
+            $sourceWidth,
+            $sourceHeight
+        );
+
+        ob_start();
+        imagepng($canvas, null, 9);
+        $result = (string) ob_get_clean();
+        imagedestroy($source);
+        imagedestroy($canvas);
+
+        return $result !== '' ? $result : $trimmed;
     }
 
     /**

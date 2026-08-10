@@ -1,1 +1,12 @@
-export default function HeroAgencyShowcasePreview(){return <div className="h-40 rounded-xl bg-slate-50 p-3"><div className="flex items-end justify-between gap-2"><div><div className="text-[6px] font-bold uppercase tracking-[.18em] text-emerald-700">Agency showcase</div><div className="mt-1 text-base font-semibold leading-tight text-slate-950">From overlooked to unforgettable.</div></div><div className="h-4 w-12 rounded bg-emerald-500"/></div><div className="mt-3 grid grid-cols-2 gap-2"><div className="h-16 rounded-lg bg-slate-400 grayscale"/><div className="h-16 rounded-lg bg-gradient-to-br from-emerald-200 to-slate-700"/></div><div className="mt-2 grid grid-cols-3 gap-2"><div className="h-3 rounded bg-white shadow"/><div className="h-3 rounded bg-white shadow"/><div className="h-3 rounded bg-white shadow"/></div></div>}
+import HeroPreviewShell from "./HeroPreviewShell";
+
+export default function HeroAgencyShowcasePreview({ previewVariant = "primary", websiteTheme = "midnight" }) {
+    return (
+        <HeroPreviewShell
+            previewVariant={previewVariant}
+            websiteTheme={websiteTheme}
+            pattern="split"
+            badge="Agency"
+        />
+    );
+}

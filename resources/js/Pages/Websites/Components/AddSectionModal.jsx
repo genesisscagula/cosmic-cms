@@ -6,6 +6,7 @@ import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import BlockPreviewCard from "./BlockPreviewCard";
 import { BlockRegistry } from "./SparkRegistry";
 import { BlockRegistry as BuilderBlockRegistry } from "../BlockRegistry";
+import { colorFamilies, installCustomBrandTheme } from "../../../theme/colorFamilies";
 
 const categoryFor = (type) => {
     if (type.startsWith("hero_") || type === "image_cta_banner") return "Hero";
@@ -24,9 +25,61 @@ const categoryFor = (type) => {
     return "Other";
 };
 
-function SparkVisual({ spark }) {
+function SparkVisual({ spark, previewVariant = "primary", websiteTheme = "midnight" }) {
     const Preview = spark.registry.preview;
-    return <Preview {...spark.registry.payload} />;
+    return <Preview {...spark.registry.payload} previewVariant={previewVariant} websiteTheme={websiteTheme} />;
+}
+
+
+function previewPalette(websiteTheme, previewVariant) {
+    const normalized = typeof websiteTheme === "string"
+        ? { primary: websiteTheme }
+        : (websiteTheme || {});
+
+    if (normalized.primary === "my-brand" && normalized.custom_brand_theme) {
+        installCustomBrandTheme(normalized.custom_brand_theme);
+    }
+
+    const primaryKey = normalized.primary || "midnight";
+    const primaryFamily = colorFamilies[primaryKey] || colorFamilies.midnight;
+    const whiteFamily = colorFamilies.white;
+    const surfaceFamily = colorFamilies.stone;
+
+    const family = previewVariant === "white"
+        ? whiteFamily
+        : previewVariant === "surface"
+            ? surfaceFamily
+            : primaryFamily;
+
+    const palette = family?.palette || {};
+    return {
+        family,
+        background: palette.background || "#243447",
+        surface: palette.surface || palette.background || "#30475E",
+        text: palette.text || "#F8FAFC",
+        accent: palette.accent || "#60A5FA",
+    };
+}
+
+function hexLuminance(hex) {
+    const normalized = String(hex || "").replace("#", "");
+    if (!/^[0-9a-fA-F]{6}$/.test(normalized)) return 0;
+
+    const channels = [0, 2, 4].map((offset) => {
+        const value = parseInt(normalized.slice(offset, offset + 2), 16) / 255;
+        return value <= 0.03928 ? value / 12.92 : Math.pow((value + 0.055) / 1.055, 2.4);
+    });
+
+    return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
+}
+
+function safePreviewText(background, preferredText) {
+    const backgroundLum = hexLuminance(background);
+    const preferredLum = hexLuminance(preferredText);
+    const contrast = (Math.max(backgroundLum, preferredLum) + 0.05) / (Math.min(backgroundLum, preferredLum) + 0.05);
+
+    if (contrast >= 4.5) return preferredText;
+    return backgroundLum > 0.45 ? "#0F172A" : "#F8FAFC";
 }
 
 export function ActualSparkPreview({ spark, previewVariant = "white", websiteTheme }) {
@@ -34,7 +87,11 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
     const Component = registryItem?.component;
 
     if (!Component) {
-        return <SparkVisual spark={spark} />;
+        return (
+            <div className="cosmic-spark-preview-content w-full">
+                <SparkVisual spark={spark} previewVariant={previewVariant} websiteTheme={websiteTheme} />
+            </div>
+        );
     }
 
     const defaults = registryItem.schema?.defaults || {};
@@ -46,19 +103,46 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
         resolvedTheme: previewVariant,
     };
 
+    // Preview parity rule: render the registry block exactly like Builder does.
+    // The shell must never recolor, resize, or otherwise "repair" the section.
+    // `previewVariant` only supplies the same resolvedTheme value Builder passes
+    // after resolveBlockTheme(); the block component owns all visual decisions.
+    const normalizedTheme = typeof websiteTheme === "string"
+        ? { primary: websiteTheme, secondary: "white", tertiary: "surface", auto: true }
+        : {
+            ...(websiteTheme || {}),
+            primary: websiteTheme?.primary || "midnight",
+            secondary: websiteTheme?.secondary || "white",
+            tertiary: websiteTheme?.tertiary || "surface",
+            auto: websiteTheme?.auto ?? true,
+        };
+    const palette = previewPalette(normalizedTheme, previewVariant);
+
     return (
-        <Component
-            block={block}
-            blockIndex={0}
-            globalTheme={websiteTheme}
-            onUpdate={() => {}}
-            blogPosts={[]}
-            blogWebsiteId={null}
-            blogPageId={null}
-            onBlogPostCreated={() => {}}
-            onBlogPostUpdated={() => {}}
-            onBlogPostDeleted={() => {}}
-        />
+        <div
+            className="cosmic-spark-preview-content w-full"
+            data-preview-variant={previewVariant}
+            data-preview-family={previewVariant === "primary" ? normalizedTheme.primary : previewVariant}
+            style={{
+                "--cosmic-preview-bg": palette.background,
+                "--cosmic-preview-surface": palette.surface,
+                "--cosmic-preview-text": palette.text,
+                "--cosmic-preview-accent": palette.accent,
+            }}
+        >
+            <Component
+                block={block}
+                blockIndex={0}
+                globalTheme={normalizedTheme}
+                onUpdate={() => {}}
+                blogPosts={[]}
+                blogWebsiteId={null}
+                blogPageId={null}
+                onBlogPostCreated={() => {}}
+                onBlogPostUpdated={() => {}}
+                onBlogPostDeleted={() => {}}
+            />
+        </div>
     );
 }
 
@@ -69,13 +153,15 @@ export default function AddSectionModal({
     onReplace = null,
     websiteContext = "",
     websiteId = null,
+    trialMode = false,
+    trialToken = null,
     ownedOnly = false,
     contextLabel = null,
     onOwnershipChanged = null,
     websiteTheme = null,
 }) {
     const { setBalance } = useCreditBalance();
-    const [tab, setTab] = useState("owned");
+    const [tab, setTab] = useState(ownedOnly ? "owned" : "marketplace");
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All");
     const [catalog, setCatalog] = useState([]);
@@ -86,37 +172,18 @@ export default function AddSectionModal({
     const [instruction, setInstruction] = useState("");
     const [previewSpark, setPreviewSpark] = useState(null);
     const [previewVariantIndex, setPreviewVariantIndex] = useState(0);
-    const [previewVisible, setPreviewVisible] = useState(true);
     const [personalizingSpark, setPersonalizingSpark] = useState(false);
     const [personalizeProgress, setPersonalizeProgress] = useState(0);
     const [personalizeStage, setPersonalizeStage] = useState("Understanding your Spark...");
-    const [previewCycleKey, setPreviewCycleKey] = useState(0);
 
 
-    const previewVariants = ["white", "primary", "surface"];
+    const previewVariants = ["primary", "white", "surface"];
     const previewVariant = previewVariants[previewVariantIndex];
 
     useEffect(() => {
-        if (!previewSpark) {
-            setPreviewVariantIndex(0);
-            setPreviewVisible(true);
-            return undefined;
-        }
+        if (previewSpark) setPreviewVariantIndex(0);
+    }, [previewSpark]);
 
-        setPreviewVisible(true);
-        const displayTimer = window.setTimeout(() => {
-            setPreviewVisible(false);
-        }, 2500);
-        const transitionTimer = window.setTimeout(() => {
-            setPreviewVariantIndex((current) => (current + 1) % previewVariants.length);
-            setPreviewVisible(true);
-        }, 3100);
-
-        return () => {
-            window.clearTimeout(displayTimer);
-            window.clearTimeout(transitionTimer);
-        };
-    }, [previewSpark, previewVariantIndex, previewCycleKey]);
 
     useEffect(() => {
         if (!personalizingSpark) {
@@ -147,26 +214,24 @@ export default function AddSectionModal({
 
     useEffect(() => {
         if (!open) return;
-        if (ownedOnly) setTab("owned");
+        setTab(ownedOnly ? "owned" : "marketplace");
         setLoading(true);
-        axios.get("/sparks/catalog")
+        axios.get(trialMode && trialToken ? `/trial-assets/${trialToken}/sparks` : "/sparks/catalog")
             .then(({ data }) => setCatalog(data.sparks || []))
             .catch(() => showCosmicNotification({ title: "Could not load Sparks", message: "Please refresh and try again.", tone: "error" }))
             .finally(() => setLoading(false));
-    }, [open, ownedOnly]);
+    }, [open, ownedOnly, trialMode, trialToken]);
 
     const registry = useMemo(() => new Map(BlockRegistry.map((item) => [item.type, item])), []);
     const items = useMemo(() => catalog.map((spark) => ({ ...spark, registry: registry.get(spark.key) })).filter((spark) => spark.registry), [catalog, registry]);
     const categories = useMemo(() => ["All", ...new Set(items.map((item) => item.category || categoryFor(item.key)))], [items]);
     const counts = useMemo(() => ({
-        builtIn: items.filter((item) => Number(item.credits || 0) === 0).length,
         owned: items.filter((item) => item.owned).length,
         favorites: items.filter((item) => item.favorited).length,
         marketplace: items.length,
     }), [items]);
 
     const visible = useMemo(() => items.filter((item) => {
-        if (tab === "built-in" && Number(item.credits || 0) !== 0) return false;
         if (tab === "owned" && !item.owned) return false;
         if (tab === "favorites" && !item.favorited) return false;
         if (category !== "All" && item.category !== category) return false;
@@ -179,7 +244,7 @@ export default function AddSectionModal({
     const unlock = async (spark) => {
         setBusyKey(spark.key);
         try {
-            const { data } = await axios.post(`/sparks/${spark.key}/unlock`);
+            const { data } = await axios.post(trialMode && trialToken ? `/trial-assets/${trialToken}/sparks/${spark.key}/unlock` : `/sparks/${spark.key}/unlock`);
             setCatalog((current) => current.map((item) => item.key === spark.key ? { ...item, owned: true } : item));
             onOwnershipChanged?.(spark.key);
             setBalance(data.credit_balance);
@@ -194,7 +259,7 @@ export default function AddSectionModal({
     const toggleFavorite = async (spark) => {
         setBusyKey(`favorite-${spark.key}`);
         try {
-            const { data } = await axios.post(`/sparks/${spark.key}/favorite`);
+            const { data } = await axios.post(trialMode && trialToken ? `/trial-assets/${trialToken}/sparks/${spark.key}/favorite` : `/sparks/${spark.key}/favorite`);
             setCatalog((current) => current.map((item) => item.key === spark.key ? { ...item, favorited: data.favorited } : item));
             setPreviewSpark((current) => current?.key === spark.key ? { ...current, favorited: data.favorited } : current);
             showCosmicNotification({ title: data.favorited ? "Added to Favorites" : "Removed from Favorites", message: data.message, tone: "success" });
@@ -212,6 +277,7 @@ export default function AddSectionModal({
             if (mode === "quick") {
                 onAdd(structuredClone(selected.registry.payload));
             } else {
+                if (trialMode) throw new Error("AI Spark personalization is available after sign up. Quick Add remains available in trial.");
                 setPersonalizingSpark(true);
                 const prompt = [
                     websiteContext || "Create professional website content.",
@@ -254,10 +320,9 @@ export default function AddSectionModal({
                 </div>
                 <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-1">
-                        {!ownedOnly && <button onClick={() => setTab("built-in")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "built-in" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Built-in ({counts.builtIn})</button>}
+                        {!ownedOnly && <button onClick={() => setTab("marketplace")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "marketplace" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Marketplace ({counts.marketplace})</button>}
                         <button onClick={() => setTab("owned")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "owned" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Owned ({counts.owned})</button>
                         {!ownedOnly && <button onClick={() => setTab("favorites")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "favorites" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Favorites ({counts.favorites})</button>}
-                        {!ownedOnly && <button onClick={() => setTab("marketplace")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "marketplace" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Marketplace ({counts.marketplace})</button>}
                     </div>
                     <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search Sparks..." className="h-11 w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm placeholder:text-slate-600 focus:border-violet-400 focus:outline-none lg:w-80" />
                 </div>
@@ -265,27 +330,27 @@ export default function AddSectionModal({
             </header>
 
             <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-7">
-                {loading ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-white/[0.04]" />)}</div> : visible.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((spark) => <article key={spark.key} className="cosmic-spark-card overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
-                    <div className="h-40 overflow-hidden bg-[#09090b] p-3"><div className="pointer-events-none origin-top-left scale-[0.68]" style={{ width: "147%" }}><SparkVisual spark={spark} /></div></div>
+                {loading ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-white/[0.04]" />)}</div> : visible.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((spark, sparkIndex) => <article key={spark.key} className="cosmic-spark-card overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
+                    <div className="h-40 overflow-hidden p-3"><div className="pointer-events-none h-full w-full"><SparkVisual spark={spark} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} websiteTheme={websiteTheme || "midnight"} /></div></div>
                     <div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-300">{spark.category}</p><h3 className="mt-1 text-base font-semibold">{spark.name}</h3></div><div className="flex items-center gap-2"><button type="button" disabled={busyKey === `favorite-${spark.key}`} onClick={() => toggleFavorite(spark)} className={`cosmic-flat-icon flex h-8 w-8 items-center justify-center rounded-lg border text-sm ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button>{spark.owned ? <span className="cosmic-owned-badge rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold text-emerald-200">✓ Owned</span> : Number(spark.credits || 0) === 0 ? <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] font-bold text-cyan-100">Built-in · Free</span> : <span className="rounded-full bg-amber-300/10 px-2.5 py-1 text-[10px] font-bold text-amber-100">⚡ {spark.credits}</span>}</div></div><p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{spark.description}</p><div className="mt-4 flex gap-2"><button type="button" onClick={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark(spark)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:border-violet-400/40 hover:bg-white/5">Preview</button>{spark.owned ? <button onClick={() => setSelected(spark)} className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-violet-100">Add to Page</button> : spark.can_install === false && spark.usage_state?.upgrade_url ? <Link href={spark.usage_state.upgrade_url} className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">{spark.usage_state.actionLabel || "Upgrade to add"}</Link> : spark.can_install === false && spark.usage_state?.action === "buy_credits" ? <Link href="/credits" className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">Add credits</Link> : <button disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold hover:bg-violet-500 disabled:opacity-50">{busyKey === spark.key ? "Adding..." : spark.usage_state?.actionLabel || (Number(spark.credits || 0) === 0 ? "Add Free Spark" : "Add to Owned")}</button>}</div></div>
                 </article>)}</div> : <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center"><div className="text-3xl">✨</div><h3 className="mt-3 font-semibold">{tab === "owned" ? "No owned Sparks found" : tab === "favorites" ? "No favorite Sparks yet" : "No Sparks match your search"}</h3><p className="mt-1 text-sm text-slate-500">{tab === "owned" ? "Open the Marketplace tab and add your first reusable Spark." : tab === "favorites" ? "Use the heart button to save Sparks here for quick access." : "Try another category or search phrase."}</p>{tab === "owned" && !ownedOnly && <button onClick={() => setTab("marketplace")} className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950">Browse Marketplace</button>}</div>}
             </div>
         </section>
 
-        {previewSpark && <div className="fixed inset-0 z-[940] flex items-center justify-center p-3 sm:p-6">
+        {previewSpark && <div className="fixed inset-0 z-[940] flex items-stretch justify-stretch">
             <button type="button" onClick={() => setPreviewSpark(null)} className="absolute inset-0 bg-black/85 backdrop-blur-sm" aria-label="Close Spark preview" />
-            <section role="dialog" aria-modal="true" className="cosmic-spark-preview-modal relative z-10 flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#101014] text-white shadow-2xl">
+            <section role="dialog" aria-modal="true" className="cosmic-spark-preview-modal relative z-10 flex h-screen w-screen max-w-none flex-col overflow-hidden rounded-none border border-white/10 bg-[#101014] text-white shadow-2xl">
                 <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7">
                     <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">Spark Preview · {previewSpark.category}</p><h3 className="mt-1 text-xl font-semibold">{previewSpark.name}</h3><p className="mt-1 max-w-3xl text-sm text-slate-400">{previewSpark.description}</p></div>
                     <button type="button" onClick={() => setPreviewSpark(null)} className="rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white">✕</button>
                 </header>
-                <div className="min-h-0 flex-1 overflow-auto bg-[#e5e7eb] p-3 sm:p-6">
-                    <div className="mx-auto min-h-[620px] max-w-[1440px] overflow-hidden rounded-2xl bg-white shadow-2xl">
-                        <div className={`pointer-events-none min-w-[1100px] origin-top-left transition-all duration-[600ms] ease-in-out ${previewVisible ? "translate-y-0 scale-100 opacity-100" : "translate-y-0.5 scale-[0.985] opacity-0"}`}><ActualSparkPreview spark={previewSpark} previewVariant={previewVariant} websiteTheme={websiteTheme} /></div>
-                    </div>
+                <div className="min-h-0 flex-1 overflow-auto bg-[#e5e7eb] p-0">
+                    <div className="cosmic-spark-preview-stage min-h-full w-full"><div className="cosmic-spark-preview-stage-inner">
+                        <div className="pointer-events-none w-full min-w-0 origin-top-left"><ActualSparkPreview spark={previewSpark} previewVariant={previewVariant} websiteTheme={websiteTheme} /></div>
+                    </div></div>
                 </div>
                 <footer className="flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400"><span className="rounded-full bg-violet-400/10 px-2.5 py-1 font-bold text-violet-200">AI Ready</span><span>Responsive Spark preview</span><div className="flex items-center gap-1.5">{previewVariants.map((variant, index) => <button key={variant} type="button" onClick={() => { setPreviewVariantIndex(index); setPreviewVisible(true); setPreviewCycleKey((current) => current + 1); }} className={`rounded-full px-2.5 py-1 capitalize transition ${previewVariantIndex === index ? "bg-white text-slate-950" : "bg-white/5 text-slate-400 hover:bg-white/10 hover:text-white"}`}>{variant}</button>)}</div></div>
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400"><span className="rounded-full bg-violet-400/10 px-2.5 py-1 font-bold text-violet-200">AI Ready</span><span>Responsive Spark preview</span><div className="flex items-center gap-1.5">{previewVariants.map((variant, index) => <button key={variant} type="button" aria-pressed={previewVariantIndex === index} data-active={previewVariantIndex === index ? "true" : "false"} onClick={() => setPreviewVariantIndex(index)} className="cosmic-spark-variant-toggle rounded-full px-2.5 py-1 font-semibold capitalize transition">{variant}</button>)}</div></div>
                     <div className="flex gap-2"><button type="button" disabled={busyKey === `favorite-${previewSpark.key}`} onClick={() => toggleFavorite(previewSpark)} className={`rounded-xl border px-4 py-2.5 text-sm font-semibold ${previewSpark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-300"}`}>{previewSpark.favorited ? "♥ Favorite" : "♡ Favorite"}</button><button type="button" onClick={() => setPreviewSpark(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Close</button>{previewSpark.owned ? <button type="button" onClick={() => { setSelected(previewSpark); setPreviewSpark(null); }} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-950">Add to Page</button> : <button type="button" disabled={busyKey === previewSpark.key || previewSpark.can_install === false} onClick={() => unlock(previewSpark)} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busyKey === previewSpark.key ? "Adding..." : previewSpark.slot_blocked ? "Owned Spark slots full" : previewSpark.can_install === false ? "Upgrade to add" : Number(previewSpark.credits || 0) === 0 ? "Add Free Spark" : `Add to Owned · ⚡${previewSpark.credits}`}</button>}</div>
                 </footer>
             </section>

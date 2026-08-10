@@ -16,6 +16,7 @@ use App\Services\SparkAcquisitionService;
 use App\Services\SparkUsageStateService;
 use App\Services\SparkCatalog;
 use App\Services\WebsiteTemplateCatalog;
+use App\Services\MyBrandThemeService;
 use App\Services\WebsiteDuplicationService;
 use App\Services\WebsiteOwnershipTransferService;
 use App\Services\WebsiteDashboardService;
@@ -553,7 +554,7 @@ class WebsiteController extends Controller
 		]);
 	}
 
-    public function store(Request $request, WebsiteTemplateCatalog $templates, AgencyWebsiteLimitService $websiteLimits, PlanEntitlementService $entitlements)
+    public function store(Request $request, WebsiteTemplateCatalog $templates, AgencyWebsiteLimitService $websiteLimits, PlanEntitlementService $entitlements, MyBrandThemeService $myBrandThemes)
 	{
 	    $request->validate([
 	        'name' => 'required|string|max:255',
@@ -591,13 +592,18 @@ class WebsiteController extends Controller
 	        // inquiries go to the account that created the website.
 	        'contact_email' => $request->user()->email,
 	        'api_token' => Str::random(60),
-	        // Keep the current named theme contract for new websites.
-	        'theme_settings' => $request->input('theme_settings', [
-                'primary' => 'midnight',
-	            'secondary' => 'white',
-	            'tertiary' => 'stone',
-	            'auto' => true,
-	        ]),
+	        // Every new website starts with a persistent My Brand Theme.
+	        // Blank websites seed it from Midnight; a Starter Kit replaces this
+	        // seed below with an exact editable copy of the kit color family.
+	        'theme_settings' => $myBrandThemes->ensureInSettings(
+                (array) $request->input('theme_settings', [
+                    'primary' => 'midnight',
+                    'secondary' => 'white',
+                    'tertiary' => 'stone',
+                    'auto' => true,
+                ]),
+                'midnight'
+            ),
 	        'global_header' => [
 	            'type' => 'glassmorphism_header',
 	            'logo_text' => $request->name,
@@ -623,7 +629,7 @@ class WebsiteController extends Controller
 	        ],
 	    ];
 
-	    $website = DB::transaction(function () use ($request, $template, $templates, $defaults, $websiteLimits) {
+	    $website = DB::transaction(function () use ($request, $template, $templates, $defaults, $websiteLimits, $myBrandThemes) {
             $request->user()->newQuery()->whereKey($request->user()->id)->lockForUpdate()->first();
 
             if ($message = $websiteLimits->validationMessage($request->user())) {
@@ -633,6 +639,23 @@ class WebsiteController extends Controller
 	        $templateAttributes = $template
 	            ? $templates->websiteAttributes($template, $request->name)
 	            : [];
+
+
+            if ($template) {
+                $kitFamily = (string) data_get($templateAttributes, 'theme_settings.primary', 'midnight');
+                $customBrandTheme = $myBrandThemes->seedFromFamily($kitFamily);
+
+                $templateAttributes['theme_settings'] = [
+                    ...(array) ($templateAttributes['theme_settings'] ?? []),
+                    'primary' => 'my-brand',
+                    'secondary' => 'white',
+                    'tertiary' => 'surface',
+                    'auto' => true,
+                    'custom_brand_theme' => $customBrandTheme,
+                    'brand_palette' => $customBrandTheme['palette'],
+                    'brand_source' => 'starter_kit',
+                ];
+            }
 
 	        $workspace = $request->user()->ownedWorkspaces()->first();
 

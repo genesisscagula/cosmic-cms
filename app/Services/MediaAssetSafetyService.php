@@ -93,6 +93,8 @@ class MediaAssetSafetyService
         return str_contains($key, 'image')
             || str_contains($key, 'photo')
             || str_contains($key, 'poster')
-            || str_contains($key, 'thumbnail');
+            || str_contains($key, 'thumbnail')
+            || $key === 'avatar'
+            || str_ends_with($key, '_avatar');
     }
 }

@@ -2,16 +2,20 @@
 
 namespace App\Services;
 
-use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
-use Illuminate\Support\Str;
 use RuntimeException;
 
 class LogoThemeMatchService
 {
-    public function match(string $logoUrl, array $palette, string $themeName = ''): array
-    {
+    public function match(
+        string $logoUrl,
+        array $palette,
+        string $themeName = '',
+        array $brandMemory = [],
+        string $companyName = '',
+        string $industry = 'business',
+    ): array {
         $primaryHex = $this->normalizeHex((string) ($palette['primary'] ?? ''));
         $secondaryHex = $this->normalizeHex((string) ($palette['secondary'] ?? $primaryHex));
         $tertiaryHex = $this->normalizeHex((string) ($palette['tertiary'] ?? $secondaryHex));
@@ -23,6 +27,8 @@ class LogoThemeMatchService
 
         $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
         if ($extension === 'svg') {
+            // SVG stays vector-safe. We preserve its geometry and improve the
+            // palette without rasterizing the user's original vector artwork.
             $source = Storage::disk('public')->get($path);
             $result = $this->recolorSvg($source, $primaryHex, $secondaryHex, $tertiaryHex);
             return ['bytes' => $result, 'extension' => 'svg', 'mime' => 'image/svg+xml', 'ai' => false];
@@ -34,33 +40,71 @@ class LogoThemeMatchService
             default => 'image/png',
         };
         $bytes = Storage::disk('public')->get($path);
-        $edited = $this->editRasterWithLuna($bytes, $mime, $extension ?: 'png', $primaryHex, $secondaryHex, $tertiaryHex, $themeName);
+        $edited = $this->editRasterWithLuna(
+            bytes: $bytes,
+            mime: $mime,
+            extension: $extension ?: 'png',
+            primaryHex: $primaryHex,
+            secondaryHex: $secondaryHex,
+            tertiaryHex: $tertiaryHex,
+            themeName: $themeName,
+            brandMemory: $brandMemory,
+            companyName: $companyName,
+            industry: $industry,
+        );
 
         return ['bytes' => $edited, 'extension' => 'png', 'mime' => 'image/png', 'ai' => true];
     }
 
-    private function editRasterWithLuna(string $bytes, string $mime, string $extension, string $primaryHex, string $secondaryHex, string $tertiaryHex, string $themeName): string
-    {
+    private function editRasterWithLuna(
+        string $bytes,
+        string $mime,
+        string $extension,
+        string $primaryHex,
+        string $secondaryHex,
+        string $tertiaryHex,
+        string $themeName,
+        array $brandMemory,
+        string $companyName,
+        string $industry,
+    ): string {
         $apiKey = (string) config('openai.api_key');
         if ($apiKey === '') {
             throw new RuntimeException('AI logo matching is not configured.');
         }
 
-        $prompt = implode("\n", [
-            'Edit this existing logo to match the supplied website theme while preserving the brand identity.',
-            'Do NOT redesign the logo. Preserve the same symbol, wordmark wording, typography feel, proportions, layout, spacing, and recognizable identity.',
-            "Theme: ".($themeName !== '' ? $themeName : 'current website theme').'.',
-            "STRICT LOGO PALETTE — PRIMARY EXACT HEX: {$primaryHex}; SECONDARY EXACT HEX: {$secondaryHex}; TERTIARY EXACT HEX: {$tertiaryHex}.",
-            "MANDATORY: {$primaryHex} must be the unmistakable dominant SOLID brand color. Use this exact HEX on the main icon/symbol and the main company wordmark wherever readable.",
-            'At least about 75–80% of all chromatic/logo-brand pixels should visually read as PRIMARY. SECONDARY is supporting only (about 15–20%). TERTIARY is tiny accents only (about 5% maximum).',
-            'DO NOT invent a new shade of PRIMARY. No lighter primary, darker primary, pastel primary, muted primary, gray substitute, near-match, or hue-shifted variant.',
-            'NO gradients, metallic effects, glow-based recoloring, color blending, transparency-based color changes, or shaded variants on the main brand elements. Use flat/solid exact palette colors.',
-            'Neutral white or near-black may be used only when absolutely required for contrast; they must never replace PRIMARY as the visual brand color.',
-            'If there is any conflict between artistic styling and the palette instructions, the exact PRIMARY HEX and solid-color hierarchy win.',
-            'Adapt only the logo colors and minor contrast treatment needed to harmonize with the theme.',
-            'Keep a transparent background. Do not add a card, mockup, scene, slogan, watermark, border, or new graphic elements.',
-            'Favor a horizontal website-header composition. Keep the full icon, wordmark, every letter, and any tagline safely inside the canvas; nothing may touch or cross an image edge.',
-        ]);
+        $brandPrompt = $this->clean((string) ($brandMemory['brand_prompt'] ?? ''), 1000);
+        $latestPrompt = $this->clean((string) ($brandMemory['latest_user_prompt'] ?? ''), 500);
+        $brandContext = $this->contextSummary((array) ($brandMemory['brand_context'] ?? []));
+        $companyName = $this->clean($companyName, 100);
+        $industry = $this->clean($industry, 120) ?: 'business';
+
+        $prompt = implode("\n", array_filter([
+            'BRAND-IDENTITY REFINEMENT of the supplied existing logo. Match it to the website theme in BOTH COLOR AND VISUAL DESIGN — not recolor-only.',
+            $companyName !== '' ? "Company/brand name: {$companyName}." : null,
+            "Industry: {$industry}.",
+            'Theme: '.($themeName !== '' ? $themeName : 'current website theme').'.',
+            "FINAL THEME PRIMARY — EXACT AND MANDATORY: {$primaryHex}.",
+            "FINAL THEME ACCENT — EXACT AND MANDATORY: {$secondaryHex}.",
+            "FINAL THEME SURFACE/NEUTRAL — EXACT AND MANDATORY: {$tertiaryHex}.",
+            'COLOR MATCH IS MANDATORY: derive the visible logo palette from those exact final website colors. Do not invent unrelated blue, teal, purple, orange, gray, or generic SaaS colors unless that exact hue is present in the supplied final palette.',
+            'All visible icon and wordmark pixels must be fully opaque and high-contrast on a white/light website header. Do not fade the company name or use washed-out low-opacity lettering.', 
+            $brandPrompt !== '' ? "Original website/brand brief: {$brandPrompt}" : null,
+            $brandContext !== '' ? "Saved brand context: {$brandContext}" : null,
+            $latestPrompt !== '' && $latestPrompt !== $brandPrompt ? "Recent brand direction, only if relevant: {$latestPrompt}" : null,
+            'IDENTITY RULE: preserve the exact company/wordmark text and keep the logo recognizably the same brand. Do not invent a different business name, slogan, mascot, or unrelated symbol.',
+            'DESIGN FREEDOM: you MAY professionally refine the symbol treatment, symbol-to-wordmark relationship, spacing, balance, proportions, typography treatment, and overall horizontal composition when doing so produces a stronger brand mark. This is intentionally more than a color swap.',
+            'Choose art direction from the brand context and theme. A refined flat treatment is allowed, but do NOT default to generic flat SaaS styling. When suitable, introduce premium dimensional/3D depth, layered forms, tasteful gradients, metallic or glass-like material cues, soft highlights, controlled shadows, depth separation, or a more custom wordmark treatment.',
+            'If a 3D/dimensional treatment fits the brand, keep it logo-like and restrained: clean silhouette, crisp edges, no scene, no mockup, no wall sign, no floating product render, and no photographic background.',
+            "Use {$primaryHex} as the dominant palette anchor and {$secondaryHex} as the intentional supporting accent. {$tertiaryHex} may be used only as a restrained surface/neutral support. Tonal variants are allowed only when they remain visibly within this final theme color family.",
+            'Keep the result visually compatible with the website while maintaining strong contrast and wordmark legibility at small header size.',
+            'Prefer a premium horizontal logo composition suitable for a website navbar. The symbol may remain left of the wordmark, integrate into it, or be proportionally rebalanced, but the brand must remain immediately recognizable.',
+            'HEADER CROPPER TARGET IS MANDATORY: refine the complete visible logo to fit safely inside a 650 × 200 pixel website-header frame (3.25:1). Preserve every existing wordmark line, icon, tagline, shadow, glow, highlight, and intentional decorative element.',
+            'SAFE AREA: keep approximately 10–15% transparent padding on all sides. Nothing may touch the top or bottom safe-area edges. If the supplied logo is tall or square, scale the ENTIRE composition down proportionally and add transparent padding rather than cropping any part.',
+            'CONTAIN, NEVER COVER: do not enlarge the logo merely to fill the frame, do not trim away required transparent safety padding, and never stretch, distort, crop, or reposition separate pieces in a way that changes the identity. The complete mark must be visible at the cropper default zoom/position.',
+            'Transparent background only. No background rectangle/card, no watermark, no decorative scene, no new tagline unless already present in the supplied logo.',
+            'Final target: SAME BRAND IDENTITY, BETTER ART DIRECTION, THEME-MATCHED COLOR FAMILY, and a more commissioned/premium finish — including dimensional/3D styling when appropriate.',
+        ]));
 
         $response = Http::withToken($apiKey)
             ->acceptJson()
@@ -86,6 +130,35 @@ class LogoThemeMatchService
         }
 
         return $result;
+    }
+
+    private function contextSummary(array $context): string
+    {
+        $allowed = ['industry', 'audience', 'personality', 'visual_direction', 'logo_direction', 'avoid', 'keywords', 'business_description'];
+        $parts = [];
+        foreach ($allowed as $key) {
+            if (! array_key_exists($key, $context)) {
+                continue;
+            }
+            $value = $context[$key];
+            if (is_array($value)) {
+                $value = implode(', ', array_slice(array_values(array_filter(array_map('strval', $value))), 0, 12));
+            }
+            if (! is_scalar($value)) {
+                continue;
+            }
+            $value = $this->clean((string) $value, 450);
+            if ($value !== '') {
+                $parts[] = str_replace('_', ' ', $key).': '.$value;
+            }
+        }
+        return $this->clean(implode(' | ', $parts), 1600);
+    }
+
+    private function clean(?string $value, int $max): string
+    {
+        $value = preg_replace('/\s+/u', ' ', trim((string) $value)) ?? '';
+        return mb_substr($value, 0, $max);
     }
 
     private function publicDiskPathFromUrl(string $url): string

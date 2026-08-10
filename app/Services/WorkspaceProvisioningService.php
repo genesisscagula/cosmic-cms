@@ -3,6 +3,9 @@
 namespace App\Services;
 
 use App\Models\CreditTransaction;
+use App\Models\CosmicUnlock;
+use App\Models\CosmicSparkFavorite;
+use App\Models\CosmicTemplateFavorite;
 use App\Models\PaymentOrder;
 use App\Models\PendingOnboarding;
 use App\Models\Page;
@@ -476,6 +479,16 @@ class WorkspaceProvisioningService
             $settings['theme_entitlement_seed'] = $trialTheme ?: 'midnight';
         }
 
+        // Carry L1 brand memory into the paid website so Luna keeps the same
+        // art direction after the trial is claimed.
+        $settings['brand_memory'] = [
+            'brand_prompt' => $trial->brand_prompt ?: $trial->prompt,
+            'latest_user_prompt' => $trial->latest_user_prompt ?: $trial->prompt,
+            'brand_context' => is_array($trial->brand_context) ? $trial->brand_context : [],
+            'prompt_history' => is_array($trial->prompt_history) ? $trial->prompt_history : [],
+            'source_trial_id' => $trial->id,
+        ];
+
         $website->forceFill([
             // The paid website receives the exact latest trial Builder state.
             'settings' => $settings,
@@ -540,6 +553,27 @@ class WorkspaceProvisioningService
         }
 
         $wasUnclaimed = $trial->claimed_at === null;
+
+        // Preserve the guest asset library when the paid workspace claims the trial.
+        // updateOrCreate makes callback/webhook retries idempotent.
+        foreach (collect($trial->owned_sparks ?? [])->unique() as $key) {
+            CosmicUnlock::query()->updateOrCreate(
+                ['user_id' => $onboarding->user_id, 'unlock_type' => 'spark', 'unlock_key' => $key],
+                ['credits_paid' => max(0, (int) (SparkCatalog::find((string) $key)['credits'] ?? 0)), 'is_installed' => true],
+            );
+        }
+        foreach (collect($trial->owned_templates ?? [])->unique() as $key) {
+            CosmicUnlock::query()->updateOrCreate(
+                ['user_id' => $onboarding->user_id, 'unlock_type' => 'template', 'unlock_key' => $key],
+                ['credits_paid' => PageTemplateCatalog::PURCHASE_CREDITS, 'is_installed' => true],
+            );
+        }
+        foreach (collect($trial->favorite_sparks ?? [])->unique() as $key) {
+            CosmicSparkFavorite::query()->firstOrCreate(['user_id' => $onboarding->user_id, 'spark_key' => $key]);
+        }
+        foreach (collect($trial->favorite_templates ?? [])->unique() as $key) {
+            CosmicTemplateFavorite::query()->firstOrCreate(['user_id' => $onboarding->user_id, 'template_key' => $key]);
+        }
 
         $trial->forceFill([
             'token' => $wasUnclaimed ? (string) Str::uuid() : $trial->token,

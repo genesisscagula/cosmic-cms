@@ -2,7 +2,7 @@ import { Head, Link, router, useForm } from '@inertiajs/react';
 import axios from 'axios';
 import { useEffect, useRef, useState } from 'react';
 import '../../css/start.css';
-import ThemeLogo from '@/Branding/ThemeLogo';
+import CosmicBrandMark from '@/Components/CosmicBrandMark';
 import SeoHead from '@/Components/Seo/SeoHead';
 import { trackCosmicEvent } from '@/Analytics/tracking';
 import PublicHeader from '@/Components/Public/PublicHeader';
@@ -82,17 +82,23 @@ const animatedPrompts = [
 ];
 
 const generationSteps = [
-    { label: 'Understand brief', threshold: 10 },
+    { label: 'Understand brief', threshold: 12 },
     { label: 'Plan sections', threshold: 30 },
-    { label: 'Create content', threshold: 72 },
-    { label: 'Build page', threshold: 95 },
+    { label: 'Create content', threshold: 52 },
+    { label: 'Prepare images', threshold: 68 },
+    { label: 'Match theme', threshold: 78 },
+    { label: 'Finalize website', threshold: 88 },
 ];
 
+// This is intentionally paced as perceived progress, not backend completion.
+// Never imply 90%+ until the server has actually finished successfully.
 const startGenerationStages = [
-    { message: 'Understanding your request...', target: 10, duration: 700 },
-    { message: 'Planning the right sections...', target: 30, duration: 850 },
-    { message: 'Writing professional content...', target: 72, duration: 1400 },
-    { message: 'Building your page...', target: 90, duration: 1600 },
+    { message: 'Understanding your request...', target: 12, duration: 1800 },
+    { message: 'Planning the right sections...', target: 30, duration: 2600 },
+    { message: 'Writing professional content...', target: 52, duration: 5000 },
+    { message: 'Preparing the right images...', target: 68, duration: 7000 },
+    { message: 'Matching colors and theme...', target: 78, duration: 7000 },
+    { message: 'Finalizing your website...', target: 86, duration: 9000 },
 ];
 
 function shufflePromptBag(previousPrompt = null) {
@@ -270,9 +276,9 @@ export default function Start({ trial }) {
             const advanceProgress = () => {
                 if (cancelled || progress >= stage.target) return;
 
-                progress = Math.min(stage.target, progress + Math.max(1, Math.ceil((stage.target - progress) / 9)));
+                progress = Math.min(stage.target, progress + Math.max(1, Math.ceil((stage.target - progress) / 18)));
                 setLoadingProgress(progress);
-                progressTimer = window.setTimeout(advanceProgress, 70);
+                progressTimer = window.setTimeout(advanceProgress, 260);
             };
 
             advanceProgress();
@@ -367,6 +373,11 @@ export default function Start({ trial }) {
                 page_id: pageId || undefined,
             });
 
+            // Only real backend success is allowed to enter the 90–100% range.
+            setLoadingStage('Website ready — opening Builder...');
+            setLoadingProgress(100);
+            await new Promise((resolve) => window.setTimeout(resolve, 320));
+
             // Use native navigation so Inertia state cannot hold the loading overlay.
             window.location.href = navigationUrl;
         } catch (requestError) {
@@ -442,7 +453,8 @@ export default function Start({ trial }) {
                             <form onSubmit={submit} noValidate className="relative mx-auto max-w-3xl">
                                 <div className="mx-auto mb-9 max-w-2xl text-center">
                                     <Link href="/" className="inline-flex items-center gap-3 font-semibold tracking-tight text-slate-950 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-300 focus-visible:ring-offset-4 focus-visible:ring-offset-[#13151d]">
-                                        <ThemeLogo theme={trial?.preview_theme?.primary || 'midnight'} className="h-14 w-auto max-w-[280px] object-contain" alt="Your Logo" />
+                                        <CosmicBrandMark size="lg" />
+                                        <span className="text-xl font-black tracking-tight text-slate-950">Cosmic CMS</span>
                                     </Link>
                                     <p className="mx-auto mt-8 inline-flex items-center gap-2 rounded-full border border-emerald-200 bg-emerald-50 px-3.5 py-1.5 text-xs font-medium text-emerald-800">
                                         <span className="h-1.5 w-1.5 rounded-full bg-emerald-300 shadow-[0_0_12px_rgba(110,231,183,0.9)]" />

@@ -256,6 +256,8 @@ class MediaAssetLifecycleService
 
         return str_contains($normalized, 'image')
             || str_contains($normalized, 'photo')
-            || str_contains($normalized, 'poster');
+            || str_contains($normalized, 'poster')
+            || $normalized === 'avatar'
+            || str_ends_with($normalized, '_avatar');
     }
 }

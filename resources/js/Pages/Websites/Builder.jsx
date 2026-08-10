@@ -202,6 +202,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [showLogoGenerateForm, setShowLogoGenerateForm] = useState(false);
     const [logoCompanyName, setLogoCompanyName] = useState(trialExperience?.logo_company_name || website?.name || '');
     const [logoBusy, setLogoBusy] = useState(false);
+    const [logoReplacementStarted, setLogoReplacementStarted] = useState(false);
     const [logoAiAction, setLogoAiAction] = useState(null);
     const [logoAiProgress, setLogoAiProgress] = useState(0);
     const [logoAiStage, setLogoAiStage] = useState('');
@@ -216,6 +217,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         return null;
     });
     const [themeFromLogoPreview, setThemeFromLogoPreview] = useState(null);
+    const [pendingThemeLogoAdapt, setPendingThemeLogoAdapt] = useState(null);
+    const [themeLogoAdaptBusy, setThemeLogoAdaptBusy] = useState(false);
     // H23: only confirmed Regenerate Page may bypass the unsaved-changes
     // browser warning. All normal navigation/refresh/close protection remains.
     const intentionalRegenerateRef = useRef(false);
@@ -226,12 +229,18 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const logoCropDragRef = useRef(null);
     const [logoCropOpen, setLogoCropOpen] = useState(false);
     const [logoCropSource, setLogoCropSource] = useState('');
+    const [logoCropOriginalSourceUrl, setLogoCropOriginalSourceUrl] = useState('');
+    const [logoCropSourceKind, setLogoCropSourceKind] = useState('upload');
     const [logoCropCompanyName, setLogoCropCompanyName] = useState('');
     const [logoCropZoom, setLogoCropZoom] = useState(1);
     const [logoCropX, setLogoCropX] = useState(0);
     const [logoCropY, setLogoCropY] = useState(0);
     const [logoCropNatural, setLogoCropNatural] = useState({ width: 0, height: 0 });
     const [logoCropSaving, setLogoCropSaving] = useState(false);
+    const [logoCropEntryPrompt, setLogoCropEntryPrompt] = useState(false);
+    const [logoCropAutoAdaptTheme, setLogoCropAutoAdaptTheme] = useState(true);
+    const [trialLogoCropConfirmed, setTrialLogoCropConfirmed] = useState(Boolean(trialExperience?.logo_crop_confirmed));
+    const trialLogoCropPromptedRef = useRef(false);
     const [pageStatus, setPageStatus] = useState(page.status || 'draft');
     const [publishError, setPublishError] = useState(page.publish_error || '');
     const [blogPosts, setBlogPosts] = useState(initialBlogPosts);
@@ -298,7 +307,20 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         match_theme_to_logo: Number(cosmicPricing?.trial_actions?.match_theme_to_logo || 50),
     };
 
-    const creditMessage = (cost) => `Cost: ${cost} Cosmic Credits. Balance: ${creditBalance} → ${Math.max(0, Number(creditBalance || 0) - cost)}.`;
+    // Trial balance must be available on the very first render, before React effects run.
+    // Server props are the source of truth; 500 is only the final compatibility fallback.
+    const effectiveCreditBalance = (() => {
+        const candidates = [cosmicPricing?.balance, trialExperience?.guest_credits, creditBalance];
+        for (const candidate of candidates) {
+            if (candidate !== null && candidate !== undefined && candidate !== '') {
+                const parsed = Number(candidate);
+                if (Number.isFinite(parsed)) return parsed;
+            }
+        }
+        return trialMode ? 500 : 0;
+    })();
+
+    const creditMessage = (cost) => `Cost: ${cost} Cosmic Credits. Balance: ${effectiveCreditBalance} → ${Math.max(0, effectiveCreditBalance - cost)}.`;
 
     const handleThemeChange = async (theme) => {
         if (!theme || theme === globalSelections?.primary) return;
@@ -337,16 +359,108 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'theme_to_logo', logo_theme_synced_theme: theme }
                     : { logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'manual_theme_change', logo_theme_synced_theme: null }) : {}),
             }));
-            if (hasRealLogo) setLogoSyncState(brandThemeMatchesCurrentLogo ? 'synced' : 'theme_changed');
+            if (hasRealLogo) {
+                setLogoSyncState(brandThemeMatchesCurrentLogo ? 'synced' : 'theme_changed');
+                if (!brandThemeMatchesCurrentLogo) {
+                    const selectedFamily = colorFamilies[theme] || colorFamilies.midnight;
+                    const selectedPalette = theme === 'my-brand'
+                        ? (globalSelections?.custom_brand_theme?.palette || selectedFamily?.palette || {})
+                        : (selectedFamily?.palette || {});
+                    setPendingThemeLogoAdapt({
+                        theme,
+                        themeName: selectedFamily?.name || (theme === 'my-brand' ? 'My Brand Theme' : theme),
+                        logoUrl: data.global_header.logo_image_url,
+                        palette: selectedPalette,
+                    });
+                }
+            }
             setHasUnsavedTheme(true);
         } catch (error) {
             showCosmicNotification({ title: 'Theme change unavailable', message: error.response?.data?.message || 'Cosmic could not apply this theme.', tone: 'error' });
         }
     };
 
-    const openLogoCrop = (url, companyName = null) => {
-        setLogoCropSource(url);
+    const prepareLogoCropSource = async (url) => {
+        // Make every raster enter the cropper with tight visible alpha bounds.
+        // This is intentionally browser-side so Luna and computer uploads have
+        // identical behavior even when the server has no GD/Imagick support.
+        try {
+            const image = new Image();
+            image.crossOrigin = 'anonymous';
+            image.src = url;
+            await new Promise((resolve, reject) => {
+                if (image.complete && image.naturalWidth) return resolve();
+                image.onload = resolve;
+                image.onerror = reject;
+            });
+
+            const width = image.naturalWidth;
+            const height = image.naturalHeight;
+            if (!width || !height) return url;
+
+            const canvas = document.createElement('canvas');
+            canvas.width = width;
+            canvas.height = height;
+            const context = canvas.getContext('2d', { willReadFrequently: true });
+            context.clearRect(0, 0, width, height);
+            context.drawImage(image, 0, 0, width, height);
+
+            const pixels = context.getImageData(0, 0, width, height);
+            let left = width;
+            let top = height;
+            let right = -1;
+            let bottom = -1;
+            const alphaThreshold = 8;
+
+            for (let y = 0; y < height; y += 1) {
+                for (let x = 0; x < width; x += 1) {
+                    const alpha = pixels.data[((y * width) + x) * 4 + 3];
+                    if (alpha <= alphaThreshold) continue;
+                    left = Math.min(left, x);
+                    top = Math.min(top, y);
+                    right = Math.max(right, x);
+                    bottom = Math.max(bottom, y);
+                }
+            }
+
+            if (right < left || bottom < top) return url;
+
+            // Preserve a tiny edge for antialiasing/shadows, but remove the
+            // generation canvas itself before contain/zoom math is calculated.
+            const padding = 6;
+            left = Math.max(0, left - padding);
+            top = Math.max(0, top - padding);
+            right = Math.min(width - 1, right + padding);
+            bottom = Math.min(height - 1, bottom + padding);
+
+            const tightWidth = Math.max(1, right - left + 1);
+            const tightHeight = Math.max(1, bottom - top + 1);
+            if (tightWidth === width && tightHeight === height) return url;
+
+            const tightCanvas = document.createElement('canvas');
+            tightCanvas.width = tightWidth;
+            tightCanvas.height = tightHeight;
+            const tightContext = tightCanvas.getContext('2d');
+            tightContext.clearRect(0, 0, tightWidth, tightHeight);
+            tightContext.drawImage(canvas, left, top, tightWidth, tightHeight, 0, 0, tightWidth, tightHeight);
+            return tightCanvas.toDataURL('image/png');
+        } catch (error) {
+            console.warn('Logo pre-crop alpha trim unavailable; using original raster.', error);
+            return url;
+        }
+    };
+
+    const openLogoCrop = async (url, companyName = null, options = {}) => {
+        // Store the original URL for temp-file cleanup, but display a tight
+        // alpha-bounded raster. This gives Luna exactly the same crop geometry
+        // as a normal computer-uploaded logo.
+        const preparedSource = await prepareLogoCropSource(url);
+        setLogoCropOriginalSourceUrl(url);
+        setLogoCropSource(preparedSource);
+        setLogoCropSourceKind(options.sourceKind || 'upload');
         setLogoCropCompanyName(companyName || logoCompanyName || data.global_header?.logo_text || website?.name || 'Your Logo');
+        setLogoCropEntryPrompt(Boolean(options.entryPrompt));
+        setLogoCropAutoAdaptTheme(options.autoAdaptTheme !== false);
         setLogoCropZoom(1);
         setLogoCropX(0);
         setLogoCropY(0);
@@ -356,11 +470,63 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setLogoCropOpen(true);
     };
 
-    const closeLogoCropWithOriginal = () => {
-        if (logoCropSource) {
-            applyTrialLogo(logoCropSource, logoCropCompanyName);
+    useEffect(() => {
+        if (!trialMode || !trialToken || !trialEmailCaptured || trialLogoCropConfirmed) return;
+        if (trialLogoCropPromptedRef.current || showTrialEmailModal || logoCropOpen) return;
+
+        const logoUrl = trialExperience?.logo_url || data.global_header?.logo_image_url;
+        const isInitialAiLogo = Boolean(
+            logoUrl
+            && !String(logoUrl).includes('your-logo.png')
+            && ['ai', 'ai-neutral'].includes(String(trialExperience?.logo_source || ''))
+            && String(trialExperience?.logo_theme_sync_source || '') === 'initial_trial_generation'
+        );
+
+        if (!isInitialAiLogo) return;
+
+        trialLogoCropPromptedRef.current = true;
+        openLogoCrop(
+            logoUrl,
+            trialExperience?.logo_company_name || data.global_header?.logo_text || website?.name,
+            { entryPrompt: true, autoAdaptTheme: false },
+        );
+    }, [
+        trialMode,
+        trialToken,
+        trialEmailCaptured,
+        trialLogoCropConfirmed,
+        showTrialEmailModal,
+        logoCropOpen,
+        trialExperience?.logo_url,
+        trialExperience?.logo_source,
+        trialExperience?.logo_theme_sync_source,
+    ]);
+
+    const cancelLogoCrop = async () => {
+        if (logoCropSaving) return;
+
+        // The automatic first-entry crop prompt is optional. Cancel means keep
+        // the current contained logo and do not nag again on later visits.
+        if (trialMode && trialToken && logoCropEntryPrompt) {
+            setTrialLogoCropConfirmed(true);
+            try {
+                await axios.post(route('trial-branding.logo.crop-dismiss', trialToken));
+            } catch (_) {
+                // Closing the modal should never be blocked by a persistence error.
+            }
         }
+
         setLogoCropOpen(false);
+        setLogoCropSource('');
+        setLogoCropOriginalSourceUrl('');
+        setLogoCropSourceKind('upload');
+        setLogoCropCompanyName('');
+        setLogoCropEntryPrompt(false);
+        setLogoCropAutoAdaptTheme(true);
+        setLogoCropZoom(1);
+        setLogoCropX(0);
+        setLogoCropY(0);
+        setLogoCropNatural({ width: 0, height: 0 });
     };
 
     const resetLogoCrop = () => {
@@ -392,6 +558,113 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         logoCropDragRef.current = null;
     };
 
+    const autoAdaptThemeFromUploadedLogo = async (logoUrl) => {
+        if (!logoUrl) return false;
+
+        // Uploading a brand asset is now the design-system trigger. Do not ask
+        // the user to press a second "match" button and do not silently charge
+        // AI credits for an action Cosmic performs automatically after upload.
+        startLogoAiAction('theme_to_logo');
+        setLogoBusy(true);
+        try {
+            const response = trialMode
+                ? await axios.post(route('trial-branding.theme.match-logo', trialToken), {
+                    logo_url: logoUrl,
+                    automatic_upload: true,
+                })
+                : await axios.post(route('websites.theme.match-logo', website.id), {
+                    logo_url: logoUrl,
+                    automatic_upload: true,
+                });
+
+            const customTheme = response.data?.custom_theme;
+            if (!customTheme) throw new Error('Cosmic AI did not return a usable brand theme.');
+
+            const syncedCustomTheme = {
+                ...customTheme,
+                source_logo_url: logoUrl,
+            };
+
+            if (trialMode) {
+                const applyResponse = await axios.post(
+                    route('trial-pages.theme.apply', { trial: trialToken, page: page.id }),
+                    { theme: 'my-brand', sync_source: 'theme_to_logo' }
+                );
+                if (Number.isFinite(Number(applyResponse.data?.credit_balance))) {
+                    setCreditBalance(Number(applyResponse.data.credit_balance));
+                }
+            }
+
+            installCustomBrandTheme(syncedCustomTheme);
+            setGlobalSelections((current) => ({
+                ...current,
+                primary: 'my-brand',
+                custom_brand_theme: syncedCustomTheme,
+                brand_palette: syncedCustomTheme.palette || response.data?.palette,
+                brand_source: 'logo',
+                brand_original_logo_url: current.brand_original_logo_url || logoUrl,
+                brand_active_logo_url: logoUrl,
+                logo_theme_sync_state: 'synced',
+                logo_theme_sync_source: 'theme_to_logo',
+                logo_theme_synced_theme: 'my-brand',
+            }));
+            setLogoSyncState('synced');
+            setHasUnsavedTheme(true);
+            setThemeFromLogoPreview(null);
+            setLogoAiStage('Your website now matches your logo.');
+            finishLogoAiAction();
+            showCosmicNotification({
+                title: 'Brand theme applied',
+                message: 'Cosmic AI matched the website colors to your uploaded logo automatically.',
+                tone: 'success',
+            });
+            return true;
+        } catch (error) {
+            cancelLogoAiAction();
+            const rateLimited = Number(error.response?.status) === 429
+                || /too many attempts/i.test(String(error.response?.data?.message || error.message || ''));
+
+            if (rateLimited) {
+                try {
+                    const rollback = trialMode
+                        ? await axios.post(route('trial-branding.logo.rollback-upload', trialToken))
+                        : await axios.post(route('websites.logo.rollback-upload', website.id));
+                    const restoredUrl = rollback.data?.url;
+                    if (restoredUrl) {
+                        applyTrialLogo(restoredUrl, data.global_header?.logo_text);
+                        setGlobalSelections((current) => ({
+                            ...current,
+                            brand_original_logo_url: restoredUrl,
+                            brand_active_logo_url: restoredUrl,
+                            logo_theme_sync_state: rollback.data?.sync_state ?? current.logo_theme_sync_state,
+                            logo_theme_sync_source: rollback.data?.sync_source ?? current.logo_theme_sync_source,
+                            logo_theme_synced_theme: rollback.data?.synced_theme ?? current.logo_theme_synced_theme,
+                        }));
+                        setLogoSyncState(rollback.data?.sync_state ?? null);
+                    }
+                } catch (rollbackError) {
+                    console.error('Could not roll back throttled logo upload', rollbackError);
+                }
+
+                showCosmicNotification({
+                    title: 'Too many attempts · previous logo restored',
+                    message: 'The new logo was not applied. Your previous logo has been restored; try again after the cooldown.',
+                    tone: 'warning',
+                });
+                return false;
+            }
+
+            showCosmicNotification({
+                title: 'Logo saved · theme kept',
+                message: error.response?.data?.message || error.message || 'Cosmic could not derive a brand theme from this logo, so your current theme was kept.',
+                tone: 'warning',
+            });
+            return false;
+        } finally {
+            setLogoBusy(false);
+        }
+    };
+
     const saveLogoCrop = async () => {
         if (!logoCropSource || !logoCropNatural.width || !logoCropNatural.height || logoCropSaving) return;
 
@@ -406,9 +679,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         const safeWidth = safeRect.width;
         const safeHeight = safeRect.height;
 
+        // Fit against the actual green header frame, not the larger square
+        // workspace. This makes 100% a true "fully contained" state and
+        // prevents wide wordmarks from being clipped before the user even
+        // touches the crop controls.
         const baseUiScale = Math.min(
-            workspaceWidth / logoCropNatural.width,
-            workspaceHeight / logoCropNatural.height
+            safeWidth / logoCropNatural.width,
+            safeHeight / logoCropNatural.height
         );
         const drawUiWidth = logoCropNatural.width * baseUiScale * logoCropZoom;
         const drawUiHeight = logoCropNatural.height * baseUiScale * logoCropZoom;
@@ -418,7 +695,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         const safeLeft = safeRect.left - workspaceRect.left;
         const safeTop = safeRect.top - workspaceRect.top;
         const outputWidth = 650;
-        const outputHeight = 150;
+        const outputHeight = 200;
         const scaleX = outputWidth / safeWidth;
         const scaleY = outputHeight / safeHeight;
         const drawX = (drawUiX - safeLeft) * scaleX;
@@ -440,32 +717,115 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             const canvas = document.createElement('canvas');
             canvas.width = outputWidth;
             canvas.height = outputHeight;
-            const context = canvas.getContext('2d');
+            const context = canvas.getContext('2d', { willReadFrequently: true });
             context.clearRect(0, 0, outputWidth, outputHeight);
             context.drawImage(image, drawX, drawY, drawWidth, drawHeight);
-            const imageData = canvas.toDataURL('image/png');
+
+            // IMPORTANT: 650x200 is only the cropper/header framing surface.
+            // Do not persist that whole transparent canvas as the logo asset.
+            // Tighten the raster to the actual visible alpha bounds here in the
+            // browser so Luna-generated logos behave exactly like tight local
+            // uploads even when the PHP host has no GD/Imagick extension.
+            const pixels = context.getImageData(0, 0, outputWidth, outputHeight);
+            let left = outputWidth;
+            let top = outputHeight;
+            let right = -1;
+            let bottom = -1;
+            const alphaThreshold = 8; // preserve anti-aliased/glow edge pixels
+
+            for (let y = 0; y < outputHeight; y += 1) {
+                for (let x = 0; x < outputWidth; x += 1) {
+                    const alpha = pixels.data[((y * outputWidth) + x) * 4 + 3];
+                    if (alpha <= alphaThreshold) continue;
+                    left = Math.min(left, x);
+                    top = Math.min(top, y);
+                    right = Math.max(right, x);
+                    bottom = Math.max(bottom, y);
+                }
+            }
+
+            let exportCanvas = canvas;
+            if (right >= left && bottom >= top) {
+                // Keep a tiny transparent safety edge only; the large Cosmic
+                // cropper canvas must never become part of the final logo file.
+                const safetyPadding = 6;
+                left = Math.max(0, left - safetyPadding);
+                top = Math.max(0, top - safetyPadding);
+                right = Math.min(outputWidth - 1, right + safetyPadding);
+                bottom = Math.min(outputHeight - 1, bottom + safetyPadding);
+
+                const tightWidth = Math.max(1, right - left + 1);
+                const tightHeight = Math.max(1, bottom - top + 1);
+                const tightCanvas = document.createElement('canvas');
+                tightCanvas.width = tightWidth;
+                tightCanvas.height = tightHeight;
+                const tightContext = tightCanvas.getContext('2d');
+                tightContext.clearRect(0, 0, tightWidth, tightHeight);
+                tightContext.drawImage(
+                    canvas,
+                    left,
+                    top,
+                    tightWidth,
+                    tightHeight,
+                    0,
+                    0,
+                    tightWidth,
+                    tightHeight
+                );
+                exportCanvas = tightCanvas;
+            }
+
+            const imageData = exportCanvas.toDataURL('image/png');
 
             const response = trialMode
                 ? await axios.post(route('trial-branding.logo.crop', trialToken), {
                     image_data: imageData,
                     company_name: logoCropCompanyName,
+                    source_url: logoCropOriginalSourceUrl || logoCropSource,
+                    source_kind: logoCropSourceKind,
                 })
                 : await axios.post(route('websites.logo.crop', website.id), {
                     image_data: imageData,
+                    source_url: logoCropOriginalSourceUrl || logoCropSource,
                 });
 
             applyTrialLogo(response.data.url, logoCropCompanyName);
-            setLogoCropOpen(false);
-            setHasUnsavedTheme(true);
-            showCosmicNotification({
-                title: 'Logo crop saved',
-                message: 'Your final 650 × 150 logo is now used in the header and footer.',
-                tone: 'success',
+            setGlobalSelections((prev) => {
+                if (logoCropSourceKind === 'theme_match') {
+                    const activeTheme = prev.primary || 'midnight';
+                    return {
+                        ...prev,
+                        brand_original_logo_url: prev.brand_original_logo_url || data.global_header?.logo_image_url || response.data.url,
+                        brand_active_logo_url: response.data.url,
+                        brand_logo_variants: { ...(prev.brand_logo_variants || {}), [activeTheme]: response.data.url },
+                        logo_theme_sync_state: 'synced',
+                        logo_theme_sync_source: 'logo_to_theme',
+                        logo_theme_synced_theme: activeTheme,
+                    };
+                }
+                return {
+                    ...prev,
+                    brand_original_logo_url: response.data.url,
+                    brand_active_logo_url: response.data.url,
+                    brand_logo_variants: {},
+                };
             });
+            if (logoCropSourceKind === 'theme_match') {
+                setLogoSyncState('synced');
+            }
+            setLogoCropOpen(false);
+            setLogoCropOriginalSourceUrl('');
+            setHasUnsavedTheme(true);
+            if (trialMode) setTrialLogoCropConfirmed(true);
+            if (logoCropAutoAdaptTheme) {
+                await autoAdaptThemeFromUploadedLogo(response.data.url);
+            }
+            setLogoCropEntryPrompt(false);
+            setLogoCropAutoAdaptTheme(true);
         } catch (error) {
             showCosmicNotification({
                 title: 'Unable to save logo crop',
-                message: error.response?.data?.message || 'The crop could not be saved. Try repositioning the logo or use the original.',
+                message: error.response?.data?.message || 'The crop could not be saved. Try repositioning the logo or cancel and keep the current logo.',
                 tone: 'error',
             });
         } finally {
@@ -479,6 +839,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             ...data.global_header,
             logo_image_url: url,
             logo_text: nextLogoText,
+            logo_height: Math.max(60, Number(data.global_header?.logo_height || 0)),
+            logo_max_width: Math.max(300, Number(data.global_header?.logo_max_width || 0)),
             logo_filter: 'none',
         };
         const nextFooter = {
@@ -515,6 +877,23 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             return;
         }
 
+        setLogoReplacementStarted(true);
+
+        // As soon as a real upload starts, stop tinting the default placeholder.
+        // The placeholder follows the active theme only until the user begins
+        // replacing it with their own brand asset.
+        setData({
+            ...data,
+            global_header: {
+                ...data.global_header,
+                logo_filter: 'none',
+            },
+            global_footer: {
+                ...(data.global_footer || {}),
+                logo_filter: 'none',
+            },
+        });
+
         setLogoBusy(true);
         try {
             const form = new FormData();
@@ -529,13 +908,22 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             }
             if (file.type === 'image/svg+xml') {
                 applyTrialLogo(response.data.url);
+                setGlobalSelections((prev) => ({
+                    ...prev,
+                    brand_original_logo_url: response.data.url,
+                    brand_active_logo_url: response.data.url,
+                    brand_logo_variants: {},
+                }));
+                setHasUnsavedTheme(true);
+                await autoAdaptThemeFromUploadedLogo(response.data.url);
             } else {
-                openLogoCrop(response.data.url, logoCompanyName || data.global_header?.logo_text);
+                // Raster uploads remain user-controlled: crop first, then the
+                // confirmed crop becomes the source for automatic theme analysis.
+                setLogoSyncState('logo_changed');
+                setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'logo_changed', logo_theme_sync_source: 'upload', logo_theme_synced_theme: null }));
+                setHasUnsavedTheme(true);
+                await openLogoCrop(response.data.url, logoCompanyName || data.global_header?.logo_text, { sourceKind: 'upload' });
             }
-            setLogoSyncState('logo_changed');
-            setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'logo_changed', logo_theme_sync_source: 'upload', logo_theme_synced_theme: null }));
-            setHasUnsavedTheme(true);
-            showCosmicNotification({ title: 'Logo uploaded', message: trialMode ? 'Your logo is now applied to this trial website.' : 'Your logo is now applied. Save the Builder to keep it.', tone: 'success' });
         } catch (error) {
             showCosmicNotification({ title: 'Unable to upload logo', message: error.response?.data?.message || 'Please try another logo file.', tone: 'error' });
         } finally {
@@ -626,17 +1014,24 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         startLogoAiAction(hasLogo ? 'regenerate' : 'generate');
         setLogoBusy(true);
         try {
+            const currentThemeKey = globalSelections?.primary || 'midnight';
+            const currentThemeFamily = colorFamilies[currentThemeKey] || colorFamilies.midnight;
+            const currentThemePalette = currentThemeKey === 'my-brand'
+                ? (globalSelections?.custom_brand_theme?.palette || currentThemeFamily?.palette || {})
+                : (currentThemeFamily?.palette || {});
+            const currentPrimaryHex = currentThemePalette?.background || currentThemePalette?.primary || '#243447';
+
             const response = trialMode
-                ? await axios.post(route('trial-branding.logo.generate', trialToken), { company_name: logoCompanyName.trim() })
+                ? await axios.post(route('trial-branding.logo.generate', trialToken), {
+                    company_name: logoCompanyName.trim(),
+                    theme_key: currentThemeKey,
+                    primary_hex: currentPrimaryHex,
+                })
                 : await axios.post(route('websites.logo.generate', website.id), {
                     company_name: logoCompanyName.trim(),
-                    primary: globalSelections?.primary,
-                    primary_hex: globalSelections?.primary === 'my-brand' ? globalSelections?.custom_brand_theme?.palette?.background : undefined,
+                    primary: currentThemeKey,
+                    primary_hex: currentPrimaryHex,
                 });
-            openLogoCrop(response.data.url, response.data.company_name);
-            setLogoSyncState('synced');
-            setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'synced', logo_theme_sync_source: 'generated_from_theme', logo_theme_synced_theme: prev.primary }));
-            setHasUnsavedTheme(true);
             if (trialMode) {
                 if (Number.isFinite(Number(response.data.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
             } else if (Number.isFinite(Number(response.data.balance))) {
@@ -644,7 +1039,17 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             }
             setLogoAiStage('Your logo is ready.');
             finishLogoAiAction();
-            showCosmicNotification({ title: 'Logo generated', message: trialMode ? 'Cosmic AI created and applied a logo for your trial website.' : `Cosmic AI created and applied your logo. ${response.data.cost || 50} credits used.`, tone: 'success' });
+
+            // Generated/regenerated raster logos use the SAME crop path as computer
+            // uploads. Do not pre-wrap them in a 650x200 canvas server-side;
+            // the cropper owns contain/zoom/position and the saved result is tight.
+            await openLogoCrop(response.data.url, response.data.company_name || logoCompanyName.trim(), {
+                entryPrompt: false,
+                autoAdaptTheme: false,
+                sourceKind: 'ai',
+            });
+
+            showCosmicNotification({ title: 'Logo generated', message: trialMode ? 'Cosmic AI created your logo. Adjust the crop, then save it to apply it to your trial website.' : `Cosmic AI created your logo. Adjust the crop, then save it to apply it. ${response.data.cost || 50} credits used.`, tone: 'success' });
         } catch (error) {
             cancelLogoAiAction();
             showCosmicNotification({ title: 'Unable to generate logo', message: error.response?.data?.message || 'Cosmic AI could not create the logo. Please try again.', tone: 'error' });
@@ -653,6 +1058,147 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         }
     };
 
+
+    const keepCurrentLogoForSelectedTheme = () => {
+        // Keeping the logo is a temporary visual choice, not a dismissal of
+        // the mismatch. Preserve the pending state so the ACTIVE theme card
+        // continues to offer “Match Logo to Theme” later.
+        setLogoSyncState('theme_changed');
+        setGlobalSelections((prev) => ({
+            ...prev,
+            logo_theme_sync_state: 'theme_changed',
+            logo_theme_sync_source: 'manual_theme_change',
+            logo_theme_synced_theme: null,
+        }));
+        setPendingThemeLogoAdapt(null);
+    };
+
+    const adaptLogoToSelectedTheme = async () => {
+        const pending = pendingThemeLogoAdapt;
+        if (!pending || themeLogoAdaptBusy) return;
+
+        const activePalette = pending.palette || {};
+        const payload = {
+            logo_url: pending.logoUrl,
+            theme_key: pending.theme,
+            theme_name: pending.themeName,
+            primary_hex: activePalette?.background || activePalette?.primary || '#243447',
+            secondary_hex: activePalette?.secondary || activePalette?.surface || activePalette?.accent || '#475569',
+            tertiary_hex: activePalette?.tertiary || activePalette?.accent || activePalette?.secondary || '#60A5FA',
+            accent_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.background || '#60A5FA',
+        };
+
+        setThemeLogoAdaptBusy(true);
+        startLogoAiAction('logo_to_theme');
+        setLogoBusy(true);
+        try {
+            const response = trialMode
+                ? await axios.post(route('trial-branding.logo.match-theme', trialToken), payload)
+                : await axios.post(route('websites.logo.match-theme', website.id), payload);
+
+            if (trialMode) {
+                // Trial theme matching now follows the exact same confirmation
+                // path as initial Luna generation and computer uploads. The
+                // matched temp asset is NOT active until Save Logo is clicked.
+                await openLogoCrop(response.data.url, data.global_header?.logo_text, {
+                    sourceKind: 'theme_match',
+                    entryPrompt: false,
+                    autoAdaptTheme: false,
+                });
+                setLogoSyncState('theme_changed');
+                setGlobalSelections((prev) => ({
+                    ...prev,
+                    logo_theme_sync_state: 'theme_changed',
+                    logo_theme_sync_source: 'logo_to_theme_pending_crop',
+                    logo_theme_synced_theme: null,
+                }));
+            } else {
+                applyTrialLogo(response.data.url, data.global_header?.logo_text);
+                setLogoSyncState('synced');
+                setGlobalSelections((prev) => ({
+                    ...prev,
+                    logo_theme_sync_state: 'synced',
+                    logo_theme_sync_source: 'logo_to_theme',
+                    logo_theme_synced_theme: pending.theme,
+                    brand_original_logo_url: prev.brand_original_logo_url || pending.logoUrl,
+                    brand_active_logo_url: response.data.url,
+                    brand_logo_variants: { ...(prev.brand_logo_variants || {}), [pending.theme]: response.data.url },
+                }));
+            }
+            setHasUnsavedTheme(true);
+            if (trialMode) {
+                if (Number.isFinite(Number(response.data.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
+            } else if (Number.isFinite(Number(response.data.balance))) {
+                setCreditBalance(Number(response.data.balance));
+            }
+            setPendingThemeLogoAdapt(null);
+            setLogoAiStage(trialMode ? 'Matched logo ready for crop.' : 'Your logo now matches the new theme.');
+            finishLogoAiAction();
+            showCosmicNotification({
+                title: trialMode ? 'Matched logo ready' : 'Logo adapted',
+                message: trialMode ? `Adjust the ${pending.themeName} logo crop, then save it to apply.` : `Your header and footer logo now match ${pending.themeName}.`,
+                tone: 'success',
+            });
+        } catch (error) {
+            cancelLogoAiAction();
+            const rateLimited = Number(error.response?.status) === 429
+                || /too many attempts/i.test(String(error.response?.data?.message || error.message || ''));
+
+            if (rateLimited) {
+                // Do not leave the adaptation dialog stacked behind the Theme
+                // chooser. The already-persisted `theme_changed` state is the
+                // pending flag, and the active theme card exposes Match Logo.
+                setPendingThemeLogoAdapt(null);
+                setLogoSyncState('theme_changed');
+                setGlobalSelections((prev) => ({
+                    ...prev,
+                    logo_theme_sync_state: 'theme_changed',
+                    logo_theme_sync_source: 'manual_theme_change',
+                    logo_theme_synced_theme: null,
+                }));
+                showCosmicNotification({
+                    title: 'Theme applied · logo match pending',
+                    message: 'Cosmic AI is cooling down. Open Themes and use Match Logo on the active theme when you are ready to retry.',
+                    tone: 'warning',
+                });
+            } else {
+                showCosmicNotification({
+                    title: 'Theme applied · logo kept',
+                    message: error.response?.data?.message || 'Cosmic AI could not adapt the logo, so your current logo was kept.',
+                    tone: 'warning',
+                });
+            }
+        } finally {
+            setLogoBusy(false);
+            setThemeLogoAdaptBusy(false);
+        }
+    };
+
+
+    const restoreOriginalLogo = async () => {
+        if (logoBusy) return;
+        setLogoBusy(true);
+        try {
+            const response = trialMode
+                ? await axios.post(route('trial-branding.logo.restore-original', trialToken))
+                : await axios.post(route('websites.logo.restore-original', website.id));
+            applyTrialLogo(response.data.url, data.global_header?.logo_text);
+            setLogoSyncState('logo_changed');
+            setGlobalSelections((prev) => ({
+                ...prev,
+                brand_active_logo_url: response.data.url,
+                logo_theme_sync_state: 'logo_changed',
+                logo_theme_sync_source: 'restore_original',
+                logo_theme_synced_theme: null,
+            }));
+            setHasUnsavedTheme(true);
+            showCosmicNotification({ title: 'Original logo restored', message: 'Header and footer now use your preserved original logo.', tone: 'success' });
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to restore logo', message: error.response?.data?.message || 'No preserved original logo is available yet.', tone: 'error' });
+        } finally {
+            setLogoBusy(false);
+        }
+    };
 
     const matchLogoToTheme = async () => {
         const logoUrl = data.global_header?.logo_image_url || '/storage/branding/your-logo.png';
@@ -687,13 +1233,23 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 ? await axios.post(route('trial-branding.logo.match-theme', trialToken), payload)
                 : await axios.post(route('websites.logo.match-theme', website.id), payload);
 
-            if (String(response.data.url || '').toLowerCase().includes('.svg')) {
-                applyTrialLogo(response.data.url);
+            if (trialMode) {
+                await openLogoCrop(response.data.url, data.global_header?.logo_text, {
+                    sourceKind: 'theme_match',
+                    entryPrompt: false,
+                    autoAdaptTheme: false,
+                });
+                setLogoSyncState('theme_changed');
+                setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'logo_to_theme_pending_crop', logo_theme_synced_theme: null }));
             } else {
-                openLogoCrop(response.data.url, data.global_header?.logo_text);
+                if (String(response.data.url || '').toLowerCase().includes('.svg')) {
+                    applyTrialLogo(response.data.url);
+                } else {
+                    openLogoCrop(response.data.url, data.global_header?.logo_text);
+                }
+                setLogoSyncState('synced');
+                setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'synced', logo_theme_sync_source: 'logo_to_theme', logo_theme_synced_theme: prev.primary }));
             }
-            setLogoSyncState('synced');
-            setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'synced', logo_theme_sync_source: 'logo_to_theme', logo_theme_synced_theme: prev.primary }));
             setHasUnsavedTheme(true);
             if (trialMode) {
                 setLogoRegenerationsUsed(Number(response.data.regenerations_used_today || logoRegenerationsUsed));
@@ -701,18 +1257,35 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             } else if (Number.isFinite(Number(response.data.balance))) {
                 setCreditBalance(Number(response.data.balance));
             }
-            setLogoAiStage('Your logo now matches the theme.');
+            setLogoAiStage(trialMode ? 'Matched logo ready for crop.' : 'Your logo now matches the theme.');
             finishLogoAiAction();
             showCosmicNotification({
-                title: 'Logo matched to theme',
+                title: trialMode ? 'Matched logo ready' : 'Logo matched to theme',
                 message: trialMode
-                    ? `Your logo now matches ${family?.name || 'the current theme'}.`
+                    ? `Adjust the ${family?.name || 'current theme'} logo crop, then save it to apply.`
                     : `Your logo now matches ${family?.name || 'the current theme'}. ${response.data.cost || 50} credits used.`,
                 tone: 'success',
             });
         } catch (error) {
             cancelLogoAiAction();
-            showCosmicNotification({ title: 'Unable to match logo', message: error.response?.data?.message || 'Cosmic AI could not match this logo to the current theme.', tone: 'error' });
+            const rateLimited = Number(error.response?.status) === 429
+                || /too many attempts/i.test(String(error.response?.data?.message || error.message || ''));
+            if (rateLimited) {
+                setLogoSyncState('theme_changed');
+                setGlobalSelections((prev) => ({
+                    ...prev,
+                    logo_theme_sync_state: 'theme_changed',
+                    logo_theme_sync_source: 'manual_theme_change',
+                    logo_theme_synced_theme: null,
+                }));
+                showCosmicNotification({
+                    title: 'Match Logo still pending',
+                    message: 'Too many attempts right now. Your theme and current logo were kept; the Match Logo button will stay available on the active theme.',
+                    tone: 'warning',
+                });
+            } else {
+                showCosmicNotification({ title: 'Unable to match logo', message: error.response?.data?.message || 'Cosmic AI could not match this logo to the current theme.', tone: 'error' });
+            }
         } finally {
             setLogoBusy(false);
         }
@@ -1019,9 +1592,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
         const stages = [
             { at: 10, text: 'Understanding your new direction...' },
-            { at: 30, text: 'Choosing a different layout and Sparks...' },
-            { at: 68, text: 'Writing fresh page content...' },
-            { at: 88, text: 'Rebuilding your page...' },
+            { at: 24, text: 'Choosing a fresh theme and brand direction...' },
+            { at: 42, text: 'Choosing a different layout and Sparks...' },
+            { at: 64, text: 'Finding fresh images and writing new content...' },
+            { at: 84, text: 'Generating your new logo and favicon...' },
+            { at: 92, text: 'Rebuilding your full website...' },
         ];
         let progress = 4;
         setRegenerateProgress(progress);
@@ -1040,8 +1615,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         if (!regeneratePrompt.trim()) return;
         const regenCost = trialActionCosts.regenerate_page;
         const confirmed = await confirmCosmicAction({
-            title: 'Regenerate this page?',
-            message: `${creditMessage(regenCost)} Your current page stays safe if generation fails.`,
+            title: 'Regenerate this trial website?',
+            message: `${creditMessage(regenCost)} This rebuilds everything — logo, favicon, theme, Sparks, images, content and layout. Your current page stays safe if the main generation fails; if only fresh logo generation fails, Cosmic safely keeps your previous logo.`,
             confirmLabel: `Use ${regenCost} Credits`,
         });
         if (!confirmed) return;
@@ -1053,9 +1628,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setRegenerating(true);
         setSaveError('');
         try {
-            const response = await axios.post(route('trial-generations.regenerate', trialToken), { prompt: regeneratePrompt.trim() });
+            const response = await axios.post(route('trial-generations.regenerate', trialToken), {
+                prompt: regeneratePrompt.trim(),
+                mode: 'full_trial',
+            });
             setRegenerateProgress(100);
-            setRegenerateStage('Your new layout is ready.');
+            setRegenerateStage('Your new website is ready.');
 
             // The server has already replaced the trial draft successfully.
             // Navigate straight to the regenerated Builder without a browser
@@ -1188,6 +1766,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         hasRealBrandLogo
         && logoSyncState === 'logo_changed'
     );
+    // A manual theme change with an existing logo is a durable pending
+    // logo-to-theme sync state. The backend already persists `theme_changed`,
+    // so the active Theme card can offer a retry even after a refresh.
+    const logoMatchPending = Boolean(
+        hasRealBrandLogo
+        && logoSyncState === 'theme_changed'
+    );
 
 
     useEffect(() => {
@@ -1215,6 +1800,32 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         }
     }, [globalSelections?.custom_brand_theme]);
 
+
+    useEffect(() => {
+        const header = data.global_header;
+        if (!header || logoReplacementStarted) return;
+
+        const logoUrl = typeof header.logo_image_url === 'string' ? header.logo_image_url.trim() : '';
+        const isPlaceholder = !logoUrl || logoUrl.includes('your-logo.png');
+        if (!isPlaceholder) return;
+
+        const activeThemeKey = globalSelections?.primary || 'midnight';
+        if (header.logo_filter_key === activeThemeKey && header.logo_filter !== 'none') return;
+
+        // The stock "Your Logo" artwork is monochrome, so its CSS filter can
+        // safely follow the active color family during trial/theme changes.
+        // A real uploaded/generated logo is handled separately and never tinted.
+        setData('global_header', {
+            ...header,
+            logo_filter_key: activeThemeKey,
+            logo_filter: undefined,
+        });
+    }, [
+        data.global_header?.logo_image_url,
+        data.global_header?.logo_filter_key,
+        globalSelections?.primary,
+        logoReplacementStarted,
+    ]);
 
     useEffect(() => {
         const header = data.global_header;
@@ -1578,7 +2189,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 </button>
                             )}
 
-                            {!trialMode && capabilities.canGenerateAi && (
+                            {(capabilities.canGenerateAi || trialMode) && (
                                 <button
                                     type="button"
                                     onClick={() => setIsTemplatesOpen(true)}
@@ -1606,7 +2217,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                         <div className={`flex min-w-0 items-center justify-end gap-2 ${trialMode ? 'ml-auto' : ''}`}>
                             {trialMode ? (
                                 <span title="Guest Cosmic Credits" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-extrabold text-amber-800">
-                                    <span aria-hidden="true">⚡</span><span>{Number(creditBalance || 0).toLocaleString()}</span><span className="hidden font-semibold sm:inline">Guest Credits</span>
+                                    <span aria-hidden="true">⚡</span><span>{effectiveCreditBalance.toLocaleString()}</span><span className="hidden font-semibold sm:inline">Guest Credits</span>
                                 </span>
                             ) : (
                                 <CreditBalanceBadge
@@ -1626,11 +2237,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     brandMatchNeeded={brandMatchNeeded}
                                     onMatchBrandToLogo={matchThemeToLogo}
                                     brandMatchBusy={logoBusy && logoAiAction === 'theme_to_logo'}
+                                    logoMatchPending={trialMode && logoMatchPending}
+                                    onMatchLogoToTheme={matchLogoToTheme}
+                                    logoMatchBusy={logoBusy && logoAiAction === 'logo_to_theme'}
                                     onChange={handleThemeChange}
                                 />
                             )}
 
-                            {capabilities.canGenerateAi && (
+                            {(capabilities.canGenerateAi || trialMode) && (
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(true)}
@@ -2136,6 +2750,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 brandMatchNeeded={brandMatchNeeded}
                                 onMatchBrandToLogo={matchThemeToLogo}
                                 brandMatchBusy={logoBusy && logoAiAction === 'theme_to_logo'}
+                                logoMatchPending={trialMode && logoMatchPending}
+                                onMatchLogoToTheme={matchLogoToTheme}
+                                logoMatchBusy={logoBusy && logoAiAction === 'logo_to_theme'}
                                 onChange={(theme) => {
 
                                     setGlobalSelections(prev => ({
@@ -2190,7 +2807,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
             </div>
             
-            {capabilities.canGenerateAi && (
+            {(capabilities.canGenerateAi || trialMode) && (
                 <AddSectionModal
                     open={isModalOpen}
                     onClose={() => { setIsModalOpen(false); setSparkInsertTarget(null); }}
@@ -2199,6 +2816,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     hasWebsiteContent={hasWebsiteContent}
                     websiteContext={websiteContext}
                     websiteId={website?.id}
+                    trialMode={trialMode}
+                    trialToken={trialToken}
                     cosmicPricing={cosmicPricing}
                     websiteTheme={globalSelections}
                     ownedOnly={Boolean(sparkInsertTarget)}
@@ -2207,18 +2826,19 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 />
             )}
 
-            {!trialMode && capabilities.canGenerateAi && (
+            {(capabilities.canGenerateAi || trialMode) && (
                 <PageTemplatesModal
                     open={isTemplatesOpen}
                     onClose={() => setIsTemplatesOpen(false)}
-                    onInstall={(blocks, template) => {
-                        if ((data.blocks?.length ?? 0) > 0 && !window.confirm(`Install ${template.name}? This will replace the current page layout. Your changes are not saved until you click Save Draft.`)) return false;
+                    onInstall={(blocks) => {
                         replaceBlocks(blocks);
                         setIsTemplatesOpen(false);
                         return true;
                     }}
                     websiteContext={websiteContext}
                     websiteId={website?.id}
+                    trialMode={trialMode}
+                    trialToken={trialToken}
                     websiteTheme={globalSelections}
                     themeValue={globalSelections.primary}
                     onThemeChange={handleThemeChange}
@@ -2243,13 +2863,35 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
             {/* AI MODAL INJECTOR CONFIG */}
             
+            {pendingThemeLogoAdapt && (
+                <div className="fixed inset-0 z-[245] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                        <div className="border-b border-slate-200 px-6 py-5">
+                            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">AI Brand Adaptation</p>
+                            <h3 className="mt-1 text-xl font-bold text-slate-900">Adapt logo to {pendingThemeLogoAdapt.themeName}?</h3>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">Your new theme is already selected. Cosmic can create a matching logo variant from your original brand asset and update both the header and footer automatically.</p>
+                        </div>
+                        <div className="p-6">
+                            <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+                                <p className="text-sm font-semibold text-slate-800">Keep the brand or let Cosmic adapt it</p>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">Keeping the current logo is free. Adapting the logo uses {trialMode ? trialActionCosts.match_logo_to_theme : 50} Cosmic Credits. The original logo is preserved for future theme variants.</p>
+                            </div>
+                            <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                                <button type="button" disabled={themeLogoAdaptBusy} onClick={keepCurrentLogoForSelectedTheme} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Keep Current Logo</button>
+                                <button type="button" disabled={themeLogoAdaptBusy} onClick={adaptLogoToSelectedTheme} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">{themeLogoAdaptBusy ? 'Adapting…' : `Adapt Logo · ${trialMode ? trialActionCosts.match_logo_to_theme : 50} Credits`}</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {logoCropOpen && (
                 <div className="fixed inset-0 z-[10100] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-sm sm:p-6">
                     <div className="flex max-h-[94vh] w-full max-w-5xl flex-col overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl">
                         <div className="border-b border-slate-200 px-5 py-4 sm:px-7 sm:py-5">
-                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-600">Logo framing</p>
-                            <h3 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">Crop & position your logo</h3>
-                            <p className="mt-1 text-sm text-slate-500">Your full logo starts fitted at 100%. Drag or zoom only if you want to fine-tune its position inside the 650 × 150 header frame.</p>
+                            <p className="text-xs font-bold uppercase tracking-[0.2em] text-emerald-600">{logoCropEntryPrompt ? 'Logo check' : 'Logo framing'}</p>
+                            <h3 className="mt-1 text-xl font-bold text-slate-950 sm:text-2xl">{logoCropEntryPrompt ? 'Make your logo fit the header' : 'Crop & position your logo'}</h3>
+                            <p className="mt-1 text-sm text-slate-500">{logoCropEntryPrompt ? 'Your complete generated logo is contained inside the 650 × 200 header frame with safety padding. Adjust only if you want to fine-tune it, then save.' : 'Your full logo is contained inside the 650 × 200 header frame at 100%. Drag or zoom only if you want to fine-tune its position.'}</p>
                         </div>
 
                         <div className="min-h-0 overflow-y-auto p-4 sm:p-6">
@@ -2262,7 +2904,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 className="relative mx-auto aspect-square w-full max-w-[560px] cursor-grab touch-none overflow-hidden rounded-2xl border border-slate-300 bg-slate-100 shadow-inner active:cursor-grabbing"
                             >
                                 <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(45deg,#f8fafc_25%,transparent_25%),linear-gradient(-45deg,#f8fafc_25%,transparent_25%),linear-gradient(45deg,transparent_75%,#f8fafc_75%),linear-gradient(-45deg,transparent_75%,#f8fafc_75%)] bg-[length:22px_22px] bg-[position:0_0,0_11px,11px_-11px,-11px_0px]" />
-                                <div className="pointer-events-none absolute inset-0 grid place-items-center">
+                                <div
+                                    className="pointer-events-none absolute left-1/2 top-1/2 grid w-[90%] -translate-x-1/2 -translate-y-1/2 place-items-center"
+                                    style={{ aspectRatio: '650 / 200' }}
+                                >
                                     <img
                                         src={logoCropSource}
                                         alt="Logo crop preview"
@@ -2288,12 +2933,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 <div
                                     ref={logoCropSafeFrameRef}
                                     className="pointer-events-none absolute left-1/2 top-1/2 w-[90%] -translate-x-1/2 -translate-y-1/2 overflow-hidden rounded-xl border-2 border-emerald-400 shadow-[0_0_0_999px_rgba(15,23,42,.18),0_0_0_1px_rgba(255,255,255,.7)]"
-                                    style={{ aspectRatio: '650 / 150' }}
+                                    style={{ aspectRatio: '650 / 200' }}
                                 >
                                     <div className="absolute inset-0 bg-white/5" />
                                 </div>
                                 <div className="pointer-events-none absolute bottom-3 left-1/2 -translate-x-1/2 rounded-full bg-slate-950/70 px-3 py-1 text-[10px] font-semibold text-white">
-                                    Final header crop: 650 × 150
+                                    Final header crop: 650 × 200
                                 </div>
                             </div>
 
@@ -2312,7 +2957,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     />
                                     <span className="w-12 text-right text-xs font-semibold text-slate-600">{Math.round(logoCropZoom * 100)}%</span>
                                 </div>
-                                <p className="mt-2 text-center text-xs text-slate-500">Starts fully contained at 100%. The original image stays untouched; only the final 650 × 150 header crop is saved.</p>
+                                <p className="mt-2 text-center text-xs text-slate-500">100% always starts fully contained inside the green frame. The original image stays untouched; only the final 650 × 200 header crop is saved.</p>
                             </div>
 
                             <div className="mx-auto mt-5 flex max-w-[700px] flex-wrap items-center justify-between gap-3 border-t border-slate-200 pt-5">
@@ -2327,11 +2972,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 <div className="flex flex-wrap justify-end gap-3">
                                     <button
                                         type="button"
-                                        onClick={closeLogoCropWithOriginal}
+                                        onClick={cancelLogoCrop}
                                         disabled={logoCropSaving}
                                         className="rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50"
                                     >
-                                        Use Original
+                                        Cancel
                                     </button>
                                     <button
                                         type="button"
@@ -2414,14 +3059,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                         <span className="cosmic-logo-upload-help mt-1 block text-xs font-medium text-slate-600">SVG, PNG, JPG or WebP up to 2 MB.</span>
                                     </button>
                                     <input ref={logoUploadRef} type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" onChange={uploadTrialLogo} className="hidden" />
-                                    <div className="sm:col-span-2 mt-1 border-t border-slate-200 pt-4">
-                                        <p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-slate-500">Brand Matching</p>
-                                        <button type="button" disabled={logoBusy} onClick={matchLogoToTheme} className="cosmic-logo-brand-dark min-h-[106px] w-full rounded-xl bg-slate-900 px-5 py-4 text-left text-white transition hover:bg-slate-800 disabled:cursor-not-allowed disabled:opacity-60">
-                                            <span className="block text-sm font-bold">🎨 Match Logo to Theme</span>
-                                            <span className="mt-1 block text-xs text-slate-300">Recolor the current logo—including the default Your Logo placeholder—to the exact active theme palette.</span>
+                                    {globalSelections?.brand_original_logo_url && String(globalSelections.brand_original_logo_url) !== String(data.global_header?.logo_image_url || '') && (
+                                        <button type="button" disabled={logoBusy} onClick={restoreOriginalLogo} className="cosmic-logo-restore-card sm:col-span-2 min-h-[72px] w-full rounded-xl border px-5 py-4 text-left transition">
+                                            <span className="cosmic-logo-restore-title block text-sm font-bold">↶ Restore Original Logo</span>
+                                            <span className="cosmic-logo-restore-help mt-1 block text-xs">Return to the preserved source logo. Header and footer update together.</span>
                                         </button>
-                                    </div>
-                                    <p className="sm:col-span-2 text-xs text-slate-500">{trialMode ? `AI logo actions use Guest Cosmic Credits. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 500} credits. Upload/replace is free.` : `AI logo generation and brand matching cost 50 credits per action. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 0} credits. Upload/replace is free.`}</p>
+                                    )}
+                                    <p className="sm:col-span-2 text-xs text-slate-500">{trialMode ? `AI logo actions use Guest Cosmic Credits. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 500} credits. Upload/replace is free.` : `AI logo generation costs 50 credits. Theme adaptation is offered when you switch themes. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 0} credits. Upload/replace is free.`}</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
@@ -2539,13 +3183,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             {showRegenerateModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
                     <form onSubmit={handleRegenerate} className="w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
-                        <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-600">Regenerate landing page</p>
+                        <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-600">Regenerate trial website</p>
                         <h2 className="mt-2 text-xl font-bold text-slate-900">Describe the new direction</h2>
-                        <p className="mt-2 text-sm leading-6 text-slate-500">Regenerate as often as your Guest Cosmic Credits allow. Your current page is preserved if generation fails.</p>
-                        <textarea required minLength={10} value={regeneratePrompt} onChange={(event) => setRegeneratePrompt(event.target.value)} rows={5} placeholder="Make it more premium, modern, and focused on corporate clients…" className="mt-5 w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+                        <p className="mt-2 text-sm leading-6 text-slate-500">This rebuilds the trial from your new prompt: Sparks, content, images, brand direction, theme and navigation. The logo resets to Your Logo. Your current website is preserved if generation fails.</p>
+                        <textarea required minLength={10} value={regeneratePrompt} onChange={(event) => setRegeneratePrompt(event.target.value)} rows={5} placeholder="Create a premium AI automation company for small businesses…" className="mt-5 w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
                         <div className="mt-5 flex justify-end gap-3">
                             <button type="button" onClick={() => setShowRegenerateModal(false)} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Cancel</button>
-                            <button type="submit" disabled={regenerating} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{regenerating ? 'Regenerating…' : 'Regenerate page'}</button>
+                            <button type="submit" disabled={regenerating} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{regenerating ? 'Regenerating…' : 'Regenerate website'}</button>
                         </div>
                     </form>
                 </div>

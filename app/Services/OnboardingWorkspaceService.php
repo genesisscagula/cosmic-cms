@@ -104,6 +104,31 @@ class OnboardingWorkspaceService
             ];
         }
 
+        $themeSettings = is_array($trial?->preview_theme) && $trial->preview_theme !== []
+            ? $trial->preview_theme
+            : [
+                'primary' => 'midnight',
+                'secondary' => 'white',
+                'tertiary' => 'stone',
+                'auto' => true,
+            ];
+
+        // Paid onboarding must follow the same theme contract as Dashboard
+        // website creation: My Brand Theme always exists. Direct/non-trial
+        // purchases install Midnight; trial purchases preserve the trial family.
+        $fallbackFamily = (string) data_get(
+            $themeSettings,
+            'custom_brand_theme.base_family',
+            data_get($themeSettings, 'primary', 'midnight')
+        );
+        $themeSettings = app(MyBrandThemeService::class)->ensureInSettings($themeSettings, $fallbackFamily);
+
+        $entitlementSeed = (string) (
+            data_get($themeSettings, 'primary') === 'my-brand'
+                ? data_get($themeSettings, 'custom_brand_theme.base_family', 'midnight')
+                : data_get($themeSettings, 'primary', 'midnight')
+        );
+
         return Website::create([
             'user_id' => $onboarding->user_id,
             'workspace_id' => $workspace->id,
@@ -114,15 +139,10 @@ class OnboardingWorkspaceService
             'business_description' => $onboarding->business_description,
             'contact_email' => $onboarding->user->email,
             'api_token' => Str::random(60),
-            'settings' => array_filter([
-                'theme_entitlement_seed' => data_get($trial?->preview_theme, 'primary'),
-            ]),
-            'theme_settings' => $trial?->preview_theme ?: [
-                'primary' => 'midnight',
-                'secondary' => 'white',
-                'tertiary' => 'stone',
-                'auto' => true,
+            'settings' => [
+                'theme_entitlement_seed' => $entitlementSeed,
             ],
+            'theme_settings' => $themeSettings,
             'global_header' => [
                 'type' => 'glassmorphism_header',
                 'logo_text' => $onboarding->website_name,
@@ -208,6 +228,17 @@ class OnboardingWorkspaceService
             if ($trialTheme !== '') {
                 $settings['theme_entitlement_seed'] = $trialTheme;
             }
+        }
+
+        if ($onboarding->trialGeneration) {
+            $trial = $onboarding->trialGeneration;
+            $settings['brand_memory'] = [
+                'brand_prompt' => $trial->brand_prompt ?: $trial->prompt,
+                'latest_user_prompt' => $trial->latest_user_prompt ?: $trial->prompt,
+                'brand_context' => is_array($trial->brand_context) ? $trial->brand_context : [],
+                'prompt_history' => is_array($trial->prompt_history) ? $trial->prompt_history : [],
+                'source_trial_id' => $trial->id,
+            ];
         }
 
         $website->forceFill([

@@ -33,10 +33,14 @@ export default function ThemeCard({
     brandMatchNeeded = false,
     onMatchBrandToLogo = null,
     brandMatchBusy = false,
+    logoMatchPending = false,
+    onMatchLogoToTheme = null,
+    logoMatchBusy = false,
 }) {
     const [primary, surface, accent, text] = theme.colors;
     const isMyBrand = theme.id === 'my-brand';
     const canMatchBrandToLogo = isMyBrand && typeof onMatchBrandToLogo === 'function';
+    const canRetryLogoMatch = selected && hasLogo && logoMatchPending && typeof onMatchLogoToTheme === 'function';
 
     return (
         <div
@@ -140,34 +144,23 @@ export default function ThemeCard({
                     <span className="cosmic-theme-card-palette-label ml-1 text-[10px] font-medium text-slate-500">Background · Surface · Accent · Text</span>
                 </div>
 
-                {isMyBrand && (
-                    <div className="mt-3 border-t border-white/10 pt-3">
-                        <span
-                            role="button"
-                            tabIndex={0}
-                            aria-disabled={brandMatchBusy || !canMatchBrandToLogo}
-                            onClick={(event) => {
-                                event.preventDefault();
-                                event.stopPropagation();
-                                if (!brandMatchBusy && canMatchBrandToLogo) onMatchBrandToLogo();
-                            }}
-                            onKeyDown={(event) => {
-                                if ((event.key === 'Enter' || event.key === ' ') && !brandMatchBusy && canMatchBrandToLogo) {
-                                    event.preventDefault();
-                                    event.stopPropagation();
-                                    onMatchBrandToLogo();
-                                }
-                            }}
-                            className={`cosmic-brand-match-cta inline-flex w-full items-center justify-center rounded-lg px-3 py-2 text-[11px] font-extrabold text-white shadow-sm transition ${
-                                canMatchBrandToLogo
-                                    ? 'bg-emerald-600 hover:bg-emerald-500'
-                                    : 'cursor-not-allowed bg-slate-600 opacity-60'
-                            }`}
-                        >
-                            {brandMatchBusy ? 'Matching…' : '✨ Match Theme to Logo'}
-                        </span>
-                    </div>
+                {canRetryLogoMatch && (
+                    <button
+                        type="button"
+                        disabled={logoMatchBusy}
+                        onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onMatchLogoToTheme();
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        className="cosmic-theme-match-logo-cta mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] transition disabled:cursor-not-allowed"
+                    >
+                        <span aria-hidden="true">✨</span>
+                        {logoMatchBusy ? 'Matching…' : 'Match Logo to Theme'}
+                    </button>
                 )}
+
             </div>
         </div>
     );

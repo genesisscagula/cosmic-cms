@@ -75,44 +75,30 @@ class PlanEntitlementService
         $definition = $catalog->definition($template);
         $index = $catalog->catalogIndex($template);
         $capabilities = $this->plans->capabilities($user->effectivePlanKey());
-        $requiredLevel = (string) ($definition['minimum_plan'] ?? 'pro');
-        $accountLevel = (string) ($capabilities['template_access_level'] ?? 'starter');
-        $limit = $capabilities['template_limit'] ?? null;
 
-        $base = [
-            'allowed' => false,
+        if (! $definition) {
+            return [
+                'allowed' => false,
+                'template' => $template,
+                'required_level' => null,
+                'account_level' => (string) ($capabilities['template_access_level'] ?? 'starter'),
+                'catalog_index' => $index,
+                'reason' => 'unknown_template',
+                'message' => 'The selected website starter kit is not available.',
+                'upgrade' => null,
+            ];
+        }
+
+        return [
+            'allowed' => true,
             'template' => $template,
-            'required_level' => $requiredLevel,
-            'account_level' => $accountLevel,
+            'required_level' => (string) ($definition['minimum_plan'] ?? 'starter'),
+            'account_level' => (string) ($capabilities['template_access_level'] ?? 'starter'),
             'catalog_index' => $index,
             'reason' => null,
             'message' => null,
             'upgrade' => null,
         ];
-
-        if (! $definition) {
-            return [...$base, 'reason' => 'unknown_template', 'message' => 'The selected website template is not available.'];
-        }
-
-        if ($limit !== null && $index !== null && $index >= (int) $limit) {
-            return [
-                ...$base,
-                'reason' => 'template_limit',
-                'message' => sprintf('Your current plan includes access to %d templates. Upgrade your plan to use this template.', (int) $limit),
-                'upgrade' => $this->recommendedTemplateUpgrade($user, $requiredLevel, $index, (string) ($definition['collection'] ?? 'personal')),
-            ];
-        }
-
-        if (! $this->levelAllows($accountLevel, $requiredLevel, self::TEMPLATE_LEVELS)) {
-            return [
-                ...$base,
-                'reason' => 'access_level',
-                'message' => sprintf('This template requires the %s template tier. Upgrade your plan to continue.', str_replace('_', ' ', $requiredLevel)),
-                'upgrade' => $this->recommendedTemplateUpgrade($user, $requiredLevel, $index, (string) ($definition['collection'] ?? 'personal')),
-            ];
-        }
-
-        return [...$base, 'allowed' => true];
     }
 
 

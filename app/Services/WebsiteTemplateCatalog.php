@@ -90,8 +90,8 @@ class WebsiteTemplateCatalog
 
                 return [
                     ...$collection,
-                    'locked' => $locked,
-                    'lock_message' => $locked ? 'Upgrade your Agency plan to unlock this collection.' : null,
+                    'locked' => false,
+                    'lock_message' => null,
                 ];
             })
             ->values()
@@ -119,6 +119,8 @@ class WebsiteTemplateCatalog
             'theme_family' => (string) ($metadata['theme_family'] ?? $profile['theme'] ?? 'midnight'),
             'page_count' => max(1, (int) ($metadata['page_count'] ?? 1)),
             'spark_collection' => (string) ($metadata['spark_collection'] ?? "{$template}-starter"),
+            'preview_sparks' => $this->previewSparkTypes($template),
+            'spark_count' => count($this->previewSparkTypes($template)),
             'is_featured' => (bool) ($metadata['is_featured'] ?? false),
             'is_premium' => (bool) ($metadata['is_premium'] ?? false),
             'collection' => (string) ($metadata['collection'] ?? 'personal'),
@@ -280,7 +282,7 @@ class WebsiteTemplateCatalog
             'title' => 'Home',
             'slug' => 'home',
             'status' => 'draft',
-            'blocks' => $this->starterHomeBlocks(self::TEMPLATES[$template]),
+            'blocks' => $this->starterHomeBlocks(self::TEMPLATES[$template], $template),
         ]];
     }
 
@@ -288,7 +290,7 @@ class WebsiteTemplateCatalog
      * Curated Spark composition per template family. Templates no longer use
      * one generic section order; each industry gets a purposeful customer flow.
      */
-    private function starterHomeBlocks(array $profile): array
+    private function starterHomeBlocks(array $profile, string $template): array
     {
         $services = array_map(
             fn (string $title, int $index) => [
@@ -301,35 +303,143 @@ class WebsiteTemplateCatalog
         );
 
         $family = $this->templateFamily($profile['industry']);
-        $blocks = [$this->heroSpark($profile)];
+        $variant = $this->templateVariant($template);
+        $blocks = [$this->heroSpark($profile, $variant)];
 
-        foreach ($this->sparkRecipe($family) as $spark) {
+        foreach ($this->starterKitRecipe($template, $family, $variant) as $spark) {
             $blocks[] = match ($spark) {
-                'story' => $this->storySpark($profile, $family),
-                'services' => $this->servicesSpark($profile, $services, $family),
+                'story' => $this->storySpark($profile, $family, $variant),
+                'services' => $this->servicesSpark($profile, $services, $family, $variant),
                 'process' => $this->processSpark($family),
-                'proof' => $this->proofSpark($family),
-                'cta' => $this->ctaSpark($profile, $family),
+                'proof' => $this->proofSpark($family, $variant),
+                'cta' => $this->ctaSpark($profile, $family, $variant),
             };
         }
 
         return $blocks;
     }
 
-    private function sparkRecipe(string $family): array
+    private function templateVariant(string $template): int
     {
-        return match ($family) {
-            'restaurant', 'coffee' => ['story', 'services', 'proof', 'cta'],
-            'medical' => ['services', 'story', 'process', 'proof', 'cta'],
-            'real-estate' => ['story', 'services', 'proof', 'process', 'cta'],
-            'fitness' => ['services', 'process', 'proof', 'cta'],
-            'education' => ['story', 'services', 'process', 'proof', 'cta'],
-            'technology', 'saas' => ['services', 'story', 'proof', 'process', 'cta'],
-            'travel' => ['story', 'services', 'proof', 'cta'],
-            'legal' => ['story', 'services', 'process', 'proof', 'cta'],
-            'portfolio' => ['story', 'services', 'proof', 'cta'],
-            default => ['story', 'services', 'process', 'proof', 'cta'],
+        $index = array_search($template, array_keys(self::TEMPLATES), true);
+
+        return $index === false ? 0 : $index % 8;
+    }
+
+    private function previewSparkTypes(string $template): array
+    {
+        if (! $this->supports($template)) {
+            return [];
+        }
+
+        return collect($this->starterHomeBlocks(self::TEMPLATES[$template], $template))
+            ->pluck('type')
+            ->filter()
+            ->values()
+            ->all();
+    }
+
+    /**
+     * Small template-specific composition overrides keep Starter Kits visually
+     * distinct while preserving the shared industry content generators.
+     */
+    private function starterKitRecipe(string $template, string $family, int $variant): array
+    {
+        $overrides = [
+            'aurora-agency' => ['services', 'story', 'proof', 'process', 'cta'],
+            'summit-consulting' => ['story', 'process', 'services', 'proof', 'cta'],
+            'nova-startup' => ['services', 'proof', 'story', 'process', 'cta'],
+            'midnight-studio' => ['story', 'services', 'process', 'proof', 'cta'],
+
+            'table-tide' => ['story', 'services', 'proof', 'cta'],
+            'ember-kitchen' => ['services', 'story', 'proof', 'cta'],
+            'olive-hearth' => ['story', 'proof', 'services', 'cta'],
+            'morning-brew' => ['services', 'story', 'proof', 'cta'],
+            'roast-lab' => ['story', 'services', 'proof', 'cta'],
+
+            'buildcore' => ['services', 'process', 'story', 'proof', 'cta'],
+            'skyline-builders' => ['story', 'process', 'services', 'proof', 'cta'],
+            'forge-works' => ['services', 'story', 'process', 'proof', 'cta'],
+
+            'carepoint' => ['services', 'story', 'process', 'proof', 'cta'],
+            'mednova' => ['story', 'services', 'proof', 'process', 'cta'],
+            'smile-studio' => ['story', 'process', 'services', 'proof', 'cta'],
+
+            'iron-gym' => ['services', 'process', 'proof', 'cta'],
+            'motion-studio' => ['story', 'services', 'proof', 'cta'],
+
+            'haven-estates' => ['story', 'services', 'proof', 'process', 'cta'],
+            'prime-homes' => ['services', 'story', 'process', 'proof', 'cta'],
+
+            'learnhub' => ['story', 'services', 'process', 'proof', 'cta'],
+            'bright-academy' => ['services', 'story', 'proof', 'process', 'cta'],
+
+            'cloudtech' => ['services', 'proof', 'story', 'process', 'cta'],
+            'orbit-launch' => ['story', 'services', 'process', 'proof', 'cta'],
+
+            'horizon-travel' => ['story', 'services', 'proof', 'cta'],
+            'atlas-escape' => ['services', 'story', 'proof', 'cta'],
+
+            'legacy-law' => ['story', 'services', 'process', 'proof', 'cta'],
+            'justice-partners' => ['services', 'story', 'proof', 'process', 'cta'],
+
+            'obsidian-atelier' => ['story', 'proof', 'services', 'cta'],
+            'form-function' => ['services', 'story', 'proof', 'cta'],
+        ];
+
+        return $overrides[$template] ?? $this->sparkRecipe($family, $variant);
+    }
+
+
+    private function sparkRecipe(string $family, int $variant): array
+    {
+        $recipes = match ($family) {
+            'restaurant', 'coffee' => [
+                ['story', 'services', 'proof', 'cta'],
+                ['services', 'story', 'proof', 'cta'],
+                ['story', 'proof', 'services', 'cta'],
+            ],
+            'medical' => [
+                ['services', 'story', 'process', 'proof', 'cta'],
+                ['story', 'services', 'proof', 'process', 'cta'],
+            ],
+            'real-estate' => [
+                ['story', 'services', 'proof', 'process', 'cta'],
+                ['services', 'story', 'process', 'proof', 'cta'],
+            ],
+            'fitness' => [
+                ['services', 'process', 'proof', 'cta'],
+                ['story', 'services', 'proof', 'cta'],
+            ],
+            'education' => [
+                ['story', 'services', 'process', 'proof', 'cta'],
+                ['services', 'story', 'proof', 'process', 'cta'],
+            ],
+            'technology', 'saas' => [
+                ['services', 'story', 'proof', 'process', 'cta'],
+                ['story', 'services', 'process', 'proof', 'cta'],
+                ['services', 'proof', 'story', 'cta'],
+            ],
+            'travel' => [
+                ['story', 'services', 'proof', 'cta'],
+                ['services', 'story', 'proof', 'cta'],
+            ],
+            'legal' => [
+                ['story', 'services', 'process', 'proof', 'cta'],
+                ['services', 'story', 'proof', 'process', 'cta'],
+            ],
+            'portfolio' => [
+                ['story', 'services', 'proof', 'cta'],
+                ['services', 'story', 'proof', 'cta'],
+            ],
+            default => [
+                ['story', 'services', 'process', 'proof', 'cta'],
+                ['services', 'story', 'proof', 'process', 'cta'],
+                ['story', 'proof', 'services', 'process', 'cta'],
+            ],
         };
+
+        return $recipes[$variant % count($recipes)];
     }
 
     private function templateFamily(string $industry): string
@@ -351,18 +461,38 @@ class WebsiteTemplateCatalog
         };
     }
 
-    private function heroSpark(array $profile): array
+    private function heroSpark(array $profile, int $variant): array
     {
-        return [
-            'type' => 'hero_background_image', 'theme' => 'auto',
-            'tagline' => $profile['tagline'], 'heading' => $profile['heading'], 'text' => $profile['text'],
-            'button_label' => $this->ctaLabel($profile['industry']), 'button_url' => '#contact',
+        $base = [
+            'theme' => 'auto',
+            'tagline' => $profile['tagline'],
+            'heading' => $profile['heading'],
+            'text' => $profile['text'],
+            'primary_label' => $this->ctaLabel($profile['industry']),
+            'primary_url' => '#contact',
+            'secondary_label' => 'Learn more',
+            'secondary_url' => '#about',
             'image_url' => 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=2000&q=85',
-            'overlayOpacity' => 48, 'textAlign' => 'center', 'height' => 'large',
         ];
+
+        return match ($variant) {
+            1 => [...$base, 'type' => 'hero_split_image', 'trust_line' => 'Trusted by growing teams', 'image_badge' => 'Established'],
+            2 => [...$base, 'type' => 'hero_parallax', 'category' => $profile['tagline'], 'overlayOpacity' => 46, 'height' => 'large'],
+            3 => [...$base, 'type' => 'hero_editorial_overlay', 'category' => $profile['tagline'], 'overlayOpacity' => 44, 'height' => 'large'],
+            4 => [...$base, 'type' => 'hero_floating_cards', 'image_badge' => 'Featured', 'card_one_value' => '01', 'card_one_label' => 'Discover', 'card_two_value' => '02', 'card_two_label' => 'Plan', 'card_three_value' => '03', 'card_three_label' => 'Grow'],
+            5 => [...$base, 'type' => 'hero_split_editorial', 'eyebrow' => $profile['tagline'], 'editorial_index' => '01', 'proof_value' => 'Built to convert', 'proof_label' => 'Cosmic starter', 'image_caption' => $profile['industry']],
+            6 => [...$base, 'type' => 'hero_luxury_fullscreen', 'eyebrow' => $profile['tagline'], 'location_label' => ucfirst($profile['industry']), 'edition_label' => 'Cosmic Edition'],
+            7 => [...$base, 'type' => 'hero_bento_premium', 'eyebrow' => $profile['tagline'], 'image_label' => 'Featured', 'metric_value' => 'Built fast', 'metric_label' => 'Starter kit', 'proof_title' => 'Ready to customize', 'proof_text' => 'Built from reusable Cosmic Sparks.', 'card_one_label' => 'Strategy', 'card_two_label' => 'Design', 'card_three_label' => 'Launch'],
+            default => [
+                'type' => 'hero_background_image', 'theme' => 'auto',
+                'tagline' => $profile['tagline'], 'heading' => $profile['heading'], 'text' => $profile['text'],
+                'button_label' => $this->ctaLabel($profile['industry']), 'button_url' => '#contact',
+                'image_url' => $base['image_url'], 'overlayOpacity' => 48, 'textAlign' => 'center', 'height' => 'large',
+            ],
+        };
     }
 
-    private function storySpark(array $profile, string $family): array
+    private function storySpark(array $profile, string $family, int $variant): array
     {
         $copy = match ($family) {
             'restaurant' => ['Our table', 'Food with a story behind every plate.', 'Introduce your ingredients, chef, atmosphere, and the kind of experience guests can expect.'],
@@ -379,14 +509,14 @@ class WebsiteTemplateCatalog
         };
 
         return [
-            'type' => 'feature_image_left', 'theme' => 'auto', 'category' => $copy[0],
+            'type' => $variant % 2 === 0 ? 'feature_image_left' : 'feature_image_right', 'theme' => 'auto', 'category' => $copy[0],
             'heading' => $copy[1], 'text' => $copy[2],
             'button_label' => 'Learn more', 'button_url' => '#about',
             'image_url' => 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=85',
         ];
     }
 
-    private function servicesSpark(array $profile, array $services, string $family): array
+    private function servicesSpark(array $profile, array $services, string $family, int $variant): array
     {
         [$tagline, $heading, $description] = match ($family) {
             'restaurant' => ['Menu highlights', 'The dishes guests come back for.', 'Present signature dishes, seasonal menus, and dining experiences.'],
@@ -402,7 +532,7 @@ class WebsiteTemplateCatalog
             default => ['What we offer', 'Services shaped around what customers need.', 'Replace the starter content with your real services, scope, and customer outcomes.'],
         };
 
-        return ['type' => 'services_bento', 'theme' => 'auto', 'tagline' => $tagline, 'heading' => $heading, 'description' => $description, 'services' => $services];
+        return ['type' => $variant % 3 === 0 ? 'services_cards' : 'services_bento', 'theme' => 'auto', 'tagline' => $tagline, 'heading' => $heading, 'description' => $description, 'services' => $services];
     }
 
     private function processSpark(string $family): array
@@ -424,7 +554,7 @@ class WebsiteTemplateCatalog
         ];
     }
 
-    private function proofSpark(string $family): array
+    private function proofSpark(string $family, int $variant): array
     {
         $heading = match ($family) {
             'restaurant', 'coffee' => 'Why guests keep coming back.',
@@ -439,6 +569,18 @@ class WebsiteTemplateCatalog
             default => 'Build trust with approved customer feedback.',
         };
 
+        if ($variant % 3 === 1) {
+            return [
+                'type' => 'stats_modern', 'theme' => 'auto', 'tagline' => 'Proof at a glance', 'heading' => $heading,
+                'stats' => [
+                    ['value' => '10+', 'label' => 'Years experience'],
+                    ['value' => '250+', 'label' => 'Customers served'],
+                    ['value' => '4.9/5', 'label' => 'Average rating'],
+                    ['value' => '24h', 'label' => 'Typical response'],
+                ],
+            ];
+        }
+
         return [
             'type' => 'testimonials_carousel', 'theme' => 'auto', 'tagline' => 'Customer stories', 'heading' => $heading,
             'text' => 'Replace these placeholders with genuine, approved testimonials before publishing.',
@@ -450,7 +592,7 @@ class WebsiteTemplateCatalog
         ];
     }
 
-    private function ctaSpark(array $profile, string $family): array
+    private function ctaSpark(array $profile, string $family, int $variant): array
     {
         $heading = match ($family) {
             'restaurant' => 'Ready to reserve your table?', 'coffee' => 'Make us part of your next morning.',
@@ -461,7 +603,7 @@ class WebsiteTemplateCatalog
             default => 'Ready to start a conversation?',
         };
 
-        return ['type' => 'hero_centered_cta', 'theme' => 'auto', 'tagline' => 'Take the next step', 'heading' => $heading, 'text' => 'Replace this copy with the most useful next step for your customers.', 'button_label' => $this->ctaLabel($profile['industry']), 'button_url' => '#contact'];
+        return ['type' => $variant % 2 === 0 ? 'hero_centered_cta' : 'image_cta_banner', 'theme' => 'auto', 'tagline' => 'Take the next step', 'heading' => $heading, 'text' => 'Replace this copy with the most useful next step for your customers.', 'button_label' => $this->ctaLabel($profile['industry']), 'button_url' => '#contact', 'image_url' => 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=85'];
     }
 
     private function ctaLabel(string $industry): string

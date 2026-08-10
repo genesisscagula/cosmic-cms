@@ -39,6 +39,8 @@ createInertiaApp({
         const initialBalance =
             props.initialPage?.props?.auth?.creditBalance ??
             props.initialPage?.props?.auth?.user?.credits ??
+            props.initialPage?.props?.cosmicPricing?.balance ??
+            props.initialPage?.props?.trialExperience?.guest_credits ??
             props.initialPage?.props?.balance ??
             null;
 

@@ -67,7 +67,7 @@ export const templateThemeOptions = [
     ...Array.from(new Set(industryTemplates.map((template) => template.themeId))).sort(),
 ];
 
-export const templateStatusOptions = ["All templates", "Featured", "New", "Popular"];
+export const templateStatusOptions = ["All starter kits", "Featured", "New", "Popular"];
 
 export function getTemplatePresentation(template) {
     const sparkCountByCategory = {

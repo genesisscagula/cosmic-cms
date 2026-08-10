@@ -7,28 +7,63 @@ import ThemeSelector from '../Theme/ThemeSelector';
 
 const clone = (value) => typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 
-function buildBlocks(template) {
-    return (template.sections || []).map((type) => ({
-        ...(clone(BlockRegistry[type]?.schema?.defaults || {})),
-        type,
-        theme: 'auto',
-        resolvedTheme: 'auto',
-    })).filter((block) => BlockRegistry[block.type]);
+const previewThemeCycle = ['primary', 'white', 'surface', 'white', 'primary', 'surface'];
+
+function buildBlocks(template, previewMode = false) {
+    return (template.sections || []).map((type, index) => {
+        const previewTheme = previewThemeCycle[index % previewThemeCycle.length];
+
+        return {
+            ...(clone(BlockRegistry[type]?.schema?.defaults || {})),
+            type,
+            theme: previewMode ? previewTheme : 'auto',
+            resolvedTheme: previewMode ? previewTheme : 'auto',
+        };
+    }).filter((block) => BlockRegistry[block.type]);
 }
 
 function TemplateMiniPreview({ template, websiteTheme }) {
-    const blocks = buildBlocks(template).slice(0, 6);
-    return <div className="h-52 overflow-hidden rounded-xl bg-white text-slate-900">
-        <div className="origin-top-left w-[400%]" style={{ transform: 'scale(.25)' }}>
-            {blocks.map((block, index) => {
-                const Component = BlockRegistry[block.type]?.component;
-                return Component ? <Component key={`${block.type}-${index}`} block={block} blockIndex={index} globalTheme={websiteTheme} onUpdate={() => {}} blogPosts={[]} /> : null;
-            })}
+    const blocks = buildBlocks(template, true).slice(0, 6);
+
+    return (
+        <div className="h-52 overflow-hidden rounded-xl bg-white text-slate-900">
+            <div className="origin-top-left w-[400%]" style={{ transform: 'scale(.25)' }}>
+                {blocks.map((block, index) => {
+                    const Component = BlockRegistry[block.type]?.component;
+                    return Component ? (
+                        <Component
+                            key={`${block.type}-${index}`}
+                            block={block}
+                            blockIndex={index}
+                            globalTheme={websiteTheme}
+                            onUpdate={() => {}}
+                            blogPosts={[]}
+                        />
+                    ) : null;
+                })}
+            </div>
         </div>
-    </div>;
+    );
 }
 
-export default function PageTemplatesModal({ open, onClose, onInstall, websiteContext = '', websiteId = null, websiteTheme = null, themeValue = 'midnight', onThemeChange, themeAccess, customTheme, hasLogo, brandMatchNeeded, onMatchBrandToLogo, brandMatchBusy }) {
+export default function PageTemplatesModal({
+    open,
+    onClose,
+    onInstall,
+    websiteContext = '',
+    websiteId = null,
+    trialMode = false,
+    trialToken = null,
+    websiteTheme = null,
+    themeValue = 'midnight',
+    onThemeChange,
+    themeAccess,
+    customTheme,
+    hasLogo,
+    brandMatchNeeded,
+    onMatchBrandToLogo,
+    brandMatchBusy,
+}) {
     const { setBalance } = useCreditBalance();
     const [templates, setTemplates] = useState([]);
     const [tab, setTab] = useState('marketplace');
@@ -39,95 +74,502 @@ export default function PageTemplatesModal({ open, onClose, onInstall, websiteCo
     const [preview, setPreview] = useState(null);
     const [mode, setMode] = useState('generic');
     const [instruction, setInstruction] = useState('');
+    const [confirmInstall, setConfirmInstall] = useState(false);
 
     useEffect(() => {
         if (!open) return;
-        axios.get('/page-templates/catalog').then(({ data }) => setTemplates(data.templates || [])).catch(() => showCosmicNotification({ title: 'Could not load Templates', message: 'Please refresh and try again.', tone: 'error' }));
-    }, [open]);
 
-    const tags = useMemo(() => ['All', ...new Set(templates.flatMap((item) => item.tags || []))], [templates]);
+        axios
+            .get(trialMode && trialToken ? `/trial-assets/${trialToken}/templates` : '/page-templates/catalog')
+            .then(({ data }) => setTemplates(data.templates || []))
+            .catch(() => showCosmicNotification({
+                title: 'Could not load Templates',
+                message: 'Please refresh and try again.',
+                tone: 'error',
+            }));
+    }, [open, trialMode, trialToken]);
+
+    const tags = useMemo(
+        () => ['All', ...new Set(templates.flatMap((item) => item.tags || []))],
+        [templates],
+    );
+
     const visible = useMemo(() => templates.filter((item) => {
         if (tab === 'owned' && !item.owned) return false;
         if (tab === 'favorites' && !item.favorited) return false;
         if (tag !== 'All' && !(item.tags || []).includes(tag)) return false;
-        return `${item.name} ${item.description} ${(item.tags || []).join(' ')}`.toLowerCase().includes(query.trim().toLowerCase());
+
+        return `${item.name} ${item.description} ${(item.tags || []).join(' ')}`
+            .toLowerCase()
+            .includes(query.trim().toLowerCase());
     }), [templates, tab, tag, query]);
+
+    const isInstalling = Boolean(selected && busy === `install-${selected.key}`);
+    const isPersonalizing = Boolean(isInstalling && mode === 'personalized');
 
     if (!open) return null;
 
     const unlock = async (template) => {
         setBusy(template.key);
+
         try {
-            const { data } = await axios.post(`/page-templates/${template.key}/unlock`);
-            setTemplates((items) => items.map((item) => item.key === template.key ? { ...item, owned: true, purchased: true } : item));
+            const { data } = await axios.post(
+                trialMode && trialToken
+                    ? `/trial-assets/${trialToken}/templates/${template.key}/unlock`
+                    : `/page-templates/${template.key}/unlock`,
+            );
+
+            setTemplates((items) => items.map((item) => (
+                item.key === template.key
+                    ? { ...item, owned: true, purchased: true }
+                    : item
+            )));
+
+            if (preview?.key === template.key) {
+                setPreview((item) => ({ ...item, owned: true, purchased: true }));
+            }
+
             setBalance(data.credit_balance);
             showCosmicNotification({ title: 'Template owned', message: data.message, tone: 'success' });
         } catch (error) {
-            showCosmicNotification({ title: 'Could not purchase Template', message: error.response?.data?.message || 'Please check your credits and try again.', tone: 'error' });
-        } finally { setBusy(null); }
+            showCosmicNotification({
+                title: 'Could not purchase Template',
+                message: error.response?.data?.message || 'Please check your credits and try again.',
+                tone: 'error',
+            });
+        } finally {
+            setBusy(null);
+        }
     };
 
     const favorite = async (template) => {
         setBusy(`fav-${template.key}`);
+
         try {
-            const { data } = await axios.post(`/page-templates/${template.key}/favorite`);
-            setTemplates((items) => items.map((item) => item.key === template.key ? { ...item, favorited: data.favorited } : item));
-            if (preview?.key === template.key) setPreview((item) => ({ ...item, favorited: data.favorited }));
+            const { data } = await axios.post(
+                trialMode && trialToken
+                    ? `/trial-assets/${trialToken}/templates/${template.key}/favorite`
+                    : `/page-templates/${template.key}/favorite`,
+            );
+
+            setTemplates((items) => items.map((item) => (
+                item.key === template.key ? { ...item, favorited: data.favorited } : item
+            )));
+
+            if (preview?.key === template.key) {
+                setPreview((item) => ({ ...item, favorited: data.favorited }));
+            }
         } catch (error) {
-            showCosmicNotification({ title: 'Could not update Favorite', message: error.response?.data?.message || 'Please try again.', tone: 'error' });
-        } finally { setBusy(null); }
+            showCosmicNotification({
+                title: 'Could not update Favorite',
+                message: error.response?.data?.message || 'Please try again.',
+                tone: 'error',
+            });
+        } finally {
+            setBusy(null);
+        }
     };
 
     const install = async () => {
-        if (!selected) return;
+        if (!selected || busy) return;
+
         setBusy(`install-${selected.key}`);
+
         try {
             let blocks = buildBlocks(selected);
+
             if (mode === 'personalized') {
-                const prompt = [websiteContext || 'Create professional website content.', instruction.trim() || `Personalize the ${selected.name} page template for this business. Keep the selected layout and section order.`].join('\n\n');
-                const { data } = await axios.post('/ai/generate-content', { prompt, sections: selected.sections, generation_type: 'template', website_id: websiteId });
-                if (!data.blocks?.length) throw new Error('Cosmic AI did not return template content.');
+                if (trialMode) {
+                    throw new Error(
+                        'AI personalization is available after sign up. Install Generic now and your owned Template will transfer to your account.',
+                    );
+                }
+
+                const prompt = [
+                    websiteContext || 'Create professional website content.',
+                    instruction.trim() || `Personalize the ${selected.name} page template for this business. Keep the selected layout and section order.`,
+                ].join('\n\n');
+
+                const { data } = await axios.post('/ai/generate-content', {
+                    prompt,
+                    sections: selected.sections,
+                    generation_type: 'template',
+                    website_id: websiteId,
+                });
+
+                if (!data.blocks?.length) {
+                    throw new Error('Cosmic AI did not return template content.');
+                }
+
                 blocks = data.blocks;
                 setBalance(data.credit_balance);
             }
+
             const installed = onInstall(blocks, selected);
             if (installed === false) return;
-            showCosmicNotification({ title: 'Template installed', message: `${selected.name} is now on this page.`, tone: 'success' });
-            setSelected(null); setInstruction(''); setMode('generic'); onClose();
+
+            showCosmicNotification({
+                title: 'Template installed',
+                message: `${selected.name} is now on this page.`,
+                tone: 'success',
+            });
+
+            setSelected(null);
+            setPreview(null);
+            setInstruction('');
+            setMode('generic');
+            onClose();
         } catch (error) {
-            showCosmicNotification({ title: 'Could not install Template', message: error.response?.data?.message || error.message || 'Please try again.', tone: 'error' });
-        } finally { setBusy(null); }
+            showCosmicNotification({
+                title: 'Could not install Template',
+                message: error.response?.data?.message || error.message || 'Please try again.',
+                tone: 'error',
+            });
+        } finally {
+            setBusy(null);
+        }
     };
 
-    return <div className="fixed inset-0 z-[920] flex items-center justify-center p-4 sm:p-6">
-        <button type="button" className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} aria-label="Close Templates" />
-        <section className="relative z-10 flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-violet-400/20 bg-[#101014] text-white shadow-2xl">
-            <header className="border-b border-white/10 px-5 py-5 sm:px-7">
-                <div className="flex flex-wrap items-center justify-between gap-4">
-                    <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-300">Cosmic Builder</p><h2 className="mt-1 text-2xl font-semibold">✦ Templates</h2><p className="mt-1 text-sm text-slate-400">Install complete premium pages built from Cosmic Sparks.</p></div>
-                    <div className="flex items-center gap-2">
-                        <ThemeSelector compact value={themeValue} onChange={onThemeChange} themeAccess={themeAccess} customTheme={customTheme} hasLogo={hasLogo} brandMatchNeeded={brandMatchNeeded} onMatchBrandToLogo={onMatchBrandToLogo} brandMatchBusy={brandMatchBusy} />
-                        <button type="button" onClick={onClose} className="h-10 rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-300 hover:bg-white/5">Close</button>
+    return (
+        <div className="cosmic-page-templates fixed inset-0 z-[920] flex items-center justify-center p-3 sm:p-5">
+            <button
+                type="button"
+                className="cosmic-page-templates-backdrop absolute inset-0"
+                onClick={onClose}
+                aria-label="Close Templates"
+            />
+
+            <section className="cosmic-page-templates-panel relative z-10 flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border">
+                <header className="cosmic-page-templates-header border-b px-5 py-5 sm:px-7">
+                    <div className="flex flex-wrap items-center justify-between gap-4">
+                        <div>
+                            <p className="cosmic-template-eyebrow text-[10px] font-bold uppercase tracking-[0.22em]">Cosmic Builder</p>
+                            <h2 className="mt-1 text-2xl font-semibold">✦ Templates</h2>
+                            <p className="cosmic-template-muted mt-1 text-sm">Install complete premium pages built from Cosmic Sparks.</p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                            <ThemeSelector
+                                compact
+                                value={themeValue}
+                                onChange={onThemeChange}
+                                themeAccess={themeAccess}
+                                customTheme={customTheme}
+                                hasLogo={hasLogo}
+                                brandMatchNeeded={brandMatchNeeded}
+                                onMatchBrandToLogo={onMatchBrandToLogo}
+                                brandMatchBusy={brandMatchBusy}
+                            />
+                            <button type="button" onClick={onClose} className="cosmic-template-secondary h-10 rounded-xl border px-4 text-sm font-semibold">
+                                Close
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="mt-5 flex flex-wrap items-center gap-2">
+                        {['marketplace', 'owned', 'favorites'].map((value) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => setTab(value)}
+                                className={`cosmic-template-tab rounded-full px-4 py-2 text-xs font-bold capitalize ${tab === value ? 'is-active' : ''}`}
+                            >
+                                {value}
+                            </button>
+                        ))}
+
+                        <input
+                            value={query}
+                            onChange={(e) => setQuery(e.target.value)}
+                            placeholder="Search templates..."
+                            className="cosmic-template-input ml-auto h-9 min-w-48 rounded-xl border px-3 text-xs outline-none"
+                        />
+                    </div>
+
+                    <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                        {tags.map((value) => (
+                            <button
+                                key={value}
+                                type="button"
+                                onClick={() => setTag(value)}
+                                className={`cosmic-template-filter shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${tag === value ? 'is-active' : ''}`}
+                            >
+                                {value}
+                            </button>
+                        ))}
+                    </div>
+                </header>
+
+                <div className="overflow-y-auto p-5 sm:p-7">
+                    <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+                        {visible.map((template) => (
+                            <article key={template.key} className="cosmic-template-card overflow-hidden rounded-2xl border">
+                                <div
+                                    role="button"
+                                    tabIndex={0}
+                                    onClick={() => setPreview(template)}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            setPreview(template);
+                                        }
+                                    }}
+                                    className="block w-full cursor-pointer p-3 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+                                >
+                                    <TemplateMiniPreview template={template} websiteTheme={websiteTheme} />
+                                </div>
+
+                                <div className="p-4 pt-1">
+                                    <div className="flex items-start justify-between gap-3">
+                                        <div>
+                                            <h3 className="font-semibold">{template.name}</h3>
+                                            <div className="mt-1 flex flex-wrap gap-1">
+                                                {(template.tags || []).slice(0, 3).map((itemTag) => (
+                                                    <span key={itemTag} className="cosmic-template-tag rounded-full px-2 py-0.5 text-[9px] font-bold">
+                                                        {itemTag}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <button
+                                            type="button"
+                                            disabled={busy === `fav-${template.key}`}
+                                            onClick={() => favorite(template)}
+                                            className={`cosmic-template-favorite h-8 w-8 rounded-lg border disabled:opacity-50 ${template.favorited ? 'is-active' : ''}`}
+                                            aria-label={template.favorited ? 'Remove from Favorites' : 'Add to Favorites'}
+                                        >
+                                            {template.favorited ? '♥' : '♡'}
+                                        </button>
+                                    </div>
+
+                                    <p className="cosmic-template-muted mt-3 min-h-10 text-xs leading-5">{template.description}</p>
+
+                                    <div className="mt-4 flex gap-2">
+                                        <button type="button" onClick={() => setPreview(template)} className="cosmic-template-secondary rounded-xl border px-4 py-2.5 text-sm font-bold">
+                                            Preview
+                                        </button>
+
+                                        {template.owned ? (
+                                            <button type="button" onClick={() => setSelected(template)} className="cosmic-template-primary flex-1 rounded-xl px-4 py-2.5 text-sm font-bold">
+                                                Install
+                                            </button>
+                                        ) : (
+                                            <button
+                                                type="button"
+                                                disabled={busy === template.key}
+                                                onClick={() => unlock(template)}
+                                                className="cosmic-template-accent flex-1 rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50"
+                                            >
+                                                {busy === template.key ? 'Purchasing…' : `Buy · ⚡${template.credits}`}
+                                            </button>
+                                        )}
+                                    </div>
+
+                                    {template.owned && <p className="cosmic-template-owned mt-2 text-right text-[10px] font-bold">✓ Owned</p>}
+                                </div>
+                            </article>
+                        ))}
+                    </div>
+
+                    {!visible.length && (
+                        <div className="cosmic-template-muted py-16 text-center text-sm">No templates match this view.</div>
+                    )}
+                </div>
+            </section>
+
+            {preview && (
+                <div className="cosmic-template-preview fixed inset-0 z-[940]">
+                    <section className="cosmic-template-preview-panel flex h-full w-full flex-col">
+                        <header className="cosmic-template-preview-header sticky top-0 z-20 flex shrink-0 items-center justify-between gap-4 border-b px-4 py-3 sm:px-6">
+                            <div className="min-w-0">
+                                <p className="cosmic-template-eyebrow text-[10px] font-bold uppercase tracking-[0.2em]">Live theme preview</p>
+                                <h3 className="truncate text-lg font-semibold sm:text-xl">{preview.name}</h3>
+                                <p className="cosmic-template-muted hidden text-xs sm:block">Scroll through the complete page before installing.</p>
+                            </div>
+
+                            <div className="flex shrink-0 items-center gap-2">
+                                {preview.owned ? (
+                                    <button
+                                        type="button"
+                                        onClick={() => setSelected(preview)}
+                                        className="cosmic-template-primary rounded-xl px-4 py-2.5 text-sm font-bold sm:px-5"
+                                    >
+                                        Install
+                                    </button>
+                                ) : (
+                                    <button
+                                        type="button"
+                                        disabled={busy === preview.key}
+                                        onClick={() => unlock(preview)}
+                                        className="cosmic-template-accent rounded-xl px-4 py-2.5 text-sm font-bold sm:px-5 disabled:opacity-50"
+                                    >
+                                        {busy === preview.key ? 'Purchasing…' : `Buy · ⚡${preview.credits}`}
+                                    </button>
+                                )}
+
+                                <button
+                                    type="button"
+                                    onClick={() => setPreview(null)}
+                                    className="cosmic-template-secondary rounded-xl border px-4 py-2.5 text-sm font-semibold"
+                                >
+                                    Close
+                                </button>
+                            </div>
+                        </header>
+
+                        <div className="cosmic-template-preview-scroll min-h-0 flex-1 overflow-y-auto">
+                            <div className="w-full">
+                                {buildBlocks(preview, true).map((block, index) => {
+                                    const Component = BlockRegistry[block.type]?.component;
+                                    return Component ? (
+                                        <Component
+                                            key={`${block.type}-${index}`}
+                                            block={block}
+                                            blockIndex={index}
+                                            globalTheme={websiteTheme}
+                                            onUpdate={() => {}}
+                                            blogPosts={[]}
+                                        />
+                                    ) : null;
+                                })}
+                            </div>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {selected && (
+                <div className="cosmic-template-install-overlay fixed inset-0 z-[960] flex items-center justify-center p-4">
+                    <button
+                        type="button"
+                        disabled={isInstalling}
+                        className="absolute inset-0 disabled:cursor-wait"
+                        onClick={() => setSelected(null)}
+                        aria-label="Cancel Template installation"
+                    />
+
+                    <section
+                        className="cosmic-template-install-panel relative z-10 w-full max-w-lg rounded-2xl border p-6 shadow-2xl"
+                        aria-busy={isInstalling}
+                    >
+                        <p className="cosmic-template-eyebrow text-[10px] font-bold uppercase tracking-[0.2em]">Install Template</p>
+                        <h3 className="mt-1 text-xl font-semibold">{selected.name}</h3>
+                        <p className="cosmic-template-muted mt-2 text-sm">
+                            Choose Generic for the original premade content, or let Cosmic AI personalize the complete page for your business.
+                        </p>
+
+                        <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                            <button
+                                type="button"
+                                disabled={isInstalling}
+                                onClick={() => setMode('generic')}
+                                className={`cosmic-template-mode rounded-xl border p-4 text-left disabled:opacity-50 ${mode === 'generic' ? 'is-active is-generic' : ''}`}
+                            >
+                                <b className="block text-sm">Generic</b>
+                                <span className="cosmic-template-owned mt-1 block text-xs">FREE</span>
+                            </button>
+
+                            <button
+                                type="button"
+                                disabled={isInstalling}
+                                onClick={() => setMode('personalized')}
+                                className={`cosmic-template-mode rounded-xl border p-4 text-left disabled:opacity-50 ${mode === 'personalized' ? 'is-active is-personalized' : ''}`}
+                            >
+                                <b className="block text-sm">Personalized</b>
+                                <span className="cosmic-template-eyebrow mt-1 block text-xs">⚡ 50 Credits</span>
+                            </button>
+                        </div>
+
+                        {mode === 'personalized' && (
+                            <textarea
+                                disabled={isInstalling}
+                                value={instruction}
+                                onChange={(e) => setInstruction(e.target.value.slice(0, 500))}
+                                placeholder="Optional instructions for Cosmic AI..."
+                                rows={4}
+                                className="cosmic-template-input mt-4 w-full resize-none rounded-xl border p-3 text-sm leading-6 outline-none disabled:opacity-60"
+                            />
+                        )}
+
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button
+                                type="button"
+                                disabled={isInstalling}
+                                onClick={() => setSelected(null)}
+                                className="cosmic-template-secondary rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:opacity-50"
+                            >
+                                Cancel
+                            </button>
+
+                            <button
+                                type="button"
+                                disabled={isInstalling}
+                                onClick={() => setConfirmInstall(true)}
+                                className="cosmic-template-primary rounded-xl px-5 py-2.5 text-sm font-bold disabled:opacity-50"
+                            >
+                                {isInstalling
+                                    ? (mode === 'personalized' ? 'Personalizing…' : 'Installing…')
+                                    : (mode === 'personalized' ? 'Personalize & Install · ⚡50' : 'Install · FREE')}
+                            </button>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {confirmInstall && selected && !isInstalling && (
+                <div className="cosmic-template-confirm-overlay fixed inset-0 z-[985] flex items-center justify-center p-4">
+                    <button type="button" className="absolute inset-0" onClick={() => setConfirmInstall(false)} aria-label="Cancel replacement confirmation" />
+                    <section className="cosmic-template-confirm-panel relative z-10 w-full max-w-md rounded-2xl border p-6 shadow-2xl">
+                        <p className="cosmic-template-eyebrow text-[10px] font-bold uppercase tracking-[0.2em]">Replace page content?</p>
+                        <h3 className="mt-2 text-xl font-semibold">{selected.name}</h3>
+                        <p className="cosmic-template-muted mt-2 text-sm leading-6">
+                            Installing this Template will replace the current page layout and content. Confirm before Cosmic continues.
+                        </p>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button type="button" onClick={() => setConfirmInstall(false)} className="cosmic-template-secondary rounded-xl border px-4 py-2.5 text-sm font-semibold">Cancel</button>
+                            <button type="button" onClick={() => { setConfirmInstall(false); install(); }} className="cosmic-template-primary rounded-xl px-5 py-2.5 text-sm font-bold">Confirm & Continue</button>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {isPersonalizing && (
+                <div
+                    className="cosmic-template-ai-loading fixed inset-0 z-[990] grid place-items-center px-5 text-center"
+                    role="status"
+                    aria-live="polite"
+                    aria-busy="true"
+                >
+                    <div className="cosmic-template-ai-loading-card w-full max-w-xl rounded-[28px] border px-6 py-8 shadow-2xl sm:px-9 sm:py-10">
+                        <div className="relative mx-auto h-16 w-16" aria-hidden="true">
+                            <div className="cosmic-template-ai-orbit absolute inset-0 animate-spin rounded-full border-[3px]" />
+                            <div className="cosmic-template-ai-star absolute inset-[3px] grid place-items-center rounded-full text-xl shadow-lg">✦</div>
+                        </div>
+
+                        <p className="cosmic-template-eyebrow mt-5 text-xs font-semibold uppercase tracking-[0.2em]">Cosmic AI</p>
+                        <h3 className="mt-2 text-2xl font-semibold tracking-tight">Personalizing your template</h3>
+                        <p className="cosmic-template-muted mt-3 text-sm">
+                            Writing business-ready content and fitting it into the selected layout.
+                        </p>
+
+                        <div className="mt-7 grid grid-cols-1 gap-2 sm:grid-cols-3">
+                            {['Understand business', 'Create content', 'Install page'].map((label, index) => (
+                                <div key={label} className="cosmic-template-ai-step flex items-center gap-2 rounded-lg border px-3 py-2 text-left text-xs font-medium">
+                                    <span className={`grid h-5 w-5 shrink-0 place-items-center rounded-full text-[10px] ${index === 0 ? 'is-active' : ''}`}>
+                                        {index + 1}
+                                    </span>
+                                    <span>{label}</span>
+                                </div>
+                            ))}
+                        </div>
+
+                        <p className="cosmic-template-muted mt-5 text-xs">
+                            Please keep this window open while Cosmic AI finishes.
+                        </p>
                     </div>
                 </div>
-                <div className="mt-5 flex flex-wrap items-center gap-2">
-                    {['marketplace','owned','favorites'].map((value) => <button key={value} onClick={() => setTab(value)} className={`rounded-full px-4 py-2 text-xs font-bold capitalize ${tab === value ? 'bg-white text-slate-950' : 'bg-white/5 text-slate-400 hover:bg-white/10'}`}>{value}</button>)}
-                    <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Search templates..." className="ml-auto h-9 min-w-48 rounded-xl border border-white/10 bg-white/5 px-3 text-xs text-white outline-none focus:border-violet-400" />
-                </div>
-                <div className="mt-3 flex gap-2 overflow-x-auto pb-1">{tags.map((value) => <button key={value} onClick={() => setTag(value)} className={`shrink-0 rounded-full border px-3 py-1.5 text-[11px] font-semibold ${tag === value ? 'border-violet-300 bg-violet-400/15 text-violet-100' : 'border-white/10 text-slate-400'}`}>{value}</button>)}</div>
-            </header>
-            <div className="overflow-y-auto p-5 sm:p-7">
-                <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">{visible.map((template) => <article key={template.key} className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
-                    <button type="button" onClick={() => setPreview(template)} className="block w-full p-3 text-left"><TemplateMiniPreview template={template} websiteTheme={websiteTheme} /></button>
-                    <div className="p-4 pt-1"><div className="flex items-start justify-between gap-3"><div><h3 className="font-semibold">{template.name}</h3><div className="mt-1 flex flex-wrap gap-1">{(template.tags || []).slice(0,3).map((t) => <span key={t} className="rounded-full bg-white/5 px-2 py-0.5 text-[9px] font-bold text-slate-400">{t}</span>)}</div></div><button onClick={() => favorite(template)} className={`h-8 w-8 rounded-lg border ${template.favorited ? 'border-rose-300/30 text-rose-200' : 'border-white/10 text-slate-400'}`}>{template.favorited ? '♥' : '♡'}</button></div>
-                    <p className="mt-3 min-h-10 text-xs leading-5 text-slate-400">{template.description}</p>
-                    <div className="mt-4 flex gap-2"><button onClick={() => setPreview(template)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold">Preview</button>{template.owned ? <button onClick={() => setSelected(template)} className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950">Install</button> : <button disabled={busy === template.key} onClick={() => unlock(template)} className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold disabled:opacity-50">{busy === template.key ? 'Purchasing…' : `Buy · ⚡${template.credits}`}</button>}</div>
-                    {template.owned && <p className="mt-2 text-right text-[10px] font-bold text-emerald-300">✓ Owned</p>}
-                </div></article>)}</div>
-                {!visible.length && <div className="py-16 text-center text-sm text-slate-500">No templates match this view.</div>}
-            </div>
-        </section>
-        {preview && <div className="fixed inset-0 z-[940] flex items-center justify-center bg-black/85 p-4"><section className="w-full max-w-6xl rounded-3xl border border-white/10 bg-[#121217] p-5"><div className="flex items-center justify-between"><div><p className="text-xs font-bold uppercase tracking-wider text-violet-300">Live theme preview</p><h3 className="mt-1 text-xl font-semibold text-white">{preview.name}</h3></div><button onClick={() => setPreview(null)} className="rounded-xl border border-white/10 px-4 py-2 text-sm text-slate-300">Close</button></div><div className="mt-4 max-h-[68vh] overflow-y-auto rounded-2xl bg-white"><div>{buildBlocks(preview).map((block,index) => { const Component=BlockRegistry[block.type]?.component; return Component ? <Component key={`${block.type}-${index}`} block={block} blockIndex={index} globalTheme={websiteTheme} onUpdate={()=>{}} blogPosts={[]} /> : null; })}</div></div><div className="mt-4 flex justify-end gap-2">{preview.owned ? <button onClick={() => { setSelected(preview); setPreview(null); }} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-950">Install</button> : <button onClick={() => unlock(preview)} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold">Buy · ⚡{preview.credits}</button>}</div></section></div>}
-        {selected && <div className="fixed inset-0 z-[950] flex items-center justify-center bg-black/85 p-4"><section className="w-full max-w-lg rounded-2xl border border-violet-400/20 bg-[#18181b] p-6"><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">Install Template</p><h3 className="mt-1 text-xl font-semibold">{selected.name}</h3><p className="mt-2 text-sm text-slate-400">Install generic content for free, or personalize the complete page with Cosmic AI for 50 Credits.</p><div className="mt-5 grid grid-cols-2 gap-3"><button onClick={() => setMode('generic')} className={`rounded-xl border p-4 text-left ${mode==='generic'?'border-emerald-400 bg-emerald-400/10':'border-white/10'}`}><b className="block text-sm">Generic</b><span className="mt-1 block text-xs text-emerald-300">FREE</span></button><button onClick={() => setMode('personalized')} className={`rounded-xl border p-4 text-left ${mode==='personalized'?'border-violet-400 bg-violet-400/10':'border-white/10'}`}><b className="block text-sm">Personalized</b><span className="mt-1 block text-xs text-violet-300">⚡ 50 Credits</span></button></div><textarea disabled={mode!=='personalized'} value={instruction} onChange={(e)=>setInstruction(e.target.value.slice(0,500))} placeholder="Optional instructions for Cosmic AI..." rows={4} className="mt-4 w-full resize-none rounded-xl border border-white/10 bg-black/25 p-3 text-sm outline-none disabled:opacity-40"/><div className="mt-5 flex justify-end gap-2"><button onClick={()=>setSelected(null)} className="rounded-xl border border-white/10 px-4 py-2 text-sm">Cancel</button><button disabled={busy===`install-${selected.key}`} onClick={install} className="rounded-xl bg-white px-5 py-2 text-sm font-bold text-slate-950 disabled:opacity-50">{busy===`install-${selected.key}`?'Installing…':mode==='personalized'?'Personalize & Install · ⚡50':'Install · FREE'}</button></div></section></div>}
-    </div>;
+            )}
+        </div>
+    );
 }

@@ -22,6 +22,7 @@ export default function GeneratePageModal({
     const [generating, setGenerating] = useState(false);
     const [progress, setProgress] = useState(0);
     const [stage, setStage] = useState("Understanding your request...");
+    const [confirmGenerate, setConfirmGenerate] = useState(false);
 
     useEffect(() => {
         if (!open) {
@@ -29,6 +30,7 @@ export default function GeneratePageModal({
             setGenerating(false);
             setProgress(0);
             setStage("Understanding your request...");
+            setConfirmGenerate(false);
         }
     }, [open]);
 
@@ -139,7 +141,7 @@ export default function GeneratePageModal({
                                 <span className="text-xs text-slate-500">{pagePrompt.length}/800</span>
                                 <div className="flex gap-2">
                                     <button type="button" onClick={onClose} className="h-11 rounded-xl border border-white/10 px-5 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button>
-                                    <button type="button" disabled={!pagePrompt.trim()} onClick={generatePage} className="cosmic-primary-action h-11 rounded-xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">Generate Page ✨</button>
+                                    <button type="button" disabled={!pagePrompt.trim()} onClick={() => setConfirmGenerate(true)} className="cosmic-primary-action h-11 rounded-xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">Generate Page ✨</button>
                                 </div>
                             </div>
                         </>
@@ -173,6 +175,21 @@ export default function GeneratePageModal({
                     )}
                 </div>
             </section>
+            {confirmGenerate && !generating && (
+                <div className="absolute inset-0 z-30 flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+                    <section className="w-full max-w-md rounded-2xl border border-white/10 bg-[#17171b] p-6 text-white shadow-2xl">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300">Replace page content?</p>
+                        <h3 className="mt-2 text-xl font-semibold">Generate a new page</h3>
+                        <p className="mt-2 text-sm leading-6 text-slate-400">
+                            Generating a new page will replace the current page layout and content. Confirm before Cosmic AI starts.
+                        </p>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button type="button" onClick={() => setConfirmGenerate(false)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button>
+                            <button type="button" onClick={() => { setConfirmGenerate(false); generatePage(); }} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-500">Confirm & Generate</button>
+                        </div>
+                    </section>
+                </div>
+            )}
         </div>
     );
 }

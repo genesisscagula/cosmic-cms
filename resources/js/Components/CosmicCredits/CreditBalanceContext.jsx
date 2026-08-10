@@ -22,7 +22,8 @@ export function CreditBalanceProvider({
 
     const refreshBalance = useCallback(async () => {
         if (!authenticated) {
-            setBalanceState(null);
+            // Trial/guest builders receive their balance from Inertia page props.
+            // Do not clear it just because there is no authenticated user.
             return;
         }
 
@@ -50,7 +51,10 @@ export function CreditBalanceProvider({
 
     useEffect(() => {
         if (!authenticated) {
-            setBalanceState(null);
+            const guestBalance = normalizeBalance(initialBalance, null);
+            if (guestBalance !== null) {
+                setBalanceState(guestBalance);
+            }
             return undefined;
         }
 

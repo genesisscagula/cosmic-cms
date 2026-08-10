@@ -1,0 +1,443 @@
+{
+  "patch": "IMG-P1",
+  "summary": {
+    "spark_schema_count": 39,
+    "image_bearing_sparks": 20,
+    "provider_slot_gaps": 4,
+    "build_import_fixed": "resources/js/Pages/Websites/Components/AddSectionModal.jsx -> ../../../theme/colorFamilies"
+  },
+  "key_findings": [
+    "SchemaManager contains 39 AI-supported Sparks.",
+    "The content generator already tells Luna to leave image URL fields empty for the application image pipeline.",
+    "AiPageGenerationService::learningQueries currently counts hero_video_background, hero_agency_showcase, case_studies_grid, and top-level image_url only.",
+    "Nested and non-image_url media shapes therefore need a unified image-slot resolver in IMG-P2.",
+    "TrialRemoteImageService can recursively replace nested image-like fields once enough remote URLs are resolved, so the main current gap is slot discovery/counting and field-path intent."
+  ],
+  "sparks": [
+    {
+      "spark": "hero_headline",
+      "schema_method": "heroHeadlineSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroHeadlineBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "hero_floating_cards",
+      "schema_method": "heroFloatingCardsSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroFloatingCardsBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "hero_video_background",
+      "schema_method": "heroVideoBackgroundSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroVideoBackgroundBlock.jsx",
+      "builder_image_paths": [
+        "poster_image_url"
+      ],
+      "ai_schema_image_fields": [
+        "poster_image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "hero_video_style",
+      "schema_method": "heroVideoStyleSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroVideoStyleBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "hero_background_image",
+      "schema_method": "heroBackgroundImageSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroBackgroundImageBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "hero_slider_fade",
+      "schema_method": "heroSliderFadeSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroSliderFadeBlock.jsx",
+      "builder_image_paths": [
+        "slides[].image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "missing"
+    },
+    {
+      "spark": "hero_parallax",
+      "schema_method": "heroParallaxSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroParallaxBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "hero_editorial_overlay",
+      "schema_method": "heroEditorialOverlaySchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroEditorialOverlayBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "hero_split_image",
+      "schema_method": "heroSplitImageSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroSplitImageBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "hero_split_editorial",
+      "schema_method": "heroSplitEditorialSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroSplitEditorialBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "hero_floating_glass",
+      "schema_method": "heroFloatingGlassSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroFloatingGlassBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "hero_saas_dashboard",
+      "schema_method": "heroSaasDashboardSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroSaasDashboardBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "hero_luxury_fullscreen",
+      "schema_method": "heroLuxuryFullscreenSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroLuxuryFullscreenBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "hero_video_premium",
+      "schema_method": "heroVideoPremiumSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroVideoPremiumBlock.jsx",
+      "builder_image_paths": [
+        "poster_image_url"
+      ],
+      "ai_schema_image_fields": [
+        "poster_image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "missing"
+    },
+    {
+      "spark": "hero_ai_conversation",
+      "schema_method": "heroAiConversationSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroAiConversationBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "hero_agency_showcase",
+      "schema_method": "heroAgencyShowcaseSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroAgencyShowcaseBlock.jsx",
+      "builder_image_paths": [
+        "before_image_url",
+        "after_image_url"
+      ],
+      "ai_schema_image_fields": [
+        "before_image_url",
+        "after_image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_2"
+    },
+    {
+      "spark": "hero_bento_premium",
+      "schema_method": "heroBentoPremiumSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroBentoPremiumBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "image_cta_banner",
+      "schema_method": "imageCtaBannerSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/ImageCtaBannerBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "feature_image_left",
+      "schema_method": "featureImageLeftSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Features/FeatureImageLeftBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "feature_image_right",
+      "schema_method": "featureImageRightSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Features/FeatureImageRightBlock.jsx",
+      "builder_image_paths": [
+        "image_url"
+      ],
+      "ai_schema_image_fields": [
+        "image_url"
+      ],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_1"
+    },
+    {
+      "spark": "services_cards",
+      "schema_method": "servicesCardsSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Services/ServicesCardsBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "services_bento",
+      "schema_method": "servicesBentoSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Services/ServicesBentoBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "services_bento_premium",
+      "schema_method": "servicesBentoPremiumSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Services/ServicesBentoPremiumBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "services_pricing_comparison",
+      "schema_method": "servicesPricingComparisonSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Services/ServicesPricingComparisonBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "services_feature_comparison",
+      "schema_method": "servicesFeatureComparisonSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Services/ServicesFeatureComparisonBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "services_hover_cards",
+      "schema_method": "servicesHoverCardsSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Services/ServicesHoverCardsBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "process_timeline",
+      "schema_method": "processTimelineSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Stats/ProcessTimelineBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "stats_modern",
+      "schema_method": "statsModernSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Stats/StatsModernBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "team_modern",
+      "schema_method": "teamModernSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Team/TeamModernBlock.jsx",
+      "builder_image_paths": [
+        "members[].image_url"
+      ],
+      "ai_schema_image_fields": [],
+      "image_bearing": true,
+      "provider_query_slot_status": "missing"
+    },
+    {
+      "spark": "testimonials_carousel",
+      "schema_method": "testimonialsSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Testimonials/TestimonialsCarouselBlock.jsx",
+      "builder_image_paths": [
+        "testimonials[].avatar"
+      ],
+      "ai_schema_image_fields": [],
+      "image_bearing": true,
+      "provider_query_slot_status": "missing"
+    },
+    {
+      "spark": "hero_centered_cta",
+      "schema_method": "heroCtaSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Hero/HeroCenteredCTA.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "pricing_cards",
+      "schema_method": "pricingCardsSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Pricing/PricingCardsBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "contact_form_modern",
+      "schema_method": "contactFormModernSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Contact/ContactFormModernBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "faq_accordion",
+      "schema_method": "faqAccordionSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/FAQ/FaqAccordionBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "contact_details",
+      "schema_method": "contactDetailsSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Contact/ContactDetailsBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "location_map",
+      "schema_method": "locationMapSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Contact/LocationMapBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "case_studies_grid",
+      "schema_method": "caseStudiesGridSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Collections/CaseStudiesGridBlock.jsx",
+      "builder_image_paths": [
+        "studies[].image_url"
+      ],
+      "ai_schema_image_fields": [],
+      "image_bearing": true,
+      "provider_query_slot_status": "covered_nested_count"
+    },
+    {
+      "spark": "jobs_list",
+      "schema_method": "jobsListSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Collections/JobsListBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    },
+    {
+      "spark": "events_grid",
+      "schema_method": "eventsGridSchema",
+      "builder_schema_source": "resources/js/Pages/Websites/Blocks/Collections/EventsGridBlock.jsx",
+      "builder_image_paths": [],
+      "ai_schema_image_fields": [],
+      "image_bearing": false,
+      "provider_query_slot_status": "not_needed"
+    }
+  ]
+}

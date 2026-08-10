@@ -423,11 +423,6 @@ class MediaPackImageService
                 return $value;
             }
 
-            // Keep team-member and testimonial portraits exclusive to avatars.
-            if (str_contains($value, '/cms-images/avatars/')) {
-                return $value;
-            }
-
             $replacement = $urls[$cursor % count($urls)];
             $cursor++;
             return $replacement;
@@ -610,7 +605,7 @@ class MediaPackImageService
     private function isImageField(?string $key): bool
     {
         return $key !== null && (
-            str_contains($key, 'image') || str_contains($key, 'photo') || str_contains($key, 'poster')
+            str_contains($key, 'image') || str_contains($key, 'photo') || str_contains($key, 'poster') || $key === 'avatar' || str_ends_with($key, '_avatar')
         );
     }
 

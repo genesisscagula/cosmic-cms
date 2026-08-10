@@ -12,6 +12,8 @@ use App\Models\Website;
 use App\Services\AiPageGenerationService;
 use App\Services\IndustryResolver;
 use App\Services\MyBrandThemeService;
+use App\Services\TrialBrandContextService;
+use App\Services\InitialTrialLogoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -54,7 +56,9 @@ class TrialGenerationController extends Controller
     public function __construct(
         private readonly AiPageGenerationService $pageGenerationService,
         private readonly IndustryResolver $industryResolver,
-        private readonly MyBrandThemeService $myBrandThemes
+        private readonly MyBrandThemeService $myBrandThemes,
+        private readonly TrialBrandContextService $trialBrandContext,
+        private readonly InitialTrialLogoService $initialTrialLogo
     ) {
     }
 
@@ -123,14 +127,25 @@ class TrialGenerationController extends Controller
         $profile = $this->profileFromPrompt($validated['prompt']);
         $generationPrompt = $this->buildPrompt($profile);
 
+        // Provisional theme only while the trial row is being created. The
+        // final prompt-aware theme is committed after page/content generation
+        // and before logo generation, so Luna always receives the finished
+        // website direction rather than an early placeholder family.
         $initialThemeSettings = $this->myBrandThemes->ensureInSettings(
             $this->previewThemeForIndustry($profile['industry'])
         );
 
+        $brandContext = $this->trialBrandContext->build($profile, $validated['prompt']);
+
         $trial = TrialGeneration::create([
             ...$profile,
             'token' => (string) Str::uuid(),
+            // `prompt` stays backward-compatible; brand_prompt is immutable brand intent.
             'prompt' => $validated['prompt'],
+            'brand_prompt' => $validated['prompt'],
+            'latest_user_prompt' => $validated['prompt'],
+            'prompt_history' => $this->trialBrandContext->appendPromptHistory([], $validated['prompt'], 'initial_generation'),
+            'brand_context' => $brandContext,
             'status' => 'generating',
             'ip_hash' => hash('sha256', (string) $request->ip()),
             'menu_structure' => IndustryMenuRegistry::for($profile['industry']),
@@ -159,6 +174,25 @@ class TrialGenerationController extends Controller
                 'trial' => $trial->id,
                 'sections' => count($generated['sections'] ?? []),
                 'blocks' => count($generated['blocks'] ?? []),
+            ]);
+
+            // Final trial pipeline order:
+            // 1) page structure/content/images are generated,
+            // 2) the prompt-aware website theme is finalized and persisted,
+            // 3) only after the ready page/theme are committed do we generate
+            //    the complimentary logo below.
+            $finalThemeSettings = $this->myBrandThemes->ensureInSettings(
+                $this->regenerationThemeForPrompt(
+                    $profile['industry'],
+                    $validated['prompt']
+                )
+            );
+            $trial->update(['preview_theme' => $finalThemeSettings]);
+            $trial->setAttribute('preview_theme', $finalThemeSettings);
+
+            Log::info('[TrialGeneration] Final website theme committed before logo generation.', [
+                'trial' => $trial->id,
+                'theme' => data_get($finalThemeSettings, 'primary'),
             ]);
 
             $remoteImages = array_values($generated['remote_images'] ?? []);
@@ -220,6 +254,11 @@ class TrialGenerationController extends Controller
                 'trial' => $trial->id,
                 'page' => $page->id,
             ]);
+
+            // Logo is intentionally LAST. At this point content, remote images,
+            // navigation and the final prompt-aware theme are already committed.
+            // This is best-effort and never blocks the website draft.
+            $this->initialTrialLogo->generate($trial->fresh());
 
             Log::info('[MediaPack] Trial remote preview ready; local download deferred until purchase.', [
                 'media_pack_id' => $mediaPack->id,
@@ -394,20 +433,44 @@ class TrialGenerationController extends Controller
         abort_unless($trial->status === 'ready' && ! $trial->claimed_at && $trial->page_id, 404);
         $validated = $request->validate([
             'prompt' => ['required', 'string', 'min:10', 'max:2000'],
+            // R2 safety: this endpoint is reserved for the main Trial Regenerate action.
+            // Block/section/image AI actions must keep using their own endpoints.
+            'mode' => ['required', 'string', 'in:full_trial'],
         ]);
 
         $trialCredits->ensureCanSpend($trial, TrialCreditService::REGENERATE_PAGE, 'Page regeneration');
 
-        $profile = [
-            'business_name' => $trial->business_name,
-            'industry' => $trial->industry,
-            'location' => $trial->location,
-            'business_description' => $trial->business_description,
-            'prompt' => $validated['prompt'],
-        ];
+        // R1: the main Trial Regenerate action is a full website regeneration.
+        // Re-resolve the business/industry from the NEW prompt so a user can pivot
+        // from (for example) a cruise company to an AI SaaS without stale brand data.
+        $profile = $this->profileFromPrompt($validated['prompt']);
+        $profile['prompt'] = $validated['prompt'];
+        $freshThemeSettings = $this->myBrandThemes->ensureInSettings(
+            $this->regenerationThemeForPrompt(
+                $profile['industry'],
+                $validated['prompt'],
+                (string) data_get($trial->preview_theme, 'primary', '')
+            )
+        );
+        $freshMenuStructure = IndustryMenuRegistry::for($profile['industry']);
+        $freshBrandContext = $this->trialBrandContext->build($profile, $validated['prompt']);
 
         try {
             $currentPage = $trial->page()->firstOrFail();
+            // Keep a safe branding fallback until the fresh AI logo is successfully generated.
+            $previousBranding = [
+                'logo_url' => $trial->logo_url,
+                'logo_company_name' => $trial->logo_company_name,
+                'logo_source' => $trial->logo_source,
+                'logo_theme_sync_state' => $trial->logo_theme_sync_state,
+                'logo_theme_sync_source' => $trial->logo_theme_sync_source,
+                'logo_theme_synced_theme' => $trial->logo_theme_synced_theme,
+                'logo_updated_at' => $trial->logo_updated_at,
+                'brand_original_logo_url' => data_get($trial->preview_theme, 'brand_original_logo_url'),
+                'brand_active_logo_url' => data_get($trial->preview_theme, 'brand_active_logo_url'),
+                'brand_favicon_url' => data_get($trial->preview_theme, 'brand_favicon_url'),
+                'brand_logo_variants' => data_get($trial->preview_theme, 'brand_logo_variants', []),
+            ];
             $previousSections = collect($currentPage->blocks ?? [])
                 ->filter(fn ($block) => is_array($block))
                 ->map(fn ($block) => (string) ($block['type'] ?? ''))
@@ -426,8 +489,9 @@ class TrialGenerationController extends Controller
             );
             $newToken = (string) Str::uuid();
 
-            DB::transaction(function () use ($trial, $generated, $validated, $newToken) {
+            DB::transaction(function () use ($trial, $generated, $validated, $newToken, $profile, $freshThemeSettings, $freshMenuStructure, $freshBrandContext) {
                 $trial->page()->lockForUpdate()->firstOrFail()->update([
+                    'title' => $profile['business_name'],
                     'blocks' => $generated['blocks'],
                     'status' => 'draft',
                     'publish_error' => null,
@@ -465,24 +529,92 @@ class TrialGenerationController extends Controller
 
                 $trial->update([
                     'token' => $newToken,
+                    // A full regeneration establishes a fresh brand/site direction.
+                    'business_name' => $profile['business_name'],
+                    'industry' => $profile['industry'],
+                    'location' => $profile['location'],
+                    'business_description' => $profile['business_description'],
                     'prompt' => $validated['prompt'],
+                    'brand_prompt' => $validated['prompt'],
+                    'latest_user_prompt' => $validated['prompt'],
+                    'prompt_history' => $this->trialBrandContext->appendPromptHistory(
+                        $trial->prompt_history,
+                        $validated['prompt'],
+                        'full_regeneration'
+                    ),
+                    'brand_context' => $freshBrandContext,
+                    'menu_structure' => $freshMenuStructure,
+                    'preview_theme' => $freshThemeSettings,
                     'sections' => $generated['sections'],
                     'generated_blocks' => $generated['blocks'],
+                    // Do not carry branding from a previous company into a newly regenerated site.
+                    // The old file is left on disk for safety; only the trial reference is reset.
+                    'logo_url' => null,
+                    'logo_company_name' => null,
+                    'logo_source' => null,
+                    'logo_theme_sync_state' => null,
+                    'logo_theme_sync_source' => null,
+                    'logo_theme_synced_theme' => null,
+                    'logo_updated_at' => null,
                     'last_saved_at' => now(),
                     'error_message' => null,
                 ]);
             });
 
             $trial->refresh();
-            $balance = $trialCredits->consume($trial, TrialCreditService::REGENERATE_PAGE, 'regenerate_page', ['prompt' => $validated['prompt']]);
+
+            // Patch 5: a full regeneration creates a fresh logo + favicon after the
+            // new prompt, brand context and theme are committed. AI logos are
+            // server-normalized, so the cropper remains upload-only.
+            $freshLogoUrl = $this->initialTrialLogo->generate($trial);
+            $logoRegenerated = filled($freshLogoUrl);
+
+            if (! $logoRegenerated && filled($previousBranding['logo_url'])) {
+                // Logo generation is best-effort. Never leave a previously branded
+                // trial blank because the image provider had a transient failure.
+                $fallbackTheme = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+                $fallbackTheme['brand_original_logo_url'] = $previousBranding['brand_original_logo_url'] ?: $previousBranding['logo_url'];
+                $fallbackTheme['brand_active_logo_url'] = $previousBranding['brand_active_logo_url'] ?: $previousBranding['logo_url'];
+                $fallbackTheme['brand_favicon_url'] = $previousBranding['brand_favicon_url'] ?: $previousBranding['logo_url'];
+                $fallbackTheme['brand_logo_variants'] = is_array($previousBranding['brand_logo_variants']) ? $previousBranding['brand_logo_variants'] : [];
+
+                $trial->update([
+                    'logo_url' => $previousBranding['logo_url'],
+                    'logo_company_name' => $previousBranding['logo_company_name'],
+                    'logo_source' => 'regeneration-fallback',
+                    'logo_theme_sync_state' => 'fallback',
+                    'logo_theme_sync_source' => 'full_regeneration_logo_failure',
+                    'logo_theme_synced_theme' => data_get($trial->preview_theme, 'primary'),
+                    'logo_updated_at' => now(),
+                    'preview_theme' => $fallbackTheme,
+                ]);
+                $trial->refresh();
+            }
+
+            $balance = $trialCredits->consume($trial, TrialCreditService::REGENERATE_PAGE, 'regenerate_page', [
+                'prompt' => $validated['prompt'],
+                'scope' => 'logo+favicon+theme+sparks+images+content+layout',
+            ]);
             $this->sendTrialAccessEmail($trial, true);
 
             return response()->json([
-                'message' => 'Your landing page was regenerated successfully.',
+                'message' => $logoRegenerated
+                    ? 'Your full trial website and brand were regenerated successfully.'
+                    : 'Your website was regenerated. The previous logo was kept because fresh logo generation was temporarily unavailable.',
                 'cost' => TrialCreditService::REGENERATE_PAGE,
                 'credit_balance' => $balance,
                 'redirect_url' => route('pages.builder', ['page' => $trial->page_id, 'token' => $trial->token]),
                 'token' => $trial->token,
+                'regeneration_scope' => 'full_trial',
+                'regenerated' => [
+                    'logo' => $logoRegenerated,
+                    'favicon' => $logoRegenerated,
+                    'theme' => true,
+                    'sparks' => true,
+                    'images' => true,
+                    'content' => true,
+                    'layout' => true,
+                ],
             ]);
         } catch (TransporterException $exception) {
             Log::warning('Trial regeneration unavailable', ['trial' => $trial->id, 'message' => $exception->getMessage()]);
@@ -552,6 +684,35 @@ class TrialGenerationController extends Controller
             'location' => 'Not specified',
             'business_description' => $prompt,
         ];
+    }
+
+    private function regenerationThemeForPrompt(?string $industry, string $prompt, string $previousPrimary = ''): array
+    {
+        $promptLower = Str::lower($prompt);
+        $preferred = match (true) {
+            Str::contains($promptLower, ['luxury', 'premium', 'elegant', 'exclusive']) => 'obsidian',
+            Str::contains($promptLower, ['playful', 'creative', 'colorful', 'fun']) => 'violet',
+            Str::contains($promptLower, ['warm', 'organic', 'earthy', 'natural']) => 'terracotta',
+            Str::contains($promptLower, ['clean', 'minimal', 'bright', 'simple']) => 'slate-light',
+            Str::contains($promptLower, ['bold', 'dark', 'futuristic', 'ai', 'tech']) => 'void',
+            Str::contains($promptLower, ['blue', 'trust', 'corporate', 'professional']) => 'sapphire',
+            Str::contains($promptLower, ['green', 'eco', 'growth', 'fresh']) => 'emerald',
+            default => (string) data_get($this->previewThemeForIndustry($industry), 'primary', 'midnight'),
+        };
+
+        // A full Regenerate should feel materially fresh. If the inferred family
+        // equals the current one, choose a deterministic compatible alternate so
+        // theme direction is regenerated too, not merely re-saved.
+        if ($preferred === $previousPrimary) {
+            $alternates = ['midnight', 'sapphire', 'emerald', 'terracotta', 'obsidian', 'violet', 'navy', 'forest'];
+            $candidates = array_values(array_filter($alternates, fn ($key) => $key !== $previousPrimary));
+            $preferred = $candidates[abs(crc32($prompt.'|'.$industry)) % count($candidates)] ?? 'midnight';
+        }
+
+        $settings = $this->previewThemeForIndustry($industry);
+        $settings['primary'] = $preferred;
+
+        return $settings;
     }
 
     private function previewThemeForIndustry(?string $industry): array

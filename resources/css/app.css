@@ -735,52 +735,52 @@ html[data-theme] .cosmic-app-shell main {
 
 /* Every application dialog receives the same readable light surface,
    including portals rendered outside the normal dashboard shell. */
-:root[data-theme="light"] [role="dialog"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) {
     color: #0f172a !important;
 }
-:root[data-theme="light"] [role="dialog"].bg-\[\#111116\],
-:root[data-theme="light"] [role="dialog"].bg-\[\#17171b\],
-:root[data-theme="light"] [role="dialog"].bg-\[\#18181b\],
-:root[data-theme="light"] [role="dialog"] .bg-\[\#111116\],
-:root[data-theme="light"] [role="dialog"] .bg-\[\#151518\],
-:root[data-theme="light"] [role="dialog"] .bg-\[\#17171b\],
-:root[data-theme="light"] [role="dialog"] .bg-\[\#18181b\],
-:root[data-theme="light"] [role="dialog"] .bg-black\/25,
-:root[data-theme="light"] [role="dialog"] .bg-black\/30 {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal).bg-\[\#111116\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal).bg-\[\#17171b\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal).bg-\[\#18181b\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-\[\#111116\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-\[\#151518\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-\[\#17171b\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-\[\#18181b\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-black\/25,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-black\/30 {
     background-color: #ffffff !important;
 }
-:root[data-theme="light"] [role="dialog"] .text-white,
-:root[data-theme="light"] [role="dialog"] .text-slate-100,
-:root[data-theme="light"] [role="dialog"] .text-slate-200 { color: #0f172a !important; }
-:root[data-theme="light"] [role="dialog"] .text-slate-300,
-:root[data-theme="light"] [role="dialog"] .text-slate-400 { color: #526274 !important; }
-:root[data-theme="light"] [role="dialog"] .text-slate-500,
-:root[data-theme="light"] [role="dialog"] .text-slate-600 { color: #718096 !important; }
-:root[data-theme="light"] [role="dialog"] .text-violet-100,
-:root[data-theme="light"] [role="dialog"] .text-violet-200,
-:root[data-theme="light"] [role="dialog"] .text-violet-300,
-:root[data-theme="light"] [role="dialog"] .text-violet-400 { color: #047857 !important; }
-:root[data-theme="light"] [role="dialog"] .border-white\/10,
-:root[data-theme="light"] [role="dialog"] .border-white\/15,
-:root[data-theme="light"] [role="dialog"] .border-white\/20 { border-color: #d8e7df !important; }
-:root[data-theme="light"] [role="dialog"] .bg-white\/5,
-:root[data-theme="light"] [role="dialog"] .bg-white\/10,
-:root[data-theme="light"] [role="dialog"] .bg-white\/\[0\.025\],
-:root[data-theme="light"] [role="dialog"] .bg-white\/\[0\.04\] { background-color: #f2f8f4 !important; }
-:root[data-theme="light"] [role="dialog"] input,
-:root[data-theme="light"] [role="dialog"] textarea,
-:root[data-theme="light"] [role="dialog"] select {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-white,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-100,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-200 { color: #0f172a !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-300,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-400 { color: #526274 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-500,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-600 { color: #718096 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-violet-100,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-violet-200,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-violet-300,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-violet-400 { color: #047857 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .border-white\/10,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .border-white\/15,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .border-white\/20 { border-color: #d8e7df !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-white\/5,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-white\/10,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-white\/\[0\.025\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-white\/\[0\.04\] { background-color: #f2f8f4 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) input,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) textarea,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) select {
     background: #fff !important;
     border-color: #bfd3c8 !important;
     color: #0f172a !important;
 }
-:root[data-theme="light"] [role="dialog"] input::placeholder,
-:root[data-theme="light"] [role="dialog"] textarea::placeholder { color: #8798aa !important; }
-:root[data-theme="light"] [role="dialog"] .from-violet-600,
-:root[data-theme="light"] [role="dialog"] .from-violet-500 { --tw-gradient-from: #16845f var(--tw-gradient-from-position) !important; }
-:root[data-theme="light"] [role="dialog"] .to-indigo-600,
-:root[data-theme="light"] [role="dialog"] .to-cyan-500 { --tw-gradient-to: #0f766e var(--tw-gradient-to-position) !important; }
-:root[data-theme="light"] [role="dialog"] .bg-white.text-slate-950 {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) input::placeholder,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) textarea::placeholder { color: #8798aa !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .from-violet-600,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .from-violet-500 { --tw-gradient-from: #16845f var(--tw-gradient-from-position) !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .to-indigo-600,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .to-cyan-500 { --tw-gradient-to: #0f766e var(--tw-gradient-to-position) !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-white.text-slate-950 {
     background: #16845f !important;
     color: #fff !important;
 }
@@ -1273,7 +1273,7 @@ html[data-theme] .cosmic-app-shell main {
    dark mode keeps each component's original dark classes and layout. */
 :root[data-theme="light"] .cosmic-dialog-root,
 :root[data-theme="light"] .cosmic-alert-overlay,
-:root[data-theme="light"] [role="dialog"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) {
     --cosmic-dialog-bg: #ffffff;
     --cosmic-dialog-soft: #f4f9f6;
     --cosmic-dialog-muted: #64748b;
@@ -1291,7 +1291,7 @@ html[data-theme] .cosmic-app-shell main {
 }
 
 :root[data-theme="light"] .cosmic-dialog-panel,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-website-preview):not(.cosmic-builder-canvas) {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview):not(.cosmic-builder-canvas) {
     color: var(--cosmic-dialog-text) !important;
     border-color: var(--cosmic-dialog-border) !important;
     background-color: var(--cosmic-dialog-bg) !important;
@@ -1299,108 +1299,108 @@ html[data-theme] .cosmic-app-shell main {
 }
 
 /* Normalize typography inside all application dialogs. */
-:root[data-theme="light"] [role="dialog"] h1,
-:root[data-theme="light"] [role="dialog"] h2,
-:root[data-theme="light"] [role="dialog"] h3,
-:root[data-theme="light"] [role="dialog"] h4,
-:root[data-theme="light"] [role="dialog"] [class*="text-white"],
-:root[data-theme="light"] [role="dialog"] [class*="text-slate-100"],
-:root[data-theme="light"] [role="dialog"] [class*="text-slate-200"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) h1,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) h2,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) h3,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) h4,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-white"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-slate-100"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-slate-200"] {
     color: #0f172a !important;
 }
-:root[data-theme="light"] [role="dialog"] p,
-:root[data-theme="light"] [role="dialog"] label,
-:root[data-theme="light"] [role="dialog"] [class*="text-slate-300"],
-:root[data-theme="light"] [role="dialog"] [class*="text-slate-400"],
-:root[data-theme="light"] [role="dialog"] [class*="text-slate-500"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) p,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) label,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-slate-300"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-slate-400"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-slate-500"] {
     color: #64748b !important;
 }
 
 /* Panels, rows and controls inside legacy dark dialogs. */
-:root[data-theme="light"] [role="dialog"] [class*="bg-[#0"],
-:root[data-theme="light"] [role="dialog"] [class*="bg-[#1"],
-:root[data-theme="light"] [role="dialog"] [class*="bg-slate-9"],
-:root[data-theme="light"] [role="dialog"] [class*="bg-zinc-9"],
-:root[data-theme="light"] [role="dialog"] [class*="bg-neutral-9"],
-:root[data-theme="light"] [role="dialog"] [class*="bg-gray-9"],
-:root[data-theme="light"] [role="dialog"] [class*="bg-white/5"],
-:root[data-theme="light"] [role="dialog"] [class*="bg-white/10"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-[#0"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-[#1"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-slate-9"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-zinc-9"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-neutral-9"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-gray-9"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-white/5"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-white/10"] {
     background-color: var(--cosmic-dialog-soft) !important;
     border-color: var(--cosmic-dialog-border) !important;
 }
 
-:root[data-theme="light"] [role="dialog"] input:not([type="checkbox"]):not([type="radio"]),
-:root[data-theme="light"] [role="dialog"] textarea,
-:root[data-theme="light"] [role="dialog"] select {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) textarea,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) select {
     color: #0f172a !important;
     background: #fff !important;
     border-color: #bfd5c9 !important;
     box-shadow: none !important;
 }
-:root[data-theme="light"] [role="dialog"] input::placeholder,
-:root[data-theme="light"] [role="dialog"] textarea::placeholder { color: #94a3b8 !important; }
-:root[data-theme="light"] [role="dialog"] input:focus,
-:root[data-theme="light"] [role="dialog"] textarea:focus,
-:root[data-theme="light"] [role="dialog"] select:focus {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) input::placeholder,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) textarea::placeholder { color: #94a3b8 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) input:focus,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) textarea:focus,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) select:focus {
     border-color: #2f9b70 !important;
     box-shadow: 0 0 0 3px rgba(47,155,112,.14) !important;
     outline: none !important;
 }
 
 /* Primary actions stay readable. Secondary and icon actions remain flat. */
-:root[data-theme="light"] [role="dialog"] button[class*="bg-emerald"],
-:root[data-theme="light"] [role="dialog"] button[class*="bg-green"],
-:root[data-theme="light"] [role="dialog"] button[class*="bg-violet"],
-:root[data-theme="light"] [role="dialog"] button[class*="bg-blue"],
-:root[data-theme="light"] [role="dialog"] .cosmic-primary-action,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-emerald"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-green"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-violet"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-blue"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .cosmic-primary-action,
 :root[data-theme="light"] .cosmic-builder-header button[class*="bg-emerald"] {
     color: #fff !important;
 }
-:root[data-theme="light"] [role="dialog"] button[class*="bg-emerald"] *,
-:root[data-theme="light"] [role="dialog"] button[class*="bg-green"] *,
-:root[data-theme="light"] [role="dialog"] button[class*="bg-violet"] *,
-:root[data-theme="light"] [role="dialog"] button[class*="bg-blue"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-emerald"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-green"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-violet"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-blue"] *,
 :root[data-theme="light"] .cosmic-builder-header button[class*="bg-emerald"] * { color: #fff !important; }
 
-:root[data-theme="light"] [role="dialog"] button[class*="rounded-full"],
-:root[data-theme="light"] [role="dialog"] button[class*="rounded-xl"],
-:root[data-theme="light"] [role="dialog"] button[class*="rounded-lg"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="rounded-full"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="rounded-xl"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="rounded-lg"] {
     transform: none !important;
     filter: none !important;
 }
 
 /* One scrollbar treatment for every long popup/drawer. */
-:root[data-theme="light"] [role="dialog"],
-:root[data-theme="light"] [role="dialog"] [class*="overflow-y-auto"],
-:root[data-theme="light"] [role="dialog"] [class*="overflow-auto"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-y-auto"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-auto"] {
     scrollbar-width: thin;
     scrollbar-color: #8eae9e #eef5f1;
 }
-:root[data-theme="light"] [role="dialog"]::-webkit-scrollbar,
-:root[data-theme="light"] [role="dialog"] [class*="overflow-y-auto"]::-webkit-scrollbar,
-:root[data-theme="light"] [role="dialog"] [class*="overflow-auto"]::-webkit-scrollbar { width: 10px; height: 10px; }
-:root[data-theme="light"] [role="dialog"]::-webkit-scrollbar-track,
-:root[data-theme="light"] [role="dialog"] [class*="overflow-y-auto"]::-webkit-scrollbar-track,
-:root[data-theme="light"] [role="dialog"] [class*="overflow-auto"]::-webkit-scrollbar-track {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal)::-webkit-scrollbar,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-y-auto"]::-webkit-scrollbar,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-auto"]::-webkit-scrollbar { width: 10px; height: 10px; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal)::-webkit-scrollbar-track,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-y-auto"]::-webkit-scrollbar-track,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-auto"]::-webkit-scrollbar-track {
     background: #eef5f1;
     border-left: 1px solid #d8e6de;
 }
-:root[data-theme="light"] [role="dialog"]::-webkit-scrollbar-thumb,
-:root[data-theme="light"] [role="dialog"] [class*="overflow-y-auto"]::-webkit-scrollbar-thumb,
-:root[data-theme="light"] [role="dialog"] [class*="overflow-auto"]::-webkit-scrollbar-thumb {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal)::-webkit-scrollbar-thumb,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-y-auto"]::-webkit-scrollbar-thumb,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-auto"]::-webkit-scrollbar-thumb {
     background: #8eae9e;
     border: 2px solid #eef5f1;
     border-radius: 999px;
 }
-:root[data-theme="light"] [role="dialog"]::-webkit-scrollbar-thumb:hover,
-:root[data-theme="light"] [role="dialog"] [class*="overflow-y-auto"]::-webkit-scrollbar-thumb:hover,
-:root[data-theme="light"] [role="dialog"] [class*="overflow-auto"]::-webkit-scrollbar-thumb:hover { background: #4e866a; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal)::-webkit-scrollbar-thumb:hover,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-y-auto"]::-webkit-scrollbar-thumb:hover,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-auto"]::-webkit-scrollbar-thumb:hover { background: #4e866a; }
 
 /* Preserve intentional dark preview artwork and generated-site previews. */
 :root[data-theme="light"] .cosmic-add-spark-modal article > div:first-child,
 :root[data-theme="light"] .cosmic-spark-preview-modal article > div:first-child,
-:root[data-theme="light"] [role="dialog"] .cosmic-preview-artwork,
-:root[data-theme="light"] [role="dialog"] iframe {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .cosmic-preview-artwork,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) iframe {
     color-scheme: normal;
 }
 
@@ -1565,8 +1565,8 @@ html[data-theme] .cosmic-app-shell main {
    Patch 15 full-audit hotfix v2 — screenshot-driven light-mode polish
    ================================================================== */
 /* Compact, visible close controls across dialogs and drawers. */
-:root[data-theme="light"] [role="dialog"] button[aria-label*="Close"],
-:root[data-theme="light"] [role="dialog"] button[aria-label*="close"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[aria-label*="Close"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[aria-label*="close"],
 :root[data-theme="light"] .cosmic-global-header-modal > div:first-child > button,
 :root[data-theme="light"] .cosmic-global-footer-modal > div:first-child > button {
     display: inline-flex !important;
@@ -1581,8 +1581,8 @@ html[data-theme] .cosmic-app-shell main {
     box-shadow: none !important;
     opacity: 1 !important;
 }
-:root[data-theme="light"] [role="dialog"] button[aria-label*="Close"]:hover,
-:root[data-theme="light"] [role="dialog"] button[aria-label*="close"]:hover {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[aria-label*="Close"]:hover,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[aria-label*="close"]:hover {
     background: #e9f4ee !important;
     color: #166b4c !important;
     border-color: #9fc6b3 !important;
@@ -3242,4 +3242,432 @@ body .cosmic-start-quick-idea.rounded-full.border {
 .cosmic-builder-shell .cosmic-publish-menu-trigger svg,
 .cosmic-builder-shell .cosmic-publish-menu-trigger svg [fill="currentColor"] {
     fill: #ffffff !important;
+}
+
+
+/* ================================================================
+   Page Templates — appearance-safe UI, full-page preview, AI loading
+   ================================================================ */
+.cosmic-page-templates {
+    color: var(--cosmic-text);
+}
+.cosmic-page-templates-backdrop,
+.cosmic-template-install-overlay,
+.cosmic-template-ai-loading {
+    background: rgba(2, 6, 23, .74);
+    backdrop-filter: blur(10px);
+}
+.cosmic-page-templates-panel,
+.cosmic-template-install-panel,
+.cosmic-template-preview-panel,
+.cosmic-template-ai-loading-card {
+    background: var(--cosmic-surface);
+    color: var(--cosmic-text);
+    border-color: var(--cosmic-border);
+    box-shadow: var(--cosmic-shadow);
+}
+.cosmic-page-templates-header,
+.cosmic-template-preview-header {
+    background: color-mix(in srgb, var(--cosmic-surface) 94%, transparent);
+    color: var(--cosmic-text);
+    border-color: var(--cosmic-border);
+    backdrop-filter: blur(16px);
+}
+.cosmic-template-preview-scroll { background: #fff; }
+.cosmic-template-muted { color: var(--cosmic-text-muted); }
+.cosmic-template-eyebrow { color: var(--cosmic-primary); }
+.cosmic-template-owned { color: #059669; }
+
+.cosmic-template-card {
+    background: var(--cosmic-surface-raised);
+    color: var(--cosmic-text);
+    border-color: var(--cosmic-border);
+    transition: border-color .18s ease, transform .18s ease, box-shadow .18s ease;
+}
+.cosmic-template-card:hover {
+    border-color: color-mix(in srgb, var(--cosmic-primary) 34%, var(--cosmic-border));
+    transform: translateY(-1px);
+}
+.cosmic-template-tag,
+.cosmic-template-tab,
+.cosmic-template-filter {
+    background: var(--cosmic-surface-muted);
+    color: var(--cosmic-text-muted);
+    border-color: var(--cosmic-border);
+}
+.cosmic-template-tab.is-active {
+    background: var(--cosmic-text);
+    color: var(--cosmic-surface);
+}
+.cosmic-template-filter.is-active {
+    background: color-mix(in srgb, var(--cosmic-primary) 12%, var(--cosmic-surface));
+    border-color: color-mix(in srgb, var(--cosmic-primary) 42%, var(--cosmic-border));
+    color: var(--cosmic-primary);
+}
+.cosmic-template-input {
+    background: var(--cosmic-surface);
+    color: var(--cosmic-text);
+    border-color: var(--cosmic-border);
+}
+.cosmic-template-input::placeholder { color: var(--cosmic-text-muted); }
+.cosmic-template-input:focus {
+    border-color: color-mix(in srgb, var(--cosmic-primary) 62%, var(--cosmic-border));
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cosmic-primary) 12%, transparent);
+}
+.cosmic-template-secondary {
+    background: var(--cosmic-surface);
+    color: var(--cosmic-text);
+    border-color: var(--cosmic-border);
+}
+.cosmic-template-secondary:hover { background: var(--cosmic-surface-muted); }
+.cosmic-template-primary {
+    background: var(--cosmic-text);
+    color: var(--cosmic-surface);
+}
+.cosmic-template-primary:hover { opacity: .9; }
+.cosmic-template-accent {
+    background: var(--cosmic-primary);
+    color: #fff;
+}
+.cosmic-template-accent:hover { background: var(--cosmic-primary-hover); }
+.cosmic-template-favorite {
+    color: var(--cosmic-text-muted);
+    border-color: var(--cosmic-border);
+    background: var(--cosmic-surface);
+}
+.cosmic-template-favorite:hover {
+    color: var(--cosmic-text);
+    background: var(--cosmic-surface-muted);
+}
+.cosmic-template-favorite.is-active {
+    color: #e11d48;
+    border-color: rgba(225,29,72,.28);
+    background: rgba(225,29,72,.07);
+}
+.cosmic-template-mode {
+    background: var(--cosmic-surface);
+    color: var(--cosmic-text);
+    border-color: var(--cosmic-border);
+}
+.cosmic-template-mode:hover { background: var(--cosmic-surface-muted); }
+.cosmic-template-mode.is-active.is-generic {
+    border-color: rgba(16,185,129,.55);
+    background: rgba(16,185,129,.08);
+}
+.cosmic-template-mode.is-active.is-personalized {
+    border-color: color-mix(in srgb, var(--cosmic-primary) 58%, var(--cosmic-border));
+    background: color-mix(in srgb, var(--cosmic-primary) 9%, var(--cosmic-surface));
+}
+
+/* Builder Templates trigger — explicit appearance-safe treatment. */
+.cosmic-builder-shell .cosmic-templates-trigger {
+    border-color: color-mix(in srgb, var(--cosmic-primary) 38%, var(--cosmic-border)) !important;
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--cosmic-primary) 14%, var(--cosmic-surface)),
+        color-mix(in srgb, var(--cosmic-accent) 10%, var(--cosmic-surface))) !important;
+    color: var(--cosmic-text) !important;
+    box-shadow: 0 8px 24px color-mix(in srgb, var(--cosmic-primary) 10%, transparent) !important;
+}
+.cosmic-builder-shell .cosmic-templates-trigger:hover {
+    border-color: color-mix(in srgb, var(--cosmic-primary) 58%, var(--cosmic-border)) !important;
+    background: linear-gradient(90deg,
+        color-mix(in srgb, var(--cosmic-primary) 20%, var(--cosmic-surface)),
+        color-mix(in srgb, var(--cosmic-accent) 15%, var(--cosmic-surface))) !important;
+}
+.cosmic-builder-shell .cosmic-templates-trigger > span:last-child {
+    background: var(--cosmic-primary) !important;
+    color: #fff !important;
+}
+
+/* Full page preview keeps the website theme untouched below the chrome. */
+.cosmic-template-preview {
+    background: var(--cosmic-surface);
+    color: var(--cosmic-text);
+}
+.cosmic-template-preview-panel {
+    border: 0;
+    border-radius: 0;
+}
+.cosmic-template-preview-header {
+    box-shadow: 0 1px 0 var(--cosmic-border), 0 10px 28px rgba(15,23,42,.06);
+}
+
+/* Cosmic AI orbit loader. Mirrors other Generate AI experiences. */
+.cosmic-template-ai-loading-card {
+    border: 1px solid color-mix(in srgb, var(--cosmic-primary) 28%, var(--cosmic-border));
+}
+.cosmic-template-ai-orbit {
+    border-color: color-mix(in srgb, var(--cosmic-primary) 20%, var(--cosmic-border));
+    border-top-color: #8b5cf6;
+    border-right-color: #22d3ee;
+    border-bottom-color: #10b981;
+}
+.cosmic-template-ai-star {
+    background: var(--cosmic-surface);
+    color: var(--cosmic-primary);
+}
+.cosmic-template-ai-step {
+    background: var(--cosmic-surface-muted);
+    color: var(--cosmic-text-muted);
+    border-color: var(--cosmic-border);
+}
+.cosmic-template-ai-step > span:first-child {
+    background: color-mix(in srgb, var(--cosmic-text-muted) 18%, var(--cosmic-surface));
+    color: var(--cosmic-text-muted);
+}
+.cosmic-template-ai-step > span:first-child.is-active {
+    background: var(--cosmic-primary);
+    color: #fff;
+}
+
+/* Light appearance. */
+:root[data-theme="light"] .cosmic-page-templates-backdrop,
+:root[data-theme="light"] .cosmic-template-install-overlay,
+:root[data-theme="light"] .cosmic-template-ai-loading {
+    background: rgba(15, 23, 42, .32);
+}
+:root[data-theme="light"] .cosmic-page-templates-panel,
+:root[data-theme="light"] .cosmic-template-install-panel,
+:root[data-theme="light"] .cosmic-template-preview-header,
+:root[data-theme="light"] .cosmic-template-ai-loading-card {
+    background: rgba(255,255,255,.98);
+}
+:root[data-theme="light"] .cosmic-template-card {
+    box-shadow: 0 10px 30px rgba(15,23,42,.045);
+}
+
+/* Dark appearance. */
+:root[data-theme="dark"] .cosmic-page-templates-backdrop,
+:root[data-theme="dark"] .cosmic-template-install-overlay,
+:root[data-theme="dark"] .cosmic-template-ai-loading {
+    background: rgba(0,0,0,.82);
+}
+:root[data-theme="dark"] .cosmic-template-preview-header {
+    box-shadow: 0 1px 0 var(--cosmic-border), 0 12px 34px rgba(0,0,0,.28);
+}
+
+@media (max-width: 640px) {
+    .cosmic-template-preview-header { align-items: flex-start; }
+    .cosmic-template-preview-header .cosmic-template-primary,
+    .cosmic-template-preview-header .cosmic-template-accent,
+    .cosmic-template-preview-header .cosmic-template-secondary {
+        padding-left: .8rem;
+        padding-right: .8rem;
+    }
+}
+
+
+/* Hotfix — Template confirmations + clear personalized input */
+.cosmic-template-confirm-overlay {
+    background: rgba(2, 6, 23, .72);
+    backdrop-filter: blur(10px);
+}
+.cosmic-template-confirm-panel {
+    background: var(--cosmic-surface);
+    color: var(--cosmic-text);
+    border-color: var(--cosmic-border);
+}
+:root[data-theme="light"] .cosmic-template-confirm-overlay {
+    background: rgba(15, 23, 42, .32);
+}
+:root[data-theme="light"] .cosmic-template-confirm-panel {
+    background: #fff;
+}
+.cosmic-template-preview-scroll > .w-full {
+    width: 100%;
+    max-width: none;
+    margin-left: 0;
+    margin-right: 0;
+}
+
+
+/* ================================================================
+   SP-P1 — Spark preview / Builder rendering parity
+   The preview shell is intentionally neutral. BlockRegistry components
+   receive the same resolvedTheme/globalTheme inputs as Builder and remain
+   solely responsible for section width, spacing, colors and contrast.
+   ================================================================ */
+.cosmic-spark-preview-content {
+    width: 100%;
+    min-width: 0;
+}
+
+/* Disable editing inside the read-only preview without changing layout. */
+.cosmic-spark-preview-content [contenteditable="true"] {
+    pointer-events: none;
+}
+
+/* Full-screen preview chrome only. Do not reach into rendered sections. */
+.cosmic-spark-preview-stage {
+    width: 100%;
+    min-height: 100%;
+    overflow-x: auto;
+}
+.cosmic-spark-preview-stage-inner {
+    width: 100%;
+    max-width: none;
+    min-width: 0;
+    margin-inline: 0;
+    background: transparent;
+}
+
+
+
+/* ================================================================
+   SP-HF3 — Spark preview color-family isolation
+   Keep the application chrome light in light mode, but never let
+   global dialog normalization rewrite the actual Builder block.
+   ================================================================ */
+:root[data-theme="light"] .cosmic-spark-preview-modal {
+    color: #0f172a;
+    border-color: #d8e7df;
+    background-color: #ffffff;
+    box-shadow: 0 24px 70px rgba(15, 23, 42, .24), 0 2px 8px rgba(15, 23, 42, .08);
+}
+:root[data-theme="light"] .cosmic-spark-preview-modal > header,
+:root[data-theme="light"] .cosmic-spark-preview-modal > footer {
+    background: #ffffff;
+    border-color: #d8e7df !important;
+    color: #0f172a;
+}
+:root[data-theme="light"] .cosmic-spark-preview-modal > header h1,
+:root[data-theme="light"] .cosmic-spark-preview-modal > header h2,
+:root[data-theme="light"] .cosmic-spark-preview-modal > header h3,
+:root[data-theme="light"] .cosmic-spark-preview-modal > header h4 { color: #0f172a !important; }
+:root[data-theme="light"] .cosmic-spark-preview-modal > header p,
+:root[data-theme="light"] .cosmic-spark-preview-modal > footer { color: #64748b; }
+:root[data-theme="light"] .cosmic-spark-preview-modal > header button,
+:root[data-theme="light"] .cosmic-spark-preview-modal > footer button {
+    border-color: #d8e7df;
+}
+:root[data-theme="light"] .cosmic-spark-preview-modal > footer button:not(.bg-white):not(.bg-violet-600) {
+    color: #475569;
+}
+
+/* The preview canvas is an isolated Builder rendering surface.
+   This parent class intentionally wins over legacy popup CSS only;
+   child block utility classes still decide the active family. */
+.cosmic-spark-preview-modal .cosmic-spark-preview-stage .cosmic-spark-preview-content {
+    color-scheme: normal;
+}
+.cosmic-spark-preview-modal .cosmic-spark-preview-stage .cosmic-spark-preview-content[data-preview-variant="primary"] {
+    background-color: var(--cosmic-preview-bg) !important;
+}
+.cosmic-spark-preview-modal .cosmic-spark-preview-stage .cosmic-spark-preview-content[data-preview-variant="white"] {
+    background-color: var(--cosmic-preview-bg) !important;
+}
+.cosmic-spark-preview-modal .cosmic-spark-preview-stage .cosmic-spark-preview-content[data-preview-variant="surface"] {
+    background-color: var(--cosmic-preview-bg) !important;
+}
+
+
+/* ================================================================
+   SP-HF4 — Spark preview appearance toggle active state
+   Parent-scoped so light-mode dialog normalization cannot erase the
+   selected Primary / White / Surface state.
+   ================================================================ */
+.cosmic-spark-preview-modal .cosmic-spark-variant-toggle {
+    border: 1px solid var(--cosmic-border);
+    background: color-mix(in srgb, var(--cosmic-surface) 92%, transparent);
+    color: var(--cosmic-muted);
+    box-shadow: none;
+}
+.cosmic-spark-preview-modal .cosmic-spark-variant-toggle:hover {
+    border-color: color-mix(in srgb, var(--cosmic-primary) 45%, var(--cosmic-border));
+    background: color-mix(in srgb, var(--cosmic-primary) 8%, var(--cosmic-surface));
+    color: var(--cosmic-text);
+}
+.cosmic-spark-preview-modal .cosmic-spark-variant-toggle[data-active="true"] {
+    border-color: var(--cosmic-primary) !important;
+    background: var(--cosmic-primary) !important;
+    color: #ffffff !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cosmic-primary) 16%, transparent), 0 4px 12px color-mix(in srgb, var(--cosmic-primary) 18%, transparent);
+}
+.cosmic-spark-preview-modal .cosmic-spark-variant-toggle[data-active="true"]::before {
+    content: "✓";
+    margin-right: .32rem;
+    font-size: .72em;
+    font-weight: 800;
+}
+:root[data-theme="dark"] .cosmic-spark-preview-modal .cosmic-spark-variant-toggle {
+    border-color: rgba(255,255,255,.12);
+    background: rgba(255,255,255,.05);
+    color: #94a3b8;
+}
+:root[data-theme="dark"] .cosmic-spark-preview-modal .cosmic-spark-variant-toggle:hover {
+    border-color: color-mix(in srgb, var(--cosmic-primary) 55%, rgba(255,255,255,.12));
+    background: color-mix(in srgb, var(--cosmic-primary) 12%, rgba(255,255,255,.05));
+    color: #ffffff;
+}
+:root[data-theme="dark"] .cosmic-spark-preview-modal .cosmic-spark-variant-toggle[data-active="true"] {
+    border-color: var(--cosmic-accent) !important;
+    background: var(--cosmic-primary) !important;
+    color: #ffffff !important;
+}
+
+
+/* Hotfix: trial theme Match Logo CTA + Restore Original Logo readability. */
+:root[data-theme="light"] .cosmic-theme-card .cosmic-theme-match-logo-cta {
+    background: #ecfdf5 !important;
+    border-color: #86efac !important;
+    color: #166534 !important;
+    -webkit-text-fill-color: #166534 !important;
+    opacity: 1 !important;
+    filter: none !important;
+    box-shadow: 0 1px 2px rgba(15, 23, 42, .04) !important;
+}
+:root[data-theme="light"] .cosmic-theme-card .cosmic-theme-match-logo-cta:hover:not(:disabled) {
+    background: #dcfce7 !important;
+    border-color: #4ade80 !important;
+    color: #14532d !important;
+    -webkit-text-fill-color: #14532d !important;
+}
+:root[data-theme="light"] .cosmic-theme-card .cosmic-theme-match-logo-cta:disabled {
+    background: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+    color: #4b7b5b !important;
+    -webkit-text-fill-color: #4b7b5b !important;
+    opacity: .78 !important;
+    filter: none !important;
+}
+:root[data-theme="dark"] .cosmic-theme-card .cosmic-theme-match-logo-cta {
+    background: rgba(16, 185, 129, .14) !important;
+    border-color: rgba(110, 231, 183, .38) !important;
+    color: #a7f3d0 !important;
+    -webkit-text-fill-color: #a7f3d0 !important;
+}
+
+:root[data-theme="light"] .cosmic-logo-restore-card {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+:root[data-theme="light"] .cosmic-logo-restore-card:hover:not(:disabled) {
+    background: #ecfdf5 !important;
+    border-color: #34d399 !important;
+}
+:root[data-theme="light"] .cosmic-logo-restore-card .cosmic-logo-restore-title {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-logo-restore-card .cosmic-logo-restore-help {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+}
+:root[data-theme="light"] .cosmic-logo-restore-card:disabled {
+    background: #f8fafc !important;
+    border-color: #e2e8f0 !important;
+    opacity: .72 !important;
+    filter: none !important;
+}
+:root[data-theme="light"] .cosmic-logo-restore-card:disabled .cosmic-logo-restore-title {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+}
+:root[data-theme="light"] .cosmic-logo-restore-card:disabled .cosmic-logo-restore-help {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
 }

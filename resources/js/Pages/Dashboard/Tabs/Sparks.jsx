@@ -41,13 +41,13 @@ export default function Sparks({ dashboard }) {
     const marketplace = dashboard?.spark_marketplace ?? { items: [], categories: [], count: 0, owned_count: 0 };
     const [marketItems, setMarketItems] = useState(marketplace.items);
     const slots = marketplace.owned_spark_slots ?? { used: marketplace.owned_count ?? 0, limit: null, limit_label: "Unlimited", remaining: null, unlimited: true, at_limit: false, can_add: true };
-    const [activeView, setActiveView] = useState("owned");
+    const [activeView, setActiveView] = useState("marketplace");
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All");
     const [marketFilter, setMarketFilter] = useState("all");
     const [busyKey, setBusyKey] = useState(null);
     const [previewSpark, setPreviewSpark] = useState(null);
-    const [previewVariant, setPreviewVariant] = useState("white");
+    const [previewVariant, setPreviewVariant] = useState("primary");
     const copy = viewCopy[activeView];
 
     const registry = useMemo(() => new Map(BlockRegistry.map((item) => [item.type, item])), []);
@@ -56,8 +56,8 @@ export default function Sparks({ dashboard }) {
     const purchasedCount = marketItems.filter((item) => item.purchased).length;
 
     const views = [
-        { id: "owned", label: "Owned", count: ownedCount },
         { id: "marketplace", label: "Marketplace", count: marketplace.count },
+        { id: "owned", label: "Owned", count: ownedCount },
         { id: "favorites", label: "Favorites", count: favoriteCount },
         { id: "purchased", label: "Purchased", count: purchasedCount },
     ];
@@ -240,8 +240,8 @@ export default function Sparks({ dashboard }) {
                 ) : activeView === "marketplace" ? (
                     filteredMarketplace.length ? (
                         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            {filteredMarketplace.map((spark) => (
-                                <MarketplaceSparkCard key={spark.key} spark={spark} previewComponent={registry.get(spark.key)?.preview} busy={busyKey === spark.key} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
+                            {filteredMarketplace.map((spark, sparkIndex) => (
+                                <MarketplaceSparkCard key={spark.key} spark={spark} previewComponent={registry.get(spark.key)?.preview} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} busy={busyKey === spark.key} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
                             ))}
                         </div>
                     ) : (
@@ -249,8 +249,8 @@ export default function Sparks({ dashboard }) {
                     )
                 ) : filteredCollection.length ? (
                     <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {filteredCollection.map((spark) => (
-                            <MarketplaceSparkCard key={spark.key} spark={spark} previewComponent={registry.get(spark.key)?.preview} busy={busyKey === spark.key} favoriteBusy={busyKey === `favorite-${spark.key}`} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} />
+                        {filteredCollection.map((spark, sparkIndex) => (
+                            <MarketplaceSparkCard key={spark.key} spark={spark} previewComponent={registry.get(spark.key)?.preview} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} busy={busyKey === spark.key} favoriteBusy={busyKey === `favorite-${spark.key}`} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} />
                         ))}
                     </div>
                 ) : (
@@ -286,12 +286,12 @@ function OwnedSparkCard({ spark, busy, onPreview, onRemove, onFavorite, favorite
     );
 }
 
-function MarketplaceSparkCard({ spark, previewComponent: PreviewComponent, busy, onPreview, onUnlock, onFavorite, favoriteBusy }) {
+function MarketplaceSparkCard({ spark, previewComponent: PreviewComponent, previewVariant = "primary", busy, onPreview, onUnlock, onFavorite, favoriteBusy }) {
     return (
         <article className="cosmic-marketplace-spark-card overflow-hidden rounded-2xl border border-white/10 bg-black/20 transition hover:-translate-y-0.5 hover:border-violet-300/30">
             <div className="relative h-40 overflow-hidden bg-gradient-to-br from-violet-500/20 via-indigo-500/10 to-cyan-400/10 p-3">
                 <div className="cosmic-marketplace-preview h-full overflow-hidden rounded-xl border border-white/10 bg-[#0d0d10]/85">
-                    {PreviewComponent ? <PreviewComponent /> : <div className="h-full p-4"><div className="h-2 w-16 rounded bg-white/15" /><div className="mt-5 h-4 w-4/5 rounded bg-white/20" /><div className="mt-2 h-2.5 w-3/5 rounded bg-white/10" /><div className="mt-5 grid grid-cols-3 gap-2"><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /></div></div>}
+                    {PreviewComponent ? <PreviewComponent previewVariant={previewVariant} websiteTheme="midnight" /> : <div className="h-full p-4"><div className="h-2 w-16 rounded bg-white/15" /><div className="mt-5 h-4 w-4/5 rounded bg-white/20" /><div className="mt-2 h-2.5 w-3/5 rounded bg-white/10" /><div className="mt-5 grid grid-cols-3 gap-2"><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /></div></div>}
                 </div>
                 <div className="absolute right-3 top-3 flex flex-wrap justify-end gap-1.5">
                     {spark.locked && <Badge>Locked</Badge>}{spark.staff_pick && <Badge>Staff Pick</Badge>}
@@ -333,23 +333,33 @@ function EmptyState({ title, description, action = null }) {
 
 function SparkPreviewModal({ spark, previewVariant, setPreviewVariant, onClose }) {
     return (
-        <div className="fixed inset-0 z-[980] flex items-center justify-center p-3 sm:p-6">
+        <div className="fixed inset-0 z-[980] flex items-stretch justify-stretch">
             <button type="button" onClick={onClose} className="absolute inset-0 bg-black/85 backdrop-blur-sm" aria-label="Close Spark preview" />
-            <section role="dialog" aria-modal="true" className="relative z-10 flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#101014] text-white shadow-2xl">
+            <section role="dialog" aria-modal="true" className="relative z-10 flex h-screen w-screen max-w-none flex-col overflow-hidden rounded-none border border-white/10 bg-[#101014] text-white shadow-2xl">
                 <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7">
                     <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">Spark Preview · {spark.category}</p><h3 className="mt-1 text-xl font-semibold">{spark.name}</h3><p className="mt-1 max-w-3xl text-sm text-slate-400">{spark.description}</p></div>
                     <button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white">✕</button>
                 </header>
-                <div className="min-h-0 flex-1 overflow-auto bg-[#e5e7eb] p-3 sm:p-6">
-                    <div className="mx-auto min-h-[620px] max-w-[1440px] overflow-hidden rounded-2xl bg-white shadow-2xl">
-                        <div className="pointer-events-none min-w-[1100px] origin-top-left"><ActualSparkPreview spark={spark} previewVariant={previewVariant} websiteTheme="midnight" /></div>
-                    </div>
+                <div className="min-h-0 flex-1 overflow-auto bg-[#e5e7eb] p-0">
+                    <div className="cosmic-spark-preview-stage min-h-full w-full"><div className="cosmic-spark-preview-stage-inner">
+                        <div className="pointer-events-none w-full min-w-0 origin-top-left"><ActualSparkPreview spark={spark} previewVariant={previewVariant} websiteTheme="midnight" /></div>
+                    </div></div>
                 </div>
                 <footer className="flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
                     <p className="text-xs text-slate-500">Preview uses sample content and does not change your website.</p>
                     <div className="flex gap-2">
-                        <button type="button" onClick={() => setPreviewVariant("white")} className={`rounded-xl px-3 py-2 text-xs font-semibold ${previewVariant === "white" ? "bg-white text-slate-950" : "border border-white/10 text-slate-300"}`}>Light</button>
-                        <button type="button" onClick={() => setPreviewVariant("dark")} className={`rounded-xl px-3 py-2 text-xs font-semibold ${previewVariant === "dark" ? "bg-white text-slate-950" : "border border-white/10 text-slate-300"}`}>Dark</button>
+                        {["primary", "white", "surface"].map((variant) => (
+                            <button
+                                key={variant}
+                                type="button"
+                                aria-pressed={previewVariant === variant}
+                                data-active={previewVariant === variant ? "true" : "false"}
+                                onClick={() => setPreviewVariant(variant)}
+                                className="cosmic-spark-variant-toggle rounded-xl px-3 py-2 text-xs font-semibold capitalize transition"
+                            >
+                                {variant}
+                            </button>
+                        ))}
                     </div>
                 </footer>
             </section>
