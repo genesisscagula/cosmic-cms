@@ -35,7 +35,12 @@ export const BlogHubSchema = {
 
 function ModalPortal({ children }) {
     if (typeof document === "undefined") return null;
-    return createPortal(children, document.body);
+    return createPortal(
+        <div className="cosmic-preview-isolation" data-cosmic-preview-isolation="true" data-cosmic-site-preview="true">
+            {children}
+        </div>,
+        document.body
+    );
 }
 
 function CosmicStatusSelect({ value, onChange }) {

@@ -197,6 +197,10 @@ body { background: var(--cosmic-bg); color: var(--cosmic-text); }
 .cosmic-appearance-segment button { display: inline-flex; align-items: center; gap: .4rem; border-radius: .7rem; padding: .55rem .8rem; color: var(--cosmic-text-muted); font-size: .8rem; font-weight: 600; }
 .cosmic-appearance-segment button.is-active { background: var(--cosmic-surface); color: var(--cosmic-text); box-shadow: 0 4px 14px rgba(15,23,42,.08); }
 
+/* Patch 1.0.132 — Preview isolation boundary
+   Any real site/Spark preview carries .cosmic-preview-isolation. Dashboard light-mode
+   conversion selectors below explicitly skip that subtree, so website typography,
+   buttons, surfaces, borders, and forms remain owned by the block/theme renderer. */
 /* Patch 15.3 — Dashboard Light Conversion
    Scoped to the dashboard shell so exported sites and the page builder remain untouched. */
 :root[data-theme="light"] .cosmic-app-shell {
@@ -214,101 +218,101 @@ body { background: var(--cosmic-bg); color: var(--cosmic-text); }
 }
 
 /* Typography */
-:root[data-theme="light"] .cosmic-app-shell .text-white,
-:root[data-theme="light"] .cosmic-app-shell .text-slate-100,
-:root[data-theme="light"] .cosmic-app-shell .text-slate-200 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-white,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-100,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-200 {
     color: var(--dashboard-text) !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .text-slate-300,
-:root[data-theme="light"] .cosmic-app-shell .text-slate-400 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-300,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-400 {
     color: var(--dashboard-muted) !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .text-slate-500,
-:root[data-theme="light"] .cosmic-app-shell .text-white\/70 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-500,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-white\/70 {
     color: #718096 !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .text-violet-100,
-:root[data-theme="light"] .cosmic-app-shell .text-violet-200,
-:root[data-theme="light"] .cosmic-app-shell .text-violet-300,
-:root[data-theme="light"] .cosmic-app-shell .text-violet-400,
-:root[data-theme="light"] .cosmic-app-shell .text-violet-500 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-100,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-200,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-300,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-400,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-500 {
     color: #047857 !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .text-cyan-200,
-:root[data-theme="light"] .cosmic-app-shell .text-cyan-300 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-cyan-200,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-cyan-300 {
     color: #0f766e !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .text-emerald-200,
-:root[data-theme="light"] .cosmic-app-shell .text-emerald-300 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-emerald-200,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-emerald-300 {
     color: #047857 !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .text-amber-50,
-:root[data-theme="light"] .cosmic-app-shell .text-amber-100,
-:root[data-theme="light"] .cosmic-app-shell .text-amber-200,
-:root[data-theme="light"] .cosmic-app-shell .text-amber-300 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-amber-50,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-amber-100,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-amber-200,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-amber-300 {
     color: #a16207 !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .text-rose-200,
-:root[data-theme="light"] .cosmic-app-shell .text-rose-300,
-:root[data-theme="light"] .cosmic-app-shell .text-red-300 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-rose-200,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-rose-300,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-red-300 {
     color: #be123c !important;
 }
 
 /* Panels, cards and rows */
-:root[data-theme="light"] .cosmic-app-shell .bg-\[\#111113\],
-:root[data-theme="light"] .cosmic-app-shell .bg-\[\#121214\],
-:root[data-theme="light"] .cosmic-app-shell .bg-\[\#151518\],
-:root[data-theme="light"] .cosmic-app-shell .bg-\[\#151519\],
-:root[data-theme="light"] .cosmic-app-shell .bg-\[\#18181b\],
-:root[data-theme="light"] .cosmic-app-shell .bg-slate-950,
-:root[data-theme="light"] .cosmic-app-shell .bg-black\/85 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#111113\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#121214\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#151518\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#151519\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#18181b\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-slate-950,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/85 {
     background-color: var(--dashboard-panel) !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .bg-black\/10,
-:root[data-theme="light"] .cosmic-app-shell .bg-black\/15,
-:root[data-theme="light"] .cosmic-app-shell .bg-black\/20,
-:root[data-theme="light"] .cosmic-app-shell .bg-black\/25,
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/5,
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/10,
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/15,
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/20,
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/\[0\.02\],
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/\[0\.025\],
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/\[0\.03\],
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/\[0\.035\],
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/\[0\.04\],
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/\[0\.055\],
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/\[0\.06\] {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/10,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/15,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/20,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/25,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/5,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/10,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/15,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/20,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.02\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.025\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.03\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.035\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.04\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.055\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.06\] {
     background-color: var(--dashboard-panel-muted) !important;
 }
 
 /* Borders */
-:root[data-theme="light"] .cosmic-app-shell .border-white\/10,
-:root[data-theme="light"] .cosmic-app-shell .border-white\/15,
-:root[data-theme="light"] .cosmic-app-shell .border-white\/20,
-:root[data-theme="light"] .cosmic-app-shell .border-white\/\[0\.06\],
-:root[data-theme="light"] .cosmic-app-shell .border-white\/\[0\.07\] {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/10,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/15,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/20,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/\[0\.06\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/\[0\.07\] {
     border-color: var(--dashboard-border) !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).divide-white\/10 > :not([hidden]) ~ :not([hidden]) {
     border-color: var(--dashboard-border) !important;
 }
 
 /* Inputs and controls */
-:root[data-theme="light"] .cosmic-app-shell input:not([type="checkbox"]):not([type="radio"]),
-:root[data-theme="light"] .cosmic-app-shell select,
-:root[data-theme="light"] .cosmic-app-shell textarea {
+:root[data-theme="light"] .cosmic-app-shell input:not(.cosmic-preview-isolation *):not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="light"] .cosmic-app-shell select:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] .cosmic-app-shell textarea:not(.cosmic-preview-isolation *) {
     background-color: #fff !important;
     border-color: var(--dashboard-border-strong) !important;
     color: var(--dashboard-text) !important;
 }
-:root[data-theme="light"] .cosmic-app-shell input::placeholder,
-:root[data-theme="light"] .cosmic-app-shell textarea::placeholder {
+:root[data-theme="light"] .cosmic-app-shell input:not(.cosmic-preview-isolation *)::placeholder,
+:root[data-theme="light"] .cosmic-app-shell textarea:not(.cosmic-preview-isolation *)::placeholder {
     color: var(--dashboard-subtle) !important;
 }
-:root[data-theme="light"] .cosmic-app-shell input:focus,
-:root[data-theme="light"] .cosmic-app-shell select:focus,
-:root[data-theme="light"] .cosmic-app-shell textarea:focus {
+:root[data-theme="light"] .cosmic-app-shell input:not(.cosmic-preview-isolation *):focus,
+:root[data-theme="light"] .cosmic-app-shell select:not(.cosmic-preview-isolation *):focus,
+:root[data-theme="light"] .cosmic-app-shell textarea:not(.cosmic-preview-isolation *):focus {
     border-color: #10b981 !important;
     --tw-ring-color: rgba(16, 185, 129, .22) !important;
 }
@@ -346,25 +350,25 @@ body { background: var(--cosmic-bg); color: var(--cosmic-text); }
 }
 
 /* Accent cards remain softly tinted instead of disappearing into white. */
-:root[data-theme="light"] .cosmic-app-shell .bg-violet-400\/10,
-:root[data-theme="light"] .cosmic-app-shell .bg-violet-500\/10,
-:root[data-theme="light"] .cosmic-app-shell .bg-violet-400\/15,
-:root[data-theme="light"] .cosmic-app-shell .bg-violet-400\/\[0\.055\] {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-violet-400\/10,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-violet-500\/10,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-violet-400\/15,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-violet-400\/\[0\.055\] {
     background-color: #eaf8f0 !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .bg-emerald-400\/10,
-:root[data-theme="light"] .cosmic-app-shell .bg-emerald-400\/\[0\.06\] {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-emerald-400\/10,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-emerald-400\/\[0\.06\] {
     background-color: #e9f9f0 !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .bg-cyan-400\/10 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-cyan-400\/10 {
     background-color: #e8f8f7 !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .bg-amber-300\/10,
-:root[data-theme="light"] .cosmic-app-shell .bg-amber-400\/10,
-:root[data-theme="light"] .cosmic-app-shell .bg-amber-300\/\[0\.06\] {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-amber-300\/10,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-amber-400\/10,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-amber-300\/\[0\.06\] {
     background-color: #fff8df !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .bg-rose-400\/10 {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-rose-400\/10 {
     background-color: #fff0f3 !important;
 }
 
@@ -413,17 +417,17 @@ body { background: var(--cosmic-bg); color: var(--cosmic-text); }
 }
 
 /* Light scrollbars for dashboard/dialog surfaces. */
-:root[data-theme="light"] .cosmic-app-shell .cosmic-scrollbar,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).cosmic-scrollbar,
 :root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"],
 :root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] * {
     scrollbar-color: #b8c9bf #eef5f1;
 }
-:root[data-theme="light"] .cosmic-app-shell .cosmic-scrollbar::-webkit-scrollbar-track,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).cosmic-scrollbar::-webkit-scrollbar-track,
 :root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"]::-webkit-scrollbar-track,
 :root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] *::-webkit-scrollbar-track {
     background: #eef5f1;
 }
-:root[data-theme="light"] .cosmic-app-shell .cosmic-scrollbar::-webkit-scrollbar-thumb,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).cosmic-scrollbar::-webkit-scrollbar-thumb,
 :root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"]::-webkit-scrollbar-thumb,
 :root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] *::-webkit-scrollbar-thumb {
     background: #b8c9bf;
@@ -442,63 +446,63 @@ body { background: var(--cosmic-bg); color: var(--cosmic-text); }
 }
 
 /* Standalone app surfaces: pages, Sparks, credits, sales, client and agency. */
-:root[data-theme="light"] .cosmic-ui-shell .text-white,
-:root[data-theme="light"] .cosmic-ui-shell .text-slate-100,
-:root[data-theme="light"] .cosmic-ui-shell .text-slate-200 { color: #0f172a !important; }
-:root[data-theme="light"] .cosmic-ui-shell .text-slate-300,
-:root[data-theme="light"] .cosmic-ui-shell .text-slate-400 { color: #526274 !important; }
-:root[data-theme="light"] .cosmic-ui-shell .text-slate-500,
-:root[data-theme="light"] .cosmic-ui-shell .text-slate-600 { color: #718096 !important; }
-:root[data-theme="light"] .cosmic-ui-shell .text-violet-100,
-:root[data-theme="light"] .cosmic-ui-shell .text-violet-200,
-:root[data-theme="light"] .cosmic-ui-shell .text-violet-300,
-:root[data-theme="light"] .cosmic-ui-shell .text-violet-400 { color: #047857 !important; }
-:root[data-theme="light"] .cosmic-ui-shell .text-cyan-100,
-:root[data-theme="light"] .cosmic-ui-shell .text-cyan-200,
-:root[data-theme="light"] .cosmic-ui-shell .text-cyan-300 { color: #0f766e !important; }
-:root[data-theme="light"] .cosmic-ui-shell .text-emerald-100,
-:root[data-theme="light"] .cosmic-ui-shell .text-emerald-200,
-:root[data-theme="light"] .cosmic-ui-shell .text-emerald-300 { color: #047857 !important; }
-:root[data-theme="light"] .cosmic-ui-shell .text-amber-100,
-:root[data-theme="light"] .cosmic-ui-shell .text-amber-200,
-:root[data-theme="light"] .cosmic-ui-shell .text-amber-300 { color: #a16207 !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-white,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-100,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-200 { color: #0f172a !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-300,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-400 { color: #526274 !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-500,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-600 { color: #718096 !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-100,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-200,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-300,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-400 { color: #047857 !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-cyan-100,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-cyan-200,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-cyan-300 { color: #0f766e !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-emerald-100,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-emerald-200,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-emerald-300 { color: #047857 !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-amber-100,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-amber-200,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-amber-300 { color: #a16207 !important; }
 
-:root[data-theme="light"] .cosmic-ui-shell .bg-\[\#09090b\],
-:root[data-theme="light"] .cosmic-ui-shell .bg-\[\#0a0a0b\],
-:root[data-theme="light"] .cosmic-ui-shell .bg-\[\#0d0d10\]\/95,
-:root[data-theme="light"] .cosmic-ui-shell .bg-\[\#101014\],
-:root[data-theme="light"] .cosmic-ui-shell .bg-\[\#111116\],
-:root[data-theme="light"] .cosmic-ui-shell .bg-\[\#111113\],
-:root[data-theme="light"] .cosmic-ui-shell .bg-\[\#151518\],
-:root[data-theme="light"] .cosmic-ui-shell .bg-slate-950 { background-color: #ffffff !important; }
-:root[data-theme="light"] .cosmic-ui-shell .bg-black\/20,
-:root[data-theme="light"] .cosmic-ui-shell .bg-black\/25,
-:root[data-theme="light"] .cosmic-ui-shell .bg-white\/5,
-:root[data-theme="light"] .cosmic-ui-shell .bg-white\/10,
-:root[data-theme="light"] .cosmic-ui-shell .bg-white\/\[0\.03\],
-:root[data-theme="light"] .cosmic-ui-shell .bg-white\/\[0\.04\],
-:root[data-theme="light"] .cosmic-ui-shell .bg-white\/\[0\.05\],
-:root[data-theme="light"] .cosmic-ui-shell .bg-white\/\[0\.06\] { background-color: #f1f7f3 !important; }
-:root[data-theme="light"] .cosmic-ui-shell .border-white\/10,
-:root[data-theme="light"] .cosmic-ui-shell .border-white\/15,
-:root[data-theme="light"] .cosmic-ui-shell .border-white\/20,
-:root[data-theme="light"] .cosmic-ui-shell .divide-white\/10 > :not([hidden]) ~ :not([hidden]) { border-color: #dce8e1 !important; }
-:root[data-theme="light"] .cosmic-ui-shell input,
-:root[data-theme="light"] .cosmic-ui-shell select,
-:root[data-theme="light"] .cosmic-ui-shell textarea {
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#09090b\],
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#0a0a0b\],
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#0d0d10\]\/95,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#101014\],
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#111116\],
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#111113\],
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#151518\],
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-slate-950 { background-color: #ffffff !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/20,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/25,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/5,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/10,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.03\],
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.04\],
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.05\],
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.06\] { background-color: #f1f7f3 !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/10,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/15,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/20,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).divide-white\/10 > :not([hidden]) ~ :not([hidden]) { border-color: #dce8e1 !important; }
+:root[data-theme="light"] .cosmic-ui-shell input:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] .cosmic-ui-shell select:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] .cosmic-ui-shell textarea:not(.cosmic-preview-isolation *) {
     background-color: #fff !important;
     border-color: #cbdad2 !important;
     color: #0f172a !important;
 }
-:root[data-theme="light"] .cosmic-ui-shell input::placeholder,
-:root[data-theme="light"] .cosmic-ui-shell textarea::placeholder { color: #94a3b8 !important; }
-:root[data-theme="light"] .cosmic-ui-shell .from-violet-500\/20,
-:root[data-theme="light"] .cosmic-ui-shell .from-violet-500\/15 { --tw-gradient-from: rgba(16,185,129,.14) var(--tw-gradient-from-position) !important; }
-:root[data-theme="light"] .cosmic-ui-shell .to-cyan-400\/10 { --tw-gradient-to: rgba(45,212,191,.10) var(--tw-gradient-to-position) !important; }
-:root[data-theme="light"] .cosmic-ui-shell .via-\[\#111116\] { --tw-gradient-via: #f7fbf8 var(--tw-gradient-via-position) !important; }
-:root[data-theme="light"] .cosmic-ui-shell .bg-violet-400 { background-color: #10b981 !important; }
-:root[data-theme="light"] .cosmic-ui-shell .hover\:border-violet-300\/30:hover,
-:root[data-theme="light"] .cosmic-ui-shell .hover\:border-violet-400\/40:hover { border-color: rgba(16,185,129,.45) !important; }
+:root[data-theme="light"] .cosmic-ui-shell input:not(.cosmic-preview-isolation *)::placeholder,
+:root[data-theme="light"] .cosmic-ui-shell textarea:not(.cosmic-preview-isolation *)::placeholder { color: #94a3b8 !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).from-violet-500\/20,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).from-violet-500\/15 { --tw-gradient-from: rgba(16,185,129,.14) var(--tw-gradient-from-position) !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).to-cyan-400\/10 { --tw-gradient-to: rgba(45,212,191,.10) var(--tw-gradient-to-position) !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).via-\[\#111116\] { --tw-gradient-via: #f7fbf8 var(--tw-gradient-via-position) !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-violet-400 { background-color: #10b981 !important; }
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).hover\:border-violet-300\/30:hover,
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).hover\:border-violet-400\/40:hover { border-color: rgba(16,185,129,.45) !important; }
 
 /* Builder chrome only. Do not recolor generated website blocks/canvas content. */
 :root[data-theme="light"] .cosmic-builder-shell > header,
@@ -607,30 +611,30 @@ body { background: var(--cosmic-bg); color: var(--cosmic-text); }
 :root[data-theme="dark"] .cosmic-guest-light main > p { color: #94a3b8 !important; }
 
 /* Final contrast pass for overlooked dashboard primitives. */
-:root[data-theme="light"] .cosmic-app-shell .text-white,
-:root[data-theme="light"] .cosmic-app-shell .text-slate-100,
-:root[data-theme="light"] .cosmic-app-shell .text-slate-200 { color: #0f172a !important; }
-:root[data-theme="light"] .cosmic-app-shell .text-slate-300,
-:root[data-theme="light"] .cosmic-app-shell .text-slate-400 { color: #526274 !important; }
-:root[data-theme="light"] .cosmic-app-shell .text-slate-500,
-:root[data-theme="light"] .cosmic-app-shell .text-slate-600 { color: #718096 !important; }
-:root[data-theme="light"] .cosmic-app-shell .text-violet-200,
-:root[data-theme="light"] .cosmic-app-shell .text-violet-300,
-:root[data-theme="light"] .cosmic-app-shell .text-violet-400 { color: #047857 !important; }
-:root[data-theme="light"] .cosmic-app-shell .bg-\[\#101014\],
-:root[data-theme="light"] .cosmic-app-shell .bg-\[\#111113\],
-:root[data-theme="light"] .cosmic-app-shell .bg-\[\#111116\],
-:root[data-theme="light"] .cosmic-app-shell .bg-\[\#151518\],
-:root[data-theme="light"] .cosmic-app-shell .bg-slate-950 { background-color: #fff !important; }
-:root[data-theme="light"] .cosmic-app-shell .bg-black\/20,
-:root[data-theme="light"] .cosmic-app-shell .bg-black\/25,
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/5,
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/\[0\.02\],
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/\[0\.035\],
-:root[data-theme="light"] .cosmic-app-shell .bg-white\/\[0\.04\] { background-color: #f3f8f5 !important; }
-:root[data-theme="light"] .cosmic-app-shell .border-white\/10,
-:root[data-theme="light"] .cosmic-app-shell .border-white\/15,
-:root[data-theme="light"] .cosmic-app-shell .border-white\/20 { border-color: #dce8e1 !important; }
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-white,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-100,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-200 { color: #0f172a !important; }
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-300,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-400 { color: #526274 !important; }
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-500,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-600 { color: #718096 !important; }
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-200,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-300,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-400 { color: #047857 !important; }
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#101014\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#111113\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#111116\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-\[\#151518\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-slate-950 { background-color: #fff !important; }
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/20,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/25,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/5,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.02\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.035\],
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.04\] { background-color: #f3f8f5 !important; }
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/10,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/15,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/20 { border-color: #dce8e1 !important; }
 
 /* Notifications and cookie choices must remain readable outside shell roots. */
 :root[data-theme="light"] .cosmic-notification .text-white,
@@ -735,52 +739,52 @@ html[data-theme] .cosmic-app-shell main {
 
 /* Every application dialog receives the same readable light surface,
    including portals rendered outside the normal dashboard shell. */
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) {
     color: #0f172a !important;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal).bg-\[\#111116\],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal).bg-\[\#17171b\],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal).bg-\[\#18181b\],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-\[\#111116\],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-\[\#151518\],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-\[\#17171b\],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-\[\#18181b\],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-black\/25,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-black\/30 {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview).bg-\[\#111116\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview).bg-\[\#17171b\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview).bg-\[\#18181b\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-\[\#111116\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-\[\#151518\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-\[\#17171b\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-\[\#18181b\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-black\/25,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-black\/30 {
     background-color: #ffffff !important;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-white,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-100,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-200 { color: #0f172a !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-300,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-400 { color: #526274 !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-500,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-slate-600 { color: #718096 !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-violet-100,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-violet-200,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-violet-300,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .text-violet-400 { color: #047857 !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .border-white\/10,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .border-white\/15,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .border-white\/20 { border-color: #d8e7df !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-white\/5,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-white\/10,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-white\/\[0\.025\],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-white\/\[0\.04\] { background-color: #f2f8f4 !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) input,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) textarea,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) select {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-white,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-slate-100,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-slate-200 { color: #0f172a !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-slate-300,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-slate-400 { color: #526274 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-slate-500,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-slate-600 { color: #718096 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-violet-100,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-violet-200,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-violet-300,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-violet-400 { color: #047857 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .border-white\/10,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .border-white\/15,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .border-white\/20 { border-color: #d8e7df !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-white\/5,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-white\/10,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-white\/\[0\.025\],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-white\/\[0\.04\] { background-color: #f2f8f4 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select {
     background: #fff !important;
     border-color: #bfd3c8 !important;
     color: #0f172a !important;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) input::placeholder,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) textarea::placeholder { color: #8798aa !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .from-violet-600,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .from-violet-500 { --tw-gradient-from: #16845f var(--tw-gradient-from-position) !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .to-indigo-600,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .to-cyan-500 { --tw-gradient-to: #0f766e var(--tw-gradient-to-position) !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .bg-white.text-slate-950 {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input::placeholder,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea::placeholder { color: #8798aa !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .from-violet-600,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .from-violet-500 { --tw-gradient-from: #16845f var(--tw-gradient-from-position) !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .to-indigo-600,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .to-cyan-500 { --tw-gradient-to: #0f766e var(--tw-gradient-to-position) !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .bg-white.text-slate-950 {
     background: #16845f !important;
     color: #fff !important;
 }
@@ -1273,7 +1277,7 @@ html[data-theme] .cosmic-app-shell main {
    dark mode keeps each component's original dark classes and layout. */
 :root[data-theme="light"] .cosmic-dialog-root,
 :root[data-theme="light"] .cosmic-alert-overlay,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) {
     --cosmic-dialog-bg: #ffffff;
     --cosmic-dialog-soft: #f4f9f6;
     --cosmic-dialog-muted: #64748b;
@@ -1299,108 +1303,108 @@ html[data-theme] .cosmic-app-shell main {
 }
 
 /* Normalize typography inside all application dialogs. */
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) h1,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) h2,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) h3,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) h4,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-white"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-slate-100"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-slate-200"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h1,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h2,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h3,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) h4,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-white"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-100"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-200"] {
     color: #0f172a !important;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) p,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) label,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-slate-300"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-slate-400"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="text-slate-500"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) p,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) label,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-300"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-400"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="text-slate-500"] {
     color: #64748b !important;
 }
 
 /* Panels, rows and controls inside legacy dark dialogs. */
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-[#0"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-[#1"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-slate-9"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-zinc-9"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-neutral-9"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-gray-9"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-white/5"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="bg-white/10"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-[#0"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-[#1"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-slate-9"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-zinc-9"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-neutral-9"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-gray-9"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-white/5"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="bg-white/10"] {
     background-color: var(--cosmic-dialog-soft) !important;
     border-color: var(--cosmic-dialog-border) !important;
 }
 
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) input:not([type="checkbox"]):not([type="radio"]),
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) textarea,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) select {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select {
     color: #0f172a !important;
     background: #fff !important;
     border-color: #bfd5c9 !important;
     box-shadow: none !important;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) input::placeholder,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) textarea::placeholder { color: #94a3b8 !important; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) input:focus,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) textarea:focus,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) select:focus {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input::placeholder,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea::placeholder { color: #94a3b8 !important; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) input:focus,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) textarea:focus,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select:focus {
     border-color: #2f9b70 !important;
     box-shadow: 0 0 0 3px rgba(47,155,112,.14) !important;
     outline: none !important;
 }
 
 /* Primary actions stay readable. Secondary and icon actions remain flat. */
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-emerald"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-green"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-violet"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-blue"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .cosmic-primary-action,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-emerald"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-green"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-violet"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-blue"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .cosmic-primary-action,
 :root[data-theme="light"] .cosmic-builder-header button[class*="bg-emerald"] {
     color: #fff !important;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-emerald"] *,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-green"] *,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-violet"] *,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="bg-blue"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-emerald"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-green"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-violet"] *,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="bg-blue"] *,
 :root[data-theme="light"] .cosmic-builder-header button[class*="bg-emerald"] * { color: #fff !important; }
 
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="rounded-full"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="rounded-xl"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[class*="rounded-lg"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="rounded-full"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="rounded-xl"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[class*="rounded-lg"] {
     transform: none !important;
     filter: none !important;
 }
 
 /* One scrollbar treatment for every long popup/drawer. */
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal),
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-y-auto"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-auto"] {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-y-auto"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-auto"] {
     scrollbar-width: thin;
     scrollbar-color: #8eae9e #eef5f1;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal)::-webkit-scrollbar,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-y-auto"]::-webkit-scrollbar,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-auto"]::-webkit-scrollbar { width: 10px; height: 10px; }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal)::-webkit-scrollbar-track,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-y-auto"]::-webkit-scrollbar-track,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-auto"]::-webkit-scrollbar-track {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview)::-webkit-scrollbar,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-y-auto"]::-webkit-scrollbar,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-auto"]::-webkit-scrollbar { width: 10px; height: 10px; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview)::-webkit-scrollbar-track,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-y-auto"]::-webkit-scrollbar-track,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-auto"]::-webkit-scrollbar-track {
     background: #eef5f1;
     border-left: 1px solid #d8e6de;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal)::-webkit-scrollbar-thumb,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-y-auto"]::-webkit-scrollbar-thumb,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-auto"]::-webkit-scrollbar-thumb {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview)::-webkit-scrollbar-thumb,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-y-auto"]::-webkit-scrollbar-thumb,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-auto"]::-webkit-scrollbar-thumb {
     background: #8eae9e;
     border: 2px solid #eef5f1;
     border-radius: 999px;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal)::-webkit-scrollbar-thumb:hover,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-y-auto"]::-webkit-scrollbar-thumb:hover,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) [class*="overflow-auto"]::-webkit-scrollbar-thumb:hover { background: #4e866a; }
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview)::-webkit-scrollbar-thumb:hover,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-y-auto"]::-webkit-scrollbar-thumb:hover,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) [class*="overflow-auto"]::-webkit-scrollbar-thumb:hover { background: #4e866a; }
 
 /* Preserve intentional dark preview artwork and generated-site previews. */
 :root[data-theme="light"] .cosmic-add-spark-modal article > div:first-child,
 :root[data-theme="light"] .cosmic-spark-preview-modal article > div:first-child,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) .cosmic-preview-artwork,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) iframe {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .cosmic-preview-artwork,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) iframe {
     color-scheme: normal;
 }
 
@@ -1565,8 +1569,8 @@ html[data-theme] .cosmic-app-shell main {
    Patch 15 full-audit hotfix v2 — screenshot-driven light-mode polish
    ================================================================== */
 /* Compact, visible close controls across dialogs and drawers. */
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[aria-label*="Close"],
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[aria-label*="close"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[aria-label*="Close"],
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[aria-label*="close"],
 :root[data-theme="light"] .cosmic-global-header-modal > div:first-child > button,
 :root[data-theme="light"] .cosmic-global-footer-modal > div:first-child > button {
     display: inline-flex !important;
@@ -1581,8 +1585,8 @@ html[data-theme] .cosmic-app-shell main {
     box-shadow: none !important;
     opacity: 1 !important;
 }
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[aria-label*="Close"]:hover,
-:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal) button[aria-label*="close"]:hover {
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[aria-label*="Close"]:hover,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button[aria-label*="close"]:hover {
     background: #e9f4ee !important;
     color: #166b4c !important;
     border-color: #9fc6b3 !important;
@@ -1798,10 +1802,10 @@ html[data-theme] .cosmic-app-shell main {
     justify-content: center;
     color: inherit;
 }
-:root[data-theme="light"] .cosmic-app-shell .cosmic-sidebar-item:not(.bg-white) {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).cosmic-sidebar-item:not(.bg-white) {
     color: #64748b !important;
 }
-:root[data-theme="light"] .cosmic-app-shell .cosmic-sidebar-item:not(.bg-white):hover {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).cosmic-sidebar-item:not(.bg-white):hover {
     background: #edf7f1 !important;
     border-color: #d3e6dc !important;
     color: #166b4c !important;
@@ -1892,8 +1896,8 @@ html[data-theme] .cosmic-app-shell main {
 }
 
 /* Light green actions are secondary actions and keep dark green text. */
-:root[data-theme="light"] .cosmic-app-shell .cosmic-add-spark-button,
-:root[data-theme="light"] .cosmic-app-shell .cosmic-add-spark-button * {
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).cosmic-add-spark-button,
+:root[data-theme="light"] .cosmic-app-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).cosmic-add-spark-button * {
     color: #166b4c !important;
 }
 :root[data-theme="dark"] .cosmic-app-shell .cosmic-add-spark-button {
@@ -2595,7 +2599,7 @@ html[data-theme] .cosmic-app-shell main {
 }
 
 
-/* Patch 1.0.123 — force public onboarding/pricing pages to stay light and readable. */
+/* Patch 1.0.124 — force public onboarding/pricing pages to stay light and readable. */
 .cosmic-force-light,
 .cosmic-public-light {
     color-scheme: light !important;
@@ -2809,6 +2813,13 @@ body .cosmic-start-quick-idea.rounded-full.border {
 .cosmic-header-cta * {
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Overlay header primary treatment: white CTA with readable slate label. */
+.cosmic-header-cta.cosmic-overlay-primary-cta,
+.cosmic-header-cta.cosmic-overlay-primary-cta * {
+    color: #1e293b !important;
+    -webkit-text-fill-color: #1e293b !important;
 }
 
 
@@ -3671,3 +3682,330 @@ body .cosmic-start-quick-idea.rounded-full.border {
     color: #64748b !important;
     -webkit-text-fill-color: #64748b !important;
 }
+
+
+/* Patch 1.0.130 — Media banner light-mode isolation
+   Generated website/Spark media banners must keep their own contrast contract.
+   Dashboard light-mode selectors must never recolor photographic hero copy. */
+:root[data-theme="light"] .cosmic-app-shell [data-cosmic-media-banner="true"] :is(h1, h2, h3, h4, p),
+:root[data-theme="light"] .cosmic-ui-shell [data-cosmic-media-banner="true"] :is(h1, h2, h3, h4, p),
+:root[data-theme="light"] [role="dialog"] [data-cosmic-media-banner="true"] :is(h1, h2, h3, h4, p),
+:root[data-theme="light"] [data-cosmic-site-preview="true"] [data-cosmic-media-banner="true"] :is(h1, h2, h3, h4, p) {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Tailwind text utilities inherited by media copy can be rewritten by the app's
+   light appearance layer. Pin them back to the media banner contract. */
+:root[data-theme="light"] .cosmic-app-shell [data-cosmic-media-banner="true"] [class*="text-white"],
+:root[data-theme="light"] .cosmic-app-shell [data-cosmic-media-banner="true"] [class*="text-slate-"],
+:root[data-theme="light"] .cosmic-ui-shell [data-cosmic-media-banner="true"] [class*="text-white"],
+:root[data-theme="light"] .cosmic-ui-shell [data-cosmic-media-banner="true"] [class*="text-slate-"],
+:root[data-theme="light"] [role="dialog"] [data-cosmic-media-banner="true"] [class*="text-white"],
+:root[data-theme="light"] [role="dialog"] [data-cosmic-media-banner="true"] [class*="text-slate-"] {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Preserve deliberate light CTA buttons inside darkened media banners. */
+:root[data-theme="light"] [data-cosmic-media-banner="true"] :is(a, button).bg-white,
+:root[data-theme="light"] [data-cosmic-media-banner="true"] :is(a, button)[class*="!text-slate-950"] {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+/* ================================================================
+   Patch 1.0.131 — Starter Kit light-mode hardening
+   Keep the dashboard appearance layer out of the live-site preview.
+   The preview is rendered in a body portal and owns its own utility colors.
+   ================================================================ */
+.cosmic-template-preview[data-cosmic-starter-kit-portal="true"] {
+    position: fixed !important;
+    inset: 0 !important;
+    top: 0 !important;
+    right: 0 !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    transform: none !important;
+}
+.cosmic-template-preview[data-cosmic-starter-kit-portal="true"] .cosmic-template-preview-panel {
+    width: 100% !important;
+    height: 100% !important;
+    min-height: 100% !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+}
+
+/* Restore the actual Tailwind/site color contract inside Starter Kit previews.
+   Dashboard light mode globally remaps these utilities, so the preview needs
+   a stronger parent-scoped namespace to behave like the installed website. */
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-white { color: #ffffff !important; -webkit-text-fill-color: #ffffff !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-50 { color: #f8fafc !important; -webkit-text-fill-color: #f8fafc !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-100 { color: #f1f5f9 !important; -webkit-text-fill-color: #f1f5f9 !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-200 { color: #e2e8f0 !important; -webkit-text-fill-color: #e2e8f0 !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-300 { color: #cbd5e1 !important; -webkit-text-fill-color: #cbd5e1 !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-400 { color: #94a3b8 !important; -webkit-text-fill-color: #94a3b8 !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-500 { color: #64748b !important; -webkit-text-fill-color: #64748b !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-600 { color: #475569 !important; -webkit-text-fill-color: #475569 !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-700 { color: #334155 !important; -webkit-text-fill-color: #334155 !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-800 { color: #1e293b !important; -webkit-text-fill-color: #1e293b !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-900 { color: #0f172a !important; -webkit-text-fill-color: #0f172a !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .text-slate-950 { color: #020617 !important; -webkit-text-fill-color: #020617 !important; }
+
+/* Transparent dark media controls and outline CTAs must stay dark/transparent
+   instead of being converted into white dashboard surfaces. */
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .bg-black\/20 { background-color: rgb(0 0 0 / .20) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .bg-black\/25 { background-color: rgb(0 0 0 / .25) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .bg-black\/30 { background-color: rgb(0 0 0 / .30) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .bg-black\/35 { background-color: rgb(0 0 0 / .35) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .bg-black\/40 { background-color: rgb(0 0 0 / .40) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .bg-white\/5 { background-color: rgb(255 255 255 / .05) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .bg-white\/10 { background-color: rgb(255 255 255 / .10) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .bg-white\/15 { background-color: rgb(255 255 255 / .15) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .bg-white\/20 { background-color: rgb(255 255 255 / .20) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .border-white\/10 { border-color: rgb(255 255 255 / .10) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .border-white\/15 { border-color: rgb(255 255 255 / .15) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .border-white\/20 { border-color: rgb(255 255 255 / .20) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .border-white\/25 { border-color: rgb(255 255 255 / .25) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] .border-white\/30 { border-color: rgb(255 255 255 / .30) !important; }
+
+/* Media banners: copy remains white, but CTA text follows the CTA surface.
+   This fixes white-on-white buttons seen only under dashboard light mode. */
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"] :is(h1,h2,h3,h4,p) {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"] :is(a,button).bg-white,
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"] :is(a,button)[class*="bg-white/9"],
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"] :is(a,button)[class*="bg-slate-50"],
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"] :is(a,button)[class*="bg-slate-100"] {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"] :is(a,button)[class*="bg-black/"],
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"] :is(a,button)[class*="bg-white/1"],
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [data-cosmic-media-banner="true"] :is(a,button)[class*="border-white"]:not(.bg-white) {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+
+/* ==========================================================================
+   PATCH 1.0.133 — FULL 42-BLOCK PREVIEW CONTRAST QA
+   --------------------------------------------------------------------------
+   Patch 1 isolated the preview tree from dashboard light-mode conversion.
+   This pass restores every translucent white utility currently used by the
+   42 Builder blocks, including opacity variants such as text-white/75 that
+   broad application-dialog rules can otherwise recolor after a body portal.
+   These rules are intentionally scoped to the preview boundary only.
+   ========================================================================== */
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="!text-white/65"] { color: rgb(255 255 255 / 0.65) !important; -webkit-text-fill-color: rgb(255 255 255 / 0.65) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="!text-white/70"] { color: rgb(255 255 255 / 0.7) !important; -webkit-text-fill-color: rgb(255 255 255 / 0.7) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="!text-white/75"] { color: rgb(255 255 255 / 0.75) !important; -webkit-text-fill-color: rgb(255 255 255 / 0.75) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="!text-white/80"] { color: rgb(255 255 255 / 0.8) !important; -webkit-text-fill-color: rgb(255 255 255 / 0.8) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="!text-white/85"] { color: rgb(255 255 255 / 0.85) !important; -webkit-text-fill-color: rgb(255 255 255 / 0.85) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="text-white/50"] { color: rgb(255 255 255 / 0.5) !important; -webkit-text-fill-color: rgb(255 255 255 / 0.5) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="text-white/65"] { color: rgb(255 255 255 / 0.65) !important; -webkit-text-fill-color: rgb(255 255 255 / 0.65) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="text-white/70"] { color: rgb(255 255 255 / 0.7) !important; -webkit-text-fill-color: rgb(255 255 255 / 0.7) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="text-white/75"] { color: rgb(255 255 255 / 0.75) !important; -webkit-text-fill-color: rgb(255 255 255 / 0.75) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/10"] { background-color: rgb(255 255 255 / 0.1) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/12"] { background-color: rgb(255 255 255 / 0.12) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/20"] { background-color: rgb(255 255 255 / 0.2) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/25"] { background-color: rgb(255 255 255 / 0.25) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/35"] { background-color: rgb(255 255 255 / 0.35) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/45"] { background-color: rgb(255 255 255 / 0.45) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/5"] { background-color: rgb(255 255 255 / 0.05) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/55"] { background-color: rgb(255 255 255 / 0.55) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/60"] { background-color: rgb(255 255 255 / 0.6) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/65"] { background-color: rgb(255 255 255 / 0.65) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/70"] { background-color: rgb(255 255 255 / 0.7) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/72"] { background-color: rgb(255 255 255 / 0.72) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/78"] { background-color: rgb(255 255 255 / 0.78) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/80"] { background-color: rgb(255 255 255 / 0.8) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/85"] { background-color: rgb(255 255 255 / 0.85) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/90"] { background-color: rgb(255 255 255 / 0.9) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="bg-white/95"] { background-color: rgb(255 255 255 / 0.95) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/10"] { border-color: rgb(255 255 255 / 0.1) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/15"] { border-color: rgb(255 255 255 / 0.15) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/20"] { border-color: rgb(255 255 255 / 0.2) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/25"] { border-color: rgb(255 255 255 / 0.25) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/30"] { border-color: rgb(255 255 255 / 0.3) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/35"] { border-color: rgb(255 255 255 / 0.35) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/40"] { border-color: rgb(255 255 255 / 0.4) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/45"] { border-color: rgb(255 255 255 / 0.45) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/50"] { border-color: rgb(255 255 255 / 0.5) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/60"] { border-color: rgb(255 255 255 / 0.6) !important; }
+:root[data-theme="light"] [data-cosmic-preview-isolation="true"] [class~="border-white/70"] { border-color: rgb(255 255 255 / 0.7) !important; }
+:root[data-theme="light"] body > .cosmic-preview-isolation [role="dialog"] { color-scheme: dark; }
+
+
+/* Commerce Hotfix A — authenticated uploads + native select parity */
+/* Keep native select menus readable in both dashboard themes. The option popup is
+   browser/OS rendered, so explicit option colors plus color-scheme are required. */
+:root[data-theme="dark"] .cosmic-app-shell select:not(.cosmic-preview-isolation *),
+:root[data-theme="dark"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select {
+    color-scheme: dark;
+    color: #e5e7eb !important;
+    background-color: #111318 !important;
+    border-color: #30343b !important;
+}
+:root[data-theme="dark"] .cosmic-app-shell select:not(.cosmic-preview-isolation *) option,
+:root[data-theme="dark"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select option {
+    color: #e5e7eb !important;
+    background: #111318 !important;
+}
+:root[data-theme="dark"] .cosmic-app-shell select:not(.cosmic-preview-isolation *) option:checked,
+:root[data-theme="dark"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select option:checked {
+    color: #ffffff !important;
+    background: #2a2043 !important;
+}
+:root[data-theme="light"] .cosmic-app-shell select:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select {
+    color-scheme: light;
+    color: #0f172a !important;
+    background-color: #ffffff !important;
+    border-color: #bfd5c9 !important;
+}
+:root[data-theme="light"] .cosmic-app-shell select:not(.cosmic-preview-isolation *) option,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select option {
+    color: #0f172a !important;
+    background: #ffffff !important;
+}
+:root[data-theme="light"] .cosmic-app-shell select:not(.cosmic-preview-isolation *) option:checked,
+:root[data-theme="light"] [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) select option:checked {
+    color: #312e81 !important;
+    background: #ede9fe !important;
+}
+/* Multiple-choice selects should read like listboxes, not collapsed dropdowns. */
+.cosmic-app-shell select[multiple],
+[role="dialog"] select[multiple] {
+    padding-right: .75rem !important;
+    background-image: none !important;
+    line-height: 1.45;
+}
+
+/* ================================================================
+   Commerce light-mode audit hotfix
+   Keep storefront previews isolated while normalizing the complete
+   commerce management workspace and its fixed-position editors.
+   ================================================================ */
+:root[data-theme="light"] .cosmic-commerce-workspace {
+    color: #0f172a;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace .text-white,
+:root[data-theme="light"] .cosmic-commerce-workspace .text-slate-100,
+:root[data-theme="light"] .cosmic-commerce-workspace .text-slate-200 { color: #0f172a !important; }
+:root[data-theme="light"] .cosmic-commerce-workspace .text-slate-300,
+:root[data-theme="light"] .cosmic-commerce-workspace .text-slate-400 { color: #526274 !important; }
+:root[data-theme="light"] .cosmic-commerce-workspace .text-slate-500,
+:root[data-theme="light"] .cosmic-commerce-workspace .text-slate-600 { color: #718096 !important; }
+:root[data-theme="light"] .cosmic-commerce-workspace .text-violet-100,
+:root[data-theme="light"] .cosmic-commerce-workspace .text-violet-200,
+:root[data-theme="light"] .cosmic-commerce-workspace .text-violet-300 { color: #6d28d9 !important; }
+:root[data-theme="light"] .cosmic-commerce-workspace .text-cyan-200,
+:root[data-theme="light"] .cosmic-commerce-workspace .text-cyan-300 { color: #0f766e !important; }
+:root[data-theme="light"] .cosmic-commerce-workspace .text-emerald-200,
+:root[data-theme="light"] .cosmic-commerce-workspace .text-emerald-300 { color: #047857 !important; }
+:root[data-theme="light"] .cosmic-commerce-workspace .text-amber-200,
+:root[data-theme="light"] .cosmic-commerce-workspace .text-amber-300 { color: #a16207 !important; }
+:root[data-theme="light"] .cosmic-commerce-workspace .text-rose-200,
+:root[data-theme="light"] .cosmic-commerce-workspace .text-rose-300 { color: #be123c !important; }
+
+:root[data-theme="light"] .cosmic-commerce-workspace .bg-white\/\[0\.025\],
+:root[data-theme="light"] .cosmic-commerce-workspace .bg-white\/\[0\.035\],
+:root[data-theme="light"] .cosmic-commerce-workspace .bg-white\/\[0\.05\],
+:root[data-theme="light"] .cosmic-commerce-workspace .bg-white\/5,
+:root[data-theme="light"] .cosmic-commerce-workspace .bg-white\/10,
+:root[data-theme="light"] .cosmic-commerce-workspace .bg-black\/15,
+:root[data-theme="light"] .cosmic-commerce-workspace .bg-black\/20,
+:root[data-theme="light"] .cosmic-commerce-workspace .bg-black\/25 { background-color: #f7faf8 !important; }
+:root[data-theme="light"] .cosmic-commerce-workspace .border-white\/10,
+:root[data-theme="light"] .cosmic-commerce-workspace .border-white\/\[0\.07\],
+:root[data-theme="light"] .cosmic-commerce-workspace .border-white\/15,
+:root[data-theme="light"] .cosmic-commerce-workspace .border-white\/20,
+:root[data-theme="light"] .cosmic-commerce-workspace .divide-white\/\[0\.07\] > :not([hidden]) ~ :not([hidden]),
+:root[data-theme="light"] .cosmic-commerce-workspace .divide-white\/10 > :not([hidden]) ~ :not([hidden]) { border-color: #dce8e1 !important; }
+:root[data-theme="light"] .cosmic-commerce-workspace input,
+:root[data-theme="light"] .cosmic-commerce-workspace select,
+:root[data-theme="light"] .cosmic-commerce-workspace textarea {
+    background-color: #ffffff !important;
+    border-color: #cbdad2 !important;
+    color: #0f172a !important;
+    color-scheme: light;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace input::placeholder,
+:root[data-theme="light"] .cosmic-commerce-workspace textarea::placeholder { color: #94a3b8 !important; }
+:root[data-theme="light"] .cosmic-commerce-workspace select option,
+:root[data-theme="light"] .cosmic-commerce-workspace select optgroup {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace input[type="checkbox"],
+:root[data-theme="light"] .cosmic-commerce-workspace input[type="radio"] { accent-color: #7c3aed; }
+
+/* Fixed commerce dialogs live outside the normal page flow, so they need
+   their own appearance contract rather than depending on utility rewrites. */
+:root[data-theme="light"] .cosmic-commerce-modal { background-color: rgba(15, 23, 42, .38) !important; }
+:root[data-theme="light"] .cosmic-commerce-modal > div,
+:root[data-theme="light"] .cosmic-commerce-modal .bg-\[\#0d0d10\],
+:root[data-theme="light"] .cosmic-commerce-modal .bg-slate-950,
+:root[data-theme="light"] .cosmic-commerce-modal .bg-\[\#0d0d10\]\/95 {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #dce8e1 !important;
+}
+:root[data-theme="light"] .cosmic-commerce-modal .bg-black\/15,
+:root[data-theme="light"] .cosmic-commerce-modal .bg-black\/20,
+:root[data-theme="light"] .cosmic-commerce-modal .bg-black\/25,
+:root[data-theme="light"] .cosmic-commerce-modal .bg-white\/\[0\.025\],
+:root[data-theme="light"] .cosmic-commerce-modal .bg-white\/\[0\.035\],
+:root[data-theme="light"] .cosmic-commerce-modal .bg-white\/\[0\.05\],
+:root[data-theme="light"] .cosmic-commerce-modal .bg-white\/5,
+:root[data-theme="light"] .cosmic-commerce-modal .bg-white\/10 { background-color: #f7faf8 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .border-white\/10,
+:root[data-theme="light"] .cosmic-commerce-modal .border-white\/\[0\.07\],
+:root[data-theme="light"] .cosmic-commerce-modal .border-white\/15,
+:root[data-theme="light"] .cosmic-commerce-modal .border-white\/20,
+:root[data-theme="light"] .cosmic-commerce-modal .divide-white\/10 > :not([hidden]) ~ :not([hidden]) { border-color: #dce8e1 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .text-white,
+:root[data-theme="light"] .cosmic-commerce-modal .text-slate-100,
+:root[data-theme="light"] .cosmic-commerce-modal .text-slate-200 { color: #0f172a !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .text-slate-300,
+:root[data-theme="light"] .cosmic-commerce-modal .text-slate-400 { color: #526274 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .text-slate-500,
+:root[data-theme="light"] .cosmic-commerce-modal .text-slate-600 { color: #718096 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .text-violet-100,
+:root[data-theme="light"] .cosmic-commerce-modal .text-violet-200,
+:root[data-theme="light"] .cosmic-commerce-modal .text-violet-300 { color: #6d28d9 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .text-cyan-200,
+:root[data-theme="light"] .cosmic-commerce-modal .text-cyan-300 { color: #0f766e !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .text-emerald-200,
+:root[data-theme="light"] .cosmic-commerce-modal .text-emerald-300 { color: #047857 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .text-amber-200,
+:root[data-theme="light"] .cosmic-commerce-modal .text-amber-300 { color: #a16207 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .text-rose-200,
+:root[data-theme="light"] .cosmic-commerce-modal .text-rose-300 { color: #be123c !important; }
+:root[data-theme="light"] .cosmic-commerce-modal input,
+:root[data-theme="light"] .cosmic-commerce-modal select,
+:root[data-theme="light"] .cosmic-commerce-modal textarea {
+    background-color: #ffffff !important;
+    border-color: #cbdad2 !important;
+    color: #0f172a !important;
+    color-scheme: light;
+}
+:root[data-theme="light"] .cosmic-commerce-modal input::placeholder,
+:root[data-theme="light"] .cosmic-commerce-modal textarea::placeholder { color: #94a3b8 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal select option,
+:root[data-theme="light"] .cosmic-commerce-modal select optgroup { background: #ffffff !important; color: #0f172a !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .sticky { background-color: rgba(255,255,255,.96) !important; border-color: #dce8e1 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal aside { background-color: #f7faf8 !important; border-color: #dce8e1 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal aside button.bg-violet-500\/15 { background-color: #ede9fe !important; color: #5b21b6 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .bg-violet-400\/10,
+:root[data-theme="light"] .cosmic-commerce-modal .bg-violet-500\/15 { background-color: #ede9fe !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .bg-cyan-400\/5 { background-color: #ecfeff !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .bg-emerald-400\/5 { background-color: #ecfdf5 !important; }
+:root[data-theme="light"] .cosmic-commerce-modal .bg-fuchsia-400\/\[0\.025\] { background-color: #fdf4ff !important; }

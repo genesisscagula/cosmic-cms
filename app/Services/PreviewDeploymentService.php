@@ -198,20 +198,31 @@ class PreviewDeploymentService
         $base = Str::slug($website->name) ?: 'website-'.$website->id;
         $slug = Str::limit($base, 54, '');
         $reserved = array_map('strtolower', (array) config('cosmic_preview.reserved_slugs', []));
-
-        if (in_array(strtolower($slug), $reserved, true)) {
-            $slug = Str::limit($slug.'-site', 54, '');
-        }
-
-        $candidate = $slug;
+        $incrementBase = $slug;
         $counter = 2;
+
+        // `www` belongs to the main Cosmic CMS host. Keep the display name intact,
+        // but start its generated preview slug at www-2 and use the normal
+        // collision sequence (www-3, www-4, ...) after that.
+        if (strtolower($slug) === 'www') {
+            $candidate = 'www-2';
+            $incrementBase = 'www';
+            $counter = 3;
+        } else {
+            if (in_array(strtolower($slug), $reserved, true)) {
+                $slug = Str::limit($slug.'-site', 54, '');
+                $incrementBase = $slug;
+            }
+
+            $candidate = $slug;
+        }
 
         while (
             in_array(strtolower($candidate), $reserved, true) ||
             Website::where('preview_slug', $candidate)->whereKeyNot($website->getKey())->exists()
         ) {
             $suffix = '-'.$counter++;
-            $candidate = Str::limit($slug, 60 - strlen($suffix), '').$suffix;
+            $candidate = Str::limit($incrementBase, 60 - strlen($suffix), '').$suffix;
         }
 
         $website->forceFill(['preview_slug' => $candidate])->save();

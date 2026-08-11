@@ -16,6 +16,7 @@ use App\Services\ThemeColorResolver;
 use App\Services\ThemeLogoPaletteService;
 use App\Services\SmartLogoPromptService;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Intervention\Image\Facades\Image; // Import ni sa taas sa imong controller
 
@@ -187,6 +188,24 @@ class ImageController extends Controller
         $themeSettings['brand_favicon_url'] = $logoUrl;
         $themeSettings['brand_logo_variants'] = [];
         $website->theme_settings = $themeSettings;
+
+        // Registered Builder parity with the trial flow: Save Logo is the commit
+        // point. Persist the active logo into both global shell locations now so
+        // a refresh/preview/export immediately uses the confirmed crop instead of
+        // waiting for a separate Save Draft action.
+        $header = is_array($website->global_header) ? $website->global_header : [];
+        $footer = is_array($website->global_footer) ? $website->global_footer : [];
+        $header['logo_image_url'] = $logoUrl;
+        $header['logo_filter'] = 'none';
+        $header['logo_height'] = max(60, (int) ($header['logo_height'] ?? 0));
+        $header['logo_max_width'] = max(300, (int) ($header['logo_max_width'] ?? 0));
+        $footer['logo_image_url'] = $logoUrl;
+        $footer['logo_filter'] = 'none';
+        if (! empty($header['logo_text'])) {
+            $footer['logo_text'] = $footer['logo_text'] ?? $header['logo_text'];
+        }
+        $website->global_header = $header;
+        $website->global_footer = $footer;
         $website->save();
 
         // Successful crop commits the logo; now the staged Luna source can be removed.
@@ -197,6 +216,13 @@ class ImageController extends Controller
             if (str_starts_with($relative, 'storage/')) $relative = substr($relative, 8);
             Storage::disk('public')->delete($relative);
         }
+
+        Log::info('[BuilderLogo] Cropped logo committed.', [
+            'website_id' => $website->id,
+            'logo_url' => $logoUrl,
+            'logo_width' => (int) ($dimensions['width'] ?? 650),
+            'logo_height' => (int) ($dimensions['height'] ?? 200),
+        ]);
 
         return response()->json([
             'status' => 'success',
@@ -238,9 +264,35 @@ class ImageController extends Controller
                 ? (array) data_get($settings, 'custom_brand_theme.palette', [])
                 : [];
 
-            $logoPalette = $logoPalettes->forPrimary($themeKey, $validated['primary_hex']);
-            $logoPalette['secondary'] = strtoupper((string) ($validated['secondary_hex'] ?? ($customPalette['secondary'] ?? $customPalette['surface'] ?? $logoPalette['secondary'])));
-            $logoPalette['tertiary'] = strtoupper((string) ($validated['tertiary_hex'] ?? ($customPalette['tertiary'] ?? $customPalette['accent'] ?? $logoPalette['tertiary'])));
+            // Match Logo to Theme must consume the FINAL website palette exactly.
+            // Do not call ThemeLogoPaletteService::forPrimary() here: that service
+            // intentionally selects a curated/random logo variation for fresh logo
+            // generation, which can introduce unrelated supporting hues.
+            //
+            // Builder payload semantics:
+            // - primary_hex   = theme background / dominant brand anchor
+            // - accent_hex    = theme accent
+            // - secondary_hex = theme surface / supporting neutral
+            $primaryHex = strtoupper((string) $validated['primary_hex']);
+            $accentHex = strtoupper((string) ($validated['accent_hex']
+                ?? $customPalette['accent']
+                ?? $validated['tertiary_hex']
+                ?? $validated['secondary_hex']
+                ?? $primaryHex));
+            $surfaceHex = strtoupper((string) ($validated['secondary_hex']
+                ?? $customPalette['surface']
+                ?? $customPalette['secondary']
+                ?? $validated['tertiary_hex']
+                ?? $primaryHex));
+
+            $logoPalette = [
+                'primary' => $primaryHex,
+                'secondary' => $accentHex,
+                'tertiary' => $surfaceHex,
+                'accent' => $accentHex,
+                'surface' => $surfaceHex,
+                'header_background' => '#FFFFFF',
+            ];
 
             $brandMemory = (array) data_get($website->settings, 'brand_memory', []);
             $sourceLogoUrl = trim((string) ($settings['brand_original_logo_url'] ?? $validated['logo_url']));
@@ -264,8 +316,7 @@ class ImageController extends Controller
         }
 
         if (($result['extension'] ?? '') === 'png') {
-            // Match Logo now has design freedom, so normalize every AI result
-            // back to the same navbar-safe canvas used by Generate Logo.
+            // Normalize every AI result back to the same navbar-safe crop flow used by Generate Logo.
             $result['bytes'] = $canvas->trimTransparentPng($result['bytes'], 6);
         }
 
@@ -311,12 +362,14 @@ class ImageController extends Controller
         $validated = $request->validate([
             'logo_url' => ['required', 'string', 'max:2048'],
             'automatic_upload' => ['nullable', 'boolean'],
+            'post_upload_choice' => ['nullable', 'boolean'],
         ]);
 
         $user = $request->user();
         $automaticUpload = (bool) ($validated['automatic_upload'] ?? false);
+        $postUploadChoice = (bool) ($validated['post_upload_choice'] ?? false);
 
-        if ($automaticUpload) {
+        if ($automaticUpload || $postUploadChoice) {
             $logoPath = (string) parse_url($validated['logo_url'], PHP_URL_PATH);
             $expectedPrefix = '/storage/websites/'.$website->id.'/logos/';
             if (! str_starts_with($logoPath, $expectedPrefix)) {
@@ -342,7 +395,7 @@ class ImageController extends Controller
             }
         }
 
-        $cost = $automaticUpload ? 0 : 50;
+        $cost = $automaticUpload ? 0 : ($postUploadChoice ? 20 : 50);
         if ($cost > 0 && ! $wallet->canAfford($user, $cost)) {
             return response()->json([
                 'message' => "Not enough Cosmic Credits. Theme-from-logo analysis costs {$cost} credits.",
@@ -370,6 +423,19 @@ class ImageController extends Controller
             $settings['custom_brand_theme'] = $customTheme;
             $settings['brand_palette'] = $customTheme['palette'] ?? ($result['palette'] ?? []);
             $settings['brand_source'] = 'logo';
+            // Upload -> crop -> automatic analysis should behave exactly like the
+            // trial Builder: My Brand Theme becomes active as soon as analysis
+            // succeeds. Manual Match Theme to Logo still waits for its preview/apply
+            // flow because automatic_upload is false in that path.
+            if ($automaticUpload || $postUploadChoice) {
+                $settings['primary'] = 'my-brand';
+                $settings['brand_active_logo_url'] = $validated['logo_url'];
+                $settings['brand_original_logo_url'] = $settings['brand_original_logo_url'] ?? $validated['logo_url'];
+                $settings['brand_favicon_url'] = $validated['logo_url'];
+                $settings['logo_theme_sync_state'] = 'synced';
+                $settings['logo_theme_sync_source'] = 'theme_to_logo';
+                $settings['logo_theme_synced_theme'] = 'my-brand';
+            }
             unset($settings['brand_pre_upload_snapshot']);
             $website->theme_settings = $settings;
             $website->save();
@@ -398,6 +464,7 @@ class ImageController extends Controller
             ...$result,
             'cost' => $cost,
             'automatic_upload' => $automaticUpload,
+            'post_upload_choice' => $postUploadChoice,
             'balance' => $wallet->balance($user),
         ]);
     }
@@ -550,6 +617,22 @@ class ImageController extends Controller
             $themeSettings['brand_favicon_url'] = $url;
             $themeSettings['brand_logo_variants'] = [];
             $website->theme_settings = $themeSettings;
+
+            // SVGs skip the raster cropper, so upload itself is their Save Logo
+            // commit point. Keep global header/footer in sync immediately.
+            $header = is_array($website->global_header) ? $website->global_header : [];
+            $footer = is_array($website->global_footer) ? $website->global_footer : [];
+            $header['logo_image_url'] = $url;
+            $header['logo_filter'] = 'none';
+            $header['logo_height'] = max(60, (int) ($header['logo_height'] ?? 0));
+            $header['logo_max_width'] = max(300, (int) ($header['logo_max_width'] ?? 0));
+            $footer['logo_image_url'] = $url;
+            $footer['logo_filter'] = 'none';
+            if (! empty($header['logo_text'])) {
+                $footer['logo_text'] = $footer['logo_text'] ?? $header['logo_text'];
+            }
+            $website->global_header = $header;
+            $website->global_footer = $footer;
             $website->save();
         }
 
@@ -676,8 +759,11 @@ class ImageController extends Controller
             return null;
         }
 
-        // Header crop contract: final crop is exactly 650 × 200.
-        if ($width !== 650 || $height !== 200) {
+        // The browser may alpha-trim the 650 × 200 working frame before upload.
+        // Keep registered Builder parity with the trial crop path: accept either
+        // the full frame or any tighter PNG produced from that frame. Reject only
+        // images that exceed the crop contract bounds.
+        if ($width > 650 || $height > 200) {
             return null;
         }
 

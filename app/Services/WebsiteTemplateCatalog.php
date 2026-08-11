@@ -2,6 +2,8 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Facades\File;
+
 /**
  * Product-owned template catalog. Patch 6.1.3 adds curated Spark recipes to the starter
  * catalog across Cosmic's primary industries while keeping the templates
@@ -85,9 +87,6 @@ class WebsiteTemplateCatalog
 
         return collect($this->agencyCollections())
             ->map(function (array $collection) use ($levels, $accountRank) {
-                $required = (string) $collection['minimum_plan'];
-                $locked = $accountRank < ($levels[$required] ?? PHP_INT_MAX);
-
                 return [
                     ...$collection,
                     'locked' => false,
@@ -114,12 +113,13 @@ class WebsiteTemplateCatalog
 
         return [
             'slug' => $template,
-            'minimum_plan' => (string) ($metadata['minimum_plan'] ?? 'pro'),
+            'minimum_plan' => 'starter',
             'industry' => (string) ($metadata['industry'] ?? $profile['industry'] ?? 'general'),
             'theme_family' => (string) ($metadata['theme_family'] ?? $profile['theme'] ?? 'midnight'),
             'page_count' => max(1, (int) ($metadata['page_count'] ?? 1)),
             'spark_collection' => (string) ($metadata['spark_collection'] ?? "{$template}-starter"),
             'preview_sparks' => $this->previewSparkTypes($template),
+            'preview_blocks' => $this->starterHomeBlocks($profile, $template),
             'spark_count' => count($this->previewSparkTypes($template)),
             'is_featured' => (bool) ($metadata['is_featured'] ?? false),
             'is_premium' => (bool) ($metadata['is_premium'] ?? false),
@@ -211,10 +211,10 @@ class WebsiteTemplateCatalog
 
                 return $definition ? [
                     ...$definition,
-                    'locked' => ! $decision['allowed'],
-                    'lock_reason' => $decision['reason'],
-                    'lock_message' => $decision['message'],
-                    'upgrade_prompt' => $decision['upgrade'] ?? null,
+                    'locked' => false,
+                    'lock_reason' => null,
+                    'lock_message' => null,
+                    'upgrade_prompt' => null,
                 ] : null;
             })
             ->filter()
@@ -249,7 +249,7 @@ class WebsiteTemplateCatalog
             'theme_settings' => [
                 'primary' => $profile['theme'],
                 'secondary' => 'white',
-                'tertiary' => 'stone',
+                'tertiary' => 'surface',
                 'auto' => true,
             ],
             'global_header' => [
@@ -304,7 +304,7 @@ class WebsiteTemplateCatalog
 
         $family = $this->templateFamily($profile['industry']);
         $variant = $this->templateVariant($template);
-        $blocks = [$this->heroSpark($profile, $variant)];
+        $blocks = [$this->heroSpark($profile, $template, $variant)];
 
         foreach ($this->starterKitRecipe($template, $family, $variant) as $spark) {
             $blocks[] = match ($spark) {
@@ -461,35 +461,106 @@ class WebsiteTemplateCatalog
         };
     }
 
-    private function heroSpark(array $profile, int $variant): array
+    /**
+     * Give every Starter Kit a deliberate hero instead of cycling one generic
+     * banner by catalog position. Image-backed heroes use only cms-images/default.
+     */
+    private function heroSpark(array $profile, string $template, int $variant): array
     {
+        $heroTypes = [
+            'aurora-agency' => 'hero_bento_premium',
+            'summit-consulting' => 'hero_split_image',
+            'nova-startup' => 'hero_floating_cards',
+            'midnight-studio' => 'hero_editorial_overlay',
+            'table-tide' => 'hero_slider_fade',
+            'ember-kitchen' => 'hero_luxury_fullscreen',
+            'olive-hearth' => 'hero_split_editorial',
+            'morning-brew' => 'hero_background_image',
+            'roast-lab' => 'hero_parallax',
+            'buildcore' => 'hero_parallax',
+            'skyline-builders' => 'hero_slider_fade',
+            'forge-works' => 'hero_split_image',
+            'carepoint' => 'hero_split_editorial',
+            'mednova' => 'hero_bento_premium',
+            'smile-studio' => 'hero_split_image',
+            'iron-gym' => 'hero_parallax',
+            'motion-studio' => 'hero_floating_cards',
+            'haven-estates' => 'hero_slider_fade',
+            'prime-homes' => 'hero_luxury_fullscreen',
+            'learnhub' => 'hero_bento_premium',
+            'bright-academy' => 'hero_split_image',
+            'cloudtech' => 'hero_floating_cards',
+            'orbit-launch' => 'hero_bento_premium',
+            'horizon-travel' => 'hero_slider_fade',
+            'atlas-escape' => 'hero_parallax',
+            'legacy-law' => 'hero_split_editorial',
+            'justice-partners' => 'hero_editorial_overlay',
+            'obsidian-atelier' => 'hero_luxury_fullscreen',
+            'form-function' => 'hero_editorial_overlay',
+        ];
+
+        $type = $heroTypes[$template] ?? 'hero_background_image';
+        $image = $this->defaultImage($template, $variant);
         $base = [
+            'type' => $type,
             'theme' => 'auto',
             'tagline' => $profile['tagline'],
+            'eyebrow' => strtoupper($profile['tagline']),
+            'category' => $profile['tagline'],
             'heading' => $profile['heading'],
             'text' => $profile['text'],
+            'description' => $profile['text'],
             'primary_label' => $this->ctaLabel($profile['industry']),
             'primary_url' => '#contact',
             'secondary_label' => 'Learn more',
             'secondary_url' => '#about',
-            'image_url' => 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=2000&q=85',
+            'button_label' => $this->ctaLabel($profile['industry']),
+            'button_url' => '#contact',
+            'image_url' => $image,
+            'overlayOpacity' => in_array($type, ['hero_parallax', 'hero_luxury_fullscreen'], true) ? 68 : 60,
+            'height' => 'large',
         ];
 
-        return match ($variant) {
-            1 => [...$base, 'type' => 'hero_split_image', 'trust_line' => 'Trusted by growing teams', 'image_badge' => 'Established'],
-            2 => [...$base, 'type' => 'hero_parallax', 'category' => $profile['tagline'], 'overlayOpacity' => 46, 'height' => 'large'],
-            3 => [...$base, 'type' => 'hero_editorial_overlay', 'category' => $profile['tagline'], 'overlayOpacity' => 44, 'height' => 'large'],
-            4 => [...$base, 'type' => 'hero_floating_cards', 'image_badge' => 'Featured', 'card_one_value' => '01', 'card_one_label' => 'Discover', 'card_two_value' => '02', 'card_two_label' => 'Plan', 'card_three_value' => '03', 'card_three_label' => 'Grow'],
-            5 => [...$base, 'type' => 'hero_split_editorial', 'eyebrow' => $profile['tagline'], 'editorial_index' => '01', 'proof_value' => 'Built to convert', 'proof_label' => 'Cosmic starter', 'image_caption' => $profile['industry']],
-            6 => [...$base, 'type' => 'hero_luxury_fullscreen', 'eyebrow' => $profile['tagline'], 'location_label' => ucfirst($profile['industry']), 'edition_label' => 'Cosmic Edition'],
-            7 => [...$base, 'type' => 'hero_bento_premium', 'eyebrow' => $profile['tagline'], 'image_label' => 'Featured', 'metric_value' => 'Built fast', 'metric_label' => 'Starter kit', 'proof_title' => 'Ready to customize', 'proof_text' => 'Built from reusable Cosmic Sparks.', 'card_one_label' => 'Strategy', 'card_two_label' => 'Design', 'card_three_label' => 'Launch'],
-            default => [
-                'type' => 'hero_background_image', 'theme' => 'auto',
-                'tagline' => $profile['tagline'], 'heading' => $profile['heading'], 'text' => $profile['text'],
-                'button_label' => $this->ctaLabel($profile['industry']), 'button_url' => '#contact',
-                'image_url' => $base['image_url'], 'overlayOpacity' => 48, 'textAlign' => 'center', 'height' => 'large',
-            ],
+        if ($type === 'hero_slider_fade') {
+            return [
+                ...$base,
+                'autoplay' => false,
+                'interval' => 5000,
+                'pause_on_hover' => true,
+                'show_dots' => true,
+                'show_arrows' => true,
+                'slides' => [
+                    $this->starterSliderSlide($profile, $template, 0, $profile['heading'], $profile['text']),
+                    $this->starterSliderSlide($profile, $template, 1, $profile['services'][0] ?? 'Discover more', 'Explore a signature part of the experience and make the value immediately clear.'),
+                    $this->starterSliderSlide($profile, $template, 2, 'A clear next step', 'Turn interest into an enquiry, booking, visit, or conversation.'),
+                ],
+            ];
+        }
+
+        return match ($type) {
+            'hero_split_image' => [...$base, 'trust_line' => 'Trusted by people who value thoughtful service', 'image_badge' => 'Featured'],
+            'hero_parallax' => [...$base, 'parallaxSpeed' => 20 + ($variant % 4) * 3, 'contentAlign' => $variant % 2 ? 'left' : 'center', 'scroll_label' => 'Scroll to explore'],
+            'hero_editorial_overlay' => [...$base, 'overlayOpacity' => 70],
+            'hero_floating_cards' => [...$base, 'image_badge' => 'Featured', 'card_one_value' => '01', 'card_one_label' => $profile['services'][0] ?? 'Discover', 'card_two_value' => '02', 'card_two_label' => $profile['services'][1] ?? 'Plan', 'card_three_value' => '03', 'card_three_label' => $profile['services'][2] ?? 'Grow'],
+            'hero_split_editorial' => [...$base, 'editorial_index' => '01', 'proof_value' => 'Built with purpose', 'proof_label' => ucfirst($profile['industry']), 'image_caption' => $profile['tagline']],
+            'hero_luxury_fullscreen' => [...$base, 'location_label' => ucfirst($profile['industry']), 'edition_label' => 'Cosmic Edition'],
+            'hero_bento_premium' => [...$base, 'image_label' => 'Featured', 'metric_value' => 'Ready', 'metric_label' => 'To customize', 'proof_title' => 'A complete starting point', 'proof_text' => 'Curated from reusable Cosmic Sparks.', 'card_one_label' => $profile['services'][0] ?? 'Strategy', 'card_two_label' => $profile['services'][1] ?? 'Design', 'card_three_label' => $profile['services'][2] ?? 'Launch'],
+            default => [...$base, 'textAlign' => 'center'],
         };
+    }
+
+    private function starterSliderSlide(array $profile, string $template, int $offset, string $heading, string $description): array
+    {
+        return [
+            'image_url' => $this->defaultImage($template, $offset),
+            'eyebrow' => strtoupper($profile['tagline']),
+            'heading' => $heading,
+            'description' => $description,
+            'button_1_text' => $this->ctaLabel($profile['industry']),
+            'button_1_url' => '#contact',
+            'button_2_text' => 'Learn more',
+            'button_2_url' => '#about',
+        ];
     }
 
     private function storySpark(array $profile, string $family, int $variant): array
@@ -512,7 +583,7 @@ class WebsiteTemplateCatalog
             'type' => $variant % 2 === 0 ? 'feature_image_left' : 'feature_image_right', 'theme' => 'auto', 'category' => $copy[0],
             'heading' => $copy[1], 'text' => $copy[2],
             'button_label' => 'Learn more', 'button_url' => '#about',
-            'image_url' => 'https://images.unsplash.com/photo-1521737711867-e3b97375f902?auto=format&fit=crop&w=1600&q=85',
+            'image_url' => $this->defaultImage($profile['industry'], $variant + 2),
         ];
     }
 
@@ -603,7 +674,35 @@ class WebsiteTemplateCatalog
             default => 'Ready to start a conversation?',
         };
 
-        return ['type' => $variant % 2 === 0 ? 'hero_centered_cta' : 'image_cta_banner', 'theme' => 'auto', 'tagline' => 'Take the next step', 'heading' => $heading, 'text' => 'Replace this copy with the most useful next step for your customers.', 'button_label' => $this->ctaLabel($profile['industry']), 'button_url' => '#contact', 'image_url' => 'https://images.unsplash.com/photo-1497366754035-f200968a6e72?auto=format&fit=crop&w=1600&q=85'];
+        return ['type' => $variant % 2 === 0 ? 'hero_centered_cta' : 'image_cta_banner', 'theme' => 'auto', 'tagline' => 'Take the next step', 'heading' => $heading, 'text' => 'Replace this copy with the most useful next step for your customers.', 'button_label' => $this->ctaLabel($profile['industry']), 'button_url' => '#contact', 'image_url' => $this->defaultImage($profile['industry'], $variant + 4)];
+    }
+
+    /**
+     * Pick a deterministic image from the neutral default media pool only.
+     * Starter Kits must never depend on the dedicated background folder so the
+     * same curated assets work consistently in cards, previews, and installed sites.
+     */
+    private function defaultImage(string $seed, int $offset = 0): string
+    {
+        $directory = storage_path('app/public/cms-images/default');
+
+        if (! File::isDirectory($directory)) {
+            return '/storage/cms-images/default/placeholder.jpg';
+        }
+
+        $images = collect(File::files($directory))
+            ->filter(fn ($file) => preg_match('/\.(avif|webp|png|jpe?g)$/i', $file->getFilename()) === 1)
+            ->sortBy(fn ($file) => $file->getFilename())
+            ->values();
+
+        if ($images->isEmpty()) {
+            return '/storage/cms-images/default/placeholder.jpg';
+        }
+
+        $index = (abs(crc32($seed)) + max(0, $offset)) % $images->count();
+        $image = $images->get($index);
+
+        return asset('storage/cms-images/default/'.$image->getFilename()).'?v='.$image->getMTime();
     }
 
     private function ctaLabel(string $industry): string

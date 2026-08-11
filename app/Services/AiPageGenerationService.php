@@ -66,6 +66,7 @@ class AiPageGenerationService
                 'fallback_industry' => $this->resolveLayoutFolder($prompt),
                 'image_keywords' => [trim($prompt)],
                 'visual_style' => 'professional editorial',
+                'overlay_header_on_banner' => false,
             ];
         }
 
@@ -135,12 +136,26 @@ class AiPageGenerationService
             ->take(6)
             ->values()
             ->all();
+        $firstBlockType = strtolower((string) data_get($blocks, '0.type', ''));
+        $supportsOverlayHeader = $firstBlockType !== ''
+            && ($firstBlockType === 'hero' || str_contains($firstBlockType, 'hero') || str_contains($firstBlockType, 'banner'));
+        $explicitOverlayRequest = Str::contains(Str::lower($prompt), [
+            'overlay header',
+            'transparent header',
+            'header over hero',
+            'navigation over hero',
+            'menu over hero',
+        ]);
+        $overlayHeaderOnBanner = $supportsOverlayHeader
+            && ($explicitOverlayRequest || (bool) ($visualIntent['overlay_header_on_banner'] ?? false));
+
         Log::info('[TrialGenerationPipeline] Trial result ready.', [
             'placeholder_folder' => $placeholderFolder,
             'blocks' => count($blocks),
             'media_keywords' => count($mediaKeywords),
             'target_image_count' => $targetImageCount,
             'remote_image_count' => count($remoteImages),
+            'overlay_header_on_banner' => $overlayHeaderOnBanner,
             'elapsed_ms' => (int) ((microtime(true) - $startedAt) * 1000),
         ]);
 
@@ -151,6 +166,7 @@ class AiPageGenerationService
             'media_keywords' => $mediaKeywords,
             'target_image_count' => $targetImageCount,
             'visual_intent' => $visualIntent,
+            'overlay_header_on_banner' => $overlayHeaderOnBanner,
             'remote_images' => $remoteImages,
             'parallel' => $parallel['diagnostics'],
         ];
@@ -180,6 +196,7 @@ class AiPageGenerationService
                 'fallback_industry' => $resolvedImageFolder,
                 'image_keywords' => [trim($prompt)],
                 'visual_style' => 'professional editorial',
+                'overlay_header_on_banner' => false,
             ];
         }
 

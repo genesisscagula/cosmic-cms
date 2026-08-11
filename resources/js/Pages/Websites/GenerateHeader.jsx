@@ -35,23 +35,24 @@ function EditableText({ value, onSave, className }) {
     );
 }
 
-export function DarkCyanHeader({ block, onUpdate, pageTargets = [], onLogoClick = null }) {
+export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', overlayPrimaryTreatment = false, onUpdate, pageTargets = [], onLogoClick = null }) {
     const menuItems = block.menu || [{ label: 'Home', url: '#' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }];
 
     // Theme Config for Light Mode
-    const theme = block.theme === 'white' ? 'bg-white border-slate-200' : 'bg-[#f8fafc] border-slate-200';
-    const textColor = block.theme === 'white' ? 'text-slate-900' : 'text-slate-800';
-    const subColor = 'text-slate-500';
-    const accent = 'text-emerald-600';
+    const theme = overlay ? 'bg-transparent border-transparent' : (block.theme === 'white' ? 'bg-white border-slate-200' : 'bg-[#f8fafc] border-slate-200');
+    const overlayDarkText = overlay && overlayTone === 'dark';
+    const textColor = overlay ? (overlayDarkText ? 'text-slate-950' : 'text-white') : (block.theme === 'white' ? 'text-slate-900' : 'text-slate-800');
+    const subColor = overlay ? (overlayDarkText ? 'text-slate-800' : 'text-white/85') : 'text-slate-500';
+    const accent = overlay ? (overlayDarkText ? 'text-slate-950' : 'text-white') : 'text-emerald-600';
 
     const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
     const logoHeight = Math.min(64, Math.max(24, Number(block.logo_height || 40)));
     const logoMaxWidth = Math.min(320, Math.max(220, Number(block.logo_max_width || 300)));
 
     return (
-        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b px-5 py-5 sm:px-6 sm:py-6 lg:flex-nowrap transition-colors duration-500`}>
+        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${overlay ? 'px-[3.5rem] py-[2.5rem]' : 'px-5 py-5 sm:px-6 sm:py-6'} lg:flex-nowrap transition-colors duration-500`}>
             {logoImageUrl ? (
-                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto object-contain" /></button>
+                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: overlayPrimaryTreatment ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto object-contain" /></button>
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
@@ -73,7 +74,7 @@ export function DarkCyanHeader({ block, onUpdate, pageTargets = [], onLogoClick 
     );
 }
 
-export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets = [], onLogoClick = null }) {
+export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'light', overlayPrimaryTreatment = false, onUpdate, globalTheme, pageTargets = [], onLogoClick = null }) {
     const menuItems = block.menu || [
         { label: 'Home', url: '#' }, 
         { label: 'About', url: '#' }, 
@@ -82,9 +83,10 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets 
     ];
 
     // Theme Config for Light/Neutral
-    const theme = block.theme === 'white' ? 'bg-white' : 'bg-[#f8fafc]';
-    const textColor = 'text-slate-900';
-    const subColor = 'text-slate-500';
+    const theme = overlay ? 'bg-transparent' : (block.theme === 'white' ? 'bg-white' : 'bg-[#f8fafc]');
+    const overlayDarkText = overlay && overlayTone === 'dark';
+    const textColor = overlay ? (overlayDarkText ? 'text-slate-950' : 'text-white') : 'text-slate-900';
+    const subColor = overlay ? (overlayDarkText ? 'text-slate-800' : 'text-white/85') : 'text-slate-500';
 
     const primaryTheme = getEffectiveTheme('primary', globalTheme);
 
@@ -93,9 +95,9 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets 
     const logoMaxWidth = Math.min(320, Math.max(220, Number(block.logo_max_width || 300)));
 
     return (
-        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b border-slate-200 px-5 py-5 sm:px-6 sm:py-6 lg:flex-nowrap`}>
+        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${overlay ? 'border-transparent px-[3.5rem] py-[2.5rem]' : 'border-slate-200 px-5 py-5 sm:px-6 sm:py-6'} lg:flex-nowrap`}>
             {logoImageUrl ? (
-                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto object-contain" /></button>
+                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: overlayPrimaryTreatment ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto object-contain" /></button>
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
@@ -107,15 +109,14 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets 
                 <ul className="flex flex-wrap list-none gap-x-3 gap-y-2 whitespace-nowrap sm:gap-x-5 lg:flex-nowrap">
                     <HeaderNavigation
                         items={menuItems}
-                        textClass={`${subColor} text-[15px] font-medium hover:text-slate-900`}
+                        textClass={`${subColor} text-[15px] font-medium ${overlay ? (overlayDarkText ? 'hover:text-slate-950' : 'hover:text-white') : 'hover:text-slate-900'}`}
                         onUpdate={(menu) => onUpdate({ menu })}
                         pageTargets={pageTargets}
                     />
                 </ul>
                 <div
-                    className={`cosmic-header-cta
-                        ${primaryTheme.bg}
-                        ${primaryTheme.text}
+                    className={`cosmic-header-cta ${overlayPrimaryTreatment ? 'cosmic-overlay-primary-cta' : ''}
+                        ${overlayPrimaryTreatment ? 'bg-white text-slate-800' : `${primaryTheme.bg} ${primaryTheme.text}`}
                         px-7
                         py-3
                         shrink-0
@@ -129,7 +130,7 @@ export function GlassmorphismHeader({ block, onUpdate, globalTheme, pageTargets 
                 >
                     <EditableText 
                         value={block.cta_label || 'Get Started'} 
-                        className="text-white font-bold"
+                        className={`${overlayPrimaryTreatment ? 'text-slate-800' : 'text-white'} font-bold`}
                         onSave={(val) => onUpdate({ cta_label: val })}
                     />
                 </div>

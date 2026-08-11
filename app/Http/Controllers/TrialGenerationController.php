@@ -187,12 +187,16 @@ class TrialGenerationController extends Controller
                     $validated['prompt']
                 )
             );
+            // Luna's visual-intent decision is a website-level default. The Trial
+            // Builder still exposes the same switch so the user can override it.
+            $finalThemeSettings['overlay_header_on_banner'] = (bool) ($generated['overlay_header_on_banner'] ?? false);
             $trial->update(['preview_theme' => $finalThemeSettings]);
             $trial->setAttribute('preview_theme', $finalThemeSettings);
 
             Log::info('[TrialGeneration] Final website theme committed before logo generation.', [
                 'trial' => $trial->id,
                 'theme' => data_get($finalThemeSettings, 'primary'),
+                'overlay_header_on_banner' => (bool) data_get($finalThemeSettings, 'overlay_header_on_banner', false),
             ]);
 
             $remoteImages = array_values($generated['remote_images'] ?? []);
@@ -487,6 +491,10 @@ class TrialGenerationController extends Controller
                     'nonce' => (string) Str::uuid(),
                 ]
             );
+            // Full regeneration is allowed to make a fresh Luna header-layout
+            // decision. Manual trial toggles remain authoritative until the next
+            // full regeneration.
+            $freshThemeSettings['overlay_header_on_banner'] = (bool) ($generated['overlay_header_on_banner'] ?? false);
             $newToken = (string) Str::uuid();
 
             DB::transaction(function () use ($trial, $generated, $validated, $newToken, $profile, $freshThemeSettings, $freshMenuStructure, $freshBrandContext) {

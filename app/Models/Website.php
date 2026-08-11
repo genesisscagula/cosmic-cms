@@ -112,4 +112,45 @@ class Website extends Model
     {
         return $this->hasMany(BlogPost::class);
     }
+
+    public function commerceSetting()
+    {
+        return $this->hasOne(WebsiteCommerceSetting::class);
+    }
+
+    public function commerceProducts()
+    {
+        return $this->hasMany(CommerceProduct::class);
+    }
+
+    public function commerceProductCategories()
+    {
+        return $this->hasMany(CommerceProductCategory::class)
+            ->orderBy('sort_order')
+            ->orderBy('name');
+    }
+
+    public function commerceShippingZones()
+    {
+        return $this->hasMany(CommerceShippingZone::class)
+            ->orderBy('priority')
+            ->orderBy('id');
+    }
+
+    public function commerceTaxRules()
+    {
+        return $this->hasMany(CommerceTaxRule::class)
+            ->orderBy('priority')
+            ->orderBy('id');
+    }
+
+    public function commerceOrders()
+    {
+        return $this->hasMany(CommerceOrder::class)->latest();
+    }
+
+    public function commerceCoupons()
+    {
+        return $this->hasMany(CommerceCoupon::class);
+    }
 }

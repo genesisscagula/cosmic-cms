@@ -9,6 +9,10 @@ use ZipArchive;
 
 class DeploymentConnectorArchive
 {
+    public function __construct(private readonly CommerceCapabilityService $commerce)
+    {
+    }
+
     public function create(Website $website): string
     {
         if (! class_exists(ZipArchive::class)) {
@@ -17,6 +21,7 @@ class DeploymentConnectorArchive
 
         $secret = $website->deployment_secret;
         $recipient = $website->contact_email ?: $website->user?->email;
+        $commerceSettings = $this->commerce->settingsFor($website);
 
         if (! is_string($secret) || $secret === '') {
             throw new RuntimeException('A deployment secret is required before creating the connector.');
@@ -40,9 +45,12 @@ class DeploymentConnectorArchive
             'contact_email' => $recipient,
             'cms_url' => rtrim(url('/'), '/'),
             'website_id' => $website->id,
+            'commerce_public_key' => $commerceSettings->public_key,
+            'commerce_manifest_url' => rtrim(url('/'), '/') . '/api/v1/commerce/sites/' . $commerceSettings->public_key . '/manifest',
         ], true) . ";\n");
         $zip->addFromString('cosmic-sync/sync.php', $this->receiverScript());
         $zip->addFromString('cosmic-sync/contact.php', $this->contactReceiverScript());
+        $zip->addFromString('cosmic-sync/commerce.php', $this->commerceReceiverScript());
         $zip->addFromString('cosmic-sync/.htaccess', "Options -Indexes\n\n<FilesMatch \"^(config\\.php|.*\\.(log|json))$\">\n    Require all denied\n</FilesMatch>\n");
         $zip->addFromString('cosmic-sync/submissions/.htaccess', "Require all denied\n");
         $zip->addFromString('.htaccess', $this->cleanUrlHtaccess());
@@ -60,7 +68,7 @@ class DeploymentConnectorArchive
 Cosmic CMS Deployment Connector
 
 1. Extract this ZIP directly into your website root. It creates:
-   - cosmic-sync/ (the protected connector and contact receiver)
+   - cosmic-sync/ (the protected deployment/contact connector plus commerce bridge)
    - .htaccess (clean URLs for compiled static pages)
 2. Do not rename config.php or sync.php.
 3. Your expected verification endpoint is:
@@ -71,6 +79,10 @@ Cosmic CMS Deployment Connector
 
 The connector accepts only requests with its unique Cosmic deployment secret.
 Do not expose config.php or share the connector archive publicly.
+
+All plans receive the commerce-ready connector. cosmic-sync/commerce.php?action=manifest
+returns a safe storefront manifest; live store capabilities activate only when the
+website owner's Cosmic plan includes commerce and the store is enabled.
 
 Published contact forms submit to cosmic-sync/contact.php. Each valid inquiry is
 stored privately on the live site, forwarded to the Cosmic CMS Inquiry Inbox when
@@ -251,6 +263,90 @@ if (filter_var($recipient, FILTER_VALIDATE_EMAIL) && function_exists('mail')) {
 }
 
 contactResponse(['status' => 'success', 'message' => 'Thanks — your inquiry has been received. We will be in touch soon.']);
+PHP;
+    }
+
+    private function commerceReceiverScript(): string
+    {
+        return <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+function commerceResponse(array $payload, int $status = 200): never
+{
+    http_response_code($status);
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+    echo json_encode($payload, JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+    commerceResponse(['status' => 'error', 'message' => 'Method not allowed.'], 405);
+}
+
+$configPath = __DIR__ . '/config.php';
+if (! is_file($configPath)) {
+    commerceResponse(['status' => 'error', 'message' => 'Missing Cosmic connector configuration.'], 500);
+}
+
+$config = require $configPath;
+$action = (string) ($_GET['action'] ?? 'manifest');
+
+if ($action !== 'manifest') {
+    commerceResponse(['status' => 'error', 'message' => 'Unsupported commerce action.'], 405);
+}
+
+$manifestUrl = trim((string) ($config['commerce_manifest_url'] ?? ''));
+$publicKey = trim((string) ($config['commerce_public_key'] ?? ''));
+
+if ($manifestUrl === '' || $publicKey === '') {
+    commerceResponse(['status' => 'error', 'message' => 'Commerce connector configuration is incomplete.'], 500);
+}
+
+if (! function_exists('curl_init')) {
+    commerceResponse([
+        'status' => 'error',
+        'message' => 'The server PHP cURL extension is required for live commerce.',
+    ], 503);
+}
+
+$request = curl_init($manifestUrl);
+if ($request === false) {
+    commerceResponse(['status' => 'error', 'message' => 'Unable to initialize the commerce bridge.'], 503);
+}
+
+curl_setopt_array($request, [
+    CURLOPT_HTTPGET => true,
+    CURLOPT_RETURNTRANSFER => true,
+    CURLOPT_FOLLOWLOCATION => false,
+    CURLOPT_CONNECTTIMEOUT => 4,
+    CURLOPT_TIMEOUT => 8,
+    CURLOPT_HTTPHEADER => ['Accept: application/json'],
+]);
+
+$body = curl_exec($request);
+$status = (int) curl_getinfo($request, CURLINFO_RESPONSE_CODE);
+$error = curl_error($request);
+curl_close($request);
+
+if (! is_string($body) || $body === '' || $status < 200 || $status >= 300) {
+    commerceResponse([
+        'status' => 'error',
+        'message' => 'Cosmic Commerce is temporarily unavailable.',
+        'upstream_status' => $status ?: null,
+        'detail' => $error !== '' ? $error : null,
+    ], 503);
+}
+
+$payload = json_decode($body, true);
+if (! is_array($payload)) {
+    commerceResponse(['status' => 'error', 'message' => 'Cosmic Commerce returned an invalid response.'], 502);
+}
+
+commerceResponse(['status' => 'success', 'commerce' => $payload]);
 PHP;
     }
 

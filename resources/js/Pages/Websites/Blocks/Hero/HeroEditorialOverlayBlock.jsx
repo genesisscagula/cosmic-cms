@@ -40,18 +40,18 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
         ? {
             overlay: "bg-white",
             gradient: "from-white/99 via-white/92 to-white/76",
-            tagline: "text-slate-700",
-            heading: "text-slate-950",
-            body: "text-slate-700",
-            secondary: "border-slate-900/20 bg-white/72 text-slate-950 hover:bg-white/90",
+            tagline: "!text-slate-700",
+            heading: "!text-slate-950",
+            body: "!text-slate-700",
+            secondary: "border-slate-900/20 bg-white/72 !text-slate-950 hover:bg-white/90",
         }
         : {
             overlay: "bg-slate-950",
             gradient: "from-slate-950/55 via-slate-950/22 to-transparent",
-            tagline: "text-white/75",
-            heading: "text-white",
-            body: "text-white/80",
-            secondary: "border-white/40 bg-white/5 text-white hover:bg-white/10",
+            tagline: "!text-white/75",
+            heading: "!text-white",
+            body: "!text-white/80",
+            secondary: "border-white/40 bg-white/5 !text-white hover:bg-white/10",
         };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
@@ -76,7 +76,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
     };
 
     return (
-        <section className={`relative flex cursor-pointer overflow-hidden ${height}`} onClick={handleSectionImageEdit}>
+        <section data-cosmic-media-banner="true" className={`relative flex cursor-pointer overflow-hidden ${height}`} onClick={handleSectionImageEdit}>
             <EditableImage
                 ref={imageRef}
                 websiteId={websiteId}
@@ -115,7 +115,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
                         <EditableButton
                             label={data.primary_label}
                             url={data.primary_url}
-                            className={`inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold ${primaryTheme.bg} text-white`}
+                            className={`inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold ${primaryTheme.bg} !text-white`}
                             onSave={(primary_label, primary_url) => onUpdate({ primary_label, primary_url })}
                         />
                         <EditableButton

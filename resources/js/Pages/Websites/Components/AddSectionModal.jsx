@@ -9,6 +9,7 @@ import { BlockRegistry as BuilderBlockRegistry } from "../BlockRegistry";
 import { colorFamilies, installCustomBrandTheme } from "../../../theme/colorFamilies";
 
 const categoryFor = (type) => {
+    if (type.startsWith("mini_hero_")) return "Mini Heroes";
     if (type.startsWith("hero_") || type === "image_cta_banner") return "Hero";
     if (type.startsWith("services_")) return "Services";
     if (type.startsWith("feature_")) return "Features";
@@ -25,9 +26,9 @@ const categoryFor = (type) => {
     return "Other";
 };
 
-function SparkVisual({ spark, previewVariant = "primary", websiteTheme = "midnight" }) {
+function SparkVisual({ spark, previewVariant = "primary", websiteTheme = "midnight", payloadOverride = null }) {
     const Preview = spark.registry.preview;
-    return <Preview {...spark.registry.payload} previewVariant={previewVariant} websiteTheme={websiteTheme} />;
+    return <div className="cosmic-preview-isolation w-full" data-cosmic-site-preview="true"><Preview {...spark.registry.payload} {...(payloadOverride || {})} previewVariant={previewVariant} websiteTheme={websiteTheme} /></div>;
 }
 
 
@@ -82,14 +83,14 @@ function safePreviewText(background, preferredText) {
     return backgroundLum > 0.45 ? "#0F172A" : "#F8FAFC";
 }
 
-export function ActualSparkPreview({ spark, previewVariant = "white", websiteTheme }) {
+export function ActualSparkPreview({ spark, previewVariant = "white", websiteTheme, payloadOverride = null, blockIndex = 0, commerce = null }) {
     const registryItem = BuilderBlockRegistry[spark.key];
     const Component = registryItem?.component;
 
     if (!Component) {
         return (
-            <div className="cosmic-spark-preview-content w-full">
-                <SparkVisual spark={spark} previewVariant={previewVariant} websiteTheme={websiteTheme} />
+            <div className="cosmic-preview-isolation cosmic-spark-preview-content w-full" data-cosmic-preview-isolation="true" data-cosmic-site-preview="true">
+                <SparkVisual spark={spark} previewVariant={previewVariant} websiteTheme={websiteTheme} payloadOverride={payloadOverride} />
             </div>
         );
     }
@@ -98,6 +99,7 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
     const block = {
         ...defaults,
         ...structuredClone(spark.registry.payload || {}),
+        ...structuredClone(payloadOverride || {}),
         type: spark.key,
         theme: previewVariant,
         resolvedTheme: previewVariant,
@@ -120,7 +122,9 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
 
     return (
         <div
-            className="cosmic-spark-preview-content w-full"
+            className="cosmic-preview-isolation cosmic-spark-preview-content w-full"
+            data-cosmic-preview-isolation="true"
+            data-cosmic-site-preview="true"
             data-preview-variant={previewVariant}
             data-preview-family={previewVariant === "primary" ? normalizedTheme.primary : previewVariant}
             style={{
@@ -132,7 +136,7 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
         >
             <Component
                 block={block}
-                blockIndex={0}
+                blockIndex={blockIndex}
                 globalTheme={normalizedTheme}
                 onUpdate={() => {}}
                 blogPosts={[]}
@@ -141,6 +145,8 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
                 onBlogPostCreated={() => {}}
                 onBlogPostUpdated={() => {}}
                 onBlogPostDeleted={() => {}}
+                commerce={commerce}
+                builderMode={false}
             />
         </div>
     );
@@ -159,6 +165,7 @@ export default function AddSectionModal({
     contextLabel = null,
     onOwnershipChanged = null,
     websiteTheme = null,
+    commerce = null,
 }) {
     const { setBalance } = useCreditBalance();
     const [tab, setTab] = useState(ownedOnly ? "owned" : "marketplace");
@@ -346,7 +353,7 @@ export default function AddSectionModal({
                 </header>
                 <div className="min-h-0 flex-1 overflow-auto bg-[#e5e7eb] p-0">
                     <div className="cosmic-spark-preview-stage min-h-full w-full"><div className="cosmic-spark-preview-stage-inner">
-                        <div className="pointer-events-none w-full min-w-0 origin-top-left"><ActualSparkPreview spark={previewSpark} previewVariant={previewVariant} websiteTheme={websiteTheme} /></div>
+                        <div className="pointer-events-none w-full min-w-0 origin-top-left"><ActualSparkPreview spark={previewSpark} previewVariant={previewVariant} websiteTheme={websiteTheme} commerce={commerce} /></div>
                     </div></div>
                 </div>
                 <footer className="flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">

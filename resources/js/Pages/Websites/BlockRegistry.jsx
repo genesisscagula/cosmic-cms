@@ -139,10 +139,47 @@ import { JobsListBlock, JobsListSchema } from "./Blocks/Collections/JobsListBloc
 import { EventsGridBlock, EventsGridSchema } from "./Blocks/Collections/EventsGridBlock";
 import { BlogHubBlock, BlogHubSchema } from "./Blocks/Blog/BlogHubBlock";
 import { BlogMiniHeroBlock, BlogMiniHeroSchema } from "./Blocks/Blog/BlogMiniHeroBlock";
+import {
+    MiniHeroMinimalBlock, MiniHeroMinimalSchema,
+    MiniHeroSplitBlock, MiniHeroSplitSchema,
+    MiniHeroPromoBlock, MiniHeroPromoSchema,
+} from "./Blocks/General/MiniHeroBlocks";
 import { NewsletterCtaBlock, NewsletterCtaSchema } from "./Blocks/Blog/NewsletterCtaBlock";
 import { LatestResourcesBlock, LatestResourcesSchema } from "./Blocks/Blog/LatestResourcesBlock";
 
+
+import {
+ CommerceProductGridBlock, CommerceProductGridSchema, CommerceCatalogGridBlock, CommerceCatalogGridSchema, CommerceCatalogEditorialBlock, CommerceCatalogEditorialSchema, CommerceCatalogCompactBlock, CommerceCatalogCompactSchema, CommerceCategoriesBlock, CommerceCategoriesSchema,
+ CommerceProductGalleryBlock, CommerceProductGallerySchema, CommercePriceBlock, CommercePriceSchema,
+ CommerceVariationSelectorBlock, CommerceVariationSelectorSchema, CommerceRelatedProductsBlock, CommerceRelatedProductsSchema,
+ CommerceFeaturedProductsBlock, CommerceFeaturedProductsSchema, CommerceFeaturedCollectionBlock, CommerceFeaturedCollectionSchema,
+ CommercePromoSplitBlock, CommercePromoSplitSchema, CommerceBenefitsStripBlock, CommerceBenefitsStripSchema,
+ CommerceMiniCartBlock, CommerceMiniCartSchema, CommerceCartClassicBlock, CommerceCartClassicSchema, CommerceCartSplitBlock, CommerceCartSplitSchema, CommerceCartCompactBlock, CommerceCartCompactSchema,
+ CommerceCheckoutClassicBlock, CommerceCheckoutClassicSchema, CommerceCheckoutSplitBlock, CommerceCheckoutSplitSchema, CommerceCheckoutExpressBlock, CommerceCheckoutExpressSchema
+} from "./Blocks/Commerce/CommerceBlocks";
+
 export const BlockRegistry = {
+    commerce_product_grid: { component: CommerceProductGridBlock, schema: CommerceProductGridSchema },
+    commerce_catalog_grid: { component: CommerceCatalogGridBlock, schema: CommerceCatalogGridSchema },
+    commerce_catalog_editorial: { component: CommerceCatalogEditorialBlock, schema: CommerceCatalogEditorialSchema },
+    commerce_catalog_compact: { component: CommerceCatalogCompactBlock, schema: CommerceCatalogCompactSchema },
+    commerce_categories: { component: CommerceCategoriesBlock, schema: CommerceCategoriesSchema },
+    commerce_product_gallery: { component: CommerceProductGalleryBlock, schema: CommerceProductGallerySchema },
+    commerce_price: { component: CommercePriceBlock, schema: CommercePriceSchema },
+    commerce_variation_selector: { component: CommerceVariationSelectorBlock, schema: CommerceVariationSelectorSchema },
+    commerce_related_products: { component: CommerceRelatedProductsBlock, schema: CommerceRelatedProductsSchema },
+    commerce_featured_products: { component: CommerceFeaturedProductsBlock, schema: CommerceFeaturedProductsSchema },
+    commerce_featured_collection: { component: CommerceFeaturedCollectionBlock, schema: CommerceFeaturedCollectionSchema },
+    commerce_promo_split: { component: CommercePromoSplitBlock, schema: CommercePromoSplitSchema },
+    commerce_benefits_strip: { component: CommerceBenefitsStripBlock, schema: CommerceBenefitsStripSchema },
+    commerce_mini_cart: { component: CommerceMiniCartBlock, schema: CommerceMiniCartSchema },
+    commerce_cart_classic: { component: CommerceCartClassicBlock, schema: CommerceCartClassicSchema },
+    commerce_cart_split: { component: CommerceCartSplitBlock, schema: CommerceCartSplitSchema },
+    commerce_cart_compact: { component: CommerceCartCompactBlock, schema: CommerceCartCompactSchema },
+    commerce_checkout_classic: { component: CommerceCheckoutClassicBlock, schema: CommerceCheckoutClassicSchema },
+    commerce_checkout_split: { component: CommerceCheckoutSplitBlock, schema: CommerceCheckoutSplitSchema },
+    commerce_checkout_express: { component: CommerceCheckoutExpressBlock, schema: CommerceCheckoutExpressSchema },
+
 
     hero_headline: {
 
@@ -400,6 +437,21 @@ export const BlockRegistry = {
     blog_mini_hero: {
         component: BlogMiniHeroBlock,
         schema: BlogMiniHeroSchema,
+    },
+
+    mini_hero_minimal: {
+        component: MiniHeroMinimalBlock,
+        schema: MiniHeroMinimalSchema,
+    },
+
+    mini_hero_split: {
+        component: MiniHeroSplitBlock,
+        schema: MiniHeroSplitSchema,
+    },
+
+    mini_hero_promo: {
+        component: MiniHeroPromoBlock,
+        schema: MiniHeroPromoSchema,
     },
 
     newsletter_cta: {

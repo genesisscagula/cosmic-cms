@@ -119,8 +119,23 @@ const normalizeRenderKeys = (blocks = []) => {
 
 const stripClientBlockFields = (blocks = []) => (blocks || []).map(({ _renderKey, ...block }) => block);
 
+const COMMERCE_PRODUCT_CONTEXT_BLOCKS = new Set([
+    'commerce_product_gallery',
+    'commerce_price',
+    'commerce_variation_selector',
+    'commerce_related_products',
+]);
 
-export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [], themeAccess: builderThemeAccess = null }) {
+const bindDefaultCommerceProduct = (block, commerce) => {
+    if (!COMMERCE_PRODUCT_CONTEXT_BLOCKS.has(block?.type) || block?.product_id) return block;
+    const product = (commerce?.products || []).find((item) => item?.status === 'published' && item?.visibility !== 'hidden')
+        || (commerce?.products || [])[0];
+    return product ? { ...block, product_id: product.id } : block;
+};
+
+
+
+export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [], themeAccess: builderThemeAccess = null, commerce = { enabled:false, currency:'USD', currency_decimals:2, products:[], categories:[] } }) {
     const { props } = usePage();
     const currentPlanKey = builderThemeAccess?.plan_key || props?.auth?.effectivePlanKey || props?.auth?.user?.plan_key || 'starter';
     // The Builder receives a route-specific entitlement payload because this
@@ -146,6 +161,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         logo_image_url: '/storage/branding/your-logo.png',
         logo_height: 42,
         logo_filter_key: 'midnight',
+        overlay_header_on_banner: false,
         cta_label: 'Get Started',
         cta_url: '#',
         menu: [
@@ -217,6 +233,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         return null;
     });
     const [themeFromLogoPreview, setThemeFromLogoPreview] = useState(null);
+    const [pendingUploadedLogoThemeChoice, setPendingUploadedLogoThemeChoice] = useState(null);
     const [pendingThemeLogoAdapt, setPendingThemeLogoAdapt] = useState(null);
     const [themeLogoAdaptBusy, setThemeLogoAdaptBusy] = useState(false);
     // H23: only confirmed Regenerate Page may bypass the unsaved-changes
@@ -818,7 +835,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             setHasUnsavedTheme(true);
             if (trialMode) setTrialLogoCropConfirmed(true);
             if (logoCropAutoAdaptTheme) {
-                await autoAdaptThemeFromUploadedLogo(response.data.url);
+                if (trialMode) {
+                    await autoAdaptThemeFromUploadedLogo(response.data.url);
+                } else if (logoCropSourceKind === 'upload') {
+                    // Registered Builder: saving the crop commits the logo first.
+                    // Theme matching is now an explicit 20-credit choice instead
+                    // of firing automatically and making Save Logo feel blocked.
+                    setPendingUploadedLogoThemeChoice(response.data.url);
+                }
             }
             setLogoCropEntryPrompt(false);
             setLogoCropAutoAdaptTheme(true);
@@ -853,11 +877,17 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
         // Header logo is the single source of truth. Every logo action updates
         // both shell locations immediately so preview/save/export never drift.
-        setData({
-            ...data,
-            global_header: nextHeader,
-            global_footer: nextFooter,
-        });
+        setData((current) => ({
+            ...current,
+            global_header: {
+                ...(current.global_header || {}),
+                ...nextHeader,
+            },
+            global_footer: {
+                ...(current.global_footer || {}),
+                ...nextFooter,
+            },
+        }));
         setShowLogoModal(false);
         setShowLogoGenerateForm(false);
     };
@@ -915,7 +945,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     brand_logo_variants: {},
                 }));
                 setHasUnsavedTheme(true);
-                await autoAdaptThemeFromUploadedLogo(response.data.url);
+                if (trialMode) {
+                    await autoAdaptThemeFromUploadedLogo(response.data.url);
+                } else {
+                    setPendingUploadedLogoThemeChoice(response.data.url);
+                }
             } else {
                 // Raster uploads remain user-controlled: crop first, then the
                 // confirmed crop becomes the source for automatic theme analysis.
@@ -929,6 +963,70 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         } finally {
             setLogoBusy(false);
         }
+    };
+
+    const matchUploadedLogoToTheme = async () => {
+        const logoUrl = pendingUploadedLogoThemeChoice;
+        if (!logoUrl || trialMode || logoBusy) return;
+
+        setPendingUploadedLogoThemeChoice(null);
+        startLogoAiAction('theme_to_logo');
+        setLogoBusy(true);
+        try {
+            const response = await axios.post(route('websites.theme.match-logo', website.id), {
+                logo_url: logoUrl,
+                post_upload_choice: true,
+            });
+
+            if (Number.isFinite(Number(response.data?.balance))) {
+                setCreditBalance(Number(response.data.balance));
+            }
+
+            const customTheme = response.data?.custom_theme;
+            if (!customTheme) throw new Error('Cosmic AI did not return a usable My Brand Theme.');
+            const syncedCustomTheme = { ...customTheme, source_logo_url: logoUrl };
+
+            installCustomBrandTheme(syncedCustomTheme);
+            setGlobalSelections((current) => ({
+                ...current,
+                primary: 'my-brand',
+                custom_brand_theme: syncedCustomTheme,
+                brand_palette: syncedCustomTheme.palette || response.data?.palette,
+                brand_source: 'logo',
+                brand_original_logo_url: current.brand_original_logo_url || logoUrl,
+                brand_active_logo_url: logoUrl,
+                logo_theme_sync_state: 'synced',
+                logo_theme_sync_source: 'theme_to_logo',
+                logo_theme_synced_theme: 'my-brand',
+            }));
+            setLogoSyncState('synced');
+            setHasUnsavedTheme(true);
+            setLogoAiStage('Your website now matches your logo.');
+            finishLogoAiAction();
+            showCosmicNotification({
+                title: 'My Brand Theme applied',
+                message: 'Cosmic matched the website colors to your uploaded logo for 20 credits.',
+                tone: 'success',
+            });
+        } catch (error) {
+            cancelLogoAiAction();
+            showCosmicNotification({
+                title: 'Unable to match theme',
+                message: error.response?.data?.message || error.message || 'Your logo is saved, but Cosmic could not build a matching theme. No theme change was applied.',
+                tone: 'error',
+            });
+        } finally {
+            setLogoBusy(false);
+        }
+    };
+
+    const keepCurrentThemeAfterLogoUpload = () => {
+        setPendingUploadedLogoThemeChoice(null);
+        showCosmicNotification({
+            title: 'Logo saved',
+            message: 'Your uploaded logo is active. The current website theme was kept.',
+            tone: 'success',
+        });
     };
 
     const startLogoAiAction = (action) => {
@@ -1082,10 +1180,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             logo_url: pending.logoUrl,
             theme_key: pending.theme,
             theme_name: pending.themeName,
+            // Send the final website palette with stable semantics. The logo
+            // matcher treats background as the dominant anchor, accent as the
+            // intentional brand accent, and surface as the supporting neutral.
             primary_hex: activePalette?.background || activePalette?.primary || '#243447',
-            secondary_hex: activePalette?.secondary || activePalette?.surface || activePalette?.accent || '#475569',
-            tertiary_hex: activePalette?.tertiary || activePalette?.accent || activePalette?.secondary || '#60A5FA',
-            accent_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.background || '#60A5FA',
+            secondary_hex: activePalette?.surface || activePalette?.secondary || activePalette?.background || '#475569',
+            tertiary_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.surface || '#60A5FA',
+            accent_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.surface || '#60A5FA',
         };
 
         setThemeLogoAdaptBusy(true);
@@ -1212,10 +1313,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             logo_url: logoUrl,
             theme_key: themeKey,
             theme_name: family?.name || (themeKey === 'my-brand' ? 'My Brand Theme' : themeKey),
+            // Send the final website palette with stable semantics. The logo
+            // matcher treats background as the dominant anchor, accent as the
+            // intentional brand accent, and surface as the supporting neutral.
             primary_hex: activePalette?.background || activePalette?.primary || '#243447',
-            secondary_hex: activePalette?.secondary || activePalette?.surface || activePalette?.accent || '#475569',
-            tertiary_hex: activePalette?.tertiary || activePalette?.accent || activePalette?.secondary || '#60A5FA',
-            accent_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.background || '#60A5FA',
+            secondary_hex: activePalette?.surface || activePalette?.secondary || activePalette?.background || '#475569',
+            tertiary_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.surface || '#60A5FA',
+            accent_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.surface || '#60A5FA',
         };
 
         const matchCost = trialMode ? trialActionCosts.match_logo_to_theme : 50;
@@ -1395,7 +1499,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     // Bag-ong logic para ma-update ang global header
     const updateHeader = (updatedFields) => {
-        if (!capabilities.canEditGlobalShell) return;
+        // Trial users may control only the safe global overlay preference.
+        // Full builder users retain the existing global-header editing controls.
+        if (!capabilities.canEditGlobalShell) {
+            if (trialMode && Object.keys(updatedFields || {}).every((key) => key === 'overlay_header_on_banner')) {
+                setData('global_header', { ...data.global_header, ...updatedFields });
+            }
+            return;
+        }
         setData('global_header', { ...data.global_header, ...updatedFields });
     };
 
@@ -1435,9 +1546,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
 
     const addBlock = (block) => {
+        const commerceBoundBlock = bindDefaultCommerceProduct(block, commerce);
         const newBlock = {
-            ...block,
-            theme: block.theme || "auto",
+            ...commerceBoundBlock,
+            theme: commerceBoundBlock.theme || "auto",
             _renderKey: createRenderKey(),
         };
 
@@ -2004,6 +2116,59 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
 
 
+    const firstBlock = data.blocks?.[0] || null;
+    const firstBlockType = String(firstBlock?.type || '').toLowerCase();
+    const firstBlockIsBanner = Boolean(firstBlock) && (
+        firstBlockType === 'hero' ||
+        firstBlockType.includes('hero') ||
+        firstBlockType.includes('banner')
+    );
+    const firstBlockResolvedTheme = firstBlock ? resolveBlockTheme(firstBlock, 0) : null;
+    const overlayHeaderActive = Boolean(data.global_header?.overlay_header_on_banner && firstBlockIsBanner);
+    const overlayHeaderRef = useRef(null);
+    const [overlayHeaderHeight, setOverlayHeaderHeight] = useState(80);
+
+    useEffect(() => {
+        if (!overlayHeaderActive) {
+            setOverlayHeaderHeight(0);
+            return undefined;
+        }
+
+        const headerShell = overlayHeaderRef.current;
+        if (!headerShell) return undefined;
+
+        const syncOverlayHeaderHeight = () => {
+            const nextHeight = Math.ceil(headerShell.getBoundingClientRect().height || 0);
+            if (nextHeight > 0) {
+                setOverlayHeaderHeight((currentHeight) => currentHeight === nextHeight ? currentHeight : nextHeight);
+            }
+        };
+
+        syncOverlayHeaderHeight();
+
+        const observer = typeof ResizeObserver !== 'undefined'
+            ? new ResizeObserver(syncOverlayHeaderHeight)
+            : null;
+        observer?.observe(headerShell);
+        window.addEventListener('resize', syncOverlayHeaderHeight);
+
+        return () => {
+            observer?.disconnect();
+            window.removeEventListener('resize', syncOverlayHeaderHeight);
+        };
+    }, [overlayHeaderActive, data.global_header?.type, data.global_header?.logo_height, data.global_header?.menu?.length]);
+
+    // Keep the overlay rule intentionally deterministic: only a PRIMARY first
+    // Spark receives the white-overlay treatment. Warm Stone and Studio White
+    // are light primary families, so they keep the normal dark header treatment.
+    const activePrimaryThemeKey = String(globalSelections?.primary || 'midnight').toLowerCase();
+    const overlayPrimaryTreatment = Boolean(
+        overlayHeaderActive
+        && String(firstBlockResolvedTheme || '').toLowerCase() === 'primary'
+        && !['stone', 'white'].includes(activePrimaryThemeKey)
+    );
+    const overlayHeaderTone = overlayPrimaryTreatment ? 'light' : 'dark';
+
     const renderBlock = (block, index) => {
 
         const resolvedTheme = resolveBlockTheme(block, index);
@@ -2018,6 +2183,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             globalTheme: globalSelections,
 
             onUpdate: (fields) => updateBlockContent(index, fields),
+            commerce,
+            builderMode: true,
 
             blockIndex: index,
             blogPosts,
@@ -2226,6 +2393,23 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 />
                             )}
 
+                            <label
+                                className={`hidden h-9 shrink-0 cursor-pointer items-center gap-2 rounded-lg border px-2.5 text-[11px] font-semibold lg:inline-flex ${trialMode ? 'border-slate-200 bg-white text-slate-700' : 'border-white/10 bg-white/[0.035] text-slate-300'}`}
+                                title="Place the global header over compatible page banners. Pages without a banner keep the normal header."
+                            >
+                                <input
+                                    type="checkbox"
+                                    className="peer sr-only"
+                                    checked={Boolean(data.global_header?.overlay_header_on_banner)}
+                                    onChange={(event) => updateHeader({ overlay_header_on_banner: event.target.checked })}
+                                />
+                                <span className={`relative h-5 w-9 rounded-full transition ${data.global_header?.overlay_header_on_banner ? 'bg-emerald-500' : (trialMode ? 'bg-slate-300' : 'bg-slate-600')}`}>
+                                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${data.global_header?.overlay_header_on_banner ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                                </span>
+                                <span className="hidden 2xl:inline">Overlay Header on Banner</span>
+                                <span className="2xl:hidden">Overlay Header</span>
+                            </label>
+
                             {capabilities.canChangeTheme && (
                                 <ThemeSelector
                                     compact
@@ -2381,19 +2565,36 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 </header>
 
                 <main className="px-4 py-5 sm:px-6 sm:py-8">
-                    <style>{`html.cosmic-header-menu-active .cosmic-block-toolbar { opacity: 0 !important; pointer-events: none !important; }`}</style>
+                    <style>{`
+                        html.cosmic-header-menu-active .cosmic-block-toolbar { opacity: 0 !important; pointer-events: none !important; }
+                        /* Overlay spacing must target the rendered Spark, not the builder toolbar. */
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > :first-child {
+                            padding-top: calc(var(--cosmic-overlay-header-height, 80px) + var(--cosmic-overlay-first-spark-padding, clamp(4.5rem, 6vw, 6.5rem))) !important;
+                        }
+                        @media (max-width: 639px) {
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > :first-child {
+                                padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 3.25rem)) !important;
+                            }
+                        }
+                    `}</style>
                     <div className={`cosmic-builder-canvas mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl lg:w-[min(86vw,1560px)] ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
-                        <div className="flex w-full flex-col items-stretch overflow-hidden rounded-[11px]">
+                        <div
+                            className="relative flex w-full flex-col items-stretch overflow-hidden rounded-[11px]"
+                            style={overlayHeaderActive ? { '--cosmic-overlay-header-height': `${overlayHeaderHeight || 80}px` } : undefined}
+                        >
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}
                     {data.global_header && (
-                        <div className="w-full bg-white z-40">
+                        <div ref={overlayHeaderRef} className={`w-full z-40 ${overlayHeaderActive ? 'absolute inset-x-0 top-0 bg-transparent' : 'relative bg-white'}`}>
                             {data.global_header.type === 'dark_cyan_header' && (
-                                <DarkCyanHeader block={data.global_header} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={() => setShowLogoModal(true)} />
+                                <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayPrimaryTreatment={overlayPrimaryTreatment} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={() => setShowLogoModal(true)} />
                             )}
                             {data.global_header.type === 'glassmorphism_header' && (
                                 <GlassmorphismHeader
                                     block={data.global_header}
+                                    overlay={overlayHeaderActive}
+                                    overlayTone={overlayHeaderTone}
+                                    overlayPrimaryTreatment={overlayPrimaryTreatment}
                                     onUpdate={updateHeader}
                                     globalTheme={globalSelections}
                                     pageTargets={websitePages}
@@ -2407,7 +2608,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
                         <div
                             key={block._renderKey || index}
-                            className="relative group w-full transition-all duration-300 focus-within:z-20"
+                            className={`relative group w-full transition-all duration-300 focus-within:z-20 ${overlayHeaderActive && index === 0 ? 'cosmic-overlay-first-spark' : ''}`}
                         >
 
                             {/* Hover Toolbar */}
@@ -2820,6 +3021,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     trialToken={trialToken}
                     cosmicPricing={cosmicPricing}
                     websiteTheme={globalSelections}
+                    commerce={commerce}
                     ownedOnly={Boolean(sparkInsertTarget)}
                     contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : null}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
@@ -2988,6 +3190,20 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {!trialMode && pendingUploadedLogoThemeChoice && !logoBusy && (
+                <div className="fixed inset-0 z-[10040] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+                    <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">Logo saved</p>
+                        <h3 className="mt-2 text-xl font-bold text-slate-950">Match your website to this logo?</h3>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">Your new logo is already saved. You can keep the current theme for free, or let Cosmic build and apply My Brand Theme from the logo colors.</p>
+                        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                            <button type="button" onClick={keepCurrentThemeAfterLogoUpload} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">Keep Current Theme</button>
+                            <button type="button" onClick={matchUploadedLogoToTheme} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700">✦ Match Theme · 20 Credits</button>
                         </div>
                     </div>
                 </div>

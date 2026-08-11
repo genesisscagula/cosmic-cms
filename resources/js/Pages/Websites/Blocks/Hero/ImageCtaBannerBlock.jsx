@@ -38,20 +38,20 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
         ? {
             overlay: "bg-white",
             gradient: "from-white/100 via-white/96 to-white/82",
-            eyebrow: "text-slate-700",
-            heading: "text-slate-950",
-            body: "text-slate-700",
-            primary: `${primaryTheme.bg} text-white`,
-            secondary: "border-slate-900/20 bg-white/78 text-slate-950 hover:bg-white/95",
+            eyebrow: "!text-slate-700",
+            heading: "!text-slate-950",
+            body: "!text-slate-700",
+            primary: `${primaryTheme.bg} !text-white`,
+            secondary: "border-slate-900/20 bg-white/78 !text-slate-950 hover:bg-white/95",
         }
         : {
             overlay: "bg-slate-950",
             gradient: "from-slate-950/48 via-slate-950/18 to-slate-950/10",
-            eyebrow: "text-white/75",
-            heading: "text-white",
-            body: "text-white/85",
-            primary: "bg-white text-slate-950",
-            secondary: "border-white/45 bg-white/5 text-white hover:bg-white/10",
+            eyebrow: "!text-white/75",
+            heading: "!text-white",
+            body: "!text-white/85",
+            primary: "bg-white !text-slate-950",
+            secondary: "border-white/45 bg-white/5 !text-white hover:bg-white/10",
         };
     const data = { ...ImageCtaBannerSchema.defaults, ...block };
     const { props } = usePage();
@@ -74,6 +74,7 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
 
     return (
         <section
+            data-cosmic-media-banner="true"
             className="relative flex min-h-[420px] cursor-pointer overflow-hidden sm:min-h-[460px] lg:min-h-[500px]"
             onClick={handleSectionImageEdit}
         >

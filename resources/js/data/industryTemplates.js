@@ -41,20 +41,56 @@ export const industryTemplates = [
     { id: "form", name: "Form & Function", slug: "form-function", category: "Portfolio", industry: "Design portfolio", description: "A focused portfolio starter for independent designers and makers.", themeId: "slate", pageCount: 1, tags: ["portfolio", "design", "creative"], featured: false, isNew: false, updatedAt: "2026-08-04", usage: 53 },
 ];
 
-export const blankTemplate = {
-    id: "blank",
-    name: "Blank Website",
-    slug: "blank",
-    category: "Start from Scratch",
-    industry: "Blank canvas",
-    themeId: "slate",
-    pageCount: 1,
-    tags: ["blank"],
-    featured: false,
-    isNew: false,
-    updatedAt: "2026-08-04",
-    usage: 0,
+
+// Starter Kit preview safety net.
+//
+// The server-owned WebsiteTemplateCatalog remains the authoritative source for
+// install payloads and curated content. These type-only compositions exist so
+// the dashboard can NEVER collapse to a flat theme swatch when Inertia props
+// are stale, deferred, or temporarily unavailable. ActualSparkPreview merges
+// each type with the canonical Spark registry defaults, while server preview
+// blocks automatically win whenever they are present.
+export const starterKitPreviewFallbacks = {
+    "aurora-agency": ["hero_bento_premium", "services_cards", "feature_image_left", "testimonials_carousel", "process_timeline", "image_cta_banner"],
+    "summit-consulting": ["hero_split_image", "feature_image_right", "process_timeline", "services_bento", "stats_modern", "hero_centered_cta"],
+    "nova-startup": ["hero_floating_cards", "services_bento", "stats_modern", "feature_image_left", "process_timeline", "image_cta_banner"],
+    "midnight-studio": ["hero_editorial_overlay", "feature_image_right", "services_cards", "process_timeline", "testimonials_carousel", "hero_centered_cta"],
+    "table-tide": ["hero_slider_fade", "feature_image_left", "services_bento", "testimonials_carousel", "image_cta_banner"],
+    "ember-kitchen": ["hero_luxury_fullscreen", "services_cards", "feature_image_right", "stats_modern", "image_cta_banner"],
+    "olive-hearth": ["hero_split_editorial", "feature_image_left", "testimonials_carousel", "services_bento", "hero_centered_cta"],
+    "morning-brew": ["hero_background_image", "services_cards", "feature_image_right", "stats_modern", "image_cta_banner"],
+    "roast-lab": ["hero_parallax", "feature_image_left", "services_bento", "testimonials_carousel", "hero_centered_cta"],
+    "buildcore": ["hero_parallax", "services_cards", "process_timeline", "feature_image_right", "stats_modern", "image_cta_banner"],
+    "skyline-builders": ["hero_slider_fade", "feature_image_left", "process_timeline", "services_bento", "testimonials_carousel", "hero_centered_cta"],
+    "forge-works": ["hero_split_image", "services_cards", "feature_image_right", "process_timeline", "stats_modern", "image_cta_banner"],
+    "carepoint": ["hero_split_editorial", "services_bento", "feature_image_left", "process_timeline", "testimonials_carousel", "hero_centered_cta"],
+    "mednova": ["hero_bento_premium", "feature_image_right", "services_cards", "stats_modern", "process_timeline", "image_cta_banner"],
+    "smile-studio": ["hero_split_image", "feature_image_left", "process_timeline", "services_bento", "testimonials_carousel", "hero_centered_cta"],
+    "iron-gym": ["hero_parallax", "services_cards", "process_timeline", "stats_modern", "image_cta_banner"],
+    "motion-studio": ["hero_floating_cards", "feature_image_right", "services_bento", "testimonials_carousel", "hero_centered_cta"],
+    "haven-estates": ["hero_slider_fade", "feature_image_left", "services_cards", "stats_modern", "process_timeline", "image_cta_banner"],
+    "prime-homes": ["hero_luxury_fullscreen", "services_bento", "feature_image_right", "process_timeline", "testimonials_carousel", "hero_centered_cta"],
+    "learnhub": ["hero_bento_premium", "feature_image_left", "services_cards", "process_timeline", "stats_modern", "image_cta_banner"],
+    "bright-academy": ["hero_split_image", "services_bento", "feature_image_right", "testimonials_carousel", "process_timeline", "hero_centered_cta"],
+    "cloudtech": ["hero_floating_cards", "services_cards", "stats_modern", "feature_image_left", "process_timeline", "image_cta_banner"],
+    "orbit-launch": ["hero_bento_premium", "feature_image_right", "services_bento", "process_timeline", "testimonials_carousel", "hero_centered_cta"],
+    "horizon-travel": ["hero_slider_fade", "feature_image_left", "services_cards", "testimonials_carousel", "image_cta_banner"],
+    "atlas-escape": ["hero_parallax", "services_bento", "feature_image_right", "stats_modern", "hero_centered_cta"],
+    "legacy-law": ["hero_split_editorial", "feature_image_left", "services_cards", "process_timeline", "testimonials_carousel", "hero_centered_cta"],
+    "justice-partners": ["hero_editorial_overlay", "services_bento", "feature_image_right", "stats_modern", "process_timeline", "image_cta_banner"],
+    "obsidian-atelier": ["hero_luxury_fullscreen", "feature_image_left", "testimonials_carousel", "services_cards", "hero_centered_cta"],
+    "form-function": ["hero_editorial_overlay", "services_bento", "feature_image_right", "stats_modern", "image_cta_banner"],
 };
+
+export function getStarterKitFallbackPreview(templateOrSlug) {
+    const slug = typeof templateOrSlug === "string" ? templateOrSlug : templateOrSlug?.slug;
+    const types = starterKitPreviewFallbacks[slug] || [];
+
+    return {
+        previewSparks: [...types],
+        previewBlocks: types.map((type) => ({ type, theme: "auto" })),
+    };
+}
 
 
 export const templateCategories = [
@@ -76,9 +112,12 @@ export function getTemplatePresentation(template) {
         Legal: 8, Portfolio: 7, "Landing Page": 7,
     };
 
+    const fallback = getStarterKitFallbackPreview(template);
+
     return {
         ...template,
-        sparkCount: template.sparkCount ?? sparkCountByCategory[template.category] ?? 7,
+        ...fallback,
+        sparkCount: fallback.previewBlocks.length || (template.sparkCount ?? sparkCountByCategory[template.category] ?? 7),
         popularity: template.usage >= 65 ? "Popular" : null,
         premiumReady: template.premiumReady ?? ["aurora", "table", "buildcore", "carepoint", "haven", "orbit", "noir"].includes(template.id),
     };

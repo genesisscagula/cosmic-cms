@@ -8,6 +8,13 @@ use App\Helpers\CmsHtmlCompiler;
 use App\Services\PagePublisher;
 use App\Http\Controllers\ContactSubmissionController;
 use App\Http\Controllers\AnalyticsEventController;
+use App\Http\Controllers\CommerceManifestController;
+
+
+Route::get('/v1/commerce/sites/{publicKey}/manifest', [CommerceManifestController::class, 'show'])
+    ->whereUuid('publicKey')
+    ->middleware('throttle:120,1')
+    ->name('api.commerce.manifest');
 
 Route::post('/v1/websites/{website}/analytics', [AnalyticsEventController::class, 'store'])->middleware(['throttle:240,1', \App\Http\Middleware\RejectOversizedRequest::class . ':64'])->name('api.websites.analytics.store');
 

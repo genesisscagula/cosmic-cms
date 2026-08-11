@@ -1,195 +1,298 @@
-import themeMetadata from "../../Websites/Theme/ThemeMetadata";
-import { BlockRegistry as SparkPreviewRegistry } from "../../Websites/Components/SparkRegistry";
-import { BlockRegistry as BuilderBlockRegistry } from "../../Websites/BlockRegistry";
+import { Component } from "react";
+import { ActualSparkPreview } from "../../Websites/Components/AddSectionModal";
+import { BlockRegistry as SparkRegistry } from "../../Websites/Components/SparkRegistry";
+import { GlassmorphismHeader } from "../../Websites/GenerateHeader";
+import { MinimalFooter } from "../../Websites/GenerateFooter";
 
 const sparkLabels = {
     hero_background_image: "Image Hero",
     hero_split_image: "Split Hero",
     hero_parallax: "Parallax Hero",
+    hero_slider_fade: "Fade Slider Hero",
     hero_editorial_overlay: "Editorial Hero",
     hero_floating_cards: "Floating Hero",
     hero_split_editorial: "Split Editorial",
     hero_luxury_fullscreen: "Luxury Hero",
     hero_bento_premium: "Bento Hero",
+    hero_agency_showcase: "Agency Showcase",
+    hero_saas_dashboard: "SaaS Dashboard Hero",
     feature_image_left: "Story Left",
     feature_image_right: "Story Right",
     services_cards: "Service Cards",
     services_bento: "Services Bento",
+    services_bento_premium: "Premium Services Bento",
+    services_hover_cards: "Hover Services",
     process_timeline: "Process",
     testimonials_carousel: "Testimonials",
     stats_modern: "Stats",
+    case_studies_grid: "Case Studies",
+    pricing_cards: "Pricing",
     hero_centered_cta: "Centered CTA",
     image_cta_banner: "Image CTA",
+    contact_form_modern: "Contact",
 };
 
-const sparkPreviewRegistry = new Map(
-    SparkPreviewRegistry.map((item) => [item.type, item]),
-);
-
-const starterKitPreviewCycle = ["primary", "white", "surface", "white", "primary", "surface"];
+const sparkRegistry = new Map(SparkRegistry.map((item) => [item.type, item]));
+const starterKitPreviewCycle = ["primary", "white", "surface", "white"];
 
 function starterKitThemeFamily(template) {
-    return template?.themeFamily
-        || template?.theme_family
-        || template?.themeId
-        || "midnight";
+    return template?.themeFamily || template?.theme_family || template?.themeId || "midnight";
 }
 
-export function ActualStarterKitSpark({ type, index, template }) {
-    const registry = sparkPreviewRegistry.get(type);
-    const Preview = registry?.preview;
-
-    if (!Preview) return null;
-
-    return (
-        <Preview
-            {...(registry.payload || {})}
-            previewVariant={starterKitPreviewCycle[index % starterKitPreviewCycle.length]}
-            websiteTheme={starterKitThemeFamily(template)}
-        />
-    );
+function starterKitGlobalTheme(template) {
+    return {
+        primary: starterKitThemeFamily(template),
+        secondary: "white",
+        tertiary: "surface",
+        auto: true,
+    };
 }
 
-
-function cloneValue(value) {
-    if (typeof structuredClone === "function") return structuredClone(value);
-    return JSON.parse(JSON.stringify(value));
+function starterKitSiteName(template) {
+    const raw = String(template?.name || "Cosmic Starter").trim();
+    return raw.replace(/\s+(starter\s+kit|kit)$/i, "").trim() || "Cosmic Starter";
 }
 
-function ActualStarterKitSection({ type, index, template }) {
-    const builderEntry = BuilderBlockRegistry[type];
-    const Component = builderEntry?.component;
-    const previewEntry = sparkPreviewRegistry.get(type);
+function starterKitShell(template) {
+    const name = starterKitSiteName(template);
+    const themeFamily = starterKitThemeFamily(template);
+    const globalTheme = starterKitGlobalTheme(template);
 
-    if (!Component) {
-        return <ActualStarterKitSpark type={type} index={index} template={template} />;
+    return {
+        globalTheme,
+        header: {
+            type: "glassmorphism_header",
+            theme: "white",
+            logo_text: name,
+            logo_filter_key: themeFamily,
+            menu: [
+                { label: "Home", url: "#" },
+                { label: "About", url: "#" },
+                { label: "Services", url: "#" },
+                { label: "Contact", url: "#" },
+            ],
+            cta_label: "Get Started",
+            cta_url: "#",
+        },
+        footer: {
+            type: "minimal_footer",
+            theme: "white",
+            logo_text: name,
+            logo_filter_key: themeFamily,
+            links: [
+                { label: "About" },
+                { label: "Services" },
+                { label: "Contact" },
+                { label: "Privacy" },
+            ],
+            tagline: `${name} — thoughtfully built for what comes next.`,
+            copyright: `© 2026 ${name}. All rights reserved.`,
+        },
+    };
+}
+
+class StarterKitPreviewBoundary extends Component {
+    constructor(props) {
+        super(props);
+        this.state = { failed: false };
     }
 
-    const resolvedTheme = starterKitPreviewCycle[index % starterKitPreviewCycle.length];
-    const block = {
-        ...(cloneValue(builderEntry?.schema?.defaults || {})),
-        ...(cloneValue(previewEntry?.payload || {})),
-        type,
-        theme: resolvedTheme,
-        resolvedTheme,
-    };
+    static getDerivedStateFromError() {
+        return { failed: true };
+    }
 
-    return (
-        <Component
-            block={block}
-            blockIndex={index}
-            globalTheme={{
-                primary: starterKitThemeFamily(template),
-                secondary: "white",
-                tertiary: "surface",
-                auto: true,
-            }}
-            onUpdate={() => {}}
-            blogPosts={[]}
-            blogWebsiteId={null}
-            blogPageId={null}
-            onBlogPostCreated={() => {}}
-            onBlogPostUpdated={() => {}}
-            onBlogPostDeleted={() => {}}
-        />
-    );
+    componentDidCatch(error) {
+        console.error("Starter Kit preview block failed", this.props.type, error);
+    }
+
+    render() {
+        if (this.state.failed) {
+            return (
+                <div className="flex min-h-32 items-center justify-center border-y border-slate-200 bg-white px-6 py-10 text-center text-sm text-slate-500">
+                    Preview unavailable for {sparkLabels[this.props.type] || this.props.type}.
+                </div>
+            );
+        }
+
+        return this.props.children;
+    }
 }
 
+function resolvePreviewBlocks(template) {
+    if (Array.isArray(template?.previewBlocks) && template.previewBlocks.length) return template.previewBlocks;
+    if (Array.isArray(template?.preview_blocks) && template.preview_blocks.length) return template.preview_blocks;
 
-function sparkKind(type = "") {
-    if (type.startsWith("hero_")) return "hero";
-    if (type.startsWith("feature_")) return "feature";
-    if (type.startsWith("services_")) return "services";
-    if (type === "process_timeline") return "process";
-    if (type === "testimonials_carousel") return "testimonials";
-    if (type === "stats_modern") return "stats";
-    if (type === "image_cta_banner") return "cta-image";
-    return "section";
+    const types = Array.isArray(template?.previewSparks) && template.previewSparks.length
+        ? template.previewSparks
+        : Array.isArray(template?.preview_sparks) && template.preview_sparks.length
+            ? template.preview_sparks
+            : [];
+
+    return types.map((type) => ({ type }));
 }
 
-function MiniSpark({ type, primary, surface, text, compact = false }) {
-    const kind = sparkKind(type);
-    const base = compact ? "h-full" : "h-16";
+function sparkForType(type) {
+    const registry = sparkRegistry.get(type);
+    if (!registry) return null;
+    return { key: type, registry };
+}
 
-    if (kind === "hero") {
-        const split = type.includes("split");
-        const bento = type.includes("bento") || type.includes("floating");
+/**
+ * Starter-kit parity renderer.
+ *
+ * IMPORTANT: this intentionally delegates to ActualSparkPreview, the exact
+ * renderer used by the Sparks marketplace. A starter kit only supplies a
+ * payload override + theme variant; it never owns a second block renderer.
+ * This keeps Sparks -> Starter Kit card -> Starter Kit full preview in sync.
+ */
+export function ActualStarterKitSpark({ type, index = 0, template, blockData = null }) {
+    const spark = sparkForType(type);
+    if (!spark) {
         return (
-            <div className={`${compact ? "h-full" : "h-24"} overflow-hidden rounded-md border border-white/10 p-1.5`} style={{ background: `linear-gradient(135deg, ${primary}, ${surface})` }}>
-                {split ? <div className="grid h-full grid-cols-2 gap-1"><div className="space-y-1"><div className="h-1 w-2/3 rounded bg-white/75"/><div className="h-1.5 w-5/6 rounded bg-white/90"/><div className="h-1 w-full rounded bg-white/35"/></div><div className="rounded bg-white/15"/></div>
-                    : bento ? <div className="grid h-full grid-cols-3 gap-1"><div className="col-span-2 space-y-1"><div className="h-1 w-1/2 rounded bg-white/70"/><div className="h-1.5 w-4/5 rounded bg-white/90"/></div><div className="rounded bg-white/15"/><div className="rounded bg-white/10"/><div className="col-span-2 rounded bg-white/10"/></div>
-                    : <div className="flex h-full flex-col justify-center"><div className="h-1 w-1/3 rounded bg-white/65"/><div className="mt-1 h-1.5 w-3/5 rounded bg-white/90"/><div className="mt-1 h-1 w-4/5 rounded bg-white/35"/></div>}
+            <div className="flex min-h-32 items-center justify-center bg-white px-6 py-10 text-center text-sm text-slate-500">
+                Preview unavailable for {sparkLabels[type] || type}.
             </div>
         );
     }
 
-    if (kind === "feature") return <div className={`${base} grid grid-cols-2 gap-1 rounded-md border border-white/10 bg-white/[0.035] p-1`}><div className={`${type.endsWith("right") ? "order-2" : ""} rounded bg-white/10`}/><div className="flex flex-col justify-center gap-1"><span className="h-1 w-3/4 rounded bg-white/25"/><span className="h-1 w-full rounded bg-white/10"/><span className="h-1 w-4/5 rounded bg-white/10"/></div></div>;
-    if (kind === "services") return <div className={`${base} grid grid-cols-3 gap-1 rounded-md border border-white/10 bg-white/[0.025] p-1`}>{[0,1,2].map((i)=><span key={i} className={`rounded ${type.includes("bento") && i===0 ? "col-span-2" : ""}`} style={{ backgroundColor: `${primary}28` }}/>)}</div>;
-    if (kind === "process") return <div className={`${base} flex items-center gap-1 rounded-md border border-white/10 bg-white/[0.025] px-1`}>{[0,1,2,3].map((i)=><span key={i} className="flex-1 border-t border-dashed border-white/20"><i className="-mt-1 block h-2 w-2 rounded-full bg-white/35"/></span>)}</div>;
-    if (kind === "testimonials") return <div className={`${base} grid grid-cols-3 gap-1 rounded-md border border-white/10 bg-white/[0.025] p-1`}>{[0,1,2].map((i)=><span key={i} className="rounded border border-white/10 bg-white/[0.04] p-1"><i className="block h-1 w-full rounded bg-white/10"/><i className="mt-1 block h-1 w-2/3 rounded bg-white/10"/></span>)}</div>;
-    if (kind === "stats") return <div className={`${base} grid grid-cols-4 gap-1 rounded-md border border-white/10 bg-white/[0.025] p-1`}>{[0,1,2,3].map((i)=><span key={i} className="flex flex-col items-center justify-center rounded bg-white/[0.04]"><i className="h-1.5 w-1/2 rounded" style={{ backgroundColor: `${text}55` }}/><i className="mt-1 h-1 w-2/3 rounded bg-white/10"/></span>)}</div>;
-    return <div className={`${base} rounded-md border border-white/10 p-1.5`} style={{ background: kind === "cta-image" ? `linear-gradient(90deg, ${surface}, ${primary})` : "rgba(255,255,255,.025)" }}><div className="mx-auto h-1 w-1/2 rounded bg-white/55"/><div className="mx-auto mt-1 h-1 w-2/3 rounded bg-white/15"/></div>;
+    const previewVariant = starterKitPreviewCycle[index % starterKitPreviewCycle.length];
+
+    return (
+        <StarterKitPreviewBoundary type={type}>
+            <ActualSparkPreview
+                spark={spark}
+                previewVariant={previewVariant}
+                websiteTheme={starterKitGlobalTheme(template)}
+                payloadOverride={blockData || {}}
+                blockIndex={index}
+            />
+        </StarterKitPreviewBoundary>
+    );
+}
+
+
+/**
+ * Purpose-built Starter Kit card visual.
+ *
+ * Marketplace Spark cards intentionally use the registry `preview` component
+ * instead of shrinking the full Builder block. Starter Kit cards now do the
+ * same thing, while still merging the kit's curated first-block payload and
+ * fixed theme family. This keeps the silhouette identical to the chosen Spark
+ * card (slider/parallax/bento/split/etc.) without the fragile giant-page scale.
+ */
+function StarterKitCardSparkVisual({ block, template }) {
+    const type = block?.type;
+    const spark = sparkForType(type);
+    const Preview = spark?.registry?.preview;
+
+    if (!Preview) {
+        return (
+            <div className="flex h-full items-center justify-center bg-slate-950 px-4 text-center text-xs font-medium text-slate-400">
+                {sparkLabels[type] || "Spark"} preview unavailable
+            </div>
+        );
+    }
+
+    const payload = {
+        ...(spark.registry.payload || {}),
+        ...(block || {}),
+    };
+
+    return (
+        <Preview
+            {...payload}
+            previewVariant="primary"
+            websiteTheme={starterKitGlobalTheme(template)}
+        />
+    );
 }
 
 export default function StarterKitSparkPreview({ template, compact = false, showLabels = false }) {
-    const fixedThemeFamily = starterKitThemeFamily(template);
-    const theme = themeMetadata.find((item) => item.id === fixedThemeFamily) || themeMetadata.find((item) => item.id === "midnight") || themeMetadata[0];
-    const [primary, surface, text] = theme?.colors || ["#243447", "#30475E", "#F8FAFC"];
-    const sparks = template.previewSparks?.length ? template.previewSparks : ["hero_background_image", "feature_image_left", "services_bento", "testimonials_carousel", "hero_centered_cta"];
+    const previewBlocks = resolvePreviewBlocks(template);
 
-    if (compact) {
-        const visibleSparks = sparks.slice(0, 7);
-        const scale = visibleSparks.length >= 7 ? 0.145 : visibleSparks.length >= 6 ? 0.16 : 0.18;
-        const virtualWidth = `${100 / scale}%`;
-
+    if (!previewBlocks.length) {
+        // Unknown/future Starter Kits should fail visibly instead of silently
+        // rendering a flat theme-color rectangle that looks like a broken hero.
         return (
-            <div
-                className="h-full min-h-0 overflow-hidden rounded-lg bg-white"
-                aria-label={`${template.name || "Starter kit"} actual Spark composition preview`}
-            >
-                <div
-                    className="origin-top-left"
-                    style={{
-                        width: virtualWidth,
-                        transform: `scale(${scale})`,
-                    }}
-                >
-                    {visibleSparks.map((type, index) => (
-                        <div key={`${type}-${index}`} className="w-full overflow-hidden">
-                            <ActualStarterKitSpark
-                                type={type}
-                                index={index}
-                                template={template}
-                            />
-                        </div>
-                    ))}
+            <div className={`${compact ? "h-full min-h-24" : "min-h-[70vh]"} flex items-center justify-center bg-slate-950 px-6 text-center`}>
+                <div>
+                    <p className="text-sm font-semibold text-white">Starter Kit preview is unavailable</p>
+                    <p className="mt-1 text-xs text-slate-400">The curated Spark composition could not be loaded.</p>
                 </div>
             </div>
         );
     }
 
+    if (compact) {
+        const firstBlock = previewBlocks[0];
+        const heroType = firstBlock?.type;
+
+        return (
+            <div
+                className="cosmic-preview-isolation h-full min-h-0 overflow-hidden rounded-lg"
+                data-cosmic-preview-isolation="true"
+                data-cosmic-site-preview="true"
+                aria-label={`${template.name || "Starter kit"} ${sparkLabels[heroType] || "hero"} preview`}
+            >
+                <div className="pointer-events-none h-full w-full [&>*]:h-full">
+                    <StarterKitCardSparkVisual block={firstBlock} template={template} />
+                </div>
+            </div>
+        );
+    }
+
+    const shell = starterKitShell(template);
+
     return (
-        <div className="w-full">
-            {sparks.map((type, index) => (
-                <section key={`${type}-${index}`} className="w-full overflow-hidden">
-                    {showLabels && (
-                        <div className="flex items-center justify-between border-y border-slate-200 bg-white px-4 py-2 text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:px-6">
-                            <span>{sparkLabels[type] || type.replaceAll("_", " ")}</span>
-                            <span>{String(index + 1).padStart(2, "0")}</span>
-                        </div>
-                    )}
-                    <div className="pointer-events-none w-full">
-                        <ActualStarterKitSection type={type} index={index} template={template} />
-                    </div>
-                </section>
-            ))}
+        <div className="cosmic-preview-isolation cosmic-starter-kit-live-site w-full bg-white text-slate-950 [color-scheme:light]" data-cosmic-site-preview="true" data-cosmic-preview-isolation="true">
+            <div className="pointer-events-none w-full">
+                <GlassmorphismHeader
+                    block={shell.header}
+                    onUpdate={() => {}}
+                    globalTheme={shell.globalTheme}
+                    pageTargets={[]}
+                />
+            </div>
+
+            <main className="w-full">
+                {previewBlocks.map((block, index) => {
+                    const type = block?.type;
+                    if (!type) return null;
+
+                    return (
+                        <section key={`${type}-${index}`} className="w-full overflow-hidden">
+                            {showLabels && (
+                                <div className="flex items-center justify-between border-y border-slate-200 bg-white px-4 py-2 text-[9px] font-semibold uppercase tracking-wide text-slate-500 sm:px-6">
+                                    <span>{sparkLabels[type] || type.replaceAll("_", " ")}</span>
+                                    <span>{String(index + 1).padStart(2, "0")}</span>
+                                </div>
+                            )}
+                            <div className="pointer-events-none w-full">
+                                <ActualStarterKitSpark
+                                    type={type}
+                                    index={index}
+                                    template={template}
+                                    blockData={block}
+                                />
+                            </div>
+                        </section>
+                    );
+                })}
+            </main>
+
+            <div className="pointer-events-none w-full">
+                <MinimalFooter block={shell.footer} onUpdate={() => {}} />
+            </div>
         </div>
     );
 }
 
 export function starterKitCompositionLabels(template, limit = 3) {
-    const sparks = template?.previewSparks || [];
-    return sparks.slice(0, limit).map((type) => sparkLabels[type] || String(type).replaceAll("_", " "));
+    return resolvePreviewBlocks(template)
+        .map((block) => block?.type)
+        .filter(Boolean)
+        .slice(0, limit)
+        .map((type) => sparkLabels[type] || String(type).replaceAll("_", " "));
 }
 
 export { sparkLabels };

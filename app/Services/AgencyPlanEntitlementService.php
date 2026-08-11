@@ -38,6 +38,7 @@ final class AgencyPlanEntitlementService
                 'analytics' => $plan->limit('analytics_level', 'none'),
                 'leads' => $plan->limit('leads_level', 'none'),
                 'sales' => $plan->limit('sales_level', 'none'),
+                'commerce' => $plan->limit('commerce_level', 'connector'),
                 'white_label' => $plan->limit('white_label_level', 'none'),
             ],
             'features' => $this->featureMap($user),
@@ -86,7 +87,7 @@ final class AgencyPlanEntitlementService
             'lead_source_reporting', 'sales_funnel_reporting', 'ai_insights_foundation',
             'advanced_white_label', 'branded_reports', 'granular_permissions',
             'api_access', 'webhooks', 'priority_ai', 'advanced_publication_history',
-            'early_access',
+            'early_access', 'commerce_connector', 'commerce_store',
         ];
 
         return collect($features)

@@ -344,6 +344,302 @@ class CmsHtmlCompiler
         return "<article class='px-6 py-16 sm:px-8 lg:px-12 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-4xl'><a href='blog/' class='text-sm font-semibold {$theme['sub']} hover:underline'>← Back to articles</a><p class='mt-12 text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$category}</p><h1 class='mt-4 text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl {$theme['text']}'>{$title}</h1><p class='mt-6 max-w-3xl text-lg leading-8 {$theme['sub']}'>{$excerpt}</p><img src='{$image}' alt='{$title}' width='1200' height='600' loading='lazy' decoding='async' class='mt-10 aspect-[16/8] w-full rounded-3xl object-cover'><div class='mt-8 flex flex-wrap gap-2'>{$tagMarkup}</div><div class='mt-10 max-w-3xl text-base leading-8 {$theme['sub']}'>{$content}</div></div></article>";
     }
 
+
+    private static function commerceMoney(?int $minor, string $currency, int $decimals): string
+    {
+        if ($minor === null) return '—';
+        $value = $minor / (10 ** max(0, $decimals));
+        return $currency . ' ' . number_format($value, $decimals, '.', ',');
+    }
+
+    private static function commerceSparkHtml(string $type, array $block, array $context, array $theme): string
+    {
+        $commerce = is_array($context['commerce'] ?? null) ? $context['commerce'] : [];
+        $products = array_values(array_filter((array) ($commerce['products'] ?? []), fn ($p) => is_array($p)));
+        $categories = array_values(array_filter((array) ($commerce['categories'] ?? []), fn ($c) => is_array($c)));
+        $currency = (string) ($commerce['currency'] ?? 'USD');
+        $decimals = (int) ($commerce['currency_decimals'] ?? 2);
+        $runtimeEndpoint = (string) ($context['commerce_runtime_endpoint'] ?? '');
+        $boundId = (int) ($block['product_id'] ?? 0);
+        $product = collect($products)->first(fn ($p) => (int) ($p['id'] ?? 0) === $boundId) ?: ($products[0] ?? null);
+        $rootId = 'cosmic-commerce-' . substr(sha1($type . '|' . json_encode($block) . '|' . uniqid('', true)), 0, 12);
+        $heading = e((string) ($block['heading'] ?? match ($type) {
+            'commerce_product_grid' => 'Featured products',
+            'commerce_catalog_grid' => 'Shop the catalog',
+            'commerce_catalog_editorial' => 'Curated for you',
+            'commerce_catalog_compact' => 'Browse all products',
+            'commerce_categories' => 'Shop by category',
+            'commerce_featured_products' => 'Featured picks',
+            'commerce_featured_collection' => 'Featured collection',
+            'commerce_promo_split' => 'A standout offer for the season',
+            'commerce_benefits_strip' => 'Shop with confidence',
+            'commerce_cart_classic' => 'Your cart',
+            'commerce_cart_split' => 'Review your bag',
+            'commerce_cart_compact' => 'Cart summary',
+            'commerce_checkout_classic' => 'Checkout',
+            'commerce_checkout_split' => 'Secure checkout',
+            'commerce_checkout_express' => 'Express checkout',
+            'commerce_product_gallery' => 'Product gallery',
+            'commerce_variation_selector' => 'Choose your options',
+            'commerce_related_products' => 'You may also like',
+            default => 'Commerce',
+        }));
+        $text = e((string) ($block['text'] ?? ''));
+        $limit = max(1, min(24, (int) ($block['limit'] ?? 8)));
+        $price = static fn ($p) => self::commerceMoney(isset($p['sale_price_minor']) && $p['sale_price_minor'] !== null ? (int) $p['sale_price_minor'] : (isset($p['regular_price_minor']) ? (int) $p['regular_price_minor'] : null), $currency, $decimals);
+        $img = static fn ($p) => e(self::staticAssetUrl((string) (($p['featured_image_url'] ?? '') ?: (($p['gallery'][0]['url'] ?? '') ?: '/storage/cms-images/background/background-1.avif'))));
+        $productUrl = static fn ($p) => e((string) ($p['storefront_url'] ?? '#'));
+
+        // Commerce Sparks intentionally use inline semantic palette variables instead
+        // of Tailwind classes generated from PHP. Builder already renders from these
+        // exact palette values; using CSS vars here guarantees Preview/Export parity
+        // even when Tailwind has never seen a dynamic theme class such as bg-[#243447].
+        $palette = is_array($theme['palette'] ?? null) ? $theme['palette'] : [];
+        $background = e((string) ($palette['background'] ?? '#243447'));
+        $surface = e((string) ($palette['surface'] ?? $palette['background'] ?? '#30475E'));
+        $textColor = e((string) ($palette['text'] ?? '#F8FAFC'));
+        $muted = e((string) ($palette['muted'] ?? ($textColor === '#F8FAFC' ? '#CBD5E1' : '#64748B')));
+        $accent = e((string) ($palette['accent'] ?? '#60A5FA'));
+        $border = e((string) ($palette['border'] ?? 'rgba(148,163,184,.28)'));
+        $vars = "--commerce-bg:{$background};--commerce-surface:{$surface};--commerce-text:{$textColor};--commerce-muted:{$muted};--commerce-accent:{$accent};--commerce-border:{$border};background:var(--commerce-bg);color:var(--commerce-text)";
+        $cardStyle = "background:var(--commerce-surface);color:var(--commerce-text);border-color:var(--commerce-border)";
+        $body = '';
+
+        if (in_array($type, ['commerce_catalog_grid', 'commerce_catalog_editorial', 'commerce_catalog_compact'], true)) {
+            $items = array_slice($products, 0, $limit);
+            $categoryOptions = "<option value=''>All categories</option>";
+            foreach ($categories as $category) {
+                $categoryOptions .= "<option value='".e((string) ($category['id'] ?? ''))."'>".e((string) ($category['name'] ?? ''))."</option>";
+            }
+            $toolbar = !array_key_exists('show_toolbar', $block) || $block['show_toolbar'] !== false
+                ? "<div data-commerce-toolbar class='mb-7 grid gap-3 rounded-2xl border p-3 sm:grid-cols-[1fr_auto_auto]' style='{$cardStyle}'><input data-catalog-search type='search' placeholder='Search products' class='min-h-11 rounded-xl border bg-transparent px-4 text-sm outline-none' style='border-color:var(--commerce-border);color:var(--commerce-text)'><select data-catalog-category class='min-h-11 rounded-xl border bg-transparent px-3 text-sm font-semibold' style='border-color:var(--commerce-border);color:var(--commerce-text)'>{$categoryOptions}</select><select data-catalog-sort class='min-h-11 rounded-xl border bg-transparent px-3 text-sm font-semibold' style='border-color:var(--commerce-border);color:var(--commerce-text)'><option value='featured'>Featured</option><option value='newest'>Newest</option><option value='price_asc'>Price: low to high</option><option value='price_desc'>Price: high to low</option><option value='name'>Name</option></select></div>"
+                : '';
+            $cards = '';
+            foreach ($items as $index => $p) {
+                $title = e((string) ($p['title'] ?? ''));
+                $url = $productUrl($p);
+                $image = $img($p);
+                $priceText = $price($p);
+                $categoryNames = [];
+                foreach ((array) ($p['category_ids'] ?? []) as $categoryId) {
+                    foreach ($categories as $category) {
+                        if ((int) ($category['id'] ?? 0) === (int) $categoryId) $categoryNames[] = (string) ($category['name'] ?? '');
+                    }
+                }
+                $categoryText = e(implode(' · ', array_filter($categoryNames)) ?: 'Catalog product');
+                $categoryIds = e(implode(',', array_map('intval', (array) ($p['category_ids'] ?? []))));
+                $searchText = e(strtolower((string) ($p['title'] ?? '')));
+                $priceMinor = (int) (($p['sale_price_minor'] ?? $p['regular_price_minor'] ?? 0));
+                $featured = !empty($p['is_featured']) ? '1' : '0';
+                $attrs = "data-catalog-product data-title='{$searchText}' data-category-ids='{$categoryIds}' data-price='{$priceMinor}' data-id='".e((string)($p['id']??0))."' data-featured='{$featured}'";
+                if ($type === 'commerce_catalog_editorial') {
+                    $span = $index % 5 === 0 ? 'lg:col-span-7' : 'lg:col-span-5';
+                    $aspect = $index % 5 === 0 ? 'aspect-[16/10]' : 'aspect-[4/3]';
+                    $cards .= "<a {$attrs} href='{$url}' class='group overflow-hidden rounded-[26px] border {$span}' style='{$cardStyle}'><img src='{$image}' alt='{$title}' class='{$aspect} w-full object-cover transition duration-500 group-hover:scale-[1.02]'><div class='p-6 sm:p-7'><p class='text-[10px] font-bold uppercase tracking-[0.18em]' style='color:var(--commerce-muted)'>{$categoryText}</p><div class='mt-2 flex items-end justify-between gap-5'><h3 class='text-xl font-semibold tracking-[-0.03em]'>{$title}</h3><p class='shrink-0 text-base font-bold'>{$priceText}</p></div></div></a>";
+                } elseif ($type === 'commerce_catalog_compact') {
+                    $stock = !empty($p['track_inventory']) ? (((int) ($p['stock_quantity'] ?? 0) > 0) ? e((string)$p['stock_quantity']).' in stock' : (!empty($p['allow_backorders']) ? 'Backorder' : 'Out of stock')) : '';
+                    $cards .= "<a {$attrs} href='{$url}' class='grid grid-cols-[72px_1fr_auto] items-center gap-4 p-3.5 transition hover:bg-black/5' style='border-color:var(--commerce-border)'><img src='{$image}' alt='{$title}' class='h-[72px] w-[72px] rounded-xl object-cover'><div class='min-w-0'><h3 class='truncate text-sm font-semibold'>{$title}</h3><p class='mt-1 truncate text-xs' style='color:var(--commerce-muted)'>{$categoryText}</p></div><div class='text-right'><p class='text-sm font-bold'>{$priceText}</p>".($stock?"<p class='mt-1 text-[11px]' style='color:var(--commerce-muted)'>{$stock}</p>":'')."</div></a>";
+                } else {
+                    $badge = !empty($p['is_featured']) ? "<span class='rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide' style='background:color-mix(in srgb,var(--commerce-accent) 12%,transparent);color:var(--commerce-accent)'>Featured</span>" : '';
+                    $cards .= "<a {$attrs} href='{$url}' class='group overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl' style='{$cardStyle};box-shadow:0 12px 35px rgba(2,6,23,.10)'><img src='{$image}' alt='{$title}' class='aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-[1.025]'><div class='p-5'><h3 class='text-[16px] font-semibold tracking-[-0.02em]'>{$title}</h3><div class='mt-3 flex items-center justify-between gap-3'><p class='text-[15px] font-bold'>{$priceText}</p>{$badge}</div></div></a>";
+                }
+            }
+            $layoutClass = $type === 'commerce_catalog_editorial'
+                ? 'grid gap-6 md:grid-cols-2 lg:grid-cols-12'
+                : ($type === 'commerce_catalog_compact' ? 'divide-y rounded-2xl border' : 'grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4');
+            $layoutStyle = $type === 'commerce_catalog_compact' ? " style='{$cardStyle}'" : '';
+            $body = $toolbar."<div data-commerce-body data-catalog-layout='{$type}' class='{$layoutClass}'{$layoutStyle}>{$cards}</div><p data-catalog-empty class='mt-5 hidden text-sm' style='color:var(--commerce-muted)'>No products match this catalog view.</p>";
+        } elseif ($type === 'commerce_product_grid') {
+            $items = array_slice(array_values(array_filter($products, fn ($p) => !($block['featured_only'] ?? false) || !empty($p['is_featured']))), 0, $limit);
+            foreach ($items as $p) {
+                $stock = !empty($p['track_inventory']) ? (((int) ($p['stock_quantity'] ?? 0) > 0) ? e((string) $p['stock_quantity']).' in stock' : (!empty($p['allow_backorders']) ? 'Available on backorder' : 'Out of stock')) : '';
+                $body .= "<a href='".$productUrl($p)."' class='group block overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl' style='{$cardStyle};box-shadow:0 12px 35px rgba(2,6,23,.10)'><img src='".$img($p)."' alt='".e((string) ($p['featured_image_alt'] ?? $p['title'] ?? ''))."' class='aspect-square w-full object-cover'><div class='p-5'><h3 class='text-[16px] font-semibold tracking-[-0.02em]'>".e((string) ($p['title'] ?? ''))."</h3><div class='mt-3 flex items-center justify-between gap-3'><p class='text-[15px] font-bold'>".$price($p)."</p>".($stock ? "<span class='rounded-full px-2.5 py-1 text-[11px] font-semibold' style='background:color-mix(in srgb,var(--commerce-accent) 12%,transparent);color:var(--commerce-accent)'>{$stock}</span>" : '')."</div></div></a>";
+            }
+            $body = "<div data-commerce-body class='grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>{$body}</div>";
+        } elseif ($type === 'commerce_featured_products') {
+            $featured = array_values(array_filter($products, fn ($p) => !empty($p['is_featured'])));
+            $items = array_slice($featured ?: $products, 0, $limit);
+            foreach ($items as $p) {
+                $body .= "<a href='".$productUrl($p)."' class='group block overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl' style='{$cardStyle};box-shadow:0 12px 35px rgba(2,6,23,.10)'><img src='".$img($p)."' alt='".e((string) ($p['featured_image_alt'] ?? $p['title'] ?? ''))."' class='aspect-[4/5] w-full object-cover'><div class='p-5'><h3 class='text-[16px] font-semibold tracking-[-0.02em]'>".e((string) ($p['title'] ?? ''))."</h3><p class='mt-2 text-[15px] font-bold'>".$price($p)."</p></div></a>";
+            }
+            $body = "<div data-commerce-body class='grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>{$body}</div>";
+        } elseif ($type === 'commerce_featured_collection') {
+            $categoryId = (int) ($block['category_id'] ?? ($categories[0]['id'] ?? 0));
+            $category = collect($categories)->first(fn ($c) => (int) ($c['id'] ?? 0) === $categoryId) ?: ($categories[0] ?? null);
+            $items = $category ? array_values(array_filter($products, fn ($p) => in_array((int) ($category['id'] ?? 0), array_map('intval', (array) ($p['category_ids'] ?? [])), true))) : [];
+            foreach (array_slice($items, 0, $limit) as $p) {
+                $body .= "<a href='".$productUrl($p)."' class='group block overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl' style='{$cardStyle};box-shadow:0 12px 35px rgba(2,6,23,.10)'><img src='".$img($p)."' alt='".e((string) ($p['featured_image_alt'] ?? $p['title'] ?? ''))."' class='aspect-[4/5] w-full object-cover'><div class='p-5'><h3 class='text-[16px] font-semibold tracking-[-0.02em]'>".e((string) ($p['title'] ?? ''))."</h3><p class='mt-2 text-[15px] font-bold'>".$price($p)."</p></div></a>";
+            }
+            $collectionUrl = e((string) ($category['storefront_url'] ?? '#'));
+            $buttonLabel = e((string) ($block['button_label'] ?? 'View collection'));
+            $body = "<div data-commerce-body class='grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>{$body}</div>".($category ? "<a href='{$collectionUrl}' class='mt-7 inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-bold' style='{$cardStyle}'>{$buttonLabel}</a>" : '');
+        } elseif ($type === 'commerce_promo_split') {
+            $eyebrow = e((string) ($block['eyebrow'] ?? 'Limited collection'));
+            $promoHeading = e((string) ($block['heading'] ?? 'A standout offer for the season'));
+            $promoText = e((string) ($block['text'] ?? 'Pair a strong message with a product-led visual and a clear next step.'));
+            $buttonLabel = e((string) ($block['button_label'] ?? 'Shop the collection'));
+            $buttonUrl = e((string) ($block['button_url'] ?? '/shop'));
+            $promoImage = e(self::staticAssetUrl((string) ($block['image_url'] ?? '/storage/cms-images/background/background-3.avif')));
+            $promoAlt = e((string) ($block['image_alt'] ?? $promoHeading));
+            $body = "<div class='grid overflow-hidden rounded-[30px] border lg:grid-cols-[1.02fr_.98fr]' style='{$cardStyle}'><div class='flex flex-col justify-center p-7 sm:p-10 lg:p-12'><p class='text-[11px] font-bold uppercase tracking-[0.2em]' style='color:var(--commerce-accent)'>{$eyebrow}</p><h2 class='mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl'>{$promoHeading}</h2><p class='mt-4 max-w-xl text-[15px] leading-7' style='color:var(--commerce-muted)'>{$promoText}</p><div><a href='{$buttonUrl}' class='mt-7 inline-flex min-h-11 items-center justify-center rounded-xl px-5 py-2.5 text-sm font-bold' style='background:var(--commerce-accent);color:var(--commerce-bg)'>{$buttonLabel}</a></div></div><img src='{$promoImage}' alt='{$promoAlt}' class='h-full min-h-[300px] w-full object-cover'></div>";
+        } elseif ($type === 'commerce_benefits_strip') {
+            $benefitMarkup = '';
+            for ($i = 1; $i <= 4; $i++) {
+                $benefitTitle = e((string) ($block["benefit_{$i}_title"] ?? ''));
+                if ($benefitTitle === '') continue;
+                $benefitText = e((string) ($block["benefit_{$i}_text"] ?? ''));
+                $benefitMarkup .= "<div class='flex gap-3'><div class='mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black' style='background:color-mix(in srgb,var(--commerce-accent) 12%,transparent);color:var(--commerce-accent)'>✓</div><div><h3 class='text-sm font-bold'>{$benefitTitle}</h3><p class='mt-1 text-xs leading-5' style='color:var(--commerce-muted)'>{$benefitText}</p></div></div>";
+            }
+            $benefitsHeading = e((string) ($block['heading'] ?? 'Shop with confidence'));
+            $body = "<div class='rounded-[26px] border px-6 py-7 sm:px-8' style='{$cardStyle}'><h2 class='mb-6 text-xl font-semibold tracking-[-0.03em]'>{$benefitsHeading}</h2><div class='grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>{$benefitMarkup}</div></div>";
+        } elseif (in_array($type, ['commerce_cart_classic', 'commerce_cart_split', 'commerce_cart_compact'], true)) {
+            $shopUrl = e((string) ($commerce['runtime_urls']['shop'] ?? '#'));
+            $checkoutUrl = e((string) ($commerce['runtime_urls']['checkout'] ?? '#'));
+            $continueLabel = e((string) ($block['continue_label'] ?? ($type === 'commerce_cart_split' ? 'Keep shopping' : ($type === 'commerce_cart_compact' ? 'Back to shop' : 'Continue shopping'))));
+            $checkoutLabel = e((string) ($block['checkout_label'] ?? ($type === 'commerce_cart_split' ? 'Secure checkout' : ($type === 'commerce_cart_compact' ? 'Checkout' : 'Proceed to checkout'))));
+            $preview = array_slice($products, 0, $type === 'commerce_cart_compact' ? 3 : 2);
+            $previewSubtotal = 0;
+            $lines = '';
+            foreach ($preview as $index => $p) {
+                $qty = $index + 1;
+                $unitMinor = isset($p['sale_price_minor']) && $p['sale_price_minor'] !== null ? (int) $p['sale_price_minor'] : (int) ($p['regular_price_minor'] ?? 0);
+                $previewSubtotal += $unitMinor * $qty;
+                $linePrice = self::commerceMoney($unitMinor * $qty, $currency, $decimals);
+                $title = e((string) ($p['title'] ?? 'Product'));
+                $image = $img($p);
+                if ($type === 'commerce_cart_compact') {
+                    $lines .= "<div class='grid grid-cols-[64px_1fr_auto] items-center gap-3 p-3'><img src='{$image}' alt='{$title}' class='h-16 w-16 rounded-xl object-cover'><div class='min-w-0'><h3 class='truncate text-sm font-bold'>{$title}</h3><p class='mt-1 text-xs' style='color:var(--commerce-muted)'>Qty {$qty} · Demo preview</p></div><strong class='text-sm'>{$linePrice}</strong></div>";
+                } else {
+                    $lines .= "<div class='grid grid-cols-[82px_1fr_auto] items-center gap-4 rounded-2xl border p-3.5' style='{$cardStyle}'><img src='{$image}' alt='{$title}' class='h-[82px] w-[82px] rounded-xl object-cover'><div class='min-w-0'><h3 class='truncate text-sm font-bold'>{$title}</h3><p class='mt-1 text-xs' style='color:var(--commerce-muted)'>Qty {$qty} · Demo preview</p></div><strong class='text-sm'>{$linePrice}</strong></div>";
+                }
+            }
+            if ($lines === '') $lines = "<div class='rounded-2xl border border-dashed p-8 text-center text-sm' style='border-color:var(--commerce-border);color:var(--commerce-muted)'>Live cart items will appear here on the protected Cart route.</div>";
+            $subtotal = self::commerceMoney($previewSubtotal, $currency, $decimals);
+            $summary = "<aside class='rounded-[26px] border p-6' style='{$cardStyle}'><p class='text-[11px] font-bold uppercase tracking-[0.18em]' style='color:var(--commerce-muted)'>Order summary</p><div class='mt-5 flex items-center justify-between text-sm'><span style='color:var(--commerce-muted)'>Preview subtotal</span><strong>{$subtotal}</strong></div><div class='mt-3 flex items-center justify-between text-sm'><span style='color:var(--commerce-muted)'>Shipping & tax</span><span>At checkout</span></div><div class='my-5 border-t' style='border-color:var(--commerce-border)'></div><div class='flex items-center justify-between'><strong>Estimated total</strong><strong class='text-xl'>{$subtotal}</strong></div><a href='{$checkoutUrl}' class='mt-6 block w-full rounded-xl px-4 py-3 text-center text-sm font-bold' style='background:var(--commerce-accent);color:var(--commerce-bg)'>{$checkoutLabel}</a><p class='mt-3 text-center text-[11px] leading-5' style='color:var(--commerce-muted)'>Layout preview only. Live cart quantities, coupons and totals remain controlled by the commerce runtime.</p></aside>";
+            $continue = "<a href='{$shopUrl}' class='mt-5 inline-flex text-sm font-bold' style='color:var(--commerce-accent)'>← {$continueLabel}</a>";
+            if ($type === 'commerce_cart_split') {
+                $body = "<div class='grid gap-8 lg:grid-cols-[1.2fr_.8fr] lg:items-start'><div><div class='space-y-3'>{$lines}</div>{$continue}</div>{$summary}</div>";
+            } elseif ($type === 'commerce_cart_compact') {
+                $body = "<div class='grid gap-5 lg:grid-cols-[1fr_320px]'><div class='divide-y rounded-2xl border' style='border-color:var(--commerce-border);background:var(--commerce-surface)'>{$lines}</div>{$summary}</div>{$continue}";
+            } else {
+                $body = "<div class='grid gap-7 lg:grid-cols-[1fr_360px]'><div><div class='space-y-3'>{$lines}</div>{$continue}</div>{$summary}</div>";
+            }
+        } elseif (in_array($type, ['commerce_checkout_classic', 'commerce_checkout_split', 'commerce_checkout_express'], true)) {
+            $items = array_slice($products, 0, 2);
+            $previewSubtotal = 0;
+            $lines = '';
+            foreach ($items as $index => $p) {
+                $qty = $index + 1;
+                $unitMinor = isset($p['sale_price_minor']) && $p['sale_price_minor'] !== null ? (int) $p['sale_price_minor'] : (int) ($p['regular_price_minor'] ?? 0);
+                $previewSubtotal += $unitMinor * $qty;
+                $title = e((string) ($p['title'] ?? 'Product'));
+                $lines .= "<div class='flex items-center gap-3'><img src='".$img($p)."' alt='{$title}' class='h-12 w-12 rounded-xl object-cover'><div class='min-w-0 flex-1'><p class='truncate text-sm font-semibold'>{$title}</p><p class='text-[11px]' style='color:var(--commerce-muted)'>Qty {$qty}</p></div><strong class='text-xs'>".self::commerceMoney($unitMinor * $qty, $currency, $decimals)."</strong></div>";
+            }
+            if ($lines === '') $lines = "<p class='text-sm' style='color:var(--commerce-muted)'>Live order items appear at checkout.</p>";
+            $subtotal = self::commerceMoney($previewSubtotal, $currency, $decimals);
+            $paymentLabel = e((string) ($block['payment_label'] ?? ($type === 'commerce_checkout_split' ? 'Pay securely' : ($type === 'commerce_checkout_express' ? 'Complete purchase' : 'Continue to payment'))));
+            $helpText = e((string) ($block['help_text'] ?? 'Secure checkout powered by the commerce runtime.'));
+            $field = static fn (string $label, string $placeholder, bool $wide = false) => "<label class='".($wide?'sm:col-span-2':'')."'><span class='mb-1.5 block text-[11px] font-bold uppercase tracking-[0.13em]' style='color:var(--commerce-muted)'>".e($label)."</span><div class='min-h-11 rounded-xl border px-3.5 py-3 text-sm' style='border-color:var(--commerce-border);background:var(--commerce-surface);color:var(--commerce-muted)'>".e($placeholder)."</div></label>";
+            $compact = $type === 'commerce_checkout_express';
+            $customer = "<div class='rounded-[26px] border ".($compact?'p-4 sm:p-5':'p-5 sm:p-6')."' style='{$cardStyle}'><div class='flex items-center justify-between gap-4'><h3 class='text-base font-bold'>Customer details</h3><span class='text-[10px] font-bold uppercase tracking-[0.14em]' style='color:var(--commerce-accent)'>Runtime bound</span></div><div class='mt-5 grid gap-3 sm:grid-cols-2'>".$field('First name','Alex').$field('Last name','Morgan').$field('Email','alex@example.com',true).$field('Country','Select country').$field('Region','State / region').(!$compact?$field('Street address','123 Commerce Street',true):'')."</div></div>";
+            $delivery = "<div class='rounded-[26px] border p-5 sm:p-6' style='{$cardStyle}'><h3 class='text-base font-bold'>Delivery & promo</h3><div class='mt-5 grid gap-3 sm:grid-cols-2'>".$field('Shipping','Calculated by destination').$field('Promo code','Enter code')."</div><p class='mt-4 text-xs leading-5' style='color:var(--commerce-muted)'>Live checkout recalculates shipping, coupons and tax on the protected runtime route.</p></div>";
+            $summary = "<aside class='rounded-[26px] border p-5 sm:p-6' style='{$cardStyle}'><div class='flex items-center justify-between'><h3 class='text-base font-bold'>Order summary</h3><span class='text-[10px] font-bold uppercase tracking-[0.14em]' style='color:var(--commerce-accent)'>Preview</span></div><div class='mt-5 space-y-3'>{$lines}</div><div class='my-5 border-t' style='border-color:var(--commerce-border)'></div><div class='flex items-center justify-between text-sm'><span style='color:var(--commerce-muted)'>Preview subtotal</span><strong>{$subtotal}</strong></div><div class='mt-3 flex items-center justify-between text-sm'><span style='color:var(--commerce-muted)'>Shipping & tax</span><span>Calculated live</span></div><div class='my-5 border-t' style='border-color:var(--commerce-border)'></div><div class='flex items-center justify-between'><strong>Total</strong><strong class='text-xl'>{$subtotal}</strong></div><div class='mt-6 rounded-xl px-4 py-3 text-center text-sm font-bold' style='background:var(--commerce-accent);color:var(--commerce-bg)'>{$paymentLabel}</div><p class='mt-3 text-center text-[11px] leading-5' style='color:var(--commerce-muted)'>{$helpText}</p></aside>";
+            if ($type === 'commerce_checkout_split') {
+                $body = "<div class='grid gap-8 lg:grid-cols-[1.12fr_.88fr] lg:items-start'><div><div class='space-y-5'>{$customer}{$delivery}</div></div>{$summary}</div>";
+            } elseif ($type === 'commerce_checkout_express') {
+                $body = "<div class='mx-auto max-w-5xl'><div class='grid gap-5 lg:grid-cols-[1fr_330px]'>{$customer}{$summary}</div></div>";
+            } else {
+                $body = "<div class='grid gap-6 lg:grid-cols-[1fr_360px]'><div class='space-y-5'>{$customer}{$delivery}</div>{$summary}</div>";
+            }
+        } elseif ($type === 'commerce_categories') {
+            foreach ($categories as $c) {
+                $body .= "<a href='".e((string) ($c['storefront_url'] ?? '#'))."' class='block rounded-2xl border p-6' style='{$cardStyle}'><div class='text-lg font-bold'>".e((string) ($c['name'] ?? ''))."</div><p class='mt-2 text-sm' style='color:var(--commerce-muted)'>".e((string) ($c['description'] ?? 'Explore this collection'))."</p></a>";
+            }
+            $body = "<div data-commerce-body class='grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>{$body}</div>";
+        } elseif ($type === 'commerce_price') {
+            $body = $product ? "<div data-commerce-body class='rounded-2xl border p-6' style='{$cardStyle}'><p class='text-xs font-semibold uppercase tracking-widest' style='color:var(--commerce-muted)'>".e((string) ($block['label'] ?? 'Price'))."</p><div class='mt-2 text-4xl font-black'>".$price($product)."</div></div>" : "<div data-commerce-body>No published product</div>";
+        } elseif ($type === 'commerce_product_gallery') {
+            $images = [];
+            if ($product) {
+                if (!empty($product['featured_image_url'])) $images[] = $product['featured_image_url'];
+                foreach ((array) ($product['gallery'] ?? []) as $g) if (!empty($g['url'])) $images[] = $g['url'];
+            }
+            $images = array_values(array_unique($images));
+            $main = $images[0] ?? '/storage/cms-images/background/background-1.avif';
+            $thumbs=''; foreach(array_slice($images,1,4) as $u) $thumbs.="<img src='".e(self::staticAssetUrl($u))."' alt='' class='aspect-square w-full rounded-xl object-cover'>";
+            $body = "<div data-commerce-body class='grid gap-4 md:grid-cols-[2fr_1fr]'><img src='".e(self::staticAssetUrl($main))."' alt='".e((string) ($product['title'] ?? ''))."' class='aspect-square w-full rounded-2xl object-cover'><div class='grid grid-cols-2 gap-3'>{$thumbs}</div></div>";
+        } elseif ($type === 'commerce_variation_selector') {
+            $options=''; foreach ((array) ($product['options'] ?? []) as $o) { $vals=''; foreach((array)($o['values']??[]) as $v) $vals.="<span class='rounded-xl border px-4 py-2 text-sm font-semibold' style='border-color:var(--commerce-border);background:var(--commerce-surface)'>".e((string)($v['label']??''))."</span>"; $options.="<div><p class='mb-2 text-sm font-semibold'>".e((string)($o['name']??''))."</p><div class='flex flex-wrap gap-2'>{$vals}</div></div>"; }
+            $body = "<div data-commerce-body class='space-y-5'>{$options}</div>";
+        } elseif ($type === 'commerce_related_products') {
+            $categoryIds = array_map('intval', (array) ($product['category_ids'] ?? []));
+            $related = array_values(array_filter($products, fn($p) => (int)($p['id']??0)!==(int)($product['id']??0) && (!$categoryIds || array_intersect($categoryIds, array_map('intval',(array)($p['category_ids']??[]))))));
+            foreach(array_slice($related,0,$limit) as $p) $body.="<a href='".$productUrl($p)."' class='block overflow-hidden rounded-2xl border' style='{$cardStyle}'><img src='".$img($p)."' alt='' class='aspect-square w-full object-cover'><div class='p-4'><b>".e((string)($p['title']??''))."</b><p class='mt-1 text-sm'>".$price($p)."</p></div></a>";
+            $body = "<div data-commerce-body class='grid gap-5 sm:grid-cols-2 lg:grid-cols-4'>{$body}</div>";
+        }
+
+        $config = e(json_encode(['type'=>$type,'block'=>$block,'endpoint'=>$runtimeEndpoint,'product_id'=>$boundId], JSON_UNESCAPED_SLASHES));
+        $script = '';
+        if ($runtimeEndpoint !== '') {
+            $runtimeJs = <<<'JS'
+(function(){
+  const root=document.getElementById(__ROOT_ID__); if(!root) return;
+  const cfg=JSON.parse(root.dataset.commerceConfig||'{}');
+  const esc=(v)=>String(v??'').replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[c]));
+  const money=(minor,data)=>{ if(minor===null||minor===undefined||minor==='') return '—'; const d=Number(data.currency_decimals??2); return String(data.currency||'USD')+' '+(Number(minor)/(10**d)).toFixed(d); };
+  const image=(p)=>p?.featured_image_url||p?.gallery?.[0]?.url||'/storage/cms-images/background/background-1.avif';
+  const price=(p,data)=>money(p?.sale_price_minor??p?.regular_price_minor,data);
+  const products=(data)=>(data.products||[]);
+  const selected=(data)=>products(data).find(p=>Number(p.id)===Number(cfg.product_id))||products(data)[0]||null;
+  const body=root.querySelector('[data-commerce-body]'); if(!body) return;
+  const cardStyle='background:var(--commerce-surface);color:var(--commerce-text);border-color:var(--commerce-border)';
+  const render=(data)=>{
+    const type=cfg.type, block=cfg.block||{}, list=products(data), product=selected(data), limit=Math.max(1,Number(block.limit||8));
+    if(['commerce_catalog_grid','commerce_catalog_editorial','commerce_catalog_compact'].includes(type)){
+      const cats=data.categories||[];
+      const catName=(p)=>{const ids=(p.category_ids||[]).map(Number); return cats.filter(c=>ids.includes(Number(c.id))).map(c=>c.name).join(' · ')||'Catalog product';};
+      const attrs=(p)=>`data-catalog-product data-title="${esc(String(p.title||'').toLowerCase())}" data-category-ids="${esc((p.category_ids||[]).join(','))}" data-price="${Number(p.sale_price_minor??p.regular_price_minor??0)}" data-id="${Number(p.id||0)}" data-featured="${p.is_featured?1:0}"`;
+      const renderCard=(p,i)=>{
+        if(type==='commerce_catalog_editorial') return `<a ${attrs(p)} href="${esc(p.storefront_url||'#')}" class="group overflow-hidden rounded-[26px] border ${i%5===0?'lg:col-span-7':'lg:col-span-5'}" style="${cardStyle}"><img src="${esc(image(p))}" alt="${esc(p.featured_image_alt||p.title||'')}" class="${i%5===0?'aspect-[16/10]':'aspect-[4/3]'} w-full object-cover"><div class="p-6 sm:p-7"><p class="text-[10px] font-bold uppercase tracking-[0.18em]" style="color:var(--commerce-muted)">${esc(catName(p))}</p><div class="mt-2 flex items-end justify-between gap-5"><h3 class="text-xl font-semibold tracking-[-0.03em]">${esc(p.title)}</h3><p class="shrink-0 text-base font-bold">${esc(price(p,data))}</p></div></div></a>`;
+        if(type==='commerce_catalog_compact') return `<a ${attrs(p)} href="${esc(p.storefront_url||'#')}" class="grid grid-cols-[72px_1fr_auto] items-center gap-4 p-3.5 transition hover:bg-black/5"><img src="${esc(image(p))}" alt="${esc(p.featured_image_alt||p.title||'')}" class="h-[72px] w-[72px] rounded-xl object-cover"><div class="min-w-0"><h3 class="truncate text-sm font-semibold">${esc(p.title)}</h3><p class="mt-1 truncate text-xs" style="color:var(--commerce-muted)">${esc(catName(p))}</p></div><div class="text-right"><p class="text-sm font-bold">${esc(price(p,data))}</p>${p.track_inventory?`<p class="mt-1 text-[11px]" style="color:var(--commerce-muted)">${Number(p.stock_quantity||0)>0?esc(p.stock_quantity)+' in stock':(p.allow_backorders?'Backorder':'Out of stock')}</p>`:''}</div></a>`;
+        return `<a ${attrs(p)} href="${esc(p.storefront_url||'#')}" class="group overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl" style="${cardStyle};box-shadow:0 12px 35px rgba(2,6,23,.10)"><img src="${esc(image(p))}" alt="${esc(p.featured_image_alt||p.title||'')}" class="aspect-[4/5] w-full object-cover"><div class="p-5"><h3 class="text-[16px] font-semibold tracking-[-0.02em]">${esc(p.title)}</h3><div class="mt-3 flex items-center justify-between gap-3"><p class="text-[15px] font-bold">${esc(price(p,data))}</p>${p.is_featured?`<span class="rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide" style="background:color-mix(in srgb,var(--commerce-accent) 12%,transparent);color:var(--commerce-accent)">Featured</span>`:''}</div></div></a>`;
+      };
+      body.innerHTML=list.slice(0,limit).map(renderCard).join('');
+      const search=root.querySelector('[data-catalog-search]'), category=root.querySelector('[data-catalog-category]'), sort=root.querySelector('[data-catalog-sort]'), empty=root.querySelector('[data-catalog-empty]');
+      const apply=()=>{let rows=[...body.querySelectorAll('[data-catalog-product]')], q=String(search?.value||'').trim().toLowerCase(), cat=String(category?.value||''); rows.forEach(el=>el.hidden=!!((q&&!String(el.dataset.title||'').includes(q))||(cat&&!String(el.dataset.categoryIds||'').split(',').includes(cat)))); const visible=rows.filter(el=>!el.hidden); const mode=sort?.value||'featured'; visible.sort((a,b)=>mode==='price_asc'?Number(a.dataset.price)-Number(b.dataset.price):mode==='price_desc'?Number(b.dataset.price)-Number(a.dataset.price):mode==='name'?String(a.dataset.title).localeCompare(String(b.dataset.title)):mode==='newest'?Number(b.dataset.id)-Number(a.dataset.id):Number(b.dataset.featured)-Number(a.dataset.featured)); visible.forEach(el=>body.appendChild(el)); if(empty) empty.classList.toggle('hidden',visible.length>0);};
+      search?.addEventListener('input',apply); category?.addEventListener('change',apply); sort?.addEventListener('change',apply); apply();
+    } else if(type==='commerce_product_grid'){
+      body.innerHTML=list.filter(p=>!block.featured_only||p.is_featured).slice(0,limit).map(p=>`<a href="${esc(p.storefront_url||'#')}" class="group block overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl" style="${cardStyle};box-shadow:0 12px 35px rgba(2,6,23,.10)"><img src="${esc(image(p))}" alt="${esc(p.featured_image_alt||p.title||'')}" class="aspect-square w-full object-cover"><div class="p-5"><h3 class="text-[16px] font-semibold tracking-[-0.02em]">${esc(p.title)}</h3><div class="mt-3 flex items-center justify-between gap-3"><p class="text-[15px] font-bold">${esc(price(p,data))}</p>${p.track_inventory?`<span class="rounded-full px-2.5 py-1 text-[11px] font-semibold" style="background:color-mix(in srgb,var(--commerce-accent) 12%,transparent);color:var(--commerce-accent)">${Number(p.stock_quantity||0)>0?esc(p.stock_quantity)+' in stock':(p.allow_backorders?'Available on backorder':'Out of stock')}</span>`:''}</div></div></a>`).join('');
+    } else if(type==='commerce_featured_products'){
+      const featured=list.filter(p=>p.is_featured); const items=(featured.length?featured:list).slice(0,limit);
+      body.innerHTML=items.map(p=>`<a href="${esc(p.storefront_url||'#')}" class="group block overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl" style="${cardStyle};box-shadow:0 12px 35px rgba(2,6,23,.10)"><img src="${esc(image(p))}" alt="${esc(p.featured_image_alt||p.title||'')}" class="aspect-[4/5] w-full object-cover"><div class="p-5"><h3 class="text-[16px] font-semibold tracking-[-0.02em]">${esc(p.title)}</h3><p class="mt-2 text-[15px] font-bold">${esc(price(p,data))}</p></div></a>`).join('');
+    } else if(type==='commerce_featured_collection'){
+      const cats=data.categories||[], cat=cats.find(c=>Number(c.id)===Number(block.category_id))||cats[0]||null;
+      body.innerHTML=cat?list.filter(p=>(p.category_ids||[]).map(Number).includes(Number(cat.id))).slice(0,limit).map(p=>`<a href="${esc(p.storefront_url||'#')}" class="group block overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl" style="${cardStyle};box-shadow:0 12px 35px rgba(2,6,23,.10)"><img src="${esc(image(p))}" alt="${esc(p.featured_image_alt||p.title||'')}" class="aspect-[4/5] w-full object-cover"><div class="p-5"><h3 class="text-[16px] font-semibold tracking-[-0.02em]">${esc(p.title)}</h3><p class="mt-2 text-[15px] font-bold">${esc(price(p,data))}</p></div></a>`).join(''):'';
+    } else if(type==='commerce_categories'){
+      body.innerHTML=(data.categories||[]).map(c=>`<a href="${esc(c.storefront_url||'#')}" class="block rounded-2xl border p-6" style="${cardStyle}"><div class="text-lg font-bold">${esc(c.name)}</div><p class="mt-2 text-sm" style="color:var(--commerce-muted)">${esc(c.description||'Explore this collection')}</p></a>`).join('');
+    } else if(type==='commerce_price'){
+      body.innerHTML=product?`<div class="rounded-2xl border p-6" style="${cardStyle}"><p class="text-xs font-semibold uppercase tracking-widest" style="color:var(--commerce-muted)">${esc(block.label||'Price')}</p><div class="mt-2 text-4xl font-black">${esc(price(product,data))}</div></div>`:'No published product';
+    } else if(type==='commerce_product_gallery'){
+      if(!product){body.innerHTML='No published product';return;} const imgs=[image(product),...(product.gallery||[]).map(g=>g.url)].filter((v,i,a)=>v&&a.indexOf(v)===i); body.innerHTML=`<img src="${esc(imgs[0]||'')}" alt="${esc(product.title||'')}" class="aspect-square w-full rounded-2xl object-cover"><div class="grid grid-cols-2 gap-3">${imgs.slice(1,5).map(u=>`<img src="${esc(u)}" alt="" class="aspect-square w-full rounded-xl object-cover">`).join('')}</div>`;
+    } else if(type==='commerce_variation_selector'){
+      body.innerHTML=product?(product.options||[]).map(o=>`<div><p class="mb-2 text-sm font-semibold">${esc(o.name)}</p><div class="flex flex-wrap gap-2">${(o.values||[]).map(v=>`<span class="rounded-xl border px-4 py-2 text-sm font-semibold" style="border-color:var(--commerce-border);background:var(--commerce-surface)">${esc(v.label)}</span>`).join('')}</div></div>`).join(''):'No published product';
+    } else if(type==='commerce_related_products'){
+      if(!product){body.innerHTML='';return;} const cats=new Set((product.category_ids||[]).map(Number)); body.innerHTML=list.filter(p=>Number(p.id)!==Number(product.id)&&(!cats.size||(p.category_ids||[]).some(id=>cats.has(Number(id))))).slice(0,limit).map(p=>`<a href="${esc(p.storefront_url||'#')}" class="block overflow-hidden rounded-2xl border" style="${cardStyle}"><img src="${esc(image(p))}" alt="" class="aspect-square w-full object-cover"><div class="p-4"><b>${esc(p.title)}</b><p class="mt-1 text-sm">${esc(price(p,data))}</p></div></a>`).join('');
+    }
+    root.dataset.commerceLive='1';
+  };
+  fetch(cfg.endpoint,{headers:{Accept:'application/json'}}).then(r=>r.ok?r.json():Promise.reject(r.status)).then(data=>{window.CosmicCommerceRuntime=window.CosmicCommerceRuntime||{};window.CosmicCommerceRuntime[cfg.endpoint]=data;render(data);}).catch(()=>{root.dataset.commerceLive='0';});
+})();
+JS;
+            $runtimeJs = str_replace('__ROOT_ID__', json_encode($rootId), $runtimeJs);
+            $script = '<script>'.$runtimeJs.'</script>';
+        }
+
+        $outerHead = in_array($type, ['commerce_promo_split', 'commerce_benefits_strip'], true) ? '' : "<div class='mb-8 max-w-2xl'><h2 class='text-3xl font-semibold tracking-[-0.035em] md:text-4xl'>{$heading}</h2>".($text!==''?"<p class='mt-3 max-w-xl text-[15px] leading-7' style='color:var(--commerce-muted)'>{$text}</p>":'')."</div>";
+        return "<section id='{$rootId}' data-cosmic-commerce-spark='".e($type)."' data-commerce-config='{$config}' class='w-full px-6 py-16 md:px-12 lg:py-20' style='{$vars}'><div class='mx-auto max-w-7xl'>{$outerHead}{$body}</div></section>{$script}";
+    }
+
    public static function compile(array $blocks, string $primaryColor = null, array $context = []): string
     {
         $html = "";
@@ -353,6 +649,11 @@ class CmsHtmlCompiler
 
         foreach ($blocks as $index => $block) {
 
+            // Track only the HTML emitted by this Spark so we can attach its
+            // semantic resolved theme to the first section without touching
+            // nested sections emitted by other Sparks. Static overlay headers
+            // use this marker at runtime to decide whether the first Spark is PRIMARY.
+            $fragmentStart = strlen($html);
 
             $pattern = [
                 "primary",
@@ -395,6 +696,28 @@ class CmsHtmlCompiler
             $stoneTheme = self::getTheme('stone');
 
             switch ($type) {
+                case 'commerce_product_grid':
+                case 'commerce_catalog_grid':
+                case 'commerce_catalog_editorial':
+                case 'commerce_catalog_compact':
+                case 'commerce_categories':
+                case 'commerce_product_gallery':
+                case 'commerce_price':
+                case 'commerce_variation_selector':
+                case 'commerce_related_products':
+                case 'commerce_featured_products':
+                case 'commerce_featured_collection':
+                case 'commerce_promo_split':
+                case 'commerce_benefits_strip':
+                case 'commerce_cart_classic':
+                case 'commerce_cart_split':
+                case 'commerce_cart_compact':
+                case 'commerce_checkout_classic':
+                case 'commerce_checkout_split':
+                case 'commerce_checkout_express':
+                    $html .= self::commerceSparkHtml($type, $block, $context, $theme);
+                    break;
+
                 case 'newsletter_cta':
                 // Editorial newsletter callouts remain neutral so they pair
                 // with the white Blog Hub regardless of the website theme.
@@ -421,6 +744,27 @@ class CmsHtmlCompiler
                     $resourceMarkup .= "<article class='group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg sm:p-8'><p class='text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-700'>" . e($resource['eyebrow'] ?? 'Resource') . "</p><h3 class='mt-4 text-2xl font-bold leading-tight tracking-tight text-slate-900'>" . e($resource['title'] ?? '') . "</h3><p class='mt-4 text-sm leading-6 text-slate-600'>" . e($resource['text'] ?? '') . "</p><a href='" . e($resource['cta_url'] ?? '#') . "' class='mt-7 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 transition group-hover:decoration-slate-900'>" . e($resource['cta_label'] ?? 'Read more') . "</a></article>";
                 }
                 $html .= "<section class='bg-[#fcfcfb] px-6 py-16 sm:px-8 lg:px-12 lg:py-24'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] text-slate-500'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 text-slate-600'>{$text}</p></div><div class='mt-10 grid gap-5 md:grid-cols-2'>{$resourceMarkup}</div></div></section>";
+                break;
+
+                case 'mini_hero_minimal':
+                case 'mini_hero_split':
+                case 'mini_hero_promo':
+                $eyebrow = e($block['eyebrow'] ?? 'Explore more');
+                $heading = e($block['heading'] ?? 'A focused page for what matters next');
+                $text = e($block['text'] ?? 'Use a compact hero to introduce this page without taking over the whole screen.');
+                $buttonLabel = e($block['button_label'] ?? 'Explore');
+                $buttonUrl = e($block['button_url'] ?? '#');
+                $image = e(self::staticAssetUrl($block['image_url'] ?? '/storage/cms-images/background/background-2.avif'));
+                $imageAlt = e($block['image_alt'] ?? $block['heading'] ?? 'Featured page image');
+                $cta = $buttonLabel !== '' ? "<a href='{$buttonUrl}' class='mt-7 inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-bold transition hover:-translate-y-0.5 {$theme['card']} {$theme['text']} {$theme['border']}'>{$buttonLabel}</a>" : '';
+
+                if ($type === 'mini_hero_split') {
+                    $html .= "<section class='border-b px-6 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14 {$theme['bg']} {$theme['border']}'><div class='mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_.95fr] lg:gap-12'><div class='max-w-2xl'><p class='text-xs font-bold uppercase tracking-[0.24em] {$theme['sub']}'>{$eyebrow}</p><h1 class='mt-3 text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl {$theme['text']}'>{$heading}</h1><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$text}</p>{$cta}</div><div class='overflow-hidden rounded-[1.75rem] border p-2 shadow-xl {$theme['card']} {$theme['border']}'><img src='{$image}' alt='{$imageAlt}' class='h-56 w-full rounded-[1.35rem] object-cover sm:h-64 lg:h-72'></div></div></section>";
+                } elseif ($type === 'mini_hero_promo') {
+                    $html .= "<section class='border-b px-6 py-10 sm:px-8 lg:px-12 lg:py-12 {$theme['bg']} {$theme['border']}'><div class='mx-auto max-w-7xl'><div class='relative overflow-hidden rounded-[2rem] border p-7 shadow-xl sm:p-9 lg:p-11 {$theme['card']} {$theme['border']}'><div class='absolute inset-y-0 right-0 hidden w-[38%] lg:block'><img src='{$image}' alt='' class='h-full w-full object-cover opacity-20'></div><div class='relative max-w-3xl'><p class='text-xs font-bold uppercase tracking-[0.24em] {$theme['sub']}'>{$eyebrow}</p><h1 class='mt-3 text-3xl font-semibold leading-[1.04] tracking-tight sm:text-4xl lg:text-5xl {$theme['text']}'>{$heading}</h1><p class='mt-4 max-w-2xl text-base leading-7 {$theme['sub']}'>{$text}</p>{$cta}</div></div></div></section>";
+                } else {
+                    $html .= "<section class='relative overflow-hidden border-b px-6 py-14 sm:px-8 sm:py-16 lg:px-12 lg:py-20 {$theme['bg']} {$theme['border']}'><div class='pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full opacity-10 blur-3xl {$theme['card']}'></div><div class='relative mx-auto max-w-7xl'><div class='max-w-3xl'><p class='text-xs font-bold uppercase tracking-[0.24em] {$theme['sub']}'>{$eyebrow}</p><h1 class='mt-3 text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl {$theme['text']}'>{$heading}</h1><p class='mt-4 max-w-2xl text-base leading-7 {$theme['sub']}'>{$text}</p>{$cta}</div></div></section>";
+                }
                 break;
 
                 case 'blog_mini_hero':
@@ -849,8 +1193,14 @@ HTML;
                 $ctaLabel = e($block['cta_label'] ?? 'Get Started');
                 $ctaUrl = e($block['cta_url'] ?? '#');
                 $menuItems = $block['menu'] ?? [];
+                $overlayHeader = (bool) ($block['overlay_header_on_banner'] ?? false);
+                $overlayPrimaryAllowed = ! in_array(strtolower((string) ($primaryColor ?: 'midnight')), ['stone', 'white'], true);
+                $overlayHeaderClass = $overlayHeader
+                    ? 'cosmic-static-overlay-header absolute inset-x-0 top-0 bg-transparent shadow-none'
+                    : 'sticky top-0 bg-white shadow-sm';
 
-                // Header always white.
+                // Header always white in standard mode. Overlay mode preserves
+                // the same component while letting the first Spark sit behind it.
                 $headerBg = 'bg-white';
                 $headerBorder = 'border-slate-200';
                 $headerText = 'text-slate-900';
@@ -984,9 +1334,32 @@ HTML;
                         .cosmic-mobile-overlay,
                         .cosmic-mobile-panel { display: none !important; }
                     }
+                    .cosmic-static-overlay-header {
+                        position: absolute !important;
+                        background: transparent !important;
+                    }
+                    /* Overlay treatment is intentionally narrow: ONLY a PRIMARY first
+                       Spark receives white navigation/logo/CTA, and neutral Warm Stone
+                       + Studio White themes are excluded by the runtime guard. */
+                    .cosmic-static-overlay-header.cosmic-overlay-primary-treatment > a {
+                        color: #fff !important;
+                    }
+                    .cosmic-static-overlay-header.cosmic-overlay-primary-treatment > a img {
+                        filter: brightness(0) invert(1) !important;
+                    }
+                    .cosmic-static-overlay-header.cosmic-overlay-primary-treatment > nav > ul > li > a {
+                        color: #fff !important;
+                    }
+                    .cosmic-static-overlay-header.cosmic-overlay-primary-treatment > nav > ul > li > a:hover {
+                        color: rgba(255,255,255,.82) !important;
+                    }
+                    .cosmic-static-overlay-header.cosmic-overlay-primary-treatment > nav > a {
+                        background: #fff !important;
+                        color: #1e293b !important;
+                    }
                 </style>
 
-                <header class='cosmic-static-header sticky top-0 z-50 flex w-full items-center justify-between gap-6 border-b {$headerBorder} {$headerBg} px-6 py-4 shadow-sm sm:px-[5%] lg:px-[7%]'>
+                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' class='cosmic-static-header {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 border-b {$headerBorder} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
                     <a href='/' class='relative z-[72] text-xl font-extrabold tracking-wide {$headerText}' aria-label='{$logoText} home'>
                         {$logo}
                     </a>
@@ -1042,6 +1415,49 @@ HTML;
 
                 <script>
                     (() => {
+                        const initCosmicStaticHeader = () => {
+                        const staticHeader = document.querySelector('.cosmic-static-header[data-cosmic-overlay-header=\"true\"]');
+                        if (staticHeader) {
+                            const sections = Array.from(document.querySelectorAll('section'));
+                            const firstSection = sections.find((section) =>
+                                Boolean(staticHeader.compareDocumentPosition(section) & Node.DOCUMENT_POSITION_FOLLOWING)
+                            );
+
+                            if (firstSection) {
+                                firstSection.classList.add('cosmic-static-overlay-first-spark');
+
+                                const primaryOverlayAllowed = staticHeader.dataset.cosmicPrimaryOverlayAllowed === 'true';
+                                const firstSparkIsPrimary = String(firstSection.dataset.cosmicResolvedTheme || '').toLowerCase() === 'primary';
+                                staticHeader.classList.toggle(
+                                    'cosmic-overlay-primary-treatment',
+                                    primaryOverlayAllowed && firstSparkIsPrimary
+                                );
+
+                                let basePaddingTop = null;
+
+                                const syncOverlaySpacing = () => {
+                                    if (basePaddingTop === null) {
+                                        basePaddingTop = parseFloat(window.getComputedStyle(firstSection).paddingTop) || 0;
+                                    }
+
+                                    const headerHeight = Math.ceil(staticHeader.getBoundingClientRect().height || 0);
+                                    const viewportGap = window.matchMedia('(max-width: 639px)').matches
+                                        ? 40
+                                        : Math.max(48, Math.min(80, window.innerWidth * 0.05));
+                                    firstSection.style.paddingTop = `\${Math.ceil(basePaddingTop + headerHeight + viewportGap)}px`;
+                                    document.documentElement.style.setProperty('--cosmic-overlay-header-height', `\${headerHeight}px`);
+                                };
+
+                                syncOverlaySpacing();
+                                window.addEventListener('resize', syncOverlaySpacing);
+
+                                if (typeof ResizeObserver !== 'undefined') {
+                                    const overlayResizeObserver = new ResizeObserver(syncOverlaySpacing);
+                                    overlayResizeObserver.observe(staticHeader);
+                                }
+                            }
+                        }
+
                         const navRoot = document.querySelector('.cosmic-mobile-navigation');
                         const openButton = document.querySelector('.cosmic-mobile-menu-open');
                         const closeButton = navRoot?.querySelector('.cosmic-mobile-menu-close');
@@ -1097,6 +1513,13 @@ HTML;
                                 setMenuOpen(false);
                             }
                         });
+                        };
+
+                        if (document.readyState === 'loading') {
+                            document.addEventListener('DOMContentLoaded', initCosmicStaticHeader, { once: true });
+                        } else {
+                            initCosmicStaticHeader();
+                        }
                     })();
                 </script>";
                 break;
@@ -3490,6 +3913,21 @@ HTML;
                 </section>";
 
                 break;
+            }
+
+            $fragment = substr($html, $fragmentStart);
+            if ($fragment !== '' && preg_match('/<section\b/i', $fragment)) {
+                $semanticTheme = e((string) $blockTheme);
+                $taggedFragment = preg_replace(
+                    '/<section(?![^>]*data-cosmic-resolved-theme)/i',
+                    "<section data-cosmic-resolved-theme='{$semanticTheme}'",
+                    $fragment,
+                    1
+                );
+
+                if (is_string($taggedFragment)) {
+                    $html = substr($html, 0, $fragmentStart) . $taggedFragment;
+                }
             }
         }
         $html = preg_replace('/<section(?![^>]*data-cosmic-spark)/i', '<section data-cosmic-spark', $html) ?? $html;

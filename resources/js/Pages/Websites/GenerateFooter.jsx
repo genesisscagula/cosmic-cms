@@ -88,7 +88,7 @@ export function DetailedFooter({ block, onUpdate }) {
                             onSave={(val) => onUpdate({ logo_text: val })}
                         />
                     )}
-                    <p className={`text-sm italic ${sub}`}>It's just logical.</p>
+                    <p className={`text-sm italic ${sub}`}>{block.tagline || "It's just logical."}</p>
                 </div>
                 
                 <div className="md:col-span-3 flex flex-wrap gap-8">

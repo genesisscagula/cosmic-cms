@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\ValidationException;
 use App\Services\PagePublisher;
 use App\Services\PreviewDeploymentService;
 use App\Services\CreditService;
@@ -43,6 +44,7 @@ class PageController extends Controller
             // DIRETSO KORREKTE HANDSHAKE PACKET NGADTO SA REACT
             'globalHeaderBlock' => $website->global_header,
             'globalFooterBlock' => $website->global_footer,
+            'commerce' => $this->commerceWorkspacePayload($website),
         ]);
     }
 
@@ -58,6 +60,13 @@ class PageController extends Controller
 
         $slug = Str::slug($request->title);
         $pageType = $request->input('page_type', 'standard');
+
+        $reservedCommerceSlugs = ['shop', 'cart', 'checkout', 'account', 'order', 'product'];
+        if (in_array(strtolower($slug), $reservedCommerceSlugs, true)) {
+            throw ValidationException::withMessages([
+                'title' => "The /{$slug} URL is reserved for Cosmic Commerce. Choose a different page title.",
+            ]);
+        }
 
         $parent = null;
         if ($request->filled('parent_id')) {
@@ -137,6 +146,309 @@ class PageController extends Controller
         } while (count($ids) !== $before);
 
         return $ids;
+    }
+
+    private function commerceWorkspacePayload(Website $website): array
+    {
+        $user = request()->user();
+        $capabilities = app(\App\Services\CommerceCapabilityService::class);
+        $allowed = $user ? $capabilities->planAllowsCommerce($user) : false;
+        $settings = $allowed ? $capabilities->settingsFor($website) : $website->commerceSetting()->first();
+
+        $currency = $settings?->currency ?: config('cosmic-commerce.default_currency', 'USD');
+        $currencyDecimals = (int) config('cosmic-commerce.currencies.'.strtoupper($currency).'.decimals', 2);
+        $currencyScale = 10 ** max(0, $currencyDecimals);
+        $previewService = app(\App\Services\PreviewDeploymentService::class);
+        $storefrontUrl = filled($website->preview_slug) ? $previewService->url($website, 'shop') : null;
+
+        $products = $website->commerceProducts()
+            ->with(['images', 'categories', 'options.values', 'variants.values.option'])
+            ->latest('updated_at')
+            ->get()
+            ->map(function (\App\Models\CommerceProduct $product) use ($currencyScale, $currencyDecimals, $previewService, $website): array {
+                return [
+                    'id' => $product->id,
+                    'public_id' => $product->public_id,
+                    'title' => $product->title,
+                    'slug' => $product->slug,
+                    'storefront_url' => filled($website->preview_slug) && filled($product->slug)
+                        ? $previewService->url($website, 'product/'.$product->slug)
+                        : null,
+                    'type' => $product->type,
+                    'fulfillment_type' => $product->fulfillment_type,
+                    'status' => $product->status,
+                    'visibility' => $product->visibility,
+                    'short_description' => $product->short_description,
+                    'description' => $product->description,
+                    'regular_price' => $product->regular_price_minor === null ? '' : number_format($product->regular_price_minor / $currencyScale, $currencyDecimals, '.', ''),
+                    'sale_price' => $product->sale_price_minor === null ? '' : number_format($product->sale_price_minor / $currencyScale, $currencyDecimals, '.', ''),
+                    // Builder Commerce Sparks consume the same minor-unit values used by checkout.
+                    'regular_price_minor' => $product->regular_price_minor,
+                    'sale_price_minor' => $product->sale_price_minor,
+                    'sku' => $product->sku,
+                    'barcode' => $product->barcode,
+                    'track_inventory' => (bool) $product->track_inventory,
+                    'stock_quantity' => $product->stock_quantity,
+                    'low_stock_threshold' => $product->low_stock_threshold,
+                    'is_low_stock' => (bool) ($product->track_inventory && $product->stock_quantity !== null && $product->low_stock_threshold !== null && $product->stock_quantity <= $product->low_stock_threshold),
+                    'allow_backorders' => (bool) $product->allow_backorders,
+                    'stock_status' => $product->stock_status,
+                    'weight_grams' => $product->weight_grams,
+                    'length_mm' => $product->length_mm,
+                    'width_mm' => $product->width_mm,
+                    'height_mm' => $product->height_mm,
+                    'shipping_class' => $product->shipping_class,
+                    'taxable' => (bool) $product->taxable,
+                    'tax_class' => $product->tax_class ?: '',
+                    'is_featured' => (bool) $product->is_featured,
+                    'featured_image_url' => $product->featured_image_url,
+                    'featured_image_alt' => $product->featured_image_alt,
+                    'seo_title' => $product->seo_title,
+                    'seo_description' => $product->seo_description,
+                    'category_ids' => $product->categories->pluck('id')->values(),
+                    'categories' => $product->categories->map(fn ($category) => [
+                        'id' => $category->id,
+                        'name' => $category->name,
+                        'slug' => $category->slug,
+                    ])->values(),
+                    'primary_category_id' => optional($product->categories->firstWhere('pivot.is_primary', true))->id,
+                    'gallery' => $product->images->map(fn ($image) => ['url' => $image->url, 'alt_text' => $image->alt_text])->values(),
+                    'images' => $product->images->map(fn ($image) => ['url' => $image->url, 'image_url' => $image->url, 'alt_text' => $image->alt_text])->values(),
+                    'options' => $product->options->map(fn ($option) => [
+                        'id' => $option->id,
+                        'name' => $option->name,
+                        'display_type' => $option->display_type,
+                        'values' => $option->values->where('is_active', true)->map(fn ($value) => ['id' => $value->id, 'label' => $value->label, 'swatch_hex' => $value->swatch_hex])->values(),
+                    ])->values(),
+                    'variants' => $product->variants->map(fn ($variant) => [
+                        'id' => $variant->id,
+                        'label' => $variant->optionLabel(),
+                        'sku' => $variant->sku,
+                        'regular_price' => $variant->regular_price_minor === null ? '' : number_format($variant->regular_price_minor / $currencyScale, $currencyDecimals, '.', ''),
+                        'sale_price' => $variant->sale_price_minor === null ? '' : number_format($variant->sale_price_minor / $currencyScale, $currencyDecimals, '.', ''),
+                        'track_inventory' => (bool) $variant->track_inventory,
+                        'stock_quantity' => $variant->stock_quantity,
+                        'low_stock_threshold' => $variant->low_stock_threshold,
+                        'is_low_stock' => (bool) ($variant->track_inventory && $variant->stock_quantity !== null && $variant->low_stock_threshold !== null && $variant->stock_quantity <= $variant->low_stock_threshold),
+                        'allow_backorders' => (bool) $variant->allow_backorders,
+                        'stock_status' => $variant->stock_status,
+                        'image_url' => $variant->image_url,
+                        'is_enabled' => (bool) $variant->is_enabled,
+                        'is_default' => (bool) $variant->is_default,
+                    ])->values(),
+                ];
+            })->values();
+
+        return [
+            'allowed' => $allowed,
+            'enabled' => $allowed && (bool) ($settings?->enabled ?? false),
+            'storefront_url' => $storefrontUrl,
+            'runtime_urls' => [
+                'shop' => $storefrontUrl,
+                'cart' => filled($website->preview_slug) ? $previewService->url($website, 'cart') : null,
+                'checkout' => filled($website->preview_slug) ? $previewService->url($website, 'checkout') : null,
+                'account' => filled($website->preview_slug) ? $previewService->url($website, 'account') : null,
+            ],
+            'currency' => $currency,
+            'currency_decimals' => $currencyDecimals,
+            'currencies' => collect(config('cosmic-commerce.currencies', []))->map(fn ($config, $code) => [
+                'code' => $code,
+                'symbol' => $config['symbol'] ?? $code,
+                'decimals' => $config['decimals'] ?? 2,
+            ])->values(),
+            'pages' => collect(['shop', 'cart', 'checkout', 'account', 'order'])->map(function (string $slug) use ($website, $previewService) {
+                $page = $slug === 'shop'
+                    ? $website->pages()->where('slug', 'shop')->first()
+                    : $website->pages()->where('page_type', 'commerce')->where('slug', $slug)->first();
+                return [
+                    'slug' => $slug,
+                    'title' => match ($slug) {
+                        'shop' => 'Shop',
+                        'cart' => 'Cart',
+                        'checkout' => 'Checkout',
+                        'account' => 'Account',
+                        default => 'Order Lookup',
+                    },
+                    'installed' => (bool) $page,
+                    'url' => filled($website->preview_slug) ? $previewService->url($website, $slug) : null,
+                ];
+            })->values(),
+            'products' => $products,
+            'categories' => $website->commerceProductCategories()->orderBy('sort_order')->orderBy('name')->get()->map(fn ($category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'parent_id' => $category->parent_id,
+                'description' => $category->description ?? '',
+                'image_url' => $category->image_url ?? '',
+                'image_alt' => $category->image_alt ?? '',
+                'seo_title' => $category->seo_title ?? '',
+                'seo_description' => $category->seo_description ?? '',
+                'sort_order' => (int) $category->sort_order,
+                'is_visible' => (bool) $category->is_visible,
+                'storefront_url' => filled($website->preview_slug) && filled($category->slug)
+                    ? $previewService->url($website, 'shop/category/'.$category->slug)
+                    : null,
+            ])->values(),
+            'countries' => collect(config('cosmic-commerce.countries', []))->map(fn ($name, $code) => ['code' => $code, 'name' => $name])->values(),
+            'tax_enabled' => (bool) ($settings?->tax_enabled ?? false),
+            'prices_include_tax' => (bool) ($settings?->prices_include_tax ?? false),
+            'tax_rules' => $website->commerceTaxRules()->get()->map(fn ($rule) => [
+                'id' => $rule->id,
+                'name' => $rule->name,
+                'country_code' => $rule->country_code ?: '',
+                'region_code' => $rule->region_code ?: '',
+                'tax_class' => $rule->tax_class ?: '',
+                'rate_percent' => number_format(((int) $rule->rate_basis_points) / 100, 2, '.', ''),
+                'tax_shipping' => (bool) $rule->tax_shipping,
+                'is_enabled' => (bool) $rule->is_enabled,
+                'priority' => (int) $rule->priority,
+            ])->values(),
+            'coupons' => $website->commerceCoupons()->withCount('usages')->latest('updated_at')->get()->map(fn ($coupon) => [
+                'id' => $coupon->id,
+                'code' => $coupon->code,
+                'name' => $coupon->name ?: '',
+                'discount_type' => $coupon->discount_type,
+                'percent' => $coupon->percent_basis_points === null ? '' : number_format(((int) $coupon->percent_basis_points) / 100, 2, '.', ''),
+                'fixed_amount' => $coupon->fixed_amount_minor === null ? '' : number_format(((int) $coupon->fixed_amount_minor) / $currencyScale, $currencyDecimals, '.', ''),
+                'minimum_spend' => $coupon->minimum_spend_minor === null ? '' : number_format(((int) $coupon->minimum_spend_minor) / $currencyScale, $currencyDecimals, '.', ''),
+                'usage_limit' => $coupon->usage_limit ?? '',
+                'usage_limit_per_email' => $coupon->usage_limit_per_email ?? '',
+                'usage_count' => (int) $coupon->usages_count,
+                'starts_at' => $coupon->starts_at?->format('Y-m-d\TH:i'),
+                'expires_at' => $coupon->expires_at?->format('Y-m-d\TH:i'),
+                'is_enabled' => (bool) $coupon->is_enabled,
+                'product_ids' => array_values($coupon->product_ids ?? []),
+                'category_ids' => array_values($coupon->category_ids ?? []),
+            ])->values(),
+            'orders' => $website->commerceOrders()->with(['items', 'refunds', 'events' => fn ($query) => $query->limit(80)])->latest('created_at')->limit(200)->get()->map(fn ($order) => [
+                'id' => $order->id,
+                'public_id' => $order->public_id,
+                'order_number' => $order->order_number,
+                'status' => $order->status,
+                'payment_status' => $order->payment_status,
+                'refund_status' => $order->refund_status ?: 'none',
+                'refunded_minor' => (int) $order->refunded_minor,
+                'payment_provider' => $order->payment_provider,
+                'external_checkout_id' => $order->external_checkout_id,
+                'external_payment_id' => $order->external_payment_id,
+                'currency' => $order->currency,
+                'subtotal_minor' => (int) $order->subtotal_minor,
+                'discount_minor' => (int) ($order->discount_minor ?? 0),
+                'coupon_code' => $order->coupon_code,
+                'shipping_minor' => (int) $order->shipping_minor,
+                'tax_minor' => (int) $order->tax_minor,
+                'total_minor' => (int) $order->total_minor,
+                'shipping_method' => $order->shipping_method,
+                'customer_email' => $order->customer_email,
+                'customer_first_name' => $order->customer_first_name,
+                'customer_last_name' => $order->customer_last_name,
+                'billing_address' => $order->billing_address,
+                'shipping_address' => $order->shipping_address,
+                'admin_note' => $order->admin_note,
+                'tracking_carrier' => $order->tracking_carrier,
+                'tracking_number' => $order->tracking_number,
+                'paid_at' => $order->paid_at?->toIso8601String(),
+                'payment_attempted_at' => $order->payment_attempted_at?->toIso8601String(),
+                'checkout_expires_at' => $order->checkout_expires_at?->toIso8601String(),
+                'payment_recovery_attempts' => (int) ($order->payment_recovery_attempts ?? 0),
+                'payment_recovery_last_attempt_at' => $order->payment_recovery_last_attempt_at?->toIso8601String(),
+                'payment_recovery_next_attempt_at' => $order->payment_recovery_next_attempt_at?->toIso8601String(),
+                'payment_recovered_at' => $order->payment_recovered_at?->toIso8601String(),
+                'payment_attention_required_at' => $order->payment_attention_required_at?->toIso8601String(),
+                'payment_recovery_last_error' => $order->payment_recovery_last_error,
+                'payment_completion_source' => data_get($order->metadata, 'payment_completion_source'),
+                'fulfilled_at' => $order->fulfilled_at?->toIso8601String(),
+                'cancelled_at' => $order->cancelled_at?->toIso8601String(),
+                'created_at' => $order->created_at?->toIso8601String(),
+                'updated_at' => $order->updated_at?->toIso8601String(),
+                'order_confirmation_sent_at' => $order->order_confirmation_sent_at?->toIso8601String(),
+                'merchant_notification_sent_at' => $order->merchant_notification_sent_at?->toIso8601String(),
+                'last_customer_notification_at' => $order->last_customer_notification_at?->toIso8601String(),
+                'notification_attempts' => (int) ($order->notification_attempts ?? 0),
+                'notification_next_attempt_at' => $order->notification_next_attempt_at?->toIso8601String(),
+                'notification_last_error' => $order->notification_last_error,
+                'notification_attention_required_at' => $order->notification_attention_required_at?->toIso8601String(),
+                'inventory_attention_required' => (bool) data_get($order->metadata, 'inventory_attention_required', false),
+                'inventory_restocked_at' => data_get($order->metadata, 'inventory_restocked_at'),
+                'inventory_restocked_quantity' => (int) data_get($order->metadata, 'inventory_restocked_quantity', 0),
+                'refunds' => $order->refunds->map(fn ($refund) => [
+                    'id' => $refund->id,
+                    'external_refund_id' => $refund->external_refund_id,
+                    'amount_minor' => (int) $refund->amount_minor,
+                    'currency' => $refund->currency,
+                    'status' => $refund->status,
+                    'reason' => $refund->reason,
+                    'refunded_at' => $refund->refunded_at?->toIso8601String(),
+                ])->values(),
+                'events' => $order->events->map(fn ($event) => [
+                    'id' => $event->id,
+                    'event_type' => $event->event_type,
+                    'actor_type' => $event->actor_type,
+                    'source' => $event->source,
+                    'title' => $event->title,
+                    'description' => $event->description,
+                    'changes' => $event->changes,
+                    'created_at' => $event->created_at?->toIso8601String(),
+                ])->values(),
+                'items' => $order->items->map(fn ($item) => [
+                    'id' => $item->id,
+                    'title' => $item->title,
+                    'sku' => $item->sku,
+                    'option_label' => $item->option_label,
+                    'image_url' => $item->image_url,
+                    'quantity' => (int) $item->quantity,
+                    'unit_price_minor' => (int) $item->unit_price_minor,
+                    'tax_minor' => (int) $item->tax_minor,
+                    'line_total_minor' => (int) $item->line_total_minor,
+                ])->values(),
+            ])->values(),
+            'payment_health' => [
+                'pending' => $website->commerceOrders()->whereIn('payment_status', ['pending', 'cancelled'])->count(),
+                'stale' => $website->commerceOrders()->whereIn('payment_status', ['pending', 'cancelled'])->where('updated_at', '<=', now()->subMinutes(max(5, (int) config('cosmic-commerce.payment_recovery.stale_after_minutes', 30))))->count(),
+                'needs_attention' => $website->commerceOrders()->whereIn('payment_status', ['pending', 'cancelled'])->where(function ($query) {
+                    $query->whereNotNull('payment_attention_required_at')
+                        ->orWhere('payment_recovery_attempts', '>=', max(1, (int) config('cosmic-commerce.payment_recovery.attention_after_attempts', 6)));
+                })->count(),
+                'with_errors' => $website->commerceOrders()->whereIn('payment_status', ['pending', 'cancelled'])->whereNotNull('payment_recovery_last_error')->count(),
+            ],
+            'inventory' => [
+                'tracked_products' => $website->commerceProducts()->where('track_inventory', true)->count(),
+                'out_of_stock' => $website->commerceProducts()->where('track_inventory', true)->where('stock_quantity', '<=', 0)->where('allow_backorders', false)->count()
+                    + \App\Models\CommerceProductVariant::query()->where('website_id', $website->id)->where('track_inventory', true)->where('stock_quantity', '<=', 0)->where('allow_backorders', false)->count(),
+                'low_stock' => $website->commerceProducts()->where('track_inventory', true)->whereNotNull('low_stock_threshold')->whereColumn('stock_quantity', '<=', 'low_stock_threshold')->where('stock_quantity', '>', 0)->count()
+                    + \App\Models\CommerceProductVariant::query()->where('website_id', $website->id)->where('track_inventory', true)->whereNotNull('low_stock_threshold')->whereColumn('stock_quantity', '<=', 'low_stock_threshold')->where('stock_quantity', '>', 0)->count(),
+                'recent_adjustments' => \App\Models\CommerceInventoryAdjustment::query()->where('website_id', $website->id)->with(['product:id,title', 'variant:id,product_id,sku'])->latest()->limit(20)->get()->map(fn ($adjustment) => [
+                    'id' => $adjustment->id,
+                    'product_id' => $adjustment->commerce_product_id,
+                    'variant_id' => $adjustment->commerce_product_variant_id,
+                    'product_title' => $adjustment->product?->title ?: 'Deleted product',
+                    'variant_sku' => $adjustment->variant?->sku,
+                    'reason' => $adjustment->reason,
+                    'quantity_delta' => (int) $adjustment->quantity_delta,
+                    'quantity_before' => $adjustment->quantity_before,
+                    'quantity_after' => $adjustment->quantity_after,
+                    'note' => $adjustment->note,
+                    'created_at' => $adjustment->created_at?->toIso8601String(),
+                ])->values(),
+            ],
+            'shipping_zones' => $website->commerceShippingZones()->with('rates')->get()->map(fn ($zone) => [
+                'id' => $zone->id,
+                'name' => $zone->name,
+                'countries' => array_values((array) $zone->countries),
+                'is_rest_of_world' => (bool) $zone->is_rest_of_world,
+                'is_enabled' => (bool) $zone->is_enabled,
+                'priority' => (int) $zone->priority,
+                'rates' => $zone->rates->map(fn ($rate) => [
+                    'id' => $rate->id,
+                    'name' => $rate->name,
+                    'rate' => number_format(((int) $rate->rate_minor) / $currencyScale, $currencyDecimals, '.', ''),
+                    'free_above' => $rate->free_above_minor === null ? '' : number_format(((int) $rate->free_above_minor) / $currencyScale, $currencyDecimals, '.', ''),
+                    'is_enabled' => (bool) $rate->is_enabled,
+                    'sort_order' => (int) $rate->sort_order,
+                ])->values(),
+            ])->values(),
+        ];
     }
 
     /**
@@ -388,6 +700,9 @@ class PageController extends Controller
             'themeAccess' => $builderThemeAccess,
             'page' => $page,
             'website' => $website,
+            'commerce' => $isTrialMode
+                ? ['enabled' => false, 'currency' => 'USD', 'currency_decimals' => 2, 'products' => [], 'categories' => []]
+                : $this->commerceWorkspacePayload($website),
             'previewUrl' => $isTrialMode || ! $website->last_preview_deployed_at
                 ? null
                 : app(PreviewDeploymentService::class)->urlForPage($website, $page),
@@ -440,6 +755,7 @@ class PageController extends Controller
                     'logo_image_url' => $trial->logo_url ?: '/storage/branding/your-logo.png',
                     'logo_height' => 42,
                     'logo_filter_key' => data_get($trial->preview_theme, 'primary', 'midnight'),
+                    'overlay_header_on_banner' => (bool) data_get($trial->preview_theme, 'overlay_header_on_banner', false),
                     'cta_label' => 'Get Started',
                     'cta_url' => '#',
                     'menu' => collect($trial->menu_structure ?? [])
@@ -555,6 +871,11 @@ class PageController extends Controller
         if ($trial === null) {
             $rules['global_header'] = ['nullable', 'array'];
             $rules['global_footer'] = ['nullable', 'array'];
+        } else {
+            // Trial builder exposes only the global overlay-header switch. The
+            // shared trial website shell must never be mutated by guest sessions.
+            $rules['global_header'] = ['nullable', 'array'];
+            $rules['global_header.overlay_header_on_banner'] = ['nullable', 'boolean'];
         }
 
         $validated = $request->validate($rules);
@@ -616,9 +937,13 @@ class PageController extends Controller
 
             if ($trial !== null) {
                 $trialUpdate = ['generated_blocks' => $page->blocks, 'last_saved_at' => now()];
-                if (array_key_exists('theme_settings', $validated)) {
-                    $trialUpdate['preview_theme'] = $validated['theme_settings'];
+                $previewTheme = array_key_exists('theme_settings', $validated)
+                    ? (array) $validated['theme_settings']
+                    : (array) $trial->preview_theme;
+                if (array_key_exists('global_header', $validated)) {
+                    $previewTheme['overlay_header_on_banner'] = (bool) data_get($validated, 'global_header.overlay_header_on_banner', false);
                 }
+                $trialUpdate['preview_theme'] = $previewTheme;
                 $trial->update($trialUpdate);
                 return;
             }

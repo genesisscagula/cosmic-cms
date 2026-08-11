@@ -116,7 +116,7 @@ export default function Index({ sparks = [], categories = [], ownedCount = 0, ow
 
         {previewSpark && <div className="fixed inset-0 z-[980] flex items-stretch justify-stretch">
             <button type="button" onClick={() => setPreviewSpark(null)} className="absolute inset-0 bg-black/85 backdrop-blur-sm" aria-label="Close Spark preview" />
-            <section role="dialog" aria-modal="true" className="relative z-10 flex h-screen w-screen max-w-none flex-col overflow-hidden rounded-none border border-white/10 bg-[#101014] text-white shadow-2xl">
+            <section role="dialog" aria-modal="true" className="cosmic-spark-preview-modal relative z-10 flex h-screen w-screen max-w-none flex-col overflow-hidden rounded-none border border-white/10 bg-[#101014] text-white shadow-2xl">
                 <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7">
                     <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">Spark Preview · {previewSpark.category}</p><h3 className="mt-1 text-xl font-semibold">{previewSpark.name}</h3><p className="mt-1 max-w-3xl text-sm text-slate-400">{previewSpark.description}</p></div>
                     <button type="button" onClick={() => setPreviewSpark(null)} className="rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white">✕</button>

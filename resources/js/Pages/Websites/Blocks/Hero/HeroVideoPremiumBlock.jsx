@@ -43,22 +43,22 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
     const mediaOverlay = resolveMediaOverlay(globalTheme, resolvedTheme);
     const isLightMediaTheme = mediaOverlay.isLight;
     const primaryButton = isPrimary
-        ? "bg-white text-slate-950"
-        : `${primaryTheme.bg} text-white`;
+        ? "bg-white !text-slate-950"
+        : `${primaryTheme.bg} !text-white`;
     const mediaStyle = isLightMediaTheme
         ? {
             overlayBase: "bg-white/90",
             overlayX: "bg-gradient-to-r from-white/100 via-white/96 to-white/82",
             overlayY: "bg-gradient-to-t from-white/94 via-white/36 to-white/78",
             topBorder: "border-slate-900/15",
-            eyebrow: "text-slate-700",
-            badge: "border-slate-900/15 bg-white/65 text-slate-900",
-            heading: "text-slate-950",
-            body: "text-slate-700",
-            secondary: "border-slate-900/20 bg-white/78 text-slate-950 hover:bg-white/95",
+            eyebrow: "!text-slate-700",
+            badge: "border-slate-900/15 bg-white/65 !text-slate-900",
+            heading: "!text-slate-950",
+            body: "!text-slate-700",
+            secondary: "border-slate-900/20 bg-white/78 !text-slate-950 hover:bg-white/95",
             footerBorder: "border-slate-900/15",
-            scroll: "text-slate-700",
-            edit: "border-slate-900/15 bg-white/60 text-slate-800 hover:bg-white/85 hover:text-slate-950",
+            scroll: "!text-slate-700",
+            edit: "border-slate-900/15 bg-white/60 !text-slate-800 hover:bg-white/85 hover:!text-slate-950",
             posterCard: "border-slate-900/15 bg-white/55",
         }
         : {
@@ -66,14 +66,14 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
             overlayX: "bg-gradient-to-r from-slate-950/62 via-slate-950/34 to-slate-950/10",
             overlayY: "bg-gradient-to-t from-slate-950/52 via-transparent to-slate-950/16",
             topBorder: "border-white/25",
-            eyebrow: "text-white/80",
-            badge: "border-white/30 bg-white/10 text-white",
-            heading: "text-white",
-            body: "text-white/75",
-            secondary: "border-white/45 bg-white/5 text-white hover:bg-white/12",
+            eyebrow: "!text-white/80",
+            badge: "border-white/30 bg-white/10 !text-white",
+            heading: "!text-white",
+            body: "!text-white/75",
+            secondary: "border-white/45 bg-white/5 !text-white hover:bg-white/12",
             footerBorder: "border-white/25",
-            scroll: "text-white/75",
-            edit: "border-white/25 bg-slate-950/35 text-white/85 hover:bg-slate-950/55 hover:text-white",
+            scroll: "!text-white/75",
+            edit: "border-white/25 bg-slate-950/35 !text-white/85 hover:bg-slate-950/55 hover:!text-white",
             posterCard: "border-white/20 bg-slate-950/35",
         };
 
@@ -85,7 +85,7 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
 
     return (
         <>
-            <section className={`relative isolate min-h-[84vh] cursor-pointer overflow-hidden ${theme.bg}`}>
+            <section data-cosmic-media-banner="true" className={`relative isolate min-h-[84vh] cursor-pointer overflow-hidden ${theme.bg}`}>
                 <div className="absolute inset-0">
                     <img src={data.poster_image_url} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover sm:hidden" />
                     {embeddedVideoUrl ? (
@@ -102,7 +102,7 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
                     )}
                     <div
                         className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayBase}`}
-                        style={isLightMediaTheme ? undefined : { backgroundColor: mediaOverlay.overlayColor, opacity: 0.26 }}
+                        style={isLightMediaTheme ? undefined : { backgroundColor: mediaOverlay.overlayColor, opacity: 0.48 }}
                     />
                     <div className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayX}`} />
                     <div className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayY}`} />

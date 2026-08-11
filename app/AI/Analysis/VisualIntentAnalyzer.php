@@ -27,7 +27,8 @@ Return only JSON with exactly this shape:
   "business_type":"short specific business category",
   "fallback_industry":"one supported fallback folder",
   "image_keywords":["keyword phrase"],
-  "visual_style":"short visual direction"
+  "visual_style":"short visual direction",
+  "overlay_header_on_banner":true
 }
 
 Rules:
@@ -36,6 +37,9 @@ Rules:
 - Avoid generic phrases such as "professional business" unless no better description exists.
 - fallback_industry must be one of: default, construction, restaurant, coffee, bakery, dentist, medical, lawyer, fitness, real-estate, hotel, travel, technology, education, finance, electrician, plumbing, cleaning, landscaping, automotive, salon.
 - visual_style should be short, for example "technical editorial", "luxury cinematic", or "warm artisanal".
+- overlay_header_on_banner must be a JSON boolean. Set it true when a transparent navigation layered over the first hero/banner would materially improve the requested design, especially cinematic, image-led, video, luxury, travel, hospitality, real-estate, event, or immersive visual directions.
+- Set overlay_header_on_banner false for minimal, light, editorial, documentation, dashboard-like, dense utility, or whitespace-led designs where the header should remain visually separate from the first section.
+- Do not force overlay simply because a hero exists; choose it as a deliberate visual-design decision.
 PROMPT;
 
         $response = OpenAI::chat()->create([
@@ -81,6 +85,10 @@ PROMPT;
             'fallback_industry' => $fallbackIndustry,
             'image_keywords' => $keywords,
             'visual_style' => $visualStyle !== '' ? $visualStyle : 'professional editorial',
+            'overlay_header_on_banner' => filter_var(
+                $data['overlay_header_on_banner'] ?? false,
+                FILTER_VALIDATE_BOOL
+            ),
         ];
     }
 }

@@ -99,14 +99,14 @@ export function HeroVideoBackgroundBlock({
             overlay: "bg-white opacity-[0.90]",
             gradientX: "from-white/100 via-white/96 to-white/82",
             gradientY: "from-white/94 via-white/36 to-white/76",
-            tagline: "text-slate-700",
-            heading: "text-slate-950",
-            body: "text-slate-700",
-            secondary: "border-slate-900/20 bg-white/78 text-slate-950 hover:bg-white/95",
+            tagline: "!text-slate-700",
+            heading: "!text-slate-950",
+            body: "!text-slate-700",
+            secondary: "border-slate-900/20 bg-white/78 !text-slate-950 hover:bg-white/95",
             pill: "border-slate-900/15 bg-white/55",
-            pillText: "text-slate-900",
-            editButton: "border-slate-900/15 bg-white/55 text-slate-800 hover:bg-white/80 hover:text-slate-950 focus-visible:ring-slate-900/50",
-            scroll: "text-slate-700",
+            pillText: "!text-slate-900",
+            editButton: "border-slate-900/15 bg-white/55 !text-slate-800 hover:bg-white/80 hover:!text-slate-950 focus-visible:ring-slate-900/50",
+            scroll: "!text-slate-700",
             scrollBorder: "border-slate-900/30",
             scrollDot: "bg-slate-900",
             mediaCard: "border-slate-900/15 bg-white/45",
@@ -115,14 +115,14 @@ export function HeroVideoBackgroundBlock({
             overlay: "",
             gradientX: "from-slate-950/48 via-slate-950/20 to-transparent",
             gradientY: "from-slate-950/40 via-transparent to-slate-950/10",
-            tagline: "text-white/70",
-            heading: "text-white",
-            body: "text-white/75",
-            secondary: "border-white/30 bg-white/10 text-white hover:bg-white/20",
+            tagline: "!text-white/70",
+            heading: "!text-white",
+            body: "!text-white/75",
+            secondary: "border-white/30 bg-white/10 !text-white hover:bg-white/20",
             pill: "border-white/15 bg-slate-950/35",
-            pillText: "text-white",
-            editButton: "border-white/15 bg-slate-950/35 text-white/80 hover:bg-slate-950/55 hover:text-white focus-visible:ring-white/80",
-            scroll: "text-white/70",
+            pillText: "!text-white",
+            editButton: "border-white/15 bg-slate-950/35 !text-white/80 hover:bg-slate-950/55 hover:!text-white focus-visible:ring-white/80",
+            scroll: "!text-white/70",
             scrollBorder: "border-white/30",
             scrollDot: "bg-white",
             mediaCard: "border-white/20 bg-slate-950/35",
@@ -151,6 +151,7 @@ export function HeroVideoBackgroundBlock({
 
     return (
         <section
+            data-cosmic-media-banner="true"
             className={`relative isolate min-h-[680px] cursor-pointer overflow-hidden ${theme.bg}`}
         >
             <div className="absolute inset-0">
@@ -243,7 +244,7 @@ export function HeroVideoBackgroundBlock({
                         <EditableButton
                             label={data.primary_label}
                             url={data.primary_url}
-                            className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-xl transition hover:-translate-y-0.5 hover:opacity-90 ${primaryTheme.bg} text-white`}
+                            className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-xl transition hover:-translate-y-0.5 hover:opacity-90 ${primaryTheme.bg} !text-white`}
                             onSave={(
                                 primary_label,
                                 primary_url
@@ -274,7 +275,7 @@ export function HeroVideoBackgroundBlock({
                     <div className="mt-10 flex flex-wrap items-center gap-4">
                         <div className={`flex items-center gap-3 rounded-full border px-4 py-2.5 backdrop-blur ${mediaStyle.pill}`}>
                             <span
-                                className={`flex h-8 w-8 items-center justify-center rounded-full ${primaryTheme.bg} text-white`}
+                                className={`flex h-8 w-8 items-center justify-center rounded-full ${primaryTheme.bg} !text-white`}
                             >
                                 ▶
                             </span>

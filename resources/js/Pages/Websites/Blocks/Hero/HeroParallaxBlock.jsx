@@ -70,11 +70,11 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
             overlay: "bg-white",
             gradient: "from-white/99 via-white/88 to-white/68",
             badge: "border-slate-900/15 bg-white/72",
-            eyebrow: "text-slate-700",
-            heading: "text-slate-950",
-            body: "text-slate-700",
-            secondary: "border-slate-900/20 bg-white/72 text-slate-950 hover:bg-white/90",
-            scroll: "text-slate-700",
+            eyebrow: "!text-slate-700",
+            heading: "!text-slate-950",
+            body: "!text-slate-700",
+            secondary: "border-slate-900/20 bg-white/72 !text-slate-950 hover:bg-white/90",
+            scroll: "!text-slate-700",
             scrollLine: "bg-slate-900/25",
             scrollDot: "bg-slate-900",
         }
@@ -82,11 +82,11 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
             overlay: "bg-slate-950",
             gradient: "from-slate-950/55 via-slate-950/12 to-slate-950/16",
             badge: "border-white/20 bg-white/10",
-            eyebrow: "text-white/85",
-            heading: "text-white",
-            body: "text-white/75",
-            secondary: "border-white/30 bg-white/10 text-white hover:bg-white/20",
-            scroll: "text-white/65",
+            eyebrow: "!text-white/85",
+            heading: "!text-white",
+            body: "!text-white/75",
+            secondary: "border-white/30 bg-white/10 !text-white hover:bg-white/20",
+            scroll: "!text-white/65",
             scrollLine: "bg-white/25",
             scrollDot: "bg-white",
         };
@@ -170,6 +170,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
 
     return (
         <section
+            data-cosmic-media-banner="true"
             ref={sectionRef}
             className={`relative isolate flex cursor-pointer overflow-hidden py-12 sm:py-16 lg:py-20 ${heroHeight}`}
             onClick={handleSectionImageEdit}
@@ -225,7 +226,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
                         <EditableButton
                             label={data.primary_label}
                             url={data.primary_url}
-                            className={`inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition hover:-translate-y-0.5 ${primaryTheme.bg} text-white`}
+                            className={`inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition hover:-translate-y-0.5 ${primaryTheme.bg} !text-white`}
                             onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })}
                         />
                         <EditableButton

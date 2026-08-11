@@ -90,10 +90,10 @@ export const HeroSliderFadeSchema = {
 };
 
 const CTA_STYLES = [
-    'bg-white text-slate-950 hover:bg-white/90',
-    'border border-white/35 bg-black/20 text-white hover:border-white/60 hover:bg-black/35',
-    'border border-white/35 bg-black/20 text-white hover:border-white/60 hover:bg-black/35',
-    'border border-white/25 bg-black/35 text-white hover:border-white/50 hover:bg-black/55',
+    'bg-white !text-slate-950 hover:bg-white/90',
+    'border border-white/35 bg-black/20 !text-white hover:border-white/60 hover:bg-black/35',
+    'border border-white/35 bg-black/20 !text-white hover:border-white/60 hover:bg-black/35',
+    'border border-white/25 bg-black/35 !text-white hover:border-white/50 hover:bg-black/55',
 ];
 
 export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globalTheme }) {
@@ -111,21 +111,21 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
             overlayOpacity: 0.90,
             gradientX: 'from-white/100 via-white/96 to-white/82',
             gradientY: 'from-white/94 via-white/36 to-white/76',
-            textWrap: 'text-slate-950',
-            eyebrow: 'text-slate-700',
-            body: 'text-slate-700',
-            primary: `${primaryTheme.bg} text-white hover:opacity-90`,
-            secondary: 'border border-slate-900/20 bg-white/78 text-slate-950 hover:bg-white/95',
+            textWrap: '!text-slate-950',
+            eyebrow: '!text-slate-700',
+            body: '!text-slate-700',
+            primary: `${primaryTheme.bg} !text-white hover:opacity-90`,
+            secondary: 'border border-slate-900/20 bg-white/78 !text-slate-950 hover:bg-white/95',
         }
         : {
             overlayOpacity: 0.50,
             gradientX: 'from-slate-950/32 via-slate-950/12 to-transparent',
             gradientY: 'from-slate-950/48 via-transparent to-slate-950/12',
-            textWrap: 'text-white',
-            eyebrow: 'text-white/70',
-            body: 'text-white/75',
-            primary: 'bg-white text-slate-950 hover:bg-white/90',
-            secondary: 'border border-white/35 bg-black/20 text-white hover:border-white/60 hover:bg-black/35',
+            textWrap: '!text-white',
+            eyebrow: '!text-white/70',
+            body: '!text-white/75',
+            primary: 'bg-white !text-slate-950 hover:bg-white/90',
+            secondary: 'border border-white/35 bg-black/20 !text-white hover:border-white/60 hover:bg-black/35',
         };
     const rawSlides = Array.isArray(data.slides) && data.slides.length ? data.slides : DEFAULT_SLIDES;
     const slides = useMemo(() => rawSlides.map(normalizeSlide), [rawSlides]);
@@ -209,6 +209,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
 
     return (
         <section
+            data-cosmic-media-banner="true"
             className="relative isolate min-h-[620px] overflow-hidden sm:min-h-[700px] lg:min-h-[760px]"
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
@@ -284,9 +285,9 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
             </div>
 
             <div className="absolute bottom-16 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 sm:bottom-6">
-                <button type="button" onClick={() => openEditor(activeIndex)} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit slide</button>
-                <button type="button" onClick={() => imageRefs.current[activeIndex]?.openEditor()} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit image</button>
-                <button type="button" onClick={addSlide} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Add slide</button>
+                <button type="button" onClick={() => openEditor(activeIndex)} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit slide</button>
+                <button type="button" onClick={() => imageRefs.current[activeIndex]?.openEditor()} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit image</button>
+                <button type="button" onClick={addSlide} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Add slide</button>
             </div>
 
             <div className="absolute bottom-6 right-6 z-40 flex items-center gap-3 sm:right-10 lg:right-14">
@@ -299,16 +300,16 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                         {floatingCta.text}
                     </a>
                 )}
-                <button type="button" onClick={previous} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" aria-label="Previous slide">←</button>
-                <button type="button" onClick={next} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" aria-label="Next slide">→</button>
+                <button type="button" onClick={previous} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" aria-label="Previous slide">←</button>
+                <button type="button" onClick={next} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" aria-label="Next slide">→</button>
             </div>
 
             {editingIndex !== null && draft && createPortal(
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEditor(); }}>
-                    <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151518] p-6 text-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="hero-slider-edit-title">
+                    <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151518] p-6 !text-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="hero-slider-edit-title">
                         <div className="flex items-start justify-between gap-4">
                             <div><p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-300">Hero slider</p><h3 id="hero-slider-edit-title" className="mt-1 text-xl font-bold">Edit slide {editingIndex + 1}</h3></div>
-                            <button type="button" onClick={closeEditor} className="text-slate-400 hover:text-white" aria-label="Close editor">×</button>
+                            <button type="button" onClick={closeEditor} className="text-slate-400 hover:!text-white" aria-label="Close editor">×</button>
                         </div>
                         <div className="mt-6 grid gap-4 sm:grid-cols-2">
                             {[
@@ -319,13 +320,13 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                                 ['button_3_text', 'Button 3 text'], ['button_3_url', 'Button 3 URL'],
                                 ['button_4_text', 'Button 4 text'], ['button_4_url', 'Button 4 URL'],
                             ].map(([key, label]) => (
-                                <label key={key} className="grid gap-2 text-sm font-semibold text-slate-200"><span>{label}</span><input value={draft[key] || ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} className="rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 text-white outline-none focus:border-violet-400" /></label>
+                                <label key={key} className="grid gap-2 text-sm font-semibold text-slate-200"><span>{label}</span><input value={draft[key] || ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} className="rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 !text-white outline-none focus:border-violet-400" /></label>
                             ))}
-                            <label className="grid gap-2 text-sm font-semibold text-slate-200 sm:col-span-2"><span>Description</span><textarea rows="4" value={draft.description || ''} onChange={(event) => setDraft({ ...draft, description: event.target.value })} className="resize-y rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 text-white outline-none focus:border-violet-400" /></label>
+                            <label className="grid gap-2 text-sm font-semibold text-slate-200 sm:col-span-2"><span>Description</span><textarea rows="4" value={draft.description || ''} onChange={(event) => setDraft({ ...draft, description: event.target.value })} className="resize-y rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 !text-white outline-none focus:border-violet-400" /></label>
                         </div>
                         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
                             <button type="button" onClick={() => deleteSlide(editingIndex)} disabled={slides.length <= 1} className="rounded-lg px-4 py-2 text-sm font-semibold text-rose-300 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-40">Delete slide</button>
-                            <div className="flex gap-2"><button type="button" onClick={closeEditor} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button><button type="button" onClick={saveEditor} className="rounded-lg bg-white px-5 py-2 text-sm font-bold text-slate-950 hover:bg-slate-100">Save slide</button></div>
+                            <div className="flex gap-2"><button type="button" onClick={closeEditor} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button><button type="button" onClick={saveEditor} className="rounded-lg bg-white px-5 py-2 text-sm font-bold !text-slate-950 hover:bg-slate-100">Save slide</button></div>
                         </div>
                     </div>
                 </div>,

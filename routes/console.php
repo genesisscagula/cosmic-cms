@@ -11,6 +11,27 @@ Artisan::command('inspire', function () {
 Schedule::command('payments:reconcile-paypal --limit=500')
     ->everySixHours()->withoutOverlapping(30)->onOneServer()->runInBackground();
 
+Schedule::command('commerce:recover-payments --limit=100')
+    ->everyTenMinutes()->withoutOverlapping(20)->onOneServer()->runInBackground();
+
+Schedule::command('commerce:payment-health --strict')
+    ->hourly()->withoutOverlapping(10)->onOneServer();
+
+Schedule::command('commerce:retry-notifications --limit=100')
+    ->everyTenMinutes()->withoutOverlapping(20)->onOneServer()->runInBackground();
+
+Schedule::command('commerce:prune-inventory-reservations --limit=250')
+    ->everyFiveMinutes()->withoutOverlapping(10)->onOneServer()->runInBackground();
+
+Schedule::command('commerce:integrity-audit --repair --limit=1000')
+    ->hourly()->withoutOverlapping(15)->onOneServer();
+
+Schedule::command('commerce:integrity-audit --strict --limit=5000')
+    ->dailyAt('09:05')->withoutOverlapping(30)->onOneServer();
+
+Schedule::command('commerce:regression-audit --strict --limit=5000')
+    ->dailyAt('09:10')->withoutOverlapping(30)->onOneServer();
+
 Schedule::command('provisioning:recover --limit=100')
     ->everyTenMinutes()->withoutOverlapping(20)->onOneServer()->runInBackground();
 

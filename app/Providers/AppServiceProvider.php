@@ -15,6 +15,8 @@ use App\Models\Website;
 use App\Policies\WebsitePolicy;
 use App\Cosmic\Capabilities\CapabilityEngine;
 use App\Models\User;
+use App\Models\CommerceOrder;
+use App\Observers\CommerceOrderObserver;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -32,6 +34,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Gate::policy(Website::class, WebsitePolicy::class);
+        CommerceOrder::observe(CommerceOrderObserver::class);
 
         if ((bool) config('cosmic-monitoring.enabled', true)) {
             DB::listen(function ($query): void {

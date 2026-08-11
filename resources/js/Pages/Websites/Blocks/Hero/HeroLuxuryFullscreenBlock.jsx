@@ -39,32 +39,32 @@ export function HeroLuxuryFullscreenBlock({ block, blockIndex, onUpdate, globalT
     const isLightMediaTheme = mediaOverlay.isLight;
     const overlayColor = mediaOverlay.overlayColor;
     const primaryButton = isLightMediaTheme
-        ? `${primaryTheme.bg} text-white`
-        : (isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`);
+        ? `${primaryTheme.bg} !text-white`
+        : (isPrimary ? "bg-white !text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`);
     const copy = isLightMediaTheme
         ? {
             border: "border-slate-900/15",
-            eyebrow: "text-slate-700",
-            edition: "text-slate-600",
-            heading: "text-slate-950",
-            body: "text-slate-700",
-            secondary: "border-slate-900/20 bg-white/72 text-slate-950 backdrop-blur-sm",
-            location: "text-slate-700",
+            eyebrow: "!text-slate-700",
+            edition: "!text-slate-600",
+            heading: "!text-slate-950",
+            body: "!text-slate-700",
+            secondary: "border-slate-900/20 bg-white/72 !text-slate-950 backdrop-blur-sm",
+            location: "!text-slate-700",
             divider: "bg-slate-900/25",
         }
         : {
             border: "border-white/25",
-            eyebrow: "text-white/80",
-            edition: "text-white/70",
-            heading: "text-white",
-            body: "text-white/75",
-            secondary: "border-white/45 bg-white/5 text-white backdrop-blur-sm",
-            location: "text-white/75",
+            eyebrow: "!text-white/80",
+            edition: "!text-white/70",
+            heading: "!text-white",
+            body: "!text-white/75",
+            secondary: "border-white/45 bg-white/5 !text-white backdrop-blur-sm",
+            location: "!text-white/75",
             divider: "bg-white/35",
         };
 
     return (
-        <section className={`relative min-h-[82vh] overflow-hidden ${theme.bg}`}>
+        <section data-cosmic-media-banner="true" className={`relative min-h-[82vh] overflow-hidden ${theme.bg}`}>
             <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} isBackground className="absolute inset-0 h-full w-full object-cover" onSave={(image_url)=>onUpdate({image_url})} />
             <div
                 className="pointer-events-none absolute inset-0"

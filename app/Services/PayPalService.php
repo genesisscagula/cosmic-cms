@@ -12,7 +12,7 @@ use RuntimeException;
 
 class PayPalService
 {
-    public function client(): PendingRequest
+    public function client(?string $requestId = null): PendingRequest
     {
         $clientId = (string) config('payments.paypal.client_id');
         $clientSecret = (string) config('payments.paypal.client_secret');
@@ -47,6 +47,16 @@ class PayPalService
             Cache::put($cacheKey, $accessToken, now()->addSeconds($ttl));
         }
 
+        $requestId = trim((string) $requestId);
+        if ($requestId === '') {
+            $requestId = (string) Str::uuid();
+        }
+
+        // PayPal uses this header to make create/capture POST retries idempotent.
+        // Callers that are retrying the same business operation should pass a
+        // stable request ID; unrelated calls still receive a fresh UUID.
+        $requestId = substr($requestId, 0, 108);
+
         return Http::baseUrl($baseUrl)
             ->acceptJson()
             ->asJson()
@@ -55,7 +65,7 @@ class PayPalService
             ->retry(2, 300, throw: false)
             ->withToken($accessToken)
             ->withHeaders([
-                'PayPal-Request-Id' => (string) Str::uuid(),
+                'PayPal-Request-Id' => $requestId,
             ]);
     }
 
@@ -99,13 +109,13 @@ class PayPalService
             && strtoupper((string) $response->json('verification_status')) === 'SUCCESS';
     }
 
-    public function captureOrder(string $orderId): array
+    public function captureOrder(string $orderId, ?string $requestId = null): array
     {
         if ($orderId === '') {
             throw new RuntimeException('Missing PayPal order ID.');
         }
 
-        $response = $this->client()->post('/v2/checkout/orders/'.$orderId.'/capture', new \stdClass());
+        $response = $this->client($requestId)->post('/v2/checkout/orders/'.$orderId.'/capture', new \stdClass());
 
         if (! $response->successful()) {
             $issue = $response->json('details.0.issue');

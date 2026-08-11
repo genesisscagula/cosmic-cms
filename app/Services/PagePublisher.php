@@ -69,6 +69,7 @@ class PagePublisher
 
         $pagePaths = $this->pagePaths($pages);
         $header = $this->staticNavigationHeader($header, $pages, $pagePaths);
+        $commerceContext = $this->commerceExportContext($website);
 
         return [
             'status' => 'success',
@@ -76,7 +77,15 @@ class PagePublisher
             'global_header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor) : '',
             'global_footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor) : '',
             'pages' => $pages
-                ->flatMap(function (Page $page) use ($primaryColor, $publishedPostsByPage, $pagePaths) {
+                ->flatMap(function (Page $page) use ($primaryColor, $publishedPostsByPage, $pagePaths, $commerceContext) {
+                    // Commerce pages are dynamic Laravel storefront endpoints. Keep
+                    // them in the page registry/navigation map, but never export a
+                    // static index.html that could shadow /shop, /cart, /checkout,
+                    // /account or /order on the live connector.
+                    if ($page->page_type === 'commerce') {
+                        return [];
+                    }
+
                     $blocks = $page->published_blocks ?? $page->blocks ?? [];
                     // A Posts / updates page owns its static directory. This keeps
                     // /blog, /news, and any future post hub aligned with its page slug.
@@ -113,8 +122,8 @@ class PagePublisher
                             $blocks,
                             $primaryColor,
                             $page->page_type === 'blog'
-                                ? ['blog_posts' => $posts, 'page_style' => $page->published_page_style ?? $page->page_style]
-                                : ['page_style' => $page->published_page_style ?? $page->page_style]
+                                ? array_merge($commerceContext, ['blog_posts' => $posts, 'page_style' => $page->published_page_style ?? $page->page_style])
+                                : array_merge($commerceContext, ['page_style' => $page->published_page_style ?? $page->page_style])
                         ),
                     ]];
 
@@ -130,12 +139,12 @@ class PagePublisher
                             // Compile the complete Blog page composition so the live
                             // article keeps the same Mini Header, Single Post body,
                             // Newsletter, and Latest Resources seen in Builder.
-                            'html' => CmsHtmlCompiler::compile($blocks, $primaryColor, [
+                            'html' => CmsHtmlCompiler::compile($blocks, $primaryColor, array_merge($commerceContext, [
                                 'blog_posts' => $posts,
                                 'single_blog_post' => $post->toArray(),
                                 'blog_index_url' => $postDirectory . '/',
                                 'page_style' => $page->published_page_style ?? $page->page_style,
-                            ]),
+                            ])),
                         ])
                         ->all();
 
@@ -143,6 +152,72 @@ class PagePublisher
                 })
                 ->values()
                 ->all(),
+        ];
+    }
+
+    private function commerceExportContext(Website $website): array
+    {
+        $settings = $website->commerceSetting()->first();
+        if (! $settings?->enabled || ! filled($website->preview_slug)) {
+            return ['commerce' => [], 'commerce_runtime_endpoint' => ''];
+        }
+
+        $currency = strtoupper((string) ($settings->currency ?: config('cosmic-commerce.default_currency', 'USD')));
+        $decimals = (int) config("cosmic-commerce.currencies.$currency.decimals", 2);
+        $previews = app(PreviewDeploymentService::class);
+        $runtimeBase = rtrim((string) config('services.cosmic.asset_base_url', config('app.url')), '/');
+        $runtimeEndpoint = $runtimeBase.'/commerce/runtime/'.$website->preview_slug.'/catalog';
+
+        $products = $website->commerceProducts()
+            ->with(['images', 'categories', 'options.values'])
+            ->where('status', 'published')
+            ->where('visibility', '!=', 'hidden')
+            ->orderByDesc('is_featured')
+            ->latest('updated_at')
+            ->get()
+            ->map(fn ($product) => [
+                'id' => $product->id,
+                'title' => $product->title,
+                'slug' => $product->slug,
+                'storefront_url' => $previews->url($website, 'product/'.$product->slug),
+                'regular_price_minor' => $product->regular_price_minor,
+                'sale_price_minor' => $product->sale_price_minor,
+                'track_inventory' => (bool) $product->track_inventory,
+                'stock_quantity' => $product->stock_quantity,
+                'allow_backorders' => (bool) $product->allow_backorders,
+                'stock_status' => $product->stock_status,
+                'is_featured' => (bool) $product->is_featured,
+                'featured_image_url' => $product->featured_image_url,
+                'featured_image_alt' => $product->featured_image_alt,
+                'category_ids' => $product->categories->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
+                'gallery' => $product->images->map(fn ($image) => ['url' => $image->url, 'alt_text' => $image->alt_text])->values()->all(),
+                'options' => $product->options->map(fn ($option) => [
+                    'id' => $option->id,
+                    'name' => $option->name,
+                    'values' => $option->values->where('is_active', true)->map(fn ($value) => ['id' => $value->id, 'label' => $value->label, 'swatch_hex' => $value->swatch_hex])->values()->all(),
+                ])->values()->all(),
+            ])->values()->all();
+
+        $categories = $website->commerceProductCategories()->orderBy('sort_order')->orderBy('name')->get()
+            ->map(fn ($category) => [
+                'id' => $category->id,
+                'name' => $category->name,
+                'slug' => $category->slug,
+                'description' => $category->description,
+                'image_url' => $category->image_url,
+                'image_alt' => $category->image_alt,
+                'storefront_url' => $previews->url($website, 'shop/category/'.$category->slug),
+            ])->values()->all();
+
+        return [
+            'commerce_runtime_endpoint' => $runtimeEndpoint,
+            'commerce' => [
+                'currency' => $currency,
+                'currency_decimals' => $decimals,
+                'storefront_url' => $previews->url($website, 'shop'),
+                'products' => $products,
+                'categories' => $categories,
+            ],
         ];
     }
 

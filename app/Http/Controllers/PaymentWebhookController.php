@@ -3,8 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\PaymentOrder;
+use App\Models\CommerceOrder;
 use App\Models\PaymentWebhookEvent;
 use App\Services\PaymentFulfillmentService;
+use App\Services\CommerceOrderService;
+use App\Services\CommercePayPalService;
+use App\Services\CommerceOrderNotificationService;
+use App\Services\CommerceRefundService;
 use App\Services\WorkspaceProvisioningService;
 use App\Services\PaymentWebhookEventService;
 use App\Services\PayPalService;
@@ -21,6 +26,10 @@ class PaymentWebhookController extends Controller
         SubscriptionManagementService $subscriptions,
         PaymentWebhookEventService $events,
         WorkspaceProvisioningService $provisioning,
+        CommerceOrderService $commerceOrders,
+        CommercePayPalService $commercePayPal,
+        CommerceOrderNotificationService $commerceNotifications,
+        CommerceRefundService $commerceRefunds,
     ): Response {
         abort_unless($paypal->verifyWebhook($request), 400, 'Invalid PayPal webhook signature.');
 
@@ -41,8 +50,9 @@ class PaymentWebhookController extends Controller
 
         try {
             $handled = match ($type) {
-                'CHECKOUT.ORDER.APPROVED' => $this->captureApprovedOrder($resource, $paypal, $fulfillment),
-                'PAYMENT.CAPTURE.COMPLETED' => $this->fulfillPayPalCapture($resource, $fulfillment),
+                'CHECKOUT.ORDER.APPROVED' => $this->captureApprovedOrder($resource, $paypal, $fulfillment, $commerceOrders, $commercePayPal, $commerceNotifications),
+                'PAYMENT.CAPTURE.COMPLETED' => $this->fulfillPayPalCapture($resource, $fulfillment, $commerceOrders, $commercePayPal, $commerceNotifications),
+                'PAYMENT.CAPTURE.REFUNDED' => $this->syncCommerceRefund($resource, $commerceRefunds, $commerceNotifications),
                 'BILLING.SUBSCRIPTION.ACTIVATED' => $this->activateSubscription($resource, $fulfillment, $subscriptions, $provisioning),
                 'BILLING.SUBSCRIPTION.UPDATED' => $this->syncSubscriptionUpdate($resource, $subscriptions),
                 'PAYMENT.SALE.COMPLETED' => $this->renewSubscription($resource, $fulfillment),
@@ -111,6 +121,9 @@ class PaymentWebhookController extends Controller
         array $resource,
         PayPalService $paypal,
         PaymentFulfillmentService $fulfillment,
+        CommerceOrderService $commerceOrders,
+        CommercePayPalService $commercePayPal,
+        CommerceOrderNotificationService $commerceNotifications,
     ): bool {
         $orderId = (string) ($resource['id'] ?? '');
 
@@ -118,7 +131,21 @@ class PaymentWebhookController extends Controller
             return true;
         }
 
-        $capturedOrder = $paypal->captureOrder($orderId);
+        $reference = (string) $paypal->orderReference($resource);
+        $commerceOrder = CommerceOrder::query()
+            ->when($reference !== '', fn ($query) => $query->where('public_id', $reference))
+            ->when($reference === '', fn ($query) => $query->where('external_checkout_id', $orderId))
+            ->first();
+
+        if ($commerceOrder) {
+            $commerceOrders->linkExternalCheckout($commerceOrder, $orderId);
+            $capturedOrder = $commercePayPal->captureAndVerify($commerceOrder->fresh()->loadMissing('website'), $orderId);
+            $paid = $commerceOrders->markPaid($commerceOrder, $commercePayPal->captureId($capturedOrder), 'webhook_approved');
+            $commerceNotifications->paid($paid);
+            return true;
+        }
+
+        $capturedOrder = $paypal->captureOrder($orderId, 'cosmic-platform-capture-'.$orderId);
         $reference = $paypal->orderReference($capturedOrder);
         $paymentOrder = PaymentOrder::query()->where('reference', $reference)->first();
 
@@ -144,16 +171,41 @@ class PaymentWebhookController extends Controller
     private function fulfillPayPalCapture(
         array $resource,
         PaymentFulfillmentService $fulfillment,
+        CommerceOrderService $commerceOrders,
+        CommercePayPalService $commercePayPal,
+        CommerceOrderNotificationService $commerceNotifications,
     ): bool {
         $reference = (string) (
             $resource['custom_id']
             ?? $resource['invoice_id']
             ?? ''
         );
+        $orderId = (string) data_get($resource, 'supplementary_data.related_ids.order_id');
 
-        if ($reference === '') {
-            $orderId = (string) data_get($resource, 'supplementary_data.related_ids.order_id');
+        $commerceOrder = ($reference !== '' || $orderId !== '')
+            ? CommerceOrder::query()
+                ->where(function ($query) use ($reference, $orderId) {
+                    if ($reference !== '') {
+                        $query->where('public_id', $reference)->orWhere('order_number', $reference);
+                    }
+                    if ($orderId !== '') {
+                        $query->orWhere('external_checkout_id', $orderId);
+                    }
+                })
+                ->first()
+            : null;
 
+        if ($commerceOrder) {
+            if ($orderId !== '') {
+                $commerceOrders->linkExternalCheckout($commerceOrder, $orderId);
+            }
+            $commercePayPal->assertCaptureResourceMatches($commerceOrder, $resource);
+            $paid = $commerceOrders->markPaid($commerceOrder, (string) ($resource['id'] ?? ''), 'webhook_capture');
+            $commerceNotifications->paid($paid);
+            return true;
+        }
+
+        if ($reference === '' && $orderId !== '') {
             $reference = (string) PaymentOrder::query()
                 ->where('external_checkout_id', $orderId)
                 ->value('reference');
@@ -176,7 +228,7 @@ class PaymentWebhookController extends Controller
             $status !== 'COMPLETED'
             || $currency !== strtoupper((string) $paymentOrder->currency)
             || $amountMinor !== (int) $paymentOrder->amount_minor
-) {
+        ) {
             throw new \RuntimeException('PayPal capture details did not match the local payment order.');
         }
 
@@ -187,6 +239,18 @@ class PaymentWebhookController extends Controller
             ['paypal_capture_source' => 'payment_capture_webhook'],
         );
 
+        return true;
+    }
+
+    private function syncCommerceRefund(array $resource, CommerceRefundService $refunds, CommerceOrderNotificationService $notifications): bool
+    {
+        $order = $refunds->syncWebhook($resource);
+        if ($order) {
+            $amountMinor = (int) $order->refunds->where('external_refund_id', (string) ($resource['id'] ?? ''))->first()?->amount_minor;
+            if ($amountMinor > 0 && strtolower((string) ($resource['status'] ?? '')) === 'completed') {
+                $notifications->refund($order, $amountMinor);
+            }
+        }
         return true;
     }
 

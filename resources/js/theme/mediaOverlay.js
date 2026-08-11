@@ -34,26 +34,29 @@ export function resolveMediaOverlay(globalTheme, resolvedTheme) {
         ? { primary: globalTheme }
         : (globalTheme || {});
     const sectionTheme = resolvedTheme || "primary";
-    const isLight = LIGHT_MEDIA_THEMES.has(sectionTheme);
+    const sectionRequestedLight = LIGHT_MEDIA_THEMES.has(sectionTheme);
 
-    if (isLight) {
-        return {
-            isLight: true,
-            themeKey: sectionTheme,
-            overlayColor: "#ffffff",
-            primaryWeight: 1,
-        };
-    }
-
+    // Background-image/video banners use a cinematic contrast contract in BOTH
+    // light and dark website themes. A light site can still have a photographic
+    // hero, but the photo is darkened and the copy stays white. This avoids the
+    // fragile "white wash + dark text" path where busy images can bleed through
+    // and make headings unreadable in previews or on the live site.
+    //
+    // Keep the requested light state as metadata for future UI decisions, while
+    // `isLight` intentionally remains false so every media block selects its
+    // high-contrast white-copy branch.
     const themeKey = colorFamilies[sectionTheme]
         ? sectionTheme
         : (normalizedGlobalTheme.primary || "midnight");
     const family = colorFamilies[themeKey] || colorFamilies.midnight;
     const primaryHex = family?.palette?.background || "#243447";
-    const primaryWeight = NEUTRAL_DARK_THEMES.has(themeKey) ? 0.35 : 0.72;
+    const primaryWeight = sectionRequestedLight
+        ? 0.18
+        : (NEUTRAL_DARK_THEMES.has(themeKey) ? 0.35 : 0.62);
 
     return {
         isLight: false,
+        requestedLight: sectionRequestedLight,
         themeKey,
         overlayColor: blendHex(primaryHex, SLATE_950, primaryWeight),
         primaryWeight,
@@ -63,5 +66,7 @@ export function resolveMediaOverlay(globalTheme, resolvedTheme) {
 export function effectiveMediaOverlayOpacity(configuredOpacity, { isLight, lightMinimum = 88 } = {}) {
     const configured = Math.max(0, Math.min(100, Number(configuredOpacity) || 0));
     if (isLight) return Math.max(lightMinimum, configured);
-    return Math.max(32, Math.min(56, Math.round(configured * 0.72)));
+    // Media-first contrast: image/video sections need a dependable floor regardless
+    // of the dashboard appearance or how bright the source photo is.
+    return Math.max(48, Math.min(68, Math.round(configured * 0.86)));
 }

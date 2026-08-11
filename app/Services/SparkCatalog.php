@@ -116,6 +116,7 @@ class SparkCatalog
     private static function category(string $type): string
     {
         return match (true) {
+            str_starts_with($type, 'mini_hero_') => 'Mini Heroes',
             str_starts_with($type, 'hero_'), $type === 'image_cta_banner' => 'Hero',
             str_starts_with($type, 'services_') => 'Services',
             str_starts_with($type, 'feature_') => 'Features',
@@ -128,6 +129,7 @@ class SparkCatalog
             str_contains($type, 'job') => 'Careers',
             str_contains($type, 'event') => 'Events',
             str_contains($type, 'blog'), str_contains($type, 'newsletter'), str_contains($type, 'resource') => 'Blog',
+            str_starts_with($type, 'commerce_') => 'Commerce',
             str_contains($type, 'stats'), str_contains($type, 'process') => 'Proof',
             default => 'Other',
         };
@@ -136,6 +138,7 @@ class SparkCatalog
     private static function description(string $type): string
     {
         return match (self::category($type)) {
+            'Mini Heroes' => 'A compact page introduction for shops, blogs, archives, services, and inner pages.',
             'Hero' => 'A polished opening section designed to create a strong first impression.',
             'Services' => 'Present your services clearly with a reusable, conversion-friendly layout.',
             'Features' => 'Explain an important benefit with balanced content and imagery.',
@@ -148,6 +151,7 @@ class SparkCatalog
             'Careers' => 'Share open roles and invite people to join your team.',
             'Events' => 'Promote upcoming events, sessions, and important dates.',
             'Blog' => 'Add editorial content, resources, or newsletter promotion.',
+            'Commerce' => 'Connect live catalog data to a reusable storefront section.',
             'Proof' => 'Highlight your process, results, experience, and measurable proof.',
             default => 'A reusable premium section for your Cosmic CMS pages.',
         };

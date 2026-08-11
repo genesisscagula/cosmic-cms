@@ -36,6 +36,7 @@ final class PersonalPlanEntitlementService
                 'analytics' => $plan->limit('analytics_level', 'none'),
                 'leads' => $plan->limit('leads_level', 'none'),
                 'sales' => $plan->limit('sales_level', 'none'),
+                'commerce' => $plan->limit('commerce_level', 'connector'),
                 'blog' => $plan->limit('blog_level', 'none'),
                 'seo' => $plan->limit('seo_level', 'none'),
                 'support' => $plan->limit('support_level', 'standard'),
@@ -82,6 +83,7 @@ final class PersonalPlanEntitlementService
             'website_duplicate_draft', 'custom_scripts', 'custom_forms',
             'booking_ui_sparks', 'version_history', 'redirect_management',
             'priority_ai', 'branding_removed', 'custom_domain', 'export_static',
+            'commerce_connector', 'commerce_store',
         ];
 
         return collect($features)

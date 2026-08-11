@@ -171,19 +171,19 @@ export function HeroBackgroundImageBlock({
         : Math.max(46, Math.min(68, Math.round(configuredOverlayOpacity * 0.90)));
 
     const buttonStyle = isLightMediaTheme
-        ? { bg: primaryTheme.bg, text: "text-white" }
-        : { bg: "bg-white", text: "text-slate-950" };
+        ? { bg: primaryTheme.bg, text: "!text-white" }
+        : { bg: "bg-white", text: "!text-slate-950" };
 
     const mediaStyle = isLightMediaTheme
         ? {
-            tagline: "text-slate-700",
-            heading: "text-slate-950",
-            body: "text-slate-700",
+            tagline: "!text-slate-700",
+            heading: "!text-slate-950",
+            body: "!text-slate-700",
         }
         : {
-            tagline: "text-white/85",
-            heading: "text-white",
-            body: "text-white/85",
+            tagline: "!text-white/85",
+            heading: "!text-white",
+            body: "!text-white/85",
         };
 
     const heroHeight = {
@@ -216,6 +216,7 @@ export function HeroBackgroundImageBlock({
     return (
 
         <section
+            data-cosmic-media-banner="true"
             className={`
                 relative
                 overflow-hidden

@@ -35,6 +35,9 @@ use App\Http\Controllers\AppearancePreferenceController;
 use App\Http\Controllers\QueueDashboardController;
 use App\Http\Controllers\CosmicPublicChatController;
 use App\Http\Controllers\CosmicChatInboxController;
+use App\Http\Controllers\CommerceCheckoutController;
+use App\Http\Controllers\CommerceCustomerController;
+use App\Http\Controllers\CommerceRuntimeController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -144,6 +147,13 @@ Route::get('/seo-health', function () {
 })->name('seo.health');
 
 
+
+// Public read-only bridge used by exported Commerce Sparks.
+Route::get('/commerce/runtime/{preview}/catalog', [CommerceRuntimeController::class, 'catalog'])
+    ->where('preview', '[a-z0-9][a-z0-9-]{0,59}')
+    ->middleware('throttle:120,1')
+    ->name('commerce.runtime.catalog');
+
 // Public UUID preview links must be registered before the generic local site preview.
 // The UUID constraint prevents a normal slug such as /preview/my-coffee-shop from
 // being mistaken for an Agency branded preview token.
@@ -156,6 +166,28 @@ Route::get('/preview/{token}', [BrandedPreviewLinkController::class, 'show'])
 // local/path mode uses /preview/{slug}; production/subdomain mode uses the wildcard host.
 // This prevents production sites from also being reachable through the main app domain.
 if (config('cosmic_preview.mode') === 'local') {
+    Route::post('/preview/{slug}/cart/add', [PreviewController::class, 'localCartAdd'])
+        ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
+        ->name('preview.local.cart.add');
+    Route::post('/preview/{slug}/cart/update', [PreviewController::class, 'localCartUpdate'])
+        ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
+        ->name('preview.local.cart.update');
+    Route::post('/preview/{slug}/cart/remove', [PreviewController::class, 'localCartRemove'])
+        ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
+        ->name('preview.local.cart.remove');
+    Route::post('/preview/{slug}/checkout/paypal', [CommerceCheckoutController::class, 'localCreate'])
+        ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
+        ->name('preview.local.checkout.paypal');
+    Route::get('/preview/{slug}/checkout/paypal/return', [CommerceCheckoutController::class, 'localReturn'])
+        ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
+        ->name('preview.local.checkout.paypal.return');
+    Route::get('/preview/{slug}/checkout/paypal/cancel', [CommerceCheckoutController::class, 'localCancel'])
+        ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
+        ->name('preview.local.checkout.paypal.cancel');
+    Route::post('/preview/{slug}/account/register', [CommerceCustomerController::class, 'localRegister'])->where('slug', '[a-z0-9][a-z0-9-]{0,59}')->middleware('throttle:10,1')->name('preview.local.account.register');
+    Route::post('/preview/{slug}/account/login', [CommerceCustomerController::class, 'localLogin'])->where('slug', '[a-z0-9][a-z0-9-]{0,59}')->middleware('throttle:15,1')->name('preview.local.account.login');
+    Route::post('/preview/{slug}/account/logout', [CommerceCustomerController::class, 'localLogout'])->where('slug', '[a-z0-9][a-z0-9-]{0,59}')->name('preview.local.account.logout');
+    Route::post('/preview/{slug}/order-lookup', [CommerceCustomerController::class, 'localLookup'])->where('slug', '[a-z0-9][a-z0-9-]{0,59}')->middleware('throttle:20,1')->name('preview.local.order.lookup');
     Route::get('/preview/{slug}/{path?}', [PreviewController::class, 'local'])
         ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
         ->where('path', '.*')
@@ -176,11 +208,34 @@ if (config('cosmic_preview.mode') === 'subdomain' && filled(config('cosmic_previ
         ? '(?!(?:'.$reservedPreviewSlugs.')\\.)[a-z0-9][a-z0-9-]{0,59}'
         : '[a-z0-9][a-z0-9-]{0,59}';
 
-    Route::domain('{preview}.'.$previewDomain)
-        ->get('/{path?}', [PreviewController::class, 'subdomain'])
-        ->where('preview', $previewSlugPattern)
-        ->where('path', '.*')
-        ->name('preview.subdomain');
+    Route::domain('{preview}.'.$previewDomain)->group(function () use ($previewSlugPattern) {
+        Route::post('/cart/add', [PreviewController::class, 'subdomainCartAdd'])
+            ->where('preview', $previewSlugPattern)
+            ->name('preview.subdomain.cart.add');
+        Route::post('/cart/update', [PreviewController::class, 'subdomainCartUpdate'])
+            ->where('preview', $previewSlugPattern)
+            ->name('preview.subdomain.cart.update');
+        Route::post('/cart/remove', [PreviewController::class, 'subdomainCartRemove'])
+            ->where('preview', $previewSlugPattern)
+            ->name('preview.subdomain.cart.remove');
+        Route::post('/checkout/paypal', [CommerceCheckoutController::class, 'subdomainCreate'])
+            ->where('preview', $previewSlugPattern)
+            ->name('preview.subdomain.checkout.paypal');
+        Route::get('/checkout/paypal/return', [CommerceCheckoutController::class, 'subdomainReturn'])
+            ->where('preview', $previewSlugPattern)
+            ->name('preview.subdomain.checkout.paypal.return');
+        Route::get('/checkout/paypal/cancel', [CommerceCheckoutController::class, 'subdomainCancel'])
+            ->where('preview', $previewSlugPattern)
+            ->name('preview.subdomain.checkout.paypal.cancel');
+        Route::post('/account/register', [CommerceCustomerController::class, 'subdomainRegister'])->where('preview', $previewSlugPattern)->middleware('throttle:10,1')->name('preview.subdomain.account.register');
+        Route::post('/account/login', [CommerceCustomerController::class, 'subdomainLogin'])->where('preview', $previewSlugPattern)->middleware('throttle:15,1')->name('preview.subdomain.account.login');
+        Route::post('/account/logout', [CommerceCustomerController::class, 'subdomainLogout'])->where('preview', $previewSlugPattern)->name('preview.subdomain.account.logout');
+        Route::post('/order-lookup', [CommerceCustomerController::class, 'subdomainLookup'])->where('preview', $previewSlugPattern)->middleware('throttle:20,1')->name('preview.subdomain.order.lookup');
+        Route::get('/{path?}', [PreviewController::class, 'subdomain'])
+            ->where('preview', $previewSlugPattern)
+            ->where('path', '.*')
+            ->name('preview.subdomain');
+    });
 }
 
 Route::get('/', function () {
@@ -444,6 +499,34 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::patch('/websites/{website}/inquiries/{submission}', [ContactSubmissionController::class, 'update'])->name('websites.inquiries.update');
     Route::post('/websites/{website}/pages', [PageController::class, 'store'])->name('pages.store');
     Route::delete('/websites/{website}/pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
+    Route::put('/websites/{website}/commerce/settings', [\App\Http\Controllers\CommerceProductController::class, 'updateSettings'])->name('commerce.settings.update');
+    Route::post('/websites/{website}/commerce/pages/install', [\App\Http\Controllers\CommerceProductController::class, 'installPages'])->name('commerce.pages.install');
+    Route::post('/websites/{website}/commerce/shipping/zones', [\App\Http\Controllers\CommerceShippingController::class, 'storeZone'])->name('commerce.shipping.zones.store');
+    Route::put('/websites/{website}/commerce/shipping/zones/{zone}', [\App\Http\Controllers\CommerceShippingController::class, 'updateZone'])->name('commerce.shipping.zones.update');
+    Route::delete('/websites/{website}/commerce/shipping/zones/{zone}', [\App\Http\Controllers\CommerceShippingController::class, 'destroyZone'])->name('commerce.shipping.zones.destroy');
+    Route::post('/websites/{website}/commerce/shipping/zones/{zone}/rates', [\App\Http\Controllers\CommerceShippingController::class, 'storeRate'])->name('commerce.shipping.rates.store');
+    Route::put('/websites/{website}/commerce/shipping/zones/{zone}/rates/{rate}', [\App\Http\Controllers\CommerceShippingController::class, 'updateRate'])->name('commerce.shipping.rates.update');
+    Route::delete('/websites/{website}/commerce/shipping/zones/{zone}/rates/{rate}', [\App\Http\Controllers\CommerceShippingController::class, 'destroyRate'])->name('commerce.shipping.rates.destroy');
+    Route::put('/websites/{website}/commerce/tax/settings', [\App\Http\Controllers\CommerceTaxController::class, 'updateSettings'])->name('commerce.tax.settings.update');
+    Route::post('/websites/{website}/commerce/tax/rules', [\App\Http\Controllers\CommerceTaxController::class, 'storeRule'])->name('commerce.tax.rules.store');
+    Route::put('/websites/{website}/commerce/tax/rules/{rule}', [\App\Http\Controllers\CommerceTaxController::class, 'updateRule'])->name('commerce.tax.rules.update');
+    Route::delete('/websites/{website}/commerce/tax/rules/{rule}', [\App\Http\Controllers\CommerceTaxController::class, 'destroyRule'])->name('commerce.tax.rules.destroy');
+    Route::put('/websites/{website}/commerce/orders/{order}', [\App\Http\Controllers\CommerceOrderController::class, 'update'])->name('commerce.orders.update');
+    Route::post('/websites/{website}/commerce/orders/{order}/refund', [\App\Http\Controllers\CommerceOrderController::class, 'refund'])->middleware('throttle:10,1')->name('commerce.orders.refund');
+    Route::post('/websites/{website}/commerce/orders/{order}/restock', [\App\Http\Controllers\CommerceOrderController::class, 'restock'])->name('commerce.orders.restock');
+    Route::post('/websites/{website}/commerce/orders/{order}/recover-payment', [\App\Http\Controllers\CommerceOrderController::class, 'recoverPayment'])->middleware('throttle:6,1')->name('commerce.orders.recover-payment');
+    Route::post('/websites/{website}/commerce/coupons', [\App\Http\Controllers\CommerceCouponController::class, 'store'])->name('commerce.coupons.store');
+    Route::put('/websites/{website}/commerce/coupons/{coupon}', [\App\Http\Controllers\CommerceCouponController::class, 'update'])->name('commerce.coupons.update');
+    Route::delete('/websites/{website}/commerce/coupons/{coupon}', [\App\Http\Controllers\CommerceCouponController::class, 'destroy'])->name('commerce.coupons.destroy');
+    Route::post('/websites/{website}/commerce/categories', [\App\Http\Controllers\CommerceProductController::class, 'storeCategory'])->name('commerce.categories.store');
+    Route::put('/websites/{website}/commerce/categories/{category}', [\App\Http\Controllers\CommerceProductController::class, 'updateCategory'])->name('commerce.categories.update');
+    Route::post('/websites/{website}/commerce/products', [\App\Http\Controllers\CommerceProductController::class, 'store'])->name('commerce.products.store');
+    Route::put('/websites/{website}/commerce/products/{product}', [\App\Http\Controllers\CommerceProductController::class, 'update'])->name('commerce.products.update');
+    Route::post('/websites/{website}/commerce/products/{product}/duplicate', [\App\Http\Controllers\CommerceProductController::class, 'duplicate'])->name('commerce.products.duplicate');
+    Route::delete('/websites/{website}/commerce/products/{product}', [\App\Http\Controllers\CommerceProductController::class, 'destroy'])->name('commerce.products.destroy');
+    Route::post('/websites/{website}/commerce/products/{product}/inventory-adjustments', [\App\Http\Controllers\CommerceProductController::class, 'adjustInventory'])->name('commerce.products.inventory.adjust');
+    Route::put('/websites/{website}/commerce/products/{product}/options', [\App\Http\Controllers\CommerceProductController::class, 'syncOptions'])->name('commerce.products.options.sync');
+    Route::put('/websites/{website}/commerce/products/{product}/variants/{variant}', [\App\Http\Controllers\CommerceProductController::class, 'updateVariant'])->name('commerce.products.variants.update');
 
     // The legacy endpoint remains for compatibility with older clients.
     Route::post('/pages/{page}/builder', [PageController::class, 'updateBlocks'])->name('pages.builder.update');
