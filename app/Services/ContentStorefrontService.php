@@ -123,6 +123,7 @@ class ContentStorefrontService
         $palette = $themeKey === 'my-brand' && is_array($brandPalette)
             ? $this->normalizePalette($brandPalette, 'midnight')
             : $this->normalizePalette($this->themes->palette($themeKey), $themeKey);
+        $palette = $this->ensureReadablePalette($palette);
         $siteShell = $this->siteShell($website, $previewSlug, $themeKey);
 
         $payload = array_merge($data, [
@@ -147,8 +148,11 @@ class ContentStorefrontService
 
     private function siteShell(Website $website, string $previewSlug, string $primaryColor): array
     {
-        $header = $website->published_global_header ?? $website->global_header;
-        $footer = $website->published_global_footer ?? $website->global_footer;
+        // Preview must mirror the current Builder shell, including the latest uploaded logo.
+        // Published shell values can lag behind Builder edits until the next publish, so prefer
+        // the current global blocks and only fall back to the published snapshot.
+        $header = $website->global_header ?? $website->published_global_header;
+        $footer = $website->global_footer ?? $website->published_global_footer;
         if (! is_array($header) && ! is_array($footer)) return ['header' => '', 'footer' => ''];
 
         if (is_array($header)) {
@@ -208,6 +212,60 @@ class ContentStorefrontService
             'border' => $pick('border', '#E2E8F0'),
             'background' => $pick('background', '#FFFFFF'),
         ];
+    }
+
+    /**
+     * Some dark theme families intentionally carry very light text tokens. Structured
+     * content can render on a light editorial surface, so enforce readable foreground,
+     * muted and border colors against the actual storefront background.
+     */
+    private function ensureReadablePalette(array $palette): array
+    {
+        $background = (string) ($palette['background'] ?? '#FFFFFF');
+        $isLight = $this->relativeLuminance($background) >= 0.48;
+
+        if ($this->contrastRatio((string) ($palette['text'] ?? '#0F172A'), $background) < 4.5) {
+            $palette['text'] = $isLight ? '#0F172A' : '#F8FAFC';
+        }
+        if ($this->contrastRatio((string) ($palette['muted'] ?? '#64748B'), $background) < 3.5) {
+            $palette['muted'] = $isLight ? '#475569' : '#CBD5E1';
+        }
+        if ($this->contrastRatio((string) ($palette['border'] ?? '#E2E8F0'), $background) < 1.25) {
+            $palette['border'] = $isLight ? '#CBD5E1' : '#334155';
+        }
+
+        // Keep cards visibly separated from the page even when the theme's surface
+        // token is effectively identical to the background.
+        if ($this->contrastRatio((string) ($palette['surface'] ?? '#F8FAFC'), $background) < 1.08) {
+            $palette['surface'] = $isLight ? '#F8FAFC' : '#111827';
+        }
+
+        return $palette;
+    }
+
+    private function contrastRatio(string $a, string $b): float
+    {
+        $l1 = $this->relativeLuminance($a);
+        $l2 = $this->relativeLuminance($b);
+        $lighter = max($l1, $l2);
+        $darker = min($l1, $l2);
+        return ($lighter + 0.05) / ($darker + 0.05);
+    }
+
+    private function relativeLuminance(string $hex): float
+    {
+        $hex = ltrim(trim($hex), '#');
+        if (strlen($hex) === 3) {
+            $hex = $hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        }
+        if (! preg_match('/^[0-9a-fA-F]{6}$/', $hex)) return 1.0;
+
+        $channels = array_map(function (string $part): float {
+            $value = hexdec($part) / 255;
+            return $value <= 0.03928 ? $value / 12.92 : (($value + 0.055) / 1.055) ** 2.4;
+        }, [substr($hex, 0, 2), substr($hex, 2, 2), substr($hex, 4, 2)]);
+
+        return (0.2126 * $channels[0]) + (0.7152 * $channels[1]) + (0.0722 * $channels[2]);
     }
 
     private function assetUrl(?string $url): string
