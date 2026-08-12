@@ -9,6 +9,7 @@ import PageList from './Components/PageList';
 import PageEmptyState from './Components/PageEmptyState';
 import WebsiteLaunchGuide from './Components/WebsiteLaunchGuide';
 import CommerceProductsWorkspace from './Components/CommerceProductsWorkspace';
+import PostsUpdatesWorkspace from './Components/PostsUpdatesWorkspace';
 import InquiryInboxModal from './Components/InquiryInboxModal';
 import WebsiteSettingsModal from './Components/WebsiteSettingsModal';
 import BusinessProfileModal from './Components/BusinessProfileModal';
@@ -31,7 +32,7 @@ const replaceLegacyHeaderLogo = (header, websiteName) => {
     return { ...header, logo_text: websiteName };
 };
 
-export default function Index({ website, pages, inquiryCount = 0, recentInquiries = [], globalHeaderBlock, globalFooterBlock, commerce = {} }) {
+export default function Index({ website, pages, inquiryCount = 0, recentInquiries = [], globalHeaderBlock, globalFooterBlock, commerce = {}, contentWorkspace = { types: [] } }) {
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
 
     const { data, setData, post, processing, errors, reset } = useForm({
@@ -321,15 +322,15 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                         <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/[0.025] p-2">
                             {[
                                 ['standard', 'Standard Pages', (pages || []).filter((page) => page.page_type === 'standard').length],
-                                ['posts', 'Posts / Updates', (pages || []).filter((page) => page.page_type === 'blog').length],
+                                ['posts', 'Posts / Updates', (contentWorkspace?.types || []).reduce((total, type) => total + (type.entries_count || 0), 0)],
                                 ['shop', 'Shop / Products', commerce?.products?.length || 0],
                             ].map(([key, label, count]) => <button key={key} type="button" onClick={() => setWorkspaceContentTab(key)} className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition ${workspaceContentTab === key ? 'bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><span>{label}</span><span className={`rounded-full px-2 py-0.5 text-[10px] ${workspaceContentTab === key ? 'bg-violet-400/15 text-violet-200' : 'bg-white/5 text-slate-600'}`}>{count}</span></button>)}
                         </div>
 
-                        {workspaceContentTab !== 'shop' ? (() => {
-                            const visiblePages = (pages || []).filter((page) => workspaceContentTab === 'posts' ? page.page_type === 'blog' : page.page_type === 'standard');
-                            return <div><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-white">{workspaceContentTab === 'posts' ? 'Posts / Updates' : 'Standard Pages'}</p><p className="mt-1 text-sm text-slate-400">{workspaceContentTab === 'posts' ? 'Blog-style pages keep article content and updates together.' : 'Open a page in Builder to edit its blocks and layout.'}</p></div><span className="text-xs text-slate-500">{visiblePages.length} total</span></div>{visiblePages.length ? <PageList pages={visiblePages} onDelete={deletePage} onAddChild={openNewPage} /> : <PageEmptyState onNewPage={() => openNewPage()} />}</div>;
-                        })() : <CommerceProductsWorkspace website={website} commerce={commerce} />}
+                        {workspaceContentTab === 'shop' ? <CommerceProductsWorkspace website={website} commerce={commerce} /> : workspaceContentTab === 'posts' ? <div className="space-y-5"><PostsUpdatesWorkspace website={website} initialWorkspace={contentWorkspace} />{(pages || []).some((page) => page.page_type === 'blog') ? <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4"><div className="mb-3"><p className="text-sm font-semibold text-white">Legacy Posts / Updates pages</p><p className="mt-1 text-xs text-slate-500">Existing blog-style Builder pages stay available while the structured content engine is introduced.</p></div><PageList pages={(pages || []).filter((page) => page.page_type === 'blog')} onDelete={deletePage} onAddChild={openNewPage} /></div> : null}</div> : (() => {
+                            const visiblePages = (pages || []).filter((page) => page.page_type === 'standard');
+                            return <div><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-white">Standard Pages</p><p className="mt-1 text-sm text-slate-400">Open a page in Builder to edit its blocks and layout.</p></div><span className="text-xs text-slate-500">{visiblePages.length} total</span></div>{visiblePages.length ? <PageList pages={visiblePages} onDelete={deletePage} onAddChild={openNewPage} /> : <PageEmptyState onNewPage={() => openNewPage()} />}</div>;
+                        })()}
                     </section>
 
                     <NewPagePanel open={isNewPageOpen} onClose={closeNewPage} data={data} setData={setData} errors={errors} processing={processing} onSubmit={handleSubmit} parentPage={newPageParent} creditBalance={creditBalance} />

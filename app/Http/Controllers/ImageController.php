@@ -643,7 +643,7 @@ class ImageController extends Controller
     public function uploadImage(Request $request)
     {
         $request->validate([
-            'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,avif|max:4096',
+            'image' => 'required|file|mimes:jpeg,jpg,png,gif,webp,avif,heic,heif|max:8192',
             'website_id' => 'required|integer|exists:websites,id'
         ]);
 
@@ -723,7 +723,7 @@ class ImageController extends Controller
 	{
 	    $request->validate([
 	        'website_id' => 'required|integer|exists:websites,id',
-	        'image' => 'required|image|mimes:jpeg,jpg,png,gif,webp,avif|max:4096'
+	        'image' => 'required|file|mimes:jpeg,jpg,png,gif,webp,avif,heic,heif|max:8192'
 	    ]);
 
 	    $website = Website::findOrFail($request->website_id);

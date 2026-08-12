@@ -58,7 +58,7 @@ export function MiniHeroMinimalBlock({ block, onUpdate, globalTheme }) {
     const theme = themeFor(data, globalTheme);
 
     return (
-        <section className={`relative overflow-hidden border-b px-6 py-14 sm:px-8 sm:py-16 lg:px-12 lg:py-20 ${theme.bg} ${theme.border}`}>
+        <section className={`relative overflow-hidden border-b px-6 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24 ${theme.bg} ${theme.border}`}>
             <div className={`pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full opacity-10 blur-3xl ${theme.card}`} />
             <div className="relative mx-auto max-w-7xl">
                 <div className="max-w-3xl">
@@ -77,7 +77,7 @@ export function MiniHeroSplitBlock({ block, onUpdate, globalTheme }) {
     const theme = themeFor(data, globalTheme);
 
     return (
-        <section className={`border-b px-6 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14 ${theme.bg} ${theme.border}`}>
+        <section className={`border-b px-6 py-14 sm:px-8 sm:py-16 lg:px-12 lg:py-20 ${theme.bg} ${theme.border}`}>
             <div className="mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_.95fr] lg:gap-12">
                 <div className="max-w-2xl">
                     <EditableText value={data.eyebrow} className={`block text-xs font-bold uppercase tracking-[0.24em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
@@ -98,7 +98,7 @@ export function MiniHeroPromoBlock({ block, onUpdate, globalTheme }) {
     const theme = themeFor(data, globalTheme);
 
     return (
-        <section className={`border-b px-6 py-10 sm:px-8 lg:px-12 lg:py-12 ${theme.bg} ${theme.border}`}>
+        <section className={`border-b px-6 py-14 sm:px-8 sm:py-16 lg:px-12 lg:py-20 ${theme.bg} ${theme.border}`}>
             <div className="mx-auto max-w-7xl">
                 <div className={`relative overflow-hidden rounded-[2rem] border p-7 shadow-xl sm:p-9 lg:p-11 ${theme.card} ${theme.border}`}>
                     <div className="absolute inset-y-0 right-0 hidden w-[38%] lg:block">

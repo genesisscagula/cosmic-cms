@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Website;
 use App\Services\CommerceCartService;
 use App\Services\CommerceStorefrontService;
+use App\Services\ContentStorefrontService;
 use App\Services\PreviewDeploymentService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -12,14 +13,14 @@ use Illuminate\Http\Response;
 
 class PreviewController extends Controller
 {
-    public function local(PreviewDeploymentService $previews, CommerceStorefrontService $commerce, Request $request, string $slug, ?string $path = null): Response
+    public function local(PreviewDeploymentService $previews, CommerceStorefrontService $commerce, ContentStorefrontService $content, Request $request, string $slug, ?string $path = null): Response
     {
-        return $this->serve($previews, $commerce, $request, $slug, $path);
+        return $this->serve($previews, $commerce, $content, $request, $slug, $path);
     }
 
-    public function subdomain(PreviewDeploymentService $previews, CommerceStorefrontService $commerce, Request $request, string $preview, ?string $path = null): Response
+    public function subdomain(PreviewDeploymentService $previews, CommerceStorefrontService $commerce, ContentStorefrontService $content, Request $request, string $preview, ?string $path = null): Response
     {
-        return $this->serve($previews, $commerce, $request, $preview, $path);
+        return $this->serve($previews, $commerce, $content, $request, $preview, $path);
     }
 
     public function localCartAdd(Request $request, CommerceCartService $cart, string $slug): RedirectResponse
@@ -52,11 +53,16 @@ class PreviewController extends Controller
         return $this->cartRemove($request, $cart, $preview);
     }
 
-    private function serve(PreviewDeploymentService $previews, CommerceStorefrontService $commerce, Request $request, string $slug, ?string $path): Response
+    private function serve(PreviewDeploymentService $previews, CommerceStorefrontService $commerce, ContentStorefrontService $content, Request $request, string $slug, ?string $path): Response
     {
         $commerceResponse = $commerce->renderIfCommercePath($slug, $path, $request);
         if ($commerceResponse) {
             return $commerceResponse;
+        }
+
+        $contentResponse = $content->renderIfContentPath($slug, $path, $request);
+        if ($contentResponse) {
+            return $contentResponse;
         }
 
         $html = $previews->resolveFile($slug, $path);

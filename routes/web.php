@@ -12,6 +12,7 @@ use App\Http\Controllers\WebsiteController;
 use App\Http\Controllers\ClientPreviewController;
 use App\Http\Controllers\ContactSubmissionController;
 use App\Http\Controllers\BlogPostController;
+use App\Http\Controllers\ContentWorkspaceController;
 use App\Http\Controllers\TrialGenerationController;
 use App\Http\Controllers\TrialBrandingController;
 use App\Http\Controllers\SalesController;
@@ -518,8 +519,10 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/websites/{website}/commerce/coupons', [\App\Http\Controllers\CommerceCouponController::class, 'store'])->name('commerce.coupons.store');
     Route::put('/websites/{website}/commerce/coupons/{coupon}', [\App\Http\Controllers\CommerceCouponController::class, 'update'])->name('commerce.coupons.update');
     Route::delete('/websites/{website}/commerce/coupons/{coupon}', [\App\Http\Controllers\CommerceCouponController::class, 'destroy'])->name('commerce.coupons.destroy');
+    Route::post('/websites/{website}/commerce/media', [\App\Http\Controllers\CommerceProductController::class, 'uploadMedia'])->middleware('throttle:cosmic-upload')->name('commerce.media.upload');
     Route::post('/websites/{website}/commerce/categories', [\App\Http\Controllers\CommerceProductController::class, 'storeCategory'])->name('commerce.categories.store');
     Route::put('/websites/{website}/commerce/categories/{category}', [\App\Http\Controllers\CommerceProductController::class, 'updateCategory'])->name('commerce.categories.update');
+    Route::delete('/websites/{website}/commerce/categories/{category}', [\App\Http\Controllers\CommerceProductController::class, 'destroyCategory'])->name('commerce.categories.destroy');
     Route::post('/websites/{website}/commerce/products', [\App\Http\Controllers\CommerceProductController::class, 'store'])->name('commerce.products.store');
     Route::put('/websites/{website}/commerce/products/{product}', [\App\Http\Controllers\CommerceProductController::class, 'update'])->name('commerce.products.update');
     Route::post('/websites/{website}/commerce/products/{product}/duplicate', [\App\Http\Controllers\CommerceProductController::class, 'duplicate'])->name('commerce.products.duplicate');
@@ -527,11 +530,21 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/websites/{website}/commerce/products/{product}/inventory-adjustments', [\App\Http\Controllers\CommerceProductController::class, 'adjustInventory'])->name('commerce.products.inventory.adjust');
     Route::put('/websites/{website}/commerce/products/{product}/options', [\App\Http\Controllers\CommerceProductController::class, 'syncOptions'])->name('commerce.products.options.sync');
     Route::put('/websites/{website}/commerce/products/{product}/variants/{variant}', [\App\Http\Controllers\CommerceProductController::class, 'updateVariant'])->name('commerce.products.variants.update');
+    Route::delete('/websites/{website}/commerce/products/{product}/variants/{variant}', [\App\Http\Controllers\CommerceProductController::class, 'destroyVariant'])->name('commerce.products.variants.destroy');
 
     // The legacy endpoint remains for compatibility with older clients.
     Route::post('/pages/{page}/builder', [PageController::class, 'updateBlocks'])->name('pages.builder.update');
     Route::post('/pages/{page}/publish', [PageController::class, 'publish'])->name('pages.publish');
     Route::post('/pages/{page}/style', [PageController::class, 'applyPageStyle'])->name('pages.style.apply');
+
+    Route::post('/websites/{website}/content/install', [ContentWorkspaceController::class, 'install'])->name('content.install');
+    Route::post('/websites/{website}/content-types', [ContentWorkspaceController::class, 'storeType'])->name('content-types.store');
+    Route::put('/websites/{website}/content-types/{contentType}', [ContentWorkspaceController::class, 'updateType'])->name('content-types.update');
+    Route::delete('/websites/{website}/content-types/{contentType}', [ContentWorkspaceController::class, 'destroyType'])->name('content-types.destroy');
+    Route::post('/websites/{website}/content-types/{contentType}/entries', [ContentWorkspaceController::class, 'storeEntry'])->name('content-entries.store');
+    Route::put('/websites/{website}/content-types/{contentType}/entries/{contentEntry}', [ContentWorkspaceController::class, 'updateEntry'])->name('content-entries.update');
+    Route::post('/websites/{website}/content-types/{contentType}/entries/{contentEntry}/duplicate', [ContentWorkspaceController::class, 'duplicateEntry'])->name('content-entries.duplicate');
+    Route::delete('/websites/{website}/content-types/{contentType}/entries/{contentEntry}', [ContentWorkspaceController::class, 'destroyEntry'])->name('content-entries.destroy');
     Route::post('/websites/{website}/pages/{page}/blog-posts/generate', [BlogPostController::class, 'generate'])->name('blog-posts.generate');
     Route::post('/websites/{website}/pages/{page}/blog-posts', [BlogPostController::class, 'store'])->name('blog-posts.store');
     Route::put('/websites/{website}/pages/{page}/blog-posts/{blogPost}', [BlogPostController::class, 'update'])->name('blog-posts.update');

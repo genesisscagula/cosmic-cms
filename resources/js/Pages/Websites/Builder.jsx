@@ -4,6 +4,7 @@ import axios from 'axios';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadge';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
+import { logoFilterFor } from '@/Branding/logoFilters';
 
 import AddSectionModal from "./Components/AddSectionModal";
 import PageTemplatesModal from "./Components/PageTemplatesModal";
@@ -135,7 +136,7 @@ const bindDefaultCommerceProduct = (block, commerce) => {
 
 
 
-export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [], themeAccess: builderThemeAccess = null, commerce = { enabled:false, currency:'USD', currency_decimals:2, products:[], categories:[] } }) {
+export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [], themeAccess: builderThemeAccess = null, commerce = { enabled:false, currency:'USD', currency_decimals:2, products:[], categories:[] }, contentWorkspace = { types: [] } }) {
     const { props } = usePage();
     const currentPlanKey = builderThemeAccess?.plan_key || props?.auth?.effectivePlanKey || props?.auth?.user?.plan_key || 'starter';
     // The Builder receives a route-specific entitlement payload because this
@@ -1021,10 +1022,21 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
 
     const keepCurrentThemeAfterLogoUpload = () => {
+        // Keep the uploaded logo + current visual theme, but preserve a durable
+        // logo_changed state. This exposes the deferred “Match Theme to Logo”
+        // action on My Brand Theme until the user runs it successfully.
         setPendingUploadedLogoThemeChoice(null);
+        setLogoSyncState('logo_changed');
+        setGlobalSelections((prev) => ({
+            ...prev,
+            logo_theme_sync_state: 'logo_changed',
+            logo_theme_sync_source: 'upload_keep_theme',
+            logo_theme_synced_theme: null,
+        }));
+        setHasUnsavedTheme(true);
         showCosmicNotification({
-            title: 'Logo saved',
-            message: 'Your uploaded logo is active. The current website theme was kept.',
+            title: 'Logo saved · theme match pending',
+            message: 'Your current theme was kept. Open Themes and use Match Theme to Logo under My Brand Theme whenever you are ready.',
             tone: 'success',
         });
     };
@@ -1214,16 +1226,39 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     logo_theme_synced_theme: null,
                 }));
             } else {
-                applyTrialLogo(response.data.url, data.global_header?.logo_text);
+                // Preserve the exact cropped logo geometry for registered users.
+                // Theme adaptation changes color treatment only; never swap in a
+                // differently padded raster that makes the logo appear smaller.
+                const preservedLogoUrl = pending.logoUrl || data.global_header?.logo_image_url;
+                const preservedHeight = Math.max(24, Number(data.global_header?.logo_height || 60));
+                const preservedMaxWidth = Math.max(220, Number(data.global_header?.logo_max_width || 300));
+                const themeFilter = logoFilterFor(pending.theme);
+                setData((current) => ({
+                    ...current,
+                    global_header: {
+                        ...(current.global_header || {}),
+                        logo_image_url: preservedLogoUrl,
+                        logo_height: preservedHeight,
+                        logo_max_width: preservedMaxWidth,
+                        logo_filter: themeFilter,
+                        logo_filter_key: pending.theme,
+                    },
+                    global_footer: {
+                        ...(current.global_footer || {}),
+                        logo_image_url: preservedLogoUrl,
+                        logo_filter: themeFilter,
+                        logo_filter_key: pending.theme,
+                    },
+                }));
                 setLogoSyncState('synced');
                 setGlobalSelections((prev) => ({
                     ...prev,
                     logo_theme_sync_state: 'synced',
-                    logo_theme_sync_source: 'logo_to_theme',
+                    logo_theme_sync_source: 'logo_to_theme_filter',
                     logo_theme_synced_theme: pending.theme,
-                    brand_original_logo_url: prev.brand_original_logo_url || pending.logoUrl,
-                    brand_active_logo_url: response.data.url,
-                    brand_logo_variants: { ...(prev.brand_logo_variants || {}), [pending.theme]: response.data.url },
+                    brand_original_logo_url: prev.brand_original_logo_url || preservedLogoUrl,
+                    brand_active_logo_url: preservedLogoUrl,
+                    brand_logo_variants: { ...(prev.brand_logo_variants || {}), [pending.theme]: preservedLogoUrl },
                 }));
             }
             setHasUnsavedTheme(true);
@@ -2184,6 +2219,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
             onUpdate: (fields) => updateBlockContent(index, fields),
             commerce,
+            contentWorkspace,
             builderMode: true,
 
             blockIndex: index,
@@ -2381,7 +2417,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
                         </div>
 
-                        <div className={`flex min-w-0 items-center justify-end gap-2 ${trialMode ? 'ml-auto' : ''}`}>
+                        <div className={`flex min-w-0 items-center justify-end gap-2 ${trialMode ? 'ml-auto flex-wrap rounded-2xl border border-slate-200/80 bg-white/90 p-1.5 shadow-sm backdrop-blur sm:flex-nowrap' : ''}`}>
                             {trialMode ? (
                                 <span title="Guest Cosmic Credits" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-extrabold text-amber-800">
                                     <span aria-hidden="true">⚡</span><span>{effectiveCreditBalance.toLocaleString()}</span><span className="hidden font-semibold sm:inline">Guest Credits</span>
@@ -2421,7 +2457,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     brandMatchNeeded={brandMatchNeeded}
                                     onMatchBrandToLogo={matchThemeToLogo}
                                     brandMatchBusy={logoBusy && logoAiAction === 'theme_to_logo'}
-                                    logoMatchPending={trialMode && logoMatchPending}
+                                    logoMatchPending={logoMatchPending}
                                     onMatchLogoToTheme={matchLogoToTheme}
                                     logoMatchBusy={logoBusy && logoAiAction === 'logo_to_theme'}
                                     onChange={handleThemeChange}
@@ -2569,11 +2605,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                         html.cosmic-header-menu-active .cosmic-block-toolbar { opacity: 0 !important; pointer-events: none !important; }
                         /* Overlay spacing must target the rendered Spark, not the builder toolbar. */
                         .cosmic-overlay-first-spark > .cosmic-builder-spark > :first-child {
-                            padding-top: calc(var(--cosmic-overlay-header-height, 80px) + var(--cosmic-overlay-first-spark-padding, clamp(4.5rem, 6vw, 6.5rem))) !important;
+                            padding-top: calc(var(--cosmic-overlay-header-height, 80px) + var(--cosmic-overlay-first-spark-padding, clamp(5.25rem, 7vw, 7.5rem))) !important;
                         }
                         @media (max-width: 639px) {
                             .cosmic-overlay-first-spark > .cosmic-builder-spark > :first-child {
-                                padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 3.25rem)) !important;
+                                padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 4rem)) !important;
                             }
                         }
                     `}</style>
@@ -2585,7 +2621,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}
                     {data.global_header && (
-                        <div ref={overlayHeaderRef} className={`w-full z-40 ${overlayHeaderActive ? 'absolute inset-x-0 top-0 bg-transparent' : 'relative bg-white'}`}>
+                        <div ref={overlayHeaderRef} className={`w-full z-40 ${overlayHeaderActive ? 'absolute inset-x-0 top-0 border-b-0 bg-transparent shadow-none' : 'relative bg-white'}`}>
                             {data.global_header.type === 'dark_cyan_header' && (
                                 <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayPrimaryTreatment={overlayPrimaryTreatment} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={() => setShowLogoModal(true)} />
                             )}
@@ -2951,7 +2987,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 brandMatchNeeded={brandMatchNeeded}
                                 onMatchBrandToLogo={matchThemeToLogo}
                                 brandMatchBusy={logoBusy && logoAiAction === 'theme_to_logo'}
-                                logoMatchPending={trialMode && logoMatchPending}
+                                logoMatchPending={logoMatchPending}
                                 onMatchLogoToTheme={matchLogoToTheme}
                                 logoMatchBusy={logoBusy && logoAiAction === 'logo_to_theme'}
                                 onChange={(theme) => {
@@ -3022,6 +3058,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     cosmicPricing={cosmicPricing}
                     websiteTheme={globalSelections}
                     commerce={commerce}
+                    contentWorkspace={contentWorkspace}
                     ownedOnly={Boolean(sparkInsertTarget)}
                     contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : null}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
@@ -3279,6 +3316,20 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                         <button type="button" disabled={logoBusy} onClick={restoreOriginalLogo} className="cosmic-logo-restore-card sm:col-span-2 min-h-[72px] w-full rounded-xl border px-5 py-4 text-left transition">
                                             <span className="cosmic-logo-restore-title block text-sm font-bold">↶ Restore Original Logo</span>
                                             <span className="cosmic-logo-restore-help mt-1 block text-xs">Return to the preserved source logo. Header and footer update together.</span>
+                                        </button>
+                                    )}
+                                    {logoMatchPending && (
+                                        <button
+                                            type="button"
+                                            disabled={logoBusy}
+                                            onClick={() => {
+                                                setShowLogoModal(false);
+                                                matchLogoToTheme();
+                                            }}
+                                            className="sm:col-span-2 min-h-[72px] w-full rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 text-left transition hover:border-violet-300 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                        >
+                                            <span className="block text-sm font-bold text-violet-900">✨ Match Logo to Theme</span>
+                                            <span className="mt-1 block text-xs text-violet-700">Pending after keeping the original logo. Adapt its color treatment to the active theme without changing the saved crop or size.</span>
                                         </button>
                                     )}
                                     <p className="sm:col-span-2 text-xs text-slate-500">{trialMode ? `AI logo actions use Guest Cosmic Credits. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 500} credits. Upload/replace is free.` : `AI logo generation costs 50 credits. Theme adaptation is offered when you switch themes. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 0} credits. Upload/replace is free.`}</p>

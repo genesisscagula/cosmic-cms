@@ -144,6 +144,23 @@ export default function ThemeCard({
                     <span className="cosmic-theme-card-palette-label ml-1 text-[10px] font-medium text-slate-500">Background · Surface · Accent · Text</span>
                 </div>
 
+                {canMatchBrandToLogo && brandMatchNeeded && (
+                    <button
+                        type="button"
+                        disabled={brandMatchBusy}
+                        onClick={(event) => {
+                            event.preventDefault();
+                            event.stopPropagation();
+                            onMatchBrandToLogo();
+                        }}
+                        onKeyDown={(event) => event.stopPropagation()}
+                        className="cosmic-theme-match-brand-cta mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-emerald-400/30 bg-emerald-400/10 px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] text-emerald-200 transition hover:bg-emerald-400/15 disabled:cursor-not-allowed disabled:opacity-60"
+                    >
+                        <span aria-hidden="true">✨</span>
+                        {brandMatchBusy ? 'Matching…' : 'Match Theme to Logo'}
+                    </button>
+                )}
+
                 {canRetryLogoMatch && (
                     <button
                         type="button"

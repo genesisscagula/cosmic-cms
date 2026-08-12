@@ -25,7 +25,7 @@ $continueLabel = trim((string) ($cartVisual['continue_label'] ?? '')) ?: 'Contin
                 <div class="cart-panel">
                     @foreach($cart['items'] as $line)
                         <div class="cart-line">
-                            <div class="cart-image">@if($line['image_url'])<img src="{{ $line['image_url'] }}" alt="{{ $line['product']->title }}">@endif</div>
+                            <div class="cart-image">@if($line['image_url'])<img src="{{ $assetUrl($line['image_url']) }}" alt="{{ $line['product']->title }}">@endif</div>
                             <div class="cart-line-copy">
                                 <a class="cart-title" href="{{ $productUrl($line['product']) }}">{{ $line['product']->title }}</a>
                                 @if($line['option_label'])<div class="muted">{{ $line['option_label'] }}</div>@endif

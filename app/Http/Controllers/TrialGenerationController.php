@@ -639,6 +639,11 @@ class TrialGenerationController extends Controller
             return;
         }
 
+        if ((bool) config('cosmic-mail.trial_mail_sync', true)) {
+            SendTrialAccessLinkJob::dispatchSync($trial->id, $regenerated);
+            return;
+        }
+
         SendTrialAccessLinkJob::dispatch($trial->id, $regenerated);
     }
 

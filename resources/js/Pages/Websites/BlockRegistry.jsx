@@ -158,6 +158,15 @@ import {
  CommerceCheckoutClassicBlock, CommerceCheckoutClassicSchema, CommerceCheckoutSplitBlock, CommerceCheckoutSplitSchema, CommerceCheckoutExpressBlock, CommerceCheckoutExpressSchema
 } from "./Blocks/Commerce/CommerceBlocks";
 
+
+import {
+    ContentGridClassicBlock, ContentGridClassicSchema,
+    ContentGridEditorialBlock, ContentGridEditorialSchema,
+    ContentGridCompactBlock, ContentGridCompactSchema,
+    ContentFeaturedBlock, ContentFeaturedSchema,
+    ContentLatestBlock, ContentLatestSchema,
+    ContentEventsBlock, ContentEventsSchema,
+} from "./Blocks/Content/StructuredContentBlocks";
 export const BlockRegistry = {
     commerce_product_grid: { component: CommerceProductGridBlock, schema: CommerceProductGridSchema },
     commerce_catalog_grid: { component: CommerceCatalogGridBlock, schema: CommerceCatalogGridSchema },
@@ -463,5 +472,12 @@ export const BlockRegistry = {
         component: LatestResourcesBlock,
         schema: LatestResourcesSchema,
     },
+
+    content_grid_classic: { component: ContentGridClassicBlock, schema: ContentGridClassicSchema },
+    content_grid_editorial: { component: ContentGridEditorialBlock, schema: ContentGridEditorialSchema },
+    content_grid_compact: { component: ContentGridCompactBlock, schema: ContentGridCompactSchema },
+    content_featured_entry: { component: ContentFeaturedBlock, schema: ContentFeaturedSchema },
+    content_latest_entries: { component: ContentLatestBlock, schema: ContentLatestSchema },
+    content_events_grid: { component: ContentEventsBlock, schema: ContentEventsSchema },
 
 };

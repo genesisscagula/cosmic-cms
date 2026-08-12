@@ -20,8 +20,9 @@ const categoryFor = (type) => {
     if (type.includes("contact") || type.includes("location")) return "Contact";
     if (type.includes("case_stud")) return "Case Studies";
     if (type.includes("job")) return "Careers";
+    if (type.startsWith("content_")) return "Posts / Updates";
     if (type.includes("event")) return "Events";
-    if (type.includes("blog") || type.includes("newsletter") || type.includes("resource")) return "Blog";
+    if (type.includes("blog") || type.includes("newsletter") || type.includes("resource")) return "Posts / Updates";
     if (type.includes("stats") || type.includes("process")) return "Proof";
     return "Other";
 };
@@ -83,7 +84,7 @@ function safePreviewText(background, preferredText) {
     return backgroundLum > 0.45 ? "#0F172A" : "#F8FAFC";
 }
 
-export function ActualSparkPreview({ spark, previewVariant = "white", websiteTheme, payloadOverride = null, blockIndex = 0, commerce = null }) {
+export function ActualSparkPreview({ spark, previewVariant = "white", websiteTheme, payloadOverride = null, blockIndex = 0, commerce = null, contentWorkspace = { types: [] } }) {
     const registryItem = BuilderBlockRegistry[spark.key];
     const Component = registryItem?.component;
 
@@ -146,6 +147,7 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
                 onBlogPostUpdated={() => {}}
                 onBlogPostDeleted={() => {}}
                 commerce={commerce}
+                contentWorkspace={contentWorkspace}
                 builderMode={false}
             />
         </div>
@@ -166,6 +168,7 @@ export default function AddSectionModal({
     onOwnershipChanged = null,
     websiteTheme = null,
     commerce = null,
+    contentWorkspace = { types: [] },
 }) {
     const { setBalance } = useCreditBalance();
     const [tab, setTab] = useState(ownedOnly ? "owned" : "marketplace");
@@ -353,7 +356,7 @@ export default function AddSectionModal({
                 </header>
                 <div className="min-h-0 flex-1 overflow-auto bg-[#e5e7eb] p-0">
                     <div className="cosmic-spark-preview-stage min-h-full w-full"><div className="cosmic-spark-preview-stage-inner">
-                        <div className="pointer-events-none w-full min-w-0 origin-top-left"><ActualSparkPreview spark={previewSpark} previewVariant={previewVariant} websiteTheme={websiteTheme} commerce={commerce} /></div>
+                        <div className="pointer-events-none w-full min-w-0 origin-top-left"><ActualSparkPreview spark={previewSpark} previewVariant={previewVariant} websiteTheme={websiteTheme} commerce={commerce} contentWorkspace={contentWorkspace} /></div>
                     </div></div>
                 </div>
                 <footer className="flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">

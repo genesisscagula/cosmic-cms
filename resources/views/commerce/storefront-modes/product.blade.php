@@ -16,14 +16,34 @@
             $simpleAvailability = $product->isPurchasable() ? 'In stock' : 'Currently unavailable';
         }
     }
+
+    $productBadges = [];
+    if (!$product->isPurchasable()) {
+        $productBadges[] = ['label' => 'Out of stock', 'class' => 'out'];
+    } elseif ($product->isOnSale()) {
+        $productBadges[] = ['label' => 'Sale', 'class' => 'sale'];
+    }
+    if ($product->is_featured) {
+        $productBadges[] = ['label' => 'Featured', 'class' => 'featured'];
+    }
+    if ($product->created_at && $product->created_at->gte(now()->subDays(30))) {
+        $productBadges[] = ['label' => 'New', 'class' => 'new'];
+    }
 ?>
 
 <section class="product-shell">
     <div class="wrap product-main">
         <div>
             <div class="gallery-main">
+                <?php if (count($productBadges)): ?>
+                    <div class="product-badges">
+                        <?php foreach ($productBadges as $badge): ?>
+                            <span class="product-badge {{ $badge['class'] }}">{{ $badge['label'] }}</span>
+                        <?php endforeach; ?>
+                    </div>
+                <?php endif; ?>
                 <?php if ($product->featured_image_url): ?>
-                    <img id="main-product-image" src="{{ $product->featured_image_url }}" alt="{{ $product->featured_image_alt ?: $product->title }}">
+                    <img id="main-product-image" src="{{ $assetUrl($product->featured_image_url) }}" alt="{{ $product->featured_image_alt ?: $product->title }}">
                 <?php else: ?>
                     <div class="placeholder">{{ $product->title }}</div>
                 <?php endif; ?>
@@ -32,8 +52,8 @@
             <?php if ($product->images->count()): ?>
                 <div class="thumbs">
                     <?php foreach ($product->images->take(10) as $image): ?>
-                        <button class="thumb" type="button" onclick="document.getElementById('main-product-image').src=this.dataset.src" data-src="{{ $image->url }}">
-                            <img src="{{ $image->url }}" alt="{{ $image->alt_text ?: $product->title }}">
+                        <button class="thumb" type="button" onclick="document.getElementById('main-product-image').src=this.dataset.src" data-src="{{ $assetUrl($image->url) }}">
+                            <img src="{{ $assetUrl($image->url) }}" alt="{{ $image->alt_text ?: $product->title }}">
                         </button>
                     <?php endforeach; ?>
                 </div>
@@ -65,15 +85,22 @@
             <?php if ($product->isVariable()): ?>
                 <div class="options" id="variant-options">
                     <?php foreach ($product->options as $option): ?>
-                        <div class="option" data-option-id="{{ $option->id }}">
+                        <?php
+                            $optionKey = strtolower(trim((string) $option->name));
+                            $isColorOption = str_contains($optionKey, 'color') || str_contains($optionKey, 'colour');
+                            $isSizeOption = str_contains($optionKey, 'size');
+                        ?>
+                        <div class="option {{ $isColorOption ? 'option--color' : ($isSizeOption ? 'option--size' : '') }}" data-option-id="{{ $option->id }}">
                             <div class="option-label">{{ $option->name }}</div>
                             <div class="option-values">
                                 <?php foreach ($option->values->where('is_active', true) as $value): ?>
-                                    <button type="button" class="option-value" data-option-id="{{ $option->id }}" data-value-id="{{ $value->id }}">
+                                    <button type="button" class="option-value {{ $isColorOption ? 'option-value--color' : ($isSizeOption ? 'option-value--size' : '') }}" data-option-id="{{ $option->id }}" data-value-id="{{ $value->id }}" aria-pressed="false">
                                         <?php if ($value->swatch_hex): ?>
                                             <i class="swatch" style="background:{{ $value->swatch_hex }}"></i>
+                                        <?php elseif ($isColorOption): ?>
+                                            <i class="swatch swatch--fallback">{{ strtoupper(substr($value->label, 0, 1)) }}</i>
                                         <?php endif; ?>
-                                        {{ $value->label }}
+                                        <span>{{ $value->label }}</span>
                                     </button>
                                 <?php endforeach; ?>
                             </div>
@@ -97,6 +124,12 @@
             <?php else: ?>
                 <div class="notice">This product is currently unavailable.</div>
             <?php endif; ?>
+
+            <div class="product-trust" aria-label="Shopping benefits">
+                <span><strong>Secure checkout</strong><small>Protected payment flow</small></span>
+                <span><strong>Live stock</strong><small>Availability updates by variation</small></span>
+                <span><strong>Order support</strong><small>Order status and email confirmation</small></span>
+            </div>
         </div>
     </div>
 
@@ -116,9 +149,13 @@
                 <?php foreach ($relatedProducts as $item): ?>
                     <?php $relatedRange = $priceRange($item); ?>
                     <a class="product-card" href="{{ $productUrl($item) }}">
+                        <?php if (!$item->isPurchasable()): ?><span class="badge out">Out of stock</span>
+                        <?php elseif ($item->isOnSale()): ?><span class="badge sale">Sale</span>
+                        <?php elseif ($item->is_featured): ?><span class="badge">Featured</span>
+                        <?php elseif ($item->created_at && $item->created_at->gte(now()->subDays(30))): ?><span class="badge new">New</span><?php endif; ?>
                         <div class="card-media">
                             <?php if ($item->featured_image_url): ?>
-                                <img src="{{ $item->featured_image_url }}" alt="{{ $item->featured_image_alt ?: $item->title }}" loading="lazy">
+                                <img src="{{ $assetUrl($item->featured_image_url) }}" alt="{{ $item->featured_image_alt ?: $item->title }}" loading="lazy">
                             <?php else: ?>
                                 <div class="placeholder">{{ $item->title }}</div>
                             <?php endif; ?>
@@ -136,7 +173,7 @@
 
 <?php if ($product->isVariable()): ?>
 <?php
-    $variantPayload = $product->variants->where('is_enabled', true)->map(function ($variant) use ($money) {
+    $variantPayload = $product->variants->where('is_enabled', true)->map(function ($variant) use ($money, $assetUrl) {
         $available = ($variant->track_inventory && !$variant->allow_backorders)
             ? max(0, (int) ($variant->stock_quantity ?? 0))
             : null;
@@ -155,7 +192,7 @@
             'purchasable' => $variant->isPurchasable(),
             'maxQuantity' => $available === null ? 99 : min(99, max(1, $available)),
             'availabilityLabel' => $label,
-            'image' => $variant->image_url,
+            'image' => $variant->image_url ? $assetUrl($variant->image_url) : null,
             'isDefault' => (bool) $variant->is_default,
         ];
     })->values();
@@ -227,7 +264,7 @@
     buttons.forEach(button => button.addEventListener('click', () => {
         const optionId = button.dataset.optionId;
         selected.set(optionId, Number(button.dataset.valueId));
-        buttons.filter(candidate => candidate.dataset.optionId === optionId).forEach(candidate => candidate.classList.toggle('selected', candidate === button));
+        buttons.filter(candidate => candidate.dataset.optionId === optionId).forEach(candidate => { const active = candidate === button; candidate.classList.toggle('selected', active); candidate.setAttribute('aria-pressed', active ? 'true' : 'false'); });
         resolve();
     }));
 

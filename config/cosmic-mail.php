@@ -12,6 +12,13 @@ return [
     'trial_mail_enabled' => (bool) env('COSMIC_TRIAL_MAIL_ENABLED', true),
 
     /*
+    | Send trial welcome mail synchronously by default so email capture does
+    | not depend on a separate queue worker. Set false when a dedicated mail
+    | worker is supervised in production.
+    */
+    'trial_mail_sync' => filter_var(env('COSMIC_TRIAL_MAIL_SYNC', true), FILTER_VALIDATE_BOOL),
+
+    /*
     |--------------------------------------------------------------------------
     | Public URL for email links
     |--------------------------------------------------------------------------

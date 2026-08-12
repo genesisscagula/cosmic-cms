@@ -289,6 +289,10 @@ class TrialBrandingController extends Controller
 
         $previewTheme['brand_logo_crop_confirmed'] = true;
         $previewTheme['brand_logo_crop_dismissed'] = false;
+        // Keep display geometry stable after refresh; intrinsic PNG dimensions
+        // are not header CSS dimensions.
+        $previewTheme['logo_height'] = max(60, (int) ($previewTheme['logo_height'] ?? 60));
+        $previewTheme['logo_max_width'] = max(300, (int) ($previewTheme['logo_max_width'] ?? 300));
         $isThemeMatch = $sourceKind === 'theme_match';
         $isGeneratedFromTheme = $sourceKind === 'ai';
         $trial->update([

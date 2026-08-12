@@ -263,7 +263,10 @@ export function PricingCardsBlock({
         })
     };
 
-    const primaryTheme = colorFamilies[globalTheme.primary];
+    const globalPrimary = typeof globalTheme === "string"
+        ? globalTheme
+        : (globalTheme?.primary || "midnight");
+    const primaryTheme = colorFamilies[globalPrimary] || colorFamilies.midnight;
 
 	const isPrimarySection = block.resolvedTheme === "primary";
 

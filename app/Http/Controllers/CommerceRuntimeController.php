@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Website;
 use App\Services\PreviewDeploymentService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Str;
 
 class CommerceRuntimeController extends Controller
 {
@@ -20,6 +21,8 @@ class CommerceRuntimeController extends Controller
         $settings = $website->commerceSetting;
         $currency = strtoupper((string) ($settings?->currency ?: config('cosmic-commerce.default_currency', 'USD')));
         $decimals = (int) config("cosmic-commerce.currencies.$currency.decimals", 2);
+
+        $assetUrl = fn (?string $url): string => $this->assetUrl($url);
 
         $products = $website->commerceProducts()
             ->with(['images', 'categories', 'options.values', 'variants.values.option'])
@@ -41,7 +44,7 @@ class CommerceRuntimeController extends Controller
                 'allow_backorders' => (bool) $product->allow_backorders,
                 'stock_status' => $product->stock_status,
                 'is_featured' => (bool) $product->is_featured,
-                'featured_image_url' => $product->featured_image_url,
+                'featured_image_url' => $assetUrl($product->featured_image_url),
                 'featured_image_alt' => $product->featured_image_alt,
                 'category_ids' => $product->categories->pluck('id')->map(fn ($id) => (int) $id)->values(),
                 'categories' => $product->categories->map(fn ($category) => [
@@ -49,7 +52,7 @@ class CommerceRuntimeController extends Controller
                     'name' => $category->name,
                     'slug' => $category->slug,
                 ])->values(),
-                'gallery' => $product->images->map(fn ($image) => ['url' => $image->url, 'alt_text' => $image->alt_text])->values(),
+                'gallery' => $product->images->map(fn ($image) => ['url' => $assetUrl($image->url), 'alt_text' => $image->alt_text])->values(),
                 'options' => $product->options->map(fn ($option) => [
                     'id' => $option->id,
                     'name' => $option->name,
@@ -69,6 +72,7 @@ class CommerceRuntimeController extends Controller
                 'name' => $category->name,
                 'slug' => $category->slug,
                 'description' => $category->description,
+                'image_url' => $assetUrl($category->image_url),
                 'storefront_url' => $previews->url($website, 'shop/category/'.$category->slug),
             ])->values();
 
@@ -81,5 +85,17 @@ class CommerceRuntimeController extends Controller
             'categories' => $categories,
         ])->header('Access-Control-Allow-Origin', '*')
           ->header('Cache-Control', 'public, max-age=30, stale-while-revalidate=120');
+    }
+    private function assetUrl(?string $url): string
+    {
+        $url = trim((string) $url);
+        if ($url === '' || str_starts_with($url, 'data:')) return $url;
+        if (Str::startsWith($url, ['http://', 'https://', '//'])) {
+            $host = strtolower((string) parse_url(str_starts_with($url, '//') ? 'https:'.$url : $url, PHP_URL_HOST));
+            if (! in_array($host, ['localhost', '127.0.0.1', '::1'], true) && ! str_ends_with($host, '.local')) return $url;
+            $url = (string) parse_url(str_starts_with($url, '//') ? 'https:'.$url : $url, PHP_URL_PATH);
+        }
+        $base = rtrim((string) config('services.cosmic.asset_base_url', config('app.url')), '/');
+        return $base.'/'.ltrim($url, '/');
     }
 }

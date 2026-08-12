@@ -16,6 +16,7 @@ use App\Services\CommerceInventoryService;
 use App\Services\CommerceInstallerService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
@@ -34,8 +35,48 @@ class CommerceProductController extends Controller
         $result = $installer->install($website, ($data['mode'] ?? 'plain') === 'demo', $data['preset'] ?? 'premium');
         $message = ($data['mode'] ?? 'plain') === 'demo'
             ? "Commerce ready with {$result['preset']} Shop preset. Demo content added: {$result['demo']['products']} products, {$result['demo']['categories']} categories (existing demo items were kept)."
-            : "Commerce pages installed/repaired with {$result['preset']} Shop preset without demo content.";
+            : "Commerce pages installed/repaired with {$result['preset']} preset: Shop, Featured Products and Collections are ready as editable Standard Pages.";
         return redirect()->back(303)->with('success', $message);
+    }
+
+    /** Upload media used by commerce products, galleries, categories and variants. */
+    public function uploadMedia(Request $request, Website $website, CommerceCapabilityService $commerce)
+    {
+        $this->authorize('update', $website);
+        $commerce->assertPlanAllowsCommerce($request->user());
+
+        $data = $request->validate([
+            'image' => [
+                'required',
+                'file',
+                'max:8192',
+                'mimetypes:image/jpeg,image/png,image/gif,image/webp,image/avif,image/heic,image/heif',
+            ],
+            'kind' => ['nullable', Rule::in(['featured', 'gallery', 'category', 'variation'])],
+        ]);
+
+        $file = $data['image'];
+        if (! $file->isValid()) {
+            throw ValidationException::withMessages(['image' => 'The uploaded image could not be read. Please choose the file again.']);
+        }
+
+        $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
+        $allowedExtensions = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'heic', 'heif'];
+        if (! in_array($extension, $allowedExtensions, true)) {
+            throw ValidationException::withMessages(['image' => 'Use JPG, PNG, WebP, GIF, AVIF, HEIC or HEIF images.']);
+        }
+
+        $kind = $data['kind'] ?? 'gallery';
+        $filename = $kind.'-'.Str::uuid().'.'.$extension;
+        $path = $file->storeAs("websites/{$website->id}/commerce", $filename, 'public');
+        $relativeUrl = Storage::disk('public')->url($path);
+
+        return response()->json([
+            'url' => rtrim($request->getSchemeAndHttpHost(), '/').'/'.ltrim($relativeUrl, '/'),
+            'path' => $path,
+            'kind' => $kind,
+            'mime_type' => $file->getMimeType(),
+        ]);
     }
 
     public function updateSettings(Request $request, Website $website, CommerceCapabilityService $commerce)
@@ -100,6 +141,18 @@ class CommerceProductController extends Controller
         return redirect()->back(303)->with('success','Product category updated.');
     }
 
+    public function destroyCategory(Request $request, Website $website, CommerceProductCategory $category, CommerceCapabilityService $commerce)
+    {
+        $this->authorize('update', $website);
+        $commerce->assertPlanAllowsCommerce($request->user());
+        abort_unless((int) $category->website_id === (int) $website->id, 404);
+
+        $name = $category->name;
+        $category->delete();
+
+        return redirect()->back(303)->with('success', "Category {$name} deleted. Product assignments were removed automatically.");
+    }
+
     public function store(Request $request, Website $website, CommerceCapabilityService $commerce)
     {
         $this->authorize('update', $website);
@@ -139,6 +192,7 @@ class CommerceProductController extends Controller
 
         $product->update($data);
         $this->syncRelations($request, $product);
+        $this->syncVariantEdits($request, $website, $product);
 
         return redirect()->back(303)->with('success', 'Product saved.');
     }
@@ -324,6 +378,27 @@ class CommerceProductController extends Controller
         return redirect()->back(303)->with('success', 'Variation saved.');
     }
 
+    public function destroyVariant(Request $request, Website $website, CommerceProduct $product, CommerceProductVariant $variant, CommerceCapabilityService $commerce)
+    {
+        $this->authorize('update', $website);
+        $commerce->assertPlanAllowsCommerce($request->user());
+        $this->assertProductWebsite($website, $product);
+        abort_unless((int) $variant->product_id === (int) $product->id && (int) $variant->website_id === (int) $website->id, 404);
+
+        $hasOrderHistory = DB::table('commerce_order_items')->where('commerce_product_variant_id', $variant->id)->exists();
+        $hasInventoryHistory = DB::table('commerce_inventory_adjustments')->where('commerce_product_variant_id', $variant->id)->exists();
+
+        if ($hasOrderHistory || $hasInventoryHistory) {
+            $variant->forceFill(['is_enabled' => false, 'is_default' => false])->save();
+            return redirect()->back(303)->with('success', 'Variation has order or inventory history, so it was disabled instead of permanently deleted.');
+        }
+
+        $label = $variant->optionLabel() ?: 'Variation';
+        $variant->delete();
+
+        return redirect()->back(303)->with('success', "{$label} deleted. Re-syncing the same option values may recreate this combination.");
+    }
+
     public function adjustInventory(Request $request, Website $website, CommerceProduct $product, CommerceInventoryService $inventory)
     {
         $this->authorize('update', $website);
@@ -381,7 +456,52 @@ class CommerceProductController extends Controller
             'gallery' => 'array|max:24',
             'gallery.*.url' => 'required|string|max:2048',
             'gallery.*.alt_text' => 'nullable|string|max:255',
+            'variants' => 'array|max:500',
+            'variants.*.id' => 'required|integer',
+            'variants.*.sku' => 'nullable|string|max:120',
+            'variants.*.regular_price' => 'nullable|numeric|min:0|max:999999999',
+            'variants.*.sale_price' => 'nullable|numeric|min:0|max:999999999',
+            'variants.*.track_inventory' => 'boolean',
+            'variants.*.stock_quantity' => 'nullable|integer|min:0|max:4294967295',
+            'variants.*.low_stock_threshold' => 'nullable|integer|min:0|max:4294967295',
+            'variants.*.allow_backorders' => 'boolean',
+            'variants.*.stock_status' => ['nullable', Rule::in(['in_stock','out_of_stock','backorder'])],
+            'variants.*.image_url' => 'nullable|string|max:2048',
+            'variants.*.is_enabled' => 'boolean',
+            'variants.*.is_default' => 'boolean',
         ]);
+    }
+
+    private function syncVariantEdits(Request $request, Website $website, CommerceProduct $product): void
+    {
+        if ($product->type !== 'variable') return;
+        $rows = collect($request->input('variants', []));
+        if ($rows->isEmpty()) return;
+        $variants = $product->variants()->whereIn('id', $rows->pluck('id')->map(fn ($id) => (int) $id))->get()->keyBy('id');
+        foreach ($rows as $row) {
+            $variant = $variants->get((int) ($row['id'] ?? 0));
+            if (! $variant) continue;
+            $this->assertVariantSkuAvailable($website, $row['sku'] ?? null, $variant->id);
+            $track = (bool) ($row['track_inventory'] ?? false);
+            $backorders = (bool) ($row['allow_backorders'] ?? false);
+            $qty = ($row['stock_quantity'] ?? '') === '' ? null : ($row['stock_quantity'] ?? null);
+            $variant->update([
+                'sku' => filled($row['sku'] ?? null) ? trim($row['sku']) : null,
+                'regular_price_minor' => $this->moneyToMinor($row['regular_price'] ?? null, $website),
+                'sale_price_minor' => $this->moneyToMinor($row['sale_price'] ?? null, $website),
+                'track_inventory' => $track,
+                'stock_quantity' => $qty,
+                'low_stock_threshold' => ($row['low_stock_threshold'] ?? '') === '' ? null : ($row['low_stock_threshold'] ?? null),
+                'allow_backorders' => $backorders,
+                'stock_status' => app(CommerceInventoryService::class)->normalizedStatus($track, $qty, $backorders, (string) ($row['stock_status'] ?? 'in_stock')),
+                'image_url' => filled($row['image_url'] ?? null) ? trim($row['image_url']) : null,
+                'is_enabled' => (bool) ($row['is_enabled'] ?? false),
+            ]);
+        }
+        $default = $rows->first(fn ($row) => !empty($row['is_default']) && !empty($row['is_enabled']));
+        if ($default && ($variant = $variants->get((int) $default['id']))) {
+            app(CommerceProductVariationService::class)->setDefaultVariant($product, $variant->fresh());
+        }
     }
 
     private function syncRelations(Request $request, CommerceProduct $product): void

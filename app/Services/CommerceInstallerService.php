@@ -12,10 +12,10 @@ use Illuminate\Support\Str;
 class CommerceInstallerService
 {
     public const PAGE_DEFINITIONS = [
-        ['title' => 'Cart', 'slug' => 'cart', 'sort_order' => 901],
-        ['title' => 'Checkout', 'slug' => 'checkout', 'sort_order' => 902],
-        ['title' => 'Account', 'slug' => 'account', 'sort_order' => 903],
-        ['title' => 'Order Lookup', 'slug' => 'order', 'sort_order' => 904],
+        ['title' => 'Cart', 'slug' => 'cart', 'sort_order' => 910],
+        ['title' => 'Checkout', 'slug' => 'checkout', 'sort_order' => 911],
+        ['title' => 'Account', 'slug' => 'account', 'sort_order' => 912],
+        ['title' => 'Order Lookup', 'slug' => 'order', 'sort_order' => 913],
     ];
 
     private const SHOP_PRESETS = ['clean', 'premium', 'editorial'];
@@ -101,8 +101,11 @@ class CommerceInstallerService
     private function installPages(Website $website, string $preset, bool $withDemo): int
     {
         $count = 0;
-        $this->installShopPage($website, $preset, $withDemo);
-        $count++;
+
+        foreach ($this->standardStorePages($preset) as $definition) {
+            $this->installStandardStorePage($website, $definition);
+            $count++;
+        }
 
         foreach (self::PAGE_DEFINITIONS as $definition) {
             $page = $website->pages()->firstOrNew(['slug' => $definition['slug']]);
@@ -167,28 +170,7 @@ class CommerceInstallerService
         return [];
     }
 
-    private function installShopPage(Website $website, string $preset, bool $withDemo): void
-    {
-        $page = $website->pages()->firstOrNew(['slug' => 'shop']);
-        $existingBlocks = is_array($page->blocks) ? $page->blocks : [];
-        $shouldSeedBlocks = ! $page->exists || $page->page_type === 'commerce' || $existingBlocks === [];
-
-        $page->fill([
-            'title' => $page->title ?: 'Shop',
-            'page_type' => 'standard',
-            'parent_id' => null,
-            'sort_order' => 900,
-            'status' => 'published',
-        ]);
-        if ($shouldSeedBlocks) {
-            $blocks = $this->shopBlocks($preset, $withDemo);
-            $page->blocks = $blocks;
-            $page->published_blocks = $blocks;
-        }
-        $page->save();
-    }
-
-    private function shopBlocks(string $preset, bool $withDemo): array
+    private function standardStorePages(string $preset): array
     {
         $catalogType = match ($preset) {
             'editorial' => 'commerce_catalog_editorial',
@@ -196,56 +178,132 @@ class CommerceInstallerService
             default => 'commerce_catalog_grid',
         };
 
-        $hero = match ($preset) {
+        $shopHero = match ($preset) {
             'editorial' => [
-                'type' => 'mini_hero_split', 'theme' => 'primary', 'eyebrow' => 'Curated collection',
-                'heading' => 'Products worth discovering', 'text' => 'Explore a considered edit of useful products, thoughtful details and everyday essentials.',
-                'button_label' => 'Browse the catalog', 'button_url' => '#catalog',
+                'type' => 'mini_hero_split', 'theme' => 'primary', 'eyebrow' => 'Shop',
+                'heading' => 'Products worth discovering', 'text' => 'Browse the live catalog, compare products, and find what fits.',
+                'button_label' => 'Browse products', 'button_url' => '#catalog',
                 'image_url' => '/storage/cms-images/background/background-2.avif', 'image_alt' => 'Shop collection',
             ],
             'clean' => [
                 'type' => 'mini_hero_minimal', 'theme' => 'primary', 'eyebrow' => 'Shop',
-                'heading' => 'Find what fits', 'text' => 'Browse categories and shop the latest products in one clean storefront.',
+                'heading' => 'Find what fits', 'text' => 'A clean storefront for browsing the latest products.',
                 'button_label' => 'Browse products', 'button_url' => '#catalog',
             ],
             default => [
-                'type' => 'mini_hero_promo', 'theme' => 'primary', 'eyebrow' => 'Featured now',
-                'heading' => 'A better way to shop the collection', 'text' => 'Discover featured picks, useful categories and products selected for the storefront.',
+                'type' => 'mini_hero_promo', 'theme' => 'primary', 'eyebrow' => 'Shop',
+                'heading' => 'Discover something worth bringing home', 'text' => 'Explore the live catalog with a focused storefront built around your products.',
                 'button_label' => 'Shop now', 'button_url' => '#catalog',
                 'image_url' => '/storage/cms-images/background/background-3.avif', 'image_alt' => 'Featured shop collection',
             ],
         };
 
-        $blocks = [
-            $hero,
-            ['type' => 'commerce_categories', 'theme' => 'surface', 'heading' => 'Shop by category', 'text' => 'Browse collections and find the right product for you.'],
+        $featuredHero = [
+            'type' => 'mini_hero_minimal', 'theme' => 'primary', 'eyebrow' => 'Featured',
+            'heading' => 'Featured products', 'text' => 'A curated edit of products worth a closer look.',
+            'button_label' => 'Browse all products', 'button_url' => '/shop',
         ];
 
-        if ($withDemo) {
-            $blocks[] = ['type' => 'commerce_featured_products', 'theme' => 'white', 'heading' => 'Featured picks', 'text' => 'A curated selection worth a closer look.', 'limit' => 4];
-        }
+        $collectionsHero = [
+            'type' => 'mini_hero_minimal', 'theme' => 'primary', 'eyebrow' => 'Collections',
+            'heading' => 'Shop by collection', 'text' => 'Browse product categories and jump into the collection that fits.',
+            'button_label' => 'View all products', 'button_url' => '/shop',
+        ];
 
-        $blocks[] = ['type' => $catalogType, 'theme' => 'white', 'heading' => $preset === 'editorial' ? 'Curated for you' : 'Shop the catalog', 'text' => 'Search, filter and compare products from the live catalog.', 'limit' => $preset === 'clean' ? 16 : 12, 'show_toolbar' => true, 'anchor' => 'catalog'];
+        return [
+            [
+                'title' => 'Shop', 'slug' => 'shop', 'sort_order' => 900,
+                'blocks' => [
+                    $shopHero,
+                    ['type' => $catalogType, 'theme' => 'white', 'heading' => $preset === 'editorial' ? 'Curated for you' : 'Shop the catalog', 'text' => 'Search, filter and compare products from the live catalog.', 'limit' => $preset === 'clean' ? 16 : 12, 'show_toolbar' => true, 'anchor' => 'catalog'],
+                    $this->benefitsBlock(),
+                ],
+            ],
+            [
+                'title' => 'Featured Products', 'slug' => 'featured-products', 'sort_order' => 901,
+                'blocks' => [
+                    $featuredHero,
+                    ['type' => 'commerce_featured_products', 'theme' => 'white', 'heading' => 'Featured picks', 'text' => 'A curated selection worth a closer look.', 'limit' => 8],
+                    [
+                        'type' => 'commerce_promo_split', 'theme' => 'primary', 'eyebrow' => 'Featured collection',
+                        'heading' => 'Make room for something new', 'text' => 'Highlight a seasonal collection, campaign, or standout product.',
+                        'button_label' => 'Explore the collection', 'button_url' => '/collections',
+                        'image_url' => '/storage/cms-images/background/background-3.avif', 'image_alt' => 'Featured collection',
+                    ],
+                    ['type' => 'commerce_featured_collection', 'theme' => 'surface', 'heading' => 'Featured collection', 'text' => 'Explore a focused edit from one collection.', 'category_id' => null, 'limit' => 4, 'button_label' => 'View collection'],
+                    $this->benefitsBlock(),
+                ],
+            ],
+            [
+                'title' => 'Collections', 'slug' => 'collections', 'sort_order' => 902,
+                'blocks' => [
+                    $collectionsHero,
+                    ['type' => 'commerce_categories', 'theme' => 'surface', 'heading' => 'Shop by category', 'text' => 'Browse collections and find the right product for you.'],
+                    ['type' => 'commerce_featured_collection', 'theme' => 'white', 'heading' => 'Collection spotlight', 'text' => 'Choose a collection to feature a focused group of products.', 'category_id' => null, 'limit' => 6, 'button_label' => 'View collection'],
+                    $this->benefitsBlock(),
+                ],
+            ],
+        ];
+    }
 
-        if ($withDemo) {
-            $blocks[] = [
-                'type' => 'commerce_promo_split', 'theme' => 'primary', 'eyebrow' => 'Limited collection',
-                'heading' => 'Make room for something new', 'text' => 'Highlight a collection, seasonal campaign or standout product with a focused promotion.',
-                'button_label' => 'Explore the collection', 'button_url' => '/shop',
-                'image_url' => '/storage/cms-images/background/background-3.avif', 'image_alt' => 'Featured collection',
-            ];
-            $blocks[] = ['type' => 'commerce_featured_collection', 'theme' => 'surface', 'heading' => 'Featured collection', 'text' => 'Explore a focused edit from one collection.', 'category_id' => null, 'limit' => 4, 'button_label' => 'View collection'];
-        }
-
-        $blocks[] = [
+    private function benefitsBlock(): array
+    {
+        return [
             'type' => 'commerce_benefits_strip', 'theme' => 'surface', 'heading' => 'Shop with confidence',
             'benefit_1_title' => 'Secure checkout', 'benefit_1_text' => 'Protected payment flow',
             'benefit_2_title' => 'Fast delivery', 'benefit_2_text' => 'Clear shipping options',
             'benefit_3_title' => 'Easy returns', 'benefit_3_text' => 'Straightforward support',
             'benefit_4_title' => 'Here to help', 'benefit_4_text' => 'Customer care when needed',
         ];
+    }
 
-        return $blocks;
+    private function installStandardStorePage(Website $website, array $definition): void
+    {
+        $page = $website->pages()->firstOrNew(['slug' => $definition['slug']]);
+
+        if ($page->exists && $page->page_type !== 'standard' && $page->page_type !== 'commerce') {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'commerce_pages' => "The /{$definition['slug']} slug is already used by another page type. Rename or remove that page, then run the installer again.",
+            ]);
+        }
+
+        $existingBlocks = is_array($page->blocks) ? $page->blocks : [];
+        $canReplaceBlocks = ! $page->exists || $page->page_type === 'commerce' || $existingBlocks === [] || $this->looksInstallerManaged($existingBlocks);
+        if (! $canReplaceBlocks) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'commerce_pages' => "The /{$definition['slug']} standard page already contains custom content. Rename it or clear its blocks before running the commerce installer.",
+            ]);
+        }
+
+        $page->fill([
+            'title' => $definition['title'],
+            'page_type' => 'standard',
+            'parent_id' => null,
+            'sort_order' => $definition['sort_order'],
+            'status' => 'published',
+            'blocks' => $definition['blocks'],
+            'published_blocks' => $definition['blocks'],
+        ]);
+        $page->save();
+    }
+
+    private function looksInstallerManaged(array $blocks): bool
+    {
+        if ($blocks === []) return true;
+
+        $known = [
+            'mini_hero_minimal', 'mini_hero_split', 'mini_hero_promo',
+            'commerce_categories', 'commerce_featured_products',
+            'commerce_catalog_grid', 'commerce_catalog_editorial', 'commerce_catalog_compact',
+            'commerce_promo_split', 'commerce_featured_collection', 'commerce_benefits_strip',
+        ];
+
+        foreach ($blocks as $block) {
+            $type = (string) ($block['type'] ?? '');
+            if ($type === '' || ! in_array($type, $known, true)) return false;
+        }
+
+        return true;
     }
 
     private function installDemoCatalog(Website $website): array

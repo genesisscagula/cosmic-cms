@@ -70,6 +70,7 @@ class PagePublisher
         $pagePaths = $this->pagePaths($pages);
         $header = $this->staticNavigationHeader($header, $pages, $pagePaths);
         $commerceContext = $this->commerceExportContext($website);
+        $contentContext = $this->structuredContentExportContext($website);
 
         return [
             'status' => 'success',
@@ -77,7 +78,7 @@ class PagePublisher
             'global_header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor) : '',
             'global_footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor) : '',
             'pages' => $pages
-                ->flatMap(function (Page $page) use ($primaryColor, $publishedPostsByPage, $pagePaths, $commerceContext) {
+                ->flatMap(function (Page $page) use ($primaryColor, $publishedPostsByPage, $pagePaths, $commerceContext, $contentContext) {
                     // Commerce pages are dynamic Laravel storefront endpoints. Keep
                     // them in the page registry/navigation map, but never export a
                     // static index.html that could shadow /shop, /cart, /checkout,
@@ -122,8 +123,8 @@ class PagePublisher
                             $blocks,
                             $primaryColor,
                             $page->page_type === 'blog'
-                                ? array_merge($commerceContext, ['blog_posts' => $posts, 'page_style' => $page->published_page_style ?? $page->page_style])
-                                : array_merge($commerceContext, ['page_style' => $page->published_page_style ?? $page->page_style])
+                                ? array_merge($commerceContext, $contentContext, ['blog_posts' => $posts, 'page_style' => $page->published_page_style ?? $page->page_style])
+                                : array_merge($commerceContext, $contentContext, ['page_style' => $page->published_page_style ?? $page->page_style])
                         ),
                     ]];
 
@@ -139,7 +140,7 @@ class PagePublisher
                             // Compile the complete Blog page composition so the live
                             // article keeps the same Mini Header, Single Post body,
                             // Newsletter, and Latest Resources seen in Builder.
-                            'html' => CmsHtmlCompiler::compile($blocks, $primaryColor, array_merge($commerceContext, [
+                            'html' => CmsHtmlCompiler::compile($blocks, $primaryColor, array_merge($commerceContext, $contentContext, [
                                 'blog_posts' => $posts,
                                 'single_blog_post' => $post->toArray(),
                                 'blog_index_url' => $postDirectory . '/',
@@ -155,6 +156,41 @@ class PagePublisher
         ];
     }
 
+
+    private function structuredContentExportContext(Website $website): array
+    {
+        \App\Http\Controllers\ContentWorkspaceController::ensureDefaults($website);
+        $previews = app(PreviewDeploymentService::class);
+        $types = $website->contentTypes()
+            ->with(['entries' => fn ($query) => $query->where('status', 'published')->orderByDesc('is_featured')->latest('published_at')])
+            ->orderBy('sort_order')
+            ->get()
+            ->map(fn ($type) => [
+                'id' => $type->id,
+                'name' => $type->name,
+                'singular_name' => $type->singular_name,
+                'slug' => $type->slug,
+                'entries' => $type->entries->map(fn ($entry) => [
+                    'id' => $entry->id,
+                    'title' => $entry->title,
+                    'slug' => $entry->slug,
+                    'excerpt' => $entry->excerpt,
+                    'content' => $entry->content,
+                    'category' => $entry->category,
+                    'tags' => $entry->tags ?: [],
+                    'featured_image_url' => $entry->featured_image_url,
+                    'gallery' => $entry->gallery ?: [],
+                    'custom_fields' => $entry->custom_fields ?: [],
+                    'is_featured' => (bool) $entry->is_featured,
+                    'published_at' => optional($entry->published_at)->toISOString(),
+                    'updated_at' => optional($entry->updated_at)->toISOString(),
+                    'url' => (string) $previews->url($website, trim($type->slug, '/').'/'.trim($entry->slug, '/')),
+                ])->values()->all(),
+            ])->values()->all();
+
+        return ['content_types' => $types];
+    }
+
     private function commerceExportContext(Website $website): array
     {
         $settings = $website->commerceSetting()->first();
@@ -167,6 +203,7 @@ class PagePublisher
         $previews = app(PreviewDeploymentService::class);
         $runtimeBase = rtrim((string) config('services.cosmic.asset_base_url', config('app.url')), '/');
         $runtimeEndpoint = $runtimeBase.'/commerce/runtime/'.$website->preview_slug.'/catalog';
+        $assetUrl = fn (?string $url): string => $this->commerceAssetUrl($url);
 
         $products = $website->commerceProducts()
             ->with(['images', 'categories', 'options.values'])
@@ -187,10 +224,10 @@ class PagePublisher
                 'allow_backorders' => (bool) $product->allow_backorders,
                 'stock_status' => $product->stock_status,
                 'is_featured' => (bool) $product->is_featured,
-                'featured_image_url' => $product->featured_image_url,
+                'featured_image_url' => $assetUrl($product->featured_image_url),
                 'featured_image_alt' => $product->featured_image_alt,
                 'category_ids' => $product->categories->pluck('id')->map(fn ($id) => (int) $id)->values()->all(),
-                'gallery' => $product->images->map(fn ($image) => ['url' => $image->url, 'alt_text' => $image->alt_text])->values()->all(),
+                'gallery' => $product->images->map(fn ($image) => ['url' => $assetUrl($image->url), 'alt_text' => $image->alt_text])->values()->all(),
                 'options' => $product->options->map(fn ($option) => [
                     'id' => $option->id,
                     'name' => $option->name,
@@ -204,7 +241,7 @@ class PagePublisher
                 'name' => $category->name,
                 'slug' => $category->slug,
                 'description' => $category->description,
-                'image_url' => $category->image_url,
+                'image_url' => $assetUrl($category->image_url),
                 'image_alt' => $category->image_alt,
                 'storefront_url' => $previews->url($website, 'shop/category/'.$category->slug),
             ])->values()->all();
@@ -219,6 +256,19 @@ class PagePublisher
                 'categories' => $categories,
             ],
         ];
+    }
+
+    private function commerceAssetUrl(?string $url): string
+    {
+        $url = trim((string) $url);
+        if ($url === '' || str_starts_with($url, 'data:')) return $url;
+        if (preg_match('#^(?:https?:)?//([^/]+)(/.*)?$#i', $url, $matches)) {
+            $host = strtolower(preg_replace('/:\d+$/', '', $matches[1]) ?? $matches[1]);
+            if (! in_array($host, ['localhost', '127.0.0.1', '::1'], true) && ! str_ends_with($host, '.local')) return $url;
+            $url = $matches[2] ?? '/';
+        }
+        $base = rtrim((string) config('services.cosmic.asset_base_url', config('app.url')), '/');
+        return $base.'/'.ltrim(str_replace('\\', '/', $url), '/');
     }
 
     /**

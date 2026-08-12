@@ -637,7 +637,7 @@ JS;
         }
 
         $outerHead = in_array($type, ['commerce_promo_split', 'commerce_benefits_strip'], true) ? '' : "<div class='mb-8 max-w-2xl'><h2 class='text-3xl font-semibold tracking-[-0.035em] md:text-4xl'>{$heading}</h2>".($text!==''?"<p class='mt-3 max-w-xl text-[15px] leading-7' style='color:var(--commerce-muted)'>{$text}</p>":'')."</div>";
-        return "<section id='{$rootId}' data-cosmic-commerce-spark='".e($type)."' data-commerce-config='{$config}' class='w-full px-6 py-16 md:px-12 lg:py-20' style='{$vars}'><div class='mx-auto max-w-7xl'>{$outerHead}{$body}</div></section>{$script}";
+        return "<section id='{$rootId}' data-cosmic-commerce-spark='".e($type)."' data-commerce-config='{$config}' class='w-full px-6 py-16 md:px-12 lg:py-20' style='{$vars};font-family:Manrope,ui-sans-serif,system-ui,sans-serif'><style>#{$rootId} h1,#{$rootId} h2,#{$rootId} h3,#{$rootId} h4{font-family:Manrope,ui-sans-serif,system-ui,sans-serif;font-weight:700}</style><div class='mx-auto max-w-7xl'>{$outerHead}{$body}</div></section>{$script}";
     }
 
    public static function compile(array $blocks, string $primaryColor = null, array $context = []): string
@@ -744,6 +744,72 @@ JS;
                     $resourceMarkup .= "<article class='group rounded-2xl border border-slate-200 bg-white p-7 shadow-sm transition hover:-translate-y-0.5 hover:border-slate-300 hover:shadow-lg sm:p-8'><p class='text-[11px] font-semibold uppercase tracking-[0.22em] text-violet-700'>" . e($resource['eyebrow'] ?? 'Resource') . "</p><h3 class='mt-4 text-2xl font-bold leading-tight tracking-tight text-slate-900'>" . e($resource['title'] ?? '') . "</h3><p class='mt-4 text-sm leading-6 text-slate-600'>" . e($resource['text'] ?? '') . "</p><a href='" . e($resource['cta_url'] ?? '#') . "' class='mt-7 inline-flex text-sm font-semibold text-slate-900 underline decoration-slate-300 underline-offset-4 transition group-hover:decoration-slate-900'>" . e($resource['cta_label'] ?? 'Read more') . "</a></article>";
                 }
                 $html .= "<section class='bg-[#fcfcfb] px-6 py-16 sm:px-8 lg:px-12 lg:py-24'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><p class='text-xs font-semibold uppercase tracking-[0.28em] text-slate-500'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight text-slate-900 sm:text-5xl lg:text-[3.75rem]'>{$heading}</h2><p class='mt-5 max-w-2xl text-base leading-7 text-slate-600'>{$text}</p></div><div class='mt-10 grid gap-5 md:grid-cols-2'>{$resourceMarkup}</div></div></section>";
+                break;
+
+
+                case 'content_grid_classic':
+                case 'content_grid_editorial':
+                case 'content_grid_compact':
+                case 'content_featured_entry':
+                case 'content_latest_entries':
+                case 'content_events_grid':
+                $contentTypes = is_array($context['content_types'] ?? null) ? $context['content_types'] : [];
+                $sourceSlug = (string) ($block['content_type_slug'] ?? ($type === 'content_events_grid' ? 'events' : 'blog'));
+                $contentType = null;
+                foreach ($contentTypes as $candidate) {
+                    if (is_array($candidate) && (string) ($candidate['slug'] ?? '') === $sourceSlug) { $contentType = $candidate; break; }
+                }
+                if (!$contentType && isset($contentTypes[0]) && is_array($contentTypes[0])) $contentType = $contentTypes[0];
+                $entries = is_array($contentType['entries'] ?? null) ? $contentType['entries'] : [];
+                $categoryFilter = trim((string) ($block['category'] ?? ''));
+                $tagFilter = trim((string) ($block['tag'] ?? ''));
+                $entries = array_values(array_filter($entries, function ($entry) use ($categoryFilter, $tagFilter, $type, $block) {
+                    if (!is_array($entry)) return false;
+                    if ($categoryFilter !== '' && (string) ($entry['category'] ?? '') !== $categoryFilter) return false;
+                    if ($tagFilter !== '' && !in_array($tagFilter, is_array($entry['tags'] ?? null) ? $entry['tags'] : [], true)) return false;
+                    if (($type === 'content_events_grid' || !empty($block['upcoming_only'])) && !empty($entry['custom_fields']['start_date'])) {
+                        $eventTs = strtotime((string) $entry['custom_fields']['start_date']);
+                        if ($eventTs && $eventTs < strtotime('today')) return false;
+                    }
+                    return true;
+                }));
+                if (!empty($block['featured_only'])) {
+                    $featuredEntries = array_values(array_filter($entries, fn ($entry) => !empty($entry['is_featured'])));
+                    if ($featuredEntries !== []) $entries = $featuredEntries;
+                }
+                $sort = (string) ($block['sort'] ?? 'newest');
+                usort($entries, function ($a, $b) use ($sort) {
+                    if ($sort === 'title') return strcasecmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''));
+                    if ($sort === 'event_date') return strcmp((string) ($a['custom_fields']['start_date'] ?? ''), (string) ($b['custom_fields']['start_date'] ?? ''));
+                    $at = strtotime((string) ($a['published_at'] ?? $a['updated_at'] ?? '')) ?: 0;
+                    $bt = strtotime((string) ($b['published_at'] ?? $b['updated_at'] ?? '')) ?: 0;
+                    return $sort === 'oldest' ? ($at <=> $bt) : ($bt <=> $at);
+                });
+                $entries = array_slice($entries, 0, max(1, (int) ($block['limit'] ?? 6)));
+                $eyebrow = e($block['eyebrow'] ?? 'Latest stories');
+                $heading = e($block['heading'] ?? 'Fresh from our updates');
+                $text = e($block['text'] ?? 'Explore the latest articles, events, projects, and updates.');
+                $entryMarkup = '';
+                foreach ($entries as $entry) {
+                    $title = e($entry['title'] ?? 'Untitled'); $excerpt = e($entry['excerpt'] ?? '');
+                    $category = e($entry['category'] ?? ($contentType['singular_name'] ?? 'Update'));
+                    $url = e($entry['url'] ?? ('/' . $sourceSlug . '/' . ($entry['slug'] ?? '')));
+                    $image = e(self::staticAssetUrl($entry['featured_image_url'] ?? '/storage/cms-images/background/background-1.avif'));
+                    if ($type === 'content_events_grid') {
+                        $start = (string) ($entry['custom_fields']['start_date'] ?? '');
+                        $month = $start ? strtoupper(date('M', strtotime($start))) : 'EVENT'; $day = $start ? date('d', strtotime($start)) : '—';
+                        $venue = e($entry['custom_fields']['venue'] ?? 'Upcoming event');
+                        $registration = e($entry['custom_fields']['registration_url'] ?? $url);
+                        $entryMarkup .= "<article class='rounded-2xl border p-6 {$theme['card']} {$theme['border']}'><div class='flex gap-4'><div class='min-w-16 rounded-xl border p-3 text-center {$theme['border']}'><div class='text-xs font-bold uppercase {$theme['sub']}'>{$month}</div><div class='text-2xl font-bold {$theme['text']}'>{$day}</div></div><div><p class='text-xs font-bold uppercase tracking-[.18em] {$theme['sub']}'>{$venue}</p><h3 class='mt-2 text-xl font-bold {$theme['text']}'>{$title}</h3></div></div><p class='mt-4 text-sm leading-6 {$theme['sub']}'>{$excerpt}</p><a href='{$registration}' class='mt-5 inline-flex font-bold {$theme['text']}'>" . (!empty($entry['custom_fields']['registration_url']) ? 'Register' : 'View event') . " →</a></article>";
+                    } elseif ($type === 'content_grid_compact' || $type === 'content_latest_entries') {
+                        $entryMarkup .= "<article class='grid gap-4 border-b p-5 last:border-b-0 sm:grid-cols-[96px_1fr_auto] sm:items-center {$theme['border']}'><img src='{$image}' alt='' class='h-20 w-24 rounded-xl object-cover'><div><p class='text-[10px] font-bold uppercase tracking-[.18em] {$theme['sub']}'>{$category}</p><h3 class='mt-1 text-lg font-bold {$theme['text']}'>{$title}</h3><p class='mt-1 text-sm {$theme['sub']}'>{$excerpt}</p></div><a href='{$url}' class='text-sm font-bold {$theme['text']}'>View →</a></article>";
+                    } else {
+                        $entryMarkup .= "<article class='overflow-hidden rounded-2xl border shadow-sm {$theme['card']} {$theme['border']}'><a href='{$url}'><img src='{$image}' alt='{$title}' class='h-52 w-full object-cover'></a><div class='p-5'><p class='text-[11px] font-bold uppercase tracking-[.2em] {$theme['sub']}'>{$category}</p><h3 class='mt-3 text-xl font-bold {$theme['text']}'><a href='{$url}'>{$title}</a></h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$excerpt}</p><a href='{$url}' class='mt-5 inline-flex text-sm font-bold {$theme['text']}'>Read more →</a></div></article>";
+                    }
+                }
+                if ($entryMarkup === '') $entryMarkup = "<div class='rounded-2xl border border-dashed p-8 text-center {$theme['border']} {$theme['sub']}'>No published entries match this Spark yet.</div>";
+                $gridClass = $type === 'content_events_grid' ? 'grid gap-5 md:grid-cols-2 lg:grid-cols-3' : (($type === 'content_grid_compact' || $type === 'content_latest_entries') ? "rounded-2xl border {$theme['card']} {$theme['border']}" : 'grid gap-5 sm:grid-cols-2 lg:grid-cols-3');
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-20 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='mb-9 max-w-3xl'><p class='text-xs font-bold uppercase tracking-[.24em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-3 text-3xl font-bold tracking-tight sm:text-4xl {$theme['text']}'>{$heading}</h2><p class='mt-3 text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='{$gridClass}'>{$entryMarkup}</div></div></section>";
                 break;
 
                 case 'mini_hero_minimal':
@@ -1196,7 +1262,7 @@ HTML;
                 $overlayHeader = (bool) ($block['overlay_header_on_banner'] ?? false);
                 $overlayPrimaryAllowed = ! in_array(strtolower((string) ($primaryColor ?: 'midnight')), ['stone', 'white'], true);
                 $overlayHeaderClass = $overlayHeader
-                    ? 'cosmic-static-overlay-header absolute inset-x-0 top-0 bg-transparent shadow-none'
+                    ? 'cosmic-static-overlay-header absolute inset-x-0 top-0 border-transparent bg-transparent shadow-none'
                     : 'sticky top-0 bg-white shadow-sm';
 
                 // Header always white in standard mode. Overlay mode preserves
@@ -1337,6 +1403,16 @@ HTML;
                     .cosmic-static-overlay-header {
                         position: absolute !important;
                         background: transparent !important;
+                        border-bottom-color: transparent !important;
+                        box-shadow: none !important;
+                    }
+                    .cosmic-static-overlay-first-spark {
+                        padding-top: calc(var(--cosmic-overlay-header-height, 80px) + clamp(4.25rem, 6vw, 6.5rem)) !important;
+                    }
+                    @media (max-width: 639px) {
+                        .cosmic-static-overlay-first-spark {
+                            padding-top: calc(var(--cosmic-overlay-header-height, 72px) + 3.5rem) !important;
+                        }
                     }
                     /* Overlay treatment is intentionally narrow: ONLY a PRIMARY first
                        Spark receives white navigation/logo/CTA, and neutral Warm Stone
@@ -1433,18 +1509,8 @@ HTML;
                                     primaryOverlayAllowed && firstSparkIsPrimary
                                 );
 
-                                let basePaddingTop = null;
-
                                 const syncOverlaySpacing = () => {
-                                    if (basePaddingTop === null) {
-                                        basePaddingTop = parseFloat(window.getComputedStyle(firstSection).paddingTop) || 0;
-                                    }
-
                                     const headerHeight = Math.ceil(staticHeader.getBoundingClientRect().height || 0);
-                                    const viewportGap = window.matchMedia('(max-width: 639px)').matches
-                                        ? 40
-                                        : Math.max(48, Math.min(80, window.innerWidth * 0.05));
-                                    firstSection.style.paddingTop = `\${Math.ceil(basePaddingTop + headerHeight + viewportGap)}px`;
                                     document.documentElement.style.setProperty('--cosmic-overlay-header-height', `\${headerHeight}px`);
                                 };
 

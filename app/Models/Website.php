@@ -113,6 +113,16 @@ class Website extends Model
         return $this->hasMany(BlogPost::class);
     }
 
+    public function contentTypes()
+    {
+        return $this->hasMany(ContentType::class)->orderBy('sort_order')->orderBy('name');
+    }
+
+    public function contentEntries()
+    {
+        return $this->hasMany(ContentEntry::class);
+    }
+
     public function commerceSetting()
     {
         return $this->hasOne(WebsiteCommerceSetting::class);

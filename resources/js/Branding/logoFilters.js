@@ -16,4 +16,4 @@ export const isDefaultLogoPlaceholder = (url) => {
 };
 
 export const logoFilterForImage = (url, theme, explicitFilter = '') =>
-  isDefaultLogoPlaceholder(url) ? (explicitFilter || logoFilterFor(theme)) : 'none';
+  explicitFilter || (isDefaultLogoPlaceholder(url) ? logoFilterFor(theme) : 'none');

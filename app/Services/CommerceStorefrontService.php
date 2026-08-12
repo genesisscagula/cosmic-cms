@@ -433,11 +433,21 @@ class CommerceStorefrontService
 
     private function response(Website $website, string $previewSlug, string $viewMode, array $data): Response
     {
-        $theme = $website->published_theme_settings ?? $website->theme_settings ?? [];
+        $draftTheme = is_array($website->theme_settings) ? $website->theme_settings : [];
+        $publishedTheme = is_array($website->published_theme_settings) ? $website->published_theme_settings : [];
+        // Dynamic commerce routes are part of the live Builder preview, so prefer the
+        // currently selected theme. Published settings remain a safe fallback for older sites.
+        $theme = $draftTheme !== [] ? $draftTheme : $publishedTheme;
         $themeKey = (string) data_get($theme, 'primary', 'midnight');
         $brandPalette = data_get($theme, 'brand_palette');
         $brandPalette = is_array($brandPalette) ? $brandPalette : data_get($theme, 'custom_brand_theme.palette');
-        $palette = is_array($brandPalette) ? $this->normalizePalette($brandPalette, $themeKey) : $this->themes->palette($themeKey);
+        // A saved brand palette can outlive later theme switches. Only use it when the
+        // active theme is explicitly My Brand; named families such as emerald/midnight
+        // must always resolve from the current family so runtime commerce stays in sync
+        // with Builder, Preview and the published site shell.
+        $palette = $themeKey === 'my-brand' && is_array($brandPalette)
+            ? $this->normalizePalette($brandPalette, 'midnight')
+            : $this->normalizePalette($this->themes->palette($themeKey), $themeKey);
         $currency = strtoupper((string) ($website->commerceSetting?->currency ?: config('cosmic-commerce.default_currency', 'USD')));
         $currencyMeta = config('cosmic-commerce.currencies.'.$currency, config('cosmic-commerce.currencies.USD'));
         $siteShell = $this->siteShell($website, $previewSlug, $themeKey);
@@ -470,6 +480,7 @@ class CommerceStorefrontService
             'categoryUrl' => fn (CommerceProductCategory $category): string => $this->url($previewSlug, $this->paths->category($category)),
             'money' => fn (?int $minor): string => $this->money($minor, $currency, $currencyMeta),
             'priceRange' => fn (CommerceProduct $product): array => $product->variantPriceRangeMinor(),
+            'assetUrl' => fn (?string $url): string => $this->assetUrl($url),
         ]);
 
         return response()->view('commerce.storefront', $payload, 200, [
@@ -604,6 +615,23 @@ class CommerceStorefrontService
     {
         $range = $product->variantPriceRangeMinor();
         return $range['min'] ?? PHP_INT_MAX;
+    }
+
+    private function assetUrl(?string $url): string
+    {
+        $url = trim((string) $url);
+        if ($url === '' || str_starts_with($url, 'data:')) return $url;
+
+        if (preg_match('#^(?:https?:)?//([^/]+)(/.*)?$#i', $url, $matches)) {
+            $host = strtolower(preg_replace('/:\d+$/', '', $matches[1]) ?? $matches[1]);
+            if (! in_array($host, ['localhost', '127.0.0.1', '::1'], true) && ! str_ends_with($host, '.local')) {
+                return $url;
+            }
+            $url = $matches[2] ?? '/';
+        }
+
+        $base = rtrim((string) config('services.cosmic.asset_base_url', config('app.url')), '/');
+        return $base.'/'.ltrim(str_replace('\\', '/', $url), '/');
     }
 
     private function url(string $previewSlug, string $path): string

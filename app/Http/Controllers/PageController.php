@@ -45,6 +45,7 @@ class PageController extends Controller
             'globalHeaderBlock' => $website->global_header,
             'globalFooterBlock' => $website->global_footer,
             'commerce' => $this->commerceWorkspacePayload($website),
+            'contentWorkspace' => ContentWorkspaceController::payload($website),
         ]);
     }
 
@@ -703,6 +704,7 @@ class PageController extends Controller
             'commerce' => $isTrialMode
                 ? ['enabled' => false, 'currency' => 'USD', 'currency_decimals' => 2, 'products' => [], 'categories' => []]
                 : $this->commerceWorkspacePayload($website),
+            'contentWorkspace' => $isTrialMode ? ['types' => []] : ContentWorkspaceController::payload($website),
             'previewUrl' => $isTrialMode || ! $website->last_preview_deployed_at
                 ? null
                 : app(PreviewDeploymentService::class)->urlForPage($website, $page),
@@ -753,7 +755,8 @@ class PageController extends Controller
                     'type' => 'glassmorphism_header',
                     'logo_text' => $trial->business_name,
                     'logo_image_url' => $trial->logo_url ?: '/storage/branding/your-logo.png',
-                    'logo_height' => 42,
+                    'logo_height' => max(42, (int) data_get($trial->preview_theme, 'logo_height', 60)),
+                    'logo_max_width' => max(220, (int) data_get($trial->preview_theme, 'logo_max_width', 300)),
                     'logo_filter_key' => data_get($trial->preview_theme, 'primary', 'midnight'),
                     'overlay_header_on_banner' => (bool) data_get($trial->preview_theme, 'overlay_header_on_banner', false),
                     'cta_label' => 'Get Started',
@@ -773,7 +776,7 @@ class PageController extends Controller
                     'theme' => 'white',
                     'logo_text' => $trial->business_name,
                     'logo_image_url' => $trial->logo_url ?: '/storage/branding/your-logo.png',
-                    'logo_height' => 36,
+                    'logo_height' => max(36, min(56, (int) data_get($trial->preview_theme, 'logo_height', 48))),
                     'logo_filter_key' => data_get($trial->preview_theme, 'primary', 'midnight'),
                     'copyright' => '© '.now()->year.'. All rights reserved.',
                 ]
