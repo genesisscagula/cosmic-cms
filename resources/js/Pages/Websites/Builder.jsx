@@ -2575,13 +2575,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                             </svg>
                                         </summary>
 
-                                        <div className="absolute right-0 z-[10020] mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl">
+                                        <div className="cosmic-publish-menu absolute right-0 z-[10020] mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl">
                                             {capabilities.canSave && (
                                                 <button
                                                     type="button"
                                                     onClick={() => saveDraft()}
                                                     disabled={isSaving || isPublishing}
-                                                    className="flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
+                                                    className="cosmic-publish-menu-item flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
                                                 >
                                                     {isSaving ? 'Saving…' : 'Save Draft'}
                                                 </button>
@@ -2592,7 +2592,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                                     type="button"
                                                     onClick={() => setIsSaveTemplateOpen(true)}
                                                     disabled={isSavingTemplate || !data.blocks?.length}
-                                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-violet-50 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                                    className="cosmic-publish-menu-item cosmic-publish-template-item flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-violet-50 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
                                                 >
                                                     <span>Save as Template</span>
                                                     <span aria-hidden="true" className="text-violet-400">▣</span>
@@ -2605,7 +2605,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     title={previewDeploymentError || (previewIsStale ? 'Publish your latest changes to refresh this preview.' : 'Open the latest deployed preview in a new tab.')}
-                                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                                                    className="cosmic-publish-menu-item flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
                                                 >
                                                     <span className="inline-flex items-center gap-2">
                                                         <span className={`h-1.5 w-1.5 rounded-full ${previewDeploymentError ? 'bg-red-400' : previewIsStale ? 'bg-amber-400' : 'bg-emerald-500'}`} />
@@ -2616,7 +2616,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                             ) : (
                                                 <span
                                                     title="Publish once to create a preview link."
-                                                    className="flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-slate-400"
+                                                    className="cosmic-publish-menu-item cosmic-publish-menu-disabled flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-slate-400"
                                                 >
                                                     <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
                                                     Preview
@@ -2952,12 +2952,29 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     ))}
 
                     {data.blocks.length === 0 && (
-                        <section className="flex min-h-[300px] items-center justify-center border-y border-slate-200 bg-slate-100 px-6 py-12 text-center">
-                            <div className="w-full max-w-md rounded-2xl border border-slate-200 bg-white/75 px-6 py-7 shadow-sm">
-                                <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-lg text-white" aria-hidden="true">+</span>
-                                <h2 className="mt-4 text-lg font-semibold text-slate-900">Start building this page</h2>
-                                <p className="mt-2 text-sm leading-6 text-slate-500">Add an owned Spark with quick content, or personalize it with Cosmic AI. Your global header and footer are already in place.</p>
-                                {capabilities.canGenerateAi && (
+                        <section id="cosmic-unbuilt-page" className="flex min-h-[340px] items-center justify-center border-y border-slate-200 bg-slate-100 px-6 py-12 text-center">
+                            <div className="w-full max-w-xl rounded-2xl border border-slate-200 bg-white/90 px-6 py-8 shadow-sm">
+                                <span className="mx-auto flex h-10 w-10 items-center justify-center rounded-xl bg-slate-900 text-lg text-white" aria-hidden="true">✦</span>
+                                <h2 className="mt-4 text-lg font-semibold text-slate-900">This page is ready to build</h2>
+                                <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">Your page, navigation, global header and footer are already connected. Choose how you want to create the content.</p>
+
+                                {!trialMode && (
+                                    <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
+                                        {capabilities.canGenerateAi && (
+                                            <button type="button" onClick={() => setIsGeneratePageOpen(true)} className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400">
+                                                Generate with AI
+                                            </button>
+                                        )}
+                                        <button type="button" onClick={() => setIsModalOpen(true)} className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-violet-400">
+                                            Start Blank
+                                        </button>
+                                        <button type="button" onClick={() => setIsTemplatesOpen(true)} className="inline-flex h-10 items-center justify-center rounded-lg border border-violet-200 bg-violet-50 px-4 text-sm font-semibold text-violet-800 transition hover:bg-violet-100 focus:outline-none focus:ring-2 focus:ring-violet-400">
+                                            Choose Template
+                                        </button>
+                                    </div>
+                                )}
+
+                                {trialMode && capabilities.canGenerateAi && (
                                     <button type="button" onClick={() => setIsModalOpen(true)} className="mt-5 inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400">
                                         Add your first Spark
                                     </button>

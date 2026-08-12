@@ -14,6 +14,7 @@ use App\Models\Website;
 use App\Models\Workspace;
 use App\Models\WorkspaceProvisioning;
 use App\Models\WorkspaceProvisioningLog;
+use App\AI\Registries\IndustryMenuRegistry;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use App\Support\SubscriptionStatus;
@@ -94,6 +95,7 @@ class WorkspaceProvisioningService
                 $workspace = $this->workspaceFor($onboarding);
                 $website = $this->websiteFor($onboarding, $workspace, $provisioning);
                 $trialPage = $this->transferTrialDraft($onboarding, $website, $provisioning);
+                $this->provisionTrialMenuPages($onboarding, $website, $trialPage);
                 app(MediaPackOwnershipService::class)->claimForWebsite($onboarding->trialGeneration, $website);
                 $this->ensureOwnershipAndAccess($onboarding, $workspace, $website);
                 $this->applyDefaultSettingsAndProfile($onboarding, $workspace, $website);
@@ -415,6 +417,116 @@ class WorkspaceProvisioningService
         $this->claimTrial($trial, $onboarding, $page);
 
         return $page->fresh();
+    }
+
+    /**
+     * Turn the menu promised in Trial into real owned pages after payment.
+     *
+     * The transferred Trial page remains the Home page. Every other local menu
+     * destination is provisioned once as an intentionally empty draft so the
+     * customer never lands on a 404 and can choose how to build it in Builder.
+     * Existing pages are reused and never have their blocks/content overwritten.
+     */
+    private function provisionTrialMenuPages(
+        PendingOnboarding $onboarding,
+        Website $website,
+        Page $homePage,
+    ): void {
+        $trial = $onboarding->trialGeneration;
+        $structure = is_array($trial?->menu_structure) && $trial->menu_structure !== []
+            ? $trial->menu_structure
+            : IndustryMenuRegistry::for((string) ($onboarding->industry ?: $website->industry ?: 'default'));
+
+        $items = collect($structure)
+            ->map(function ($item, int $index): ?array {
+                if (! is_array($item)) {
+                    return null;
+                }
+
+                $title = trim((string) ($item['title'] ?? $item['label'] ?? ''));
+                $raw = trim((string) ($item['slug'] ?? $item['url'] ?? ''));
+                $isHome = (bool) ($item['is_home'] ?? false) || $index === 0 || strtolower($raw) === 'home' || $raw === '/';
+
+                // External/action links belong in navigation but are not CMS pages.
+                if (! $isHome && ($raw === '' || $raw === '#' || str_starts_with($raw, '#') || preg_match('/^(?:https?:|mailto:|tel:)/i', $raw))) {
+                    return null;
+                }
+
+                $slug = $isHome
+                    ? 'home'
+                    : (Str::slug(trim($raw, '/')) ?: Str::slug($title));
+
+                if ($slug === '') {
+                    return null;
+                }
+
+                return [
+                    'title' => $title !== '' ? $title : Str::headline($slug),
+                    'slug' => $slug,
+                    'is_home' => $isHome,
+                    'sort_order' => max(1, (int) ($item['sort_order'] ?? ($index + 1))),
+                    'page_type' => (string) ($item['page_type'] ?? 'standard'),
+                ];
+            })
+            ->filter()
+            ->unique('slug')
+            ->values();
+
+        if ($items->isEmpty()) {
+            return;
+        }
+
+        $homeItem = $items->first(fn (array $item) => $item['is_home'] || $item['slug'] === 'home');
+        if ($homeItem) {
+            $homePage->forceFill([
+                'title' => $homeItem['title'] ?: 'Home',
+                'slug' => 'home',
+                'parent_id' => null,
+                'sort_order' => $homeItem['sort_order'],
+                'page_type' => 'standard',
+            ])->save();
+        }
+
+        $provisioned = [];
+        foreach ($items as $item) {
+            if ($item['is_home'] || $item['slug'] === 'home') {
+                continue;
+            }
+
+            $existing = $website->pages()
+                ->where('slug', $item['slug'])
+                ->oldest('id')
+                ->first();
+
+            if ($existing) {
+                // Never replace an existing customer's work on retries.
+                $provisioned[] = $existing->slug;
+                continue;
+            }
+
+            $page = $website->pages()->create([
+                'title' => $item['title'],
+                'slug' => $item['slug'],
+                'parent_id' => null,
+                'sort_order' => $item['sort_order'],
+                'page_type' => $item['page_type'] ?: 'standard',
+                'blocks' => [],
+                'status' => 'draft',
+            ]);
+
+            $provisioned[] = $page->slug;
+        }
+
+        // Keep a lightweight marker for support/QA. Builder behavior itself is
+        // driven by an empty blocks array, so no database migration is required.
+        $settings = is_array($website->settings) ? $website->settings : [];
+        $settings['post_purchase_pages'] = [
+            'source' => $trial ? 'trial_menu' : 'industry_default',
+            'home_page_id' => $homePage->id,
+            'unbuilt_slugs' => array_values(array_unique($provisioned)),
+            'provisioned_at' => data_get($settings, 'post_purchase_pages.provisioned_at', now()->toIso8601String()),
+        ];
+        $website->forceFill(['settings' => $settings])->save();
     }
 
     private function syncTrialWebsiteSettings(?TrialGeneration $trial, Website $website): void

@@ -69,13 +69,36 @@ class CommerceProductController extends Controller
         $kind = $data['kind'] ?? 'gallery';
         $filename = $kind.'-'.Str::uuid().'.'.$extension;
         $path = $file->storeAs("websites/{$website->id}/commerce", $filename, 'public');
-        $relativeUrl = Storage::disk('public')->url($path);
+
+        if (! is_string($path) || $path === '' || ! Storage::disk('public')->exists($path)) {
+            throw ValidationException::withMessages(['image' => 'The image could not be saved. Please try again.']);
+        }
+
+        // Do not depend on public/storage being symlinked correctly. Commerce media is
+        // delivered through Laravel just like structured-content media, which keeps the
+        // builder, local development, production and exported live HTML on one stable URL.
+        $url = route('commerce.media.show', [
+            'website' => $website->id,
+            'filename' => basename($path),
+        ], false);
 
         return response()->json([
-            'url' => rtrim($request->getSchemeAndHttpHost(), '/').'/'.ltrim($relativeUrl, '/'),
+            'url' => $url,
             'path' => $path,
             'kind' => $kind,
             'mime_type' => $file->getMimeType(),
+        ]);
+    }
+
+    /** Publicly serve uploaded commerce media without requiring a public/storage symlink. */
+    public function showMedia(Website $website, string $filename)
+    {
+        abort_unless((bool) preg_match('/^[A-Za-z0-9._-]+$/', $filename), 404);
+        $path = "websites/{$website->id}/commerce/{$filename}";
+        abort_unless(Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path, $filename, [
+            'Cache-Control' => 'public, max-age=31536000, immutable',
         ]);
     }
 

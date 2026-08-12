@@ -33,7 +33,8 @@ export function ServicesHoverCardsBlock({ block, onUpdate, globalTheme }) {
     const muted = isPrimary ? "text-white/70" : theme.sub;
     const border = isPrimary ? "border-white/20" : theme.border;
     const card = isPrimary ? "bg-white/10 text-white" : `${theme.surface} ${theme.text}`;
-    const hover = isPrimary ? "hover:bg-white hover:text-slate-950" : `hover:${primaryTheme.soft}`;
+    const hoverBackground = isPrimary ? "#ffffff" : (primaryTheme?.palette?.background || "#0B5D4B");
+    const hoverForeground = isPrimary ? "#0f172a" : "#ffffff";
     const buttonClass = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const save = (key) => (value) => onUpdate({ [key]: value });
     const cards = ["one", "two", "three", "four", "five", "six"];
@@ -50,14 +51,14 @@ export function ServicesHoverCardsBlock({ block, onUpdate, globalTheme }) {
             </div>
 
             <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {cards.map((word) => <article key={word} className={`group relative min-h-[300px] overflow-hidden rounded-[1.75rem] border p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl sm:p-7 ${border} ${card} ${hover}`}>
+                {cards.map((word) => <article key={word} data-cosmic-services-hover-card="true" style={{ "--cosmic-hover-card-bg": hoverBackground, "--cosmic-hover-card-fg": hoverForeground }} className={`group relative min-h-[300px] overflow-hidden rounded-[1.75rem] border p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl sm:p-7 ${border} ${card}`}>
                     <div className="flex items-start justify-between gap-4">
-                        <EditableText value={data[`card_${word}_number`]} className={`text-xs font-black tracking-[.2em] ${muted} ${isPrimary ? "group-hover:text-slate-600" : ""}`} onSave={save(`card_${word}_number`)} />
+                        <EditableText value={data[`card_${word}_number`]} className={`text-xs font-black tracking-[.2em] ${muted}`} onSave={save(`card_${word}_number`)} />
                         <span className={`flex h-10 w-10 items-center justify-center rounded-full border text-lg transition group-hover:rotate-45 ${border}`}>↗</span>
                     </div>
                     <div className="mt-14">
                         <EditableText value={data[`card_${word}_title`]} className="block text-2xl font-semibold tracking-[-.03em]" onSave={save(`card_${word}_title`)} />
-                        <EditableText value={data[`card_${word}_summary`]} className={`mt-3 block text-sm font-semibold ${muted} group-hover:text-current/70`} onSave={save(`card_${word}_summary`)} />
+                        <EditableText value={data[`card_${word}_summary`]} className={`mt-3 block text-sm font-semibold ${muted}`} onSave={save(`card_${word}_summary`)} />
                         <EditableText value={data[`card_${word}_text`]} isTextArea className="mt-5 block translate-y-3 text-sm leading-6 opacity-75 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100" onSave={save(`card_${word}_text`)} />
                         <EditableText value={data[`card_${word}_link`]} className="mt-7 block text-xs font-black uppercase tracking-[.16em] opacity-70 group-hover:opacity-100" onSave={save(`card_${word}_link`)} />
                     </div>

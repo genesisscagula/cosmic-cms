@@ -95,6 +95,12 @@ class CommerceRuntimeController extends Controller
             if (! in_array($host, ['localhost', '127.0.0.1', '::1'], true) && ! str_ends_with($host, '.local')) return $url;
             $url = (string) parse_url(str_starts_with($url, '//') ? 'https:'.$url : $url, PHP_URL_PATH);
         }
+        // Rewrite commerce URLs created by older builds so live/export runtime does
+        // not depend on a public/storage symlink either.
+        if (preg_match('#^/storage/websites/(\d+)/commerce/([A-Za-z0-9._-]+)$#', $url, $match)) {
+            $url = '/websites/'.$match[1].'/commerce/media/'.$match[2];
+        }
+
         $base = rtrim((string) config('services.cosmic.asset_base_url', config('app.url')), '/');
         return $base.'/'.ltrim($url, '/');
     }

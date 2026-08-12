@@ -67,6 +67,19 @@ Route::get('/websites/{website}/content/media/{filename}', [ContentWorkspaceCont
     ->where('filename', '[A-Za-z0-9._-]+')
     ->name('content.media.show');
 
+
+// Public commerce media delivery. This intentionally avoids a public/storage symlink,
+// which can be missing or stale in local/Nginx deployments and caused uploaded product
+// images to return 404 even though the upload itself succeeded.
+Route::get('/websites/{website}/commerce/media/{filename}', [\App\Http\Controllers\CommerceProductController::class, 'showMedia'])
+    ->where('filename', '[A-Za-z0-9._-]+')
+    ->name('commerce.media.show');
+
+// Backward-compatible fallback for commerce URLs saved before the routed media endpoint.
+Route::get('/storage/websites/{website}/commerce/{filename}', [\App\Http\Controllers\CommerceProductController::class, 'showMedia'])
+    ->where('filename', '[A-Za-z0-9._-]+')
+    ->name('commerce.media.legacy');
+
 Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
 Route::get('/cookies', [LegalController::class, 'cookies'])->name('legal.cookies');

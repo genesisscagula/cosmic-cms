@@ -161,12 +161,21 @@ class PageController extends Controller
         $currencyScale = 10 ** max(0, $currencyDecimals);
         $previewService = app(\App\Services\PreviewDeploymentService::class);
         $storefrontUrl = filled($website->preview_slug) ? $previewService->url($website, 'shop') : null;
+        $commerceMediaUrl = static function (?string $url) use ($website): string {
+            $url = trim((string) $url);
+            if ($url === '') return '';
+            $path = preg_match('#^https?://#i', $url) ? (string) parse_url($url, PHP_URL_PATH) : $url;
+            if (preg_match('#^/storage/websites/'.preg_quote((string) $website->id, '#').'/commerce/([A-Za-z0-9._-]+)$#', $path, $match)) {
+                return route('commerce.media.show', ['website' => $website->id, 'filename' => $match[1]], false);
+            }
+            return $url;
+        };
 
         $products = $website->commerceProducts()
             ->with(['images', 'categories', 'options.values', 'variants.values.option'])
             ->latest('updated_at')
             ->get()
-            ->map(function (\App\Models\CommerceProduct $product) use ($currencyScale, $currencyDecimals, $previewService, $website): array {
+            ->map(function (\App\Models\CommerceProduct $product) use ($currencyScale, $currencyDecimals, $previewService, $website, $commerceMediaUrl): array {
                 return [
                     'id' => $product->id,
                     'public_id' => $product->public_id,
@@ -202,7 +211,7 @@ class PageController extends Controller
                     'taxable' => (bool) $product->taxable,
                     'tax_class' => $product->tax_class ?: '',
                     'is_featured' => (bool) $product->is_featured,
-                    'featured_image_url' => $product->featured_image_url,
+                    'featured_image_url' => $commerceMediaUrl($product->featured_image_url),
                     'featured_image_alt' => $product->featured_image_alt,
                     'seo_title' => $product->seo_title,
                     'seo_description' => $product->seo_description,
@@ -213,8 +222,8 @@ class PageController extends Controller
                         'slug' => $category->slug,
                     ])->values(),
                     'primary_category_id' => optional($product->categories->firstWhere('pivot.is_primary', true))->id,
-                    'gallery' => $product->images->map(fn ($image) => ['url' => $image->url, 'alt_text' => $image->alt_text])->values(),
-                    'images' => $product->images->map(fn ($image) => ['url' => $image->url, 'image_url' => $image->url, 'alt_text' => $image->alt_text])->values(),
+                    'gallery' => $product->images->map(fn ($image) => ['url' => $commerceMediaUrl($image->url), 'alt_text' => $image->alt_text])->values(),
+                    'images' => $product->images->map(fn ($image) => ['url' => $commerceMediaUrl($image->url), 'image_url' => $commerceMediaUrl($image->url), 'alt_text' => $image->alt_text])->values(),
                     'options' => $product->options->map(fn ($option) => [
                         'id' => $option->id,
                         'name' => $option->name,
@@ -233,7 +242,7 @@ class PageController extends Controller
                         'is_low_stock' => (bool) ($variant->track_inventory && $variant->stock_quantity !== null && $variant->low_stock_threshold !== null && $variant->stock_quantity <= $variant->low_stock_threshold),
                         'allow_backorders' => (bool) $variant->allow_backorders,
                         'stock_status' => $variant->stock_status,
-                        'image_url' => $variant->image_url,
+                        'image_url' => $commerceMediaUrl($variant->image_url),
                         'is_enabled' => (bool) $variant->is_enabled,
                         'is_default' => (bool) $variant->is_default,
                     ])->values(),
@@ -284,7 +293,7 @@ class PageController extends Controller
                 'slug' => $category->slug,
                 'parent_id' => $category->parent_id,
                 'description' => $category->description ?? '',
-                'image_url' => $category->image_url ?? '',
+                'image_url' => $commerceMediaUrl($category->image_url),
                 'image_alt' => $category->image_alt ?? '',
                 'seo_title' => $category->seo_title ?? '',
                 'seo_description' => $category->seo_description ?? '',

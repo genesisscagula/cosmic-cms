@@ -4390,3 +4390,205 @@ body .cosmic-start-quick-idea.rounded-full.border {
         flex-wrap: wrap;
     }
 }
+
+/* ================================================================
+   Hotfix Patch 8 — Light-mode UI isolation
+   Application editors/popovers must follow the ChatGPT appearance,
+   while website preview content remains isolated under
+   .cosmic-preview-isolation. Dark mode intentionally keeps the
+   established dark surfaces.
+   ================================================================ */
+
+/* Contact form field editor is application chrome, not site preview. */
+.cosmic-contact-fields-overlay {
+    isolation: isolate;
+}
+.cosmic-contact-fields-modal,
+.cosmic-contact-fields-modal * {
+    box-sizing: border-box;
+}
+
+:root[data-theme="light"] .cosmic-contact-fields-overlay {
+    background: rgba(15, 23, 42, .38) !important;
+    backdrop-filter: blur(7px);
+}
+:root[data-theme="light"] .cosmic-contact-fields-modal {
+    background: #ffffff !important;
+    border-color: #cbded4 !important;
+    color: #0f172a !important;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, .20) !important;
+    scrollbar-color: #afc5b9 #eef6f1;
+}
+:root[data-theme="light"] .cosmic-contact-fields-header,
+:root[data-theme="light"] .cosmic-contact-fields-footer {
+    background: #ffffff !important;
+    border-color: #d8e7df !important;
+}
+:root[data-theme="light"] .cosmic-contact-fields-title,
+:root[data-theme="light"] .cosmic-contact-field-number {
+    color: #0f172a !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-contact-fields-subtitle,
+:root[data-theme="light"] .cosmic-contact-field-label,
+:root[data-theme="light"] .cosmic-contact-field-required {
+    color: #526274 !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-contact-field-card {
+    background: #f8fbf9 !important;
+    border-color: #d6e5dd !important;
+}
+:root[data-theme="light"] .cosmic-contact-fields-modal input:not([type="checkbox"]):not([type="radio"]),
+:root[data-theme="light"] .cosmic-contact-fields-modal select,
+:root[data-theme="light"] .cosmic-contact-fields-modal textarea {
+    background: #ffffff !important;
+    border-color: #bdd0c6 !important;
+    color: #0f172a !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-contact-fields-modal input::placeholder,
+:root[data-theme="light"] .cosmic-contact-fields-modal textarea::placeholder {
+    color: #8798aa !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-contact-fields-modal input:focus,
+:root[data-theme="light"] .cosmic-contact-fields-modal select:focus,
+:root[data-theme="light"] .cosmic-contact-fields-modal textarea:focus {
+    border-color: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16,185,129,.14) !important;
+}
+:root[data-theme="light"] .cosmic-contact-fields-modal input[type="checkbox"],
+:root[data-theme="light"] .cosmic-contact-fields-modal input[type="radio"] {
+    background-color: #fff !important;
+    border-color: #9fb5aa !important;
+}
+:root[data-theme="light"] .cosmic-contact-fields-close,
+:root[data-theme="light"] .cosmic-contact-field-move,
+:root[data-theme="light"] .cosmic-contact-fields-cancel {
+    color: #475569 !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-contact-fields-close:hover,
+:root[data-theme="light"] .cosmic-contact-field-move:not(:disabled):hover,
+:root[data-theme="light"] .cosmic-contact-fields-cancel:hover {
+    background: #edf6f1 !important;
+    color: #065f46 !important;
+}
+:root[data-theme="light"] .cosmic-contact-field-move:disabled {
+    color: #a7b3be !important;
+    opacity: .55 !important;
+}
+:root[data-theme="light"] .cosmic-contact-field-remove {
+    color: #be123c !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-contact-field-remove:hover {
+    background: #fff1f2 !important;
+    color: #9f1239 !important;
+}
+:root[data-theme="light"] .cosmic-contact-add-field {
+    background: #ffffff !important;
+    border-color: #10b981 !important;
+    color: #047857 !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-contact-add-field:hover {
+    background: #ecfdf5 !important;
+    color: #065f46 !important;
+}
+:root[data-theme="light"] .cosmic-contact-fields-save {
+    background: #16845f !important;
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-contact-fields-save:hover {
+    background: #116b4d !important;
+    color: #ffffff !important;
+}
+
+/* Preserve the known-good dark editor rather than letting light-mode
+   utility remapping leak into it after appearance toggles. */
+:root[data-theme="dark"] .cosmic-contact-fields-modal {
+    background: #17181c !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+:root[data-theme="dark"] .cosmic-contact-fields-header,
+:root[data-theme="dark"] .cosmic-contact-fields-footer {
+    background: #17181c !important;
+    border-color: #334155 !important;
+}
+:root[data-theme="dark"] .cosmic-contact-field-card {
+    background: rgba(15, 23, 42, .40) !important;
+    border-color: #334155 !important;
+}
+
+/* Builder Publish menu: explicitly scope both appearance modes so
+   generic text/background remaps cannot wash out menu items. */
+.cosmic-publish-menu {
+    isolation: isolate;
+}
+:root[data-theme="light"] .cosmic-publish-menu {
+    background: #ffffff !important;
+    border-color: #d5e4dc !important;
+    color: #0f172a !important;
+    box-shadow: 0 18px 48px rgba(15,23,42,.16) !important;
+}
+:root[data-theme="light"] .cosmic-publish-menu-item {
+    color: #334155 !important;
+}
+:root[data-theme="light"] .cosmic-publish-menu-item:not(:disabled):not(.cosmic-publish-menu-disabled):hover {
+    background: #eef7f2 !important;
+    color: #065f46 !important;
+}
+:root[data-theme="light"] .cosmic-publish-template-item:not(:disabled):hover {
+    background: #ecfdf5 !important;
+    color: #047857 !important;
+}
+:root[data-theme="light"] .cosmic-publish-menu-item:disabled,
+:root[data-theme="light"] .cosmic-publish-menu-disabled {
+    color: #94a3b8 !important;
+}
+:root[data-theme="dark"] .cosmic-publish-menu {
+    background: #17181c !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+:root[data-theme="dark"] .cosmic-publish-menu-item {
+    color: #cbd5e1 !important;
+}
+:root[data-theme="dark"] .cosmic-publish-menu-item:not(:disabled):not(.cosmic-publish-menu-disabled):hover {
+    background: rgba(255,255,255,.07) !important;
+    color: #ffffff !important;
+}
+
+/* Light-mode safety net for app chrome only. Never penetrate actual
+   website previews/Sparks canvases. This catches legacy opacity rules
+   that previously left readable colors visually washed out. */
+:root[data-theme="light"] .cosmic-builder-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *) button:not(:disabled),
+:root[data-theme="light"] .cosmic-ui-shell :not(.cosmic-preview-isolation, .cosmic-preview-isolation *) button:not(:disabled) {
+    opacity: 1;
+}
+
+/* Patch 9: Services Hover Cards - stable hover contrast in Builder/Preview. */
+[data-cosmic-services-hover-card="true"] {
+    transition-property: transform, box-shadow, background-color, color, border-color;
+}
+[data-cosmic-services-hover-card="true"]:hover,
+[data-cosmic-services-hover-card="true"]:focus-within {
+    background-color: var(--cosmic-hover-card-bg) !important;
+    color: var(--cosmic-hover-card-fg) !important;
+}
+[data-cosmic-services-hover-card="true"]:hover *,
+[data-cosmic-services-hover-card="true"]:focus-within * {
+    color: inherit !important;
+}
+[data-cosmic-services-hover-card="true"]:hover [class*="opacity-"],
+[data-cosmic-services-hover-card="true"]:focus-within [class*="opacity-"] {
+    opacity: .86;
+}
+[data-cosmic-services-hover-card="true"]:hover [class*="border-"],
+[data-cosmic-services-hover-card="true"]:focus-within [class*="border-"] {
+    border-color: color-mix(in srgb, currentColor 28%, transparent) !important;
+}
