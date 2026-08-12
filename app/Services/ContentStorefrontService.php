@@ -43,7 +43,14 @@ class ContentStorefrontService
             // single-entry routes remain dynamic. Without an installed page, keep the
             // built-in archive renderer as the SEO-safe fallback.
             $installedPage = $website->pages()->where('slug', $type->slug)->where('page_type', 'standard')->exists();
-            if ($installedPage) return null;
+            if ($installedPage) {
+                // A freshly installed Content Type page may not be part of the latest
+                // static preview deployment yet. Do not fall through to the generic
+                // 404 in that window: serve the dynamic archive until the Builder page
+                // exists in the deployed preview, then let the normal static page win.
+                $deployedPage = $this->previews->resolveFile($previewSlug, $type->slug);
+                if ($deployedPage !== null) return null;
+            }
 
             return $this->archive($website, $type, $previewSlug, $request);
         }

@@ -117,8 +117,15 @@ class PreviewDeploymentService
 
     public function url(Website $website, string $path = ''): ?string
     {
+        // Dynamic storefront URLs must be usable immediately, even before the first
+        // static preview deployment. A newly created website/content entry can be
+        // saved before `preview_slug` has ever been assigned; returning null here
+        // made the workspace render href="", which simply reopened the admin page
+        // in a new tab (and could 404 until a later refresh initialized the slug).
+        // Assign the same collision-safe preview slug on demand so Content/Commerce
+        // frontend routes are canonical from the very first save.
         if (! filled($website->preview_slug)) {
-            return null;
+            $this->ensureSlug($website);
         }
 
         $path = trim($path, '/');

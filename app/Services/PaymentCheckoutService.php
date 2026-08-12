@@ -142,7 +142,7 @@ class PaymentCheckoutService
                 ],
             ]],
             'application_context' => [
-                'brand_name' => config('app.name', 'Cosmic CMS'),
+                'brand_name' => 'Cosmic CMS',
                 'landing_page' => 'NO_PREFERENCE',
                 'user_action' => 'PAY_NOW',
                 'return_url' => route('payments.success').'?provider=paypal&order='.$order->reference,
@@ -198,7 +198,7 @@ class PaymentCheckoutService
                 'email_address' => $user->email,
             ],
             'application_context' => [
-                'brand_name' => config('app.name', 'Cosmic CMS'),
+                'brand_name' => 'Cosmic CMS',
                 'locale' => 'en-US',
                 'shipping_preference' => 'NO_SHIPPING',
                 'user_action' => 'SUBSCRIBE_NOW',

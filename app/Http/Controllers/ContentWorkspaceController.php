@@ -153,6 +153,26 @@ class ContentWorkspaceController extends Controller
         ]);
     }
 
+    public function installTypeDemo(Request $request, Website $website, ContentType $contentType)
+    {
+        $this->authorize('update', $website);
+        $this->guardType($website, $contentType);
+        $validated = $request->validate([
+            'add_navigation' => ['nullable', 'boolean'],
+        ]);
+
+        $result = app(\App\Services\ContentInstallerService::class)->installTypeDemo(
+            $website,
+            $contentType,
+            (bool) ($validated['add_navigation'] ?? true),
+        );
+
+        return response()->json([
+            'result' => $result,
+            'workspace' => self::payload($website->fresh()),
+        ]);
+    }
+
     public function storeType(Request $request, Website $website)
     {
         $this->authorize('update', $website);
@@ -293,7 +313,7 @@ PROMPT;
                 'description' => Str::limit(trim((string) ($generated['description'] ?? $validated['description'] ?? '')), 500, ''),
                 'schema' => $schema,
                 'credits_spent' => $cost,
-                'first_design_free' => $isFirstDesign,
+                'first_design_free' => false,
                 'credit_balance' => $credits->balance($request->user()),
             ]);
         } catch (\Throwable $exception) {
@@ -700,7 +720,7 @@ PROMPT;
             return response()->json([
                 'entry' => $draft,
                 'credits_spent' => $cost,
-                'first_design_free' => $isFirstDesign,
+                'first_design_free' => false,
                 'credit_balance' => $credits->balance($request->user()),
             ]);
         } catch (\Throwable $exception) {
@@ -782,7 +802,34 @@ PROMPT;
         $images = app(\App\Services\TrialRemoteImageService::class)->resolveForQueries($visualIntent, $slots, 'RegisteredRemoteImages');
         $byPath = collect($images)->keyBy('path');
 
-        if ($byPath->has('featured_image_url')) $generated['featured_image_url'] = $byPath->get('featured_image_url')['url'] ?? '';
+        if ($byPath->has('featured_image_url')) {
+            $generated['featured_image_url'] = $byPath->get('featured_image_url')['url'] ?? '';
+        }
+
+        // The featured image is a core part of AI entry generation. If a very narrow
+        // slot query returns no Unsplash result, make one broader title/category lookup
+        // before leaving the field blank. This keeps Blog/Events/Projects/custom types
+        // useful while still using the same registered Unsplash provider pipeline.
+        if (blank($generated['featured_image_url'] ?? null)) {
+            $fallbackIntent = [
+                'business_type' => trim(implode(' ', array_filter([
+                    $website->industry,
+                    $contentType->name,
+                    $generated['category'] ?? null,
+                ]))),
+                'visual_style' => 'premium editorial photography',
+                'image_keywords' => array_values(array_filter([
+                    (string) ($generated['title'] ?? ''),
+                    (string) ($generated['category'] ?? ''),
+                    (string) ($generated['featured_image_query'] ?? ''),
+                ])),
+            ];
+            $fallback = app(\App\Services\TrialRemoteImageService::class)->resolveForRegistered($fallbackIntent, 1);
+            if (!empty($fallback[0]['url'])) {
+                $generated['featured_image_url'] = $fallback[0]['url'];
+            }
+        }
+
         $gallery = [];
         foreach ($byPath as $path => $image) {
             if (str_starts_with((string)$path, 'gallery.')) {
@@ -874,7 +921,7 @@ PROMPT;
             'slug' => $slug,
             'published_at' => $validated['status'] === 'published' ? now() : null,
         ]);
-        return response()->json(['entry' => self::entryPayload($entry)], 201);
+        return response()->json(['entry' => self::entryPayloadWithUrl($website, $contentType, $entry)], 201);
     }
 
     public function updateEntry(Request $request, Website $website, ContentType $contentType, ContentEntry $contentEntry)
@@ -886,7 +933,7 @@ PROMPT;
         $validated['slug'] = $this->uniqueEntrySlug($website, $contentType, $base, $contentEntry->id);
         $validated['published_at'] = $validated['status'] === 'published' ? ($contentEntry->published_at ?: now()) : null;
         $contentEntry->update($validated);
-        return response()->json(['entry' => self::entryPayload($contentEntry->fresh())]);
+        return response()->json(['entry' => self::entryPayloadWithUrl($website, $contentType, $contentEntry->fresh())]);
     }
 
     public function duplicateEntry(Website $website, ContentType $contentType, ContentEntry $contentEntry)
@@ -899,7 +946,7 @@ PROMPT;
         $copy->status = 'draft';
         $copy->published_at = null;
         $copy->save();
-        return response()->json(['entry' => self::entryPayload($copy)], 201);
+        return response()->json(['entry' => self::entryPayloadWithUrl($website, $contentType, $copy)], 201);
     }
 
     public function destroyEntry(Website $website, ContentType $contentType, ContentEntry $contentEntry)
@@ -987,6 +1034,15 @@ PROMPT;
             $normalized[$key] = $value === null ? '' : (string)$value;
         }
         return $normalized;
+    }
+
+    private static function entryPayloadWithUrl(Website $website, ContentType $type, ContentEntry $entry): array
+    {
+        $payload = self::entryPayload($entry);
+        $payload['url'] = (string) app(\App\Services\PreviewDeploymentService::class)
+            ->url($website, trim((string) $type->slug, '/').'/'.trim((string) $entry->slug, '/'));
+
+        return $payload;
     }
 
     private static function entryPayload(ContentEntry $entry): array

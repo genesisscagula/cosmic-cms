@@ -4592,3 +4592,71 @@ body .cosmic-start-quick-idea.rounded-full.border {
 [data-cosmic-services-hover-card="true"]:focus-within [class*="border-"] {
     border-color: color-mix(in srgb, currentColor 28%, transparent) !important;
 }
+
+/* Media Manager hotfix: keep the Cosmic AI card readable and stable in light mode. */
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-card {
+    border-color: #d9ccff !important;
+    background: #f7f3ff !important;
+    color: #172033 !important;
+}
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-title {
+    color: #6d4bd1 !important;
+    -webkit-text-fill-color: #6d4bd1 !important;
+}
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-description,
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-meta {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+}
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-cost {
+    border: 1px solid #f4d892 !important;
+    background: #fff8e7 !important;
+    color: #9a6500 !important;
+    -webkit-text-fill-color: #9a6500 !important;
+}
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-prompt {
+    border-color: #d8dee9 !important;
+    background: #ffffff !important;
+    color: #172033 !important;
+    -webkit-text-fill-color: #172033 !important;
+    caret-color: #172033 !important;
+}
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-prompt::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-prompt:focus {
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, .12) !important;
+}
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-generate,
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-generate:hover {
+    background: #7c5ce4 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-media-ai-generate:disabled {
+    background: #c7b8f4 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+@media (max-width: 900px) {
+    .cosmic-media-manager-modal {
+        flex-direction: column !important;
+        height: min(94vh, 1000px) !important;
+    }
+    .cosmic-media-manager-preview {
+        min-height: 38vh !important;
+        padding: 1.25rem !important;
+        border-right: 0 !important;
+        border-bottom: 1px solid #cfe2d8 !important;
+    }
+    .cosmic-media-manager-panel {
+        width: 100% !important;
+        max-width: none !important;
+        min-height: 0 !important;
+        border-left: 0 !important;
+    }
+}

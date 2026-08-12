@@ -154,19 +154,64 @@ const imageAccept = 'image/jpeg,image/png,image/webp,image/avif,image/gif,image/
 
 async function uploadContentImage(websiteId, file, kind = 'custom') {
     if (!file) return '';
+
+    const allowed = ['image/jpeg','image/png','image/gif','image/webp','image/avif','image/heic','image/heif'];
     if (file.size > 8 * 1024 * 1024) throw new Error('Image must be 8 MB or smaller.');
-    const form = new FormData();
-    form.append('image', file, file.name);
-    form.append('kind', kind);
-    const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-    const response = await fetch(`/websites/${websiteId}/content/media`, {
-        method: 'POST', credentials: 'same-origin',
-        headers: { 'X-CSRF-TOKEN': token, 'X-Requested-With': 'XMLHttpRequest', Accept: 'application/json' },
-        body: form,
-    });
+    if (file.type && !allowed.includes(file.type.toLowerCase())) throw new Error('Use JPG, PNG, WebP, GIF, AVIF, HEIC or HEIF images.');
+
+    const getFreshCsrfToken = async () => {
+        const response = await fetch('/session/csrf-token', {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+        });
+        const data = await response.json().catch(() => ({}));
+        const token = data?.token || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        if (!response.ok || !token) throw new Error('Your secure upload session could not be refreshed. Reload the page and try again.');
+        document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', token);
+        return token;
+    };
+
+    const sendUpload = async (token) => {
+        const form = new FormData();
+        form.append('image', file, file.name);
+        form.append('kind', kind);
+        return fetch(`/websites/${websiteId}/content/media`, {
+            method: 'POST',
+            credentials: 'same-origin',
+            headers: {
+                'X-CSRF-TOKEN': token,
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            body: form,
+        });
+    };
+
+    // Inertia can keep this modal alive across a Laravel session regeneration, leaving
+    // the document meta token stale. Refresh the token before multipart uploads and
+    // retry once if the session rotates during the request.
+    let token = await getFreshCsrfToken();
+    let response = await sendUpload(token);
+    if (response.status === 419) {
+        token = await getFreshCsrfToken();
+        response = await sendUpload(token);
+    }
+
     const data = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(Object.values(data?.errors || {}).flat?.()?.[0] || data?.message || 'Image upload failed.');
-    return data?.url || '';
+    if (!response.ok) {
+        const validationMessage = Object.values(data?.errors || {}).flat?.()?.[0];
+        const message = response.status === 419
+            ? 'Your secure session changed while uploading. Reload the page and try again.'
+            : (validationMessage || data?.message || 'Image upload failed.');
+        throw new Error(message);
+    }
+    if (!data?.url) throw new Error('Upload completed without an image URL. Please try again.');
+    return data.url;
 }
 
 function RichTextField({ value, onChange, placeholder }) {
@@ -360,6 +405,7 @@ export default function PostsUpdatesWorkspace({ website, initialWorkspace = { ty
     const [showInstallModal, setShowInstallModal] = useState(false);
     const [installing, setInstalling] = useState(false);
     const [installingPageTypeId, setInstallingPageTypeId] = useState(null);
+    const [installingDemoTypeId, setInstallingDemoTypeId] = useState(null);
     const [editingType, setEditingType] = useState(null);
     const [typeDraft, setTypeDraft] = useState({ name: '', singular_name: '', slug: '', description: '', icon: '◇', schema: [] });
     const [templateMode, setTemplateMode] = useState(null);
@@ -492,7 +538,10 @@ export default function PostsUpdatesWorkspace({ website, initialWorkspace = { ty
             const response = editingEntry
                 ? await axios.put(route('content-entries.update', [website.id, activeType.id, editingEntry.id]), payload)
                 : await axios.post(route('content-entries.store', [website.id, activeType.id]), payload);
-            replaceEntry(activeType.id, response.data.entry);
+            const savedEntry = response.data.entry;
+            replaceEntry(activeType.id, savedEntry);
+            // The API now returns the canonical preview URL with the saved entry.
+            // Keep it in local state immediately so View works without a workspace refresh.
             setEditingEntry(null);
             setEntryDraft(null);
             setSlugTouched(false);
@@ -551,6 +600,32 @@ export default function PostsUpdatesWorkspace({ website, initialWorkspace = { ty
             showCosmicNotification({ title: `Unable to install ${activeType.name} page`, message: error.response?.data?.message || Object.values(error.response?.data?.errors || {}).flat()[0] || 'Check the page slug and try again.', tone: 'error' });
         } finally {
             setInstallingPageTypeId(null);
+        }
+    };
+
+    const installActiveTypeDemo = async () => {
+        if (!activeType || installingDemoTypeId || !['blog', 'events', 'projects'].includes(activeType.slug)) return;
+        setInstallingDemoTypeId(activeType.id);
+        try {
+            const response = await axios.post(route('content-types.demo.install', [website.id, activeType.id]), { add_navigation: true });
+            const nextTypes = response.data?.workspace?.types || types;
+            setTypes(nextTypes);
+            const result = response.data?.result || {};
+            showCosmicNotification({
+                title: result.created > 0 ? `${activeType.name} demo content installed` : `${activeType.name} demo content already installed`,
+                message: result.created > 0
+                    ? `${result.created} sample ${result.created === 1 ? activeType.singular_name.toLowerCase() : activeType.name.toLowerCase()} added. The archive page and navigation are ready too.`
+                    : `No duplicates were added. Existing demo entries and the ${activeType.name} page were kept intact.`,
+                tone: 'success',
+            });
+        } catch (error) {
+            showCosmicNotification({
+                title: `Unable to install ${activeType.name} demo content`,
+                message: error.response?.data?.message || Object.values(error.response?.data?.errors || {}).flat()[0] || 'Please try again.',
+                tone: 'error',
+            });
+        } finally {
+            setInstallingDemoTypeId(null);
         }
     };
 
@@ -816,7 +891,7 @@ export default function PostsUpdatesWorkspace({ website, initialWorkspace = { ty
                 {activeType ? <>
                     <div className="flex flex-wrap items-start justify-between gap-3 border-b border-white/10 pb-4">
                         <div><div className="flex items-center gap-2"><h3 className="text-base font-bold text-white">{activeType.name}</h3><span className="rounded-full bg-white/5 px-2 py-0.5 text-[10px] uppercase tracking-wider text-slate-500">/{activeType.slug}</span></div><p className="mt-1 text-sm text-slate-400">{activeType.description}</p></div>
-                        <div className="flex flex-wrap gap-2">{activeType.installed_page ? <><a href={activeType.installed_page.preview_url || activeType.archive_url || '#'} target="_blank" rel="noreferrer" className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5">View page ↗</a><a href={activeType.installed_page.builder_url || '#'} className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-100 hover:bg-emerald-400/15">Edit page</a></> : <button type="button" disabled={installingPageTypeId === activeType.id} onClick={installActiveTypePage} className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-100 hover:bg-emerald-400/15 disabled:opacity-50">{installingPageTypeId === activeType.id ? 'Installing page…' : `Install ${activeType.name} Page`}</button>}{activeType.entries?.[0]?.url ? <a href={activeType.entries[0].url} target="_blank" rel="noreferrer" className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5">View sample single ↗</a> : null}<button type="button" onClick={openEditType} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5">Edit type</button>{!activeType.is_system ? <button type="button" onClick={deleteType} className="rounded-xl border border-rose-400/20 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-400/10">Delete type</button> : null}<button type="button" onClick={openNewEntry} className="rounded-xl border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-bold text-violet-100 hover:bg-violet-400/15">+ Add {activeType.singular_name}</button></div>
+                        <div className="flex flex-wrap gap-2">{activeType.installed_page ? <><a href={activeType.installed_page.preview_url || activeType.archive_url || '#'} target="_blank" rel="noreferrer" className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5">View page ↗</a><a href={activeType.installed_page.builder_url || '#'} className="rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-100 hover:bg-emerald-400/15">Edit page</a></> : <button type="button" disabled={installingPageTypeId === activeType.id} onClick={installActiveTypePage} className="rounded-xl border border-emerald-400/25 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-100 hover:bg-emerald-400/15 disabled:opacity-50">{installingPageTypeId === activeType.id ? 'Installing page…' : `Install ${activeType.name} Page`}</button>}{activeType.entries?.[0]?.url ? <a href={activeType.entries[0].url} target="_blank" rel="noreferrer" className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5">View sample single ↗</a> : null}{['blog', 'events', 'projects'].includes(activeType.slug) ? <button type="button" disabled={installingDemoTypeId === activeType.id} onClick={installActiveTypeDemo} className="rounded-xl border border-amber-400/25 bg-amber-400/10 px-3 py-2 text-xs font-bold text-amber-100 hover:bg-amber-400/15 disabled:opacity-50">{installingDemoTypeId === activeType.id ? 'Installing demo…' : 'Install demo content'}</button> : null}<button type="button" onClick={openEditType} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 hover:bg-white/5">Edit type</button>{!activeType.is_system ? <button type="button" onClick={deleteType} className="rounded-xl border border-rose-400/20 px-3 py-2 text-xs font-semibold text-rose-300 hover:bg-rose-400/10">Delete type</button> : null}<button type="button" onClick={openNewEntry} className="rounded-xl border border-violet-400/30 bg-violet-400/10 px-3 py-2 text-xs font-bold text-violet-100 hover:bg-violet-400/15">+ Add {activeType.singular_name}</button></div>
                     </div>
                     <div className="mt-4 grid gap-3 md:grid-cols-2">
                         {[['single', 'Single template', activeType.single_template, 'Controls the individual entry layout.'], ['archive', 'Archive template', activeType.archive_template, 'Controls the content listing/archive layout.']].map(([mode, label, template, help]) => <button key={mode} type="button" onClick={() => openTemplateManager(mode)} className="group rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-left transition hover:border-violet-400/30 hover:bg-violet-500/[0.05]">
@@ -832,7 +907,7 @@ export default function PostsUpdatesWorkspace({ website, initialWorkspace = { ty
                                 <div className="h-14 w-16 shrink-0 overflow-hidden rounded-lg border border-white/10 bg-white/5">{entry.featured_image_url ? <img src={entry.featured_image_url} alt="" className="h-full w-full object-cover" /> : <div className="flex h-full items-center justify-center text-slate-600">◇</div>}</div>
                                 <span className="min-w-0"><span className="block truncate text-sm font-bold text-white">{entry.title}</span><span className="mt-1 block text-xs text-slate-500">/{activeType.slug}/{entry.slug} · {entry.status}</span></span>
                             </button>
-                            <div className="flex gap-2"><a href={entry.url} target="_blank" rel="noreferrer" className="rounded-lg border border-violet-400/20 px-3 py-1.5 text-xs font-semibold text-violet-200 hover:bg-violet-400/10">View ↗</a><button type="button" onClick={() => openEntry(entry)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/5">Edit</button><button type="button" onClick={() => duplicateEntry(entry)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/5">Duplicate</button><button type="button" onClick={() => deleteEntry(entry)} className="rounded-lg border border-rose-400/20 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-400/10">Delete</button></div>
+                            <div className="flex gap-2">{entry.url ? <a href={entry.url} target="_blank" rel="noreferrer" className="rounded-lg border border-violet-400/20 px-3 py-1.5 text-xs font-semibold text-violet-200 hover:bg-violet-400/10">View ↗</a> : <button type="button" disabled className="cursor-not-allowed rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-600">View ↗</button>}<button type="button" onClick={() => openEntry(entry)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/5">Edit</button><button type="button" onClick={() => duplicateEntry(entry)} className="rounded-lg border border-white/10 px-3 py-1.5 text-xs font-semibold text-slate-300 hover:bg-white/5">Duplicate</button><button type="button" onClick={() => deleteEntry(entry)} className="rounded-lg border border-rose-400/20 px-3 py-1.5 text-xs font-semibold text-rose-300 hover:bg-rose-400/10">Delete</button></div>
                         </div>)}
                         {!activeType.entries?.length ? <div className="rounded-xl border border-dashed border-white/10 p-8 text-center"><p className="text-sm font-semibold text-slate-300">No {activeType.name.toLowerCase()} yet</p><p className="mt-1 text-xs text-slate-500">Create your first entry to populate future dynamic Sparks.</p></div> : null}
                     </div>

@@ -51,6 +51,30 @@ class ContentInstallerService
         });
     }
 
+
+    /** Install/repair one default content page and seed only that type's demo entries. */
+    public function installTypeDemo(Website $website, ContentType $type, bool $addNavigation = true): array
+    {
+        return DB::transaction(function () use ($website, $type, $addNavigation): array {
+            abort_unless((int) $type->website_id === (int) $website->id, 404);
+            abort_unless(in_array((string) $type->slug, ['blog', 'events', 'projects'], true), 422, 'Demo content is available for Blog, Events, and Projects.');
+
+            $definition = $this->definitionForType($type);
+            $this->installPage($website, $type, $definition);
+            $created = $this->installDemoEntriesForType($website, $type);
+            $navigation = $addNavigation ? $this->installTypeNavigation($website, $type) : false;
+            $page = $website->pages()->where('slug', $type->slug)->where('page_type', 'standard')->firstOrFail();
+
+            return [
+                'page_id' => $page->id,
+                'slug' => $page->slug,
+                'created' => $created,
+                'total' => $type->entries()->count(),
+                'navigation' => $navigation,
+            ];
+        });
+    }
+
     private function definitionForType(ContentType $type): array
     {
         foreach ($this->pageDefinitions() as $definition) {
@@ -180,41 +204,57 @@ class ContentInstallerService
         return true;
     }
 
-    private function installDemoEntries(Website $website, $types): int
+    private function demoRows(): array
     {
-        $rows = [
+        return [
             'blog' => [
                 ['welcome-to-the-journal','Welcome to the journal','Company news','A short introduction to your new journal and what readers can expect.','/storage/cms-images/background/background-1.avif',['author'=>'Editorial Team','reading_time'=>'3 min read'],true],
                 ['designing-better-digital-experiences','Designing better digital experiences','Guides','A practical look at creating clearer, faster and more useful digital experiences.','/storage/cms-images/background/background-2.avif',['author'=>'Studio Team','reading_time'=>'6 min read'],false],
                 ['behind-the-scenes','Behind the scenes','Updates','A glimpse into the process, decisions and details behind the latest work.','/storage/cms-images/background/background-3.avif',['author'=>'Creative Team','reading_time'=>'4 min read'],false],
+                ['five-ways-to-improve-your-online-presence','5 ways to improve your online presence','Guides','Five practical improvements that help a business website feel clearer, more credible and easier to use.','/storage/cms-images/background/background-1.avif',['author'=>'Cosmic CMS Editorial Team','reading_time'=>'5 min read'],false],
             ],
             'events' => [
                 ['community-open-day','Community Open Day','Community','Meet the team, explore what’s new, and connect with the community.','/storage/cms-images/background/background-4.avif',['start_date'=>now()->addDays(14)->toDateString(),'end_date'=>now()->addDays(14)->toDateString(),'time'=>'10:00 AM','venue'=>'Main Studio','address'=>'City Centre','registration_url'=>'#'],true],
                 ['product-workshop','Product Workshop','Workshop','A hands-on session focused on practical ideas, workflows and better outcomes.','/storage/cms-images/background/background-5.avif',['start_date'=>now()->addDays(28)->toDateString(),'end_date'=>now()->addDays(28)->toDateString(),'time'=>'2:00 PM','venue'=>'Workshop Room','address'=>'City Centre','registration_url'=>'#'],false],
+                ['creative-networking-night','Creative Networking Night','Networking','An evening for local founders, makers and creative teams to meet, share ideas and make useful connections.','/storage/cms-images/background/background-4.avif',['start_date'=>now()->addDays(42)->toDateString(),'end_date'=>now()->addDays(42)->toDateString(),'time'=>'6:30 PM','venue'=>'Studio Lounge','address'=>'City Centre','registration_url'=>'#'],false],
             ],
             'projects' => [
                 ['northstar-launch','Northstar Launch','Digital','A focused launch project combining strategy, design and a streamlined digital experience.','/storage/cms-images/background/background-6.avif',['client'=>'Northstar','services'=>'Strategy, Design, Development','completion_date'=>now()->subMonth()->toDateString(),'project_url'=>'#'],true],
                 ['studio-refresh','Studio Refresh','Brand','A brand and website refresh designed to create a clearer, more confident customer experience.','/storage/cms-images/background/background-7.avif',['client'=>'Studio Co.','services'=>'Brand, Web Design','completion_date'=>now()->subMonths(2)->toDateString(),'project_url'=>'#'],false],
+                ['harbour-campaign','Harbour Campaign','Campaign','A launch campaign bringing together a flexible visual system, landing experience and conversion-focused content.','/storage/cms-images/background/background-6.avif',['client'=>'Harbour Group','services'=>'Campaign, Content, Web Design','completion_date'=>now()->subMonths(3)->toDateString(),'project_url'=>'#'],false],
             ],
         ];
+    }
 
+    private function installDemoEntries(Website $website, $types): int
+    {
         $created = 0;
-        foreach ($rows as $typeSlug => $entries) {
+        foreach ($this->demoRows() as $typeSlug => $entries) {
             $type = $types->get($typeSlug);
             if (! $type) continue;
-            foreach ($entries as [$slug,$title,$category,$excerpt,$image,$custom,$featured]) {
-                $entry = ContentEntry::firstOrCreate([
-                    'website_id'=>$website->id,'content_type_id'=>$type->id,'slug'=>$slug,
-                ], [
-                    'title'=>$title,'excerpt'=>$excerpt,'content'=>$excerpt."\n\nReplace this demo copy with your own content in Posts / Updates.",
-                    'status'=>'published','category'=>$category,'tags'=>[$category],
-                    'featured_image_url'=>$image,'gallery'=>[],'custom_fields'=>$custom,
-                    'seo_title'=>$title,'seo_description'=>$excerpt,'og_image_url'=>$image,
-                    'is_featured'=>$featured,'published_at'=>now(),
-                ]);
-                if ($entry->wasRecentlyCreated) $created++;
-            }
+            $created += $this->installDemoEntriesForType($website, $type, $entries);
         }
+        return $created;
+    }
+
+    private function installDemoEntriesForType(Website $website, ContentType $type, ?array $entries = null): int
+    {
+        $entries ??= $this->demoRows()[(string) $type->slug] ?? [];
+        $created = 0;
+
+        foreach ($entries as [$slug,$title,$category,$excerpt,$image,$custom,$featured]) {
+            $entry = ContentEntry::firstOrCreate([
+                'website_id'=>$website->id,'content_type_id'=>$type->id,'slug'=>$slug,
+            ], [
+                'title'=>$title,'excerpt'=>$excerpt,'content'=>'<p>'.$excerpt.'</p><p>This is starter demo content. Edit or replace it from Posts / Updates whenever you are ready.</p>',
+                'status'=>'published','category'=>$category,'tags'=>[$category],
+                'featured_image_url'=>$image,'gallery'=>[],'custom_fields'=>$custom,
+                'seo_title'=>$title,'seo_description'=>$excerpt,'og_image_url'=>$image,
+                'is_featured'=>$featured,'published_at'=>now(),
+            ]);
+            if ($entry->wasRecentlyCreated) $created++;
+        }
+
         return $created;
     }
 

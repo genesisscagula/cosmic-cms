@@ -83,6 +83,10 @@ Route::get('/storage/websites/{website}/commerce/{filename}', [\App\Http\Control
 Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
 Route::get('/cookies', [LegalController::class, 'cookies'])->name('legal.cookies');
+// Backward-compatible redirects for older public footer links/bookmarks.
+Route::redirect('/legal/terms', '/terms', 301);
+Route::redirect('/legal/privacy', '/privacy', 301);
+Route::redirect('/legal/cookies', '/cookies', 301);
 Route::post('/legal/consent', [LegalController::class, 'consent'])
     ->middleware(['throttle:20,1', \App\Http\Middleware\RejectOversizedRequest::class . ':32'])
     ->name('legal.consent');
@@ -262,8 +266,6 @@ Route::get('/', function () {
     return Inertia::render('Welcome', [
         'canLogin' => Route::has('login'),
         'canRegister' => Route::has('register'),
-        'laravelVersion' => Application::VERSION,
-        'phpVersion' => PHP_VERSION,
     ]);
 });
 
@@ -576,6 +578,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
 
     Route::post('/websites/{website}/content/install', [ContentWorkspaceController::class, 'install'])->name('content.install');
     Route::post('/websites/{website}/content-types/{contentType}/page/install', [ContentWorkspaceController::class, 'installTypePage'])->name('content-types.page.install');
+    Route::post('/websites/{website}/content-types/{contentType}/demo/install', [ContentWorkspaceController::class, 'installTypeDemo'])->name('content-types.demo.install');
     Route::post('/websites/{website}/content/media', [ContentWorkspaceController::class, 'uploadMedia'])->middleware('throttle:cosmic-upload')->name('content.media.upload');
     Route::post('/websites/{website}/content-types', [ContentWorkspaceController::class, 'storeType'])->name('content-types.store');
     Route::put('/websites/{website}/content-types/{contentType}', [ContentWorkspaceController::class, 'updateType'])->name('content-types.update');

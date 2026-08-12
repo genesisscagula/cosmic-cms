@@ -386,9 +386,9 @@ export default function Welcome() {
                             </div>
                         </div>
                         <div className="flex flex-wrap gap-x-6 gap-y-3 text-sm font-semibold text-slate-500">
-                            <Link href="/legal/terms" className="hover:text-slate-950">Terms</Link>
-                            <Link href="/legal/privacy" className="hover:text-slate-950">Privacy</Link>
-                            <Link href="/legal/cookies" className="hover:text-slate-950">Cookies</Link>
+                            <Link href="/terms" className="hover:text-slate-950">Terms</Link>
+                            <Link href="/privacy" className="hover:text-slate-950">Privacy</Link>
+                            <Link href="/cookies" className="hover:text-slate-950">Cookies</Link>
                             <span>© {new Date().getFullYear()} Cosmic CMS</span>
                         </div>
                     </div>
