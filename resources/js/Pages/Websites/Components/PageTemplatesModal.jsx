@@ -10,6 +10,10 @@ const clone = (value) => typeof structuredClone === 'function' ? structuredClone
 const previewThemeCycle = ['primary', 'white', 'surface', 'white', 'primary', 'surface'];
 
 function buildBlocks(template, previewMode = false) {
+    if (template?.saved && Array.isArray(template.blocks) && template.blocks.length) {
+        return clone(template.blocks).filter((block) => block?.type && BlockRegistry[block.type]);
+    }
+
     return (template.sections || []).map((type, index) => {
         const previewTheme = previewThemeCycle[index % previewThemeCycle.length];
 
@@ -75,6 +79,10 @@ export default function PageTemplatesModal({
     const [mode, setMode] = useState('generic');
     const [instruction, setInstruction] = useState('');
     const [confirmInstall, setConfirmInstall] = useState(false);
+    const [renameTarget, setRenameTarget] = useState(null);
+    const [renameName, setRenameName] = useState('');
+    const [renameDescription, setRenameDescription] = useState('');
+    const [deleteTarget, setDeleteTarget] = useState(null);
 
     useEffect(() => {
         if (!open) return;
@@ -95,7 +103,9 @@ export default function PageTemplatesModal({
     );
 
     const visible = useMemo(() => templates.filter((item) => {
-        if (tab === 'owned' && !item.owned) return false;
+        if (tab === 'marketplace' && item.saved) return false;
+        if (tab === 'purchased' && !item.purchased) return false;
+        if (tab === 'saved' && !item.saved) return false;
         if (tab === 'favorites' && !item.favorited) return false;
         if (tag !== 'All' && !(item.tags || []).includes(tag)) return false;
 
@@ -130,7 +140,7 @@ export default function PageTemplatesModal({
             }
 
             setBalance(data.credit_balance);
-            showCosmicNotification({ title: 'Template owned', message: data.message, tone: 'success' });
+            showCosmicNotification({ title: 'Template purchased', message: data.message, tone: 'success' });
         } catch (error) {
             showCosmicNotification({
                 title: 'Could not purchase Template',
@@ -170,6 +180,77 @@ export default function PageTemplatesModal({
         }
     };
 
+    const duplicateSaved = async (template) => {
+        if (!template?.saved_template_id || busy) return;
+        setBusy(`duplicate-${template.key}`);
+
+        try {
+            const { data } = await axios.post(`/page-templates/saved/${template.saved_template_id}/duplicate`);
+            setTemplates((items) => [data.template, ...items]);
+            setTab('saved');
+            showCosmicNotification({ title: 'Template duplicated', message: data.message, tone: 'success' });
+        } catch (error) {
+            showCosmicNotification({
+                title: 'Could not duplicate Template',
+                message: error.response?.data?.message || 'Please try again.',
+                tone: 'error',
+            });
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const openRename = (template) => {
+        setRenameTarget(template);
+        setRenameName(template.name || '');
+        setRenameDescription(template.description || '');
+    };
+
+    const renameSaved = async () => {
+        if (!renameTarget?.saved_template_id || !renameName.trim() || busy) return;
+        setBusy(`rename-${renameTarget.key}`);
+
+        try {
+            const { data } = await axios.patch(`/page-templates/saved/${renameTarget.saved_template_id}`, {
+                name: renameName.trim(),
+                description: renameDescription.trim(),
+            });
+            setTemplates((items) => items.map((item) => item.key === renameTarget.key ? data.template : item));
+            if (preview?.key === renameTarget.key) setPreview(data.template);
+            showCosmicNotification({ title: 'Template updated', message: data.message, tone: 'success' });
+            setRenameTarget(null);
+        } catch (error) {
+            showCosmicNotification({
+                title: 'Could not update Template',
+                message: error.response?.data?.message || 'Please try again.',
+                tone: 'error',
+            });
+        } finally {
+            setBusy(null);
+        }
+    };
+
+    const deleteSaved = async () => {
+        if (!deleteTarget?.saved_template_id || busy) return;
+        setBusy(`delete-${deleteTarget.key}`);
+
+        try {
+            const { data } = await axios.delete(`/page-templates/saved/${deleteTarget.saved_template_id}`);
+            setTemplates((items) => items.filter((item) => item.key !== deleteTarget.key));
+            if (preview?.key === deleteTarget.key) setPreview(null);
+            showCosmicNotification({ title: 'Template removed', message: data.message, tone: 'success' });
+            setDeleteTarget(null);
+        } catch (error) {
+            showCosmicNotification({
+                title: 'Could not remove Template',
+                message: error.response?.data?.message || 'Please try again.',
+                tone: 'error',
+            });
+        } finally {
+            setBusy(null);
+        }
+    };
+
     const install = async () => {
         if (!selected || busy) return;
 
@@ -181,7 +262,7 @@ export default function PageTemplatesModal({
             if (mode === 'personalized') {
                 if (trialMode) {
                     throw new Error(
-                        'AI personalization is available after sign up. Install Generic now and your owned Template will transfer to your account.',
+                        'AI personalization is available after sign up. Install Generic now and your purchased Template will transfer to your account.',
                     );
                 }
 
@@ -267,14 +348,14 @@ export default function PageTemplatesModal({
                     </div>
 
                     <div className="mt-5 flex flex-wrap items-center gap-2">
-                        {['marketplace', 'owned', 'favorites'].map((value) => (
+                        {(trialMode ? ['marketplace', 'purchased', 'favorites'] : ['marketplace', 'purchased', 'saved', 'favorites']).map((value) => (
                             <button
                                 key={value}
                                 type="button"
                                 onClick={() => setTab(value)}
                                 className={`cosmic-template-tab rounded-full px-4 py-2 text-xs font-bold capitalize ${tab === value ? 'is-active' : ''}`}
                             >
-                                {value}
+                                {value === 'saved' ? 'Saved Templates' : value}
                             </button>
                         ))}
 
@@ -332,15 +413,17 @@ export default function PageTemplatesModal({
                                             </div>
                                         </div>
 
-                                        <button
-                                            type="button"
-                                            disabled={busy === `fav-${template.key}`}
-                                            onClick={() => favorite(template)}
-                                            className={`cosmic-template-favorite h-8 w-8 rounded-lg border disabled:opacity-50 ${template.favorited ? 'is-active' : ''}`}
-                                            aria-label={template.favorited ? 'Remove from Favorites' : 'Add to Favorites'}
-                                        >
-                                            {template.favorited ? '♥' : '♡'}
-                                        </button>
+                                        {!template.saved && (
+                                            <button
+                                                type="button"
+                                                disabled={busy === `fav-${template.key}`}
+                                                onClick={() => favorite(template)}
+                                                className={`cosmic-template-favorite h-8 w-8 rounded-lg border disabled:opacity-50 ${template.favorited ? 'is-active' : ''}`}
+                                                aria-label={template.favorited ? 'Remove from Favorites' : 'Add to Favorites'}
+                                            >
+                                                {template.favorited ? '♥' : '♡'}
+                                            </button>
+                                        )}
                                     </div>
 
                                     <p className="cosmic-template-muted mt-3 min-h-10 text-xs leading-5">{template.description}</p>
@@ -352,7 +435,7 @@ export default function PageTemplatesModal({
 
                                         {template.owned ? (
                                             <button type="button" onClick={() => setSelected(template)} className="cosmic-template-primary flex-1 rounded-xl px-4 py-2.5 text-sm font-bold">
-                                                Install
+                                                {template.saved ? 'Use Template' : 'Install'}
                                             </button>
                                         ) : (
                                             <button
@@ -366,14 +449,22 @@ export default function PageTemplatesModal({
                                         )}
                                     </div>
 
-                                    {template.owned && <p className="cosmic-template-owned mt-2 text-right text-[10px] font-bold">✓ Owned</p>}
+                                    {template.saved && (
+                                        <div className="mt-2 grid grid-cols-3 gap-2">
+                                            <button type="button" disabled={Boolean(busy)} onClick={() => duplicateSaved(template)} className="cosmic-template-secondary rounded-lg border px-2 py-2 text-[11px] font-semibold disabled:opacity-50">Duplicate</button>
+                                            <button type="button" disabled={Boolean(busy)} onClick={() => openRename(template)} className="cosmic-template-secondary rounded-lg border px-2 py-2 text-[11px] font-semibold disabled:opacity-50">Rename</button>
+                                            <button type="button" disabled={Boolean(busy)} onClick={() => setDeleteTarget(template)} className="cosmic-template-danger rounded-lg border px-2 py-2 text-[11px] font-semibold disabled:opacity-50">Delete</button>
+                                        </div>
+                                    )}
+                                    {template.purchased && <p className="cosmic-template-owned mt-2 text-right text-[10px] font-bold">✓ Purchased</p>}
+                                    {template.saved && <p className="cosmic-template-saved mt-2 text-right text-[10px] font-bold">✓ Saved Template · PAGE</p>}
                                 </div>
                             </article>
                         ))}
                     </div>
 
                     {!visible.length && (
-                        <div className="cosmic-template-muted py-16 text-center text-sm">No templates match this view.</div>
+                        <div className="cosmic-template-muted py-16 text-center text-sm">{tab === 'saved' ? 'No saved templates yet. Save a page from the Builder and it will appear here.' : 'No templates match this view.'}</div>
                     )}
                 </div>
             </section>
@@ -395,7 +486,7 @@ export default function PageTemplatesModal({
                                         onClick={() => setSelected(preview)}
                                         className="cosmic-template-primary rounded-xl px-4 py-2.5 text-sm font-bold sm:px-5"
                                     >
-                                        Install
+                                        {preview.saved ? 'Use Template' : 'Install'}
                                     </button>
                                 ) : (
                                     <button
@@ -453,10 +544,10 @@ export default function PageTemplatesModal({
                         className="cosmic-template-install-panel relative z-10 w-full max-w-lg rounded-2xl border p-6 shadow-2xl"
                         aria-busy={isInstalling}
                     >
-                        <p className="cosmic-template-eyebrow text-[10px] font-bold uppercase tracking-[0.2em]">Install Template</p>
+                        <p className="cosmic-template-eyebrow text-[10px] font-bold uppercase tracking-[0.2em]">{selected.saved ? 'Use Saved Template' : 'Install Template'}</p>
                         <h3 className="mt-1 text-xl font-semibold">{selected.name}</h3>
                         <p className="cosmic-template-muted mt-2 text-sm">
-                            Choose Generic for the original premade content, or let Cosmic AI personalize the complete page for your business.
+                            {selected.saved ? 'Apply this saved design exactly as it was stored, or optionally let Cosmic AI rewrite its content while preserving the section structure.' : 'Choose Generic for the original premade content, or let Cosmic AI personalize the complete page for your business.'}
                         </p>
 
                         <div className="mt-5 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -529,6 +620,39 @@ export default function PageTemplatesModal({
                         <div className="mt-5 flex justify-end gap-2">
                             <button type="button" onClick={() => setConfirmInstall(false)} className="cosmic-template-secondary rounded-xl border px-4 py-2.5 text-sm font-semibold">Cancel</button>
                             <button type="button" onClick={() => { setConfirmInstall(false); install(); }} className="cosmic-template-primary rounded-xl px-5 py-2.5 text-sm font-bold">Confirm & Continue</button>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {renameTarget && (
+                <div className="cosmic-template-confirm-overlay fixed inset-0 z-[982] flex items-center justify-center p-4">
+                    <button type="button" className="absolute inset-0" onClick={() => !busy && setRenameTarget(null)} aria-label="Close rename Template" />
+                    <section className="cosmic-template-confirm-panel relative z-10 w-full max-w-md rounded-2xl border p-6 shadow-2xl">
+                        <p className="cosmic-template-eyebrow text-[10px] font-bold uppercase tracking-[0.2em]">Saved Template</p>
+                        <h3 className="mt-2 text-xl font-semibold">Rename Template</h3>
+                        <label className="cosmic-template-muted mt-5 block text-xs font-semibold">Template name</label>
+                        <input value={renameName} onChange={(e) => setRenameName(e.target.value.slice(0, 140))} className="cosmic-template-input mt-2 w-full rounded-xl border px-3 py-2.5 text-sm outline-none" autoFocus />
+                        <label className="cosmic-template-muted mt-4 block text-xs font-semibold">Description</label>
+                        <textarea value={renameDescription} onChange={(e) => setRenameDescription(e.target.value.slice(0, 500))} rows={3} className="cosmic-template-input mt-2 w-full resize-none rounded-xl border p-3 text-sm outline-none" />
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button type="button" disabled={Boolean(busy)} onClick={() => setRenameTarget(null)} className="cosmic-template-secondary rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:opacity-50">Cancel</button>
+                            <button type="button" disabled={Boolean(busy) || !renameName.trim()} onClick={renameSaved} className="cosmic-template-primary rounded-xl px-5 py-2.5 text-sm font-bold disabled:opacity-50">{busy ? 'Saving…' : 'Save Changes'}</button>
+                        </div>
+                    </section>
+                </div>
+            )}
+
+            {deleteTarget && (
+                <div className="cosmic-template-confirm-overlay fixed inset-0 z-[984] flex items-center justify-center p-4">
+                    <button type="button" className="absolute inset-0" onClick={() => !busy && setDeleteTarget(null)} aria-label="Cancel Template deletion" />
+                    <section className="cosmic-template-confirm-panel relative z-10 w-full max-w-md rounded-2xl border p-6 shadow-2xl">
+                        <p className="cosmic-template-eyebrow text-[10px] font-bold uppercase tracking-[0.2em]">Remove Saved Template?</p>
+                        <h3 className="mt-2 text-xl font-semibold">{deleteTarget.name}</h3>
+                        <p className="cosmic-template-muted mt-2 text-sm leading-6">This removes the template from your Saved Templates library. Pages that already used it are not changed.</p>
+                        <div className="mt-5 flex justify-end gap-2">
+                            <button type="button" disabled={Boolean(busy)} onClick={() => setDeleteTarget(null)} className="cosmic-template-secondary rounded-xl border px-4 py-2.5 text-sm font-semibold disabled:opacity-50">Cancel</button>
+                            <button type="button" disabled={Boolean(busy)} onClick={deleteSaved} className="cosmic-template-danger rounded-xl border px-5 py-2.5 text-sm font-bold disabled:opacity-50">{busy ? 'Removing…' : 'Delete Template'}</button>
                         </div>
                     </section>
                 </div>

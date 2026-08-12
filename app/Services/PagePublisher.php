@@ -8,7 +8,10 @@ use App\Models\Website;
 
 class PagePublisher
 {
-    public function __construct(private readonly MediaAssetSafetyService $mediaSafety) {}
+    public function __construct(
+        private readonly MediaAssetSafetyService $mediaSafety,
+        private readonly DynamicContentTemplateRenderer $contentTemplates,
+    ) {}
     /**
      * Compile the approved Builder state into the snapshot stored by Laravel.
      *
@@ -71,6 +74,7 @@ class PagePublisher
         $header = $this->staticNavigationHeader($header, $pages, $pagePaths);
         $commerceContext = $this->commerceExportContext($website);
         $contentContext = $this->structuredContentExportContext($website);
+        $contentEntryPages = $this->structuredContentEntryPages($website);
 
         return [
             'status' => 'success',
@@ -152,15 +156,63 @@ class PagePublisher
                     return array_merge($pagePackage, $articlePackage);
                 })
                 ->values()
+                ->concat($contentEntryPages)
+                ->unique('output_path')
+                ->values()
                 ->all(),
         ];
+    }
+
+    /**
+     * Export every published structured-content entry as its own static HTML
+     * body. The deployment connector wraps this body with the same global
+     * header/footer, Manrope and Tailwind runtime used by normal Builder pages.
+     */
+    private function structuredContentEntryPages(Website $website): array
+    {
+        \App\Http\Controllers\ContentWorkspaceController::ensureDefaults($website);
+
+        return $website->contentTypes()
+            ->with([
+                'singleTemplate',
+                'entries' => fn ($query) => $query->where('status', 'published')->orderByDesc('is_featured')->latest('published_at'),
+            ])
+            ->orderBy('sort_order')
+            ->get()
+            ->flatMap(function ($type) {
+                $directory = trim((string) $type->slug, '/');
+                if ($directory === '') return [];
+
+                return $type->entries->map(function ($entry) use ($type, $directory) {
+                    $slug = trim((string) $entry->slug, '/');
+                    if ($slug === '') return null;
+
+                    return [
+                        'title' => $entry->seo_title ?: $entry->title,
+                        'slug' => $directory.'/'.$slug,
+                        // Match the existing extensionless connector strategy.
+                        // /blog/my-post resolves to /blog/my-post.html.
+                        'output_path' => $directory.'/'.$slug.'.html',
+                        'html' => $this->contentTemplates->exportSingle($type, $entry, $type->singleTemplate),
+                        'meta_description' => $entry->seo_description ?: $entry->excerpt,
+                        'structured_content' => true,
+                        'og_type' => 'article',
+                        'og_image' => $entry->og_image_url ?: $entry->featured_image_url,
+                        'published_at' => optional($entry->published_at)->toISOString(),
+                        'updated_at' => optional($entry->updated_at)->toISOString(),
+                        'content_entry_id' => $entry->id,
+                        'content_type_id' => $type->id,
+                    ];
+                })->filter();
+            })
+            ->values()
+            ->all();
     }
 
 
     private function structuredContentExportContext(Website $website): array
     {
         \App\Http\Controllers\ContentWorkspaceController::ensureDefaults($website);
-        $previews = app(PreviewDeploymentService::class);
         $types = $website->contentTypes()
             ->with(['entries' => fn ($query) => $query->where('status', 'published')->orderByDesc('is_featured')->latest('published_at')])
             ->orderBy('sort_order')
@@ -184,7 +236,7 @@ class PagePublisher
                     'is_featured' => (bool) $entry->is_featured,
                     'published_at' => optional($entry->published_at)->toISOString(),
                     'updated_at' => optional($entry->updated_at)->toISOString(),
-                    'url' => (string) $previews->url($website, trim($type->slug, '/').'/'.trim($entry->slug, '/')),
+                    'url' => trim($type->slug, '/').'/'.trim($entry->slug, '/'),
                 ])->values()->all(),
             ])->values()->all();
 

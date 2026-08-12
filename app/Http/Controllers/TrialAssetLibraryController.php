@@ -24,7 +24,8 @@ class TrialAssetLibraryController extends Controller
         $favorites = collect($trial->favorite_templates ?? []);
         return response()->json(['templates' => collect(PageTemplateCatalog::all())->map(fn ($t) => [...$t,
             'credits' => PageTemplateCatalog::PURCHASE_CREDITS, 'personalize_credits' => PageTemplateCatalog::PERSONALIZE_CREDITS,
-            'owned' => $owned->contains($t['key']), 'purchased' => $owned->contains($t['key']), 'favorited' => $favorites->contains($t['key']),
+            'owned' => $owned->contains($t['key']), 'purchased' => $owned->contains($t['key']),
+            'source' => 'marketplace', 'template_type' => 'page', 'status' => 'active', 'saved' => false, 'favorited' => $favorites->contains($t['key']),
         ])->values(), 'guest' => true, 'credit_balance' => app(TrialCreditService::class)->balance($trial)]);
     }
 

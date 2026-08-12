@@ -11,6 +11,8 @@ class ActionPricing
     public const AI_REWRITE = 10;
     public const SPARK_AI_PERSONALIZE = 20;
     public const TEMPLATE_AI_PERSONALIZE = 50;
+    public const GENERATE_CONTENT_ENTRY = 30;
+    public const GENERATE_CONTENT_FIELDS = 20;
 
     public static function all(): array
     {
@@ -22,6 +24,8 @@ class ActionPricing
             'ai_rewrite' => self::AI_REWRITE,
             'spark_ai_personalize' => self::SPARK_AI_PERSONALIZE,
             'template_ai_personalize' => self::TEMPLATE_AI_PERSONALIZE,
+            'generate_content_entry' => self::GENERATE_CONTENT_ENTRY,
+            'generate_content_fields' => self::GENERATE_CONTENT_FIELDS,
         ];
     }
 }

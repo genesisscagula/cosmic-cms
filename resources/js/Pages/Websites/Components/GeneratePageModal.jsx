@@ -16,6 +16,7 @@ export default function GeneratePageModal({
     onReplace,
     websiteContext = "",
     websiteId = null,
+    creditCost = 50,
 }) {
     const { setBalance } = useCreditBalance();
     const [pagePrompt, setPagePrompt] = useState("");
@@ -141,7 +142,7 @@ export default function GeneratePageModal({
                                 <span className="text-xs text-slate-500">{pagePrompt.length}/800</span>
                                 <div className="flex gap-2">
                                     <button type="button" onClick={onClose} className="h-11 rounded-xl border border-white/10 px-5 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button>
-                                    <button type="button" disabled={!pagePrompt.trim()} onClick={() => setConfirmGenerate(true)} className="cosmic-primary-action h-11 rounded-xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">Generate Page ✨</button>
+                                    <button type="button" disabled={!pagePrompt.trim()} onClick={() => setConfirmGenerate(true)} className="cosmic-primary-action h-11 rounded-xl bg-emerald-600 px-5 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-40">Generate Page ✨ · {creditCost} Credits</button>
                                 </div>
                             </div>
                         </>
@@ -181,11 +182,11 @@ export default function GeneratePageModal({
                         <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-emerald-300">Replace page content?</p>
                         <h3 className="mt-2 text-xl font-semibold">Generate a new page</h3>
                         <p className="mt-2 text-sm leading-6 text-slate-400">
-                            Generating a new page will replace the current page layout and content. Confirm before Cosmic AI starts.
+                            Generating a new page will replace the current page layout and content. Confirm before Cosmic AI starts. This generation costs {creditCost} Cosmic Credits.
                         </p>
                         <div className="mt-5 flex justify-end gap-2">
                             <button type="button" onClick={() => setConfirmGenerate(false)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button>
-                            <button type="button" onClick={() => { setConfirmGenerate(false); generatePage(); }} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-500">Confirm & Generate</button>
+                            <button type="button" onClick={() => { setConfirmGenerate(false); generatePage(); }} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-500">Confirm & Generate · {creditCost} Credits</button>
                         </div>
                     </section>
                 </div>

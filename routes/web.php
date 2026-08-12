@@ -451,6 +451,10 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
         ->name('payments.subscription.recover');
     Route::get('/cosmic-pricing', [CosmicPricingController::class, 'index'])->name('cosmic-pricing.index');
     Route::get('/page-templates/catalog', [PageTemplateController::class, 'catalog'])->name('page-templates.catalog');
+    Route::post('/page-templates/saved', [PageTemplateController::class, 'storeSaved'])->name('page-templates.saved.store');
+    Route::patch('/page-templates/saved/{template}', [PageTemplateController::class, 'updateSaved'])->name('page-templates.saved.update');
+    Route::post('/page-templates/saved/{template}/duplicate', [PageTemplateController::class, 'duplicateSaved'])->name('page-templates.saved.duplicate');
+    Route::delete('/page-templates/saved/{template}', [PageTemplateController::class, 'destroySaved'])->name('page-templates.saved.destroy');
     Route::post('/page-templates/{key}/unlock', [PageTemplateController::class, 'unlock'])->name('page-templates.unlock');
     Route::post('/page-templates/{key}/favorite', [PageTemplateController::class, 'toggleFavorite'])->name('page-templates.favorite.toggle');
 
@@ -538,9 +542,16 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/pages/{page}/style', [PageController::class, 'applyPageStyle'])->name('pages.style.apply');
 
     Route::post('/websites/{website}/content/install', [ContentWorkspaceController::class, 'install'])->name('content.install');
+    Route::post('/websites/{website}/content/media', [ContentWorkspaceController::class, 'uploadMedia'])->middleware('throttle:cosmic-upload')->name('content.media.upload');
     Route::post('/websites/{website}/content-types', [ContentWorkspaceController::class, 'storeType'])->name('content-types.store');
     Route::put('/websites/{website}/content-types/{contentType}', [ContentWorkspaceController::class, 'updateType'])->name('content-types.update');
     Route::delete('/websites/{website}/content-types/{contentType}', [ContentWorkspaceController::class, 'destroyType'])->name('content-types.destroy');
+    Route::post('/websites/{website}/content-fields/generate', [ContentWorkspaceController::class, 'generateFields'])->middleware('throttle:cosmic-ai')->name('content-fields.generate');
+    Route::post('/websites/{website}/content-types/{contentType}/templates', [ContentWorkspaceController::class, 'storeTemplate'])->name('content-templates.store');
+    Route::post('/websites/{website}/content-types/{contentType}/templates/generate', [ContentWorkspaceController::class, 'generateTemplate'])->middleware('throttle:cosmic-ai')->name('content-templates.generate');
+    Route::put('/websites/{website}/content-types/{contentType}/templates/{template}', [ContentWorkspaceController::class, 'updateTemplate'])->name('content-templates.update');
+    Route::post('/websites/{website}/content-types/{contentType}/templates/assign', [ContentWorkspaceController::class, 'assignTemplate'])->name('content-templates.assign');
+    Route::post('/websites/{website}/content-types/{contentType}/entries/generate', [ContentWorkspaceController::class, 'generateEntryContent'])->middleware('throttle:cosmic-ai')->name('content-entries.generate');
     Route::post('/websites/{website}/content-types/{contentType}/entries', [ContentWorkspaceController::class, 'storeEntry'])->name('content-entries.store');
     Route::put('/websites/{website}/content-types/{contentType}/entries/{contentEntry}', [ContentWorkspaceController::class, 'updateEntry'])->name('content-entries.update');
     Route::post('/websites/{website}/content-types/{contentType}/entries/{contentEntry}/duplicate', [ContentWorkspaceController::class, 'duplicateEntry'])->name('content-entries.duplicate');

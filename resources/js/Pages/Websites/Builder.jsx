@@ -8,6 +8,7 @@ import { logoFilterFor } from '@/Branding/logoFilters';
 
 import AddSectionModal from "./Components/AddSectionModal";
 import PageTemplatesModal from "./Components/PageTemplatesModal";
+import SavePageTemplateModal from "./Components/SavePageTemplateModal";
 import GeneratePageModal from "./Components/GeneratePageModal";
 
 import ThemeSelector from "./Theme/ThemeSelector";
@@ -188,6 +189,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
+    const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
+    const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [isGeneratePageOpen, setIsGeneratePageOpen] = useState(false);
     const [aiResult, setAiResult] = useState(null);
     const [aiLoading, setAiLoading] = useState(false);
@@ -1671,6 +1674,47 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         }
     };
 
+    const saveAsTemplate = async ({ name, description }) => {
+        if (trialMode || isSavingTemplate) return;
+        if (!Array.isArray(data.blocks) || data.blocks.length === 0) {
+            showCosmicNotification({ title: 'Nothing to save yet', message: 'Add at least one Spark before saving this page as a template.', tone: 'warning' });
+            return;
+        }
+
+        setIsSavingTemplate(true);
+        try {
+            const response = await axios.post(route('page-templates.saved.store'), {
+                website_id: website.id,
+                page_id: page.id,
+                name,
+                description,
+                blocks: stripClientBlockFields(data.blocks),
+                metadata: {
+                    page_style: currentPageStyle || 'auto',
+                    section_count: data.blocks.length,
+                    tags: ['Saved', 'Builder'],
+                },
+            });
+            setIsSaveTemplateOpen(false);
+            showCosmicNotification({
+                title: 'Template saved',
+                message: response.data?.message || 'Your page is now available in Saved Templates.',
+                tone: 'success',
+            });
+        } catch (error) {
+            const validationMessage = error.response?.data?.errors
+                ? Object.values(error.response.data.errors).flat().join(' ')
+                : '';
+            showCosmicNotification({
+                title: 'Unable to save template',
+                message: error.response?.data?.message || validationMessage || 'Please try again.',
+                tone: 'error',
+            });
+        } finally {
+            setIsSavingTemplate(false);
+        }
+    };
+
     const goToTrialPricing = () => {
         window.location.assign(`${route('pricing')}?token=${encodeURIComponent(trialToken)}`);
     };
@@ -2546,6 +2590,18 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                                 </button>
                                             )}
 
+                                            {capabilities.canSave && (
+                                                <button
+                                                    type="button"
+                                                    onClick={() => setIsSaveTemplateOpen(true)}
+                                                    disabled={isSavingTemplate || !data.blocks?.length}
+                                                    className="flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-violet-50 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
+                                                >
+                                                    <span>Save as Template</span>
+                                                    <span aria-hidden="true" className="text-violet-400">▣</span>
+                                                </button>
+                                            )}
+
                                             {previewUrl ? (
                                                 <a
                                                     href={previewUrl}
@@ -3065,6 +3121,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 />
             )}
 
+            {!trialMode && (
+                <SavePageTemplateModal
+                    open={isSaveTemplateOpen}
+                    onClose={() => !isSavingTemplate && setIsSaveTemplateOpen(false)}
+                    onSave={saveAsTemplate}
+                    pageTitle={page.title || 'Untitled Page'}
+                    saving={isSavingTemplate}
+                />
+            )}
+
             {(capabilities.canGenerateAi || trialMode) && (
                 <PageTemplatesModal
                     open={isTemplatesOpen}
@@ -3097,6 +3163,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     onReplace={replaceBlocks}
                     websiteContext={websiteContext}
                     websiteId={website?.id}
+                    creditCost={Number(cosmicPricing?.actions?.generate_page || 50)}
                 />
             )}
 
@@ -3305,7 +3372,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 <div className="grid gap-3 sm:grid-cols-2">
                                     <button type="button" disabled={logoBusy} onClick={() => setShowLogoGenerateForm(true)} className="cosmic-logo-generate-card min-h-[104px] rounded-xl bg-emerald-600 px-5 py-5 text-left text-white shadow-sm transition hover:bg-emerald-700 disabled:opacity-60">
                                         <span className="block text-base font-bold">✨ {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Regenerate Logo' : 'Generate Logo'}</span>
-                                        <span className="mt-1 block text-xs text-emerald-50">Let Cosmic AI create a logo for this website.</span>
+                                        <span className="mt-1 block text-xs text-emerald-50">Let Cosmic AI create a logo for this website · {trialActionCosts.generate_logo} Credits.</span>
                                     </button>
                                     <button type="button" disabled={logoBusy} onClick={() => logoUploadRef.current?.click()} className="cosmic-logo-upload-card min-h-[104px] rounded-xl border-2 border-slate-300 bg-white px-5 py-5 text-left text-slate-950 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:opacity-70">
                                         <span className="cosmic-logo-upload-title block text-base font-bold">↑ {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Replace Logo' : 'Upload Logo'}</span>
@@ -3342,7 +3409,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     </div>
                                     <div className="flex items-center justify-between gap-3">
                                         <button type="button" disabled={logoBusy} onClick={() => setShowLogoGenerateForm(false)} className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50">Back</button>
-                                        <button type="button" disabled={logoBusy || logoCompanyName.trim().length < 2} onClick={generateTrialLogo} className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{logoBusy ? 'Cosmic AI is creating…' : (data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Regenerate Logo' : 'Generate Logo')}</button>
+                                        <button type="button" disabled={logoBusy || logoCompanyName.trim().length < 2} onClick={generateTrialLogo} className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{logoBusy ? 'Cosmic AI is creating…' : `${data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Regenerate Logo' : 'Generate Logo'} · ${trialActionCosts.generate_logo} Credits`}</button>
                                     </div>
                                 </div>
                             )}
@@ -3456,7 +3523,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                         <textarea required minLength={10} value={regeneratePrompt} onChange={(event) => setRegeneratePrompt(event.target.value)} rows={5} placeholder="Create a premium AI automation company for small businesses…" className="mt-5 w-full resize-none rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-900 placeholder:text-slate-400 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
                         <div className="mt-5 flex justify-end gap-3">
                             <button type="button" onClick={() => setShowRegenerateModal(false)} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Cancel</button>
-                            <button type="submit" disabled={regenerating} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{regenerating ? 'Regenerating…' : 'Regenerate website'}</button>
+                            <button type="submit" disabled={regenerating} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white transition hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{regenerating ? 'Regenerating…' : `Regenerate website · ${trialActionCosts.regenerate_page} Credits`}</button>
                         </div>
                     </form>
                 </div>

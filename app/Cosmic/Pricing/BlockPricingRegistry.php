@@ -34,9 +34,9 @@ class BlockPricingRegistry
             'case_studies_grid' => ['label' => 'Case Studies Grid', 'category' => 'growth', 'credits' => 30],
             'jobs_list' => ['label' => 'Jobs List', 'category' => 'growth', 'credits' => 20],
 
-            'content_grid_classic' => ['label' => 'Post Grid Classic', 'category' => 'growth', 'credits' => 30],
-            'content_grid_editorial' => ['label' => 'Post Grid Editorial', 'category' => 'growth', 'credits' => 30],
-            'content_grid_compact' => ['label' => 'Post Grid Compact', 'category' => 'growth', 'credits' => 30],
+            'content_grid_classic' => ['label' => 'Content Loop · Grid', 'category' => 'growth', 'credits' => 30],
+            'content_grid_editorial' => ['label' => 'Content Loop · Editorial', 'category' => 'growth', 'credits' => 30],
+            'content_grid_compact' => ['label' => 'Content Loop · List', 'category' => 'growth', 'credits' => 30],
             'content_featured_entry' => ['label' => 'Featured Post', 'category' => 'growth', 'credits' => 30],
             'content_latest_entries' => ['label' => 'Latest Posts', 'category' => 'growth', 'credits' => 30],
             'content_events_grid' => ['label' => 'Upcoming Events', 'category' => 'growth', 'credits' => 30],

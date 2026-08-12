@@ -785,7 +785,8 @@ JS;
                     $bt = strtotime((string) ($b['published_at'] ?? $b['updated_at'] ?? '')) ?: 0;
                     return $sort === 'oldest' ? ($at <=> $bt) : ($bt <=> $at);
                 });
-                $entries = array_slice($entries, 0, max(1, (int) ($block['limit'] ?? 6)));
+                $entries = array_slice($entries, 0, min(24, max(1, (int) ($block['limit'] ?? 6))));
+                $columns = min(4, max(1, (int) ($block['columns'] ?? 3)));
                 $eyebrow = e($block['eyebrow'] ?? 'Latest stories');
                 $heading = e($block['heading'] ?? 'Fresh from our updates');
                 $text = e($block['text'] ?? 'Explore the latest articles, events, projects, and updates.');
@@ -803,12 +804,15 @@ JS;
                         $entryMarkup .= "<article class='rounded-2xl border p-6 {$theme['card']} {$theme['border']}'><div class='flex gap-4'><div class='min-w-16 rounded-xl border p-3 text-center {$theme['border']}'><div class='text-xs font-bold uppercase {$theme['sub']}'>{$month}</div><div class='text-2xl font-bold {$theme['text']}'>{$day}</div></div><div><p class='text-xs font-bold uppercase tracking-[.18em] {$theme['sub']}'>{$venue}</p><h3 class='mt-2 text-xl font-bold {$theme['text']}'>{$title}</h3></div></div><p class='mt-4 text-sm leading-6 {$theme['sub']}'>{$excerpt}</p><a href='{$registration}' class='mt-5 inline-flex font-bold {$theme['text']}'>" . (!empty($entry['custom_fields']['registration_url']) ? 'Register' : 'View event') . " →</a></article>";
                     } elseif ($type === 'content_grid_compact' || $type === 'content_latest_entries') {
                         $entryMarkup .= "<article class='grid gap-4 border-b p-5 last:border-b-0 sm:grid-cols-[96px_1fr_auto] sm:items-center {$theme['border']}'><img src='{$image}' alt='' class='h-20 w-24 rounded-xl object-cover'><div><p class='text-[10px] font-bold uppercase tracking-[.18em] {$theme['sub']}'>{$category}</p><h3 class='mt-1 text-lg font-bold {$theme['text']}'>{$title}</h3><p class='mt-1 text-sm {$theme['sub']}'>{$excerpt}</p></div><a href='{$url}' class='text-sm font-bold {$theme['text']}'>View →</a></article>";
+                    } elseif ($type === 'content_grid_editorial') {
+                        $entryMarkup .= "<article class='overflow-hidden rounded-2xl border {$theme['card']} {$theme['border']}'><a href='{$url}'><img src='{$image}' alt='{$title}' class='h-64 w-full object-cover'></a><div class='p-6'><p class='text-[11px] font-bold uppercase tracking-[.2em] {$theme['sub']}'>{$category}</p><h3 class='mt-3 text-2xl font-bold tracking-tight {$theme['text']}'><a href='{$url}'>{$title}</a></h3><p class='mt-4 text-sm leading-6 {$theme['sub']}'>{$excerpt}</p><a href='{$url}' class='mt-5 inline-flex text-sm font-bold {$theme['text']}'>Explore story →</a></div></article>";
                     } else {
                         $entryMarkup .= "<article class='overflow-hidden rounded-2xl border shadow-sm {$theme['card']} {$theme['border']}'><a href='{$url}'><img src='{$image}' alt='{$title}' class='h-52 w-full object-cover'></a><div class='p-5'><p class='text-[11px] font-bold uppercase tracking-[.2em] {$theme['sub']}'>{$category}</p><h3 class='mt-3 text-xl font-bold {$theme['text']}'><a href='{$url}'>{$title}</a></h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$excerpt}</p><a href='{$url}' class='mt-5 inline-flex text-sm font-bold {$theme['text']}'>Read more →</a></div></article>";
                     }
                 }
                 if ($entryMarkup === '') $entryMarkup = "<div class='rounded-2xl border border-dashed p-8 text-center {$theme['border']} {$theme['sub']}'>No published entries match this Spark yet.</div>";
-                $gridClass = $type === 'content_events_grid' ? 'grid gap-5 md:grid-cols-2 lg:grid-cols-3' : (($type === 'content_grid_compact' || $type === 'content_latest_entries') ? "rounded-2xl border {$theme['card']} {$theme['border']}" : 'grid gap-5 sm:grid-cols-2 lg:grid-cols-3');
+                $loopGridClass = $columns === 1 ? 'grid gap-5' : ($columns === 2 ? 'grid gap-5 md:grid-cols-2' : ($columns === 4 ? 'grid gap-5 sm:grid-cols-2 xl:grid-cols-4' : 'grid gap-5 sm:grid-cols-2 lg:grid-cols-3'));
+                $gridClass = $type === 'content_events_grid' ? 'grid gap-5 md:grid-cols-2 lg:grid-cols-3' : (($type === 'content_grid_compact' || $type === 'content_latest_entries') ? "rounded-2xl border {$theme['card']} {$theme['border']}" : $loopGridClass);
                 $html .= "<section class='px-6 py-16 sm:px-8 lg:px-12 lg:py-20 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='mb-9 max-w-3xl'><p class='text-xs font-bold uppercase tracking-[.24em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-3 text-3xl font-bold tracking-tight sm:text-4xl {$theme['text']}'>{$heading}</h2><p class='mt-3 text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='{$gridClass}'>{$entryMarkup}</div></div></section>";
                 break;
 

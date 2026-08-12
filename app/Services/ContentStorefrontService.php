@@ -17,6 +17,7 @@ class ContentStorefrontService
     public function __construct(
         private readonly ThemeColorResolver $themes,
         private readonly PreviewDeploymentService $previews,
+        private readonly DynamicContentTemplateRenderer $templateRenderer,
     ) {
     }
 
@@ -35,10 +36,9 @@ class ContentStorefrontService
 
         $segments = array_values(array_filter(explode('/', $normalized), fn ($value) => $value !== ''));
         if (count($segments) === 1) {
-            // Let a normal Builder page own the archive slug when one exists.
-            if ($website->pages()->where('slug', $type->slug)->where('page_type', '!=', 'commerce')->exists()) {
-                return null;
-            }
+            // Structured content owns its registered archive slug in preview.
+            // Builder/legacy pages may still exist with the same slug, but they must not
+            // shadow the dynamic archive route (for example /events or /blog).
             return $this->archive($website, $type, $previewSlug, $request);
         }
 
@@ -94,6 +94,9 @@ class ContentStorefrontService
             ->take(3)
             ->values();
 
+        $type->loadMissing('singleTemplate');
+        $renderedTemplateMarkup = $this->templateRenderer->renderSingle($type, $entry, $type->singleTemplate);
+
         return $this->response($website, $previewSlug, 'entry', [
             'contentType' => $type,
             'entries' => collect(),
@@ -105,6 +108,7 @@ class ContentStorefrontService
             'activeTag' => '',
             'title' => $entry->seo_title ?: $entry->title,
             'description' => $entry->seo_description ?: $entry->excerpt,
+            'renderedTemplateMarkup' => $renderedTemplateMarkup,
         ]);
     }
 

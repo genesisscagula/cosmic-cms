@@ -63,9 +63,11 @@ class ContentInstallerService
     {
         $page = $website->pages()->firstOrNew(['slug' => $definition['slug']]);
         if ($page->exists && $page->page_type !== 'standard') {
-            throw \Illuminate\Validation\ValidationException::withMessages([
-                'content_pages' => "The /{$definition['slug']} slug is already used by another page type.",
-            ]);
+            // Preserve legacy Builder/blog pages instead of hard-failing the structured-content installer.
+            // The legacy page keeps all of its blocks/data under a deterministic, collision-free slug.
+            $legacySlug = $this->uniqueLegacySlug($website, $definition['slug'].'-legacy', $page->id);
+            $page->forceFill(['slug' => $legacySlug])->save();
+            $page = $website->pages()->firstOrNew(['slug' => $definition['slug']]);
         }
 
         $existing = is_array($page->blocks) ? $page->blocks : [];
@@ -84,6 +86,21 @@ class ContentInstallerService
             'blocks' => $definition['blocks'],
             'published_blocks' => $definition['blocks'],
         ])->save();
+    }
+
+    private function uniqueLegacySlug(Website $website, string $base, ?int $ignoreId = null): string
+    {
+        $slug = $base;
+        $suffix = 2;
+
+        while ($website->pages()
+            ->where('slug', $slug)
+            ->when($ignoreId, fn ($query) => $query->whereKeyNot($ignoreId))
+            ->exists()) {
+            $slug = $base.'-'.$suffix++;
+        }
+
+        return $slug;
     }
 
     private function looksManaged(array $blocks, string $slug): bool

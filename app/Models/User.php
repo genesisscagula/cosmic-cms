@@ -165,6 +165,11 @@ class User extends Authenticatable
         return $this->hasMany(\App\Models\CosmicTemplateFavorite::class);
     }
 
+    public function savedPageTemplates()
+    {
+        return $this->hasMany(\App\Models\SavedPageTemplate::class);
+    }
+
     public function cosmicUnlocks()
     {
         return $this->hasMany(CosmicUnlock::class);
