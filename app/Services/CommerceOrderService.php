@@ -48,10 +48,11 @@ final class CommerceOrderService
         $shippingMinor = (int) data_get($shipping, 'selected.amount_minor', 0);
         $tax = $this->tax->quote($website, $discountedCart, $country, $region, $shippingMinor);
         $currency = strtoupper((string) ($website->commerceSetting?->currency ?: config('cosmic-commerce.default_currency', 'USD')));
+        $paypalReceiverEmail = app(CommerceCapabilityService::class)->paypalReceiverEmail($website);
         $idempotencyKey = filled($idempotencyKey) ? strtolower(trim((string) $idempotencyKey)) : (string) Str::uuid();
         $checkoutFingerprint = $this->checkoutFingerprint($website, $cart, $coupon, $shipping, $tax, $country, $region, $currency);
 
-        return DB::transaction(function () use ($website, $customer, $country, $region, $shipping, $shippingMinor, $tax, $cart, $coupon, $currency, $idempotencyKey, $checkoutFingerprint) {
+        return DB::transaction(function () use ($website, $customer, $country, $region, $shipping, $shippingMinor, $tax, $cart, $coupon, $currency, $paypalReceiverEmail, $idempotencyKey, $checkoutFingerprint) {
             $existing = CommerceOrder::query()
                 ->where('website_id', $website->id)
                 ->where('checkout_idempotency_key', $idempotencyKey)
@@ -102,6 +103,9 @@ final class CommerceOrderService
                 $metadata = is_array($existing->metadata) ? $existing->metadata : [];
                 $metadata['inventory_reserved_at'] = now()->toIso8601String();
                 $metadata['inventory_reservation_expires_at'] = $existing->checkout_expires_at?->toIso8601String();
+                if (blank($metadata['paypal_receiver_email'] ?? null) && $paypalReceiverEmail !== '') {
+                    $metadata['paypal_receiver_email'] = $paypalReceiverEmail;
+                }
                 $existing->forceFill(['metadata' => $metadata])->save();
                 return $existing;
             }
@@ -166,6 +170,7 @@ final class CommerceOrderService
                     'cart_count' => $cart['count'],
                     'coupon_label' => $coupon['label'],
                     'coupon_eligible_subtotal_minor' => $coupon['eligible_subtotal_minor'],
+                    'paypal_receiver_email' => $paypalReceiverEmail !== '' ? $paypalReceiverEmail : null,
                 ],
             ]);
 

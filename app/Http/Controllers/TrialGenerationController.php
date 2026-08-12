@@ -17,6 +17,7 @@ use App\Services\InitialTrialLogoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
@@ -409,6 +410,8 @@ class TrialGenerationController extends Controller
         ]);
 
         $email = Str::lower($validated['email']);
+        $previousEmail = Str::lower((string) $trial->email);
+        $isNewLeadEmail = $previousEmail !== $email || blank($trial->email_captured_at);
         $welcomeAlreadySentToThisEmail = $trial->welcome_email_sent_at
             && Str::lower((string) $trial->welcome_email_address) === $email;
 
@@ -417,9 +420,16 @@ class TrialGenerationController extends Controller
             'email_captured_at' => now(),
             'last_saved_at' => now(),
         ]);
+        $trial->refresh();
 
         if (! $welcomeAlreadySentToThisEmail) {
             $this->sendTrialAccessEmail($trial, false);
+        }
+
+        // Admin lead alert is deliberately separate from the visitor welcome email.
+        // A failure here must never prevent the visitor from saving the trial.
+        if ($isNewLeadEmail) {
+            $this->sendTrialLeadNotification($trial);
         }
 
         return response()->json([
@@ -630,6 +640,42 @@ class TrialGenerationController extends Controller
         } catch (\Throwable $exception) {
             Log::error('Trial regeneration failed', ['trial' => $trial->id, 'message' => $exception->getMessage()]);
             return response()->json(['message' => 'Regeneration failed. Your existing page was preserved.'], 500);
+        }
+    }
+
+    private function sendTrialLeadNotification(TrialGeneration $trial): void
+    {
+        $recipient = strtolower(trim((string) config('cosmic-mail.lead_recipient')));
+        if ($recipient === '' || $recipient === strtolower((string) $trial->email)) {
+            return;
+        }
+
+        try {
+            $trial->loadMissing('page.website');
+            Mail::send('emails.trial-lead', ['trial' => $trial], function ($message) use ($recipient, $trial): void {
+                $message
+                    ->to($recipient)
+                    ->from(
+                        (string) config('mail.from.address', 'hello@cosmiccms.com'),
+                        (string) config('mail.from.name', 'Cosmic CMS')
+                    )
+                    ->replyTo((string) $trial->email)
+                    ->subject('New Cosmic CMS trial lead · '.(string) $trial->email);
+            });
+
+            Log::info('[TrialLeadMail] Sent.', [
+                'trial_id' => $trial->id,
+                'visitor_email' => $trial->email,
+                'lead_recipient' => $recipient,
+            ]);
+        } catch (\Throwable $exception) {
+            Log::error('[TrialLeadMail] Send failed.', [
+                'trial_id' => $trial->id,
+                'visitor_email' => $trial->email,
+                'lead_recipient' => $recipient,
+                'error' => $exception->getMessage(),
+            ]);
+            report($exception);
         }
     }
 

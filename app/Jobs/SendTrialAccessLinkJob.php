@@ -71,8 +71,9 @@ class SendTrialAccessLinkJob implements ShouldQueue
             ? 'Your updated Cosmic CMS website is ready'
             : 'Your Cosmic CMS website is ready 🚀';
 
-        $recipient = trim((string) config('cosmic-mail.dev_recipient'));
-        $deliveryEmail = $recipient !== '' ? $recipient : (string) $trial->email;
+        // Welcome/private Builder access always belongs to the visitor who entered
+        // the trial email. Admin lead notifications are sent separately.
+        $deliveryEmail = strtolower(trim((string) $trial->email));
 
         $trial->forceFill([
             'welcome_email_attempts' => (int) $trial->welcome_email_attempts + 1,
@@ -105,9 +106,6 @@ class SendTrialAccessLinkJob implements ShouldQueue
                     )
                     ->subject($subject);
 
-                if ($deliveryEmail !== (string) $trial->email) {
-                    $message->replyTo((string) config('mail.from.address', 'hello@cosmiccms.com'));
-                }
             });
 
             if (! $this->regenerated) {

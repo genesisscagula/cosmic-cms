@@ -31,6 +31,73 @@ class ContentInstallerService
         });
     }
 
+    /** Install or repair one editable Standard Page for a structured content type. */
+    public function installTypePage(Website $website, ContentType $type, bool $addNavigation = true): array
+    {
+        return DB::transaction(function () use ($website, $type, $addNavigation): array {
+            abort_unless((int) $type->website_id === (int) $website->id, 404);
+
+            $definition = $this->definitionForType($type);
+            $this->installPage($website, $type, $definition);
+            $page = $website->pages()->where('slug', $type->slug)->where('page_type', 'standard')->firstOrFail();
+            $navigation = $addNavigation ? $this->installTypeNavigation($website, $type) : false;
+
+            return [
+                'page_id' => $page->id,
+                'slug' => $page->slug,
+                'title' => $page->title,
+                'navigation' => $navigation,
+            ];
+        });
+    }
+
+    private function definitionForType(ContentType $type): array
+    {
+        foreach ($this->pageDefinitions() as $definition) {
+            if (($definition['slug'] ?? null) === $type->slug) return $definition;
+        }
+
+        $plural = trim((string) $type->name) ?: 'Updates';
+        $singular = trim((string) $type->singular_name) ?: 'Update';
+        $description = trim((string) $type->description) ?: "Explore the latest {$plural}.";
+        $slug = trim((string) $type->slug, '/');
+        $nameKey = strtolower($plural.' '.$singular.' '.$slug);
+        $loopType = str_contains($nameKey, 'event') ? 'content_events_grid'
+            : (str_contains($nameKey, 'project') || str_contains($nameKey, 'news') || str_contains($nameKey, 'team') ? 'content_grid_editorial' : 'content_grid_classic');
+
+        $loop = [
+            'type' => $loopType,
+            'theme' => 'white',
+            'eyebrow' => strtoupper($plural),
+            'heading' => "Explore {$plural}",
+            'text' => $description,
+            'content_type_slug' => $slug,
+            'sort' => $loopType === 'content_events_grid' ? 'event_date' : 'newest',
+            'limit' => 9,
+            'columns' => 3,
+            'anchor' => 'latest',
+        ];
+        if ($loopType === 'content_events_grid') $loop['upcoming_only'] = true;
+
+        return [
+            'title' => $plural,
+            'slug' => $slug,
+            'sort_order' => max(730, (int) $type->sort_order + 700),
+            'blocks' => [
+                [
+                    'type' => 'mini_hero_minimal',
+                    'theme' => 'primary',
+                    'eyebrow' => $singular,
+                    'heading' => $plural,
+                    'text' => $description,
+                    'button_label' => "Explore {$plural}",
+                    'button_url' => '#latest',
+                ],
+                $loop,
+            ],
+        ];
+    }
+
     private function pageDefinitions(): array
     {
         return [
@@ -149,6 +216,24 @@ class ContentInstallerService
             }
         }
         return $created;
+    }
+
+    private function installTypeNavigation(Website $website, ContentType $type): bool
+    {
+        $header = $website->global_header;
+        if (! is_array($header)) return false;
+        $menu = is_array($header['menu'] ?? null) ? $header['menu'] : [];
+        $target = '/'.trim((string) $type->slug, '/');
+        $exists = collect($menu)->contains(function ($item) use ($target, $type) {
+            $label = strtolower(trim((string) ($item['label'] ?? '')));
+            $url = '/'.trim((string) ($item['url'] ?? ''), '/');
+            return $url === $target || $label === strtolower(trim((string) $type->name));
+        });
+        if (! $exists) $menu[] = ['label' => $type->name, 'url' => $target, 'children' => []];
+        $header['menu'] = $menu;
+        $website->global_header = $header;
+        $website->save();
+        return ! $exists;
     }
 
     private function installNavigation(Website $website): bool

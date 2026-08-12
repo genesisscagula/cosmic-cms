@@ -15,18 +15,24 @@ final class CommercePayPalService
             throw new RuntimeException('PayPal checkout is not enabled.');
         }
 
+        $receiverEmail = $this->receiverEmail($order);
+        $purchaseUnit = [
+            'reference_id' => $order->public_id,
+            'custom_id' => $order->public_id,
+            'invoice_id' => $order->order_number,
+            'description' => 'Order '.$order->order_number,
+            'amount' => [
+                'currency_code' => $order->currency,
+                'value' => $this->major($order->total_minor, $order->currency),
+            ],
+        ];
+        if ($receiverEmail !== '') {
+            $purchaseUnit['payee'] = ['email_address' => $receiverEmail];
+        }
+
         $response = $this->paypal->client($this->requestId('create', $order))->post('/v2/checkout/orders', [
             'intent' => 'CAPTURE',
-            'purchase_units' => [[
-                'reference_id' => $order->public_id,
-                'custom_id' => $order->public_id,
-                'invoice_id' => $order->order_number,
-                'description' => 'Order '.$order->order_number,
-                'amount' => [
-                    'currency_code' => $order->currency,
-                    'value' => $this->major($order->total_minor, $order->currency),
-                ],
-            ]],
+            'purchase_units' => [$purchaseUnit],
             'payment_source' => [
                 'paypal' => [
                     'experience_context' => [
@@ -41,7 +47,12 @@ final class CommercePayPalService
         ]);
 
         if (! $response->successful()) {
-            throw new RuntimeException($response->json('details.0.description') ?? $response->json('message') ?? 'PayPal could not create the checkout.');
+            $issue = strtoupper((string) $response->json('details.0.issue'));
+            $description = (string) ($response->json('details.0.description') ?? $response->json('message') ?? 'PayPal could not create the checkout.');
+            if (in_array($issue, ['PAYEE_NOT_CONSENTED', 'PAYEE_ACCOUNT_INVALID', 'PAYEE_ACCOUNT_NOT_VERIFIED', 'PAYEE_ACCOUNT_NOT_SUPPORTED'], true)) {
+                throw new RuntimeException("This store's PayPal receiver cannot accept platform checkout yet. Verify the receiver account and PayPal partner consent, or clear the custom receiver to use the default account.");
+            }
+            throw new RuntimeException($description);
         }
 
         $payload = $response->json();
@@ -171,6 +182,21 @@ final class CommercePayPalService
         if ($this->minor($value, $order->currency) !== (int) $order->total_minor) {
             throw new RuntimeException('PayPal amount does not match this order.');
         }
+    }
+
+    private function receiverEmail(CommerceOrder $order): string
+    {
+        $snapshot = strtolower(trim((string) data_get($order->metadata, 'paypal_receiver_email', '')));
+        if ($snapshot !== '' && filter_var($snapshot, FILTER_VALIDATE_EMAIL)) {
+            return $snapshot;
+        }
+
+        $website = $order->relationLoaded('website') ? $order->website : $order->website()->with('commerceSetting')->first();
+        if (! $website) {
+            return '';
+        }
+
+        return app(CommerceCapabilityService::class)->paypalReceiverEmail($website);
     }
 
     private function requestId(string $operation, CommerceOrder $order): string

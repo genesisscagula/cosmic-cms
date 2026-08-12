@@ -2364,7 +2364,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             <Head title={`Builder — ${page.title}`} />
             <div className={`cosmic-builder-shell min-h-screen ${trialMode ? 'bg-slate-100 text-slate-900' : 'bg-[#09090b] text-slate-100'}`}>
                 <header data-cosmic-builder-header className={`sticky top-0 z-[60] backdrop-blur-xl ${trialMode ? 'border-b border-slate-200 bg-white/95' : 'border-b border-white/10 bg-[#09090b]/95'}`}>
-                    <div className={`mx-auto max-w-[1760px] px-4 py-3 sm:px-6 ${trialMode ? 'flex min-h-[76px] flex-wrap items-center justify-between gap-3' : 'grid min-h-[64px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4'}`}>
+                    <div className={`mx-auto max-w-[1760px] px-4 py-3 sm:px-6 ${trialMode ? 'flex min-h-[76px] flex-wrap items-center justify-between gap-3 xl:grid xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center' : 'grid min-h-[64px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4'}`}>
                         <div className="flex min-w-0 items-center gap-3">
                             {capabilities.canNavigateAway && (
                                 <Link
@@ -2449,7 +2449,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                             )}
                         </div>
 
-                        <div className={`${trialMode ? 'order-3 flex w-full items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 sm:order-none sm:w-auto' : 'hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 xl:flex'}`}>
+                        <div className={`${trialMode ? 'order-2 flex items-center justify-center gap-1 rounded-xl border border-slate-200 bg-slate-50 p-1 xl:justify-self-end' : 'hidden items-center gap-1 rounded-xl border border-white/10 bg-white/[0.035] p-1 xl:flex'}`}>
                             <span title={publishError || saveError || undefined} className={`inline-flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-[11px] font-medium ${isPublishing ? 'text-sky-200' : publishError ? 'text-red-200' : pageStatus === 'published' ? 'cosmic-published-status text-emerald-200' : 'text-amber-200'}`}>
                                 <span className={`h-1.5 w-1.5 rounded-full ${isPublishing ? 'animate-pulse bg-sky-300' : publishError ? 'bg-red-300' : pageStatus === 'published' ? 'bg-emerald-300' : 'bg-amber-300'}`} />
                                 {isPublishing ? 'Publishing…' : publishError ? 'Publish failed' : pageStatus === 'published' ? 'Published' : 'Draft'}
@@ -2461,7 +2461,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
                         </div>
 
-                        <div className={`flex min-w-0 items-center justify-end gap-2 ${trialMode ? 'ml-auto flex-wrap rounded-2xl border border-slate-200/80 bg-white/90 p-1.5 shadow-sm backdrop-blur sm:flex-nowrap' : ''}`}>
+                        <div className={`flex min-w-0 items-center justify-end gap-2 ${trialMode ? 'order-3 ml-0 flex w-full flex-wrap rounded-2xl border border-slate-200/80 bg-white/90 p-1.5 shadow-sm backdrop-blur xl:col-span-2 xl:flex-nowrap' : ''}`}>
                             {trialMode ? (
                                 <span title="Guest Cosmic Credits" className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-amber-200 bg-amber-50 px-3 text-xs font-extrabold text-amber-800">
                                     <span aria-hidden="true">⚡</span><span>{effectiveCreditBalance.toLocaleString()}</span><span className="hidden font-semibold sm:inline">Guest Credits</span>
@@ -2501,9 +2501,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     brandMatchNeeded={brandMatchNeeded}
                                     onMatchBrandToLogo={matchThemeToLogo}
                                     brandMatchBusy={logoBusy && logoAiAction === 'theme_to_logo'}
-                                    logoMatchPending={logoMatchPending}
-                                    onMatchLogoToTheme={matchLogoToTheme}
-                                    logoMatchBusy={logoBusy && logoAiAction === 'logo_to_theme'}
                                     onChange={handleThemeChange}
                                 />
                             )}
@@ -2534,7 +2531,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                             )}
 
                             {capabilities.canSave && (!capabilities.canPublish || trialMode) && (
-                                <form onSubmit={handleSubmit}>
+                                <form onSubmit={handleSubmit} className={trialMode ? 'xl:ml-auto' : ''}>
                                     <button
                                         type="submit"
                                         disabled={isSaving || isPublishing}
@@ -3043,9 +3040,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 brandMatchNeeded={brandMatchNeeded}
                                 onMatchBrandToLogo={matchThemeToLogo}
                                 brandMatchBusy={logoBusy && logoAiAction === 'theme_to_logo'}
-                                logoMatchPending={logoMatchPending}
-                                onMatchLogoToTheme={matchLogoToTheme}
-                                logoMatchBusy={logoBusy && logoAiAction === 'logo_to_theme'}
                                 onChange={(theme) => {
 
                                     setGlobalSelections(prev => ({
@@ -3358,7 +3352,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
             {showLogoModal && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
-                    <div className="cosmic-logo-modal w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
+                    <div id="cosmic-logo-customize-modal" className="cosmic-logo-modal cosmic-logo-customize-modal w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                         <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
                             <div>
                                 <h3 className="text-lg font-bold text-slate-900">Customize your logo</h3>
@@ -3393,10 +3387,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                                 setShowLogoModal(false);
                                                 matchLogoToTheme();
                                             }}
-                                            className="sm:col-span-2 min-h-[72px] w-full rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 text-left transition hover:border-violet-300 hover:bg-violet-100 disabled:cursor-not-allowed disabled:opacity-60"
+                                            className="cosmic-logo-match-pending sm:col-span-2 min-h-[84px] w-full rounded-xl border px-5 py-4 text-left transition disabled:cursor-not-allowed"
                                         >
-                                            <span className="block text-sm font-bold text-violet-900">✨ Match Logo to Theme</span>
-                                            <span className="mt-1 block text-xs text-violet-700">Pending after keeping the original logo. Adapt its color treatment to the active theme without changing the saved crop or size.</span>
+                                            <span className="cosmic-logo-match-pending-title block text-sm font-extrabold">✨ Match Logo to Theme</span>
+                                            <span className="cosmic-logo-match-pending-help mt-1.5 block text-xs leading-5">Pending after keeping the original logo. Adapt its color treatment to the active theme without changing the saved crop or size.</span>
                                         </button>
                                     )}
                                     <p className="sm:col-span-2 text-xs text-slate-500">{trialMode ? `AI logo actions use Guest Cosmic Credits. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 500} credits. Upload/replace is free.` : `AI logo generation costs 50 credits. Theme adaptation is offered when you switch themes. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 0} credits. Upload/replace is free.`}</p>

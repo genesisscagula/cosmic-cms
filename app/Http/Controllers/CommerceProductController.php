@@ -88,12 +88,22 @@ class CommerceProductController extends Controller
         $data = $request->validate([
             'enabled' => 'required|boolean',
             'currency' => ['required','string', Rule::in($currencies)],
+            'paypal_receiver_email' => ['nullable', 'email:rfc', 'max:190'],
         ]);
 
         $settings = $commerce->settingsFor($website);
+        $storeSettings = is_array($settings->settings) ? $settings->settings : [];
+        $receiver = strtolower(trim((string) ($data['paypal_receiver_email'] ?? '')));
+        if ($receiver === '') {
+            unset($storeSettings['paypal_receiver_email']);
+        } else {
+            $storeSettings['paypal_receiver_email'] = $receiver;
+        }
+
         $settings->update([
             'enabled' => (bool) $data['enabled'],
             'currency' => strtoupper($data['currency']),
+            'settings' => $storeSettings,
         ]);
 
         return redirect()->back(303)->with('success', $settings->enabled ? 'Store enabled.' : 'Store disabled.');

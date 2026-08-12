@@ -39,6 +39,7 @@ use App\Http\Controllers\CosmicChatInboxController;
 use App\Http\Controllers\CommerceCheckoutController;
 use App\Http\Controllers\CommerceCustomerController;
 use App\Http\Controllers\CommerceRuntimeController;
+use App\Http\Controllers\AiTextController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -60,6 +61,11 @@ Route::post('/support/chat/history', [CosmicPublicChatController::class, 'histor
 Route::post('/support/chat/lead', [CosmicPublicChatController::class, 'captureLead'])
     ->middleware(['throttle:10,1', \App\Http\Middleware\RejectOversizedRequest::class . ':16'])
     ->name('support.chat.lead');
+
+// Public media delivery for structured Posts / Updates. This avoids depending on public/storage symlinks.
+Route::get('/websites/{website}/content/media/{filename}', [ContentWorkspaceController::class, 'showMedia'])
+    ->where('filename', '[A-Za-z0-9._-]+')
+    ->name('content.media.show');
 
 Route::get('/terms', [LegalController::class, 'terms'])->name('legal.terms');
 Route::get('/privacy', [LegalController::class, 'privacy'])->name('legal.privacy');
@@ -369,6 +375,9 @@ Route::post('/trials/{trial:token}/branding/logo/match-theme', [TrialBrandingCon
 Route::post('/trials/{trial:token}/branding/theme/match-logo', [TrialBrandingController::class, 'matchThemeToLogo'])
     ->middleware('throttle:4,1')
     ->name('trial-branding.theme.match-logo');
+Route::post('/trials/{trial:token}/images/generate', [\App\Http\Controllers\AiImageController::class, 'generateTrial'])->middleware('throttle:4,1')
+    ->middleware('throttle:4,1')
+    ->name('trial-images.generate');
 Route::post('/trials/{trial:token}/pages/{page}/style', [PageController::class, 'applyTrialPageStyle'])
     ->middleware(['throttle:20,1', \App\Http\Middleware\RejectOversizedRequest::class . ':1024'])
     ->name('trial-pages.style.apply');
@@ -389,6 +398,9 @@ Route::get('/pages/{page}/builder', [PageController::class, 'builder'])->name('p
 Route::post('/pages/{page}/builder/save', [PageController::class, 'saveBuilder'])
     ->middleware(['throttle:60,1', \App\Http\Middleware\RejectOversizedRequest::class . ':1024'])
     ->name('pages.builder.save');
+Route::post('/pages/{page}/ai/text', [AiTextController::class, 'generate'])
+    ->middleware(['throttle:cosmic-ai', \App\Http\Middleware\RejectOversizedRequest::class . ':32'])
+    ->name('pages.ai.text');
 
 Route::prefix('trial-assets/{token}')->middleware('throttle:60,1')->group(function () {
     Route::get('/templates', [TrialAssetLibraryController::class, 'templates']);
@@ -400,6 +412,14 @@ Route::prefix('trial-assets/{token}')->middleware('throttle:60,1')->group(functi
 });
 
 Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
+    // Return a CSRF token from the current authenticated session. Inertia pages can
+    // outlive a Laravel session regeneration (for example after payment/login), so
+    // direct multipart uploads use this endpoint to avoid stale document meta tokens.
+    Route::get('/session/csrf-token', function (\Illuminate\Http\Request $request) {
+        return response()->json(['token' => csrf_token()])
+            ->header('Cache-Control', 'no-store, no-cache, must-revalidate, max-age=0');
+    })->middleware('throttle:60,1')->name('session.csrf-token');
+
     Route::prefix('admin/chat')->middleware(\App\Http\Middleware\EnsurePlatformOwner::class)->group(function () {
         Route::get('/', [CosmicChatInboxController::class, 'index'])->name('admin.chat.index');
         Route::get('/{conversation}', [CosmicChatInboxController::class, 'show'])->name('admin.chat.show');
@@ -542,6 +562,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/pages/{page}/style', [PageController::class, 'applyPageStyle'])->name('pages.style.apply');
 
     Route::post('/websites/{website}/content/install', [ContentWorkspaceController::class, 'install'])->name('content.install');
+    Route::post('/websites/{website}/content-types/{contentType}/page/install', [ContentWorkspaceController::class, 'installTypePage'])->name('content-types.page.install');
     Route::post('/websites/{website}/content/media', [ContentWorkspaceController::class, 'uploadMedia'])->middleware('throttle:cosmic-upload')->name('content.media.upload');
     Route::post('/websites/{website}/content-types', [ContentWorkspaceController::class, 'storeType'])->name('content-types.store');
     Route::put('/websites/{website}/content-types/{contentType}', [ContentWorkspaceController::class, 'updateType'])->name('content-types.update');
@@ -572,6 +593,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
 
     // Keep the existing browser-session image URLs while protecting the writes.
     Route::post('/api/websites/{website}/remote-image', [ImageController::class, 'remoteImage'])->middleware('throttle:cosmic-ai')->name('websites.remote-image');
+    Route::post('/api/websites/{website}/images/generate', [\App\Http\Controllers\AiImageController::class, 'generate'])->middleware('throttle:4,1')->name('websites.images.generate');
     Route::post('/api/upload-block-image', [ImageController::class, 'uploadImage'])->middleware('throttle:cosmic-upload');
     Route::post('/api/upload-logo', [ImageController::class, 'uploadLogo'])->middleware('throttle:cosmic-upload')->name('websites.logo.upload');
     Route::post('/websites/{website}/branding/logo/generate', [ImageController::class, 'generateLogo'])->middleware('throttle:4,1')->name('websites.logo.generate');

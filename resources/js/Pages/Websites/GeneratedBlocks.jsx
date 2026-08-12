@@ -4,6 +4,8 @@ import { usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { showCosmicNotification } from '../../Components/CosmicNotification';
 import { colorFamilies } from "../../theme/colorFamilies";
+import { EditableImage as SharedEditableImage } from "./Blocks/Shared/EditableImage";
+import { EditableText as SharedEditableText } from "./Blocks/Shared/EditableText";
 
 export const getEffectiveTheme = (blockTheme, globalSelections) => {
     if (!blockTheme) return colorFamilies.emerald;
@@ -15,78 +17,7 @@ export const getEffectiveTheme = (blockTheme, globalSelections) => {
     return colorFamilies[blockTheme] || colorFamilies.emerald;
 };
 
-// GLOBAL POPUP OVERLAY MODAL PARA SA MGA TEXT/HEADINGS
-function EditableText({ value, onSave, className, isTextArea = false }) {
-    const [isEditing, setIsEditing] = useState(false);
-    const [currentValue, setCurrentValue] = useState(value || '');
-
-    return (
-        <>
-            {/* STATIC PREVIEW WITH HOVER EFFECT */}
-            <div className="relative group/text cursor-pointer max-w-full block w-full" onClick={() => setIsEditing(true)}>
-                <span className={className}>{value || 'Click to add text'}</span>
-                <span className="absolute -top-2 right-2 hidden group-hover/text:inline-block bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow-md font-sans z-30">
-                    ✏️ Edit
-                </span>
-            </div>
-
-            {/* OVERLAY MODAL: Fixed portal para dili ma-distort ang layout */}
-            {isEditing && (
-                <div className="cosmic-inline-edit-overlay fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-                    <div className="cosmic-inline-edit-modal bg-slate-900 border border-slate-800 p-6 rounded-2xl w-full max-w-lg shadow-2xl text-slate-100 font-sans space-y-4">
-                        <div className="flex justify-between items-center border-b border-slate-800 pb-2">
-                            <h3 className="text-sm font-bold text-slate-400 tracking-wider uppercase">✨ Update Text Content</h3>
-                            <button type="button" onClick={() => setIsEditing(false)} className="text-lg text-slate-500 hover:text-white">✕</button>
-                        </div>
-
-                        <div>
-                            {isTextArea ? (
-                                <textarea 
-                                    className="w-full bg-slate-950 text-white p-3 text-sm rounded-xl border border-slate-700 focus:outline-none focus:border-emerald-500 font-sans"
-                                    rows={5}
-                                    value={currentValue}
-                                    onChange={(e) => setCurrentValue(e.target.value)}
-                                    autoFocus
-                                />
-                            ) : (
-                                <input 
-                                    type="text"
-                                    className="w-full bg-slate-950 text-white p-3 text-sm rounded-xl border border-slate-700 focus:outline-none focus:border-emerald-500 font-sans"
-                                    value={currentValue}
-                                    onChange={(e) => setCurrentValue(e.target.value)}
-                                    autoFocus
-                                    onKeyDown={(e) => {
-                                        if (e.key === 'Enter') {
-                                            onSave(currentValue);
-                                            setIsEditing(false);
-                                        }
-                                    }}
-                                />
-                            )}
-                        </div>
-
-                        <div className="flex justify-end gap-3 text-xs pt-2">
-                            <button 
-                                type="button"
-                                onClick={() => setIsEditing(false)} 
-                                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg text-slate-300 font-medium transition"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                type="button"
-                                onClick={() => { onSave(currentValue); setIsEditing(false); }} 
-                                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 rounded-lg text-white font-bold transition shadow-lg shadow-emerald-900/20"
-                            >
-                                Save Changes
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </>
-    );
-}
+const EditableText = SharedEditableText;
 
 // MODAL OVERLAY PARA SA MGA BUTTONS (LABEL & URL)
 function EditableButton({ label, url, onSave, className }) {
@@ -350,118 +281,8 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
 }
 
 // EDITABLE IMAGE COMPONENT
-export function EditableImage({ websiteId, blockIndex, onSave, className, src, imageQuery = '', blockType = '' }) {
-    const [isEditing, setIsEditing] = useState(false);
-    const [selectedFile, setSelectedFile] = useState(null);
-    const [preview, setPreview] = useState(src);
-    const [uploading, setUploading] = useState(false);
-    const [findingRemote, setFindingRemote] = useState(false);
-
-    useEffect(() => {
-        return () => {
-            if (preview && preview.startsWith('blob:')) {
-                URL.revokeObjectURL(preview);
-            }
-        };
-    }, [preview]);
-
-
-    const handleFindRemote = async (event) => {
-        event?.stopPropagation?.();
-        if (!websiteId || findingRemote) return;
-        setFindingRemote(true);
-        try {
-            const response = await axios.post(`/api/websites/${websiteId}/remote-image`, { query: imageQuery, block_type: blockType });
-            const url = response.data?.url;
-            if (!url) throw new Error('No remote image URL returned.');
-            setSelectedFile(null);
-            setPreview(url);
-            onSave(url);
-        } catch (error) {
-            showCosmicNotification({ title: 'Unable to find an image', message: error.response?.data?.message ?? 'Unsplash is temporarily unavailable.', tone: 'error' });
-        } finally {
-            setFindingRemote(false);
-        }
-    };
-
-    const handleFileChange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            setSelectedFile(file);
-            setPreview(URL.createObjectURL(file));
-        }
-    };
-
-    const handleSave = async () => {
-        if (!selectedFile) return;
-        setUploading(true);
-
-        const formData = new FormData();
-        formData.append('website_id', websiteId);
-        formData.append('block_index', blockIndex);
-        formData.append('image', selectedFile);
-
-        try {
-            const response = await axios.post('/api/update-block-data', formData);
-            onSave(response.data.url); 
-            setIsEditing(false);
-            setSelectedFile(null);
-        } catch (error) {
-            console.error("Error saving:", error);
-            showCosmicNotification({ title: 'Unable to save image', message: 'The image could not be saved. Please try again.', tone: 'error' });
-        } finally {
-            setUploading(false);
-        }
-    };
-
-    return (
-        <div className="relative group cursor-pointer" onClick={() => setIsEditing(true)}>
-            <img src={preview} className={className} alt="Editable" />
-            
-            {isEditing && (
-                <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-[9999] p-4">
-                    <div className="bg-slate-900 p-6 rounded-2xl w-full max-w-sm pointer-events-auto z-[10000] relative" onClick={(e) => e.stopPropagation()}>
-                        <h3 className="text-white font-bold mb-4">Media Manager</h3>
-                        <img src={preview} className="w-full h-32 object-cover rounded-lg mb-4" />
-                        
-                        <div className="flex gap-2">
-                            <button type="button" onClick={handleFindRemote} disabled={findingRemote} className="flex-1 bg-emerald-600 py-2 rounded-lg text-white font-bold hover:bg-emerald-700 disabled:opacity-50">
-                                {findingRemote ? 'Finding…' : 'Unsplash'}
-                            </button>
-                            
-                            <label className="flex-1 bg-blue-600 py-2 rounded-lg text-white text-center cursor-pointer hover:bg-blue-700">
-                                Select Image
-                                <input type="file" className="hidden" onChange={handleFileChange} />
-                            </label>
-                            
-                            {selectedFile && (
-                                <button 
-                                    type="button"
-                                    onClick={handleSave} 
-                                    className="flex-1 bg-emerald-600 py-2 rounded-lg text-white font-bold hover:bg-emerald-700"
-                                >
-                                    {uploading ? 'Saving...' : 'Save Changes'}
-                                </button>
-                            )}
-                            
-                            <button 
-                                type="button"
-                                onClick={(e) => { 
-                                    e.stopPropagation();
-                                    setPreview(src);
-                                    setSelectedFile(null);
-                                    setIsEditing(false);
-                                }} 
-                                className="px-4 bg-slate-800 rounded-lg text-white hover:bg-slate-700"
-                            >
-                                Close
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </div>
-    );
+export function EditableImage(props) {
+    return <SharedEditableImage {...props} />;
 }
 
 // 3. FEATURE BLOCK

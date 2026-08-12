@@ -104,6 +104,13 @@ class ContentWorkspaceController extends Controller
                     'archive_template' => self::templatePayload($type->archiveTemplate),
                     'templates' => $type->templates->map(fn (SavedPageTemplate $template) => self::templatePayload($template))->values(),
                     'bindings' => self::bindingCatalog($type),
+                    'installed_page' => ($page = $website->pages()->where('slug', $type->slug)->where('page_type', 'standard')->first()) ? [
+                        'id' => $page->id,
+                        'title' => $page->title,
+                        'slug' => $page->slug,
+                        'builder_url' => route('pages.builder', $page),
+                        'preview_url' => (string) $previews->urlForPage($website, $page),
+                    ] : null,
                     'archive_url' => (string) $previews->url($website, $type->slug),
                     'entries' => $type->entries->map(fn (ContentEntry $entry) => array_merge(self::entryPayload($entry), ['url' => (string) $previews->url($website, $type->slug.'/'.$entry->slug)]))->values(),
                 ])->values(),
@@ -124,6 +131,26 @@ class ContentWorkspaceController extends Controller
             (bool)($validated['add_navigation'] ?? true),
         );
         return response()->json(['result' => $result, 'workspace' => self::payload($website->fresh())]);
+    }
+
+    public function installTypePage(Request $request, Website $website, ContentType $contentType)
+    {
+        $this->authorize('update', $website);
+        $this->guardType($website, $contentType);
+        $validated = $request->validate([
+            'add_navigation' => ['nullable', 'boolean'],
+        ]);
+
+        $result = app(\App\Services\ContentInstallerService::class)->installTypePage(
+            $website,
+            $contentType,
+            (bool) ($validated['add_navigation'] ?? true),
+        );
+
+        return response()->json([
+            'result' => $result,
+            'workspace' => self::payload($website->fresh()),
+        ]);
     }
 
     public function storeType(Request $request, Website $website)
@@ -266,11 +293,12 @@ PROMPT;
                 'description' => Str::limit(trim((string) ($generated['description'] ?? $validated['description'] ?? '')), 500, ''),
                 'schema' => $schema,
                 'credits_spent' => $cost,
+                'first_design_free' => $isFirstDesign,
                 'credit_balance' => $credits->balance($request->user()),
             ]);
         } catch (\Throwable $exception) {
             try {
-                $credits->refund(
+                if ($cost > 0) $credits->refund(
                     $request->user(),
                     $cost,
                     'Refund for failed Cosmic AI field generation',
@@ -299,25 +327,31 @@ PROMPT;
         $validated = $request->validate([
             'template_type' => ['required', Rule::in([SavedPageTemplate::TYPE_SINGLE, SavedPageTemplate::TYPE_ARCHIVE])],
             'prompt' => ['nullable', 'string', 'max:2000'],
+            'first_design' => ['nullable', 'boolean'],
         ]);
 
-        $cost = ActionPricing::TEMPLATE_AI_PERSONALIZE;
+        $mode = $validated['template_type'];
+        $isFirstDesign = (bool)($validated['first_design'] ?? false)
+            && !$contentType->is_system
+            && !$contentType->templates()->where('template_type', $mode)->exists();
+        $cost = $isFirstDesign ? 0 : ActionPricing::TEMPLATE_AI_PERSONALIZE;
         $reference = 'ai-content-template-'.Str::uuid();
-        $credits->consume(
-            $request->user(),
-            $cost,
-            'Design dynamic content template with Cosmic AI',
-            $website,
-            $reference,
-            ['content_type_id' => $contentType->id, 'template_type' => $validated['template_type'], 'category' => 'ai'],
-        );
+        if ($cost > 0) {
+            $credits->consume(
+                $request->user(),
+                $cost,
+                'Design dynamic content template with Cosmic AI',
+                $website,
+                $reference,
+                ['content_type_id' => $contentType->id, 'template_type' => $mode, 'category' => 'ai'],
+            );
+        }
 
         try {
             $bindings = self::bindingCatalog($contentType);
             $bindingLines = collect($bindings)->map(fn ($binding) => '- '.$binding['key'].' ('.$binding['type'].'): '.$binding['label'])->implode("\n");
             $schemaJson = json_encode($contentType->schema ?: [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             $themeJson = json_encode($website->theme_settings ?: [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
-            $mode = $validated['template_type'];
             $requestPrompt = trim((string) ($validated['prompt'] ?? ''));
 
             $system = <<<'PROMPT'
@@ -374,11 +408,12 @@ PROMPT;
                 'design_summary' => Str::limit((string) ($generated['design_summary'] ?? 'Premium dynamic layout generated by Cosmic AI.'), 300, ''),
                 'used_bindings' => $usedBindings,
                 'credits_spent' => $cost,
+                'first_design_free' => $isFirstDesign,
                 'credit_balance' => $credits->balance($request->user()),
             ]);
         } catch (\Throwable $exception) {
             try {
-                $credits->refund(
+                if ($cost > 0) $credits->refund(
                     $request->user(),
                     $cost,
                     'Refund for failed Cosmic AI dynamic template design',
@@ -391,11 +426,14 @@ PROMPT;
             }
 
             report($exception);
+            $fallbackMessage = $cost > 0
+                ? 'Cosmic AI could not design this template. Your credits were refunded.'
+                : 'Cosmic AI could not create the free first design. No credits were charged.';
             $message = $exception instanceof \Symfony\Component\HttpKernel\Exception\HttpExceptionInterface && $exception->getStatusCode() === 422
                 ? $exception->getMessage()
-                : 'Cosmic AI could not design this template. Your credits were refunded.';
+                : $fallbackMessage;
 
-            return response()->json(['message' => $message], $message === 'Cosmic AI could not design this template. Your credits were refunded.' ? 503 : 422);
+            return response()->json(['message' => $message], $message === $fallbackMessage ? 503 : 422);
         }
     }
 
@@ -539,13 +577,25 @@ PROMPT;
 
         $kind = $data['kind'] ?? 'custom';
         $path = $file->storeAs("websites/{$website->id}/content", $kind.'-'.Str::uuid().'.'.$extension, 'public');
-        $relativeUrl = Storage::disk('public')->url($path);
+        $filename = basename($path);
 
         return response()->json([
-            'url' => rtrim($request->getSchemeAndHttpHost(), '/').'/'.ltrim($relativeUrl, '/'),
+            'url' => route('content.media.show', ['website' => $website->id, 'filename' => $filename], false),
             'path' => $path,
             'kind' => $kind,
             'mime_type' => $file->getMimeType(),
+        ]);
+    }
+
+    /** Publicly serve uploaded Posts / Updates media without requiring a public/storage symlink. */
+    public function showMedia(Website $website, string $filename)
+    {
+        abort_unless((bool) preg_match('/^[A-Za-z0-9._-]+$/', $filename), 404);
+        $path = "websites/{$website->id}/content/{$filename}";
+        abort_unless(Storage::disk('public')->exists($path), 404);
+
+        return Storage::disk('public')->response($path, $filename, [
+            'Cache-Control' => 'public, max-age=31536000, immutable',
         ]);
     }
 
@@ -650,11 +700,12 @@ PROMPT;
             return response()->json([
                 'entry' => $draft,
                 'credits_spent' => $cost,
+                'first_design_free' => $isFirstDesign,
                 'credit_balance' => $credits->balance($request->user()),
             ]);
         } catch (\Throwable $exception) {
             try {
-                $credits->refund(
+                if ($cost > 0) $credits->refund(
                     $request->user(),
                     $cost,
                     'Refund for failed Cosmic AI content generation',

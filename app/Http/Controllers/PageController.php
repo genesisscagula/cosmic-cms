@@ -251,6 +251,9 @@ class PageController extends Controller
                 'account' => filled($website->preview_slug) ? $previewService->url($website, 'account') : null,
             ],
             'currency' => $currency,
+            'paypal_receiver_email' => $settings ? $capabilities->configuredPaypalReceiverEmail($website) : null,
+            'paypal_receiver_effective_email' => $settings ? $capabilities->paypalReceiverEmail($website) : (string) config('cosmic-commerce.default_paypal_receiver_email', config('cosmic.platform_owner_email')),
+            'paypal_receiver_default_email' => (string) config('cosmic-commerce.default_paypal_receiver_email', config('cosmic.platform_owner_email')),
             'currency_decimals' => $currencyDecimals,
             'currencies' => collect(config('cosmic-commerce.currencies', []))->map(fn ($config, $code) => [
                 'code' => $code,
@@ -818,6 +821,7 @@ class PageController extends Controller
                     'page_style' => TrialCreditService::PAGE_STYLE,
                     'regenerate_page' => TrialCreditService::REGENERATE_PAGE,
                     'generate_logo' => TrialCreditService::GENERATE_LOGO,
+                    'generate_image' => TrialCreditService::GENERATE_IMAGE,
                     'match_logo_to_theme' => TrialCreditService::MATCH_LOGO_TO_THEME,
                     'match_theme_to_logo' => TrialCreditService::MATCH_THEME_TO_LOGO,
                 ],

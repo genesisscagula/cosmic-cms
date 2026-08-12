@@ -33,14 +33,10 @@ export default function ThemeCard({
     brandMatchNeeded = false,
     onMatchBrandToLogo = null,
     brandMatchBusy = false,
-    logoMatchPending = false,
-    onMatchLogoToTheme = null,
-    logoMatchBusy = false,
 }) {
     const [primary, surface, accent, text] = theme.colors;
     const isMyBrand = theme.id === 'my-brand';
     const canMatchBrandToLogo = isMyBrand && typeof onMatchBrandToLogo === 'function';
-    const canRetryLogoMatch = selected && hasLogo && logoMatchPending && typeof onMatchLogoToTheme === 'function';
 
     return (
         <div
@@ -161,22 +157,6 @@ export default function ThemeCard({
                     </button>
                 )}
 
-                {canRetryLogoMatch && (
-                    <button
-                        type="button"
-                        disabled={logoMatchBusy}
-                        onClick={(event) => {
-                            event.preventDefault();
-                            event.stopPropagation();
-                            onMatchLogoToTheme();
-                        }}
-                        onKeyDown={(event) => event.stopPropagation()}
-                        className="cosmic-theme-match-logo-cta mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border px-3 py-2 text-[10px] font-extrabold uppercase tracking-[0.12em] transition disabled:cursor-not-allowed"
-                    >
-                        <span aria-hidden="true">✨</span>
-                        {logoMatchBusy ? 'Matching…' : 'Match Logo to Theme'}
-                    </button>
-                )}
 
             </div>
         </div>

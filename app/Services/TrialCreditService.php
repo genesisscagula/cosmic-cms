@@ -11,6 +11,8 @@ class TrialCreditService
     public const PAGE_STYLE = 20;
     public const REGENERATE_PAGE = 50;
     public const GENERATE_LOGO = 50;
+    public const GENERATE_IMAGE = 50;
+    public const GENERATE_TEXT = 10;
     public const MATCH_LOGO_TO_THEME = 50;
     public const MATCH_THEME_TO_LOGO = 50;
 

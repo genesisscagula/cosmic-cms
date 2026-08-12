@@ -16,9 +16,6 @@ export default function ThemeModal({
     brandMatchNeeded = false,
     onMatchBrandToLogo = null,
     brandMatchBusy = false,
-    logoMatchPending = false,
-    onMatchLogoToTheme = null,
-    logoMatchBusy = false,
 }) {
     const [search, setSearch] = useState("");
     const [category, setCategory] = useState("All");
@@ -197,10 +194,7 @@ export default function ThemeModal({
                         brandMatchNeeded={brandMatchNeeded}
                         onMatchBrandToLogo={handleMatchBrandToLogo}
                         brandMatchBusy={brandMatchBusy}
-                        logoMatchPending={logoMatchPending}
-                        onMatchLogoToTheme={onMatchLogoToTheme}
-                        logoMatchBusy={logoMatchBusy}
-                    />
+                                            />
 
                     {filteredThemes.length === 0 && (
                         <div className="rounded-xl border border-dashed border-white/15 px-6 py-14 text-center text-sm text-slate-500">

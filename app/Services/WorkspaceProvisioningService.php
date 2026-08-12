@@ -423,6 +423,10 @@ class WorkspaceProvisioningService
             return;
         }
 
+        // Reload the trial inside the provisioning transaction so PayPal callback /
+        // webhook retries always claim the very latest Builder save, logo and theme.
+        $trial->refresh();
+
         $menu = collect($trial->menu_structure ?? [])
             ->map(fn ($item) => [
                 'label' => (string) ($item['title'] ?? $item['label'] ?? 'Page'),
@@ -438,33 +442,64 @@ class WorkspaceProvisioningService
             (string) data_get($themeSettings, 'custom_brand_theme.base_family', 'midnight')
         );
 
-        $paidLogoUrl = $this->promoteTrialLogo($trial, $website);
+        // Promote every branding reference used by the Trial Builder, not only
+        // trial_generations.logo_url. Theme-matched/original variants otherwise
+        // keep pointing at temporary /storage/trials/... files after purchase.
+        $paidLogoUrl = $this->promoteTrialBrandingAsset($trial->logo_url, $website);
+        foreach (['brand_original_logo_url', 'brand_active_logo_url', 'brand_favicon_url'] as $key) {
+            $promoted = $this->promoteTrialBrandingAsset(data_get($themeSettings, $key), $website);
+            if ($promoted) {
+                $themeSettings[$key] = $promoted;
+            }
+        }
 
-        // If My Brand Theme was derived from the trial logo, point it at the
-        // permanent paid-site logo URL so future sync-state checks remain valid.
-        if (filled($paidLogoUrl) && is_array(data_get($themeSettings, 'custom_brand_theme'))) {
+        $variants = (array) data_get($themeSettings, 'brand_logo_variants', []);
+        foreach ($variants as $themeKey => $variantUrl) {
+            $promoted = $this->promoteTrialBrandingAsset($variantUrl, $website);
+            if ($promoted) {
+                $variants[$themeKey] = $promoted;
+            }
+        }
+        if ($variants !== []) {
+            $themeSettings['brand_logo_variants'] = $variants;
+        }
+
+        if (is_array(data_get($themeSettings, 'custom_brand_theme'))) {
             $customTheme = (array) data_get($themeSettings, 'custom_brand_theme');
-            if (filled($customTheme['source_logo_url'] ?? null)) {
+            $promotedSource = $this->promoteTrialBrandingAsset($customTheme['source_logo_url'] ?? null, $website);
+            if ($promotedSource) {
+                $customTheme['source_logo_url'] = $promotedSource;
+            } elseif ($paidLogoUrl && filled($customTheme['source_logo_url'] ?? null)) {
                 $customTheme['source_logo_url'] = $paidLogoUrl;
             }
             $themeSettings['custom_brand_theme'] = $customTheme;
+        }
+
+        // The active Trial logo is the source of truth at purchase time. This
+        // preserves uploaded, AI-generated, theme-matched, cropped and restored
+        // logo states exactly as the user last saw them in Trial Builder.
+        $activeLogoUrl = trim((string) data_get($themeSettings, 'brand_active_logo_url', ''));
+        if ($activeLogoUrl === '') {
+            $activeLogoUrl = $paidLogoUrl ?: '/storage/branding/your-logo.png';
         }
 
         $header = $website->global_header ?? [];
         if ($menu !== []) {
             $header['menu'] = $menu;
         }
-        $header['logo_text'] = $trial->logo_company_name ?: $website->name;
-        $header['logo_image_url'] = $paidLogoUrl ?: '/storage/branding/your-logo.png';
-        $header['logo_height'] = $header['logo_height'] ?? 42;
+        $header['logo_text'] = $trial->logo_company_name ?: $trial->business_name ?: $website->name;
+        $header['logo_image_url'] = $activeLogoUrl;
+        $header['logo_height'] = max(42, (int) data_get($themeSettings, 'logo_height', $header['logo_height'] ?? 60));
+        $header['logo_max_width'] = max(220, (int) data_get($themeSettings, 'logo_max_width', $header['logo_max_width'] ?? 300));
         $header['logo_filter_key'] = data_get($themeSettings, 'primary', 'midnight');
+        $header['overlay_header_on_banner'] = (bool) data_get($themeSettings, 'overlay_header_on_banner', $header['overlay_header_on_banner'] ?? false);
 
         $footer = $website->global_footer ?? [];
         $footer['type'] = $footer['type'] ?? 'minimal_footer';
         $footer['theme'] = $footer['theme'] ?? 'white';
         $footer['logo_text'] = $header['logo_text'];
-        $footer['logo_image_url'] = $header['logo_image_url'];
-        $footer['logo_height'] = $footer['logo_height'] ?? 36;
+        $footer['logo_image_url'] = $activeLogoUrl;
+        $footer['logo_height'] = max(36, min(56, (int) data_get($themeSettings, 'logo_height', $footer['logo_height'] ?? 48)));
         $footer['logo_filter_key'] = $header['logo_filter_key'];
         $footer['copyright'] = $footer['copyright'] ?? ('© '.now()->year.' '.$website->name.'. All rights reserved.');
 
@@ -479,8 +514,9 @@ class WorkspaceProvisioningService
             $settings['theme_entitlement_seed'] = $trialTheme ?: 'midnight';
         }
 
-        // Carry L1 brand memory into the paid website so Luna keeps the same
-        // art direction after the trial is claimed.
+        // Carry L1 brand memory and the final trial branding state into the paid
+        // website. Defaults may fill missing values later, but must never rebuild
+        // or replace this transferred snapshot.
         $settings['brand_memory'] = [
             'brand_prompt' => $trial->brand_prompt ?: $trial->prompt,
             'latest_user_prompt' => $trial->latest_user_prompt ?: $trial->prompt,
@@ -488,9 +524,16 @@ class WorkspaceProvisioningService
             'prompt_history' => is_array($trial->prompt_history) ? $trial->prompt_history : [],
             'source_trial_id' => $trial->id,
         ];
+        $settings['trial_transfer'] = array_merge((array) data_get($settings, 'trial_transfer', []), [
+            'source_trial_id' => $trial->id,
+            'last_saved_at' => optional($trial->last_saved_at)?->toIso8601String(),
+            'logo_source' => $trial->logo_source,
+            'logo_theme_sync_state' => $trial->logo_theme_sync_state,
+            'logo_theme_sync_source' => $trial->logo_theme_sync_source,
+            'logo_theme_synced_theme' => $trial->logo_theme_synced_theme,
+        ]);
 
         $website->forceFill([
-            // The paid website receives the exact latest trial Builder state.
             'settings' => $settings,
             'theme_settings' => $themeSettings,
             'global_header' => $header,
@@ -499,12 +542,13 @@ class WorkspaceProvisioningService
     }
 
     /**
-     * Copy a trial-scoped logo into permanent website branding storage.
-     * Idempotent across PayPal callback/webhook retries.
+     * Copy one trial-scoped branding asset into permanent website storage.
+     * Content-addressed filenames guarantee that a later save cannot reuse a
+     * stale logo from an earlier provisioning attempt.
      */
-    private function promoteTrialLogo(TrialGeneration $trial, Website $website): ?string
+    private function promoteTrialBrandingAsset(mixed $value, Website $website): ?string
     {
-        $logoUrl = trim((string) $trial->logo_url);
+        $logoUrl = trim((string) $value);
         if ($logoUrl === '') {
             return null;
         }
@@ -512,7 +556,6 @@ class WorkspaceProvisioningService
         $urlPath = parse_url($logoUrl, PHP_URL_PATH) ?: $logoUrl;
         $urlPath = '/'.ltrim((string) $urlPath, '/');
 
-        // Already points at a permanent paid-site asset.
         if (str_starts_with($urlPath, '/storage/website-branding/')) {
             return $urlPath;
         }
@@ -531,12 +574,23 @@ class WorkspaceProvisioningService
             $extension = 'png';
         }
 
-        $destination = "website-branding/logos/website-{$website->id}-trial-logo.{$extension}";
+        $bytes = Storage::disk('public')->get($source);
+        $fingerprint = substr(hash('sha256', $bytes), 0, 16);
+        $destination = "website-branding/logos/website-{$website->id}-{$fingerprint}.{$extension}";
+
         if (! Storage::disk('public')->exists($destination)) {
-            Storage::disk('public')->copy($source, $destination);
+            Storage::disk('public')->put($destination, $bytes);
         }
 
         return Storage::disk('public')->url($destination);
+    }
+
+    /**
+     * Backward-compatible wrapper retained for any internal callers.
+     */
+    private function promoteTrialLogo(TrialGeneration $trial, Website $website): ?string
+    {
+        return $this->promoteTrialBrandingAsset($trial->logo_url, $website);
     }
 
     private function claimTrial(

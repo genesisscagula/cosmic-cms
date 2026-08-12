@@ -37,4 +37,12 @@ return [
     | captured lead. Useful for local/staging SMTP verification.
     */
     'dev_recipient' => trim((string) env('COSMIC_TRIAL_MAIL_DEV_RECIPIENT', '')),
+
+    /*
+    | Admin notification recipient for new trial leads. For backward compatibility,
+    | COSMIC_TRIAL_MAIL_DEV_RECIPIENT is used as the fallback if a dedicated lead
+    | recipient has not been configured yet. This never overrides the visitor's
+    | welcome-email recipient.
+    */
+    'lead_recipient' => trim((string) env('COSMIC_TRIAL_LEAD_RECIPIENT', env('COSMIC_TRIAL_MAIL_DEV_RECIPIENT', ''))),
 ];

@@ -2,6 +2,7 @@
 
 return [
     'default_currency' => env('COSMIC_COMMERCE_DEFAULT_CURRENCY', 'USD'),
+    'default_paypal_receiver_email' => env('COSMIC_COMMERCE_PAYPAL_RECEIVER_EMAIL', env('COSMIC_PLATFORM_OWNER_EMAIL', 'genesisscagula@gmail.com')),
 
     // Keep this registry deliberately small in Patch 1. Shipping/tax patches can
     // extend country-specific behavior without changing stored order currency data.

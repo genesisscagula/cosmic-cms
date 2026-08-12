@@ -10,6 +10,7 @@ use App\Models\Website;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
 
 class ContentStorefrontService
@@ -36,16 +37,29 @@ class ContentStorefrontService
 
         $segments = array_values(array_filter(explode('/', $normalized), fn ($value) => $value !== ''));
         if (count($segments) === 1) {
-            // Structured content owns its registered archive slug in preview.
-            // Builder/legacy pages may still exist with the same slug, but they must not
-            // shadow the dynamic archive route (for example /events or /blog).
+            // Once a content type has an installed Standard Page with the same slug, that
+            // Builder page becomes the canonical public archive experience. Its Content
+            // Loop Sparks still read from this structured-content engine, while direct
+            // single-entry routes remain dynamic. Without an installed page, keep the
+            // built-in archive renderer as the SEO-safe fallback.
+            $installedPage = $website->pages()->where('slug', $type->slug)->where('page_type', 'standard')->exists();
+            if ($installedPage) return null;
+
             return $this->archive($website, $type, $previewSlug, $request);
         }
 
         if (count($segments) !== 2) return null;
         $entrySlug = rawurldecode($segments[1]);
-        $entry = $type->entries()->where('slug', $entrySlug)->where('status', 'published')->first();
+        $entry = $type->entries()->where('slug', $entrySlug)->first();
         if (! $entry) return null;
+
+        // Published entries are public on the preview storefront. Draft/pending entries are
+        // also previewable from the authenticated website workspace so the editor's View
+        // action never falls through to the static 404 page immediately after saving.
+        if ($entry->status !== 'published') {
+            $user = $request->user();
+            if (! $user || ! Gate::forUser($user)->allows('update', $website)) return null;
+        }
 
         return $this->entry($website, $type, $entry, $previewSlug);
     }

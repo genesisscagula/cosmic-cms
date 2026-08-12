@@ -319,12 +319,26 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                     </section>
 
                     <section className="space-y-4">
-                        <div className="flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/[0.025] p-2">
+                        <div id="cosmic-website-page-type-tabs" className="cosmic-website-page-type-tabs flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/[0.025] p-2" role="tablist" aria-label="Website content types">
                             {[
                                 ['standard', 'Standard Pages', (pages || []).filter((page) => page.page_type === 'standard').length],
                                 ['posts', 'Posts / Updates', (contentWorkspace?.types || []).reduce((total, type) => total + (type.entries_count || 0), 0)],
                                 ['shop', 'Shop / Products', commerce?.products?.length || 0],
-                            ].map(([key, label, count]) => <button key={key} type="button" onClick={() => setWorkspaceContentTab(key)} className={`flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition ${workspaceContentTab === key ? 'bg-violet-500/15 text-violet-200 ring-1 ring-violet-400/20' : 'text-slate-400 hover:bg-white/5 hover:text-white'}`}><span>{label}</span><span className={`rounded-full px-2 py-0.5 text-[10px] ${workspaceContentTab === key ? 'bg-violet-400/15 text-violet-200' : 'bg-white/5 text-slate-600'}`}>{count}</span></button>)}
+                            ].map(([key, label, count]) => {
+                                const isActive = workspaceContentTab === key;
+                                return <button
+                                    key={key}
+                                    type="button"
+                                    role="tab"
+                                    aria-selected={isActive}
+                                    data-state={isActive ? 'active' : 'inactive'}
+                                    onClick={() => setWorkspaceContentTab(key)}
+                                    className={`cosmic-website-page-type-tab ${isActive ? 'is-active' : 'is-inactive'}`}
+                                >
+                                    <span className="cosmic-website-page-type-tab-label">{label}</span>
+                                    <span className="cosmic-website-page-type-tab-count">{count}</span>
+                                </button>;
+                            })}
                         </div>
 
                         {workspaceContentTab === 'shop' ? <CommerceProductsWorkspace website={website} commerce={commerce} /> : workspaceContentTab === 'posts' ? <div className="space-y-5"><PostsUpdatesWorkspace website={website} initialWorkspace={contentWorkspace} />{(pages || []).some((page) => page.page_type === 'blog') ? <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4"><div className="mb-3"><p className="text-sm font-semibold text-white">Legacy Posts / Updates pages</p><p className="mt-1 text-xs text-slate-500">Existing blog-style Builder pages stay available while the structured content engine is introduced.</p></div><PageList pages={(pages || []).filter((page) => page.page_type === 'blog')} onDelete={deletePage} onAddChild={openNewPage} /></div> : null}</div> : (() => {

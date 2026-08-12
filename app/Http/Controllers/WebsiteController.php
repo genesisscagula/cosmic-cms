@@ -779,8 +779,10 @@ class WebsiteController extends Controller
             'business_description' => ['nullable', 'string', 'max:3000'],
             'contact_email' => ['nullable', 'email', 'max:254'],
             'contact_phone' => ['nullable', 'string', 'max:40'],
-            'timezone' => ['required', 'string', 'max:80'],
-            'locale' => ['required', 'string', 'max:20'],
+            // Settings modal is intentionally a compact partial editor. Keep existing
+            // timezone/locale when those fields are not part of this request.
+            'timezone' => ['sometimes', 'string', 'max:80'],
+            'locale' => ['sometimes', 'string', 'max:20'],
             'business_name' => ['nullable', 'string', 'max:255'],
             'address' => ['nullable', 'string', 'max:500'],
             'company_name' => ['nullable', 'string', 'max:255'],
@@ -829,10 +831,19 @@ class WebsiteController extends Controller
             'business_description' => $validated['business_description'] ?? null,
             'contact_email' => $validated['contact_email'] ?? null,
             'contact_phone' => $validated['contact_phone'] ?? null,
-            'timezone' => $validated['timezone'],
-            'locale' => $validated['locale'],
+            'timezone' => $validated['timezone'] ?? $website->timezone,
+            'locale' => $validated['locale'] ?? $website->locale,
             'settings' => $settings,
         ]);
+
+        // Axios callers need JSON; returning an Inertia redirect here made the compact
+        // settings modal look like Save did nothing even when validation passed.
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Website settings updated.',
+                'website' => $website->fresh(),
+            ]);
+        }
 
         return back()->with('status', 'website-settings-updated');
     }

@@ -31,6 +31,7 @@ export default function CommerceProductsWorkspace({ website, commerce }) {
     const [creatingCategory, setCreatingCategory] = useState(false);
     const [storeEnabled, setStoreEnabled] = useState(!!commerce?.enabled);
     const [storeCurrency, setStoreCurrency] = useState(commerce?.currency || 'USD');
+    const [paypalReceiverEmail, setPaypalReceiverEmail] = useState(commerce?.paypal_receiver_email || '');
     const [savingStore, setSavingStore] = useState(false);
     const [workspaceTab, setWorkspaceTab] = useState('products');
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
@@ -94,9 +95,9 @@ export default function CommerceProductsWorkspace({ website, commerce }) {
         router.delete(`/websites/${website.id}/commerce/products/${product.id}`, { preserveScroll: true, onSuccess: () => showCosmicNotification({ title: 'Product deleted', message: 'The catalog has been updated.', tone: 'success' }) });
     };
 
-    const saveStoreSettings = (enabled = storeEnabled, currencyCode = storeCurrency) => {
+    const saveStoreSettings = (enabled = storeEnabled, currencyCode = storeCurrency, receiverEmail = paypalReceiverEmail) => {
         setSavingStore(true);
-        router.put(`/websites/${website.id}/commerce/settings`, { enabled, currency: currencyCode }, { preserveScroll: true, onSuccess: () => showCosmicNotification({ title: enabled ? 'Store enabled' : 'Store settings saved', message: enabled ? 'Commerce is active for this website. Storefront routes remain unpublished until their patch is installed.' : 'Catalog editing remains available while checkout is disabled.', tone: 'success' }), onError: (errors) => showCosmicNotification({ title: 'Could not save store settings', message: Object.values(errors || {})[0] || 'Try again.', tone: 'error' }), onFinish: () => setSavingStore(false) });
+        router.put(`/websites/${website.id}/commerce/settings`, { enabled, currency: currencyCode, paypal_receiver_email: receiverEmail.trim() || null }, { preserveScroll: true, onSuccess: () => showCosmicNotification({ title: 'Store settings saved', message: receiverEmail.trim() ? `Checkout receiver: ${receiverEmail.trim()}` : `Using default PayPal receiver ${commerce?.paypal_receiver_default_email || ''}`, tone: 'success' }), onError: (errors) => showCosmicNotification({ title: 'Could not save store settings', message: Object.values(errors || {})[0] || 'Try again.', tone: 'error' }), onFinish: () => setSavingStore(false) });
     };
 
     const installCommercePages = (mode = 'plain') => {
@@ -121,25 +122,57 @@ export default function CommerceProductsWorkspace({ website, commerce }) {
         if (file.size > 8 * 1024 * 1024) throw new Error('Image must be 8 MB or smaller.');
         if (file.type && !allowed.includes(file.type.toLowerCase())) throw new Error('Use JPG, PNG, WebP, GIF, AVIF, HEIC or HEIF images.');
 
-        const form = new FormData();
-        form.append('image', file, file.name);
-        form.append('kind', kind);
-        const token = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
-        if (!token) throw new Error('Your secure upload session is missing. Refresh the page and try again.');
-        const response = await fetch(`/websites/${website.id}/commerce/media`, {
-            method: 'POST',
-            credentials: 'same-origin',
-            headers: {
-                'X-CSRF-TOKEN': token,
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-            },
-            body: form,
-        });
+        const getFreshCsrfToken = async () => {
+            const response = await fetch('/session/csrf-token', {
+                method: 'GET',
+                credentials: 'same-origin',
+                cache: 'no-store',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+            });
+            const data = await response.json().catch(() => ({}));
+            const token = data?.token || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+            if (!response.ok || !token) throw new Error('Your secure upload session could not be refreshed. Reload the page and try again.');
+            document.querySelector('meta[name="csrf-token"]')?.setAttribute('content', token);
+            return token;
+        };
+
+        const sendUpload = async (token) => {
+            const form = new FormData();
+            form.append('image', file, file.name);
+            form.append('kind', kind);
+            return fetch(`/websites/${website.id}/commerce/media`, {
+                method: 'POST',
+                credentials: 'same-origin',
+                headers: {
+                    'X-CSRF-TOKEN': token,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'Accept': 'application/json',
+                },
+                body: form,
+            });
+        };
+
+        // The builder is an Inertia SPA. Authentication/payment flows can regenerate
+        // the Laravel session while the document-level meta token stays stale, which
+        // caused commerce uploads to fail with a 419 CSRF token mismatch. Resolve a
+        // token from the live session before uploading and retry once if it rotates.
+        let token = await getFreshCsrfToken();
+        let response = await sendUpload(token);
+        if (response.status === 419) {
+            token = await getFreshCsrfToken();
+            response = await sendUpload(token);
+        }
+
         const data = await response.json().catch(() => ({}));
         if (!response.ok) {
             const validationMessage = Object.values(data?.errors || {}).flat?.()?.[0];
-            throw new Error(validationMessage || data?.message || 'Image upload failed.');
+            const message = response.status === 419
+                ? 'Your secure session changed while uploading. Reload the page and try again.'
+                : (validationMessage || data?.message || 'Image upload failed.');
+            throw new Error(message);
         }
         if (!data?.url) throw new Error('Upload completed without an image URL. Please try again.');
         return data.url;
@@ -194,11 +227,11 @@ export default function CommerceProductsWorkspace({ website, commerce }) {
 
     return <>
         <section className="cosmic-commerce-workspace space-y-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-end lg:justify-between">
-                <div><div className="flex items-center gap-2"><p className="text-sm font-semibold text-white">Shop / Products</p><span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">{currency}</span></div><p className="mt-1 text-sm text-slate-400">Manage catalog data separately from storefront design. Catalog, variations and storefront Sparks are connected. Configure global shipping zones below for checkout.</p></div>
-                <div className="flex flex-wrap gap-2">
-                    {commerce?.storefront_url ? <a href={commerce.storefront_url} target="_blank" rel="noreferrer" className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white">View Store</a> : null}
-                    <button type="button" onClick={openNew} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-violet-400">+ Add product</button>
+            <div id="commerce-products-header" className="commerce-products-header">
+                <div className="commerce-products-header__copy"><div className="flex items-center gap-2"><p className="text-sm font-semibold text-white">Shop / Products</p><span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[10px] font-bold uppercase tracking-wider text-emerald-300">{currency}</span></div><p className="mt-1 text-sm text-slate-400">Manage catalog data separately from storefront design. Catalog, variations and storefront Sparks are connected. Configure global shipping zones below for checkout.</p></div>
+                <div className="commerce-products-header__actions">
+                    {commerce?.storefront_url ? <a href={commerce.storefront_url} target="_blank" rel="noreferrer" className="commerce-products-header__button commerce-products-header__button--secondary">View Store</a> : null}
+                    <button type="button" onClick={openNew} className="commerce-products-header__button commerce-products-header__button--primary">+ Add product</button>
                 </div>
             </div>
             <div className="flex gap-2 overflow-x-auto rounded-2xl border border-white/10 bg-white/[0.025] p-2">
@@ -217,8 +250,22 @@ export default function CommerceProductsWorkspace({ website, commerce }) {
             {workspaceTab === 'settings' ? <div className="space-y-4">
                 <div className={panelClass}>
                     <div className="grid gap-5 md:grid-cols-[1fr_220px] md:items-end">
-                        <div><p className={labelClass}>Store status</p><div className="mt-2 flex items-center gap-3"><button type="button" role="switch" aria-checked={storeEnabled} disabled={savingStore} onClick={() => { const next = !storeEnabled; setStoreEnabled(next); saveStoreSettings(next, storeCurrency); }} className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition ${storeEnabled ? 'border-emerald-400/30 bg-emerald-500/30' : 'border-white/10 bg-white/10'} disabled:opacity-50`}><span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${storeEnabled ? 'translate-x-6' : 'translate-x-1'}`}/></button><div><p className={`text-sm font-semibold ${storeEnabled ? 'text-emerald-300' : 'text-slate-300'}`}>{storeEnabled ? 'Store enabled' : 'Store disabled'}</p><p className="mt-0.5 text-xs text-slate-500">{storeEnabled ? 'Customers can browse the storefront and proceed through checkout.' : 'Catalog editing stays available, but storefront checkout is unavailable.'}</p></div></div></div>
-                        <Field label="Currency"><select value={storeCurrency} onChange={(e) => { setStoreCurrency(e.target.value); saveStoreSettings(storeEnabled, e.target.value); }} disabled={savingStore} className={inputClass}>{(commerce?.currencies || []).map((item) => <option key={item.code} value={item.code}>{item.code} · {item.symbol}</option>)}</select></Field>
+                        <div><p className={labelClass}>Store status</p><div className="mt-2 flex items-center gap-3"><button type="button" role="switch" aria-checked={storeEnabled} disabled={savingStore} onClick={() => { const next = !storeEnabled; setStoreEnabled(next); saveStoreSettings(next, storeCurrency, paypalReceiverEmail); }} className={`relative inline-flex h-7 w-12 shrink-0 items-center rounded-full border transition ${storeEnabled ? 'border-emerald-400/30 bg-emerald-500/30' : 'border-white/10 bg-white/10'} disabled:opacity-50`}><span className={`inline-block h-5 w-5 rounded-full bg-white shadow transition-transform ${storeEnabled ? 'translate-x-6' : 'translate-x-1'}`}/></button><div><p className={`text-sm font-semibold ${storeEnabled ? 'text-emerald-300' : 'text-slate-300'}`}>{storeEnabled ? 'Store enabled' : 'Store disabled'}</p><p className="mt-0.5 text-xs text-slate-500">{storeEnabled ? 'Customers can browse the storefront and proceed through checkout.' : 'Catalog editing stays available, but storefront checkout is unavailable.'}</p></div></div></div>
+                        <Field label="Currency"><select value={storeCurrency} onChange={(e) => { setStoreCurrency(e.target.value); saveStoreSettings(storeEnabled, e.target.value, paypalReceiverEmail); }} disabled={savingStore} className={inputClass}>{(commerce?.currencies || []).map((item) => <option key={item.code} value={item.code}>{item.code} · {item.symbol}</option>)}</select></Field>
+                    </div>
+                </div>
+                <div id="commerce-paypal-receiver-settings" className={panelClass}>
+                    <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
+                        <div>
+                            <p className="text-sm font-semibold text-white">PayPal payment receiver</p>
+                            <p className="mt-1 max-w-2xl text-xs leading-5 text-slate-500">Set a receiver for this website only. Leave blank to use the default platform receiver. Ideal for agency/client stores that should receive their own checkout payments.</p>
+                            <Field label="PayPal business email" className="mt-4 max-w-xl"><input type="email" value={paypalReceiverEmail} onChange={(e)=>setPaypalReceiverEmail(e.target.value)} placeholder={commerce?.paypal_receiver_default_email || 'PayPal receiver email'} className={inputClass}/></Field>
+                            <p className="mt-2 text-[11px] leading-5 text-slate-500">Effective receiver: <span className="font-semibold text-slate-300">{paypalReceiverEmail.trim() || commerce?.paypal_receiver_default_email || 'Not configured'}</span>. Custom merchant accounts may require PayPal partner consent before Cosmic CMS can create orders for them.</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2">
+                            {paypalReceiverEmail ? <button type="button" disabled={savingStore} onClick={()=>{setPaypalReceiverEmail('');saveStoreSettings(storeEnabled, storeCurrency, '');}} className="rounded-xl border border-white/10 px-4 py-2.5 text-xs font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-50">Use default</button> : null}
+                            <button type="button" disabled={savingStore} onClick={()=>saveStoreSettings(storeEnabled, storeCurrency, paypalReceiverEmail)} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-violet-400 disabled:opacity-50">{savingStore ? 'Saving…' : 'Save PayPal receiver'}</button>
+                        </div>
                     </div>
                 </div>
                 <div className={panelClass}>

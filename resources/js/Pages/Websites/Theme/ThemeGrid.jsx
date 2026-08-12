@@ -10,8 +10,6 @@ export default function ThemeGrid({
     brandMatchNeeded = false,
     onMatchBrandToLogo = null,
     brandMatchBusy = false,
-    logoMatchPending = false,
-    onMatchLogoToTheme = null,
     logoMatchBusy = false
 }) {
     return (
@@ -34,10 +32,7 @@ export default function ThemeGrid({
                     brandMatchNeeded={brandMatchNeeded}
                     onMatchBrandToLogo={onMatchBrandToLogo}
                     brandMatchBusy={brandMatchBusy}
-                    logoMatchPending={logoMatchPending}
-                    onMatchLogoToTheme={onMatchLogoToTheme}
-                    logoMatchBusy={logoMatchBusy}
-                />
+                            />
 
             ))}
 

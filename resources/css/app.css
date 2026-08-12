@@ -4134,3 +4134,259 @@ body .cosmic-start-quick-idea.rounded-full.border {
 :root[data-theme="light"] .cosmic-content-modal [class*="bg-black/"] { background: #f8fafc !important; }
 :root[data-theme="light"] .cosmic-content-modal button[class*="bg-violet-"] { color: #ffffff !important; }
 :root[data-theme="dark"] .cosmic-content-modal [contenteditable="true"] { color: #f8fafc; }
+
+
+/* Patch 4B — Logo modal isolation / pending brand-match contrast.
+   This scope intentionally wins over generic light/dark modal and button rules. */
+#cosmic-logo-customize-modal.cosmic-logo-customize-modal {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+}
+#cosmic-logo-customize-modal .cosmic-logo-match-pending {
+    display: block !important;
+    background: #f5f3ff !important;
+    border: 1px solid #c4b5fd !important;
+    color: #4c1d95 !important;
+    -webkit-text-fill-color: #4c1d95 !important;
+    opacity: 1 !important;
+    filter: none !important;
+    box-shadow: 0 8px 24px rgba(109, 40, 217, .08) !important;
+}
+#cosmic-logo-customize-modal .cosmic-logo-match-pending:hover:not(:disabled) {
+    background: #ede9fe !important;
+    border-color: #8b5cf6 !important;
+    box-shadow: 0 10px 28px rgba(109, 40, 217, .14) !important;
+}
+#cosmic-logo-customize-modal .cosmic-logo-match-pending-title {
+    color: #4c1d95 !important;
+    -webkit-text-fill-color: #4c1d95 !important;
+}
+#cosmic-logo-customize-modal .cosmic-logo-match-pending-help {
+    color: #6d28d9 !important;
+    -webkit-text-fill-color: #6d28d9 !important;
+}
+#cosmic-logo-customize-modal .cosmic-logo-match-pending:disabled {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    opacity: .72 !important;
+}
+#cosmic-logo-customize-modal .cosmic-logo-match-pending:disabled .cosmic-logo-match-pending-title { color: #475569 !important; -webkit-text-fill-color:#475569 !important; }
+#cosmic-logo-customize-modal .cosmic-logo-match-pending:disabled .cosmic-logo-match-pending-help { color: #64748b !important; -webkit-text-fill-color:#64748b !important; }
+:root[data-theme="dark"] #cosmic-logo-customize-modal.cosmic-logo-customize-modal {
+    background: #0f172a !important;
+    border-color: #334155 !important;
+    color: #f8fafc !important;
+}
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-match-pending {
+    background: rgba(109,40,217,.18) !important;
+    border-color: rgba(167,139,250,.55) !important;
+}
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-match-pending-title { color:#ede9fe !important; -webkit-text-fill-color:#ede9fe !important; }
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-match-pending-help { color:#c4b5fd !important; -webkit-text-fill-color:#c4b5fd !important; }
+
+/* ==================================================================
+   Hotfix Patch 2 — Website content tabs: isolated contrast contract
+   Keep Standard Pages / Posts / Shop tabs readable regardless of broad
+   dashboard light-mode utility rewrites added by other feature patches.
+   ================================================================== */
+#cosmic-website-page-type-tabs.cosmic-website-page-type-tabs {
+    opacity: 1 !important;
+    filter: none !important;
+}
+#cosmic-website-page-type-tabs .cosmic-website-page-type-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: .5rem;
+    min-height: 2.75rem;
+    border: 1px solid transparent;
+    border-radius: .75rem;
+    padding: .625rem .875rem;
+    font-size: .875rem;
+    line-height: 1.25rem;
+    font-weight: 600;
+    opacity: 1 !important;
+    filter: none !important;
+    -webkit-text-fill-color: currentColor;
+    transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+#cosmic-website-page-type-tabs .cosmic-website-page-type-tab-label,
+#cosmic-website-page-type-tabs .cosmic-website-page-type-tab-count {
+    opacity: 1 !important;
+    filter: none !important;
+    color: inherit;
+    -webkit-text-fill-color: currentColor;
+}
+#cosmic-website-page-type-tabs .cosmic-website-page-type-tab-count {
+    display: inline-flex;
+    min-width: 1.35rem;
+    align-items: center;
+    justify-content: center;
+    border-radius: 9999px;
+    padding: .125rem .45rem;
+    font-size: .625rem;
+    line-height: 1rem;
+    font-weight: 700;
+}
+
+:root[data-theme="dark"] #cosmic-website-page-type-tabs.cosmic-website-page-type-tabs {
+    background: rgba(255,255,255,.025) !important;
+    border-color: rgba(255,255,255,.10) !important;
+}
+:root[data-theme="dark"] #cosmic-website-page-type-tabs .cosmic-website-page-type-tab.is-inactive {
+    color: #cbd5e1 !important;
+    -webkit-text-fill-color: #cbd5e1 !important;
+    background: transparent !important;
+}
+:root[data-theme="dark"] #cosmic-website-page-type-tabs .cosmic-website-page-type-tab.is-inactive:hover {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    background: rgba(255,255,255,.06) !important;
+}
+:root[data-theme="dark"] #cosmic-website-page-type-tabs .cosmic-website-page-type-tab.is-inactive .cosmic-website-page-type-tab-count {
+    background: rgba(255,255,255,.09) !important;
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+}
+:root[data-theme="dark"] #cosmic-website-page-type-tabs .cosmic-website-page-type-tab.is-active {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    background: rgba(139,92,246,.24) !important;
+    border-color: rgba(196,181,253,.40) !important;
+    box-shadow: 0 1px 2px rgba(0,0,0,.2) !important;
+}
+:root[data-theme="dark"] #cosmic-website-page-type-tabs .cosmic-website-page-type-tab.is-active .cosmic-website-page-type-tab-count {
+    background: rgba(196,181,253,.22) !important;
+    color: #f5f3ff !important;
+    -webkit-text-fill-color: #f5f3ff !important;
+}
+
+:root[data-theme="light"] #cosmic-website-page-type-tabs.cosmic-website-page-type-tabs {
+    background: #f8fbf9 !important;
+    border-color: #d8e4dd !important;
+}
+:root[data-theme="light"] #cosmic-website-page-type-tabs .cosmic-website-page-type-tab.is-inactive {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    background: transparent !important;
+}
+:root[data-theme="light"] #cosmic-website-page-type-tabs .cosmic-website-page-type-tab.is-inactive:hover {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    background: #eef4f0 !important;
+}
+:root[data-theme="light"] #cosmic-website-page-type-tabs .cosmic-website-page-type-tab.is-inactive .cosmic-website-page-type-tab-count {
+    background: #edf3ef !important;
+    color: #526274 !important;
+    -webkit-text-fill-color: #526274 !important;
+}
+:root[data-theme="light"] #cosmic-website-page-type-tabs .cosmic-website-page-type-tab.is-active {
+    color: #4c1d95 !important;
+    -webkit-text-fill-color: #4c1d95 !important;
+    background: #e9ddff !important;
+    border-color: #d8c4ff !important;
+    box-shadow: 0 1px 2px rgba(76,29,149,.08) !important;
+}
+:root[data-theme="light"] #cosmic-website-page-type-tabs .cosmic-website-page-type-tab.is-active .cosmic-website-page-type-tab-count {
+    background: #ddd0fb !important;
+    color: #5b21b6 !important;
+    -webkit-text-fill-color: #5b21b6 !important;
+}
+#cosmic-website-page-type-tabs .cosmic-website-page-type-tab:focus-visible {
+    outline: 2px solid #8b5cf6 !important;
+    outline-offset: 2px;
+}
+#cosmic-website-page-type-tabs .cosmic-website-page-type-tab:disabled {
+    cursor: not-allowed;
+    opacity: .55 !important;
+}
+
+
+/* Commerce products header actions: isolated from generic button/theme rules. */
+#commerce-products-header.commerce-products-header {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 1.25rem;
+}
+
+#commerce-products-header .commerce-products-header__copy {
+    min-width: 0;
+}
+
+#commerce-products-header .commerce-products-header__actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.625rem;
+    flex-wrap: nowrap;
+}
+
+#commerce-products-header .commerce-products-header__button {
+    display: inline-flex;
+    min-height: 42px;
+    align-items: center;
+    justify-content: center;
+    white-space: nowrap;
+    border-radius: 0.75rem;
+    padding: 0.625rem 1rem;
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background-color .15s ease, border-color .15s ease, color .15s ease, box-shadow .15s ease;
+}
+
+#commerce-products-header .commerce-products-header__button--secondary {
+    border: 1px solid rgba(255,255,255,.10);
+    background: transparent;
+    color: #e2e8f0;
+}
+#commerce-products-header .commerce-products-header__button--secondary:hover {
+    background: rgba(255,255,255,.08);
+    color: #fff;
+}
+
+#commerce-products-header .commerce-products-header__button--primary {
+    border: 1px solid transparent;
+    background: #8b5cf6;
+    color: #fff;
+}
+#commerce-products-header .commerce-products-header__button--primary:hover {
+    background: #a78bfa;
+}
+
+#commerce-products-header .commerce-products-header__button:focus-visible {
+    outline: 2px solid currentColor;
+    outline-offset: 2px;
+}
+
+:root[data-theme="light"] #commerce-products-header .commerce-products-header__button--secondary {
+    border-color: #d8e2dc;
+    background: #fff;
+    color: #0f172a;
+}
+:root[data-theme="light"] #commerce-products-header .commerce-products-header__button--secondary:hover {
+    background: #f4f7f5;
+    border-color: #c8d5ce;
+    color: #020617;
+}
+:root[data-theme="light"] #commerce-products-header .commerce-products-header__button--primary {
+    border-color: #7c3aed;
+    background: #8b5cf6;
+    color: #fff !important;
+}
+:root[data-theme="light"] #commerce-products-header .commerce-products-header__button--primary:hover {
+    background: #7c3aed;
+}
+
+@media (max-width: 767px) {
+    #commerce-products-header.commerce-products-header {
+        grid-template-columns: 1fr;
+        gap: 0.875rem;
+    }
+    #commerce-products-header .commerce-products-header__actions {
+        justify-content: flex-start;
+        flex-wrap: wrap;
+    }
+}

@@ -27,6 +27,25 @@ final class CommerceCapabilityService
         ]);
     }
 
+    public function paypalReceiverEmail(Website $website): string
+    {
+        $settings = $this->settingsFor($website);
+        $configured = strtolower(trim((string) data_get($settings->settings, 'paypal_receiver_email', '')));
+        $fallback = strtolower(trim((string) config('cosmic-commerce.default_paypal_receiver_email', config('cosmic.platform_owner_email'))));
+
+        if ($configured !== '' && filter_var($configured, FILTER_VALIDATE_EMAIL)) {
+            return $configured;
+        }
+
+        return filter_var($fallback, FILTER_VALIDATE_EMAIL) ? $fallback : '';
+    }
+
+    public function configuredPaypalReceiverEmail(Website $website): ?string
+    {
+        $configured = strtolower(trim((string) data_get($this->settingsFor($website)->settings, 'paypal_receiver_email', '')));
+        return $configured !== '' && filter_var($configured, FILTER_VALIDATE_EMAIL) ? $configured : null;
+    }
+
     public function planAllowsCommerce(User $user): bool
     {
         return $this->plans->allows($user, 'commerce_store');

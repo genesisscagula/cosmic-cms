@@ -1,39 +1,9 @@
 import React, { useState } from 'react';
 import { getEffectiveTheme } from '../../theme/Theme';
 import { logoFilterForImage } from '@/Branding/logoFilters';
+import { EditableText as SharedEditableText } from './Blocks/Shared/EditableText';
 
-function EditableText({ value, onSave, className }) {
-    const [isEditing, setIsEditing] = useState(false);
-    const [currentValue, setCurrentValue] = useState(value || '');
-
-    return (
-        <>
-            <div className="relative group/text cursor-pointer" onClick={() => setIsEditing(true)}>
-                <span className={className}>{value || 'Click to add text'}</span>
-                <span className="absolute -top-2 -right-6 hidden group-hover/text:inline-block bg-indigo-600 text-white text-[9px] px-1 rounded shadow">✏️</span>
-            </div>
-            {isEditing && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-                    <div className="bg-slate-900 p-6 rounded-2xl w-full max-w-md border border-slate-800 text-slate-100 font-sans space-y-4">
-                        <h3 className="text-xs font-bold text-slate-400 uppercase tracking-wider">✏️ Update Nav Element</h3>
-                        <input 
-                            type="text"
-                            className="w-full bg-slate-950 text-white p-3 text-sm rounded-xl border border-slate-700 focus:border-emerald-500 focus:outline-none"
-                            value={currentValue}
-                            onChange={(e) => setCurrentValue(e.target.value)}
-                            autoFocus
-                            onKeyDown={(e) => e.key === 'Enter' && (onSave(currentValue), setIsEditing(false))}
-                        />
-                        <div className="flex justify-end gap-2 text-xs">
-                            <button type="button" onClick={() => setIsEditing(false)} className="px-3 py-1.5 bg-slate-800 rounded">Cancel</button>
-                            <button type="button" onClick={() => { onSave(currentValue); setIsEditing(false); }} className="px-4 py-1.5 bg-emerald-600 rounded font-bold">Save</button>
-                        </div>
-                    </div>
-                </div>
-            )}
-        </>
-    );
-}
+const EditableText = SharedEditableText;
 
 export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', overlayPrimaryTreatment = false, onUpdate, pageTargets = [], onLogoClick = null }) {
     const menuItems = block.menu || [{ label: 'Home', url: '#' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }];

@@ -14,9 +14,6 @@ export default function ThemeSelector({
     brandMatchNeeded = false,
     onMatchBrandToLogo = null,
     brandMatchBusy = false,
-    logoMatchPending = false,
-    onMatchLogoToTheme = null,
-    logoMatchBusy = false,
 }) {
 
     const [open, setOpen] = useState(false);
@@ -82,9 +79,6 @@ export default function ThemeSelector({
                 brandMatchNeeded={brandMatchNeeded}
                 onMatchBrandToLogo={onMatchBrandToLogo}
                 brandMatchBusy={brandMatchBusy}
-                logoMatchPending={logoMatchPending}
-                onMatchLogoToTheme={onMatchLogoToTheme}
-                logoMatchBusy={logoMatchBusy}
             />
 
         </>
