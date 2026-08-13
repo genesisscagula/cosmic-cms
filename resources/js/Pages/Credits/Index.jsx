@@ -46,7 +46,6 @@ function capabilityLabel(value, labels = {}) {
 
 const COMPARISON_ROWS = [
     { label: 'Websites', key: 'max_sites', format: (value) => value == null ? 'Unlimited' : String(value) },
-    { label: 'Pages per website', key: 'max_pages_per_site', format: (value) => value == null ? 'Unlimited' : String(value) },
     { label: 'Active Sparks', key: 'max_sparks_per_site', format: (value) => value == null ? 'Unlimited' : String(value) },
     { label: 'Owned Sparks', key: 'max_owned_sparks', format: (value) => value == null ? 'Unlimited' : String(value) },
     { label: 'Templates', key: 'template_limit', format: (value) => value == null ? 'All' : String(value) },
@@ -77,10 +76,10 @@ export default function CreditsIndex({
     const summaryCards = [
         { label: 'Current Credits', value: currentBalance, detail: 'Available to use now', icon: '⚡' },
         {
-            label: 'Monthly Included',
-            value: Number(creditsSummary.monthly_included ?? currentPlan?.credits ?? 0),
-            detail: currentPlan ? `${currentPlan.label} plan allocation` : 'No active monthly plan',
-            icon: '↻',
+            label: 'Included Once',
+            value: Number(creditsSummary.signup_included ?? currentPlan?.credits ?? 0),
+            detail: currentPlan ? `${currentPlan.label} first-purchase allocation` : 'Included with your first plan purchase',
+            icon: '✦',
         },
         { label: 'Purchased Credits', value: Number(creditsSummary.purchased_total ?? 0), detail: 'All-time top-up credits', icon: '+' },
         {
@@ -397,7 +396,7 @@ export default function CreditsIndex({
                                 <p className="mt-1 text-sm text-slate-500">
                                     {currentPlan
                                         ? 'Manage your recurring plan, billing status, renewal, and plan changes.'
-                                        : 'Choose a monthly plan below to activate recurring credits.'}
+                                        : 'Choose a plan below. Included credits are granted once on your first successful plan purchase.'}
                                 </p>
                             </div>
 
@@ -421,9 +420,9 @@ export default function CreditsIndex({
                                     <p className="mt-1 text-xs text-slate-500">Recurring through {currentPlan.provider || 'PayPal'}</p>
                                 </div>
                                 <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
-                                    <p className="text-xs uppercase tracking-wide text-slate-500">Monthly credits</p>
+                                    <p className="text-xs uppercase tracking-wide text-slate-500">Included credits</p>
                                     <p className="mt-2 font-semibold text-cyan-300">⚡ {currentPlan.credits}</p>
-                                    <p className="mt-1 text-xs text-slate-500">Granted after successful billing</p>
+                                    <p className="mt-1 text-xs text-slate-500">Granted once on the first successful plan purchase</p>
                                 </div>
                                 <div className="rounded-2xl border border-white/10 bg-black/20 p-4">
                                     <p className="text-xs uppercase tracking-wide text-slate-500">Credits remaining</p>
@@ -591,8 +590,69 @@ export default function CreditsIndex({
                                                     : planActionLabel(plan.key);
                                     const maxSites = plan.capabilities?.max_sites;
                                     const sitesLabel = maxSites == null ? 'Unlimited websites' : `${maxSites} website${Number(maxSites) === 1 ? '' : 's'}`;
-                                    const featureHighlights = [
-                                        `${plan.capabilities?.max_pages_per_site == null ? 'Unlimited' : plan.capabilities?.max_pages_per_site} pages/site`,
+                                    const family = plan.family || 'personal';
+                                    const tier = plan.tier || 'starter';
+                                    const creditPlanHighlights = {
+                                        personal: {
+                                            starter: [
+                                                'Posts / Updates included',
+                                                'Up to 15 active Sparks',
+                                                'Contact forms and publishing',
+                                                'Basic SEO and analytics',
+                                            ],
+                                            growth: [
+                                                'Everything in Starter',
+                                                'Full commerce store',
+                                                'Up to 30 active Sparks',
+                                                'Advanced Posts / Updates + AI',
+                                                'Lead history and enhanced SEO',
+                                                'Traffic analytics',
+                                            ],
+                                            pro: [
+                                                'Everything in Growth',
+                                                'Advanced commerce and sales workflows',
+                                                'All Personal templates and Spark tiers',
+                                                '15 free Owned Sparks',
+                                                'Premium AI layouts and generation',
+                                                'Full lead and sales tracking',
+                                                'Advanced analytics and SEO',
+                                                'Conversion and sales reporting',
+                                                'Version history and snapshots',
+                                                'Advanced publishing controls',
+                                                'Cosmic branding removal',
+                                            ],
+                                        },
+                                        agency: {
+                                            starter: [
+                                                'Website cloning and organization',
+                                                'Client-ready preview links',
+                                                'Per-website lead inbox',
+                                                'Basic agency workspace',
+                                            ],
+                                            growth: [
+                                                'Everything in Starter Agency',
+                                                'Up to 10 websites',
+                                                'Agency Insights dashboard',
+                                                'Aggregated analytics and leads',
+                                                'Shared Sparks and templates',
+                                                'Basic white label + 3 team members',
+                                            ],
+                                            pro: [
+                                                'Everything in Growth Agency',
+                                                'Unlimited websites under fair use',
+                                                'All templates and Sparks',
+                                                'Full Agency Insights + sales',
+                                                'Revenue and conversion reporting',
+                                                'Advanced white labeling + handoff',
+                                                'Advanced client permissions',
+                                                'Cross-site performance reporting',
+                                                'Up to 10 team members',
+                                                'API access and webhooks',
+                                                'Priority agency tools',
+                                            ],
+                                        },
+                                    };
+                                    const featureHighlights = creditPlanHighlights[family]?.[tier] || [
                                         `${plan.capabilities?.max_owned_sparks ?? 'Unlimited'} Owned Sparks`,
                                         capabilityLabel(plan.capabilities?.analytics_level) + ' analytics',
                                     ];
@@ -623,7 +683,7 @@ export default function CreditsIndex({
                                                 {formatMoney(plan.price_usd, 'USD')}
                                                 <span className="text-sm font-medium text-slate-500">/month</span>
                                             </p>
-                                            <p className="mt-2 text-sm text-cyan-300">{Number(plan.credits || 0).toLocaleString()} monthly credits</p>
+                                            <p className="mt-2 text-sm text-cyan-300">{Number(plan.credits || 0).toLocaleString()} free credits included once</p>
                                             <p className="mt-3 text-sm leading-6 text-slate-400">{plan.description}</p>
                                             <p className="mt-3 text-xs font-semibold uppercase tracking-wide text-violet-300">{sitesLabel}</p>
                                             <ul className="mt-4 space-y-2 text-sm text-slate-300">

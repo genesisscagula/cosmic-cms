@@ -7,6 +7,7 @@ use App\Models\Website;
 use App\Services\AgencyInsightsService;
 use App\Services\AgencyWebsiteLimitService;
 use App\Services\BulkWebsiteActionService;
+use App\Services\CreditWalletService;
 use App\Services\DeploymentConnectorArchive;
 use App\Services\PagePublisher;
 use App\Services\PlanCapabilityService;
@@ -34,6 +35,7 @@ class WebsiteController extends Controller
 	public function index(Request $request)
 	{
         $user = $request->user();
+        $creditBalance = app(CreditWalletService::class)->balance($user);
 
         if ($user->isClient()) {
             $clientWebsites = Website::query()
@@ -116,7 +118,7 @@ class WebsiteController extends Controller
         $effectivePlanKey = $user->effectivePlanKey();
         $plan = config('payments.plans.' . $effectivePlanKey, []);
         $planLabel = $plan['label'] ?? Str::headline($effectivePlanKey);
-        $monthlyCredits = (int) ($plan['credits'] ?? 0);
+        $signupCredits = (int) ($plan['credits'] ?? 0);
         $provider = $user->plan_provider ? Str::headline($user->plan_provider) : 'Not connected';
         $subscriptionStatus = $user->plan_status ? Str::headline(str_replace('_', ' ', $user->plan_status)) : 'Inactive';
         $nextBilling = $user->plan_renews_at?->timezone($user->timezone ?: config('app.timezone'));
@@ -466,7 +468,7 @@ class WebsiteController extends Controller
                 'stats' => [
                     [
                         'label' => 'Credits',
-                        'value' => number_format((int) $user->credits),
+                        'value' => number_format($creditBalance),
                         'detail' => 'Available balance',
                         'accent' => 'bg-violet-400/10 text-violet-300',
                         'icon' => '✦',
@@ -479,9 +481,9 @@ class WebsiteController extends Controller
                         'icon' => '◆',
                     ],
                     [
-                        'label' => 'Monthly Credits',
-                        'value' => number_format($monthlyCredits),
-                        'detail' => $user->plan_key ? 'Included every billing cycle' : 'Choose a plan to activate',
+                        'label' => 'Included Credits',
+                        'value' => number_format($signupCredits),
+                        'detail' => $user->plan_key ? 'One-time credit allocation on first purchase' : 'Included with your first plan purchase',
                         'accent' => 'bg-cyan-400/10 text-cyan-300',
                         'icon' => '↻',
                     ],
@@ -507,6 +509,7 @@ class WebsiteController extends Controller
                         'icon' => '◎',
                     ],
                 ],
+                'credit_balance' => $creditBalance,
                 'plan_capabilities' => $planCapabilities,
                 'websites_dashboard' => $websitesDashboard,
                 'agency_insights' => $agencyInsights,
@@ -517,7 +520,7 @@ class WebsiteController extends Controller
                     'plan_label' => $planLabel,
                     'status' => $user->plan_status,
                     'status_label' => $subscriptionStatus,
-                    'monthly_credits' => $monthlyCredits,
+                    'signup_credits' => $signupCredits,
                     'next_billing_at' => $nextBilling?->toIso8601String(),
                     'payment_provider' => $user->plan_provider,
                     'cancel_at_period_end' => (bool) $user->plan_cancel_at_period_end,

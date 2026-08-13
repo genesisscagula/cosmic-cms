@@ -10,12 +10,12 @@ const fieldClass = 'mt-2 block w-full rounded-xl border-slate-700 bg-[#0f1013] p
 const textareaClass = `${fieldClass} min-h-28 resize-y`;
 
 const plans = {
-    starter: { name: 'Starter', price: '$49', credits: '500 credits / month', welcome: '100 welcome credits' },
-    growth: { name: 'Growth', price: '$79', credits: '1,500 credits / month', welcome: '100 welcome credits' },
-    pro: { name: 'Pro', price: '$129', credits: '750 credits / month', welcome: '15 free Owned Sparks' },
-    agency_starter: { name: 'Starter Agency', price: '$99', credits: '500 credits / month', welcome: 'Up to 3 websites' },
-    agency_growth: { name: 'Growth Agency', price: '$199', credits: '1,500 credits / month', welcome: 'Up to 10 websites' },
-    agency_pro: { name: 'Pro Agency', price: '$399', credits: '5,000 credits / month', welcome: 'Unlimited websites under fair use' },
+    starter: { name: 'Starter', price: '$49', credits: '500 free credits included once', welcome: 'Posts / Updates included' },
+    growth: { name: 'Growth', price: '$79', credits: '1,000 free credits included once', welcome: 'Full commerce included' },
+    pro: { name: 'Pro', price: '$129', credits: '1,500 free credits included once', welcome: '15 free Owned Sparks' },
+    agency_starter: { name: 'Starter Agency', price: '$99', credits: '750 free credits included once', welcome: 'Up to 3 websites' },
+    agency_growth: { name: 'Growth Agency', price: '$199', credits: '1,500 free credits included once', welcome: 'Up to 10 websites' },
+    agency_pro: { name: 'Pro Agency', price: '$399', credits: '3,000 free credits included once', welcome: 'Unlimited websites under fair use' },
 };
 
 const industries = [

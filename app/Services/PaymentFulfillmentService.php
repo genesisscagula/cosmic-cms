@@ -56,16 +56,27 @@ class PaymentFulfillmentService
                 ];
 
                 if ($order->product_type === 'plan') {
-                    // First paid plan allocation is authoritative: replace any
-                    // guest/trial/pre-payment balance instead of stacking it.
-                    app(CreditWalletService::class)->setBalance(
-                        $order->user,
-                        (int) $order->credits,
-                        ucfirst(str_replace('_', ' ', $order->product_key)).' initial plan credit allocation',
-                        'subscription',
-                        $creditReference,
-                        array_merge($creditMetadata, ['allocation' => 'initial_plan_reset']),
-                    );
+                    // Included plan credits are a one-time signup benefit, not a
+                    // recurring monthly allowance. A later upgrade/downgrade or
+                    // re-subscription must never grant the signup allocation again.
+                    $alreadyReceivedSignupCredits = CreditTransaction::query()
+                        ->where('user_id', $order->user_id)
+                        ->where('type', 'credit')
+                        ->where('category', 'subscription')
+                        ->exists();
+
+                    if (! $alreadyReceivedSignupCredits) {
+                        // The first paid allocation replaces guest/trial credits so
+                        // the purchased plan starts with the advertised exact balance.
+                        app(CreditWalletService::class)->setBalance(
+                            $order->user,
+                            (int) $order->credits,
+                            ucfirst(str_replace('_', ' ', $order->product_key)).' one-time signup credit allocation',
+                            'subscription',
+                            $creditReference,
+                            array_merge($creditMetadata, ['allocation' => 'one_time_signup']),
+                        );
+                    }
                 } else {
                     app(CreditService::class)->grant(
                         $order->user,
@@ -124,7 +135,7 @@ class PaymentFulfillmentService
 
         // PayPal may deliver the first SALE before ACTIVATED. Fulfill the initial
         // purchase once, record it as the initial charge, and stop here so the
-        // same sale cannot also grant a second monthly credit allocation.
+        // the same sale cannot be mistaken for a renewal. Included credits are signup-only.
         if (! $order->fulfilled_at) {
             $fulfilled = $this->fulfillOrder(
                 $order->reference,
@@ -134,7 +145,8 @@ class PaymentFulfillmentService
             );
 
             if ($fulfilled) {
-                $this->recordBillingTransaction($order->fresh(), 'initial', 'completed', $paymentId, $subscriptionId, (int) $order->credits, $metadata);
+                $freshOrder = $order->fresh();
+                $this->recordBillingTransaction($freshOrder, 'initial', 'completed', $paymentId, $subscriptionId, $this->creditsGrantedForOrder($freshOrder), $metadata);
             }
 
             return $fulfilled;
@@ -155,30 +167,14 @@ class PaymentFulfillmentService
                     ]),
                 ]);
 
-                $this->recordBillingTransaction($lockedOrder->fresh(), 'initial', 'completed', $paymentId, $subscriptionId, (int) $lockedOrder->credits, $metadata);
+                $freshOrder = $lockedOrder->fresh();
+                $this->recordBillingTransaction($freshOrder, 'initial', 'completed', $paymentId, $subscriptionId, $this->creditsGrantedForOrder($freshOrder), $metadata);
 
                 return true;
             }
 
-            $renewalReference = 'payment:paypal:renewal:'.$paymentId;
-
-            if (CreditTransaction::query()->where('reference', $renewalReference)->exists()) {
-                return true;
-            }
-
-            app(CreditService::class)->grant(
-                $lockedOrder->user,
-                (int) $lockedOrder->credits,
-                ucfirst($lockedOrder->product_key).' monthly plan renewal credits',
-                $renewalReference,
-                array_merge([
-                    'payment_order_id' => $lockedOrder->id,
-                    'provider' => 'paypal',
-                    'product_type' => 'plan_renewal',
-                    'subscription_id' => $subscriptionId,
-                    'payment_id' => $paymentId,
-                ], $metadata),
-            );
+            // Renewals extend subscription access only. Cosmic plan credits are
+            // granted once on the customer's first successful plan purchase.
 
             $nextBilling = data_get($metadata, 'next_billing_time');
             $fallbackNextBilling = $lockedOrder->user->plan_renews_at?->isFuture()
@@ -214,7 +210,7 @@ class PaymentFulfillmentService
                 ], $metadata),
             ]);
 
-            $this->recordBillingTransaction($lockedOrder->fresh(), 'renewal', 'completed', $paymentId, $subscriptionId, (int) $lockedOrder->credits, $metadata);
+            $this->recordBillingTransaction($lockedOrder->fresh(), 'renewal', 'completed', $paymentId, $subscriptionId, 0, $metadata);
 
             return true;
         });
@@ -313,6 +309,16 @@ class PaymentFulfillmentService
         }
 
         return $transaction;
+    }
+
+    private function creditsGrantedForOrder(PaymentOrder $order): int
+    {
+        $reference = 'payment:'.$order->provider.':'.$order->reference;
+
+        return max(0, (int) CreditTransaction::query()
+            ->where('user_id', $order->user_id)
+            ->where('reference', $reference)
+            ->value('amount'));
     }
 
     private function assertRenewalMatches(PaymentOrder $order, array $metadata): void

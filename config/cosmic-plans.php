@@ -11,7 +11,7 @@ return [
             'description' => 'Launch one complete business website with essential AI and Sparks.',
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_PERSONAL_STARTER_ID', env('PAYPAL_PLAN_STARTER_ID'))],
             'capabilities' => [
-                'max_sites' => 1, 'max_pages_per_site' => 5, 'max_sparks_per_site' => 15,
+                'max_sites' => 1, 'max_pages_per_site' => null, 'max_sparks_per_site' => 15,
                 'max_owned_sparks' => 15, 'free_built_in_sparks' => 5, 'template_limit' => 5,
                 'template_access_level' => 'starter', 'spark_access_level' => 'free',
                 'analytics_level' => 'basic', 'leads_level' => 'inbox', 'sales_level' => 'none',
@@ -37,7 +37,7 @@ return [
             'description' => 'More pages, premium creative access, and marketing tools for a growing business.',
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_PERSONAL_GROWTH_ID', env('PAYPAL_PLAN_GROWTH_ID'))],
             'capabilities' => [
-                'max_sites' => 1, 'max_pages_per_site' => 10, 'max_sparks_per_site' => 30,
+                'max_sites' => 1, 'max_pages_per_site' => null, 'max_sparks_per_site' => 30,
                 'max_owned_sparks' => 30, 'free_built_in_sparks' => 10, 'template_limit' => 10,
                 'template_access_level' => 'growth', 'spark_access_level' => 'growth',
                 'analytics_level' => 'standard', 'leads_level' => 'history', 'sales_level' => 'basic',
@@ -59,7 +59,7 @@ return [
             'tier' => 'pro',
             'rank' => 30,
             'price_usd' => 129,
-            'credits' => 2000,
+            'credits' => 1500,
             'description' => 'The complete single-website Cosmic experience with advanced AI, analytics, leads, and sales.',
             'billing' => ['paypal_plan_id' => env('PAYPAL_PLAN_PERSONAL_PRO_ID', env('PAYPAL_PLAN_PRO_ID'))],
             'capabilities' => [

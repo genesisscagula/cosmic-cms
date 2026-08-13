@@ -296,7 +296,7 @@ export default function Pending({ onboarding, status, paymentError, autoCheckout
                         <p className="text-sm font-bold text-slate-900">Your setup includes</p>
                         <ul className="mt-4 space-y-3 text-sm text-slate-600">
                             <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>Your private Cosmic CMS workspace</span></li>
-                            <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>Your selected monthly credits and plan access</span></li>
+                            <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>Your one-time included credits and plan access</span></li>
                             <li className="flex gap-3"><span className="text-emerald-600">✓</span><span>Your generated trial website and business profile</span></li>
                         </ul>
                         <div className="mt-6 rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-xs leading-5 text-emerald-800">

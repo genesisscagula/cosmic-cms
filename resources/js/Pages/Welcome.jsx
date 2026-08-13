@@ -35,13 +35,13 @@ const plans = [
         name: 'Starter',
         price: '$49',
         description: 'For a small business launching one polished website.',
-        features: ['1 website', '5 core pages', '15 active Sparks', 'AI website generation', 'Basic SEO controls'],
+        features: ['1 website', 'Posts / Updates included', '15 active Sparks', 'AI website generation', 'Basic SEO controls'],
     },
     {
         name: 'Growth',
         price: '$79',
-        description: 'For a growing business that needs more pages and marketing tools.',
-        features: ['1 website', '10 standard pages', '30 active Sparks', 'Lead history and analytics', 'Premium Spark purchasing'],
+        description: 'For a growing business that needs commerce and stronger marketing tools.',
+        features: ['1 website', 'Full commerce store', '30 active Sparks', 'Lead history and analytics', 'Premium Spark purchasing'],
         featured: true,
     },
     {

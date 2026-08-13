@@ -32,7 +32,7 @@ class AccountDataService
 
         return [
             'current_balance' => $this->creditWallet->balance($user),
-            'monthly_included' => (int) ($plan['credits'] ?? 0),
+            'signup_included' => (int) ($plan['credits'] ?? 0),
             'purchased_total' => (int) $user->creditTransactions()
                 ->where('type', 'credit')
                 ->where(function ($query) {

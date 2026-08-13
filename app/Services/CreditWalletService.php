@@ -15,16 +15,11 @@ class CreditWalletService
     {
         $freshUser = $user->fresh();
 
-        // Credit transactions record the authoritative post-mutation wallet balance.
-        // Prefer the newest ledger balance when it exists so stale user model values
-        // cannot reset the UI to zero after a full page refresh.
-        $ledgerBalance = $freshUser->creditTransactions()
-            ->latest('id')
-            ->value('balance_after');
-
-        return $ledgerBalance !== null
-            ? max(0, (int) $ledgerBalance)
-            : max(0, (int) $freshUser->credits);
+        // The users.credits column is the canonical wallet value: every debit,
+        // credit, refund, and first-plan allocation updates it inside the same
+        // transaction. Historical ledger rows may predate wallet migrations and
+        // can contain a stale zero, so they must never override the live balance.
+        return max(0, (int) $freshUser->credits);
     }
 
     public function canAfford(User $user, int $amount): bool

@@ -36,6 +36,10 @@ function NavigationItem({ item, activeTab, onTabChange }) {
 
 export default function Navigation({ activeTab, onTabChange, dashboard = {} }) {
     const { balance: creditBalance } = useCreditBalance();
+    const dashboardBalance = Number(dashboard?.credit_balance);
+    const displayedCreditBalance = Number.isFinite(Number(creditBalance))
+        ? Number(creditBalance)
+        : (Number.isFinite(dashboardBalance) ? dashboardBalance : null);
     const isAgency = dashboard.plan_capabilities?.plan_family === "agency";
     const navigationItems = isAgency
         ? [...baseNavigationItems.slice(0, 2), { id: "insights", label: "Agency Insights", icon: "◉" }, { id: "team", label: "Team", icon: "♙" }, { id: "branding", label: "Branding", icon: "◆" }, ...baseNavigationItems.slice(2)]
@@ -59,7 +63,7 @@ export default function Navigation({ activeTab, onTabChange, dashboard = {} }) {
                     className="flex items-center justify-between rounded-xl border border-cyan-400/15 bg-cyan-400/[0.06] px-3 py-2.5 transition hover:border-cyan-400/30 hover:bg-cyan-400/10"
                 >
                     <span className="text-xs font-semibold uppercase tracking-[0.16em] text-cyan-300">Cosmic Credits</span>
-                    <span className="font-bold text-white">⚡ {Number.isFinite(Number(creditBalance)) ? Number(creditBalance).toLocaleString() : 'Loading…'}</span>
+                    <span className="font-bold text-white">⚡ {displayedCreditBalance !== null ? displayedCreditBalance.toLocaleString() : 'Loading…'}</span>
                 </Link>
             </div>
 

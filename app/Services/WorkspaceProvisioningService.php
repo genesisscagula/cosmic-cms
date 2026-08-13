@@ -109,7 +109,7 @@ class WorkspaceProvisioningService
                     'trial_page_id' => $trialPage->id,
                     'bound_plan_key' => $binding['plan_key'],
                     'bound_subscription_id' => $binding['subscription_id'],
-                    'monthly_credits' => $binding['monthly_credits'],
+                    'monthly_credits' => 0, // legacy column retained; plan credits are not recurring
                     'credit_balance_at_binding' => $binding['credit_balance'],
                     'subscription_bound_at' => $provisioning->subscription_bound_at ?? now(),
                     'status' => WorkspaceProvisioning::STATUS_SUBSCRIPTION_READY,
@@ -123,7 +123,7 @@ class WorkspaceProvisioningService
                         'subscription_ready_at' => now()->toIso8601String(),
                         'subscription_id' => $binding['subscription_id'],
                         'payment_provider' => $binding['provider'],
-                        'monthly_credits' => $binding['monthly_credits'],
+                        'signup_credits' => $binding['signup_credits'],
                         'credit_balance' => $binding['credit_balance'],
                         'next_billing_at' => $binding['next_billing_at'],
                         'owner_user_id' => $onboarding->user_id,
@@ -161,7 +161,7 @@ class WorkspaceProvisioningService
                         'subscription_ready_at' => now()->toIso8601String(),
                         'subscription_id' => $binding['subscription_id'],
                         'payment_provider' => $binding['provider'],
-                        'monthly_credits' => $binding['monthly_credits'],
+                        'signup_credits' => $binding['signup_credits'],
                         'credit_balance' => $binding['credit_balance'],
                         'next_billing_at' => $binding['next_billing_at'],
                         'owner_user_id' => $onboarding->user_id,
@@ -891,8 +891,8 @@ class WorkspaceProvisioningService
             throw new RuntimeException('The confirmed payment credit grant has not been recorded yet.');
         }
 
-        $monthlyCredits = (int) ($plan['credits'] ?? $order->credits);
-        if ($monthlyCredits < 1 || (int) $order->credits !== $monthlyCredits) {
+        $signupCredits = (int) ($plan['credits'] ?? $order->credits);
+        if ($signupCredits < 1 || (int) $order->credits !== $signupCredits) {
             throw new RuntimeException('The paid order credits do not match the selected plan allowance.');
         }
 
@@ -903,7 +903,7 @@ class WorkspaceProvisioningService
             'provider' => (string) $order->provider,
             'subscription_id' => $subscriptionId,
             'payment_order_id' => $order->id,
-            'monthly_credits' => $monthlyCredits,
+            'signup_credits' => $signupCredits,
             'credit_balance' => (int) $user->credits,
             'initial_credit_transaction_id' => $creditGrant->id,
             'next_billing_at' => $nextBillingAt,
@@ -927,7 +927,7 @@ class WorkspaceProvisioningService
                     'provider' => $binding['provider'],
                     'payment_order_id' => $order->id,
                     'subscription_id' => $subscriptionId,
-                    'monthly_credits' => $monthlyCredits,
+                    'signup_credits' => $signupCredits,
                     'next_billing_at' => $nextBillingAt,
                     'bound_at' => $binding['bound_at'],
                 ],

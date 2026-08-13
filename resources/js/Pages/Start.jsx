@@ -15,16 +15,16 @@ const plans = [
         icon: '⭐',
         name: 'Starter',
         price: '$49',
-        summary: '500 Cosmic Credits / month',
-        features: ['🎁 100 FREE Welcome Credits', 'Standard Sparks Library', 'Standard AI Models'],
+        summary: '500 free Cosmic Credits included once',
+        features: ['🎁 100 FREE Welcome Credits', 'Posts / Updates included', 'Standard Sparks Library', 'Standard AI Models'],
     },
     {
         id: 'growth',
         icon: '🚀',
         name: 'Growth',
         price: '$79',
-        summary: '1,500 Cosmic Credits / month',
-        features: ['Everything in Starter', 'Expanded Sparks Library', 'Priority AI Queue', 'Advanced Builder Tools', 'AI Blog Generation', 'Version History & Restore'],
+        summary: '1,000 free Cosmic Credits included once',
+        features: ['Everything in Starter', 'Full Commerce Store', 'Expanded Sparks Library', 'Priority AI Queue', 'Advanced Builder Tools', 'AI Content Generation', 'Version History & Restore'],
         featured: true,
     },
     {
@@ -32,7 +32,7 @@ const plans = [
         icon: '👑',
         name: 'Pro',
         price: '$129',
-        summary: 'Includes 3,000 Cosmic Credits / month',
+        summary: '1,500 free Cosmic Credits included once',
         features: ['Member Pricing on Cosmic Credit Packs', 'Everything in Growth', 'Premium Sparks Library', 'Exclusive Sparks', 'Premium AI Models', 'Unlimited Workspaces', 'Team Collaboration', 'White Label Workspace', 'API Access', 'Early Access Features'],
     },
 ];
@@ -40,15 +40,15 @@ const plans = [
 
 const agencyPlans = [
     {
-        id: 'agency_starter', icon: '✦', name: 'Starter Agency', price: '$99', summary: '500 Cosmic Credits / month',
+        id: 'agency_starter', icon: '✦', name: 'Starter Agency', price: '$99', summary: '750 free Cosmic Credits included once',
         features: ['Up to 3 websites', '3 Agency templates', '5 free Owned Sparks', 'Website cloning', 'Per-website leads and analytics'],
     },
     {
-        id: 'agency_growth', icon: '◆', name: 'Growth Agency', price: '$199', summary: '1,500 Cosmic Credits / month', featured: true,
+        id: 'agency_growth', icon: '◆', name: 'Growth Agency', price: '$199', summary: '1,500 free Cosmic Credits included once', featured: true,
         features: ['Everything in Starter Agency', 'Up to 10 websites', 'Agency Insights dashboard', 'Shared Sparks and templates', 'Up to 3 team members'],
     },
     {
-        id: 'agency_pro', icon: '✹', name: 'Pro Agency', price: '$399', summary: '5,000 Cosmic Credits / month',
+        id: 'agency_pro', icon: '✹', name: 'Pro Agency', price: '$399', summary: '3,000 free Cosmic Credits included once',
         features: ['Everything in Growth Agency', 'Unlimited websites under fair use', 'Full Agency Insights', 'Advanced white labeling', 'API access and webhooks'],
     },
 ];

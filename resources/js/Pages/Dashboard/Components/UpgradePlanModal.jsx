@@ -6,7 +6,7 @@ const AGENCY_OPTIONS = [
         label: "Starter Agency",
         price: "$99/mo",
         sites: "Up to 3 websites",
-        credits: "500 credits / month",
+        credits: "750 free credits included once",
         description: "For freelancers managing a small client portfolio.",
     },
     {
@@ -14,7 +14,7 @@ const AGENCY_OPTIONS = [
         label: "Growth Agency",
         price: "$199/mo",
         sites: "Up to 10 websites",
-        credits: "1,500 credits / month",
+        credits: "1,750 free credits included once",
         description: "For growing teams managing multiple active clients.",
         featured: true,
     },
@@ -23,7 +23,7 @@ const AGENCY_OPTIONS = [
         label: "Pro Agency",
         price: "$399/mo",
         sites: "Unlimited websites",
-        credits: "5,000 credits / month",
+        credits: "3,000 free credits included once",
         description: "Full agency operations, insights, teams, and white label.",
     },
 ];
