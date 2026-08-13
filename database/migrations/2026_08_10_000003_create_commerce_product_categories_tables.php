@@ -36,8 +36,8 @@ return new class extends Migration
             // independent from the URL slug so categories can be reorganized
             // without forcing a URL change.
             $table->unique(['website_id', 'slug']);
-            $table->index(['website_id', 'is_visible', 'sort_order']);
-            $table->index(['website_id', 'parent_id', 'sort_order']);
+            $table->index(['website_id', 'is_visible', 'sort_order'], 'commerce_cat_visible_sort_idx');
+            $table->index(['website_id', 'parent_id', 'sort_order'], 'commerce_cat_parent_sort_idx');
             });
         }
 
@@ -49,10 +49,29 @@ return new class extends Migration
             $table->boolean('is_primary')->default(false);
             $table->unsignedInteger('sort_order')->default(0);
             $table->timestamps();
+            });
+        }
 
-            $table->unique(['product_id', 'category_id']);
-            $table->index(['category_id', 'sort_order']);
-            $table->index(['product_id', 'is_primary']);
+        // A failed MariaDB ALTER can leave the assignment table behind without
+        // its indexes. Add them separately with explicit short names so retries
+        // repair the partial table instead of silently skipping it. MariaDB/MySQL
+        // limits identifiers to 64 characters; Laravel's generated names for
+        // this long table name exceed that limit.
+        if (! Schema::hasIndex('commerce_product_category_assignments', ['product_id', 'category_id'], 'unique')) {
+            Schema::table('commerce_product_category_assignments', function (Blueprint $table): void {
+                $table->unique(['product_id', 'category_id'], 'commerce_cat_assign_product_category_uq');
+            });
+        }
+
+        if (! Schema::hasIndex('commerce_product_category_assignments', ['category_id', 'sort_order'])) {
+            Schema::table('commerce_product_category_assignments', function (Blueprint $table): void {
+                $table->index(['category_id', 'sort_order'], 'commerce_cat_assign_category_sort_idx');
+            });
+        }
+
+        if (! Schema::hasIndex('commerce_product_category_assignments', ['product_id', 'is_primary'])) {
+            Schema::table('commerce_product_category_assignments', function (Blueprint $table): void {
+                $table->index(['product_id', 'is_primary'], 'commerce_cat_assign_primary_idx');
             });
         }
     }

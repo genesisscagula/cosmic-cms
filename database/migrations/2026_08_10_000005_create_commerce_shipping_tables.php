@@ -30,7 +30,7 @@ return new class extends Migration
             $table->unsignedInteger('sort_order')->default(0);
             $table->json('metadata')->nullable();
             $table->timestamps();
-            $table->index(['shipping_zone_id', 'is_enabled', 'sort_order']);
+            $table->index(['shipping_zone_id', 'is_enabled', 'sort_order'], 'commerce_ship_rates_enabled_sort_idx');
         });
     }
 

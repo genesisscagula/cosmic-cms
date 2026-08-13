@@ -12,7 +12,7 @@ return new class extends Migration
             $table->id();
             $table->foreignId('website_id')->constrained()->cascadeOnDelete();
             $table->foreignId('commerce_product_id')->constrained('commerce_products')->cascadeOnDelete();
-            $table->foreignId('commerce_product_variant_id')->nullable()->constrained('commerce_product_variants')->cascadeOnDelete();
+            $table->foreignId('commerce_product_variant_id')->nullable()->constrained('commerce_product_variants', 'id', 'commerce_inv_adj_variant_fk')->cascadeOnDelete();
             $table->foreignId('commerce_order_id')->nullable()->constrained('commerce_orders')->nullOnDelete();
             $table->foreignId('user_id')->nullable()->constrained()->nullOnDelete();
             $table->string('reason', 40); // manual | sale | restock | correction | import
@@ -24,7 +24,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->index(['website_id', 'created_at']);
-            $table->index(['commerce_product_id', 'commerce_product_variant_id']);
+            $table->index(['commerce_product_id', 'commerce_product_variant_id'], 'commerce_inv_adj_product_variant_idx');
             $table->index(['commerce_order_id', 'reason']);
         });
     }

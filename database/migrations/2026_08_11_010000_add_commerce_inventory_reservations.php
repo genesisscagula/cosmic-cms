@@ -14,7 +14,7 @@ return new class extends Migration
             $table->foreignId('commerce_order_id')->constrained('commerce_orders')->cascadeOnDelete();
             $table->foreignId('commerce_order_item_id')->constrained('commerce_order_items')->cascadeOnDelete();
             $table->foreignId('commerce_product_id')->nullable()->constrained('commerce_products')->nullOnDelete();
-            $table->foreignId('commerce_product_variant_id')->nullable()->constrained('commerce_product_variants')->nullOnDelete();
+            $table->foreignId('commerce_product_variant_id')->nullable()->constrained('commerce_product_variants', 'id', 'commerce_inv_res_variant_fk')->nullOnDelete();
             $table->unsignedInteger('quantity');
             $table->string('status', 20)->default('active'); // active | consumed | released
             $table->timestamp('reserved_at');

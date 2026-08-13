@@ -35,7 +35,7 @@ return new class extends Migration
             $table->timestamps();
 
             $table->unique(['option_id', 'slug']);
-            $table->index(['option_id', 'is_active', 'sort_order']);
+            $table->index(['option_id', 'is_active', 'sort_order'], 'commerce_option_values_active_sort_idx');
         });
 
         Schema::create('commerce_product_variants', function (Blueprint $table) {
