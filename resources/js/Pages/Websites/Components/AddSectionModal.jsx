@@ -161,6 +161,7 @@ export default function AddSectionModal({
     onReplace = null,
     websiteContext = "",
     websiteId = null,
+    headerOverlayEnabled = false,
     trialMode = false,
     trialToken = null,
     ownedOnly = false,
@@ -298,6 +299,7 @@ export default function AddSectionModal({
                     sections: [selected.key],
                     generation_type: "section",
                     website_id: websiteId,
+                    header_overlay_enabled: Boolean(headerOverlayEnabled),
                 });
                 const block = data.blocks?.[0];
                 if (!block) throw new Error("Cosmic AI did not return a section.");

@@ -16,6 +16,7 @@ export default function GeneratePageModal({
     onReplace,
     websiteContext = "",
     websiteId = null,
+    headerOverlayEnabled = false,
     creditCost = 50,
 }) {
     const { setBalance } = useCreditBalance();
@@ -72,7 +73,10 @@ export default function GeneratePageModal({
                 `User instruction: ${prompt}`,
             ].join("\n\n");
 
-            const { data: plan } = await axios.post("/ai/select-sections", { prompt: contextualPrompt });
+            const { data: plan } = await axios.post("/ai/select-sections", {
+                prompt: contextualPrompt,
+                header_overlay_enabled: Boolean(headerOverlayEnabled),
+            });
             const sections = plan.sections || [];
             if (!sections.length) throw new Error("Cosmic AI could not plan this page.");
 
@@ -82,6 +86,7 @@ export default function GeneratePageModal({
                 image_folder: plan.image_folder || null,
                 generation_type: "page",
                 website_id: websiteId,
+                header_overlay_enabled: Boolean(headerOverlayEnabled),
             });
 
             if (!data.blocks?.length) throw new Error("Cosmic AI did not return any sections.");

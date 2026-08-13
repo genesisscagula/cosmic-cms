@@ -1450,24 +1450,35 @@ HTML;
                             padding-top: calc(var(--cosmic-overlay-header-height, 72px) + 3.5rem) !important;
                         }
                     }
-                    /* Overlay treatment is intentionally narrow: ONLY a PRIMARY first
-                       Spark receives white navigation/logo/CTA, and neutral Warm Stone
-                       + Studio White themes are excluded by the runtime guard. */
-                    .cosmic-static-overlay-header.cosmic-overlay-primary-treatment > a {
+                    /* Contrast-aware overlay header. Runtime selects a light or dark
+                       navigation/logo treatment from the first Spark, while CTA keeps
+                       the site's primary brand color unless that would merge into a
+                       same-primary hero. */
+                    .cosmic-static-overlay-header.cosmic-overlay-tone-light > a {
                         color: #fff !important;
                     }
-                    .cosmic-static-overlay-header.cosmic-overlay-primary-treatment > a img {
+                    .cosmic-static-overlay-header.cosmic-overlay-tone-light > a img {
                         filter: brightness(0) invert(1) !important;
                     }
-                    .cosmic-static-overlay-header.cosmic-overlay-primary-treatment > nav > ul > li > a {
+                    .cosmic-static-overlay-header.cosmic-overlay-tone-light > nav > ul > li > a {
                         color: #fff !important;
                     }
-                    .cosmic-static-overlay-header.cosmic-overlay-primary-treatment > nav > ul > li > a:hover {
+                    .cosmic-static-overlay-header.cosmic-overlay-tone-light > nav > ul > li > a:hover {
                         color: rgba(255,255,255,.82) !important;
                     }
-                    .cosmic-static-overlay-header.cosmic-overlay-primary-treatment > nav > a {
+                    .cosmic-static-overlay-header.cosmic-overlay-tone-dark > nav > ul > li > a {
+                        color: #0f172a !important;
+                    }
+                    .cosmic-static-overlay-header.cosmic-overlay-tone-dark > nav > ul > li > a:hover {
+                        color: #020617 !important;
+                    }
+                    .cosmic-static-overlay-header.cosmic-overlay-cta-surface > nav > a {
                         background: #fff !important;
                         color: #1e293b !important;
+                        box-shadow: 0 10px 30px rgba(15,23,42,.14) !important;
+                    }
+                    .cosmic-static-overlay-header.cosmic-overlay-cta-primary > nav > a {
+                        box-shadow: 0 10px 30px rgba(15,23,42,.18), 0 0 0 1px rgba(255,255,255,.18) !important;
                     }
                 </style>
 
@@ -1539,11 +1550,19 @@ HTML;
                                 firstSection.classList.add('cosmic-static-overlay-first-spark');
 
                                 const primaryOverlayAllowed = staticHeader.dataset.cosmicPrimaryOverlayAllowed === 'true';
-                                const firstSparkIsPrimary = String(firstSection.dataset.cosmicResolvedTheme || '').toLowerCase() === 'primary';
-                                staticHeader.classList.toggle(
-                                    'cosmic-overlay-primary-treatment',
-                                    primaryOverlayAllowed && firstSparkIsPrimary
-                                );
+                                const resolvedTheme = String(firstSection.dataset.cosmicResolvedTheme || '').toLowerCase();
+                                const blockType = String(firstSection.dataset.cosmicBlockType || '').toLowerCase();
+                                const mediaHeroTypes = new Set(['hero_background_image','hero_parallax','hero_video_background','hero_slider_fade','hero_floating_glass','image_cta_banner']);
+                                const isMediaHero = mediaHeroTypes.has(blockType) || blockType.includes('video') || blockType.includes('slider') || blockType.includes('parallax');
+                                const lightSemanticSurface = resolvedTheme === 'white' || resolvedTheme === 'surface';
+                                const useLightHeader = isMediaHero || !lightSemanticSurface;
+                                const samePrimaryHero = resolvedTheme === 'primary' || resolvedTheme === 'accent';
+                                const useSurfaceCta = useLightHeader && samePrimaryHero && primaryOverlayAllowed;
+
+                                staticHeader.classList.toggle('cosmic-overlay-tone-light', useLightHeader);
+                                staticHeader.classList.toggle('cosmic-overlay-tone-dark', !useLightHeader);
+                                staticHeader.classList.toggle('cosmic-overlay-cta-surface', useSurfaceCta);
+                                staticHeader.classList.toggle('cosmic-overlay-cta-primary', !useSurfaceCta);
 
                                 const syncOverlaySpacing = () => {
                                     const headerHeight = Math.ceil(staticHeader.getBoundingClientRect().height || 0);
@@ -4022,9 +4041,10 @@ HTML;
             $fragment = substr($html, $fragmentStart);
             if ($fragment !== '' && preg_match('/<section\b/i', $fragment)) {
                 $semanticTheme = e((string) $blockTheme);
+                $semanticType = e((string) ($block['type'] ?? ''));
                 $taggedFragment = preg_replace(
                     '/<section(?![^>]*data-cosmic-resolved-theme)/i',
-                    "<section data-cosmic-resolved-theme='{$semanticTheme}'",
+                    "<section data-cosmic-resolved-theme='{$semanticTheme}' data-cosmic-block-type='{$semanticType}'",
                     $fragment,
                     1
                 );

@@ -40,6 +40,7 @@ class AIController extends Controller
             'image_folder' => ['nullable', 'string'],
             'generation_type' => ['nullable', 'string', 'in:page,section,template'],
             'website_id' => ['nullable', 'integer', 'exists:websites,id'],
+            'header_overlay_enabled' => ['nullable', 'boolean'],
         ]);
 
         $website = null;
@@ -47,6 +48,9 @@ class AIController extends Controller
             $website = Website::findOrFail($validated['website_id']);
             $this->authorize('update', $website);
         }
+
+        $headerOverlayEnabled = (bool) ($validated['header_overlay_enabled'] ?? false);
+        $generationPrompt = $this->withHeaderOverlayContext($validated['prompt'], $headerOverlayEnabled);
 
         $generationType = $validated['generation_type'] ?? (count($validated['sections']) > 1 ? 'page' : 'section');
         $cost = match ($generationType) {
@@ -85,13 +89,13 @@ class AIController extends Controller
             $generation = $website
                 ? $this->pageGenerationService->imagesWithoutRemoteDownloads(fn () =>
                     $this->pageGenerationService->generateBlocksDetailed(
-                        $validated['prompt'],
+                        $generationPrompt,
                         $validated['sections'],
                         $imageFolder
                     )
                 )
                 : $this->pageGenerationService->generateBlocksDetailed(
-                    $validated['prompt'],
+                    $generationPrompt,
                     $validated['sections'],
                     $imageFolder
                 );
@@ -104,7 +108,7 @@ class AIController extends Controller
                 // generated imagery; it remains authorization/context only.
                 try {
                     $remoteResult = $this->pageGenerationService->applyStartPageRemoteImages(
-                        $validated['prompt'],
+                        $generationPrompt,
                         $blocks,
                         $imageFolder
                     );
@@ -116,6 +120,7 @@ class AIController extends Controller
                         'remote_image_count' => count($remoteResult['remote_images'] ?? []),
                         'target_image_count' => (int) ($remoteResult['target_image_count'] ?? 0),
                         'image_source' => 'start_page_unsplash_flow',
+                        'header_overlay_enabled' => $headerOverlayEnabled,
                     ]);
                 } catch (\Throwable $mediaException) {
                     Log::warning('[RegisteredRemoteImages] /start Unsplash flow failed; returning generated fallback images.', [
@@ -134,6 +139,10 @@ class AIController extends Controller
                     'global_shell' => 'preserved',
                     'navigation' => 'preserved',
                     'uploaded_media' => 'client_merge_protected',
+                ],
+                'builder_context' => [
+                    'header_overlay_enabled' => $headerOverlayEnabled,
+                    'header_surface_rule' => $headerOverlayEnabled ? 'overlay_allowed' : 'solid_separate',
                 ],
             ]);
         } catch (TransporterException $exception) {
@@ -165,6 +174,27 @@ class AIController extends Controller
         }
     }
 
+    /**
+     * Give Luna the Builder's current header-overlay state as a hard design
+     * constraint. The setting is UI state, not something the model should infer
+     * from the user's prose. This keeps regenerated pages/Sparks aligned with
+     * the header treatment the user has explicitly selected.
+     */
+    private function withHeaderOverlayContext(string $prompt, bool $enabled): string
+    {
+        $directive = $enabled
+            ? <<<'TEXT'
+HEADER OVERLAY STATE: ENABLED.
+The global header is intentionally allowed to overlay the first hero/banner. You may choose hero/banner treatments with a top fade, transparency-safe image composition, gradients, or other visual blending that supports readable overlaid navigation. Do not change the global header setting itself. The header runtime is contrast-aware: it may use a light or original logo/navigation treatment and will prefer the website primary CTA when readable, falling back to a light surface CTA only when the primary would merge into the hero. Do not hard-code the hero specifically to require a white CTA or white logo.
+TEXT
+            : <<<'TEXT'
+HEADER OVERLAY STATE: DISABLED.
+The global header must remain a solid, visually separate surface above the first hero/banner. Design the first section for a non-overlay header: do not create a top fade whose purpose is to blend into navigation, do not reserve transparent-header space, and do not rely on header-over-image contrast. Avoid transparent/glass/gradient-to-transparent header assumptions. The hero may still use normal image overlays for content readability, but its top edge must read as a clean section boundary below the solid header. Do not change the global header setting itself.
+TEXT;
+
+        return trim($prompt)."\n\nCOSMIC BUILDER SHELL CONTEXT\n".$directive;
+    }
+
     private function refundFailedGeneration(Request $request, int $cost, ?Website $website, string $reference, array $sections): void
     {
         try {
@@ -189,10 +219,16 @@ class AIController extends Controller
     {
         $validated = $request->validate([
             'prompt' => ['required', 'string'],
+            'header_overlay_enabled' => ['nullable', 'boolean'],
         ]);
 
+        $prompt = $this->withHeaderOverlayContext(
+            $validated['prompt'],
+            (bool) ($validated['header_overlay_enabled'] ?? false),
+        );
+
         return response()->json(
-            $this->pageGenerationService->selectSections($validated['prompt'])
+            $this->pageGenerationService->selectSections($prompt)
         );
     }
 

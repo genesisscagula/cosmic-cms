@@ -5,7 +5,7 @@ import { EditableText as SharedEditableText } from './Blocks/Shared/EditableText
 
 const EditableText = SharedEditableText;
 
-export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', overlayPrimaryTreatment = false, onUpdate, pageTargets = [], onLogoClick = null }) {
+export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', overlayLogoLight = false, onUpdate, pageTargets = [], onLogoClick = null }) {
     const menuItems = block.menu || [{ label: 'Home', url: '#' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }];
 
     // Theme Config for Light Mode
@@ -20,9 +20,9 @@ export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', 
     const logoMaxWidth = Math.min(320, Math.max(220, Number(block.logo_max_width || 300)));
 
     return (
-        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${overlay ? 'px-[3.5rem] py-[2.5rem]' : 'px-5 py-5 sm:px-6 sm:py-6'} lg:flex-nowrap transition-colors duration-500`}>
+        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${overlay ? 'px-[3.5rem] pt-[3.25rem] pb-[2.5rem]' : 'px-5 py-5 sm:px-6 sm:py-6'} lg:flex-nowrap transition-colors duration-500`}>
             {logoImageUrl ? (
-                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: overlayPrimaryTreatment ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto object-contain" /></button>
+                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: overlayLogoLight ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto object-contain" /></button>
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
@@ -44,7 +44,7 @@ export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', 
     );
 }
 
-export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'light', overlayPrimaryTreatment = false, onUpdate, globalTheme, pageTargets = [], onLogoClick = null }) {
+export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'light', overlayLogoLight = false, overlayCtaTreatment = 'primary', onUpdate, globalTheme, pageTargets = [], onLogoClick = null }) {
     const menuItems = block.menu || [
         { label: 'Home', url: '#' }, 
         { label: 'About', url: '#' }, 
@@ -65,9 +65,9 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
     const logoMaxWidth = Math.min(320, Math.max(220, Number(block.logo_max_width || 300)));
 
     return (
-        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${overlay ? 'border-transparent px-[3.5rem] py-[2.5rem]' : 'border-slate-200 px-5 py-5 sm:px-6 sm:py-6'} lg:flex-nowrap`}>
+        <header className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${overlay ? 'border-transparent px-[3.5rem] pt-[3.25rem] pb-[2.5rem]' : 'border-slate-200 px-5 py-5 sm:px-6 sm:py-6'} lg:flex-nowrap`}>
             {logoImageUrl ? (
-                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: overlayPrimaryTreatment ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto object-contain" /></button>
+                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: overlayLogoLight ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto object-contain" /></button>
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
@@ -85,8 +85,8 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
                     />
                 </ul>
                 <div
-                    className={`cosmic-header-cta ${overlayPrimaryTreatment ? 'cosmic-overlay-primary-cta' : 'cosmic-header-cta-primary'}
-                        ${overlayPrimaryTreatment ? 'bg-white text-slate-800' : `${primaryTheme.bg} ${primaryTheme.text}`}
+                    className={`cosmic-header-cta ${overlayCtaTreatment === 'surface' ? 'cosmic-overlay-surface-cta' : 'cosmic-header-cta-primary'}
+                        ${overlayCtaTreatment === 'surface' ? 'bg-white text-slate-800' : `${primaryTheme.bg} ${primaryTheme.text}`}
                         px-7
                         py-3
                         shrink-0
@@ -100,7 +100,7 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
                 >
                     <EditableText 
                         value={block.cta_label || 'Get Started'} 
-                        className={`${overlayPrimaryTreatment ? 'text-slate-800' : 'text-white'} font-bold`}
+                        className={`${overlayCtaTreatment === 'surface' ? 'text-slate-800' : 'text-white'} font-bold`}
                         onSave={(val) => onUpdate({ cta_label: val })}
                     />
                 </div>

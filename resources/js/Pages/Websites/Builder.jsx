@@ -841,10 +841,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             if (logoCropAutoAdaptTheme) {
                 if (trialMode) {
                     await autoAdaptThemeFromUploadedLogo(response.data.url);
-                } else if (logoCropSourceKind === 'upload') {
-                    // Registered Builder: saving the crop commits the logo first.
-                    // Theme matching is now an explicit 20-credit choice instead
-                    // of firing automatically and making Save Logo feel blocked.
+                } else if (logoCropSourceKind === 'upload' && logoSyncState !== 'synced') {
+                    // Only a genuine new upload may offer "Match Theme to Logo".
+                    // Theme-matched/generated crops are terminal sync operations
+                    // and must never trigger the inverse prompt.
                     setPendingUploadedLogoThemeChoice(response.data.url);
                 }
             }
@@ -1384,10 +1384,20 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 setLogoSyncState('theme_changed');
                 setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'logo_to_theme_pending_crop', logo_theme_synced_theme: null }));
             } else {
+                // A manual "Match Logo to Theme" operation is already the
+                // synchronization action. Never let its crop/save path be
+                // mistaken for a fresh user upload, otherwise Save Logo would
+                // immediately offer the inverse "Match Theme to Logo" flow.
+                setPendingUploadedLogoThemeChoice(null);
+                setPendingThemeLogoAdapt(null);
                 if (String(response.data.url || '').toLowerCase().includes('.svg')) {
                     applyTrialLogo(response.data.url);
                 } else {
-                    openLogoCrop(response.data.url, data.global_header?.logo_text);
+                    await openLogoCrop(response.data.url, data.global_header?.logo_text, {
+                        sourceKind: 'theme_match',
+                        entryPrompt: false,
+                        autoAdaptTheme: false,
+                    });
                 }
                 setLogoSyncState('synced');
                 setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'synced', logo_theme_sync_source: 'logo_to_theme', logo_theme_synced_theme: prev.primary }));
@@ -2237,16 +2247,45 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         };
     }, [overlayHeaderActive, data.global_header?.type, data.global_header?.logo_height, data.global_header?.menu?.length]);
 
-    // Keep the overlay rule intentionally deterministic: only a PRIMARY first
-    // Spark receives the white-overlay treatment. Warm Stone and Studio White
-    // are light primary families, so they keep the normal dark header treatment.
+    // Overlay headers are contrast-aware instead of forcing one white treatment.
+    // We read the first Spark's semantic surface plus whether it is media-led.
+    // Dark/image heroes use light navigation/logo; light/surface heroes keep the
+    // original logo and dark navigation. CTA prefers the site's primary brand
+    // color and only falls back to a white surface when primary would disappear
+    // into a same-primary hero.
     const activePrimaryThemeKey = String(globalSelections?.primary || 'midnight').toLowerCase();
-    const overlayPrimaryTreatment = Boolean(
-        overlayHeaderActive
-        && String(firstBlockResolvedTheme || '').toLowerCase() === 'primary'
-        && !['stone', 'white'].includes(activePrimaryThemeKey)
-    );
-    const overlayHeaderTone = overlayPrimaryTreatment ? 'light' : 'dark';
+    const firstResolvedThemeKey = String(firstBlockResolvedTheme || '').toLowerCase();
+    const firstBlockHasHeroMedia = Boolean(firstBlock && (
+        firstBlock?.image_url
+        || firstBlock?.background_image_url
+        || firstBlock?.poster_image_url
+        || firstBlock?.video_url
+        || firstBlock?.video_src
+        || (Array.isArray(firstBlock?.slides) && firstBlock.slides.some((slide) => slide?.image_url || slide?.image || slide?.background_image))
+        || ['hero_background_image', 'hero_parallax', 'hero_video_background', 'hero_slider_fade', 'hero_floating_glass', 'image_cta_banner'].includes(firstBlockType)
+    ));
+
+    const overlaySurfaceThemeKey = firstResolvedThemeKey === 'primary' || firstResolvedThemeKey === 'accent'
+        ? activePrimaryThemeKey
+        : firstResolvedThemeKey === 'surface'
+            ? 'stone'
+            : (firstResolvedThemeKey || activePrimaryThemeKey);
+    const overlaySurfacePalette = colorFamilies[overlaySurfaceThemeKey]?.palette || {};
+    const overlaySurfaceHex = String(overlaySurfacePalette.background || '#243447');
+    const overlayHexLuminance = (hex) => {
+        const normalized = String(hex || '').replace('#', '');
+        if (!/^[0-9a-f]{6}$/i.test(normalized)) return 0.25;
+        const channels = [0, 2, 4].map((offset) => parseInt(normalized.slice(offset, offset + 2), 16) / 255)
+            .map((value) => value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+        return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
+    };
+    const overlayHeroIsLight = !firstBlockHasHeroMedia && overlayHexLuminance(overlaySurfaceHex) > 0.56;
+    const overlayHeaderTone = overlayHeaderActive && !overlayHeroIsLight ? 'light' : 'dark';
+    const overlayLogoLight = Boolean(overlayHeaderActive && overlayHeaderTone === 'light');
+    const firstHeroUsesPrimarySurface = ['primary', 'accent', activePrimaryThemeKey].includes(firstResolvedThemeKey);
+    const overlayCtaTreatment = overlayHeaderActive && overlayHeaderTone === 'light' && firstHeroUsesPrimarySurface
+        ? 'surface'
+        : 'primary';
 
     const renderBlock = (block, index) => {
 
@@ -2676,14 +2715,15 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     {data.global_header && (
                         <div ref={overlayHeaderRef} className={`w-full z-40 ${overlayHeaderActive ? 'absolute inset-x-0 top-0 border-b-0 bg-transparent shadow-none' : 'relative bg-white'}`}>
                             {data.global_header.type === 'dark_cyan_header' && (
-                                <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayPrimaryTreatment={overlayPrimaryTreatment} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={() => setShowLogoModal(true)} />
+                                <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayLogoLight={overlayLogoLight} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={() => setShowLogoModal(true)} />
                             )}
                             {data.global_header.type === 'glassmorphism_header' && (
                                 <GlassmorphismHeader
                                     block={data.global_header}
                                     overlay={overlayHeaderActive}
                                     overlayTone={overlayHeaderTone}
-                                    overlayPrimaryTreatment={overlayPrimaryTreatment}
+                                    overlayLogoLight={overlayLogoLight}
+                                    overlayCtaTreatment={overlayCtaTreatment}
                                     onUpdate={updateHeader}
                                     globalTheme={globalSelections}
                                     pageTargets={websitePages}
@@ -3120,6 +3160,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     hasWebsiteContent={hasWebsiteContent}
                     websiteContext={websiteContext}
                     websiteId={website?.id}
+                    headerOverlayEnabled={Boolean(data.global_header?.overlay_header_on_banner)}
                     trialMode={trialMode}
                     trialToken={trialToken}
                     cosmicPricing={cosmicPricing}
@@ -3153,6 +3194,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     }}
                     websiteContext={websiteContext}
                     websiteId={website?.id}
+                    headerOverlayEnabled={Boolean(data.global_header?.overlay_header_on_banner)}
                     trialMode={trialMode}
                     trialToken={trialToken}
                     websiteTheme={globalSelections}
@@ -3174,6 +3216,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     onReplace={replaceBlocks}
                     websiteContext={websiteContext}
                     websiteId={website?.id}
+                    headerOverlayEnabled={Boolean(data.global_header?.overlay_header_on_banner)}
                     creditCost={Number(cosmicPricing?.actions?.generate_page || 50)}
                 />
             )}

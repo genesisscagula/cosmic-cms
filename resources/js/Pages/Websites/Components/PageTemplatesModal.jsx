@@ -56,6 +56,7 @@ export default function PageTemplatesModal({
     onInstall,
     websiteContext = '',
     websiteId = null,
+    headerOverlayEnabled = false,
     trialMode = false,
     trialToken = null,
     websiteTheme = null,
@@ -276,6 +277,7 @@ export default function PageTemplatesModal({
                     sections: selected.sections,
                     generation_type: 'template',
                     website_id: websiteId,
+                    header_overlay_enabled: Boolean(headerOverlayEnabled),
                 });
 
                 if (!data.blocks?.length) {

@@ -2815,9 +2815,10 @@ body .cosmic-start-quick-idea.rounded-full.border {
     -webkit-text-fill-color: #ffffff !important;
 }
 
-/* Overlay header primary treatment: white CTA with readable slate label. */
-.cosmic-header-cta.cosmic-overlay-primary-cta,
-.cosmic-header-cta.cosmic-overlay-primary-cta * {
+/* Contrast-aware overlay fallback: use a white/surface CTA only when the
+   primary CTA would visually merge into the hero behind the header. */
+.cosmic-header-cta.cosmic-overlay-surface-cta,
+.cosmic-header-cta.cosmic-overlay-surface-cta * {
     color: #1e293b !important;
     -webkit-text-fill-color: #1e293b !important;
 }
