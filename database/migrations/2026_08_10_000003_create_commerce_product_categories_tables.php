@@ -8,7 +8,12 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('commerce_product_categories', function (Blueprint $table): void {
+        // MySQL/MariaDB DDL is not transactional. If a previous migration run
+        // was interrupted after creating the first table, Laravel can leave the
+        // migration marked as pending while the table already exists. Guard each
+        // table independently so a retry can safely finish the migration.
+        if (! Schema::hasTable('commerce_product_categories')) {
+            Schema::create('commerce_product_categories', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('website_id')->constrained()->cascadeOnDelete();
             $table->foreignId('parent_id')->nullable()->constrained('commerce_product_categories')->nullOnDelete();
@@ -33,9 +38,11 @@ return new class extends Migration
             $table->unique(['website_id', 'slug']);
             $table->index(['website_id', 'is_visible', 'sort_order']);
             $table->index(['website_id', 'parent_id', 'sort_order']);
-        });
+            });
+        }
 
-        Schema::create('commerce_product_category_assignments', function (Blueprint $table): void {
+        if (! Schema::hasTable('commerce_product_category_assignments')) {
+            Schema::create('commerce_product_category_assignments', function (Blueprint $table): void {
             $table->id();
             $table->foreignId('product_id')->constrained('commerce_products')->cascadeOnDelete();
             $table->foreignId('category_id')->constrained('commerce_product_categories')->cascadeOnDelete();
@@ -46,7 +53,8 @@ return new class extends Migration
             $table->unique(['product_id', 'category_id']);
             $table->index(['category_id', 'sort_order']);
             $table->index(['product_id', 'is_primary']);
-        });
+            });
+        }
     }
 
     public function down(): void
