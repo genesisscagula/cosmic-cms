@@ -5394,3 +5394,86 @@ body .cosmic-start-quick-idea.rounded-full.border {
     border-color: var(--cosmic-primary, #047857) !important;
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--cosmic-primary, #047857) 18%, transparent) !important;
 }
+
+/* Dynamic template preset active state — keep explicit in light mode so generic modal overrides cannot wash it out. */
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-card[data-active="true"] {
+    border-color: #16a34a !important;
+    background: #ecfdf3 !important;
+    box-shadow: 0 0 0 2px rgba(34, 197, 94, 0.16), 0 8px 22px rgba(22, 101, 52, 0.08) !important;
+}
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-card[data-active="true"] > div > span:first-child {
+    color: #166534 !important;
+}
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-card[data-active="true"] > span:last-child {
+    color: #3f6950 !important;
+}
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-active-badge {
+    border-color: #86efac !important;
+    background: #dcfce7 !important;
+    color: #166534 !important;
+}
+
+
+/* Posts / Updates initial template install loading — light-mode isolation */
+:root[data-theme="light"] #cosmic-initial-design-overlay.cosmic-initial-design-overlay {
+  background: rgba(241, 245, 249, 0.88) !important;
+  backdrop-filter: blur(14px);
+}
+:root[data-theme="light"] #cosmic-initial-design-overlay .cosmic-initial-design-card {
+  background: #ffffff !important;
+  border-color: #d9e5df !important;
+  box-shadow: 0 24px 70px rgba(15, 23, 42, 0.16) !important;
+}
+:root[data-theme="light"] #cosmic-initial-design-overlay .cosmic-initial-design-icon {
+  background: #ecfdf5 !important;
+  color: #047857 !important;
+  border: 1px solid #b7e4d1;
+}
+:root[data-theme="light"] #cosmic-initial-design-overlay .cosmic-initial-design-kicker {
+  color: #047857 !important;
+}
+:root[data-theme="light"] #cosmic-initial-design-overlay .cosmic-initial-design-title {
+  color: #0f172a !important;
+}
+:root[data-theme="light"] #cosmic-initial-design-overlay .cosmic-initial-design-copy {
+  color: #64748b !important;
+}
+:root[data-theme="light"] #cosmic-initial-design-overlay .cosmic-initial-design-progress {
+  background: #e7eee9 !important;
+}
+:root[data-theme="light"] #cosmic-initial-design-overlay .cosmic-initial-design-progress-bar {
+  background: linear-gradient(90deg, #059669, #10b981) !important;
+}
+:root[data-theme="light"] #cosmic-initial-design-overlay .cosmic-initial-design-note {
+  color: #047857 !important;
+}
+
+/* Dynamic template preset selected-before-apply state — light mode */
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-card[data-selected="true"][data-active="false"] {
+    border-color: var(--cosmic-primary, #047857) !important;
+    background: color-mix(in srgb, var(--cosmic-primary, #047857) 8%, #ffffff) !important;
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--cosmic-primary, #047857) 15%, transparent), 0 8px 22px rgba(15, 23, 42, 0.07) !important;
+}
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-card[data-selected="true"][data-active="false"] > div > span:first-child {
+    color: var(--cosmic-primary, #047857) !important;
+}
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-card[data-selected="true"][data-active="false"] > span:last-child {
+    color: #475569 !important;
+}
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-selected-badge {
+    border-color: color-mix(in srgb, var(--cosmic-primary, #047857) 35%, #d1fae5) !important;
+    background: color-mix(in srgb, var(--cosmic-primary, #047857) 11%, #ffffff) !important;
+    color: var(--cosmic-primary, #047857) !important;
+}
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-apply:not(:disabled) {
+    background: var(--cosmic-primary, #047857) !important;
+    color: #ffffff !important;
+}
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-apply:not(:disabled):hover {
+    filter: brightness(.94);
+}
+:root[data-theme="light"] .cosmic-content-modal .cosmic-dynamic-theme-apply:disabled {
+    background: #e2e8f0 !important;
+    color: #64748b !important;
+    opacity: 1 !important;
+}

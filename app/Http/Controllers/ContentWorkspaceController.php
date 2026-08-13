@@ -9,6 +9,7 @@ use App\Models\Website;
 use App\AI\Clients\OpenAIClient;
 use App\Cosmic\Pricing\ActionPricing;
 use App\Services\CreditService;
+use App\Services\ThemeColorResolver;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -96,6 +97,12 @@ class ContentWorkspaceController extends Controller
                     'icon' => $type->icon,
                     'description' => $type->description,
                     'schema' => $type->schema ?: [],
+                    'preset_key' => $type->preset_key,
+                    'schema_source' => $type->schema_source ?: ($type->is_system ? 'preset' : 'custom'),
+                    'schema_signature' => self::schemaSignature($type->schema ?: []),
+                    'single_template_needs_refresh' => (bool) ($type->singleTemplate && $type->single_template_schema_signature && $type->single_template_schema_signature !== self::schemaSignature($type->schema ?: [])),
+                    'archive_template_needs_refresh' => (bool) ($type->archiveTemplate && $type->archive_template_schema_signature && $type->archive_template_schema_signature !== self::schemaSignature($type->schema ?: [])),
+                    'template_needs_refresh' => (bool) ((($type->singleTemplate && $type->single_template_schema_signature && $type->single_template_schema_signature !== self::schemaSignature($type->schema ?: []))) || (($type->archiveTemplate && $type->archive_template_schema_signature && $type->archive_template_schema_signature !== self::schemaSignature($type->schema ?: [])))),
                     'is_system' => $type->is_system,
                     'entries_count' => $type->entries_count,
                     'single_template_id' => $type->single_template_id,
@@ -184,8 +191,10 @@ class ContentWorkspaceController extends Controller
             'icon' => ['nullable', 'string', 'max:40'],
             'schema' => ['nullable', 'array', 'max:40'],
             'schema.*' => ['array'],
+            'preset_key' => ['nullable', 'string', 'max:60'],
         ]);
         $validated['schema'] = $this->normalizeSchemaFields($validated['schema'] ?? [], $website);
+        $schemaSignature = self::schemaSignature($validated['schema']);
 
         $base = Str::slug($validated['slug'] ?: $validated['name']) ?: 'content';
         $slug = $this->uniqueTypeSlug($website, $base);
@@ -194,6 +203,9 @@ class ContentWorkspaceController extends Controller
             'singular_name' => $validated['singular_name'] ?: Str::singular($validated['name']),
             'slug' => $slug,
             'sort_order' => ((int) $website->contentTypes()->max('sort_order')) + 10,
+            'preset_key' => $validated['preset_key'] ?? null,
+            'schema_source' => !empty($validated['preset_key']) ? 'preset' : 'custom',
+            'schema_signature' => $schemaSignature,
         ]);
 
         return response()->json(['type' => $type, 'workspace' => self::payload($website->fresh())], 201);
@@ -211,8 +223,23 @@ class ContentWorkspaceController extends Controller
             'schema' => ['nullable', 'array', 'max:40'],
             'schema.*' => ['array'],
         ]);
+        $beforeSignature = self::schemaSignature($contentType->schema ?: []);
         $validated['schema'] = $this->normalizeSchemaFields($validated['schema'] ?? [], $website);
-        $contentType->update($validated);
+        $afterSignature = self::schemaSignature($validated['schema']);
+        $schemaChanged = $beforeSignature !== $afterSignature;
+
+        $tracking = ['schema_signature' => $afterSignature];
+        if ($schemaChanged) {
+            $tracking['schema_source'] = 'customized';
+            if ($contentType->singleTemplate && !$contentType->single_template_schema_signature) {
+                $tracking['single_template_schema_signature'] = $beforeSignature;
+            }
+            if ($contentType->archiveTemplate && !$contentType->archive_template_schema_signature) {
+                $tracking['archive_template_schema_signature'] = $beforeSignature;
+            }
+        }
+
+        $contentType->update(array_merge($validated, $tracking));
         return response()->json(['type' => $contentType->fresh(), 'workspace' => self::payload($website->fresh())]);
     }
 
@@ -372,6 +399,9 @@ PROMPT;
             $bindingLines = collect($bindings)->map(fn ($binding) => '- '.$binding['key'].' ('.$binding['type'].'): '.$binding['label'])->implode("\n");
             $schemaJson = json_encode($contentType->schema ?: [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             $themeJson = json_encode($website->theme_settings ?: [], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $themeKey = (string) data_get($website->theme_settings, 'primary', 'midnight');
+            $resolvedPalette = app(ThemeColorResolver::class)->palette($themeKey);
+            $paletteJson = json_encode($resolvedPalette, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
             $requestPrompt = trim((string) ($validated['prompt'] ?? ''));
 
             $system = <<<'PROMPT'
@@ -388,7 +418,11 @@ Hard rules:
 - Image src values may use {{ featured_image_url }}. Alt text should use {{ title }} where useful.
 - For gallery fields, do not invent looping syntax. Treat {{ gallery }} as an optional display value until the renderer adds structured gallery loops.
 - Make the layout feel production-ready: strong hierarchy, generous spacing, responsive grid decisions, polished cards/meta, accessible contrast, and Manrope-friendly typography.
-- Do not hard-code brand colors when theme-neutral Tailwind slate/emerald/violet utilities can work. The site shell will provide the active brand context later.
+- The active website theme is authoritative. Never invent a random brand palette or switch the design to unrelated violet/blue/emerald accents.
+- For branded accents/surfaces, use inline CSS custom properties with fallbacks: var(--p, PRIMARY_HEX), var(--a, ACCENT_HEX), var(--s, SURFACE_HEX), var(--t, TEXT_HEX), var(--m, #64748B), var(--b, #E2E8F0), var(--bg, #FFFFFF). The resolved active palette is supplied below.
+- Keep neutral Tailwind slate/white utilities for typography and structure where appropriate, but primary CTA, eyebrow, highlight, active border, and branded surface treatments must follow the supplied active theme.
+- Every SINGLE design must visibly contain three semantic regions using data attributes: data-cosmic-mini-hero="true", data-cosmic-post-content="true", and at least one data-cosmic-post-spark="true". The mini hero should include title plus useful meta/excerpt; Post Content must contain {{ content }} and naturally place featured media/gallery where useful; Post Sparks are supporting branded sections/cards using existing bindings only.
+- Every ARCHIVE design must visibly contain data-cosmic-mini-hero="true", data-cosmic-catalog="true", and at least one data-cosmic-post-spark="true". The catalog region must contain the single required entries loop.
 - Avoid excessive gradients, glassmorphism, and decorative clutter.
 - design_summary: one concise sentence describing the design.
 - used_bindings: JSON array of binding keys actually used in markup.
@@ -404,6 +438,7 @@ PROMPT;
                 'Content type description: '.($contentType->description ?: 'Not provided'),
                 'Custom schema JSON: '.$schemaJson,
                 'Website theme settings JSON: '.$themeJson,
+                'Resolved active website palette JSON: '.$paletteJson,
                 "Allowed bindings:
 ".$bindingLines.($mode === SavedPageTemplate::TYPE_ARCHIVE ? "\n- url (url): Entry detail URL" : ''),
                 $requestPrompt !== '' ? 'User art direction: '.$requestPrompt : 'User art direction: Create a premium editorial layout appropriate for this content type.',
@@ -517,7 +552,12 @@ PROMPT;
         ]);
 
         $column = $validated['template_type'] === SavedPageTemplate::TYPE_SINGLE ? 'single_template_id' : 'archive_template_id';
-        $contentType->update([$column => $template->id]);
+        $signatureColumn = $validated['template_type'] === SavedPageTemplate::TYPE_SINGLE ? 'single_template_schema_signature' : 'archive_template_schema_signature';
+        $contentType->update([
+            $column => $template->id,
+            'schema_signature' => self::schemaSignature($contentType->schema ?: []),
+            $signatureColumn => self::schemaSignature($contentType->schema ?: []),
+        ]);
 
         return response()->json([
             'template' => self::templatePayload($template),
@@ -549,6 +589,12 @@ PROMPT;
             ]),
         ]);
 
+        $signatureColumn = $template->template_type === SavedPageTemplate::TYPE_SINGLE ? 'single_template_schema_signature' : 'archive_template_schema_signature';
+        $contentType->update([
+            'schema_signature' => self::schemaSignature($contentType->schema ?: []),
+            $signatureColumn => self::schemaSignature($contentType->schema ?: []),
+        ]);
+
         return response()->json([
             'template' => self::templatePayload($template->fresh()),
             'workspace' => self::payload($website->fresh()),
@@ -572,7 +618,11 @@ PROMPT;
             abort_unless($template->status === SavedPageTemplate::STATUS_ACTIVE, 422, 'This template is not active.');
         }
 
-        $contentType->update([$column => $validated['template_id'] ?? null]);
+        $signatureColumn = $validated['template_type'] === SavedPageTemplate::TYPE_SINGLE ? 'single_template_schema_signature' : 'archive_template_schema_signature';
+        $contentType->update([
+            $column => $validated['template_id'] ?? null,
+            $signatureColumn => !empty($validated['template_id']) ? self::schemaSignature($contentType->schema ?: []) : null,
+        ]);
         return response()->json(['workspace' => self::payload($website->fresh())]);
     }
 
@@ -1081,6 +1131,28 @@ PROMPT;
         return array_values(array_merge($core, $custom));
     }
 
+    private static function schemaSignature(array $schema): string
+    {
+        $normalize = function (array $fields) use (&$normalize): array {
+            return collect($fields)->map(function ($field) use (&$normalize) {
+                $field = is_array($field) ? $field : [];
+                $clean = [
+                    'key' => (string) ($field['key'] ?? ''),
+                    'label' => (string) ($field['label'] ?? ''),
+                    'type' => (string) ($field['type'] ?? 'text'),
+                    'multiple' => (bool) ($field['multiple'] ?? false),
+                    'related_type_id' => $field['related_type_id'] ?? null,
+                    'max_rows' => $field['max_rows'] ?? null,
+                    'options' => array_values($field['options'] ?? []),
+                ];
+                if (is_array($field['fields'] ?? null)) $clean['fields'] = $normalize($field['fields']);
+                return $clean;
+            })->values()->all();
+        };
+
+        return hash('sha256', json_encode($normalize($schema), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE));
+    }
+
     private static function schemaBindingCatalog(array $schema, string $prefix = 'custom_fields.'): array
     {
         $bindings = [];
@@ -1171,17 +1243,18 @@ PROMPT;
         })->implode("\n");
 
         return <<<HTML
-<article class="mx-auto max-w-5xl px-6 py-16 lg:py-24">
-    <header class="mx-auto max-w-3xl text-center">
-        <p class="text-sm font-bold uppercase tracking-[0.18em] text-emerald-600">{{ category }}</p>
+<article data-cosmic-dynamic-theme="starter" class="mx-auto max-w-5xl px-6 py-16 lg:py-24" style="--dt-primary:var(--p,var(--cosmic-primary,#047857))">
+    <header data-cosmic-mini-hero="true" class="mx-auto max-w-3xl text-center">
+        <p class="text-sm font-bold uppercase tracking-[0.18em]" style="color:var(--dt-primary)">{{ category }}</p>
         <h1 class="mt-4 text-4xl font-extrabold tracking-tight text-slate-950 md:text-6xl">{{ title }}</h1>
         <p class="mt-5 text-lg leading-8 text-slate-600">{{ excerpt }}</p>
     </header>
     <img src="{{ featured_image_url }}" alt="{{ title }}" class="mt-10 aspect-[16/9] w-full rounded-3xl object-cover" />
-    <div class="prose prose-slate mx-auto mt-10 max-w-3xl">{{ content }}</div>
+    <div data-cosmic-post-content="true" class="prose prose-slate mx-auto mt-10 max-w-3xl">{{ content }}</div>
     <dl class="mx-auto mt-10 grid max-w-3xl gap-3 sm:grid-cols-2">
 {$custom}
     </dl>
+<section data-cosmic-post-spark="true" class="mx-auto mt-10 max-w-3xl border-t border-slate-200 pt-6 text-sm text-slate-500">Published {{ published_at }} · {{ tags }}</section>
 </article>
 HTML;
     }
@@ -1189,18 +1262,18 @@ HTML;
     private static function starterArchiveMarkup(ContentType $type): string
     {
         return <<<HTML
-<section class="mx-auto max-w-7xl px-6 py-16 lg:py-24">
-    <header class="max-w-3xl">
-        <p class="text-sm font-bold uppercase tracking-[0.18em] text-emerald-600">{$type->name}</p>
+<section data-cosmic-dynamic-theme="starter" class="mx-auto max-w-7xl px-6 py-16 lg:py-24" style="--dt-primary:var(--p,var(--cosmic-primary,#047857))">
+    <header data-cosmic-mini-hero="true" class="max-w-3xl">
+        <p class="text-sm font-bold uppercase tracking-[0.18em]" style="color:var(--dt-primary)">{$type->name}</p>
         <h1 class="mt-3 text-4xl font-extrabold tracking-tight text-slate-950 md:text-5xl">Latest {$type->name}</h1>
         <p class="mt-4 text-lg text-slate-600">{$type->description}</p>
     </header>
-    <div class="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+    <div data-cosmic-catalog="true" class="mt-10 grid gap-6 md:grid-cols-2 lg:grid-cols-3">
         {{#entries}}
         <article class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm">
             <img src="{{ featured_image_url }}" alt="{{ title }}" class="aspect-[16/10] w-full object-cover" />
             <div class="p-6">
-                <p class="text-xs font-bold uppercase tracking-wider text-emerald-600">{{ category }}</p>
+                <p class="text-xs font-bold uppercase tracking-wider" style="color:var(--dt-primary)">{{ category }}</p>
                 <h2 class="mt-2 text-xl font-bold text-slate-950">{{ title }}</h2>
                 <p class="mt-3 text-sm leading-6 text-slate-600">{{ excerpt }}</p>
                 <a href="{{ url }}" class="mt-5 inline-flex font-bold text-slate-950">View {$type->singular_name} →</a>
@@ -1208,6 +1281,7 @@ HTML;
         </article>
         {{/entries}}
     </div>
+    <div data-cosmic-post-spark="true" class="mt-12 rounded-3xl border border-slate-200 p-6"><p class="text-sm font-bold" style="color:var(--dt-primary)">Post spark</p><p class="mt-2 text-sm text-slate-500">New published entries automatically flow into this catalog.</p></div>
 </section>
 HTML;
     }

@@ -9,6 +9,7 @@ class ContentType extends Model
     protected $fillable = [
         'website_id', 'name', 'singular_name', 'slug', 'icon', 'description',
         'schema', 'is_system', 'sort_order', 'single_template_id', 'archive_template_id',
+        'preset_key', 'schema_source', 'schema_signature', 'single_template_schema_signature', 'archive_template_schema_signature',
     ];
 
     protected $casts = [

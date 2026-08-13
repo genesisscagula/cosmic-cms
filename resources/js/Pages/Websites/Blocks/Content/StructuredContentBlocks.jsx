@@ -1,3 +1,4 @@
+import { useEffect, useMemo, useState } from "react";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 
@@ -57,22 +58,109 @@ const filteredEntries = (block, contentWorkspace) => {
 };
 
 function SourceControls({ block, contentWorkspace, onUpdate, builderMode }) {
-    if (!builderMode) return null;
+    const [open, setOpen] = useState(false);
+    const [draft, setDraft] = useState({});
     const types = contentWorkspace?.types || [];
-    const { entries } = typeEntries(contentWorkspace, block.content_type_slug);
-    const categories = [...new Set(entries.map((e)=>e.category).filter(Boolean))];
-    const tags = [...new Set(entries.flatMap((e)=>e.tags || []).filter(Boolean))];
+    const sourceType = types.find((item) => String(item.slug) === String(block.content_type_slug)) || types[0];
+    const draftType = types.find((item) => String(item.slug) === String(draft.content_type_slug)) || sourceType;
+    const sourceEntries = draftType?.entries || [];
+    const categories = useMemo(() => [...new Set(sourceEntries.filter((entry) => entry.status === "published").map((entry) => entry.category).filter(Boolean))], [draftType]);
+    const tags = useMemo(() => [...new Set(sourceEntries.filter((entry) => entry.status === "published").flatMap((entry) => entry.tags || []).filter(Boolean))], [draftType]);
     const showColumns = ["content_grid_classic", "content_grid_editorial"].includes(block.type);
-    return <div className="mb-5 grid gap-3 rounded-2xl border border-slate-300/30 bg-black/10 p-4 md:grid-cols-3 xl:grid-cols-6">
-        <label className="text-xs font-bold">Content type<select value={block.content_type_slug || ""} onChange={(e)=>onUpdate({content_type_slug:e.target.value,category:"",tag:""})} className="mt-1 w-full rounded-lg border border-slate-400/30 bg-white px-3 py-2 text-slate-900">{types.map((t)=><option key={t.id} value={t.slug}>{t.name}</option>)}</select></label>
-        <label className="text-xs font-bold">Category<select value={block.category || ""} onChange={(e)=>onUpdate({category:e.target.value})} className="mt-1 w-full rounded-lg border border-slate-400/30 bg-white px-3 py-2 text-slate-900"><option value="">All categories</option>{categories.map((v)=><option key={v}>{v}</option>)}</select></label>
-        <label className="text-xs font-bold">Tag<select value={block.tag || ""} onChange={(e)=>onUpdate({tag:e.target.value})} className="mt-1 w-full rounded-lg border border-slate-400/30 bg-white px-3 py-2 text-slate-900"><option value="">All tags</option>{tags.map((v)=><option key={v}>{v}</option>)}</select></label>
-        <label className="text-xs font-bold">Sort<select value={block.sort || "newest"} onChange={(e)=>onUpdate({sort:e.target.value})} className="mt-1 w-full rounded-lg border border-slate-400/30 bg-white px-3 py-2 text-slate-900"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="title">Title A–Z</option>{block.type === "content_events_grid" ? <option value="event_date">Event date</option> : null}</select></label>
-        <label className="text-xs font-bold">Items<input type="number" min="1" max="24" value={block.limit || 6} onChange={(e)=>onUpdate({limit:Math.min(24,Math.max(1,Number(e.target.value || 1)))})} className="mt-1 w-full rounded-lg border border-slate-400/30 bg-white px-3 py-2 text-slate-900"/></label>
-        {showColumns ? <label className="text-xs font-bold">Columns<select value={block.columns || 3} onChange={(e)=>onUpdate({columns:Number(e.target.value)})} className="mt-1 w-full rounded-lg border border-slate-400/30 bg-white px-3 py-2 text-slate-900"><option value={1}>1 column</option><option value={2}>2 columns</option><option value={3}>3 columns</option><option value={4}>4 columns</option></select></label> : <div/>}
+
+    useEffect(() => {
+        setDraft({
+            content_type_slug: block.content_type_slug || sourceType?.slug || "",
+            category: block.category || "",
+            tag: block.tag || "",
+            sort: block.sort || "newest",
+            limit: Number(block.limit || 6),
+            columns: Number(block.columns || 3),
+        });
+    }, [block.content_type_slug, block.category, block.tag, block.sort, block.limit, block.columns, sourceType?.slug]);
+
+    if (!builderMode) return null;
+
+    const typeLabel = types.find((item) => String(item.slug) === String(block.content_type_slug))?.name || sourceType?.name || "Content";
+    const sortLabels = { newest: "Newest", oldest: "Oldest", title: "Title A–Z", event_date: "Event date" };
+    const summary = [typeLabel, block.category || null, block.tag ? `#${block.tag}` : null, sortLabels[block.sort || "newest"], `${Number(block.limit || 6)} ${Number(block.limit || 6) === 1 ? "item" : "items"}`].filter(Boolean);
+
+    const resetDraft = () => setDraft({
+        content_type_slug: block.content_type_slug || sourceType?.slug || "",
+        category: "",
+        tag: "",
+        sort: block.type === "content_events_grid" ? "event_date" : "newest",
+        limit: block.type === "content_featured_entry" ? 1 : 6,
+        columns: 3,
+    });
+
+    const applyDraft = () => {
+        onUpdate({
+            content_type_slug: draft.content_type_slug,
+            category: draft.category || "",
+            tag: draft.tag || "",
+            sort: draft.sort || "newest",
+            limit: Math.min(24, Math.max(1, Number(draft.limit || 1))),
+            ...(showColumns ? { columns: Number(draft.columns || 3) } : {}),
+        });
+        setOpen(false);
+    };
+
+    return <div id="cosmic-content-filter-controls" className="cosmic-content-filter-controls mb-8">
+        <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-slate-200 bg-white/95 p-2.5 shadow-sm backdrop-blur">
+            <button
+                type="button"
+                onClick={() => setOpen((value) => !value)}
+                aria-expanded={open}
+                className="cosmic-content-filter-trigger inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30"
+            >
+                <span aria-hidden="true">⚙</span>
+                Edit filters
+                <span className={`text-[10px] transition-transform ${open ? "rotate-180" : ""}`} aria-hidden="true">⌄</span>
+            </button>
+            <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1.5 px-1">
+                {summary.map((item, index) => <span key={`${item}-${index}`} className="rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 text-[11px] font-semibold text-slate-600">{item}</span>)}
+            </div>
+        </div>
+
+        {open ? <div className="cosmic-content-filter-panel mt-3 overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-xl shadow-slate-900/10">
+            <div className="flex flex-wrap items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+                <div>
+                    <div className="text-sm font-bold text-slate-900">Content filters</div>
+                    <p className="mt-0.5 text-xs leading-5 text-slate-500">Choose what this dynamic Spark should show. Changes apply only when you click Apply filters.</p>
+                </div>
+                <button type="button" onClick={() => setOpen(false)} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-900">Close</button>
+            </div>
+            <div className={`grid gap-4 p-5 sm:grid-cols-2 ${showColumns ? "xl:grid-cols-3" : "xl:grid-cols-5"}`}>
+                <label className="text-[11px] font-bold uppercase tracking-[.12em] text-slate-600">Content type
+                    <select value={draft.content_type_slug || ""} onChange={(e)=>setDraft((current)=>({...current,content_type_slug:e.target.value,category:"",tag:""}))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10">{types.map((type)=><option key={type.id} value={type.slug}>{type.name}</option>)}</select>
+                </label>
+                <label className="text-[11px] font-bold uppercase tracking-[.12em] text-slate-600">Category
+                    <select value={draft.category || ""} onChange={(e)=>setDraft((current)=>({...current,category:e.target.value}))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"><option value="">All categories</option>{categories.map((value)=><option key={value} value={value}>{value}</option>)}</select>
+                </label>
+                <label className="text-[11px] font-bold uppercase tracking-[.12em] text-slate-600">Tag
+                    <select value={draft.tag || ""} onChange={(e)=>setDraft((current)=>({...current,tag:e.target.value}))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"><option value="">All tags</option>{tags.map((value)=><option key={value} value={value}>{value}</option>)}</select>
+                </label>
+                <label className="text-[11px] font-bold uppercase tracking-[.12em] text-slate-600">Sort
+                    <select value={draft.sort || "newest"} onChange={(e)=>setDraft((current)=>({...current,sort:e.target.value}))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"><option value="newest">Newest</option><option value="oldest">Oldest</option><option value="title">Title A–Z</option>{block.type === "content_events_grid" ? <option value="event_date">Event date</option> : null}</select>
+                </label>
+                <label className="text-[11px] font-bold uppercase tracking-[.12em] text-slate-600">Items
+                    <input type="number" min="1" max="24" value={draft.limit || 1} onChange={(e)=>setDraft((current)=>({...current,limit:Math.min(24,Math.max(1,Number(e.target.value || 1)))}))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"/>
+                </label>
+                {showColumns ? <label className="text-[11px] font-bold uppercase tracking-[.12em] text-slate-600">Columns
+                    <select value={draft.columns || 3} onChange={(e)=>setDraft((current)=>({...current,columns:Number(e.target.value)}))} className="mt-2 w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm font-semibold normal-case tracking-normal text-slate-900 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/10"><option value={1}>1 column</option><option value={2}>2 columns</option><option value={3}>3 columns</option><option value={4}>4 columns</option></select>
+                </label> : null}
+            </div>
+            <div className="flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 bg-slate-50/70 px-5 py-3.5">
+                <button type="button" onClick={resetDraft} className="rounded-xl px-3 py-2 text-sm font-semibold text-slate-600 transition hover:bg-white hover:text-slate-900">Reset filters</button>
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setOpen(false)} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:bg-slate-50">Cancel</button>
+                    <button type="button" onClick={applyDraft} className="rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white shadow-sm transition hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-emerald-500/30">Apply filters</button>
+                </div>
+            </div>
+        </div> : null}
     </div>;
 }
-
 const entryUrl = (type, entry) => entry?.url || `/${type?.slug || "updates"}/${entry.slug || ""}`;
 const img = (entry) => entry.featured_image_url || "/storage/cms-images/background/background-1.avif";
 

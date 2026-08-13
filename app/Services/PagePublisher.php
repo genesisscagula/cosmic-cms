@@ -49,6 +49,9 @@ class PagePublisher
 
         $theme = $website->published_theme_settings ?? $website->theme_settings ?? [];
         $primaryColor = $theme['primary'] ?? 'midnight';
+        $themePalette = $primaryColor === 'my-brand'
+            ? ((array) data_get($theme, 'brand_palette', data_get($theme, 'custom_brand_theme.palette', [])))
+            : app(ThemeColorResolver::class)->palette((string) $primaryColor);
         $header = $website->published_global_header ?? $website->global_header;
         $footer = $website->published_global_footer ?? $website->global_footer;
         $pages = $website->pages()
@@ -79,6 +82,7 @@ class PagePublisher
         return [
             'status' => 'success',
             'website_name' => $website->name,
+            'theme_palette' => $themePalette,
             'global_header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor) : '',
             'global_footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor) : '',
             'pages' => $pages
