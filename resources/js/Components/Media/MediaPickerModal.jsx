@@ -47,7 +47,33 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
         {children(folder.id).map((child)=>renderFolder(child, depth+1))}
     </div>;
 
-\n    const createFolder = async () => {\n        const name = newFolderName.trim();\n        if (!name || creatingFolder) return;\n\n        setCreatingFolder(true);\n        try {\n            const payload = { name };\n            // When a real folder is selected, create the new folder inside it.\n            // Smart views (All Media / Uploads / AI / Unsplash / Uncategorized) create at root.\n            if (folderId) payload.parent_id = Number(folderId);\n            const response = await axios.post(`/websites/${websiteId}/media-library/folders`, payload, { headers:{ Accept:'application/json' } });\n            const created = response.data?.folder;\n            setNewFolderName('');\n            await load();\n            if (created?.id) {\n                setFolderId(created.id);\n                setSource('');\n            }\n            showCosmicNotification({ title:'Folder created', message:`${name} is ready in your Media Library.`, tone:'success' });\n        } catch (error) {\n            showCosmicNotification({ title:'Could not create folder', message:error.response?.data?.message || error.response?.data?.errors?.name?.[0] || 'Please try a different folder name.', tone:'error' });\n        } finally {\n            setCreatingFolder(false);\n        }\n    };\n
+
+    const createFolder = async () => {
+        const name = newFolderName.trim();
+        if (!name || creatingFolder) return;
+
+        setCreatingFolder(true);
+        try {
+            const payload = { name };
+            // When a real folder is selected, create the new folder inside it.
+            // Smart views (All Media / Uploads / AI / Unsplash / Uncategorized) create at root.
+            if (folderId) payload.parent_id = Number(folderId);
+            const response = await axios.post(`/websites/${websiteId}/media-library/folders`, payload, { headers:{ Accept:'application/json' } });
+            const created = response.data?.folder;
+            setNewFolderName('');
+            await load();
+            if (created?.id) {
+                setFolderId(created.id);
+                setSource('');
+            }
+            showCosmicNotification({ title:'Folder created', message:`${name} is ready in your Media Library.`, tone:'success' });
+        } catch (error) {
+            showCosmicNotification({ title:'Could not create folder', message:error.response?.data?.message || error.response?.data?.errors?.name?.[0] || 'Please try a different folder name.', tone:'error' });
+        } finally {
+            setCreatingFolder(false);
+        }
+    };
+
     const toggle = (asset) => {
         if (!multiple) { setSelected([asset]); return; }
         setSelected((current)=>current.some((item)=>item.uuid===asset.uuid) ? current.filter((item)=>item.uuid!==asset.uuid) : [...current, asset]);
