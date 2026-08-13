@@ -181,7 +181,8 @@ class ImageController extends Controller
         $filename = 'cropped-logo-'.Str::lower(Str::random(10)).'.png';
         $path = "websites/{$website->id}/logos/{$filename}";
         Storage::disk('public')->put($path, $bytes);
-        $logoUrl = rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path;
+        $asset = app(\App\Services\MediaLibraryRegistry::class)->registerStoredPath($website, $path, 'upload', 'logo', $request->user()?->id, $filename);
+        $logoUrl = $asset ? app(\App\Services\MediaLibraryRegistry::class)->url($asset) : rtrim($request->getSchemeAndHttpHost(), '/').'/storage/'.$path;
         $themeSettings = is_array($website->theme_settings) ? $website->theme_settings : (json_decode((string) $website->theme_settings, true) ?: []);
         $themeSettings['brand_original_logo_url'] = $logoUrl;
         $themeSettings['brand_active_logo_url'] = $logoUrl;
@@ -509,9 +510,14 @@ class ImageController extends Controller
         }
 
         $item = $pool[array_rand($pool)];
+        $asset = app(\App\Services\MediaLibraryRegistry::class)->importRemoteImage(
+            $website, (string) $item['url'], 'unsplash', $blockType ?: 'builder', $request->user()?->id,
+            ['source_url' => $item['source_url'] ?? $item['url'], 'photographer' => $item['photographer'] ?? null]
+        );
+        $resolvedUrl = $asset ? app(\App\Services\MediaLibraryRegistry::class)->url($asset) : $item['url'];
 
         return response()->json([
-            'url' => $item['url'],
+            'url' => $resolvedUrl,
             'provider' => $item['provider'] ?? 'unsplash',
             'source_url' => $item['source_url'] ?? null,
             'photographer' => $item['photographer'] ?? null,
@@ -610,7 +616,8 @@ class ImageController extends Controller
         }
 
         $path = $file->store("websites/{$website->id}/logos", 'public');
-        $url = rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path;
+        $asset = app(\App\Services\MediaLibraryRegistry::class)->registerStoredPath($website, $path, 'upload', 'logo', $request->user()?->id, $file->getClientOriginalName());
+        $url = $asset ? app(\App\Services\MediaLibraryRegistry::class)->url($asset) : rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path;
         if (strtolower($file->getClientOriginalExtension()) === 'svg') {
             $themeSettings['brand_original_logo_url'] = $url;
             $themeSettings['brand_active_logo_url'] = $url;
@@ -651,10 +658,12 @@ class ImageController extends Controller
         $this->authorize('update', $website);
 
         $websiteId = $website->id;
-        $path = $request->file('image')->store("websites/{$websiteId}", 'public');
+        $file = $request->file('image');
+        $path = $file->store("websites/{$websiteId}", 'public');
+        $asset = app(\App\Services\MediaLibraryRegistry::class)->registerStoredPath($website, $path, 'upload', 'image', $request->user()?->id, $file->getClientOriginalName());
 
         return response()->json([
-            'url' => rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path
+            'url' => $asset ? app(\App\Services\MediaLibraryRegistry::class)->url($asset) : rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path
         ]);
     }
 
@@ -691,10 +700,11 @@ class ImageController extends Controller
 	            "websites/{$website->id}",
 	            'public'
 	        );
+            $asset = app(\App\Services\MediaLibraryRegistry::class)->registerStoredPath($website, $path, 'upload', 'builder', $request->user()?->id, $file->getClientOriginalName());
 
 	        return response()->json([
 	            'success' => true,
-	            'url' => rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path
+	            'url' => $asset ? app(\App\Services\MediaLibraryRegistry::class)->url($asset) : rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path
 	        ]);
 
 	    } catch (AuthorizationException $e) {
@@ -730,8 +740,10 @@ class ImageController extends Controller
 	    $this->authorize('update', $website);
 
 	    // Upload ra gyud ni siya
-	    $path = $request->file('image')->store("websites/{$website->id}", 'public');
-	    $imageUrl = rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path;
+	    $file = $request->file('image');
+        $path = $file->store("websites/{$website->id}", 'public');
+        $asset = app(\App\Services\MediaLibraryRegistry::class)->registerStoredPath($website, $path, 'upload', 'builder', $request->user()?->id, $file->getClientOriginalName());
+	    $imageUrl = $asset ? app(\App\Services\MediaLibraryRegistry::class)->url($asset) : rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path;
 
 	    // I-return lang ang URL
 	    return response()->json(['url' => $imageUrl]);

@@ -12,6 +12,7 @@ use Illuminate\Http\Response;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\Str;
+use App\Support\PageStyleRegistry;
 
 class ContentStorefrontService
 {
@@ -146,6 +147,12 @@ class ContentStorefrontService
             : $this->normalizePalette($this->themes->palette($themeKey), $themeKey);
         $palette = $this->ensureReadablePalette($palette);
         $siteShell = $this->siteShell($website, $previewSlug, $themeKey);
+        $dynamicContext = $this->dynamicPageContext(
+            $website,
+            $data['contentType'] ?? null,
+            $siteShell,
+            (string) ($data['renderedTemplateMarkup'] ?? '')
+        );
 
         $payload = array_merge($data, [
             'viewMode' => $viewMode,
@@ -155,6 +162,10 @@ class ContentStorefrontService
             'siteHeaderHtml' => $siteShell['header'],
             'siteFooterHtml' => $siteShell['footer'],
             'useSiteShell' => $siteShell['header'] !== '',
+            'headerOverlayEnabled' => $dynamicContext['header_overlay_enabled'],
+            'dynamicPageStyle' => $dynamicContext['page_style'],
+            'dynamicPageStyleDirection' => $dynamicContext['page_style_direction'],
+            'dynamicFirstSurface' => $dynamicContext['first_surface'],
             'archiveUrl' => fn (ContentType $type): string => (string) $this->previews->url($website, $type->slug),
             'entryUrl' => fn (ContentType $type, ContentEntry $entry): string => (string) $this->previews->url($website, $type->slug.'/'.$entry->slug),
             'assetUrl' => fn (?string $url): string => $this->assetUrl($url),
@@ -174,7 +185,7 @@ class ContentStorefrontService
         // the current global blocks and only fall back to the published snapshot.
         $header = $website->global_header ?? $website->published_global_header;
         $footer = $website->global_footer ?? $website->published_global_footer;
-        if (! is_array($header) && ! is_array($footer)) return ['header' => '', 'footer' => ''];
+        if (! is_array($header) && ! is_array($footer)) return ['header' => '', 'footer' => '', 'header_overlay_enabled' => false];
 
         if (is_array($header)) {
             $pageTargets = $website->pages()->where('page_type', '!=', 'commerce')->get()
@@ -214,7 +225,108 @@ class ContentStorefrontService
         return [
             'header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor) : '',
             'footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor) : '',
+            'header_overlay_enabled' => is_array($header) && (bool) ($header['overlay_header_on_banner'] ?? false),
         ];
+    }
+
+    /**
+     * Dynamic entries are not independent mini-sites. They inherit the visual
+     * contract of the Builder page that represents their content type, then
+     * fall back to the website home/first standard page. This keeps Single
+     * templates aligned with Page Style and the global header overlay switch.
+     */
+    private function dynamicPageContext(Website $website, mixed $contentType, array $siteShell, string $renderedTemplateMarkup = ''): array
+    {
+        $typeSlug = $contentType instanceof ContentType ? trim((string) $contentType->slug, '/') : '';
+
+        $contextPage = $typeSlug !== ''
+            ? $website->pages()->where('page_type', 'standard')->where('slug', $typeSlug)->first()
+            : null;
+
+        if (! $contextPage) {
+            $contextPage = $website->pages()->where('page_type', 'standard')
+                ->where(function ($query) {
+                    $query->where('slug', 'home')->orWhere('slug', '');
+                })->first();
+        }
+
+        if (! $contextPage) {
+            $contextPage = $website->pages()->where('page_type', 'standard')->orderBy('id')->first();
+        }
+
+        $pageStyle = trim((string) ($contextPage?->page_style ?: $contextPage?->published_page_style ?: 'auto'));
+        $style = PageStyleRegistry::all()[$pageStyle] ?? null;
+        $pattern = PageStyleRegistry::pattern($pageStyle);
+        $firstSurface = strtolower((string) ($pattern[0] ?? 'primary'));
+        if (! in_array($firstSurface, ['white', 'surface', 'primary'], true)) $firstSurface = 'primary';
+
+        // Dynamic Single templates own their mini-hero surface. Do not let the
+        // Builder page-style pattern blindly force a light or white header over
+        // a light editorial mini hero (or dark text over a primary mini hero).
+        // Prefer an explicit semantic marker from saved/Luna templates, then
+        // safely infer older template markup before falling back to page style.
+        if (trim($renderedTemplateMarkup) !== '') {
+            $firstSurface = $this->dynamicTemplateFirstSurface($renderedTemplateMarkup, $firstSurface);
+        }
+
+        return [
+            'page_style' => $pageStyle !== '' ? $pageStyle : 'auto',
+            'page_style_direction' => (string) ($style['direction'] ?? 'clean'),
+            'first_surface' => $firstSurface,
+            'header_overlay_enabled' => (bool) ($siteShell['header_overlay_enabled'] ?? false),
+        ];
+    }
+
+    private function dynamicTemplateFirstSurface(string $markup, string $fallback = 'surface'): string
+    {
+        $fallback = in_array($fallback, ['white', 'surface', 'primary'], true) ? $fallback : 'surface';
+
+        // Only inspect the semantic mini hero, not the post body or supporting Sparks.
+        if (! preg_match('/<[^>]*data-cosmic-mini-hero=["\']true["\'][^>]*>/i', $markup, $match)) {
+            return $fallback;
+        }
+
+        $heroTag = strtolower((string) ($match[0] ?? ''));
+
+        if (preg_match('/data-cosmic-(?:surface|theme)=["\'](white|surface|primary)["\']/i', $heroTag, $semantic)) {
+            return strtolower((string) $semantic[1]);
+        }
+
+        // Strong primary/dark signals. Luna/premade templates can opt into this
+        // explicitly with data-cosmic-surface="primary" going forward.
+        $primarySignals = [
+            'background:var(--dt-primary)',
+            'background-color:var(--dt-primary)',
+            'bg-primary',
+            'bg-emerald-8',
+            'bg-slate-9',
+            'bg-zinc-9',
+            'bg-neutral-9',
+            'bg-black',
+            'text-white',
+        ];
+        foreach ($primarySignals as $signal) {
+            if (str_contains($heroTag, $signal)) return 'primary';
+        }
+
+        // The built-in dynamic presets use a subtle primary tint mixed into the
+        // page background. That is still a light/surface mini banner, not a
+        // primary hero, so overlay navigation must use the dark treatment.
+        if (str_contains($heroTag, 'color-mix(') && str_contains($heroTag, 'var(--dt-bg)')) {
+            return 'surface';
+        }
+
+        $whiteSignals = ['bg-white', 'background:#fff', 'background:#ffffff', 'background:white', 'var(--dt-bg)'];
+        foreach ($whiteSignals as $signal) {
+            if (str_contains($heroTag, $signal)) return 'white';
+        }
+
+        $surfaceSignals = ['bg-slate-50', 'bg-slate-100', 'bg-gray-50', 'bg-zinc-50', 'bg-neutral-50', 'var(--dt-surface)'];
+        foreach ($surfaceSignals as $signal) {
+            if (str_contains($heroTag, $signal)) return 'surface';
+        }
+
+        return $fallback;
     }
 
     private function normalizePalette(array $palette, string $fallbackTheme): array

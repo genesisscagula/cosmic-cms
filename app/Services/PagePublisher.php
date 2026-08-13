@@ -144,7 +144,7 @@ class PagePublisher
                         ->map(fn ($post) => [
                             'title' => $post->title,
                             'slug' => $postDirectory . '/' . $post->slug,
-                            'output_path' => $postDirectory . '/' . $post->slug . '.html',
+                            'output_path' => $postDirectory . '/' . $post->slug . '/index.html',
                             // Compile the complete Blog page composition so the live
                             // article keeps the same Mini Header, Single Post body,
                             // Newsletter, and Latest Resources seen in Builder.
@@ -194,14 +194,15 @@ class PagePublisher
                     return [
                         'title' => $entry->seo_title ?: $entry->title,
                         'slug' => $directory.'/'.$slug,
-                        // Match the existing extensionless connector strategy.
-                        // /blog/my-post resolves to /blog/my-post.html.
-                        'output_path' => $directory.'/'.$slug.'.html',
-                        'html' => $this->contentTemplates->exportSingle($type, $entry, $type->singleTemplate),
+                        // Export clean entry URLs as directories so standard Nginx/Apache
+                        // index resolution serves /blog/my-post/ without requiring
+                        // a custom try_files rule for /blog/my-post.html.
+                        'output_path' => $directory.'/'.$slug.'/index.html',
+                        'html' => $this->structuredContentSingleHtml($type, $entry, $type->singleTemplate),
                         'meta_description' => $entry->seo_description ?: $entry->excerpt,
                         'structured_content' => true,
                         'og_type' => 'article',
-                        'og_image' => $entry->og_image_url ?: $entry->featured_image_url,
+                        'og_image' => $this->commerceAssetUrl($entry->og_image_url ?: $entry->featured_image_url),
                         'published_at' => optional($entry->published_at)->toISOString(),
                         'updated_at' => optional($entry->updated_at)->toISOString(),
                         'content_entry_id' => $entry->id,
@@ -211,6 +212,82 @@ class PagePublisher
             })
             ->values()
             ->all();
+    }
+
+
+    /**
+     * Keep structured-content live export on the exact same semantic shell used
+     * by the preview storefront. The global header runtime reads these data
+     * attributes to choose overlay nav/logo/CTA contrast, while the shared
+     * export CSS applies the same mini-hero offset and readability guards.
+     */
+    private function structuredContentSingleHtml($type, $entry, $template): string
+    {
+        $rendered = $this->contentTemplates->exportSingle($type, $entry, $template);
+        $rendered = $this->normalizeStructuredContentAssetUrls($rendered);
+        $surface = $this->dynamicTemplateFirstSurface($rendered);
+        $website = $type->website;
+        $header = $website?->published_global_header ?? $website?->global_header;
+        $overlay = is_array($header) && (bool) ($header['overlay_header_on_banner'] ?? false);
+
+        $contextPage = $website?->pages()->where('page_type', 'standard')->where('slug', $type->slug)->first();
+        if (! $contextPage) {
+            $contextPage = $website?->pages()->where('page_type', 'standard')
+                ->where(function ($query) { $query->where('slug', 'home')->orWhere('slug', ''); })
+                ->first();
+        }
+        $pageStyle = trim((string) ($contextPage?->published_page_style ?: $contextPage?->page_style ?: 'auto'));
+
+        return '<section class="entry-template-runtime"'
+            .' data-cosmic-dynamic-page-style="'.e($pageStyle).'"'
+            .' data-cosmic-first-surface="'.e($surface).'"'
+            .' data-cosmic-resolved-theme="'.e($surface).'"'
+            .' data-cosmic-block-type="dynamic_single_hero"'
+            .' data-cosmic-header-overlay="'.($overlay ? 'true' : 'false').'">'
+            .$rendered
+            .'</section>';
+    }
+
+
+    private function normalizeStructuredContentAssetUrls(string $html): string
+    {
+        $normalize = fn (string $url): string => $this->commerceAssetUrl($url);
+
+        $html = preg_replace_callback('/\\b(src|poster)=("|\\\')([^"\\\']+)\\2/i', function (array $match) use ($normalize): string {
+            $url = trim((string) ($match[3] ?? ''));
+            if ($url === '' || str_starts_with($url, 'data:')) return $match[0];
+            if (! str_starts_with($url, '/storage/') && ! preg_match('#^https?://(?:localhost|127\\.0\\.0\\.1|[^/]+\\.local)(?::\\d+)?/storage/#i', $url)) return $match[0];
+            return $match[1].'='.$match[2].e($normalize($url)).$match[2];
+        }, $html) ?? $html;
+
+        return preg_replace_callback('/url\\(([^)]+)\\)/i', function (array $match) use ($normalize): string {
+            $raw = trim((string) ($match[1] ?? ''), " \\t\\n\\r\\0\\x0B\\\"'");
+            if (! str_starts_with($raw, '/storage/') && ! preg_match('#^https?://(?:localhost|127\\.0\\.0\\.1|[^/]+\\.local)(?::\\d+)?/storage/#i', $raw)) return $match[0];
+            return "url('".e($normalize($raw))."')";
+        }, $html) ?? $html;
+    }
+
+
+    private function dynamicTemplateFirstSurface(string $markup): string
+    {
+        if (! preg_match('/<[^>]*data-cosmic-mini-hero=["\\\']true["\\\'][^>]*>/i', $markup, $match)) {
+            return 'surface';
+        }
+
+        $hero = strtolower((string) ($match[0] ?? ''));
+        if (preg_match('/data-cosmic-(?:surface|theme)=["\\\'](white|surface|primary)["\\\']/i', $hero, $semantic)) {
+            return strtolower((string) $semantic[1]);
+        }
+        foreach (['background:var(--dt-primary)', 'bg-primary', 'bg-black', 'bg-slate-9', 'bg-zinc-9', 'text-white'] as $signal) {
+            if (str_contains($hero, $signal)) return 'primary';
+        }
+        if ((str_contains($hero, 'color-mix(') && str_contains($hero, 'var(--dt-bg)')) || str_contains($hero, 'var(--dt-surface)')) {
+            return 'surface';
+        }
+        foreach (['bg-white', 'background:#fff', 'background:#ffffff', 'background:white', 'var(--dt-bg)'] as $signal) {
+            if (str_contains($hero, $signal)) return 'white';
+        }
+        return 'surface';
     }
 
 

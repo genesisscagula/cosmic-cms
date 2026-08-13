@@ -4,6 +4,7 @@ import Navigation from "./Components/Navigation";
 import Home from "./Tabs/Home";
 import Websites from "./Tabs/Websites";
 import Templates from "./Tabs/Templates";
+import Media from "./Tabs/Media";
 import Sparks from "./Tabs/Sparks";
 import AIStudio from "./Tabs/AIStudio";
 import Settings from "./Tabs/Settings";
@@ -15,6 +16,7 @@ import AppearanceSwitch from "../../Appearance/AppearanceSwitch";
 const tabs = {
     home: Home,
     websites: Websites,
+    media: Media,
     templates: Templates,
     sparks: Sparks,
     aiStudio: AIStudio,
@@ -59,7 +61,7 @@ export default function Dashboard({ websites, dashboard }) {
 
             <main id="cosmic-dashboard-main" className="cosmic-dashboard-main relative min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
                 <div className="fixed right-4 top-4 z-50"><AppearanceSwitch compact /></div>
-                <div className="mx-auto max-w-7xl">
+                <div className={`mx-auto ${activeTab === "media" ? "max-w-[1600px]" : "max-w-7xl"}`}>
                     <ActiveTab websites={websites} dashboard={dashboard} onTabChange={changeTab} />
                 </div>
             </main>

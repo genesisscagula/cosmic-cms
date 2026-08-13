@@ -10,6 +10,7 @@ use App\AI\Clients\OpenAIClient;
 use App\Cosmic\Pricing\ActionPricing;
 use App\Services\CreditService;
 use App\Services\ThemeColorResolver;
+use App\Support\PageStyleRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -402,6 +403,7 @@ PROMPT;
             $themeKey = (string) data_get($website->theme_settings, 'primary', 'midnight');
             $resolvedPalette = app(ThemeColorResolver::class)->palette($themeKey);
             $paletteJson = json_encode($resolvedPalette, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $dynamicPageContext = $this->dynamicTemplatePageContext($website, $contentType);
             $requestPrompt = trim((string) ($validated['prompt'] ?? ''));
 
             $system = <<<'PROMPT'
@@ -419,6 +421,9 @@ Hard rules:
 - For gallery fields, do not invent looping syntax. Treat {{ gallery }} as an optional display value until the renderer adds structured gallery loops.
 - Make the layout feel production-ready: strong hierarchy, generous spacing, responsive grid decisions, polished cards/meta, accessible contrast, and Manrope-friendly typography.
 - The active website theme is authoritative. Never invent a random brand palette or switch the design to unrelated violet/blue/emerald accents.
+- The Builder page-style context and global header-overlay status supplied below are authoritative. A dynamic Single/Archive template is part of that website, not an independent microsite.
+- If header overlay is DISABLED, the mini hero must begin as a visually separate section below the solid global header. Do not reserve transparent-header space, add navigation fades, or assume white overlay navigation.
+- If header overlay is ENABLED, design the mini hero so the global header can sit over its top area without a duplicate blank band. The runtime adds the exact header-height safety spacing. Do not add a second large top spacer for the header yourself. Respect the supplied first semantic surface (white/surface/primary) so header contrast can be resolved consistently.
 - For branded accents/surfaces, use inline CSS custom properties with fallbacks: var(--p, PRIMARY_HEX), var(--a, ACCENT_HEX), var(--s, SURFACE_HEX), var(--t, TEXT_HEX), var(--m, #64748B), var(--b, #E2E8F0), var(--bg, #FFFFFF). The resolved active palette is supplied below.
 - Keep neutral Tailwind slate/white utilities for typography and structure where appropriate, but primary CTA, eyebrow, highlight, active border, and branded surface treatments must follow the supplied active theme.
 - Every SINGLE design must visibly contain three semantic regions using data attributes: data-cosmic-mini-hero="true", data-cosmic-post-content="true", and at least one data-cosmic-post-spark="true". The mini hero should include title plus useful meta/excerpt; Post Content must contain {{ content }} and naturally place featured media/gallery where useful; Post Sparks are supporting branded sections/cards using existing bindings only.
@@ -439,6 +444,9 @@ PROMPT;
                 'Custom schema JSON: '.$schemaJson,
                 'Website theme settings JSON: '.$themeJson,
                 'Resolved active website palette JSON: '.$paletteJson,
+                'Builder page style: '.$dynamicPageContext['page_style'].' (direction: '.$dynamicPageContext['page_style_direction'].')',
+                'Builder first semantic surface: '.$dynamicPageContext['first_surface'],
+                'Global header overlay: '.($dynamicPageContext['header_overlay_enabled'] ? 'ENABLED' : 'DISABLED'),
                 "Allowed bindings:
 ".$bindingLines.($mode === SavedPageTemplate::TYPE_ARCHIVE ? "\n- url (url): Entry detail URL" : ''),
                 $requestPrompt !== '' ? 'User art direction: '.$requestPrompt : 'User art direction: Create a premium editorial layout appropriate for this content type.',
@@ -490,6 +498,37 @@ PROMPT;
 
             return response()->json(['message' => $message], $message === $fallbackMessage ? 503 : 422);
         }
+    }
+
+    private function dynamicTemplatePageContext(Website $website, ContentType $contentType): array
+    {
+        $contextPage = $website->pages()->where('page_type', 'standard')->where('slug', $contentType->slug)->first();
+
+        if (! $contextPage) {
+            $contextPage = $website->pages()->where('page_type', 'standard')
+                ->where(function ($query) {
+                    $query->where('slug', 'home')->orWhere('slug', '');
+                })->first();
+        }
+
+        if (! $contextPage) {
+            $contextPage = $website->pages()->where('page_type', 'standard')->orderBy('id')->first();
+        }
+
+        $pageStyle = trim((string) ($contextPage?->page_style ?: $contextPage?->published_page_style ?: 'auto'));
+        $style = PageStyleRegistry::all()[$pageStyle] ?? null;
+        $pattern = PageStyleRegistry::pattern($pageStyle);
+        $firstSurface = strtolower((string) ($pattern[0] ?? 'primary'));
+        if (! in_array($firstSurface, ['white', 'surface', 'primary'], true)) $firstSurface = 'primary';
+
+        $header = is_array($website->global_header) ? $website->global_header : $website->published_global_header;
+
+        return [
+            'page_style' => $pageStyle !== '' ? $pageStyle : 'auto',
+            'page_style_direction' => (string) ($style['direction'] ?? 'clean'),
+            'first_surface' => $firstSurface,
+            'header_overlay_enabled' => is_array($header) && (bool) ($header['overlay_header_on_banner'] ?? false),
+        ];
     }
 
     private function sanitizeGeneratedTemplate(string $markup): string

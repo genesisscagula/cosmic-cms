@@ -81,6 +81,10 @@ PROMPT;
             }
 
             $imageUrl = $images->find($imageQuery, $folder);
+            if (is_string($imageUrl) && str_starts_with($imageUrl, 'https://')) {
+                $asset = app(\App\Services\MediaLibraryRegistry::class)->importRemoteImage($website, $imageUrl, 'unsplash', 'blog-featured', $request->user()?->id, ['query' => $imageQuery]);
+                if ($asset) $imageUrl = app(\App\Services\MediaLibraryRegistry::class)->url($asset);
+            }
             $content = $this->normalizeGeneratedContent((string) ($generated['content'] ?? ''));
 
             return response()->json([

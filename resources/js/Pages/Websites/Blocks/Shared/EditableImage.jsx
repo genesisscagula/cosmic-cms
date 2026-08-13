@@ -10,6 +10,7 @@ import { createPortal } from "react-dom";
 import axios from "axios";
 import { showCosmicNotification } from "../../../../Components/CosmicNotification";
 import { useCreditBalance } from "@/Hooks/useCreditBalance";
+import MediaPickerModal from "@/Components/Media/MediaPickerModal";
 
 export const EditableImage = forwardRef(({
     websiteId,
@@ -32,6 +33,7 @@ export const EditableImage = forwardRef(({
     const [aiPrompt, setAiPrompt] = useState(imageQuery || "");
     const [aiGeneratedUrl, setAiGeneratedUrl] = useState(null);
     const [imageDimensions, setImageDimensions] = useState({ width: 1024, height: 1024 });
+    const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
     const imageSlotRef = useRef(null);
     const { balance: creditBalance, setBalance: setCreditBalance } = useCreditBalance();
     const aiImageCost = 50;
@@ -413,6 +415,14 @@ export const EditableImage = forwardRef(({
                                     {aiGeneratedUrl ? <p className="mt-2 text-xs font-semibold text-emerald-300">✓ AI image generated. Click Use Image below to apply it.</p> : null}
                                 </div>
 
+                                <button
+                                    type="button"
+                                    onClick={() => setMediaLibraryOpen(true)}
+                                    id={`cosmic-choose-media-library-${blockIndex}`} className="cosmic-choose-media-library-button w-full rounded-xl border border-violet-400/30 bg-violet-500/10 px-4 py-3 text-sm font-bold text-violet-100 transition hover:bg-violet-500/20"
+                                >
+                                    ▦ Choose from Media Library
+                                </button>
+
                                 <label className="block">
 
                                     <input
@@ -478,6 +488,22 @@ export const EditableImage = forwardRef(({
                 document.body
 
             )}
+            <MediaPickerModal
+                open={mediaLibraryOpen}
+                websiteId={websiteId}
+                title="Choose image for this section"
+                kind={isBackground ? 'background' : 'builder'}
+                onClose={() => setMediaLibraryOpen(false)}
+                onSelect={(asset) => {
+                    if (!asset?.url) return;
+                    setSelectedFile(null);
+                    setAiGeneratedUrl(null);
+                    setPreview(asset.url);
+                    onSave(asset.url);
+                    setIsEditing(false);
+                    showCosmicNotification({ title:'Media image applied', message:'Save the page when you are ready.', tone:'success' });
+                }}
+            />
         </>
     );
 

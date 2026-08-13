@@ -78,6 +78,16 @@ class Website extends Model
         return $this->hasOne(MediaPack::class);
     }
 
+    public function mediaFolders()
+    {
+        return $this->hasMany(MediaFolder::class);
+    }
+
+    public function mediaAssets()
+    {
+        return $this->hasMany(MediaAsset::class);
+    }
+
     public function globalElements()
     {
         return $this->hasMany(GlobalElements::class);

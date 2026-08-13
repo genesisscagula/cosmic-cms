@@ -20,6 +20,7 @@ import { BLOG_SPARK_GROUPS, FREE_BLOG_SPARKS } from "./Sparks/Blog";
 import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
 
 import { MinimalFooter, DetailedFooter } from './GenerateFooter';
+import MediaPickerModal from '@/Components/Media/MediaPickerModal';
 
 const MEDIA_FIELD_PATTERN = /(image|photo|avatar|poster|logo|video|media)/i;
 
@@ -27,7 +28,7 @@ const isWebsiteUploadedMedia = (value, websiteId) => {
     if (typeof value !== 'string' || !websiteId) return false;
     const normalized = value.trim();
     if (!normalized) return false;
-    return normalized.includes(`/storage/websites/${websiteId}/`);
+    return normalized.includes(`/storage/websites/${websiteId}/`) || normalized.includes(`/websites/${websiteId}/media-library/files/`);
 };
 
 const preserveUploadedMedia = (existing, generated, websiteId, fieldName = '') => {
@@ -219,6 +220,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [regenerateStage, setRegenerateStage] = useState('Understanding your new direction...');
     const [regenerationUsed, setRegenerationUsed] = useState(Number(trialExperience?.regenerations_used || 0));
     const [showLogoModal, setShowLogoModal] = useState(false);
+    const [logoMediaLibraryOpen, setLogoMediaLibraryOpen] = useState(false);
     const [showLogoGenerateForm, setShowLogoGenerateForm] = useState(false);
     const [logoCompanyName, setLogoCompanyName] = useState(trialExperience?.logo_company_name || website?.name || '');
     const [logoBusy, setLogoBusy] = useState(false);
@@ -3410,6 +3412,19 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 </div>
             )}
 
+            <MediaPickerModal
+                open={logoMediaLibraryOpen}
+                websiteId={website?.id}
+                title="Choose a logo from Media Library"
+                kind="logo"
+                onClose={() => setLogoMediaLibraryOpen(false)}
+                onSelect={(asset) => {
+                    if (!asset?.url) return;
+                    setLogoMediaLibraryOpen(false);
+                    openLogoCrop(asset.url, logoCompanyName || data.global_header?.logo_text || website?.name, { sourceKind:'upload' });
+                }}
+            />
+
             {showLogoModal && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
                     <div id="cosmic-logo-customize-modal" className="cosmic-logo-modal cosmic-logo-customize-modal w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
@@ -3432,6 +3447,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                         <span className="cosmic-logo-upload-title block text-base font-bold">↑ {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Replace Logo' : 'Upload Logo'}</span>
                                         <span className="cosmic-logo-upload-help mt-1 block text-xs font-medium text-slate-600">SVG, PNG, JPG or WebP up to 2 MB.</span>
                                     </button>
+                                    {!trialMode && <button type="button" disabled={logoBusy} onClick={() => setLogoMediaLibraryOpen(true)} className="sm:col-span-2 min-h-[72px] rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 text-left text-violet-950 transition hover:border-violet-300 hover:bg-violet-100 disabled:opacity-60">
+                                        <span className="block text-sm font-extrabold">▦ Choose from Media Library</span>
+                                        <span className="mt-1 block text-xs text-violet-700">Reuse an existing logo or image already saved for this website.</span>
+                                    </button>}
                                     <input ref={logoUploadRef} type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" onChange={uploadTrialLogo} className="hidden" />
                                     {globalSelections?.brand_original_logo_url && String(globalSelections.brand_original_logo_url) !== String(data.global_header?.logo_image_url || '') && (
                                         <button type="button" disabled={logoBusy} onClick={restoreOriginalLogo} className="cosmic-logo-restore-card sm:col-span-2 min-h-[72px] w-full rounded-xl border px-5 py-4 text-left transition">

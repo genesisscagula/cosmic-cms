@@ -77,7 +77,10 @@ class CommerceProductController extends Controller
         // Do not depend on public/storage being symlinked correctly. Commerce media is
         // delivered through Laravel just like structured-content media, which keeps the
         // builder, local development, production and exported live HTML on one stable URL.
-        $url = route('commerce.media.show', [
+        $asset = app(\App\Services\MediaLibraryRegistry::class)->registerStoredPath(
+            $website, $path, 'upload', 'commerce-'.$kind, $request->user()?->id, $file->getClientOriginalName()
+        );
+        $url = $asset ? app(\App\Services\MediaLibraryRegistry::class)->url($asset) : route('commerce.media.show', [
             'website' => $website->id,
             'filename' => basename($path),
         ], false);

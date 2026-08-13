@@ -40,6 +40,7 @@ use App\Http\Controllers\CommerceCheckoutController;
 use App\Http\Controllers\CommerceCustomerController;
 use App\Http\Controllers\CommerceRuntimeController;
 use App\Http\Controllers\AiTextController;
+use App\Http\Controllers\MediaLibraryController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -426,6 +427,10 @@ Route::prefix('trial-assets/{token}')->middleware('throttle:60,1')->group(functi
     Route::post('/sparks/{key}/favorite', [TrialAssetLibraryController::class, 'favoriteSpark']);
 });
 
+// Public delivery for centralized Media Library assets. The UUID keeps URLs stable even when assets move folders.
+Route::get('/websites/{website}/media-library/files/{asset}', [MediaLibraryController::class, 'show'])
+    ->name('media-library.assets.show');
+
 Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
     // Return a CSRF token from the current authenticated session. Inertia pages can
     // outlive a Laravel session regeneration (for example after payment/login), so
@@ -453,6 +458,13 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/admin/queues/retry-failed', [QueueDashboardController::class, 'retryFailed'])->middleware('throttle:10,1')->name('admin.queues.retry-failed');
     Route::delete('/admin/queues/failed', [QueueDashboardController::class, 'forgetFailed'])->middleware('throttle:5,1')->name('admin.queues.forget-failed');
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
+    Route::get('/websites/{website}/media-library', [MediaLibraryController::class, 'index'])->name('media-library.index');
+    Route::post('/websites/{website}/media-library/folders', [MediaLibraryController::class, 'storeFolder'])->middleware('throttle:cosmic-upload')->name('media-library.folders.store');
+    Route::patch('/websites/{website}/media-library/folders/{folder}', [MediaLibraryController::class, 'updateFolder'])->name('media-library.folders.update');
+    Route::delete('/websites/{website}/media-library/folders/{folder}', [MediaLibraryController::class, 'destroyFolder'])->name('media-library.folders.destroy');
+    Route::post('/websites/{website}/media-library/assets', [MediaLibraryController::class, 'upload'])->middleware('throttle:cosmic-upload')->name('media-library.assets.store');
+    Route::patch('/websites/{website}/media-library/assets/{asset}', [MediaLibraryController::class, 'updateAsset'])->name('media-library.assets.update');
+    Route::delete('/websites/{website}/media-library/assets/{asset}', [MediaLibraryController::class, 'destroyAsset'])->name('media-library.assets.destroy');
     Route::get('/websites/{website}/media-pack/status', [WebsiteController::class, 'mediaPackStatus'])
         ->middleware('throttle:30,1')
         ->name('websites.media-pack.status');

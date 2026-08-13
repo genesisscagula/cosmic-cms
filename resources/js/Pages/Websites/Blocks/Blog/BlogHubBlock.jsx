@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import axios from "axios";
 import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
+import MediaPickerModal from "@/Components/Media/MediaPickerModal";
 
 export const BlogHubSchema = {
     type: "blog_hub",
@@ -247,6 +248,7 @@ export function BlogHubBlock({
     const [isUploadingImage, setIsUploadingImage] = useState(false);
     const [confirmation, setConfirmation] = useState(null);
     const [actionNotice, setActionNotice] = useState("");
+    const [mediaLibraryOpen, setMediaLibraryOpen] = useState(false);
     const imageInputRef = useRef(null);
 
     const updateFeatured = (key, value) => onUpdate({ featured: { ...data.featured, [key]: value } });
@@ -547,6 +549,15 @@ export function BlogHubBlock({
                     </ModalPortal>
                 )}
 
+                <MediaPickerModal
+                    open={mediaLibraryOpen}
+                    websiteId={blogWebsiteId}
+                    title="Choose featured image"
+                    kind="blog-featured"
+                    onClose={() => setMediaLibraryOpen(false)}
+                    onSelect={(asset) => asset?.url && setPostForm((current) => ({ ...current, image_url: asset.url }))}
+                />
+
                 {isComposerOpen && (
                     <ModalPortal>
                     <div className="fixed inset-0 z-[999998] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="blog-post-dialog-title">
@@ -569,7 +580,7 @@ export function BlogHubBlock({
                                 <div className="cosmic-blog-image-panel rounded-xl border border-white/10 bg-black/20 p-3">
                                     <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={uploadFeaturedImage} />
                                     {postForm.image_url ? <img src={postForm.image_url} alt="Featured preview" className="h-36 w-full rounded-lg object-cover" /> : <div className="cosmic-blog-image-empty flex h-28 items-center justify-center rounded-lg border border-dashed border-white/15 text-sm text-slate-500">No featured image selected</div>}
-                                    <div className="mt-3 flex gap-2"><button type="button" disabled={isUploadingImage} onClick={() => imageInputRef.current?.click()} className="cosmic-blog-image-button rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isUploadingImage ? "Uploading..." : "Update Image"}</button>{postForm.image_url && <button type="button" onClick={() => setPostForm({ ...postForm, image_url: "" })} className="px-3 py-2 text-sm text-slate-300">Remove</button>}</div>
+                                    <div className="mt-3 flex flex-wrap gap-2"><button type="button" onClick={() => setMediaLibraryOpen(true)} className="rounded-lg bg-violet-500 px-3 py-2 text-sm font-semibold text-white">Media Library</button><button type="button" disabled={isUploadingImage} onClick={() => imageInputRef.current?.click()} className="cosmic-blog-image-button rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isUploadingImage ? "Uploading..." : "Upload New"}</button>{postForm.image_url && <button type="button" onClick={() => setPostForm({ ...postForm, image_url: "" })} className="px-3 py-2 text-sm text-slate-300">Remove</button>}</div>
                                 </div>
                                 <textarea value={postForm.excerpt} onChange={(event) => setPostForm({ ...postForm, excerpt: event.target.value })} placeholder="Short excerpt" rows="3" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
                                 <CosmicRichTextEditor value={postForm.content} onChange={(content) => setPostForm((current) => ({ ...current, content }))} />

@@ -157,7 +157,8 @@ class CmsHtmlCompiler
                 $url = $matches[3];
                 if (! preg_match('#^(?:https?:)?//#i', $url)
                     && ! preg_match('#^(?:[A-Za-z]:[\\/])#', $url)
-                    && ! preg_match('#^/storage(?:/|$)#i', $url)) {
+                    && ! preg_match('#^/storage(?:/|$)#i', $url)
+                    && ! preg_match('#^/websites/\d+/(?:media-library/files|commerce/media)/#i', $url)) {
                     return $matches[0];
                 }
 
@@ -173,7 +174,8 @@ class CmsHtmlCompiler
                 $url = trim($matches[2]);
                 if (! preg_match('#^(?:https?:)?//#i', $url)
                     && ! preg_match('#^(?:[A-Za-z]:[\\/])#', $url)
-                    && ! preg_match('#^/storage(?:/|$)#i', $url)) {
+                    && ! preg_match('#^/storage(?:/|$)#i', $url)
+                    && ! preg_match('#^/websites/\d+/(?:media-library/files|commerce/media)/#i', $url)) {
                     return $matches[0];
                 }
 
@@ -1436,6 +1438,30 @@ HTML;
                         .cosmic-mobile-overlay,
                         .cosmic-mobile-panel { display: none !important; }
                     }
+                    /* Viewport-aware sizing for full Hero Sparks only. Keep mini heroes and
+                       ordinary sections content-sized. A solid header consumes viewport space;
+                       an overlay header lives inside the hero and therefore uses the full viewport. */
+                    section[data-cosmic-block-type^='hero_'],
+                    section[data-cosmic-block-type='image_cta_banner'] {
+                        box-sizing: border-box;
+                        min-height: calc(100vh - var(--cosmic-header-flow-offset, 0px));
+                        padding-top: clamp(4.5rem, 9vh, 8rem) !important;
+                        padding-bottom: clamp(4.5rem, 9vh, 8rem) !important;
+                    }
+                    @supports (height: 100svh) {
+                        section[data-cosmic-block-type^='hero_'],
+                        section[data-cosmic-block-type='image_cta_banner'] {
+                            min-height: calc(100svh - var(--cosmic-header-flow-offset, 0px));
+                        }
+                    }
+                    @media (max-width: 767px) {
+                        section[data-cosmic-block-type^='hero_'],
+                        section[data-cosmic-block-type='image_cta_banner'] {
+                            min-height: auto;
+                            padding-top: clamp(3.5rem, 8vh, 5.5rem) !important;
+                            padding-bottom: clamp(3.5rem, 8vh, 5.5rem) !important;
+                        }
+                    }
                     .cosmic-static-overlay-header {
                         position: absolute !important;
                         background: transparent !important;
@@ -1539,6 +1565,21 @@ HTML;
                 <script>
                     (() => {
                         const initCosmicStaticHeader = () => {
+                        const anyStaticHeader = document.querySelector('.cosmic-static-header');
+                        if (anyStaticHeader) {
+                            const syncHeaderFlowOffset = () => {
+                                const overlaysHero = anyStaticHeader.dataset.cosmicOverlayHeader === 'true';
+                                const headerHeight = Math.ceil(anyStaticHeader.getBoundingClientRect().height || 0);
+                                document.documentElement.style.setProperty('--cosmic-header-flow-offset', overlaysHero ? '0px' : `\${headerHeight}px`);
+                            };
+                            syncHeaderFlowOffset();
+                            window.addEventListener('resize', syncHeaderFlowOffset);
+                            if (typeof ResizeObserver !== 'undefined') {
+                                const headerFlowResizeObserver = new ResizeObserver(syncHeaderFlowOffset);
+                                headerFlowResizeObserver.observe(anyStaticHeader);
+                            }
+                        }
+
                         const staticHeader = document.querySelector('.cosmic-static-header[data-cosmic-overlay-header=\"true\"]');
                         if (staticHeader) {
                             const sections = Array.from(document.querySelectorAll('section'));

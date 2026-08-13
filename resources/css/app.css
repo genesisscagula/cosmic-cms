@@ -5478,3 +5478,81 @@ body .cosmic-start-quick-idea.rounded-full.border {
     color: #64748b !important;
     opacity: 1 !important;
 }
+
+/* Media Library picker hotfix: keep the reusable picker readable in the active app appearance. */
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-choose-media-library-button {
+    border-color: #c4b5fd !important;
+    background: #f5f3ff !important;
+    color: #5b21b6 !important;
+    box-shadow: 0 1px 2px rgb(15 23 42 / 0.05) !important;
+}
+:root[data-theme="light"] .cosmic-media-manager-panel .cosmic-choose-media-library-button:hover {
+    border-color: #8b5cf6 !important;
+    background: #ede9fe !important;
+    color: #4c1d95 !important;
+}
+
+:root[data-theme="light"] .cosmic-media-picker-overlay {
+    background: rgb(15 23 42 / 0.42) !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal {
+    border-color: #dbe5e1 !important;
+    background: #ffffff !important;
+    color: #172033 !important;
+    box-shadow: 0 28px 80px rgb(15 23 42 / 0.22) !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-sidebar {
+    border-color: #e2e8f0 !important;
+    background: #f8fafc !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal :is(.border-white\/10,.border-white\/25) {
+    border-color: #e2e8f0 !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal :is(.text-white) {
+    color: #172033 !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal :is(.text-slate-300,.text-slate-400) {
+    color: #475569 !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal :is(.text-slate-500,.text-slate-600) {
+    color: #64748b !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal :is(.text-violet-200,.text-violet-300) {
+    color: #6d28d9 !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal .bg-white\/\[0\.02\] {
+    background: #f8fafc !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal :is(.bg-black\/25,.bg-black\/20) {
+    background: #f8fafc !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal input {
+    border-color: #dbe5e1 !important;
+    background: #ffffff !important;
+    color: #172033 !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal input::placeholder {
+    color: #94a3b8 !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal .hover\:bg-white\/5:hover,
+:root[data-theme="light"] .cosmic-media-picker-modal .hover\:bg-white\/10:hover {
+    background: #f1f5f9 !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-modal .hover\:text-white:hover {
+    color: #172033 !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-folder-create {
+    border-color: #ddd6fe !important;
+    background: #faf9ff !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-new-folder {
+    color: #6d28d9 !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-content header,
+:root[data-theme="light"] .cosmic-media-picker-content footer {
+    border-color: #e2e8f0 !important;
+}
+:root[data-theme="light"] .cosmic-media-picker-content .group:not(.ring-2) {
+    border-color: #e2e8f0 !important;
+    background: #ffffff !important;
+}

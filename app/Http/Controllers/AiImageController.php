@@ -158,10 +158,13 @@ class AiImageController extends Controller
             abort(502, 'Luna generated the image but it could not be saved. No credits were charged.');
         }
 
+        $asset = app(\App\Services\MediaLibraryRegistry::class)->registerStoredPath(
+            $website, $path, 'ai', $blockType ?: 'builder', auth()->id(), $filename,
+            ['prompt' => Str::limit($userPrompt, 500, ''), 'size' => $size]
+        );
+
         return [
-            // Persist a host-agnostic public path. Preview resolves it on the CMS host, while
-            // CmsHtmlCompiler converts /storage assets to COSMIC_ASSET_BASE_URL for static export.
-            'url' => '/storage/'.$path,
+            'url' => $asset ? app(\App\Services\MediaLibraryRegistry::class)->url($asset) : '/storage/'.$path,
             'size' => $size,
             'prompt' => $userPrompt,
         ];
