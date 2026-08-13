@@ -326,7 +326,7 @@ export default function PageTemplatesModal({
                         <div>
                             <p className="cosmic-template-eyebrow text-[10px] font-bold uppercase tracking-[0.22em]">Cosmic Builder</p>
                             <h2 className="mt-1 text-2xl font-semibold">✦ Templates</h2>
-                            <p className="cosmic-template-muted mt-1 text-sm">Install complete premium pages built from Cosmic Sparks.</p>
+                            <p className="cosmic-template-muted mt-1 text-sm">{trialMode ? 'Choose from a curated set of complete trial pages. The full Template library unlocks after signup.' : 'Install complete premium pages built from Cosmic Sparks.'}</p>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -348,14 +348,14 @@ export default function PageTemplatesModal({
                     </div>
 
                     <div className="mt-5 flex flex-wrap items-center gap-2">
-                        {(trialMode ? ['marketplace', 'purchased', 'favorites'] : ['marketplace', 'purchased', 'saved', 'favorites']).map((value) => (
+                        {(trialMode ? ['marketplace'] : ['marketplace', 'purchased', 'saved', 'favorites']).map((value) => (
                             <button
                                 key={value}
                                 type="button"
                                 onClick={() => setTab(value)}
                                 className={`cosmic-template-tab rounded-full px-4 py-2 text-xs font-bold capitalize ${tab === value ? 'is-active' : ''}`}
                             >
-                                {value === 'saved' ? 'Saved Templates' : value}
+                                {trialMode && value === 'marketplace' ? 'Trial Templates' : value === 'saved' ? 'Saved Templates' : value}
                             </button>
                         ))}
 
@@ -413,7 +413,7 @@ export default function PageTemplatesModal({
                                             </div>
                                         </div>
 
-                                        {!template.saved && (
+                                        {!trialMode && !template.saved && (
                                             <button
                                                 type="button"
                                                 disabled={busy === `fav-${template.key}`}

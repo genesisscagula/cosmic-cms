@@ -18,6 +18,11 @@ Route::get('/v1/commerce/sites/{publicKey}/manifest', [CommerceManifestControlle
 
 Route::post('/v1/websites/{website}/analytics', [AnalyticsEventController::class, 'store'])->middleware(['throttle:240,1', \App\Http\Middleware\RejectOversizedRequest::class . ':64'])->name('api.websites.analytics.store');
 
+Route::post('/v1/preview/{slug}/contact', [ContactSubmissionController::class, 'storeFromPreview'])
+    ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
+    ->middleware(['throttle:cosmic-contact', \App\Http\Middleware\RejectOversizedRequest::class . ':128'])
+    ->name('api.preview.contact.store');
+
 Route::post('/v1/websites/{website}/contact-submissions', [ContactSubmissionController::class, 'storeFromConnector'])
     ->middleware(['throttle:cosmic-contact', \App\Http\Middleware\RejectOversizedRequest::class . ':128'])
     ->name('api.websites.contact-submissions.store');

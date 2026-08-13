@@ -291,12 +291,21 @@ class CmsHtmlCompiler
             }
 
             if ($field['type'] === 'select') {
-                $options = "<option value='' disabled selected style='background-color:#334b67;color:#cbd5e1'>" . e($field['placeholder'] ?: 'Select an option') . '</option>';
+                // Native selects need explicit surface-aware colors. Avoid the old hard-coded
+                // blue control which looked detached from both white and primary sections.
+                $isDarkControl = $nativeColorScheme === 'dark';
+                $selectBackground = $isDarkControl ? 'rgba(15,23,42,.38)' : '#ffffff';
+                $selectColor = $isDarkControl ? '#f8fafc' : '#0f172a';
+                $optionBackground = $isDarkControl ? '#0f172a' : '#ffffff';
+                $optionColor = $isDarkControl ? '#f8fafc' : '#0f172a';
+                $placeholderColor = $isDarkControl ? '#cbd5e1' : '#64748b';
+                $options = "<option value='' disabled selected style='background-color:{$optionBackground};color:{$placeholderColor}'>" . e($field['placeholder'] ?: 'Select an option') . '</option>';
                 foreach ($field['options'] ?: ['Option one', 'Option two'] as $option) {
                     $option = e($option);
-                    $options .= "<option value='{$option}' style='background-color:#334b67;color:#f8fafc'>{$option}</option>";
+                    $options .= "<option value='{$option}' style='background-color:{$optionBackground};color:{$optionColor}'>{$option}</option>";
                 }
-                $markup .= "<label class='block text-sm font-semibold {$theme['text']}'>{$label}{$requiredMark}<select name='{$name}'{$required} style='color-scheme:{$nativeColorScheme};background-color:#334b67;color:#f8fafc' class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}'>{$options}</select></label>";
+                $selectStyle = "color-scheme:{$nativeColorScheme};background-color:{$selectBackground};color:{$selectColor}";
+                $markup .= "<label class='block text-sm font-semibold {$theme['text']}'>{$label}{$requiredMark}<select name='{$name}'{$required} data-cosmic-contact-select style='{$selectStyle}' class='mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none {$inputClasses}'>{$options}</select></label>";
                 continue;
             }
 
@@ -923,9 +932,9 @@ JS;
                 $subheading = e($block['subheading'] ?? $block['text'] ?? '');
                 $btnLabel = e($block['button_label'] ?? 'Get Started');
                 $btnUrl = e($block['button_url'] ?? '#');
-                $buttonClasses = $blockTheme === 'primary'
-                    ? 'bg-white text-slate-950'
-                    : "{$theme['card']} {$theme['text']}";
+                // Contact submit is always a branded primary action, including on light/surface forms.
+                $primaryTheme = self::getTheme($primaryColor);
+                $buttonClasses = "{$primaryTheme['bg']} text-white hover:opacity-90";
                 $html .= "
                 <section class='relative flex min-h-[500px] w-full items-center overflow-hidden border-b px-7 py-20 text-center sm:min-h-[560px] sm:px-10 sm:py-24 lg:min-h-[620px] lg:px-12 lg:py-28 {$theme['bg']} {$theme['border']}'>
                     <div class='pointer-events-none absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full {$theme['card']} opacity-[0.14] blur-[140px]'></div>
@@ -1092,9 +1101,9 @@ JS;
                 $phone = e($block['phone'] ?? '+1 (555) 010-0200');
                 $address = e($block['address'] ?? 'Available by appointment');
                 $submitLabel = e($block['submit_label'] ?? 'Send inquiry');
-                $buttonClasses = $blockTheme === 'primary'
-                    ? 'bg-white text-slate-950'
-                    : "{$theme['card']} {$theme['text']}";
+                // Contact submit is always a branded primary action, including on light/surface forms.
+                $primaryTheme = self::getTheme($primaryColor);
+                $buttonClasses = "{$primaryTheme['bg']} text-white hover:opacity-90";
                 $inputClasses = $blockTheme === 'primary'
                     ? "border-white/20 bg-slate-950/20 placeholder:text-white/40 focus:border-white/60 {$theme['text']}"
                     : "bg-transparent {$theme['border']} {$theme['text']}";
@@ -1107,6 +1116,10 @@ JS;
                 $calendarIcon = "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='{$calendarIconStroke}' stroke-width='2'%3E%3Crect x='3' y='5' width='18' height='16' rx='2'/%3E%3Cpath d='M16 3v4M8 3v4M3 10h18'/%3E%3C/svg%3E";
                 $contactNativeControlStyles = "[data-cosmic-contact-form][data-cosmic-contact-scheme='{$nativeColorScheme}'] input[type=date]{color-scheme:{$nativeColorScheme};cursor:pointer;background-image:url(\"{$calendarIcon}\");background-position:right 1rem center;background-repeat:no-repeat;background-size:1rem;padding-right:3rem}";
                 $contactNativeControlStyles .= "[data-cosmic-contact-form][data-cosmic-contact-scheme='{$nativeColorScheme}'] input[type=date]::-webkit-calendar-picker-indicator{opacity:0}";
+                $contactNativeControlStyles .= "[data-cosmic-contact-form][data-cosmic-contact-scheme='light'] [data-cosmic-contact-select]{background:#fff!important;color:#0f172a!important;border-color:#cbd5e1!important}";
+                $contactNativeControlStyles .= "[data-cosmic-contact-form][data-cosmic-contact-scheme='light'] [data-cosmic-contact-select] option{background:#fff!important;color:#0f172a!important}";
+                $contactNativeControlStyles .= "[data-cosmic-contact-form][data-cosmic-contact-scheme='dark'] [data-cosmic-contact-select]{background:rgba(15,23,42,.38)!important;color:#f8fafc!important;border-color:rgba(255,255,255,.22)!important}";
+                $contactNativeControlStyles .= "[data-cosmic-contact-form][data-cosmic-contact-scheme='dark'] [data-cosmic-contact-select] option{background:#0f172a!important;color:#f8fafc!important}";
                 $formFields = self::contactFieldsMarkup(self::contactFields($block['fields'] ?? null), $theme, $inputClasses, $nativeColorScheme);
 
                 $html .= "
@@ -1148,7 +1161,20 @@ JS;
                         status.textContent = 'Sending your inquiry…';
 
                         try {
-                            var response = await fetch(form.action, {
+                            // Preview pages are served by Laravel, so the exported connector PHP path
+                            // is not executable there. Route preview submissions through the public
+                            // preview contact endpoint; exported/live static sites keep contact.php.
+                            var previewSlug = null;
+                            var pathMatch = window.location.pathname.match(/^\/preview\/([a-z0-9][a-z0-9-]{0,59})(?:\/|$)/i);
+                            if (pathMatch) {
+                                previewSlug = pathMatch[1];
+                            } else if (/\.cosmiccms\.com$/i.test(window.location.hostname)) {
+                                previewSlug = window.location.hostname.split('.')[0];
+                            }
+                            var submitUrl = previewSlug
+                                ? '/api/v1/preview/' + encodeURIComponent(previewSlug) + '/contact'
+                                : form.action;
+                            var response = await fetch(submitUrl, {
                                 method: 'POST',
                                 body: new FormData(form),
                                 headers: { 'Accept': 'application/json' },
