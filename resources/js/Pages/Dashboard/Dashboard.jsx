@@ -54,10 +54,10 @@ export default function Dashboard({ websites, dashboard }) {
     }, []);
 
     return (
-        <div className="cosmic-app-shell min-h-screen md:flex">
+        <div id="cosmic-dashboard" data-cosmic-dashboard className="cosmic-app-shell cosmic-dashboard-shell min-h-screen md:flex">
             <Navigation activeTab={activeTab} onTabChange={changeTab} dashboard={dashboard} />
 
-            <main className="relative min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
+            <main id="cosmic-dashboard-main" className="cosmic-dashboard-main relative min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
                 <div className="fixed right-4 top-4 z-50"><AppearanceSwitch compact /></div>
                 <div className="mx-auto max-w-7xl">
                     <ActiveTab websites={websites} dashboard={dashboard} onTabChange={changeTab} />

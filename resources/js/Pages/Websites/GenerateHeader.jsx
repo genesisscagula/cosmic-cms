@@ -85,7 +85,7 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
                     />
                 </ul>
                 <div
-                    className={`cosmic-header-cta ${overlayPrimaryTreatment ? 'cosmic-overlay-primary-cta' : ''}
+                    className={`cosmic-header-cta ${overlayPrimaryTreatment ? 'cosmic-overlay-primary-cta' : 'cosmic-header-cta-primary'}
                         ${overlayPrimaryTreatment ? 'bg-white text-slate-800' : `${primaryTheme.bg} ${primaryTheme.text}`}
                         px-7
                         py-3

@@ -96,17 +96,17 @@ export default function HeaderMenuEditor({ menu, onChange, targetOptions = [] })
                         <button type="button" onClick={() => onChange(removeItem(menu, path))} className="rounded px-1.5 py-2 text-xs text-rose-300 hover:bg-rose-400/10 hover:text-rose-200" aria-label="Remove menu item">Remove</button>
                     </div>
                 </div>
-                {depth < 2 && <button type="button" onClick={() => addChild(path)} className="mt-1.5 text-xs font-semibold text-violet-200 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"><CreditPrice label={`+ ${depth === 0 ? 'Add submenu ·' : 'Add nested link ·'}`} amount={ACTION_PRICING.add_menu_item} /></button>}
+                {depth < 2 && <button type="button" onClick={() => addChild(path)} className="cosmic-header-add-submenu mt-1.5 inline-flex items-center rounded-md px-2.5 py-1.5 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500/40"><CreditPrice label={`+ ${depth === 0 ? 'Add submenu ·' : 'Add nested link ·'}`} amount={ACTION_PRICING.add_menu_item} /></button>}
                 {(item.children || []).map((child, index) => renderItem(child, [...path, index], depth + 1))}
             </div>
         );
     };
 
     return (
-        <div className="mt-3 space-y-2">
+        <div className="cosmic-header-menu-editor mt-3 space-y-2">
             <datalist id={id}>{targetOptions.map((page) => <option key={page.slug} value={page.slug}>{page.title}</option>)}</datalist>
             {(menu || []).map((item, index) => renderItem(item, [index]))}
-            <button type="button" onClick={() => onChange([...(menu || []), blankMenuItem()])} className="inline-flex items-center rounded-lg border border-dashed border-violet-400/45 px-3 py-2 text-xs font-semibold text-violet-200 transition hover:border-violet-300 hover:bg-violet-400/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"><CreditPrice label="+ Add menu link ·" amount={ACTION_PRICING.add_menu_item} /></button>
+            <button type="button" onClick={() => onChange([...(menu || []), blankMenuItem()])} className="cosmic-header-add-menu inline-flex items-center rounded-lg border px-3 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-emerald-500/40"><CreditPrice label="+ Add menu link ·" amount={ACTION_PRICING.add_menu_item} /></button>
         </div>
     );
 }

@@ -474,7 +474,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
             {isHeaderModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
                     <button type="button" aria-label="Close header dialog" onClick={() => !isSaving && setIsHeaderModalOpen(false)} className="absolute inset-0 cursor-default" />
-                    <div role="dialog" aria-modal="true" aria-labelledby="edit-header-title" className="cosmic-global-header-modal relative h-[min(88dvh,900px)] max-h-[calc(100dvh-2rem)] w-full max-w-7xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
+                    <div role="dialog" aria-modal="true" aria-labelledby="edit-header-title" id="cosmic-global-header-modal" className="cosmic-global-header-modal relative h-[min(88dvh,900px)] max-h-[calc(100dvh-2rem)] w-full max-w-7xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
                         <div className="mb-5 flex items-start justify-between gap-4">
                             <div>
                                 <h2 id="edit-header-title" className="text-xl font-semibold text-white">Edit global header</h2>
@@ -565,7 +565,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                                 {savedHeader.type === 'glassmorphism_header' && (
                                     <div className="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-violet-400/15 bg-violet-400/[0.035] p-2.5 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
                                         <label className="min-w-0">
-                                            <span className="mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-violet-200/70">CTA label</span>
+                                            <span className="cosmic-header-cta-field-label mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-200/70">CTA label</span>
                                             <input
                                                 type="text"
                                                 value={savedHeader.cta_label || 'Get Started'}
@@ -574,7 +574,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                                             />
                                         </label>
                                         <label className="min-w-0">
-                                            <span className="mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-violet-200/70">CTA link target</span>
+                                            <span className="cosmic-header-cta-field-label mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-200/70">CTA link target</span>
                                             <input
                                                 type="text"
                                                 list="published-page-slugs"
@@ -668,7 +668,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
             {isLogoSizeOpen && savedHeader?.logo_image_url && (
                 <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
                     <button type="button" onClick={() => setIsLogoSizeOpen(false)} className="absolute inset-0" aria-label="Close logo size settings" />
-                    <section role="dialog" aria-modal="true" className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#18181d] p-5 text-slate-100 shadow-2xl">
+                    <section role="dialog" aria-modal="true" className="cosmic-logo-size-modal relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#18181d] p-5 text-slate-100 shadow-2xl">
                         <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">Global header</p><h3 className="mt-1 text-lg font-semibold text-white">Logo size</h3><p className="mt-1 text-xs leading-5 text-slate-400">Adjust the logo height. The aspect ratio stays unchanged and the width remains capped at 250px.</p></div><button type="button" onClick={() => setIsLogoSizeOpen(false)} className="rounded-lg px-2 py-1 text-slate-400 hover:bg-white/5 hover:text-white">×</button></div>
                         <div className="mt-5 rounded-xl border border-white/10 bg-white p-4"><img src={savedHeader.logo_image_url} alt="Logo size preview" style={{ height: `${Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))}px` }} className="mx-auto w-auto max-w-[250px] object-contain" /></div>
                         <label className="mt-5 block"><span className="flex items-center justify-between text-xs font-medium text-slate-300"><span>Logo height</span><span>{Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))}px</span></span><input type="range" min="24" max="60" step="1" value={Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))} onChange={(event) => updateHeaderContent({ logo_height: Number(event.target.value), logo_max_width: 250 })} className="mt-3 w-full accent-violet-500" /></label>

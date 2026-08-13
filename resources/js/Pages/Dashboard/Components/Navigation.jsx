@@ -46,7 +46,7 @@ export default function Navigation({ activeTab, onTabChange, dashboard = {} }) {
         : baseNavigationItems;
 
     return (
-        <aside className="border-b border-white/10 bg-[#111113] md:sticky md:top-0 md:flex md:h-screen md:w-64 md:flex-col md:border-b-0 md:border-r">
+        <aside id="cosmic-dashboard-sidebar" className="cosmic-dashboard-sidebar border-b border-white/10 bg-[#111113] md:sticky md:top-0 md:flex md:h-screen md:w-64 md:flex-col md:border-b-0 md:border-r">
             <div className="flex items-center justify-between px-5 py-4 md:px-6 md:py-6">
                 <button type="button" onClick={() => onTabChange("home")} className="flex items-center gap-2">
                     <CosmicBrandMark size="sm" />

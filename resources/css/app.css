@@ -4660,3 +4660,737 @@ body .cosmic-start-quick-idea.rounded-full.border {
         border-left: 0 !important;
     }
 }
+
+/* ============================================================================
+   Patch 18.1 — Default Light Mode: Core + Dashboard contrast audit
+   Dedicated dashboard hooks intentionally keep these rules away from generated
+   website previews and builder content. Dark mode remains unchanged.
+   ============================================================================ */
+:root[data-theme="light"] #cosmic-dashboard {
+    --dash-bg: #f4f8f5;
+    --dash-surface: #ffffff;
+    --dash-surface-soft: #f3f8f5;
+    --dash-surface-strong: #eaf3ed;
+    --dash-text: #111827;
+    --dash-text-muted: #526274;
+    --dash-text-subtle: #718096;
+    --dash-border: #d4e2da;
+    --dash-border-strong: #bdcfc5;
+    --dash-primary: #047857;
+    --dash-primary-hover: #065f46;
+    --dash-primary-soft: #e1f4e9;
+    --dash-danger: #be123c;
+    --dash-warning: #92400e;
+    background: var(--dash-bg) !important;
+    color: var(--dash-text) !important;
+}
+
+/* Consistent dashboard typography hierarchy. */
+:root[data-theme="light"] #cosmic-dashboard :is(h1,h2,h3,h4,h5,h6):not(.cosmic-preview-isolation *) {
+    color: var(--dash-text);
+}
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-300,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-400 {
+    color: var(--dash-text-muted) !important;
+}
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-500,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-slate-600 {
+    color: var(--dash-text-subtle) !important;
+}
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-200,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-300,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-400,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-violet-500 {
+    color: var(--dash-primary) !important;
+}
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-emerald-200,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-emerald-300,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-emerald-400 {
+    color: #047857 !important;
+}
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-amber-200,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-amber-300 {
+    color: var(--dash-warning) !important;
+}
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-rose-200,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-rose-300,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).text-red-300 {
+    color: var(--dash-danger) !important;
+}
+
+/* Cards, rows and dividers: slightly stronger separation on the default theme. */
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/10,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/15,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/20,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/\[0\.06\],
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).border-white\/\[0\.07\] {
+    border-color: var(--dash-border) !important;
+}
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.025\],
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.03\],
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/\[0\.04\],
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-white\/5,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/10,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/15,
+:root[data-theme="light"] #cosmic-dashboard :not(.cosmic-preview-isolation, .cosmic-preview-isolation *).bg-black\/20 {
+    background-color: var(--dash-surface-soft) !important;
+}
+
+/* Forms: readable labels/placeholders and unmistakable focus. */
+:root[data-theme="light"] #cosmic-dashboard :is(input,select,textarea):not(.cosmic-preview-isolation *) {
+    background: #fff !important;
+    border-color: var(--dash-border-strong) !important;
+    color: var(--dash-text) !important;
+}
+:root[data-theme="light"] #cosmic-dashboard :is(input,textarea):not(.cosmic-preview-isolation *)::placeholder {
+    color: #7b8797 !important;
+    opacity: 1;
+}
+:root[data-theme="light"] #cosmic-dashboard :is(input,select,textarea):not(.cosmic-preview-isolation *):hover:not(:disabled) {
+    border-color: #9fb8aa !important;
+}
+:root[data-theme="light"] #cosmic-dashboard :is(input,select,textarea):not(.cosmic-preview-isolation *):focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5,150,105,.14) !important;
+    outline: none !important;
+}
+:root[data-theme="light"] #cosmic-dashboard :is(input,select,textarea):disabled:not(.cosmic-preview-isolation *) {
+    background: #eef3f0 !important;
+    color: #7b8797 !important;
+    opacity: 1 !important;
+}
+
+/* Buttons and clickable controls. Preserve intentional primary backgrounds while
+   making ghost/secondary actions visible instead of faded on white. */
+:root[data-theme="light"] #cosmic-dashboard button:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard a:not(.cosmic-preview-isolation *) {
+    text-underline-offset: 2px;
+}
+:root[data-theme="light"] #cosmic-dashboard button:not(.cosmic-preview-isolation *):focus-visible,
+:root[data-theme="light"] #cosmic-dashboard a:not(.cosmic-preview-isolation *):focus-visible {
+    outline: 2px solid #059669;
+    outline-offset: 2px;
+}
+:root[data-theme="light"] #cosmic-dashboard button:not(.cosmic-preview-isolation *):disabled {
+    cursor: not-allowed;
+    opacity: .58;
+}
+:root[data-theme="light"] #cosmic-dashboard button.text-slate-400:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard button.text-slate-500:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard a.text-slate-400:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard a.text-slate-500:not(.cosmic-preview-isolation *) {
+    color: #475569 !important;
+}
+:root[data-theme="light"] #cosmic-dashboard button.text-slate-400:not(.cosmic-preview-isolation *):hover,
+:root[data-theme="light"] #cosmic-dashboard button.text-slate-500:not(.cosmic-preview-isolation *):hover,
+:root[data-theme="light"] #cosmic-dashboard a.text-slate-400:not(.cosmic-preview-isolation *):hover,
+:root[data-theme="light"] #cosmic-dashboard a.text-slate-500:not(.cosmic-preview-isolation *):hover {
+    color: var(--dash-primary-hover) !important;
+}
+:root[data-theme="light"] #cosmic-dashboard .bg-violet-600:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard .bg-violet-500:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard .bg-violet-400:not(.cosmic-preview-isolation *) {
+    background-color: var(--dash-primary) !important;
+    color: #fff !important;
+}
+:root[data-theme="light"] #cosmic-dashboard .hover\:bg-violet-500:hover:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard .hover\:bg-violet-400:hover:not(.cosmic-preview-isolation *) {
+    background-color: var(--dash-primary-hover) !important;
+}
+
+/* Selected/active accents must be visually obvious in light mode. */
+:root[data-theme="light"] #cosmic-dashboard .bg-violet-500\/10:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard .bg-violet-400\/10:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard .bg-violet-400\/\[0\.08\]:not(.cosmic-preview-isolation *) {
+    background-color: var(--dash-primary-soft) !important;
+}
+:root[data-theme="light"] #cosmic-dashboard .border-violet-400\/20:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard .border-violet-400\/25:not(.cosmic-preview-isolation *),
+:root[data-theme="light"] #cosmic-dashboard .border-violet-400\/30:not(.cosmic-preview-isolation *) {
+    border-color: rgba(4,120,87,.34) !important;
+}
+
+/* Dedicated sidebar treatment. */
+:root[data-theme="light"] #cosmic-dashboard-sidebar {
+    background: #fff !important;
+    border-color: var(--dash-border) !important;
+}
+:root[data-theme="light"] #cosmic-dashboard-sidebar .cosmic-sidebar-item {
+    color: #475569 !important;
+}
+:root[data-theme="light"] #cosmic-dashboard-sidebar .cosmic-sidebar-item:hover {
+    background: #edf7f1 !important;
+    color: #065f46 !important;
+}
+:root[data-theme="light"] #cosmic-dashboard-sidebar .cosmic-sidebar-item.bg-white {
+    background: #dff2e7 !important;
+    color: #065f46 !important;
+    box-shadow: inset 0 0 0 1px #b7dfc8 !important;
+}
+
+/* Portalled dashboard dialogs. These are intentionally constrained to visible
+   dialogs and do not touch website preview content. */
+:root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"],
+:root[data-theme="light"] body > [data-headlessui-portal] [role="alertdialog"] {
+    --dialog-text: #111827;
+    --dialog-muted: #526274;
+    --dialog-border: #d4e2da;
+    color: var(--dialog-text) !important;
+}
+:root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] :is(.text-slate-300,.text-slate-400),
+:root[data-theme="light"] body > [data-headlessui-portal] [role="alertdialog"] :is(.text-slate-300,.text-slate-400) {
+    color: var(--dialog-muted) !important;
+}
+:root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] :is(.text-slate-500,.text-slate-600),
+:root[data-theme="light"] body > [data-headlessui-portal] [role="alertdialog"] :is(.text-slate-500,.text-slate-600) {
+    color: #718096 !important;
+}
+:root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] :is(input,select,textarea),
+:root[data-theme="light"] body > [data-headlessui-portal] [role="alertdialog"] :is(input,select,textarea) {
+    background: #fff !important;
+    border-color: #bdcfc5 !important;
+    color: #111827 !important;
+}
+:root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] :is(input,select,textarea):focus,
+:root[data-theme="light"] body > [data-headlessui-portal] [role="alertdialog"] :is(input,select,textarea):focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5,150,105,.14) !important;
+    outline: none !important;
+}
+:root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] button:focus-visible,
+:root[data-theme="light"] body > [data-headlessui-portal] [role="alertdialog"] button:focus-visible {
+    outline: 2px solid #059669;
+    outline-offset: 2px;
+}
+:root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] button.text-slate-400,
+:root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] button.text-slate-500,
+:root[data-theme="light"] body > [data-headlessui-portal] [role="alertdialog"] button.text-slate-400,
+:root[data-theme="light"] body > [data-headlessui-portal] [role="alertdialog"] button.text-slate-500 {
+    color: #475569 !important;
+}
+:root[data-theme="light"] body > [data-headlessui-portal] [role="dialog"] .text-rose-300,
+:root[data-theme="light"] body > [data-headlessui-portal] [role="alertdialog"] .text-rose-300 {
+    color: #be123c !important;
+}
+
+/* ============================================================================
+   Patch 2/3 — Builder + Global Header/Footer light-mode audit
+   Scoped hooks strengthen default-light controls without touching generated
+   site previews. Dark mode intentionally retains the existing styling.
+   ============================================================================ */
+:root[data-theme="light"] .cosmic-builder-shell {
+    background: #f3f7f4 !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell [data-cosmic-builder-chrome],
+:root[data-theme="light"] .cosmic-builder-shell [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) {
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell [data-cosmic-builder-chrome] .text-slate-400,
+:root[data-theme="light"] .cosmic-builder-shell [data-cosmic-builder-chrome] .text-slate-500,
+:root[data-theme="light"] .cosmic-builder-shell [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-slate-400,
+:root[data-theme="light"] .cosmic-builder-shell [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) .text-slate-500 {
+    color: #526274 !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell [data-cosmic-builder-chrome] button:not(:disabled),
+:root[data-theme="light"] .cosmic-builder-shell [data-cosmic-builder-chrome] a,
+:root[data-theme="light"] .cosmic-builder-shell [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:not(:disabled) {
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell [data-cosmic-builder-chrome] button:focus-visible,
+:root[data-theme="light"] .cosmic-builder-shell [data-cosmic-builder-chrome] a:focus-visible,
+:root[data-theme="light"] .cosmic-builder-shell [role="dialog"]:not(.cosmic-spark-preview-modal):not(.cosmic-website-preview) button:focus-visible {
+    outline: 2px solid #059669 !important;
+    outline-offset: 2px !important;
+}
+
+/* Header/footer editor surfaces and section labels. */
+:root[data-theme="light"] .cosmic-global-header-modal,
+:root[data-theme="light"] .cosmic-global-footer-modal,
+:root[data-theme="light"] .cosmic-logo-size-modal {
+    --shell-text: #0f172a;
+    --shell-muted: #526274;
+    --shell-subtle: #64748b;
+    --shell-border: #c9dbd1;
+    --shell-border-strong: #a9c3b5;
+    --shell-soft: #f1f7f3;
+    --shell-soft-strong: #e6f2eb;
+    --shell-primary: #047857;
+    --shell-primary-hover: #065f46;
+    background: #f8fbf9 !important;
+    border-color: var(--shell-border-strong) !important;
+    color: var(--shell-text) !important;
+}
+:root[data-theme="light"] .cosmic-global-header-modal :is(h2,h3,h4),
+:root[data-theme="light"] .cosmic-global-footer-modal :is(h2,h3,h4),
+:root[data-theme="light"] .cosmic-logo-size-modal :is(h2,h3,h4) {
+    color: var(--shell-text) !important;
+}
+:root[data-theme="light"] .cosmic-global-header-modal .text-slate-500,
+:root[data-theme="light"] .cosmic-global-footer-modal .text-slate-500,
+:root[data-theme="light"] .cosmic-logo-size-modal .text-slate-500 {
+    color: var(--shell-subtle) !important;
+}
+:root[data-theme="light"] .cosmic-global-header-modal .text-violet-200,
+:root[data-theme="light"] .cosmic-global-header-modal .text-violet-300,
+:root[data-theme="light"] .cosmic-global-footer-modal .text-violet-200,
+:root[data-theme="light"] .cosmic-global-footer-modal .text-violet-300,
+:root[data-theme="light"] .cosmic-logo-size-modal .text-violet-200,
+:root[data-theme="light"] .cosmic-logo-size-modal .text-violet-300 {
+    color: var(--shell-primary) !important;
+}
+
+/* Header menu rows: no more washed-out labels/actions on light mode. */
+:root[data-theme="light"] .cosmic-header-menu-editor > div > div,
+:root[data-theme="light"] .cosmic-header-menu-editor [class*="border-l"] > div {
+    background: #f0f7f3 !important;
+    border-color: #c9dbd1 !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor [class*="border-l"] {
+    border-left-color: #8ec1a8 !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor .text-slate-500 {
+    color: #526274 !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor input {
+    background: #fff !important;
+    border-color: #b7ccbf !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor input:hover {
+    border-color: #8fb4a1 !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor input:focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5,150,105,.14) !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor button.text-slate-400,
+:root[data-theme="light"] .cosmic-header-menu-editor button.text-slate-500 {
+    color: #334155 !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor button.text-rose-300 {
+    color: #be123c !important;
+    font-weight: 700 !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor button.text-rose-300:hover {
+    background: #fff1f2 !important;
+    color: #9f1239 !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor button.text-violet-200,
+:root[data-theme="light"] .cosmic-header-menu-editor > button {
+    color: #047857 !important;
+    font-weight: 700 !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor > button {
+    border-color: #69ad8a !important;
+    background: #f5fbf7 !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor > button:hover {
+    border-color: #047857 !important;
+    background: #e4f4eb !important;
+    color: #065f46 !important;
+}
+:root[data-theme="light"] .cosmic-header-menu-editor button:disabled {
+    color: #94a3b8 !important;
+    opacity: .52 !important;
+}
+
+/* Inputs and helper controls inside shell editors. */
+:root[data-theme="light"] .cosmic-global-header-modal :is(input,select,textarea),
+:root[data-theme="light"] .cosmic-global-footer-modal :is(input,select,textarea),
+:root[data-theme="light"] .cosmic-logo-size-modal :is(input,select,textarea) {
+    background: #fff !important;
+    border-color: #b7ccbf !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-global-header-modal :is(input,select,textarea):focus,
+:root[data-theme="light"] .cosmic-global-footer-modal :is(input,select,textarea):focus,
+:root[data-theme="light"] .cosmic-logo-size-modal :is(input,select,textarea):focus {
+    border-color: #059669 !important;
+    box-shadow: 0 0 0 3px rgba(5,150,105,.14) !important;
+}
+:root[data-theme="light"] .cosmic-global-header-modal input::placeholder,
+:root[data-theme="light"] .cosmic-global-footer-modal input::placeholder {
+    color: #7b8797 !important;
+    opacity: 1 !important;
+}
+
+/* Layout cards + selected state are deliberately obvious in light mode. */
+:root[data-theme="light"] .cosmic-global-header-modal .border-violet-400\/70,
+:root[data-theme="light"] .cosmic-global-footer-modal .border-violet-400\/70 {
+    border-color: #16845f !important;
+    background: #e8f6ee !important;
+    box-shadow: inset 0 0 0 1px rgba(22,132,95,.18) !important;
+}
+:root[data-theme="light"] .cosmic-global-header-modal .ring-violet-400\/30,
+:root[data-theme="light"] .cosmic-global-footer-modal .ring-violet-400\/30 {
+    --tw-ring-color: rgba(22,132,95,.28) !important;
+}
+:root[data-theme="light"] .cosmic-global-header-modal button.bg-white,
+:root[data-theme="light"] .cosmic-global-footer-modal button.bg-white,
+:root[data-theme="light"] .cosmic-logo-size-modal button.bg-white {
+    background: #16845f !important;
+    border-color: #16845f !important;
+    color: #fff !important;
+}
+:root[data-theme="light"] .cosmic-global-header-modal button.bg-white:hover,
+:root[data-theme="light"] .cosmic-global-footer-modal button.bg-white:hover,
+:root[data-theme="light"] .cosmic-logo-size-modal button.bg-white:hover {
+    background: #0f6f50 !important;
+    color: #fff !important;
+}
+
+/* Ghost actions (Cancel, Close, Adjust size, Use logo text) need real contrast. */
+:root[data-theme="light"] .cosmic-global-header-modal button.text-slate-300,
+:root[data-theme="light"] .cosmic-global-header-modal button.text-slate-400,
+:root[data-theme="light"] .cosmic-global-footer-modal button.text-slate-300,
+:root[data-theme="light"] .cosmic-global-footer-modal button.text-slate-400,
+:root[data-theme="light"] .cosmic-logo-size-modal button.text-slate-300,
+:root[data-theme="light"] .cosmic-logo-size-modal button.text-slate-400 {
+    color: #334155 !important;
+}
+:root[data-theme="light"] .cosmic-global-header-modal button.text-slate-300:hover,
+:root[data-theme="light"] .cosmic-global-header-modal button.text-slate-400:hover,
+:root[data-theme="light"] .cosmic-global-footer-modal button.text-slate-300:hover,
+:root[data-theme="light"] .cosmic-global-footer-modal button.text-slate-400:hover,
+:root[data-theme="light"] .cosmic-logo-size-modal button.text-slate-300:hover,
+:root[data-theme="light"] .cosmic-logo-size-modal button.text-slate-400:hover {
+    background: #e8f1ec !important;
+    color: #065f46 !important;
+}
+
+/* Preview remains visually separated from the editor chrome. */
+:root[data-theme="light"] .cosmic-global-header-modal .cosmic-footer-preview,
+:root[data-theme="light"] .cosmic-global-footer-modal .cosmic-footer-preview {
+    background: #eef5f1 !important;
+    border-color: #c6d9cf !important;
+}
+
+/* Footer/header sticky submit rows and CTA controls. */
+:root[data-theme="light"] .cosmic-global-header-modal .border-t,
+:root[data-theme="light"] .cosmic-global-footer-modal .border-t {
+    border-color: #cfdfd7 !important;
+}
+:root[data-theme="light"] .cosmic-global-header-modal button:disabled,
+:root[data-theme="light"] .cosmic-global-footer-modal button:disabled,
+:root[data-theme="light"] .cosmic-logo-size-modal button:disabled {
+    opacity: .55 !important;
+    cursor: not-allowed !important;
+}
+
+
+/* ================================================================
+   LIGHT MODE AUDIT PATCH 3 — COMMERCE WORKSPACE
+   Scope commerce admin only. Storefront/preview output is untouched.
+   ================================================================ */
+:root[data-theme="light"] .cosmic-commerce-workspace,
+:root[data-theme="light"] .cosmic-commerce-modal {
+    --commerce-text: #0f172a;
+    --commerce-muted: #526274;
+    --commerce-subtle: #64748b;
+    --commerce-border: #cbdcd3;
+    --commerce-border-strong: #adc7b9;
+    --commerce-surface: #ffffff;
+    --commerce-soft: #f3f8f5;
+    --commerce-soft-strong: #e8f4ed;
+    --commerce-violet: #6d28d9;
+    --commerce-violet-hover: #5b21b6;
+    --commerce-green: #047857;
+    color: var(--commerce-text) !important;
+}
+
+/* Panels, rows and generic dark utility surfaces used by commerce admin. */
+:root[data-theme="light"] .cosmic-commerce-workspace :is(.border-white\/10,.border-white\/15,.border-white\/\[0\.07\],.border-white\/\[0\.06\]),
+:root[data-theme="light"] .cosmic-commerce-modal :is(.border-white\/10,.border-white\/15,.border-white\/\[0\.07\],.border-white\/\[0\.06\]) {
+    border-color: var(--commerce-border) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(.bg-white\/\[0\.025\],.bg-white\/\[0\.035\],.bg-white\/5,.bg-black\/15,.bg-black\/20,.bg-black\/25),
+:root[data-theme="light"] .cosmic-commerce-modal :is(.bg-white\/\[0\.025\],.bg-white\/\[0\.035\],.bg-white\/5,.bg-black\/15,.bg-black\/20,.bg-black\/25) {
+    background: var(--commerce-surface) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace .hover\:bg-white\/5:hover,
+:root[data-theme="light"] .cosmic-commerce-workspace .hover\:bg-white\/10:hover,
+:root[data-theme="light"] .cosmic-commerce-modal .hover\:bg-white\/5:hover,
+:root[data-theme="light"] .cosmic-commerce-modal .hover\:bg-white\/10:hover {
+    background: var(--commerce-soft-strong) !important;
+}
+
+/* Typography: remove faded dark-theme colors in default light mode. */
+:root[data-theme="light"] .cosmic-commerce-workspace .text-white,
+:root[data-theme="light"] .cosmic-commerce-modal .text-white {
+    color: var(--commerce-text) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(.text-slate-200,.text-slate-300,.text-slate-400),
+:root[data-theme="light"] .cosmic-commerce-modal :is(.text-slate-200,.text-slate-300,.text-slate-400) {
+    color: #334155 !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(.text-slate-500,.text-slate-600),
+:root[data-theme="light"] .cosmic-commerce-modal :is(.text-slate-500,.text-slate-600) {
+    color: var(--commerce-muted) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(.text-violet-100,.text-violet-200,.text-violet-300),
+:root[data-theme="light"] .cosmic-commerce-modal :is(.text-violet-100,.text-violet-200,.text-violet-300) {
+    color: var(--commerce-violet) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(.text-emerald-200,.text-emerald-300),
+:root[data-theme="light"] .cosmic-commerce-modal :is(.text-emerald-200,.text-emerald-300) {
+    color: var(--commerce-green) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(.text-cyan-200,.text-cyan-300),
+:root[data-theme="light"] .cosmic-commerce-modal :is(.text-cyan-200,.text-cyan-300) {
+    color: #0e7490 !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(.text-amber-200,.text-amber-300),
+:root[data-theme="light"] .cosmic-commerce-modal :is(.text-amber-200,.text-amber-300) {
+    color: #a16207 !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(.text-rose-200,.text-rose-300),
+:root[data-theme="light"] .cosmic-commerce-modal :is(.text-rose-200,.text-rose-300) {
+    color: #be123c !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(.text-fuchsia-200,.text-fuchsia-300),
+:root[data-theme="light"] .cosmic-commerce-modal :is(.text-fuchsia-200,.text-fuchsia-300) {
+    color: #a21caf !important;
+}
+
+/* Inputs/selects/textareas across Products, Orders, Inventory, Coupons, Shipping, Tax, Settings. */
+:root[data-theme="light"] .cosmic-commerce-workspace :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea),
+:root[data-theme="light"] .cosmic-commerce-modal :is(input:not([type="checkbox"]):not([type="radio"]),select,textarea) {
+    background: #fff !important;
+    border-color: #b8ccbf !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(input,select,textarea)::placeholder,
+:root[data-theme="light"] .cosmic-commerce-modal :is(input,select,textarea)::placeholder {
+    color: #758397 !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(input,select,textarea):focus,
+:root[data-theme="light"] .cosmic-commerce-modal :is(input,select,textarea):focus {
+    border-color: #7c3aed !important;
+    box-shadow: 0 0 0 3px rgba(124,58,237,.12) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace select option,
+:root[data-theme="light"] .cosmic-commerce-modal select option {
+    background: #fff !important;
+    color: #0f172a !important;
+}
+
+/* Main commerce tabs: clear default vs selected state. */
+:root[data-theme="light"] .cosmic-commerce-workspace button.bg-violet-500\/15 {
+    background: #ede9fe !important;
+    color: #5b21b6 !important;
+    box-shadow: inset 0 0 0 1px #c4b5fd !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace button.text-slate-400:not(:disabled):hover {
+    color: #0f172a !important;
+    background: #eef5f1 !important;
+}
+
+/* Primary commerce actions retain white labels despite generic light text overrides. */
+:root[data-theme="light"] .cosmic-commerce-workspace :is(button.bg-violet-500,a.bg-violet-500),
+:root[data-theme="light"] .cosmic-commerce-modal :is(button.bg-violet-500,a.bg-violet-500) {
+    background: #7c3aed !important;
+    color: #fff !important;
+    border-color: #7c3aed !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(button.bg-violet-500,a.bg-violet-500):hover,
+:root[data-theme="light"] .cosmic-commerce-modal :is(button.bg-violet-500,a.bg-violet-500):hover {
+    background: #6d28d9 !important;
+    color: #fff !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(button.bg-violet-500,a.bg-violet-500) *,
+:root[data-theme="light"] .cosmic-commerce-modal :is(button.bg-violet-500,a.bg-violet-500) * {
+    color: #fff !important;
+}
+
+/* Stronger settings toggle requested in light mode. */
+:root[data-theme="light"] .cosmic-commerce-workspace .cosmic-store-status-toggle {
+    border-color: #a8beb2 !important;
+    background: #dce8e1 !important;
+    box-shadow: inset 0 0 0 1px rgba(15,23,42,.03) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace .cosmic-store-status-toggle[data-enabled="true"] {
+    border-color: #047857 !important;
+    background: #10b981 !important;
+    box-shadow: 0 0 0 3px rgba(16,185,129,.13) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace .cosmic-store-status-toggle > span {
+    background: #fff !important;
+    box-shadow: 0 1px 3px rgba(15,23,42,.28) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace .cosmic-store-status-title.text-emerald-300 {
+    color: #047857 !important;
+    font-weight: 800 !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace .cosmic-store-status-description {
+    color: #475569 !important;
+}
+
+/* Success/installed states should read clearly, not pastel/faded. */
+:root[data-theme="light"] .cosmic-commerce-workspace .bg-emerald-400\/5 {
+    background: #ecfdf5 !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace .border-emerald-400\/15,
+:root[data-theme="light"] .cosmic-commerce-workspace .border-emerald-400\/20,
+:root[data-theme="light"] .cosmic-commerce-workspace .border-emerald-400\/30 {
+    border-color: #86c9aa !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace .text-emerald-300 {
+    color: #047857 !important;
+}
+
+/* Secondary buttons / destructive actions / focus states. */
+:root[data-theme="light"] .cosmic-commerce-workspace button[class*="border-white"],
+:root[data-theme="light"] .cosmic-commerce-modal button[class*="border-white"] {
+    background: #fff !important;
+    border-color: #b8ccbf !important;
+    color: #334155 !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace button[class*="border-white"]:hover,
+:root[data-theme="light"] .cosmic-commerce-modal button[class*="border-white"]:hover {
+    background: #eef5f1 !important;
+    border-color: #8fad9d !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace button.text-rose-300,
+:root[data-theme="light"] .cosmic-commerce-modal button.text-rose-300 {
+    color: #be123c !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace :is(button,a):focus-visible,
+:root[data-theme="light"] .cosmic-commerce-modal :is(button,a):focus-visible {
+    outline: 2px solid #7c3aed !important;
+    outline-offset: 2px !important;
+}
+
+/* Commerce dialogs were authored dark-first; give them a real light shell. */
+:root[data-theme="light"] .cosmic-commerce-modal {
+    background: rgba(15,23,42,.44) !important;
+}
+:root[data-theme="light"] .cosmic-commerce-modal > div,
+:root[data-theme="light"] .cosmic-commerce-modal > div > div[class*="bg-"] {
+    background: #f8fbf9 !important;
+    border-color: #b9cfc2 !important;
+    color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-commerce-modal .bg-\[\#0d0d10\],
+:root[data-theme="light"] .cosmic-commerce-modal .bg-slate-950 {
+    background: #f8fbf9 !important;
+}
+
+/* Keep disabled controls visibly disabled while retaining readable labels. */
+:root[data-theme="light"] .cosmic-commerce-workspace :is(button,input,select,textarea):disabled,
+:root[data-theme="light"] .cosmic-commerce-modal :is(button,input,select,textarea):disabled {
+    opacity: .58 !important;
+    cursor: not-allowed !important;
+}
+
+
+/* Hotfix: Global Header editor primary actions — light mode focus.
+   Scoped with modal ID + dedicated classes so generic utility rules cannot wash these out. */
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-cta-primary {
+    background: var(--cosmic-primary, #047857) !important;
+    border-color: var(--cosmic-primary, #047857) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 1 !important;
+    box-shadow: 0 6px 16px color-mix(in srgb, var(--cosmic-primary, #047857) 20%, transparent) !important;
+}
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-cta-primary:hover {
+    background: var(--cosmic-primary-hover, #065f46) !important;
+    border-color: var(--cosmic-primary-hover, #065f46) !important;
+    color: #ffffff !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-cta-primary *,
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-cta-primary:hover * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-menu-editor .cosmic-header-add-menu,
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-menu-editor .cosmic-header-add-submenu {
+    background: var(--cosmic-primary, #047857) !important;
+    border: 1px solid var(--cosmic-primary, #047857) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 1 !important;
+    box-shadow: 0 3px 10px color-mix(in srgb, var(--cosmic-primary, #047857) 16%, transparent) !important;
+}
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-menu-editor .cosmic-header-add-menu:hover,
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-menu-editor .cosmic-header-add-submenu:hover {
+    background: var(--cosmic-primary-hover, #065f46) !important;
+    border-color: var(--cosmic-primary-hover, #065f46) !important;
+    color: #ffffff !important;
+}
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-menu-editor .cosmic-header-add-menu *,
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-menu-editor .cosmic-header-add-submenu *,
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-menu-editor .cosmic-header-add-menu:hover *,
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-menu-editor .cosmic-header-add-submenu:hover * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-menu-editor .cosmic-header-add-menu:focus-visible,
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-menu-editor .cosmic-header-add-submenu:focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--cosmic-primary, #047857) 60%, white) !important;
+    outline-offset: 2px !important;
+}
+
+
+/* Focus hotfix: Publish menu + Global Header CTA field labels (light mode only). */
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-menu {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 14px 34px rgba(15,23,42,.16) !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-menu .cosmic-publish-menu-item {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-menu .cosmic-publish-menu-item:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-menu .cosmic-publish-template-item:not(:disabled) {
+    background: var(--cosmic-primary, #047857) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-menu .cosmic-publish-template-item:not(:disabled):hover {
+    background: var(--cosmic-primary-hover, #065f46) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-menu .cosmic-publish-template-item:not(:disabled) * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-menu .cosmic-publish-template-item:disabled {
+    background: #e8efeB !important;
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+    border: 1px solid #c7d6ce !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-builder-shell .cosmic-publish-menu .cosmic-publish-template-item:disabled * {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+}
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-cta-field-label {
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+    opacity: 1 !important;
+    font-weight: 700 !important;
+}
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-cta-field-label + input {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #aebfb5 !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] #cosmic-global-header-modal .cosmic-header-cta-field-label + input:focus {
+    border-color: var(--cosmic-primary, #047857) !important;
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--cosmic-primary, #047857) 18%, transparent) !important;
+}
