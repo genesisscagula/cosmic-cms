@@ -46,7 +46,7 @@ class WebsiteAssignmentController extends Controller
             ]);
         }
 
-        DB::transaction(function () use ($workspace, $member, $validWebsiteIds, $request) {
+        DB::transaction(function () use ($workspace, $member, $validWebsiteIds, $request, $role) {
             $workspace->websites()->each(function ($website) use ($member) {
                 $website->assignedUsers()->detach($member->id);
             });
@@ -54,9 +54,16 @@ class WebsiteAssignmentController extends Controller
             foreach ($validWebsiteIds as $websiteId) {
                 $workspace->websites()->whereKey($websiteId)->firstOrFail()
                     ->assignedUsers()
-                    ->attach($member->id, ['assigned_by_user_id' => $request->user()->id]);
+                    ->attach($member->id, ['assigned_by_user_id' => $request->user()->id, 'role' => $role === 'admin' ? 'website_admin' : 'website_editor']);
             }
         });
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'message' => 'Website assignments updated.',
+                'website_ids' => $validWebsiteIds,
+            ]);
+        }
 
         return back()->with('success', 'Website assignments updated.');
     }

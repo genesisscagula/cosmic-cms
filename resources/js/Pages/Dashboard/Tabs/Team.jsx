@@ -1,4 +1,5 @@
 import { router, useForm } from '@inertiajs/react';
+import axios from 'axios';
 import { useMemo, useState } from 'react';
 import { showCosmicNotification } from '../../../Components/CosmicNotification';
 
@@ -35,14 +36,43 @@ function WebsiteAssignments({ member, websites = [], canManage = false }) {
             : [...current, websiteId]);
     };
 
-    const save = () => {
+    const save = async (event) => {
+        event?.preventDefault?.();
+        event?.stopPropagation?.();
+
+        if (saving) return;
+
         setSaving(true);
-        router.put(route('workspace.members.website-assignments.update', member.id), {
-            website_ids: selected,
-        }, {
-            preserveScroll: true,
-            onFinish: () => setSaving(false),
-        });
+        try {
+            await axios.put(`/workspace/members/${member.id}/website-assignments`, {
+                website_ids: selected,
+            }, {
+                headers: {
+                    Accept: 'application/json',
+                    'X-Requested-With': 'XMLHttpRequest',
+                },
+            });
+
+            showCosmicNotification({
+                title: 'Website access updated',
+                message: 'The member’s website assignments were saved successfully.',
+                tone: 'success',
+            });
+
+            router.reload({ preserveScroll: true });
+        } catch (error) {
+            const message = error?.response?.data?.message
+                || error?.response?.data?.errors?.website_ids?.[0]
+                || 'Please review the selected websites and try again.';
+
+            showCosmicNotification({
+                title: 'Could not save assignments',
+                message,
+                tone: 'error',
+            });
+        } finally {
+            setSaving(false);
+        }
     };
 
     if (!websites.length) {
@@ -57,7 +87,7 @@ function WebsiteAssignments({ member, websites = [], canManage = false }) {
                     <p className="mt-1 text-xs text-slate-500">{isOwner ? 'Owners automatically access every workspace website.' : 'Only selected websites appear in this member’s dashboard.'}</p>
                 </div>
                 {!isOwner && canManage && (
-                    <button type="button" onClick={save} disabled={saving} className="rounded-lg bg-violet-400/15 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/25 disabled:opacity-50">
+                    <button type="button" onClick={(event) => save(event)} disabled={saving} className="rounded-lg bg-violet-400/15 px-3 py-2 text-xs font-semibold text-violet-200 hover:bg-violet-400/25 disabled:opacity-50">
                         {saving ? 'Saving…' : 'Save assignments'}
                     </button>
                 )}
@@ -111,7 +141,7 @@ export default function Team({ dashboard = {} }) {
     };
 
     if (!team.enabled) {
-        return <section><p className="text-sm font-medium text-violet-300">Agency workspace</p><h1 className="mt-2 text-3xl font-semibold text-white">Roles & Permissions</h1><div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6"><h2 className="text-lg font-semibold text-white">Team collaboration is locked</h2><p className="mt-2 max-w-2xl text-sm text-slate-400">Growth Agency includes up to 3 team members. Pro Agency includes up to 10 members.</p><a href={route('cosmic-pricing.index')} className="mt-5 inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-950">View Agency plans</a></div></section>;
+        return <section><p className="text-sm font-medium text-violet-300">Agency workspace</p><h1 className="mt-2 text-3xl font-semibold text-white">Roles & Permissions</h1><div className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-6"><h2 className="text-lg font-semibold text-white">Team collaboration is locked</h2><p className="mt-2 max-w-2xl text-sm text-slate-400">Starter Agency includes up to 5 team members, Growth Agency up to 10, and Pro Agency unlimited members.</p><a href={route('cosmic-pricing.index')} className="mt-5 inline-flex rounded-xl bg-white px-4 py-2 text-sm font-semibold text-slate-950">View Agency plans</a></div></section>;
     }
 
     return (
@@ -123,10 +153,10 @@ export default function Team({ dashboard = {} }) {
 
             {team.is_owner && <form onSubmit={invite} className="mt-6 rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                 <div className="grid gap-3 lg:grid-cols-[220px_minmax(0,1fr)_220px_auto] lg:items-end">
-                    <label className="text-sm text-slate-300">Name<input value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="Client or teammate" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-violet-400" /></label>
+                    <label className="text-sm text-slate-300">Name<input value={form.data.name} onChange={(e) => form.setData('name', e.target.value)} placeholder="Team member" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-violet-400" /></label>
                     <label className="text-sm text-slate-300">Invite by email<input type="email" value={form.data.email} onChange={(e) => form.setData('email', e.target.value)} placeholder="client@example.com" className="mt-2 w-full rounded-xl border border-white/10 bg-black/20 px-4 py-3 text-white outline-none focus:border-violet-400" required /></label>
                     <label className="text-sm text-slate-300">Initial role<select value={selectedRole} onChange={(e) => changeInviteRole(e.target.value)} className="mt-2 w-full rounded-xl border border-white/10 bg-[#15151a] px-4 py-3 text-white outline-none focus:border-violet-400">{editableRoles.map((role) => <option key={role.key} value={role.key}>{role.label}</option>)}</select></label>
-                    <button disabled={form.processing || team.remaining === 0} className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">{form.processing ? 'Inviting…' : selectedRole === 'client' ? 'Create client invite' : 'Invite member'}</button>
+                    <button disabled={form.processing || team.remaining === 0} className="rounded-xl bg-white px-5 py-3 text-sm font-semibold text-slate-950 disabled:cursor-not-allowed disabled:opacity-40">{form.processing ? 'Inviting…' : 'Invite member'}</button>
                 </div>
                 <div className="mt-4 rounded-xl border border-white/10 bg-black/20 p-4"><p className="text-sm font-semibold text-white">Assign websites now</p><p className="mt-1 text-xs text-slate-500">The selected websites are attached automatically when the invitation is accepted.</p><div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">{(team.websites || []).map((website) => <label key={website.id} className={`flex cursor-pointer gap-3 rounded-xl border p-3 ${form.data.website_ids.includes(website.id) ? 'border-violet-300/25 bg-violet-300/10' : 'border-white/10 bg-white/[0.02]'}`}><input type="checkbox" checked={form.data.website_ids.includes(website.id)} onChange={() => toggleInviteWebsite(website.id)} className="mt-1 rounded border-white/20 bg-black/20 text-violet-400" /><span className="min-w-0"><span className="block truncate text-sm font-medium text-white">{website.name}</span><span className="block truncate text-xs text-slate-500">{website.domain}</span></span></label>)}</div></div>
                 {(form.errors.name || form.errors.email || form.errors.role || form.errors.website_ids) && <p className="mt-2 text-sm text-rose-300">{form.errors.name || form.errors.email || form.errors.role || form.errors.website_ids}</p>}
@@ -134,7 +164,7 @@ export default function Team({ dashboard = {} }) {
             </form>}
 
             <div className="mt-6 space-y-4">
-                {(team.members || []).length === 0 && <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center"><p className="font-medium text-white">No team members yet</p><p className="mt-2 text-sm text-slate-500">Invite an admin, editor, or client and assign their websites above.</p></div>}
+                {(team.members || []).length === 0 && <div className="rounded-2xl border border-dashed border-white/10 bg-white/[0.02] p-8 text-center"><p className="font-medium text-white">No team members yet</p><p className="mt-2 text-sm text-slate-500">Invite an admin or editor and assign their websites above.</p></div>}
                 {(team.members || []).map((member) => <div key={member.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
                     <div className="flex flex-col gap-4 lg:flex-row lg:items-center">
                         <div className="flex min-w-0 flex-1 items-center gap-4"><Initials name={member.name} email={member.email} /><div className="min-w-0"><p className="truncate font-medium text-white">{member.name || member.email}</p><p className="truncate text-sm text-slate-500">{member.email}</p></div></div>

@@ -34,7 +34,8 @@ export function resolveMediaOverlay(globalTheme, resolvedTheme) {
         ? { primary: globalTheme }
         : (globalTheme || {});
     const sectionTheme = resolvedTheme || "primary";
-    const sectionRequestedLight = LIGHT_MEDIA_THEMES.has(sectionTheme);
+    const cleanPageStyle = String(normalizedGlobalTheme.pageStyle || normalizedGlobalTheme.page_style || "").toLowerCase() === "clean";
+    const sectionRequestedLight = cleanPageStyle || LIGHT_MEDIA_THEMES.has(sectionTheme);
 
     // Background-image/video banners use a cinematic contrast contract in BOTH
     // light and dark website themes. A light site can still have a photographic
@@ -53,12 +54,15 @@ export function resolveMediaOverlay(globalTheme, resolvedTheme) {
     const primaryWeight = sectionRequestedLight
         ? 0.18
         : (NEUTRAL_DARK_THEMES.has(themeKey) ? 0.35 : 0.62);
+    const overlayColor = cleanPageStyle
+        ? '#ffffff'
+        : blendHex(primaryHex, SLATE_950, primaryWeight);
 
     return {
-        isLight: false,
+        isLight: cleanPageStyle,
         requestedLight: sectionRequestedLight,
         themeKey,
-        overlayColor: blendHex(primaryHex, SLATE_950, primaryWeight),
+        overlayColor,
         primaryWeight,
     };
 }

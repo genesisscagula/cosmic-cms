@@ -9,7 +9,7 @@ return [
         ],
         'admin' => [
             'label' => 'Admin',
-            'description' => 'Manages websites, content, publishing, insights, and clients without billing or ownership access.',
+            'description' => 'Full control of assigned websites, including pages, posts, commerce, media, publishing, and website deletion.',
             'permissions' => [
                 'workspace.view', 'websites.create', 'websites.view', 'websites.edit', 'websites.delete',
                 'websites.duplicate', 'pages.edit', 'pages.publish', 'ai.use', 'sparks.manage',
@@ -18,15 +18,10 @@ return [
         ],
         'editor' => [
             'label' => 'Editor',
-            'description' => 'Creates and edits website content, uses AI tools, and saves drafts.',
+            'description' => 'Builder-only access to assigned websites for editing existing text, images, buttons, saving, and publishing.',
             'permissions' => [
-                'workspace.view', 'websites.view', 'websites.edit', 'pages.edit', 'ai.use', 'sparks.use',
+                'workspace.view', 'websites.view', 'pages.edit', 'pages.publish',
             ],
-        ],
-        'client' => [
-            'label' => 'Client',
-            'description' => 'Reviews assigned work and approved reporting without editing workspace content.',
-            'permissions' => ['workspace.view', 'websites.view', 'analytics.view', 'leads.view'],
         ],
     ],
     'permission_labels' => [

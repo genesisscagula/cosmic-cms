@@ -68,10 +68,10 @@ export function HeroLuxuryFullscreenBlock({ block, blockIndex, onUpdate, globalT
             <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} isBackground className="absolute inset-0 h-full w-full object-cover" onSave={(image_url)=>onUpdate({image_url})} />
             <div
                 className="pointer-events-none absolute inset-0"
-                style={{ backgroundColor: overlayColor, opacity: isLightMediaTheme ? 0.9 : 0.52 }}
+                style={{ backgroundColor: overlayColor, opacity: isLightMediaTheme ? 0.96 : 0.52 }}
             />
-            <div className={`pointer-events-none absolute inset-0 ${isLightMediaTheme ? "bg-gradient-to-r from-white/45 via-white/10 to-transparent" : "bg-gradient-to-r from-slate-950/30 via-transparent to-transparent"}`} />
-            <div className={`pointer-events-none absolute inset-0 ${isLightMediaTheme ? "bg-gradient-to-t from-white/30 via-transparent to-white/10" : "bg-gradient-to-t from-slate-950/34 via-transparent to-slate-950/8"}`} />
+            <div className={`pointer-events-none absolute inset-0 ${isLightMediaTheme ? "bg-gradient-to-r from-white/72 via-white/48 to-white/24" : "bg-gradient-to-r from-slate-950/30 via-transparent to-transparent"}`} />
+            <div className={`pointer-events-none absolute inset-0 ${isLightMediaTheme ? "bg-gradient-to-t from-white/56 via-white/20 to-white/24" : "bg-gradient-to-t from-slate-950/34 via-transparent to-slate-950/8"}`} />
             <div className="relative mx-auto flex min-h-[82vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
                 <div className={`flex items-center justify-between border-b pb-5 ${copy.border}`}>
                     <EditableText value={data.eyebrow} className={`text-[11px] font-bold uppercase tracking-[.34em] ${copy.eyebrow}`} onSave={(eyebrow)=>onUpdate({eyebrow})}/>

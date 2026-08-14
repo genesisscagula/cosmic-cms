@@ -63,7 +63,7 @@ class WorkspaceInvitationAcceptanceController extends Controller
                 'name' => $data['name'],
                 'email' => $email,
                 'password' => Hash::make($data['password']),
-                'account_type' => $invitation->role === 'client' ? 'client' : 'customer',
+                'account_type' => 'customer',
                 'onboarding_status' => 'complete',
             ]);
             $user->email_verified_at = now();
@@ -82,12 +82,8 @@ class WorkspaceInvitationAcceptanceController extends Controller
             foreach ($websiteIds as $websiteId) {
                 $invitation->workspace->websites()->whereKey($websiteId)->firstOrFail()
                     ->assignedUsers()->syncWithoutDetaching([
-                        $user->id => ['assigned_by_user_id' => $invitation->invited_by_user_id],
+                        $user->id => ['assigned_by_user_id' => $invitation->invited_by_user_id, 'role' => $invitation->role === 'admin' ? 'website_admin' : 'website_editor'],
                     ]);
-            }
-
-            if ($invitation->role === 'client' && $user->account_type !== 'platform_owner') {
-                $user->forceFill(['account_type' => 'client', 'onboarding_status' => 'complete'])->save();
             }
 
             $invitation->forceFill(['status' => 'accepted', 'accepted_at' => now()])->save();

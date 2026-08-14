@@ -74,6 +74,7 @@ class ContentStorefrontService
 
     private function archive(Website $website, ContentType $type, string $previewSlug, Request $request): Response
     {
+        $type->loadMissing('archiveTemplate');
         $entries = $type->entries()
             ->where('status', 'published')
             ->orderByDesc('is_featured')
@@ -96,6 +97,7 @@ class ContentStorefrontService
             'activeTag' => $tag,
             'title' => $type->name,
             'description' => $type->description ?: 'Explore the latest '.$type->name.'.',
+            'dynamicMiniBannerImage' => trim((string) data_get($type->archiveTemplate?->metadata, 'mini_banner_image_url', '')),
         ]);
     }
 
@@ -131,6 +133,7 @@ class ContentStorefrontService
             'title' => $entry->seo_title ?: $entry->title,
             'description' => $entry->seo_description ?: $entry->excerpt,
             'renderedTemplateMarkup' => $renderedTemplateMarkup,
+            'dynamicMiniBannerImage' => trim((string) data_get($type->singleTemplate?->metadata, 'mini_banner_image_url', '')),
         ]);
     }
 
@@ -151,7 +154,8 @@ class ContentStorefrontService
             $website,
             $data['contentType'] ?? null,
             $siteShell,
-            (string) ($data['renderedTemplateMarkup'] ?? '')
+            (string) ($data['renderedTemplateMarkup'] ?? ''),
+            (string) ($data['dynamicMiniBannerImage'] ?? '')
         );
 
         $payload = array_merge($data, [
@@ -166,6 +170,7 @@ class ContentStorefrontService
             'dynamicPageStyle' => $dynamicContext['page_style'],
             'dynamicPageStyleDirection' => $dynamicContext['page_style_direction'],
             'dynamicFirstSurface' => $dynamicContext['first_surface'],
+            'dynamicMiniBannerImage' => $this->assetUrl((string) ($data['dynamicMiniBannerImage'] ?? '')),
             'archiveUrl' => fn (ContentType $type): string => (string) $this->previews->url($website, $type->slug),
             'entryUrl' => fn (ContentType $type, ContentEntry $entry): string => (string) $this->previews->url($website, $type->slug.'/'.$entry->slug),
             'assetUrl' => fn (?string $url): string => $this->assetUrl($url),
@@ -222,9 +227,12 @@ class ContentStorefrontService
             if (array_key_exists('cta_url', $header)) $header['cta_url'] = $resolve($header['cta_url']);
         }
 
+        $pageStyle = strtolower(trim((string) ($website->page_style ?: $website->published_page_style ?: 'auto')));
+        $shellContext = ['page_style' => $pageStyle];
+
         return [
-            'header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor) : '',
-            'footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor) : '',
+            'header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor, $shellContext) : '',
+            'footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor, $shellContext) : '',
             'header_overlay_enabled' => is_array($header) && (bool) ($header['overlay_header_on_banner'] ?? false),
         ];
     }
@@ -235,7 +243,7 @@ class ContentStorefrontService
      * fall back to the website home/first standard page. This keeps Single
      * templates aligned with Page Style and the global header overlay switch.
      */
-    private function dynamicPageContext(Website $website, mixed $contentType, array $siteShell, string $renderedTemplateMarkup = ''): array
+    private function dynamicPageContext(Website $website, mixed $contentType, array $siteShell, string $renderedTemplateMarkup = '', string $miniBannerImage = ''): array
     {
         $typeSlug = $contentType instanceof ContentType ? trim((string) $contentType->slug, '/') : '';
 
@@ -254,18 +262,30 @@ class ContentStorefrontService
             $contextPage = $website->pages()->where('page_type', 'standard')->orderBy('id')->first();
         }
 
-        $pageStyle = trim((string) ($contextPage?->page_style ?: $contextPage?->published_page_style ?: 'auto'));
+        $pageStyle = trim((string) ($website->page_style ?: $website->published_page_style ?: $contextPage?->page_style ?: $contextPage?->published_page_style ?: 'auto'));
         $style = PageStyleRegistry::all()[$pageStyle] ?? null;
         $pattern = PageStyleRegistry::pattern($pageStyle);
         $firstSurface = strtolower((string) ($pattern[0] ?? 'primary'));
         if (! in_array($firstSurface, ['white', 'surface', 'primary'], true)) $firstSurface = 'primary';
+
+        // Dynamic templates inherit the Builder page-style contract. Clean keeps a
+        // light mini banner when no image is selected; Balanced/Premium and other
+        // branded styles use the primary surface. Any uploaded mini-banner image
+        // always becomes a media-led primary-overlay hero for reliable contrast.
+        if ($pageStyle === 'clean') {
+            $firstSurface = 'white';
+        } elseif (trim($miniBannerImage) !== '') {
+            $firstSurface = 'primary';
+        } elseif (in_array($pageStyle, ['auto','balanced','premium','luxury','executive','refined','glass','cinematic','bold','creative','dynamic','contrast','immersive','startup','agency'], true)) {
+            $firstSurface = 'primary';
+        }
 
         // Dynamic Single templates own their mini-hero surface. Do not let the
         // Builder page-style pattern blindly force a light or white header over
         // a light editorial mini hero (or dark text over a primary mini hero).
         // Prefer an explicit semantic marker from saved/Luna templates, then
         // safely infer older template markup before falling back to page style.
-        if (trim($renderedTemplateMarkup) !== '') {
+        if (trim($miniBannerImage) === '' && trim($renderedTemplateMarkup) !== '' && !in_array($pageStyle, ['clean','balanced','premium','luxury','executive','refined','glass','cinematic','bold','creative','dynamic','contrast','immersive','startup','agency'], true)) {
             $firstSurface = $this->dynamicTemplateFirstSurface($renderedTemplateMarkup, $firstSurface);
         }
 

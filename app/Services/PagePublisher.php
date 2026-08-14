@@ -29,7 +29,7 @@ class PagePublisher
 
         $theme = $website->theme_settings ?? [];
         $primaryColor = $theme['primary'] ?? 'midnight';
-        return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['page_style' => $page->page_style]);
+        return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['page_style' => $website->page_style ?: $page->page_style ?: 'auto']);
     }
 
     /**
@@ -79,14 +79,17 @@ class PagePublisher
         $contentContext = $this->structuredContentExportContext($website);
         $contentEntryPages = $this->structuredContentEntryPages($website);
 
+        $publishedShellStyle = strtolower(trim((string) ($website->published_page_style ?: $website->page_style ?: 'auto')));
+        $publishedShellContext = ['page_style' => $publishedShellStyle];
+
         return [
             'status' => 'success',
             'website_name' => $website->name,
             'theme_palette' => $themePalette,
-            'global_header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor) : '',
-            'global_footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor) : '',
+            'global_header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor, $publishedShellContext) : '',
+            'global_footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor, $publishedShellContext) : '',
             'pages' => $pages
-                ->flatMap(function (Page $page) use ($primaryColor, $publishedPostsByPage, $pagePaths, $commerceContext, $contentContext) {
+                ->flatMap(function (Page $page) use ($website, $primaryColor, $publishedPostsByPage, $pagePaths, $commerceContext, $contentContext, $publishedShellStyle) {
                     // Commerce pages are dynamic Laravel storefront endpoints. Keep
                     // them in the page registry/navigation map, but never export a
                     // static index.html that could shadow /shop, /cart, /checkout,
@@ -121,6 +124,7 @@ class PagePublisher
                     $pagePackage = [[
                         'title' => $page->title,
                         'slug' => $page->slug,
+                        'page_style' => $publishedShellStyle,
                         // Every page gets its own directory. This makes
                         // parent/child routes predictable: /about/team/.
                         'output_path' => ($pageDirectory === '' ? 'index.html' : $pageDirectory . '/index.html'),
@@ -131,8 +135,8 @@ class PagePublisher
                             $blocks,
                             $primaryColor,
                             $page->page_type === 'blog'
-                                ? array_merge($commerceContext, $contentContext, ['blog_posts' => $posts, 'page_style' => $page->published_page_style ?? $page->page_style])
-                                : array_merge($commerceContext, $contentContext, ['page_style' => $page->published_page_style ?? $page->page_style])
+                                ? array_merge($commerceContext, $contentContext, ['blog_posts' => $posts, 'page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style])
+                                : array_merge($commerceContext, $contentContext, ['page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style])
                         ),
                     ]];
 
@@ -144,6 +148,7 @@ class PagePublisher
                         ->map(fn ($post) => [
                             'title' => $post->title,
                             'slug' => $postDirectory . '/' . $post->slug,
+                            'page_style' => $publishedShellStyle,
                             'output_path' => $postDirectory . '/' . $post->slug . '/index.html',
                             // Compile the complete Blog page composition so the live
                             // article keeps the same Mini Header, Single Post body,
@@ -152,7 +157,7 @@ class PagePublisher
                                 'blog_posts' => $posts,
                                 'single_blog_post' => $post->toArray(),
                                 'blog_index_url' => $postDirectory . '/',
-                                'page_style' => $page->published_page_style ?? $page->page_style,
+                                'page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style,
                             ])),
                         ])
                         ->all();
@@ -183,17 +188,18 @@ class PagePublisher
             ])
             ->orderBy('sort_order')
             ->get()
-            ->flatMap(function ($type) {
+            ->flatMap(function ($type) use ($website) {
                 $directory = trim((string) $type->slug, '/');
                 if ($directory === '') return [];
 
-                return $type->entries->map(function ($entry) use ($type, $directory) {
+                return $type->entries->map(function ($entry) use ($type, $directory, $website) {
                     $slug = trim((string) $entry->slug, '/');
                     if ($slug === '') return null;
 
                     return [
                         'title' => $entry->seo_title ?: $entry->title,
                         'slug' => $directory.'/'.$slug,
+                        'page_style' => strtolower(trim((string) ($website->published_page_style ?: $website->page_style ?: 'auto'))),
                         // Export clean entry URLs as directories so standard Nginx/Apache
                         // index resolution serves /blog/my-post/ without requiring
                         // a custom try_files rule for /blog/my-post.html.
@@ -225,9 +231,10 @@ class PagePublisher
     {
         $rendered = $this->contentTemplates->exportSingle($type, $entry, $template);
         $rendered = $this->normalizeStructuredContentAssetUrls($rendered);
+        $miniBannerImage = trim((string) data_get($template?->metadata, 'mini_banner_image_url', ''));
         $surface = $this->dynamicTemplateFirstSurface($rendered);
         $website = $type->website;
-        $header = $website?->published_global_header ?? $website?->global_header;
+        $header = $website?->global_header ?? $website?->published_global_header;
         $overlay = is_array($header) && (bool) ($header['overlay_header_on_banner'] ?? false);
 
         $contextPage = $website?->pages()->where('page_type', 'standard')->where('slug', $type->slug)->first();
@@ -236,13 +243,22 @@ class PagePublisher
                 ->where(function ($query) { $query->where('slug', 'home')->orWhere('slug', ''); })
                 ->first();
         }
-        $pageStyle = trim((string) ($contextPage?->published_page_style ?: $contextPage?->page_style ?: 'auto'));
+        $pageStyle = trim((string) ($website?->published_page_style ?: $website?->page_style ?: $contextPage?->published_page_style ?: $contextPage?->page_style ?: 'auto'));
+        if ($pageStyle === 'clean') {
+            $surface = 'white';
+        } elseif ($miniBannerImage !== '') {
+            $surface = 'primary';
+        } elseif (in_array($pageStyle, ['auto','balanced','premium','luxury','executive','refined','glass','cinematic','bold','creative','dynamic','contrast','immersive','startup','agency'], true)) {
+            $surface = 'primary';
+        }
 
         return '<section class="entry-template-runtime"'
             .' data-cosmic-dynamic-page-style="'.e($pageStyle).'"'
             .' data-cosmic-first-surface="'.e($surface).'"'
             .' data-cosmic-resolved-theme="'.e($surface).'"'
-            .' data-cosmic-block-type="dynamic_single_hero"'
+            .' data-cosmic-block-type="'.($miniBannerImage !== '' ? 'hero_background_image' : 'dynamic_single_hero').'"'
+            .' data-cosmic-mini-banner-image="'.($miniBannerImage !== '' ? 'true' : 'false').'"'
+            .($miniBannerImage !== '' ? ' style="--cosmic-mini-banner-image:url(\''.e($this->commerceAssetUrl($miniBannerImage)).'\')"' : '')
             .' data-cosmic-header-overlay="'.($overlay ? 'true' : 'false').'">'
             .$rendered
             .'</section>';

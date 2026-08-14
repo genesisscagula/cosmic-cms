@@ -29,6 +29,8 @@ class Website extends Model
         'deployment_error',
         'preview_deployment_error',
         'theme_settings',
+        'page_style',
+        'published_page_style',
         'global_header',
         'global_footer',
         'published_theme_settings',
@@ -59,7 +61,7 @@ class Website extends Model
     public function assignedUsers()
     {
         return $this->belongsToMany(User::class, 'website_user')
-            ->withPivot('assigned_by_user_id')
+            ->withPivot('assigned_by_user_id', 'role')
             ->withTimestamps();
     }
 

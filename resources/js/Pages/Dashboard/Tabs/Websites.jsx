@@ -6,6 +6,7 @@ import WebsiteEmptyState from "../Components/WebsiteEmptyState";
 import WebsiteToolbar from "../Components/WebsiteToolbar";
 import NewWebsiteModal from "../Components/NewWebsiteModal";
 import UpgradePlanModal from "../Components/UpgradePlanModal";
+import TransferOwnershipModal from "../Components/TransferOwnershipModal";
 import { confirmCosmicAction, showCosmicNotification } from "../../../Components/CosmicNotification";
 
 const accents = ["from-violet-500 to-indigo-600", "from-emerald-500 to-teal-600", "from-sky-500 to-blue-700", "from-orange-400 to-rose-600"];
@@ -15,7 +16,7 @@ const mapWebsiteForCard = (website, index) => {
     const themeSettings = website.theme_settings && typeof website.theme_settings === "object" ? website.theme_settings : {};
     const published = website.status ? website.status === "Published" : Number(website.published_pages_count || 0) > 0;
     const theme = website.theme || themeSettings.primary || themeSettings.primary_color || "midnight";
-    return { id: website.id, name: website.name || "Untitled Website", domain: website.domain || "No domain connected", industry: website.industry || "Uncategorized", location: website.location || "", status: published ? "Published" : "Draft", deploymentStatus: website.deployment_status || (website.last_deployed_at ? "Deployed" : (website.deployment_verified_at ? "Connected" : "Not connected")), pagesCount: Number(website.pages_count || 0), theme: `${theme.charAt(0).toUpperCase()}${theme.slice(1)}`, lastEdited: formatLastEdited(website.updated_at, website.updated_label), updatedAt: website.updated_at, createdAt: website.created_at, logoUrl: website.logo_url || null, previewUrl: website.preview_url || null, previewReady: Boolean(website.preview_ready || website.preview_url), canTransferOwnership: Boolean(website.can_transfer_ownership), ownerEmail: website.owner_email || null, accent: accents[(website.accent_index ?? index) % accents.length] };
+    return { id: website.id, name: website.name || "Untitled Website", domain: website.domain || "No domain connected", industry: website.industry || "Uncategorized", location: website.location || "", status: published ? "Published" : "Draft", deploymentStatus: website.deployment_status || (website.last_deployed_at ? "Deployed" : (website.deployment_verified_at ? "Connected" : "Not connected")), pagesCount: Number(website.pages_count || 0), theme: `${theme.charAt(0).toUpperCase()}${theme.slice(1)}`, lastEdited: formatLastEdited(website.updated_at, website.updated_label), updatedAt: website.updated_at, createdAt: website.created_at, logoUrl: website.logo_url || null, previewUrl: website.preview_url || null, previewReady: Boolean(website.preview_ready || website.preview_url), canTransferOwnership: Boolean(website.can_transfer_ownership), canManageAccess: Boolean(website.can_manage_access), accessRole: website.access_role || null, ownerEmail: website.owner_email || null, accent: accents[(website.accent_index ?? index) % accents.length] };
 };
 
 export default function Websites({ websites = [], dashboard = {} }) {
@@ -33,6 +34,7 @@ export default function Websites({ websites = [], dashboard = {} }) {
     const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
     const [selectedWebsiteIds, setSelectedWebsiteIds] = useState([]);
     const [bulkActionPending, setBulkActionPending] = useState(false);
+    const [transferWebsite, setTransferWebsite] = useState(null);
     const capabilities = dashboard.plan_capabilities || {};
     const locked = capabilities.can_add_sites === false;
     const isAgency = payload.mode === "agency" || capabilities.plan_family === "agency";
@@ -109,12 +111,14 @@ export default function Websites({ websites = [], dashboard = {} }) {
     const openCreate = () => locked ? setIsUpgradeModalOpen(true) : setIsCreateModalOpen(true);
     const deleteWebsite = async (website) => { if (!await confirmCosmicAction({ title: `Delete ${website.name}?`, message: "This permanently removes the website and all of its pages from Cosmic CMS.", confirmLabel: "Delete website", tone: "error" })) return; router.delete(route("websites.destroy", website.id), { preserveScroll: true }); };
     const duplicateWebsite = async (website) => { if (locked) { setIsUpgradeModalOpen(true); return; } if (!await confirmCosmicAction({ title: `Duplicate ${website.name}?`, message: "Cosmic will create a draft copy with its pages, content, theme, blog posts, header, and footer.", confirmLabel: "Create draft copy", tone: "info" })) return; router.post(route("websites.duplicate", website.id), {}, { preserveScroll: true, onError: (errors) => showCosmicNotification({ title: "Website could not be duplicated", message: errors.website_limit || "Please review your current plan allowance.", tone: "error" }) }); };
-    const transferOwnership = async (website) => {
-        const recipientEmail = window.prompt(`Enter the Cosmic account email that should receive ${website.name}:`);
-        if (!recipientEmail) return;
-        if (!await confirmCosmicAction({ title: `Hand off ${website.name}?`, message: `Ownership will move to ${recipientEmail}. The connected domain and deployment credentials will be cleared for security.`, confirmLabel: "Transfer ownership", tone: "info" })) return;
-        router.post(route("websites.transfer-ownership", website.id), { recipient_email: recipientEmail.trim() }, { preserveScroll: true, onError: (errors) => showCosmicNotification({ title: "Website could not be transferred", message: errors.recipient_email || "Please verify the recipient account and plan allowance.", tone: "error" }) });
-    };
+    const transferOwnership = (website) => setTransferWebsite(website);
+    const submitTransferOwnership = async (recipientEmail) => new Promise((resolve, reject) => {
+        router.post(route("websites.transfer-ownership", transferWebsite.id), { recipient_email: recipientEmail }, {
+            preserveScroll: true,
+            onSuccess: () => { setTransferWebsite(null); resolve(); },
+            onError: (errors) => reject(new Error(errors.recipient_email || "Please verify the recipient account and plan allowance.")),
+        });
+    });
     const downloadConnector = (website) => window.location.assign(route("websites.deployment-connector.download", website.id));
     const connectLiveSite = async (website) => { try { const response = await axios.post(route("websites.deployment-connector.verify", website.id)); showCosmicNotification({ title: "Live site connected", message: response.data.message, tone: "success" }); router.reload({ only: ["websites", "dashboard"], preserveScroll: true, preserveState: true }); } catch (error) { showCosmicNotification({ title: "Connection failed", message: error.response?.data?.message || "The live site connector could not be verified.", tone: "error" }); } };
     const pushLiveUpdate = async (website) => { if (!await confirmCosmicAction({ title: "Push live update?", message: `All published pages for ${website.name} will be sent to its connected live site.`, confirmLabel: "Push update", tone: "info" })) return; try { const response = await axios.post(route("websites.deployment-connector.push", website.id)); showCosmicNotification({ title: "Live site updated", message: response.data.message, tone: "success" }); router.reload({ only: ["websites", "dashboard"], preserveScroll: true, preserveState: true }); } catch (error) { showCosmicNotification({ title: "Live update failed", message: error.response?.data?.message || "The live update could not be pushed.", tone: "error" }); } };
@@ -133,5 +137,6 @@ export default function Websites({ websites = [], dashboard = {} }) {
         {filteredWebsites.length > perPage && <div className="mt-6 flex items-center justify-between"><p className="text-xs text-slate-500">Showing {(page - 1) * perPage + 1}–{Math.min(page * perPage, filteredWebsites.length)} of {filteredWebsites.length}</p><div className="flex gap-2"><button type="button" disabled={page === 1} onClick={() => setPage((value) => Math.max(1, value - 1))} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300 disabled:opacity-40">Previous</button><button type="button" disabled={page === totalPages} onClick={() => setPage((value) => Math.min(totalPages, value + 1))} className="rounded-lg border border-white/10 px-3 py-2 text-xs text-slate-300 disabled:opacity-40">Next</button></div></div>}
         <NewWebsiteModal open={isCreateModalOpen} onClose={() => setIsCreateModalOpen(false)} />
         <UpgradePlanModal open={isUpgradeModalOpen} onClose={() => setIsUpgradeModalOpen(false)} capabilities={capabilities} />
+        <TransferOwnershipModal open={Boolean(transferWebsite)} website={transferWebsite} onClose={() => setTransferWebsite(null)} onSubmit={submitTransferOwnership} />
     </section>;
 }

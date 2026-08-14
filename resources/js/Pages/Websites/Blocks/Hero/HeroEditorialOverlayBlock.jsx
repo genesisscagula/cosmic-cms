@@ -59,7 +59,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
     const configuredOverlayOpacity = Math.max(0, Math.min(100, Number(data.overlayOpacity) || 72));
     const effectiveOverlayOpacity = effectiveMediaOverlayOpacity(configuredOverlayOpacity, {
         isLight: isLightMediaTheme,
-        lightMinimum: 88,
+        lightMinimum: 96,
     });
     const height = {
         medium: "min-h-[520px]",

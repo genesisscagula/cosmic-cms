@@ -12,7 +12,6 @@ class WorkspaceAccessService
     public const ADMIN = 'admin';
     public const EDITOR = 'editor';
     public const VIEWER = 'viewer';
-    public const CLIENT = 'client';
 
     public function role(User $user, Workspace $workspace): ?string
     {
@@ -23,6 +22,23 @@ class WorkspaceAccessService
         return $workspace->users()->whereKey($user->id)->value('workspace_user.role');
     }
 
+
+    public function websiteRole(User $user, Website $website): ?string
+    {
+        if ((int) $website->user_id === (int) $user->id) return self::OWNER;
+        return $website->assignedUsers()->whereKey($user->id)->value('website_user.role');
+    }
+
+    public function canEditBuilder(User $user, Website $website): bool
+    {
+        return in_array($this->websiteRole($user, $website), [self::OWNER, 'website_admin', 'website_editor'], true);
+    }
+
+    public function canManageWebsite(User $user, Website $website): bool
+    {
+        return in_array($this->websiteRole($user, $website), [self::OWNER, 'website_admin'], true);
+    }
+
     public function isAssigned(User $user, Website $website): bool
     {
         return $website->assignedUsers()->whereKey($user->id)->exists();
@@ -30,56 +46,19 @@ class WorkspaceAccessService
 
     public function canView(User $user, Website $website): bool
     {
-        if ((int) $website->user_id === (int) $user->id) {
-            return true;
-        }
-
+        if ($this->websiteRole($user, $website)) return true;
         $workspace = $website->workspace;
-        if (! $workspace) {
-            return false;
-        }
-
-        $role = $this->role($user, $workspace);
-        if ($role === self::OWNER) {
-            return true;
-        }
-
-        return in_array($role, [self::ADMIN, self::EDITOR, self::VIEWER, self::CLIENT], true)
-            && $this->isAssigned($user, $website);
+        if (! $workspace) return false;
+        return $this->role($user, $workspace) === self::OWNER;
     }
 
     public function canUpdate(User $user, Website $website): bool
     {
-        if ((int) $website->user_id === (int) $user->id) {
-            return true;
-        }
-
-        $workspace = $website->workspace;
-        if (! $workspace) {
-            return false;
-        }
-
-        $role = $this->role($user, $workspace);
-        if ($role === self::OWNER) {
-            return true;
-        }
-
-        return in_array($role, [self::ADMIN, self::EDITOR], true)
-            && $this->isAssigned($user, $website);
+        return $this->canManageWebsite($user, $website);
     }
 
     public function canDelete(User $user, Website $website): bool
     {
-        $workspace = $website->workspace;
-        if (! $workspace) {
-            return false;
-        }
-
-        $role = $this->role($user, $workspace);
-        if ($role === self::OWNER) {
-            return true;
-        }
-
-        return $role === self::ADMIN && $this->isAssigned($user, $website);
+        return in_array($this->websiteRole($user, $website), [self::OWNER, 'website_admin'], true);
     }
 }

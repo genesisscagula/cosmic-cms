@@ -129,6 +129,23 @@ export default function Media({ websites = [] }) {
     const fileInputRef = useRef(null);
     const lastSelectedIndex = useRef(null);
 
+    useEffect(() => {
+        if (!availableWebsites.length) return;
+        if (!availableWebsites.some((website) => website.id === Number(websiteId))) {
+            setWebsiteId(availableWebsites[0].id);
+        }
+    }, [availableWebsites, websiteId]);
+    useEffect(() => {
+        setLocation({ type: "all", id: null });
+        setFolders([]);
+        setAssets([]);
+        setSelected([]);
+        setExpanded(new Set());
+        setContextMenu(null);
+        setFolderDialog(null);
+        setEditingAsset(null);
+    }, [websiteId]);
+
     useEffect(() => { const timer = setTimeout(() => setDebouncedQuery(query.trim()), 250); return () => clearTimeout(timer); }, [query]);
     useEffect(() => { if (typeof window !== "undefined") localStorage.setItem("cosmic-media-view", viewMode); }, [viewMode]);
     useEffect(() => { setPage(1); setSelected([]); lastSelectedIndex.current = null; }, [websiteId, location.type, location.id, debouncedQuery, sort]);
@@ -224,13 +241,43 @@ export default function Media({ websites = [] }) {
     };
 
     const moveAssets = async (ids, folderId) => {
-        const unique = [...new Set(ids)]; if (!unique.length) return;
-        try { await Promise.all(unique.map((id) => updateAsset(id, { folder_id: folderId }, true))); setSelected([]); await fetchLibrary(); const target = folderId ? folderMap.get(folderId)?.name : "Uncategorized"; showCosmicNotification({ title: "Media moved", message: `${unique.length} ${unique.length === 1 ? "image" : "images"} moved to ${target}.`, tone: "success" }); }
+        const targetFolderId = folderId ? Number(folderId) : null;
+        const unique = [...new Set(ids)].filter(Boolean).filter((id) => {
+            const asset = assets.find((item) => String(item.uuid) === String(id));
+            const currentFolderId = asset?.folder_id ? Number(asset.folder_id) : null;
+            return !asset || currentFolderId !== targetFolderId;
+        });
+        if (!unique.length) return; // Same-folder drops are no-ops, never duplicate media.
+        try { await Promise.all(unique.map((id) => updateAsset(id, { folder_id: targetFolderId }, true))); setSelected([]); await fetchLibrary(); const target = targetFolderId ? folderMap.get(targetFolderId)?.name : "Uncategorized"; showCosmicNotification({ title: "Media moved", message: `${unique.length} ${unique.length === 1 ? "image" : "images"} moved to ${target}.`, tone: "success" }); }
         catch (error) { showCosmicNotification({ title: "Move failed", message: error.response?.data?.message || "One or more images could not be moved.", tone: "error" }); }
     };
     const parseDraggedIds = (event) => { try { const parsed = JSON.parse(event.dataTransfer.getData("application/x-cosmic-media")); return Array.isArray(parsed) ? parsed.map(String).filter(Boolean) : []; } catch { return []; } };
     const dropAssetsToFolder = (folderId, event) => { const ids = parseDraggedIds(event); if (ids.length) moveAssets(ids, folderId); };
-    const dragStart = (event, asset) => { const ids = selected.includes(asset.uuid) ? selected : [asset.uuid]; event.dataTransfer.effectAllowed = "move"; event.dataTransfer.setData("application/x-cosmic-media", JSON.stringify(ids)); event.dataTransfer.setData("text/plain", `${ids.length} Cosmic media item(s)`); };
+    const dragStart = (event, asset) => {
+        const ids = selected.includes(asset.uuid) ? selected : [asset.uuid];
+        event.dataTransfer.effectAllowed = "move";
+        event.dataTransfer.setData("application/x-cosmic-media", JSON.stringify(ids));
+        event.dataTransfer.setData("text/plain", `${ids.length} Cosmic media item(s)`);
+
+        // Keep the drag ghost compact so it never covers the folder tree/drop target.
+        const ghost = document.createElement("div");
+        ghost.style.cssText = "position:fixed;left:-9999px;top:-9999px;width:48px;height:40px;border-radius:12px;overflow:hidden;background:#17171b;border:1px solid rgba(255,255,255,.18);box-shadow:0 12px 28px rgba(0,0,0,.45);pointer-events:none;";
+        const image = document.createElement("img");
+        image.src = asset.url;
+        image.alt = "";
+        image.style.cssText = "width:100%;height:100%;object-fit:cover;display:block;";
+        ghost.appendChild(image);
+        if (ids.length > 1) {
+            const badge = document.createElement("span");
+            badge.textContent = String(ids.length);
+            badge.style.cssText = "position:absolute;right:6px;bottom:6px;min-width:20px;height:20px;padding:0 5px;border-radius:999px;background:#7c3aed;color:white;font:700 11px/20px system-ui;text-align:center;";
+            ghost.style.position = "fixed";
+            ghost.appendChild(badge);
+        }
+        document.body.appendChild(ghost);
+        event.dataTransfer.setDragImage(ghost, 24, 20);
+        requestAnimationFrame(() => setTimeout(() => ghost.remove(), 0));
+    };
 
     const selectAsset = (id, nativeEvent) => {
         const index = assets.findIndex((asset) => asset.uuid === id);
@@ -271,7 +318,7 @@ export default function Media({ websites = [] }) {
 
                 <div className="flex min-h-12 items-center justify-between gap-3 border-b border-white/[0.05] px-5 py-2"><div className="min-w-0"><h2 className="truncate text-sm font-semibold text-white">{locationTitle}</h2><p className="mt-0.5 text-[10px] text-slate-600">{pagination.total} {pagination.total === 1 ? "item" : "items"}{debouncedQuery ? ` matching “${debouncedQuery}”` : ""}</p></div>{selected.length > 0 && <div className="flex flex-wrap items-center justify-end gap-2"><span className="rounded-lg bg-violet-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-violet-200">{selected.length} selected</span><button type="button" onClick={() => setSelected([])} className="rounded-lg px-2.5 py-1.5 text-[11px] font-semibold text-slate-500 hover:text-white">Clear</button><button type="button" onClick={() => deleteAssets(selected)} className="rounded-lg border border-rose-400/15 bg-rose-400/[0.06] px-2.5 py-1.5 text-[11px] font-semibold text-rose-300 hover:bg-rose-400/10">Move to Trash</button></div>}</div>
 
-                <div onDragEnter={(event) => { if ([...event.dataTransfer.types].includes("Files")) { event.preventDefault(); setDropActive(true); } }} onDragOver={(event) => { if ([...event.dataTransfer.types].includes("Files")) event.preventDefault(); }} onDragLeave={(event) => { if (event.currentTarget === event.target || !event.currentTarget.contains(event.relatedTarget)) setDropActive(false); }} onDrop={(event) => { if ([...event.dataTransfer.types].includes("Files")) { event.preventDefault(); setDropActive(false); uploadFiles(event.dataTransfer.files); } }} className="relative min-h-[520px] p-4 sm:p-5">
+                <div onDragEnter={(event) => { const types=[...event.dataTransfer.types]; if (types.includes("Files") && !types.includes("application/x-cosmic-media")) { event.preventDefault(); setDropActive(true); } }} onDragOver={(event) => { const types=[...event.dataTransfer.types]; if (types.includes("Files") && !types.includes("application/x-cosmic-media")) event.preventDefault(); }} onDragLeave={(event) => { if (event.currentTarget === event.target || !event.currentTarget.contains(event.relatedTarget)) setDropActive(false); }} onDrop={(event) => { const types=[...event.dataTransfer.types]; if (types.includes("application/x-cosmic-media")) { event.preventDefault(); setDropActive(false); return; } if (types.includes("Files")) { event.preventDefault(); setDropActive(false); uploadFiles(event.dataTransfer.files); } }} className="relative min-h-[520px] p-4 sm:p-5">
                     {dropActive && <div className="pointer-events-none absolute inset-3 z-20 flex items-center justify-center rounded-3xl border-2 border-dashed border-violet-400/60 bg-violet-500/10 backdrop-blur-sm"><div className="rounded-2xl border border-violet-300/20 bg-[#17171b]/95 px-8 py-6 text-center shadow-2xl"><span className="mx-auto flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-400/15 text-xl text-violet-200">↑</span><p className="mt-3 text-sm font-semibold text-white">Drop images to upload</p><p className="mt-1 text-xs text-slate-500">Into {currentFolder?.name || "Uncategorized"}</p></div></div>}
                     {loading ? <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">{Array.from({ length: 12 }).map((_, index) => <div key={index} className="overflow-hidden rounded-2xl border border-white/[0.05]"><div className="aspect-[4/3] animate-pulse bg-white/[0.04]" /><div className="space-y-2 p-3"><div className="h-3 w-3/4 animate-pulse rounded bg-white/[0.05]" /><div className="h-2.5 w-1/2 animate-pulse rounded bg-white/[0.035]" /></div></div>)}</div> : assets.length ? <div className={viewMode === "grid" ? "grid grid-cols-2 gap-4 sm:grid-cols-3 2xl:grid-cols-4" : "space-y-1 overflow-x-auto cosmic-scrollbar"}>{assets.map((asset) => <AssetCard key={asset.id} asset={asset} selected={selected.includes(asset.uuid)} viewMode={viewMode} onSelect={selectAsset} onOpen={setEditingAsset} onContext={openAssetContext} onDragStart={dragStart} />)}</div> : <div className="flex min-h-[430px] items-center justify-center"><div className="max-w-sm text-center"><span className="mx-auto flex h-16 w-16 items-center justify-center rounded-3xl border border-white/[0.06] bg-white/[0.025] text-2xl text-slate-500">▧</span><h3 className="mt-4 text-sm font-semibold text-slate-300">{debouncedQuery ? "No matching media" : "This space is ready"}</h3><p className="mt-1.5 text-xs leading-5 text-slate-600">{debouncedQuery ? "Try a different search term or location." : `Upload images or drag them here. New uploads will go to ${currentFolder?.name || "Uncategorized"}.`}</p>{!debouncedQuery && <button type="button" onClick={() => fileInputRef.current?.click()} className="mt-4 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-xs font-semibold text-slate-300 hover:text-white">Choose images</button>}</div></div>}
                 </div>

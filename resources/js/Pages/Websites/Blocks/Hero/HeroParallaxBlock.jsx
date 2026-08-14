@@ -63,12 +63,12 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const configuredOverlayOpacity = Math.max(20, Math.min(90, Number(data.overlayOpacity) || 64));
     const effectiveOverlayOpacity = effectiveMediaOverlayOpacity(configuredOverlayOpacity, {
         isLight: isLightMediaTheme,
-        lightMinimum: 88,
+        lightMinimum: 96,
     });
     const mediaStyle = isLightMediaTheme
         ? {
             overlay: "bg-white",
-            gradient: "from-white/99 via-white/88 to-white/68",
+            gradient: "from-white/100 via-white/97 to-white/92",
             badge: "border-slate-900/15 bg-white/72",
             eyebrow: "!text-slate-700",
             heading: "!text-slate-950",

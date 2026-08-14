@@ -197,12 +197,12 @@ class DynamicContentTemplateRenderer
         return <<<HTML
 <article class="bg-white text-slate-950" itemscope itemtype="https://schema.org/Article">
     <div class="mx-auto max-w-7xl px-6 py-10 lg:px-8 lg:py-16">
-        <div class="mx-auto max-w-4xl">
+        <header data-cosmic-mini-hero="true" class="mx-auto max-w-4xl">
             <p class="text-xs font-extrabold uppercase tracking-[0.2em] text-violet-600">{{ category }}</p>
             <h1 itemprop="headline" class="mt-4 text-4xl font-extrabold tracking-[-0.04em] text-slate-950 sm:text-5xl lg:text-6xl">{{ title }}</h1>
             <p class="mt-6 max-w-3xl text-lg leading-8 text-slate-600">{{ excerpt }}</p>
             <div class="mt-5 flex flex-wrap gap-2 text-sm text-slate-500">{{ tags }}</div>
-        </div>
+        </header>
         <div class="mx-auto mt-10 max-w-6xl overflow-hidden rounded-[2rem] border border-slate-200 bg-slate-100 shadow-xl shadow-slate-900/5">
             <img itemprop="image" src="{{ featured_image_url }}" alt="{{ title }}" fetchpriority="high" decoding="async" class="aspect-[16/9] w-full object-cover">
         </div>

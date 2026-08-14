@@ -25,6 +25,7 @@ use App\Http\Controllers\AgencyLeadController;
 use App\Http\Controllers\AgencySalesController;
 use App\Http\Controllers\WorkspaceMemberController;
 use App\Http\Controllers\WebsiteAssignmentController;
+use App\Http\Controllers\WebsiteAccessController;
 use App\Http\Controllers\WorkspaceInvitationAcceptanceController;
 use App\Http\Controllers\WebsiteHandoffController;
 use App\Http\Controllers\AgencyBrandingController;
@@ -518,6 +519,10 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
         ->name('websites.bulk-action');
     Route::post('/websites/{website}/duplicate', [WebsiteController::class, 'duplicate'])->name('websites.duplicate');
     Route::post('/websites/{website}/transfer-ownership', [WebsiteController::class, 'transferOwnership'])->name('websites.transfer-ownership');
+    Route::get('/websites/{website}/access', [WebsiteAccessController::class, 'index'])->name('websites.access.index');
+    Route::post('/websites/{website}/access', [WebsiteAccessController::class, 'store'])->middleware('throttle:20,1')->name('websites.access.store');
+    Route::patch('/websites/{website}/access/{member}', [WebsiteAccessController::class, 'update'])->middleware('throttle:20,1')->name('websites.access.update');
+    Route::delete('/websites/{website}/access/{member}', [WebsiteAccessController::class, 'destroy'])->middleware('throttle:20,1')->name('websites.access.destroy');
     Route::get('/website-handoffs/{token}', [WebsiteHandoffController::class, 'show'])->name('website-handoffs.show');
     Route::post('/website-handoffs/{token}/accept', [WebsiteHandoffController::class, 'accept'])->middleware('throttle:10,1')->name('website-handoffs.accept');
     Route::delete('/website-handoffs/{handoff}', [WebsiteHandoffController::class, 'cancel'])->name('website-handoffs.cancel');

@@ -2,9 +2,12 @@
 
 namespace App\Helpers;
 
+use App\Support\PageStyleRegistry;
+
 class CmsHtmlCompiler
 {
     private static ?array $themeCatalog = null;
+    private static string $currentPageStyle = 'auto';
 
     private static function themeCatalog(): array
     {
@@ -57,7 +60,7 @@ class CmsHtmlCompiler
      */
     private static function mediaOverlayColor(string $resolvedTheme, string $primaryColor): string
     {
-        if (in_array($resolvedTheme, ['white', 'surface', 'stone'], true)) {
+        if (self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true)) {
             return '#ffffff';
         }
 
@@ -660,6 +663,7 @@ JS;
    public static function compile(array $blocks, string $primaryColor = null, array $context = []): string
     {
         $html = "";
+        self::$currentPageStyle = strtolower(trim((string) ($context['page_style'] ?? 'auto')));
     
         // 2. Mapping
 
@@ -672,16 +676,13 @@ JS;
             // use this marker at runtime to decide whether the first Spark is PRIMARY.
             $fragmentStart = strlen($html);
 
-            $pattern = [
-                "primary",
-                "white",
-                "surface",
-                "white"
-            ];
+            $pattern = PageStyleRegistry::pattern(self::$currentPageStyle);
 
             $blockTheme = $block['theme'] ?? "auto";
 
-            if ($blockTheme === "auto") {
+            // Clean owns the complete light section rhythm. Historical explicit
+            // Spark theme values must not re-introduce primary/double-white runs.
+            if (self::$currentPageStyle === 'clean' || $blockTheme === "auto") {
                 $blockTheme = $pattern[$index % count($pattern)];
             }
 
@@ -1297,10 +1298,20 @@ HTML;
                 $ctaLabel = e($block['cta_label'] ?? 'Get Started');
                 $ctaUrl = e($block['cta_url'] ?? '#');
                 $menuItems = $block['menu'] ?? [];
-                $overlayHeader = (bool) ($block['overlay_header_on_banner'] ?? false);
+                $overlayRequested = (bool) ($block['overlay_header_on_banner'] ?? false);
                 $overlayPrimaryAllowed = ! in_array(strtolower((string) ($primaryColor ?: 'midnight')), ['stone', 'white'], true);
+                $overlayHeaderCompatible = in_array(self::$currentPageStyle, ['premium', 'balanced'], true)
+                    && $overlayPrimaryAllowed;
+                // Overlay Header is intentionally limited to Premium/Balanced on
+                // compatible theme families. Clean, Warm Stone and Studio White
+                // always render the normal header even if stale saved data says on.
+                $overlayHeader = $overlayRequested && $overlayHeaderCompatible;
+                $premiumOverlayHeader = $overlayHeader;
+                $overlayToneClass = $premiumOverlayHeader
+                    ? 'cosmic-overlay-tone-light cosmic-overlay-cta-surface'
+                    : 'cosmic-overlay-tone-dark cosmic-overlay-cta-primary';
                 $overlayHeaderClass = $overlayHeader
-                    ? 'cosmic-static-overlay-header absolute inset-x-0 top-0 border-transparent bg-transparent shadow-none'
+                    ? "cosmic-static-overlay-header {$overlayToneClass} absolute inset-x-0 top-0 border-transparent bg-transparent shadow-none"
                     : 'sticky top-0 bg-white shadow-sm';
 
                 // Header always white in standard mode. Overlay mode preserves
@@ -1447,7 +1458,11 @@ HTML;
                         min-height: calc(100vh - var(--cosmic-header-flow-offset, 0px));
                         padding-top: clamp(4.5rem, 9vh, 8rem) !important;
                         padding-bottom: clamp(4.5rem, 9vh, 8rem) !important;
+                        display: flex;
+                        align-items: center;
                     }
+                    section[data-cosmic-block-type^='hero_'] > .relative,
+                    section[data-cosmic-block-type='image_cta_banner'] > .relative { width: 100%; }
                     @supports (height: 100svh) {
                         section[data-cosmic-block-type^='hero_'],
                         section[data-cosmic-block-type='image_cta_banner'] {
@@ -1480,16 +1495,16 @@ HTML;
                        navigation/logo treatment from the first Spark, while CTA keeps
                        the site's primary brand color unless that would merge into a
                        same-primary hero. */
-                    .cosmic-static-overlay-header.cosmic-overlay-tone-light > a {
+                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-tone-light > a {
                         color: #fff !important;
                     }
-                    .cosmic-static-overlay-header.cosmic-overlay-tone-light > a img {
+                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-tone-light > a img {
                         filter: brightness(0) invert(1) !important;
                     }
-                    .cosmic-static-overlay-header.cosmic-overlay-tone-light > nav > ul > li > a {
+                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-tone-light > nav > ul > li > a {
                         color: #fff !important;
                     }
-                    .cosmic-static-overlay-header.cosmic-overlay-tone-light > nav > ul > li > a:hover {
+                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-tone-light > nav > ul > li > a:hover {
                         color: rgba(255,255,255,.82) !important;
                     }
                     .cosmic-static-overlay-header.cosmic-overlay-tone-dark > nav > ul > li > a {
@@ -1498,7 +1513,7 @@ HTML;
                     .cosmic-static-overlay-header.cosmic-overlay-tone-dark > nav > ul > li > a:hover {
                         color: #020617 !important;
                     }
-                    .cosmic-static-overlay-header.cosmic-overlay-cta-surface > nav > a {
+                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-cta-surface > nav > a {
                         background: #fff !important;
                         color: #1e293b !important;
                         box-shadow: 0 10px 30px rgba(15,23,42,.14) !important;
@@ -1508,7 +1523,7 @@ HTML;
                     }
                 </style>
 
-                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' class='cosmic-static-header {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 border-b {$headerBorder} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
+                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-page-style='" . e(self::$currentPageStyle) . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' data-cosmic-premium-overlay-header='" . ($premiumOverlayHeader ? "true" : "false") . "' class='cosmic-static-header {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 border-b {$headerBorder} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
                     <a href='/' class='relative z-[72] text-xl font-extrabold tracking-wide {$headerText}' aria-label='{$logoText} home'>
                         {$logo}
                     </a>
@@ -1590,20 +1605,16 @@ HTML;
                             if (firstSection) {
                                 firstSection.classList.add('cosmic-static-overlay-first-spark');
 
-                                const primaryOverlayAllowed = staticHeader.dataset.cosmicPrimaryOverlayAllowed === 'true';
-                                const resolvedTheme = String(firstSection.dataset.cosmicResolvedTheme || '').toLowerCase();
-                                const blockType = String(firstSection.dataset.cosmicBlockType || '').toLowerCase();
-                                const mediaHeroTypes = new Set(['hero_background_image','hero_parallax','hero_video_background','hero_slider_fade','hero_floating_glass','image_cta_banner']);
-                                const isMediaHero = mediaHeroTypes.has(blockType) || blockType.includes('video') || blockType.includes('slider') || blockType.includes('parallax');
-                                const lightSemanticSurface = resolvedTheme === 'white' || resolvedTheme === 'surface';
-                                const useLightHeader = isMediaHero || !lightSemanticSurface;
-                                const samePrimaryHero = resolvedTheme === 'primary' || resolvedTheme === 'accent';
-                                const useSurfaceCta = useLightHeader && samePrimaryHero && primaryOverlayAllowed;
+                                // Final Page Style contract. Do not inspect the first Spark's
+                                // luminance/media anymore: Premium/Balanced + overlay gets the
+                                // white header/CTA treatment unless the active primary family is
+                                // Warm Stone / Studio White. Every other case stays normal/dark.
+                                const useLightHeader = staticHeader.dataset.cosmicPremiumOverlayHeader === 'true';
 
                                 staticHeader.classList.toggle('cosmic-overlay-tone-light', useLightHeader);
                                 staticHeader.classList.toggle('cosmic-overlay-tone-dark', !useLightHeader);
-                                staticHeader.classList.toggle('cosmic-overlay-cta-surface', useSurfaceCta);
-                                staticHeader.classList.toggle('cosmic-overlay-cta-primary', !useSurfaceCta);
+                                staticHeader.classList.toggle('cosmic-overlay-cta-surface', useLightHeader);
+                                staticHeader.classList.toggle('cosmic-overlay-cta-primary', !useLightHeader);
 
                                 const syncOverlaySpacing = () => {
                                     const headerHeight = Math.ceil(staticHeader.getBoundingClientRect().height || 0);
@@ -2362,14 +2373,14 @@ HTML;
 
                 $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 50)));
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'primary');
-                $isLight = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                $isLight = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                 // Match the Builder: white/surface sections receive a true white
                 // wash with a strong minimum instead of a primary-colour tint.
                 // Hero Background Image uses a stronger contrast floor than the
                 // generic media overlay so the dynamic primary+slate blend stays
                 // visible over bright photography. Match the Builder exactly.
                 $overlayStrength = ($isLight
-                    ? max(90, $overlayOpacity)
+                    ? max(96, $overlayOpacity)
                     : max(46, min(68, (int) round($overlayOpacity * 0.90)))) / 100;
                 $primaryOverlayTheme = self::getTheme($primaryColor);
                 $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
@@ -2495,7 +2506,7 @@ HTML;
                     $sliderId = 'cosmic-slider-' . substr(sha1(json_encode($slides)), 0, 10);
                     $interval = max(3000, (int) ($block['autoplay_interval'] ?? $block['interval'] ?? 6000));
                     $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
-                    $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                    $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                     $sliderOverlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
                     $sliderOverlayClass = $lightMedia ? 'bg-white/90' : '';
                     $sliderOverlayStyle = $lightMedia ? '' : "background-color:{$sliderOverlayHex};opacity:0.50;";
@@ -2672,7 +2683,7 @@ HTML;
                     $height = ($block['height'] ?? 'screen') === 'large' ? 'large' : 'screen';
                     $scrollLabel = e($block['scroll_label'] ?? 'Scroll to explore');
                     $resolvedTheme = (string) ($block['resolvedTheme'] ?? 'primary');
-                    $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                    $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                     $primaryTheme = self::getTheme($primaryColor);
                     $parallaxId = 'cosmic-parallax-' . substr(sha1(json_encode($block)), 0, 10);
 
@@ -2693,9 +2704,9 @@ HTML;
 
                     $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
                     $overlayColor = $lightMedia ? 'bg-white' : '';
-                    $effectiveOverlayOpacity = $lightMedia ? max(88, $overlayOpacity) : max(32, min(56, (int) round($overlayOpacity * 0.72)));
+                    $effectiveOverlayOpacity = $lightMedia ? max(96, $overlayOpacity) : max(32, min(56, (int) round($overlayOpacity * 0.72)));
                     $gradient = $lightMedia
-                        ? 'from-white/99 via-white/90 to-white/72'
+                        ? 'from-white/100 via-white/97 to-white/92'
                         : 'from-slate-950/55 via-slate-950/12 to-slate-950/16';
                     $badge = $lightMedia ? 'border-slate-900/15 bg-white/60' : 'border-white/20 bg-white/10';
                     $eyebrowClass = $lightMedia ? 'text-slate-700' : 'text-white/85';
@@ -2804,8 +2815,8 @@ HTML;
                 $backgroundImage = e(self::staticAssetUrl($block['image_url'] ?? ''));
                 $overlayOpacity = max(0, min(100, intval($block['overlayOpacity'] ?? 72)));
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'primary');
-                $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
-                $effectiveOverlayOpacity = $lightMedia ? max(88, $overlayOpacity) : max(32, min(56, (int) round($overlayOpacity * 0.72)));
+                $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                $effectiveOverlayOpacity = $lightMedia ? max(96, $overlayOpacity) : max(32, min(56, (int) round($overlayOpacity * 0.72)));
                 $heroHeight = match ($block['height'] ?? 'large') {
                     'medium' => 'min-h-[520px]',
                     'screen' => 'min-h-[72svh] sm:min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh]',
@@ -2815,7 +2826,7 @@ HTML;
                 $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
                 $overlayClass = $lightMedia ? 'bg-white' : '';
                 $gradientClass = $lightMedia
-                    ? 'from-white/99 via-white/92 to-white/76'
+                    ? 'from-white/100 via-white/97 to-white/92'
                     : 'from-slate-950/55 via-slate-950/22 to-transparent';
                 $taglineClass = $lightMedia ? 'text-slate-700' : 'text-white/75';
                 $headingClass = $lightMedia ? 'text-slate-950' : 'text-white';
@@ -2907,7 +2918,7 @@ HTML;
                 $primaryTheme = self::getTheme($primaryColor);
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
-                $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
                 $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
                 $premiumOverlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
@@ -3085,9 +3096,9 @@ HTML;
                 $primaryTheme = self::getTheme($primaryColor);
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
                 $isPrimarySection = $resolvedTheme === 'primary';
-                $isLightMediaTheme = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                $isLightMediaTheme = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                 $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
-                $overlayOpacity = $isLightMediaTheme ? 0.90 : 0.52;
+                $overlayOpacity = $isLightMediaTheme ? 0.96 : 0.52;
                 $primaryButtonBg = $isLightMediaTheme ? $primaryTheme['bg'] : ($isPrimarySection ? 'bg-white' : $primaryTheme['bg']);
                 $primaryButtonText = $isLightMediaTheme ? 'text-white' : ($isPrimarySection ? 'text-slate-950' : 'text-white');
                 $borderClass = $isLightMediaTheme ? 'border-slate-900/15' : 'border-white/25';
@@ -3100,8 +3111,8 @@ HTML;
                 $dividerClass = $isLightMediaTheme ? 'bg-slate-900/25' : 'bg-white/35';
                 $imageStyle = $imageUrl ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;" : '';
                 $overlayStyle = "background-color:{$overlayHex};opacity:{$overlayOpacity};";
-                $horizontalGradient = $isLightMediaTheme ? 'bg-gradient-to-r from-white/45 via-white/10 to-transparent' : 'bg-gradient-to-r from-slate-950/30 via-transparent to-transparent';
-                $verticalGradient = $isLightMediaTheme ? 'bg-gradient-to-t from-white/30 via-transparent to-white/10' : 'bg-gradient-to-t from-slate-950/34 via-transparent to-slate-950/8';
+                $horizontalGradient = $isLightMediaTheme ? 'bg-gradient-to-r from-white/72 via-white/48 to-white/24' : 'bg-gradient-to-r from-slate-950/30 via-transparent to-transparent';
+                $verticalGradient = $isLightMediaTheme ? 'bg-gradient-to-t from-white/56 via-white/20 to-white/24' : 'bg-gradient-to-t from-slate-950/34 via-transparent to-slate-950/8';
 
                 $html .= "
                 <section class='relative min-h-[82vh] overflow-hidden {$theme['bg']}' style=\"{$imageStyle}\">
@@ -3294,14 +3305,14 @@ HTML;
                 // Builder receives resolvedTheme from the section wrapper, while stored/published
                 // block data commonly only contains theme. Recreate the same resolved value here.
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'primary');
-                $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                 $backgroundStyle = $backgroundImage
                     ? "background-image:url('{$backgroundImage}');background-size:cover;background-position:center;"
                     : '';
 
                 $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
                 $overlayClass = $lightMedia ? 'bg-white' : '';
-                $effectiveOverlayOpacity = $lightMedia ? max(90, $overlayOpacity) : max(32, min(56, (int) round($overlayOpacity * 0.72)));
+                $effectiveOverlayOpacity = $lightMedia ? max(96, $overlayOpacity) : max(32, min(56, (int) round($overlayOpacity * 0.72)));
                 $gradientClass = $lightMedia
                     ? 'from-white/100 via-white/96 to-white/82'
                     : 'from-slate-950/48 via-slate-950/18 to-slate-950/10';
@@ -3940,7 +3951,7 @@ HTML;
                     $primaryColor
                 );
                 $resolvedTheme = (string) ($block['resolvedTheme'] ?? $blockTheme ?? $selectedThemeName ?? 'surface');
-                $lightMedia = in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
                 $videoOverlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
                 $videoOverlayBase = $lightMedia ? 'bg-white/90' : '';
                 $videoOverlayStyle = $lightMedia ? '' : "background-color:{$videoOverlayHex};opacity:0.50;";

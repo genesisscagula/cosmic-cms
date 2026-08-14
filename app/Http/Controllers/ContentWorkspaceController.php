@@ -515,7 +515,7 @@ PROMPT;
             $contextPage = $website->pages()->where('page_type', 'standard')->orderBy('id')->first();
         }
 
-        $pageStyle = trim((string) ($contextPage?->page_style ?: $contextPage?->published_page_style ?: 'auto'));
+        $pageStyle = trim((string) ($website->page_style ?: $website->published_page_style ?: $contextPage?->page_style ?: $contextPage?->published_page_style ?: 'auto'));
         $style = PageStyleRegistry::all()[$pageStyle] ?? null;
         $pattern = PageStyleRegistry::pattern($pageStyle);
         $firstSurface = strtolower((string) ($pattern[0] ?? 'primary'));
@@ -551,6 +551,7 @@ PROMPT;
             'name' => ['required', 'string', 'max:140'],
             'description' => ['nullable', 'string', 'max:500'],
             'markup' => ['nullable', 'string', 'max:250000'],
+            'mini_banner_image_url' => ['nullable', 'string', 'max:2048'],
         ]);
 
         $bindings = self::bindingCatalog($contentType);
@@ -587,6 +588,7 @@ PROMPT;
                 'schema_snapshot' => $contentType->schema ?: [],
                 'bindings' => $bindings,
                 'binding_version' => 1,
+                'mini_banner_image_url' => trim((string) ($validated['mini_banner_image_url'] ?? '')),
             ],
         ]);
 
@@ -614,6 +616,7 @@ PROMPT;
             'name' => ['required', 'string', 'max:140'],
             'description' => ['nullable', 'string', 'max:500'],
             'markup' => ['required', 'string', 'max:250000'],
+            'mini_banner_image_url' => ['nullable', 'string', 'max:2048'],
         ]);
         $this->validateTemplateBindings($validated['markup'], $contentType, $template->template_type);
 
@@ -625,6 +628,7 @@ PROMPT;
                 'schema_snapshot' => $contentType->schema ?: [],
                 'bindings' => self::bindingCatalog($contentType),
                 'binding_version' => 1,
+                'mini_banner_image_url' => trim((string) ($validated['mini_banner_image_url'] ?? data_get($template->metadata, 'mini_banner_image_url', ''))),
             ]),
         ]);
 

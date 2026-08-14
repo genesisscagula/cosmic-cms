@@ -138,7 +138,7 @@ const bindDefaultCommerceProduct = (block, commerce) => {
 
 
 
-export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [], themeAccess: builderThemeAccess = null, commerce = { enabled:false, currency:'USD', currency_decimals:2, products:[], categories:[] }, contentWorkspace = { types: [] } }) {
+export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [], themeAccess: builderThemeAccess = null, commerce = { enabled:false, currency:'USD', currency_decimals:2, products:[], categories:[] }, contentWorkspace = { types: [] }, websiteAccessRole = null }) {
     const { props } = usePage();
     const currentPlanKey = builderThemeAccess?.plan_key || props?.auth?.effectivePlanKey || props?.auth?.user?.plan_key || 'starter';
     // The Builder receives a route-specific entitlement payload because this
@@ -382,6 +382,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'theme_to_logo', logo_theme_synced_theme: theme }
                     : { logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'manual_theme_change', logo_theme_synced_theme: null }) : {}),
             }));
+            if (['stone', 'white'].includes(String(theme).toLowerCase()) && data.global_header?.overlay_header_on_banner) {
+                updateHeader({ overlay_header_on_banner: false });
+                showCosmicNotification({
+                    title: 'Overlay Header turned off',
+                    message: 'Overlay Header isn’t compatible with Warm Stone or Studio White. Choose another theme to enable it.',
+                    tone: 'info',
+                });
+            }
             if (hasRealLogo) {
                 setLogoSyncState(brandThemeMatchesCurrentLogo ? 'synced' : 'theme_changed');
                 if (!brandThemeMatchesCurrentLogo) {
@@ -2069,7 +2077,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     const resolveBlockTheme = (block, index) => {
 
-        if (block.theme && block.theme !== "auto") {
+        // Clean is a website-level light visual system. Ignore legacy per-Spark
+        // theme assignments so its rhythm stays deterministic: white/surface.
+        if (currentPageStyle !== 'clean' && block.theme && block.theme !== "auto") {
             return block.theme;
         }
 
@@ -2215,7 +2225,17 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         firstBlockType.includes('banner')
     );
     const firstBlockResolvedTheme = firstBlock ? resolveBlockTheme(firstBlock, 0) : null;
-    const overlayHeaderActive = Boolean(data.global_header?.overlay_header_on_banner && firstBlockIsBanner);
+    const activePrimaryThemeKey = String(globalSelections?.primary || 'midnight').toLowerCase();
+    const normalizedPageStyle = String(currentPageStyle || 'auto').toLowerCase();
+    const overlayThemeBlocked = ['stone', 'white'].includes(activePrimaryThemeKey);
+    const overlayStyleBlocked = normalizedPageStyle === 'clean';
+    const overlayHeaderCompatible = ['premium', 'balanced'].includes(normalizedPageStyle) && !overlayThemeBlocked;
+    const overlayCompatibilityMessage = overlayStyleBlocked
+        ? 'Overlay Header is available with Balanced or Premium page styles.'
+        : overlayThemeBlocked
+            ? 'Overlay Header isn’t compatible with the current theme. Choose another theme to enable it.'
+            : 'Overlay Header is available with Balanced or Premium page styles.';
+    const overlayHeaderActive = Boolean(data.global_header?.overlay_header_on_banner && firstBlockIsBanner && overlayHeaderCompatible);
     const overlayHeaderRef = useRef(null);
     const [overlayHeaderHeight, setOverlayHeaderHeight] = useState(80);
 
@@ -2255,16 +2275,30 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     // original logo and dark navigation. CTA prefers the site's primary brand
     // color and only falls back to a white surface when primary would disappear
     // into a same-primary hero.
-    const activePrimaryThemeKey = String(globalSelections?.primary || 'midnight').toLowerCase();
     const firstResolvedThemeKey = String(firstBlockResolvedTheme || '').toLowerCase();
+    // Header contrast is based on the *actual background surface* of the first
+    // Spark. A normal content/side image must not turn a Clean white hero into
+    // a light-on-light overlay header.
+    const firstBlockUsesBackgroundMediaType = Boolean(firstBlock && (
+        firstBlockType.includes('background')
+        || firstBlockType.includes('parallax')
+        || firstBlockType.includes('slider')
+        || firstBlockType === 'image_cta_banner'
+    ));
     const firstBlockHasHeroMedia = Boolean(firstBlock && (
-        firstBlock?.image_url
-        || firstBlock?.background_image_url
-        || firstBlock?.poster_image_url
-        || firstBlock?.video_url
-        || firstBlock?.video_src
-        || (Array.isArray(firstBlock?.slides) && firstBlock.slides.some((slide) => slide?.image_url || slide?.image || slide?.background_image))
-        || ['hero_background_image', 'hero_parallax', 'hero_video_background', 'hero_slider_fade', 'hero_floating_glass', 'image_cta_banner'].includes(firstBlockType)
+        // Explicit section-level background fields always count.
+        firstBlock?.background_image_url
+        || firstBlock?.background_url
+        || firstBlock?.backgroundImage
+        // video_url/poster_image_url are content fields on split heroes such as
+        // Hero Video Style, so only treat them as background media when the
+        // Spark itself is explicitly a background/parallax/slider variant.
+        || (firstBlockUsesBackgroundMediaType && (
+            firstBlock?.poster_image_url
+            || firstBlock?.video_url
+            || firstBlock?.video_src
+        ))
+        || (firstBlockType.includes('slider') && Array.isArray(firstBlock?.slides) && firstBlock.slides.some((slide) => slide?.image_url || slide?.image || slide?.background_image || slide?.background_image_url))
     ));
 
     const overlaySurfaceThemeKey = firstResolvedThemeKey === 'primary' || firstResolvedThemeKey === 'accent'
@@ -2281,13 +2315,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             .map((value) => value <= 0.03928 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
         return (0.2126 * channels[0]) + (0.7152 * channels[1]) + (0.0722 * channels[2]);
     };
-    const overlayHeroIsLight = !firstBlockHasHeroMedia && overlayHexLuminance(overlaySurfaceHex) > 0.56;
-    const overlayHeaderTone = overlayHeaderActive && !overlayHeroIsLight ? 'light' : 'dark';
-    const overlayLogoLight = Boolean(overlayHeaderActive && overlayHeaderTone === 'light');
-    const firstHeroUsesPrimarySurface = ['primary', 'accent', activePrimaryThemeKey].includes(firstResolvedThemeKey);
-    const overlayCtaTreatment = overlayHeaderActive && overlayHeaderTone === 'light' && firstHeroUsesPrimarySurface
-        ? 'surface'
-        : 'primary';
+    // Final Page Style contract: overlay-header contrast is deterministic.
+    // Premium/Balanced use a white header treatment when overlay is enabled,
+    // except the intentionally light Warm Stone / Studio White theme families.
+    // Clean (and every non-overlay state) keeps the normal dark/original header.
+    const overlayUsesPremiumLightHeader = Boolean(overlayHeaderActive && overlayHeaderCompatible);
+    const overlayHeaderTone = overlayUsesPremiumLightHeader ? 'light' : 'dark';
+    const overlayLogoLight = overlayUsesPremiumLightHeader;
+    const overlayCtaTreatment = overlayUsesPremiumLightHeader ? 'surface' : 'primary';
 
     const renderBlock = (block, index) => {
 
@@ -2300,7 +2335,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 resolvedTheme
             },
 
-            globalTheme: globalSelections,
+            globalTheme: { ...(globalSelections || {}), pageStyle: currentPageStyle },
 
             onUpdate: (fields) => updateBlockContent(index, fields),
             commerce,
@@ -2457,7 +2492,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                             theme: 'auto',
                                             _renderKey: createRenderKey(),
                                         })));
+                                        const appliedStyle = String(response.page_style || 'auto').toLowerCase();
                                         setCurrentPageStyle(response.page_style || 'auto');
+                                        if (appliedStyle === 'clean' && data.global_header?.overlay_header_on_banner) {
+                                            updateHeader({ overlay_header_on_banner: false });
+                                            showCosmicNotification({
+                                                title: 'Overlay Header turned off',
+                                                message: 'Overlay Header is available with Balanced or Premium page styles.',
+                                                tone: 'info',
+                                            });
+                                        }
                                         setStyleOptions(response.suggestions || styleOptions);
                                         setPageStatus(response.page_status || 'draft');
                                         setCreditBalance(response.credit_balance);
@@ -2514,22 +2558,29 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 />
                             )}
 
-                            <label
-                                className={`hidden h-9 shrink-0 cursor-pointer items-center gap-2 rounded-lg border px-2.5 text-[11px] font-semibold lg:inline-flex ${trialMode ? 'border-slate-200 bg-white text-slate-700' : 'border-white/10 bg-white/[0.035] text-slate-300'}`}
-                                title="Place the global header over compatible page banners. Pages without a banner keep the normal header."
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    if (!overlayHeaderCompatible) {
+                                        showCosmicNotification({
+                                            title: 'Overlay Header unavailable',
+                                            message: overlayCompatibilityMessage,
+                                            tone: 'info',
+                                        });
+                                        return;
+                                    }
+                                    updateHeader({ overlay_header_on_banner: !Boolean(data.global_header?.overlay_header_on_banner) });
+                                }}
+                                className={`hidden h-9 shrink-0 items-center gap-2 rounded-lg border px-2.5 text-[11px] font-semibold lg:inline-flex ${!overlayHeaderCompatible ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'} ${trialMode ? 'border-slate-200 bg-white text-slate-700' : 'border-white/10 bg-white/[0.035] text-slate-300'}`}
+                                title={overlayHeaderCompatible ? 'Place the global header over the banner.' : overlayCompatibilityMessage}
+                                aria-pressed={Boolean(data.global_header?.overlay_header_on_banner && overlayHeaderCompatible)}
                             >
-                                <input
-                                    type="checkbox"
-                                    className="peer sr-only"
-                                    checked={Boolean(data.global_header?.overlay_header_on_banner)}
-                                    onChange={(event) => updateHeader({ overlay_header_on_banner: event.target.checked })}
-                                />
-                                <span className={`relative h-5 w-9 rounded-full transition ${data.global_header?.overlay_header_on_banner ? 'bg-emerald-500' : (trialMode ? 'bg-slate-300' : 'bg-slate-600')}`}>
-                                    <span className={`absolute top-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${data.global_header?.overlay_header_on_banner ? 'translate-x-[18px]' : 'translate-x-0.5'}`} />
+                                <span className={`relative inline-flex h-5 w-9 shrink-0 items-center rounded-full transition ${data.global_header?.overlay_header_on_banner && overlayHeaderCompatible ? 'bg-emerald-500' : (trialMode ? 'bg-slate-300' : 'bg-slate-600')}`}>
+                                    <span className={`absolute left-0.5 top-0.5 block h-4 w-4 rounded-full bg-white shadow transition-transform ${data.global_header?.overlay_header_on_banner && overlayHeaderCompatible ? 'translate-x-4' : 'translate-x-0'}`} />
                                 </span>
                                 <span className="hidden 2xl:inline">Overlay Header on Banner</span>
                                 <span className="2xl:hidden">Overlay Header</span>
-                            </label>
+                            </button>
 
                             {capabilities.canChangeTheme && (
                                 <ThemeSelector
@@ -2600,12 +2651,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                         type="button"
                                         onClick={handlePublish}
                                         disabled={isSaving || isPublishing}
-                                        className="cosmic-primary-action inline-flex min-w-[88px] items-center justify-center rounded-l-lg bg-emerald-600 px-4 text-xs font-bold text-white transition hover:bg-emerald-500 focus:z-10 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50"
+                                        className={`cosmic-primary-action inline-flex min-w-[88px] items-center justify-center bg-emerald-600 px-4 text-xs font-bold text-white transition hover:bg-emerald-500 focus:z-10 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 ${websiteAccessRole === 'website_editor' ? 'rounded-lg' : 'rounded-l-lg'}`}
                                     >
                                         {isPublishing ? 'Publishing…' : 'Publish'}
                                     </button>
 
-                                    <details className="group relative">
+                                    {websiteAccessRole !== 'website_editor' && <details className="group relative">
                                         <summary
                                             className="cosmic-publish-menu-trigger inline-flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-r-lg border-l border-emerald-500 bg-emerald-600 text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 [&::-webkit-details-marker]:hidden"
                                             aria-label="More publish actions"
@@ -2664,8 +2715,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                                 </span>
                                             )}
                                         </div>
-                                    </details>
+                                    </details>}
                                 </div>
+                            )}
+                            {websiteAccessRole === 'website_editor' && (
+                                <Link method="post" as="button" href={route('logout')} className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-white/10 px-3 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">Log out</Link>
                             )}
                         </div>
                     </div>
@@ -2739,13 +2793,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
                         <div
                             key={block._renderKey || index}
-                            className={`relative group w-full transition-all duration-300 focus-within:z-20 ${overlayHeaderActive && index === 0 ? 'cosmic-overlay-first-spark' : ''}`}
+                            className={`relative group w-full transition-all duration-300 ${overlayHeaderActive && index === 0 ? 'cosmic-overlay-first-spark' : ''}`}
                         >
 
                             {/* Hover Toolbar */}
 
                             {capabilities.canManageBlocks && (
-                            <div className="cosmic-block-toolbar absolute top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all duration-300 z-50">
+                            <div className="cosmic-block-toolbar absolute top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all duration-300 z-[70]">
 
                                 <div className="flex items-center gap-2 rounded-full bg-slate-900/90 backdrop-blur-xl border border-slate-700 shadow-2xl px-3 py-2">
 

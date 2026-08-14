@@ -47,6 +47,8 @@ class WebsiteDashboardService
                 'can_transfer_ownership' => (int) $website->user_id === (int) $user->id
                     && (bool) data_get($capabilities, 'capabilities.ownership_transfer', false),
                 'owner_email' => (int) $website->user_id === (int) $user->id ? $user->email : null,
+                'can_manage_access' => (int) $website->user_id === (int) $user->id,
+                'access_role' => app(WorkspaceAccessService::class)->websiteRole($user, $website),
                 'accent_index' => $index,
             ];
         });

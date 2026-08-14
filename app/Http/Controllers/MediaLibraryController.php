@@ -91,7 +91,7 @@ class MediaLibraryController extends Controller
 
     public function storeFolder(Request $request, Website $website)
     {
-        $this->authorize('update', $website);
+        $this->authorize('editBuilder', $website);
         $data = $request->validate([
             'name' => ['required', 'string', 'max:120'],
             'parent_id' => ['nullable', 'integer'],
@@ -116,7 +116,7 @@ class MediaLibraryController extends Controller
 
     public function updateFolder(Request $request, Website $website, MediaFolder $folder)
     {
-        $this->authorize('update', $website);
+        $this->authorize('editBuilder', $website);
         $this->assertFolderWebsite($website, $folder);
         $data = $request->validate([
             'name' => ['sometimes', 'required', 'string', 'max:120'],
@@ -145,7 +145,7 @@ class MediaLibraryController extends Controller
 
     public function destroyFolder(Request $request, Website $website, MediaFolder $folder)
     {
-        $this->authorize('update', $website);
+        $this->authorize('editBuilder', $website);
         $this->assertFolderWebsite($website, $folder);
 
         if ($folder->children()->exists() || $folder->assets()->exists()) {
@@ -160,7 +160,7 @@ class MediaLibraryController extends Controller
 
     public function upload(Request $request, Website $website)
     {
-        $this->authorize('update', $website);
+        $this->authorize('editBuilder', $website);
         $data = $request->validate([
             'image' => ['required', 'file', 'max:12288', 'mimetypes:'.implode(',', self::IMAGE_MIMES)],
             'folder_id' => ['nullable', 'integer'],
@@ -218,7 +218,7 @@ class MediaLibraryController extends Controller
 
     public function updateAsset(Request $request, Website $website, MediaAsset $asset)
     {
-        $this->authorize('update', $website);
+        $this->authorize('editBuilder', $website);
         $this->assertAssetWebsite($website, $asset);
         $data = $request->validate([
             'folder_id' => ['sometimes', 'nullable', 'integer'],
@@ -237,7 +237,7 @@ class MediaLibraryController extends Controller
 
     public function destroyAsset(Request $request, Website $website, MediaAsset $asset)
     {
-        $this->authorize('update', $website);
+        $this->authorize('editBuilder', $website);
         $this->assertAssetWebsite($website, $asset);
 
         // Patch 1 uses soft delete first. Physical cleanup can be added with Trash/Restore UI

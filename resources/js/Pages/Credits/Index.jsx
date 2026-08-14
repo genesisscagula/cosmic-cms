@@ -628,6 +628,7 @@ export default function CreditsIndex({
                                                 'Client-ready preview links',
                                                 'Per-website lead inbox',
                                                 'Basic agency workspace',
+                                                'Up to 5 team members',
                                             ],
                                             growth: [
                                                 'Everything in Starter Agency',
@@ -635,7 +636,7 @@ export default function CreditsIndex({
                                                 'Agency Insights dashboard',
                                                 'Aggregated analytics and leads',
                                                 'Shared Sparks and templates',
-                                                'Basic white label + 3 team members',
+                                                'Basic white label + up to 10 team members',
                                             ],
                                             pro: [
                                                 'Everything in Growth Agency',
@@ -644,9 +645,9 @@ export default function CreditsIndex({
                                                 'Full Agency Insights + sales',
                                                 'Revenue and conversion reporting',
                                                 'Advanced white labeling + handoff',
-                                                'Advanced client permissions',
+                                                'Admin and Editor website roles',
                                                 'Cross-site performance reporting',
-                                                'Up to 10 team members',
+                                                'Unlimited team members',
                                                 'API access and webhooks',
                                                 'Priority agency tools',
                                             ],

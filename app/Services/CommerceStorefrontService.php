@@ -559,9 +559,12 @@ class CommerceStorefrontService
             if (array_key_exists('cta_url', $header)) $header['cta_url'] = $resolve($header['cta_url']);
         }
 
+        $pageStyle = strtolower(trim((string) ($website->page_style ?: $website->published_page_style ?: 'auto')));
+        $shellContext = ['page_style' => $pageStyle];
+
         return [
-            'header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor) : '',
-            'footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor) : '',
+            'header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor, $shellContext) : '',
+            'footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor, $shellContext) : '',
         ];
     }
 

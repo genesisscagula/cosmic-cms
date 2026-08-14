@@ -264,7 +264,7 @@ class User extends Authenticatable
     public function assignedWebsites()
     {
         return $this->belongsToMany(Website::class, 'website_user')
-            ->withPivot('assigned_by_user_id')
+            ->withPivot('assigned_by_user_id', 'role')
             ->withTimestamps();
     }
 

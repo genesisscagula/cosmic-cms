@@ -69,6 +69,24 @@ class WebsiteController extends Controller
             ]);
         }
 
+        $workspaceMembership = $user->workspaces()->wherePivotIn('role', ['admin', 'editor'])->first();
+        if ($workspaceMembership) {
+            $assignedWebsite = Website::query()
+                ->where('workspace_id', $workspaceMembership->id)
+                ->whereHas('assignedUsers', fn ($query) => $query->whereKey($user->id))
+                ->with(['pages' => fn ($query) => $query->orderBy('sort_order')->orderBy('id')])
+                ->first();
+
+            if ($assignedWebsite) {
+                if ($workspaceMembership->pivot->role === 'editor') {
+                    $firstPage = $assignedWebsite->pages->first();
+                    if ($firstPage) return redirect()->route('pages.builder', $firstPage);
+                }
+
+                return redirect()->route('pages.index', $assignedWebsite);
+            }
+        }
+
         $websiteQuery = Website::query()
             ->where(function ($query) use ($user) {
                 $query->where('user_id', $user->id)
@@ -687,7 +705,7 @@ class WebsiteController extends Controller
         AgencyWebsiteLimitService $websiteLimits,
         WebsiteDuplicationService $duplicator,
     ) {
-        $this->authorize('view', $website);
+        $this->authorize('update', $website);
 
         $copy = DB::transaction(function () use ($request, $website, $websiteLimits, $duplicator) {
             $request->user()->newQuery()->whereKey($request->user()->id)->lockForUpdate()->first();

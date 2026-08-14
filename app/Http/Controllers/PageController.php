@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Services\MyBrandThemeService;
+use App\Helpers\CmsHtmlCompiler;
 use App\Models\Website;
 use App\Models\Page;
 use App\Models\TrialGeneration;
@@ -31,6 +32,12 @@ class PageController extends Controller
     public function index(Website $website)
     {
         $this->authorize('view', $website);
+
+        $user = request()->user();
+        if ($user && app(\App\Services\WorkspaceAccessService::class)->websiteRole($user, $website) === 'website_editor') {
+            $firstPage = $website->pages()->orderBy('sort_order')->orderBy('id')->firstOrFail();
+            return redirect()->route('pages.builder', $firstPage);
+        }
 
         return \Inertia\Inertia::render('Websites/Index', [
             'website' => $website,
@@ -588,7 +595,7 @@ class PageController extends Controller
         $isTrialMode = $trial !== null;
 
         if (! $isTrialMode) {
-            $this->authorize('view', $page->website);
+            $this->authorize('editBuilder', $page->website);
         }
 
         $website = $page->website;
@@ -706,6 +713,11 @@ class PageController extends Controller
             ];
         }
 
+        $websiteAccessRole = ! $isTrialMode && $request->user()
+            ? app(\App\Services\WorkspaceAccessService::class)->websiteRole($request->user(), $page->website)
+            : null;
+        $isWebsiteEditor = $websiteAccessRole === 'website_editor';
+
         return Inertia::render('Websites/Builder', [
             // Builder is token-aware and intentionally lives outside the normal
             // authenticated route group, so pass theme access explicitly instead
@@ -759,8 +771,8 @@ class PageController extends Controller
                     : []),
             'hasWebsiteContent' => $websiteMessaging !== '',
             'websiteContext' => $websiteContext,
-            'pageStyle' => $page->page_style ?: 'auto',
-            'pageStyleOptions' => PageStyleRegistry::suggestions($website->industry, $page->page_style),
+            'pageStyle' => $website->page_style ?: $page->page_style ?: 'auto',
+            'pageStyleOptions' => PageStyleRegistry::suggestions($website->industry, $website->page_style ?: $page->page_style),
             'trialMode' => $isTrialMode,
             'globalHeaderBlock' => $isTrialMode
                 ? [
@@ -838,32 +850,34 @@ class PageController extends Controller
                 'themes' => ThemePricingRegistry::all(),
             ],
             'trialCapabilities' => [
-                'canNavigateAway' => ! $isTrialMode,
-                'canChangeTheme' => true,
-                'canGenerateAi' => ! $isTrialMode,
+                'canNavigateAway' => ! $isTrialMode && ! $isWebsiteEditor,
+                'canChangeTheme' => ! $isWebsiteEditor,
+                'canGenerateAi' => ! $isTrialMode && ! $isWebsiteEditor,
                 'canPublish' => ! $isTrialMode,
-                'canManageBlocks' => ! $isTrialMode,
-                'canEditGlobalShell' => ! $isTrialMode,
+                'canManageBlocks' => ! $isTrialMode && ! $isWebsiteEditor,
+                'canEditGlobalShell' => ! $isTrialMode && ! $isWebsiteEditor,
                 'canSave' => true,
                 'canPurchase' => $isTrialMode,
             ],
+            'websiteAccessRole' => $websiteAccessRole,
         ]);
     }
 
    public function updateBlocks(\Illuminate\Http\Request $request, \App\Models\Page $page)
     {
-        $this->authorize('update', $page->website);
+        $this->authorize('editBuilder', $page->website);
 
         $validated = $request->validate([
             'blocks' => 'nullable|array',
             'global_header' => 'nullable|array',
         ]);
 
-        DB::transaction(function () use ($page, $validated) {
+        $isWebsiteEditor = app(\App\Services\WorkspaceAccessService::class)->websiteRole($request->user(), $page->website) === 'website_editor';
+        DB::transaction(function () use ($page, $validated, $isWebsiteEditor) {
             $page->blocks = $validated['blocks'];
             $page->save();
 
-            if (array_key_exists('global_header', $validated)) {
+            if (! $isWebsiteEditor && array_key_exists('global_header', $validated)) {
                 $page->website->global_header = $validated['global_header'];
                 $page->website->save();
             }
@@ -877,7 +891,7 @@ class PageController extends Controller
         $trial = $this->resolveTrialAccess($request, $page);
 
         if ($trial === null) {
-            $this->authorize('update', $page->website);
+            $this->authorize('editBuilder', $page->website);
         }
 
         $rules = [
@@ -896,6 +910,11 @@ class PageController extends Controller
 
         $validated = $request->validate($rules);
         $website = $page->website;
+        $isWebsiteEditor = $trial === null
+            && app(\App\Services\WorkspaceAccessService::class)->websiteRole($request->user(), $website) === 'website_editor';
+        if ($isWebsiteEditor) {
+            unset($validated['theme_settings'], $validated['global_header'], $validated['global_footer']);
+        }
 
         if ($trial === null && array_key_exists('theme_settings', $validated)) {
             $requestedTheme = (string) data_get($validated, 'theme_settings.primary', '');
@@ -908,6 +927,22 @@ class PageController extends Controller
                     $currentTheme,
                     app(ThemePlanAccessService::class)->includedThemeKeyForWebsite($website),
                 );
+            }
+        }
+
+        // Overlay Header compatibility is a product rule, not a CSS guess:
+        // only Premium/Balanced with non-light theme families may persist it.
+        if (array_key_exists('global_header', $validated)) {
+            $effectiveStyle = strtolower(trim((string) ($website->page_style ?: 'auto')));
+            $effectiveTheme = strtolower(trim((string) (
+                data_get($validated, 'theme_settings.primary')
+                ?: data_get($website->theme_settings, 'primary')
+                ?: 'midnight'
+            )));
+            $overlayCompatible = in_array($effectiveStyle, ['premium', 'balanced'], true)
+                && ! in_array($effectiveTheme, ['stone', 'white'], true);
+            if (! $overlayCompatible) {
+                data_set($validated, 'global_header.overlay_header_on_banner', false);
             }
         }
 
@@ -1018,22 +1053,31 @@ class PageController extends Controller
                 ->all();
 
             DB::transaction(function () use ($page, $validated, $blocks) {
-                $page->page_style = $validated['style'];
+                $website = $page->website;
+                $website->page_style = $validated['style'];
+                $website->save();
+
+                // Page Style is website-global. Keep legacy page columns synced so
+                // preview/publish routes that still read snapshots cannot drift.
+                $website->pages()->update(['page_style' => $validated['style']]);
+
                 $page->blocks = $blocks;
                 $page->status = 'draft';
                 $page->publish_error = null;
                 $page->save();
             });
 
+            $globalStyle = $page->website->fresh()->page_style ?: 'auto';
+
             return response()->json([
                 'status' => 'success',
-                'page_style' => $page->page_style,
-                'style' => ['key' => $page->page_style, ...PageStyleRegistry::all()[$page->page_style]],
+                'page_style' => $globalStyle,
+                'style' => ['key' => $globalStyle, ...PageStyleRegistry::all()[$globalStyle]],
                 'blocks' => $blocks,
                 'page_status' => 'draft',
                 'credits_spent' => $cost,
                 'credit_balance' => $credits->balance($user),
-                'suggestions' => PageStyleRegistry::suggestions($page->website->industry, $page->page_style),
+                'suggestions' => PageStyleRegistry::suggestions($page->website->industry, $globalStyle),
             ]);
         } catch (\Throwable $exception) {
             $credits->refund($user, $cost, 'Refund for failed AI page style', $page->website, $reference.'-refund');
@@ -1200,7 +1244,7 @@ class PageController extends Controller
 
     public function publish(Request $request, Page $page, PagePublisher $publisher, CreditService $credits)
     {
-        $this->authorize('update', $page->website);
+        $this->authorize('editBuilder', $page->website);
 
         $website = $page->website;
 
@@ -1255,7 +1299,7 @@ class PageController extends Controller
             DB::transaction(function () use ($page, $website, $html, $request, $themeKey, $themeCost) {
                 $publishedAt = now();
                 $page->published_blocks = $page->blocks ?? [];
-                $page->published_page_style = $page->page_style;
+                $page->published_page_style = $website->page_style ?: $page->page_style;
                 $page->published_html = $html;
                 $page->status = 'published';
                 $page->published_at ??= $publishedAt;
@@ -1263,10 +1307,29 @@ class PageController extends Controller
                 $page->publish_error = null;
                 $page->save();
 
+                $website->published_page_style = $website->page_style ?: $page->page_style;
+                $website->pages()->update(['published_page_style' => $website->published_page_style]);
                 $website->published_theme_settings = $website->theme_settings;
                 $website->published_global_header = $website->global_header;
                 $website->published_global_footer = $website->global_footer;
                 $website->save();
+
+                // Global Page Style is a website-level visual contract. Publishing any
+                // page must refresh already-published standard-page HTML so local preview,
+                // static preview, and connector/live output cannot retain an older style.
+                $publishedStyle = $website->published_page_style ?: $website->page_style ?: 'auto';
+                $primaryColor = (string) data_get($website->published_theme_settings ?: $website->theme_settings, 'primary', 'midnight');
+                $website->pages()
+                    ->where('status', 'published')
+                    ->where('page_type', 'standard')
+                    ->get()
+                    ->each(function (Page $publishedPage) use ($publishedStyle, $primaryColor) {
+                        $snapshot = $publishedPage->published_blocks ?? $publishedPage->blocks ?? [];
+                        $publishedPage->forceFill([
+                            'published_page_style' => $publishedStyle,
+                            'published_html' => CmsHtmlCompiler::compile($snapshot, $primaryColor, ['page_style' => $publishedStyle]),
+                        ])->save();
+                    });
 
                 if ($themeKey !== '' && $themeCost > 0) {
                     CosmicUnlock::firstOrCreate(

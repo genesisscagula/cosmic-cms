@@ -20,7 +20,7 @@ class WorkspaceMemberController extends Controller
         $data = $request->validate([
             'name' => ['nullable', 'string', 'max:255'],
             'email' => ['required', 'email', 'max:255'],
-            'role' => ['required', 'string', 'in:admin,editor,client'],
+            'role' => ['required', 'string', 'in:admin,editor'],
             'website_ids' => ['nullable', 'array'],
             'website_ids.*' => ['integer', 'distinct'],
         ]);
@@ -57,11 +57,8 @@ class WorkspaceMemberController extends Controller
                 }
                 foreach ($websiteIds as $websiteId) {
                     $workspace->websites()->whereKey($websiteId)->firstOrFail()->assignedUsers()->syncWithoutDetaching([
-                        $existing->id => ['assigned_by_user_id' => $request->user()->id],
+                        $existing->id => ['assigned_by_user_id' => $request->user()->id, 'role' => $data['role'] === 'admin' ? 'website_admin' : 'website_editor'],
                     ]);
-                }
-                if ($data['role'] === 'client' && $existing->account_type !== 'platform_owner') {
-                    $existing->forceFill(['account_type' => 'client', 'onboarding_status' => 'complete'])->save();
                 }
                 WorkspaceInvitation::query()->where('workspace_id', $workspace->id)->where('email', $email)->delete();
                 return;
@@ -88,11 +85,18 @@ class WorkspaceMemberController extends Controller
             throw ValidationException::withMessages(['role' => 'The workspace owner role cannot be changed.']);
         }
 
-        $data = $request->validate(['role' => ['required', 'string', 'in:admin,editor,client']]);
+        $data = $request->validate(['role' => ['required', 'string', 'in:admin,editor']]);
         abort_unless($workspace->users()->whereKey($member->id)->exists(), 404);
         abort_unless($permissions->roleExists($data['role']), 422);
 
         $workspace->users()->updateExistingPivot($member->id, ['role' => $data['role']]);
+
+        $websiteRole = $data['role'] === 'admin' ? 'website_admin' : 'website_editor';
+        foreach ($workspace->websites as $website) {
+            if ($website->assignedUsers()->whereKey($member->id)->exists()) {
+                $website->assignedUsers()->updateExistingPivot($member->id, ['role' => $websiteRole]);
+            }
+        }
 
         return back()->with('success', 'Team member role updated.');
     }

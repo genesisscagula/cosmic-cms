@@ -12,7 +12,7 @@ final class PageStyleRegistry
     public static function all(): array
     {
         return [
-            'clean' => self::style('Clean', 'clean', 'Crisp spacing with a calm, trustworthy rhythm.', ['white','surface','primary','white','surface','white','primary','surface','white','primary','white','surface','primary','white','surface']),
+            'clean' => self::style('Clean', 'clean', 'Crisp spacing with a calm, trustworthy rhythm.', ['white','surface','white','surface','white','surface','white','surface','white','surface','white','surface','white','surface','white']),
             'minimal' => self::style('Minimal', 'clean', 'Quiet, spacious and deliberately restrained.', ['white','surface','white','surface','primary','white','surface','white','surface','primary','white','surface','white','primary','surface']),
             'editorial' => self::style('Editorial', 'clean', 'A magazine-inspired flow with strong breathing room.', ['white','surface','white','primary','white','surface','white','primary','surface','white','primary','white','surface','primary','surface']),
             'airy' => self::style('Airy', 'clean', 'Bright sections and generous visual pauses.', ['white','white','surface','white','primary','white','white','surface','white','primary','surface','white','white','primary','surface']),

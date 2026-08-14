@@ -167,7 +167,7 @@ export function HeroBackgroundImageBlock({
     // Keep light themes as a strong white wash; colored/dark themes retain the
     // dynamic primary+slate blend but in a clearly visible premium range.
     const effectiveOverlayOpacity = isLightMediaTheme
-        ? Math.max(90, configuredOverlayOpacity)
+        ? Math.max(96, configuredOverlayOpacity)
         : Math.max(46, Math.min(68, Math.round(configuredOverlayOpacity * 0.90)));
 
     const buttonStyle = isLightMediaTheme
