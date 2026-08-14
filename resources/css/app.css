@@ -1907,23 +1907,24 @@ html[data-theme] .cosmic-app-shell main {
 }
 :root[data-theme="dark"] .cosmic-app-shell .cosmic-add-spark-button * { color: inherit !important; }
 
-/* Agency Branding: green Cosmic visual language in Light mode. */
+/* Agency Branding — use the same Cosmic dashboard tokens as the rest of the admin UI. */
 :root[data-theme="light"] .cosmic-branding-page {
-    --branding-green: #23966b;
-    --branding-soft: #edf8f2;
+    --branding-primary: #7c3aed;
+    --branding-primary-soft: #f5f3ff;
 }
 :root[data-theme="light"] .cosmic-branding-page > div:first-child {
     padding: 1.25rem 1.35rem;
-    border: 1px solid #d4e8dd;
+    border: 1px solid #e2e8f0;
     border-radius: 1.25rem;
-    background: linear-gradient(135deg, #f8fcfa 0%, #edf8f2 100%);
+    background: #ffffff;
+    box-shadow: 0 8px 24px rgba(15,23,42,.04);
 }
 :root[data-theme="light"] .cosmic-branding-page form,
 :root[data-theme="light"] .cosmic-branding-page .xl\:grid-cols-\[1\.35fr_\.65fr\] > div,
 :root[data-theme="light"] .cosmic-branding-page > div:last-child {
-    border-color: #d7e7df !important;
+    border-color: #e2e8f0 !important;
     background: #fff !important;
-    box-shadow: 0 12px 30px rgba(25,75,55,.06);
+    box-shadow: 0 10px 28px rgba(15,23,42,.045);
 }
 :root[data-theme="light"] .cosmic-branding-page h1,
 :root[data-theme="light"] .cosmic-branding-page h2,
@@ -1933,18 +1934,51 @@ html[data-theme] .cosmic-app-shell main {
 :root[data-theme="light"] .cosmic-branding-page input:not([type="color"]),
 :root[data-theme="light"] .cosmic-branding-page textarea,
 :root[data-theme="light"] .cosmic-branding-page select {
-    border-color: #cfe1d8 !important;
-    background: #f8fcfa !important;
+    border-color: #cbd5e1 !important;
+    background-color: #fff !important;
     color: #172033 !important;
+    -webkit-text-fill-color: #172033 !important;
 }
 :root[data-theme="light"] .cosmic-branding-page input[type="color"] {
-    border: 1px solid #cfe1d8 !important;
+    border: 1px solid #cbd5e1 !important;
     background: #fff !important;
 }
-:root[data-theme="light"] .cosmic-branding-page [class*="bg-violet"],
-:root[data-theme="light"] .cosmic-branding-page [class*="border-violet"] {
-    border-color: #bfe0cf !important;
-    background: #edf8f2 !important;
+:root[data-theme="light"] .cosmic-branding-page [class*="bg-violet"] { color: inherit; }
+:root[data-theme="light"] .cosmic-branding-page button.bg-violet-600,
+:root[data-theme="light"] .cosmic-branding-page button[class*="bg-violet-600"] {
+    background:#7c3aed !important;
+    color:#fff !important;
+    -webkit-text-fill-color:#fff !important;
+}
+
+/* Dashboard selects — explicit cross-theme chevron so the arrow never disappears. */
+.cosmic-dashboard-select {
+    -webkit-appearance: none !important;
+    appearance: none !important;
+    padding-right: 2.6rem !important;
+    background-repeat: no-repeat !important;
+    background-position: right .85rem center !important;
+    background-size: .9rem .9rem !important;
+}
+:root[data-theme="light"] .cosmic-dashboard-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m6 8 4 4 4-4' fill='none' stroke='%23334155' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+    color:#172033 !important;
+    -webkit-text-fill-color:#172033 !important;
+}
+:root[data-theme="dark"] .cosmic-dashboard-select {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 20 20'%3E%3Cpath d='m6 8 4 4 4-4' fill='none' stroke='%23cbd5e1' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E") !important;
+}
+:root[data-theme="light"] .cosmic-team-page .cosmic-dashboard-select,
+:root[data-theme="light"] .cosmic-branding-page .cosmic-dashboard-select {
+    border-color:#cbd5e1 !important;
+    background-color:#fff !important;
+}
+:root[data-theme="dark"] .cosmic-team-page .cosmic-dashboard-select,
+:root[data-theme="dark"] .cosmic-branding-page .cosmic-dashboard-select {
+    border-color:rgba(255,255,255,.12) !important;
+    background-color:#15151a !important;
+    color:#f8fafc !important;
+    -webkit-text-fill-color:#f8fafc !important;
 }
 
 /* Patch 15.5 Hotfix V3: Agency Insights solid violet actions always use white text. */
@@ -5718,4 +5752,43 @@ body .cosmic-start-quick-idea.rounded-full.border {
     border-color:#8b5cf6 !important;
     color:#5b21b6 !important;
     -webkit-text-fill-color:#5b21b6 !important;
+}
+
+/* Hotfix batch: Commerce visual editor light-mode polish. */
+:root[data-theme="light"] #cosmic-commerce-template-editor [data-commerce-spark-editor] > div {
+    background:#fff !important; border-color:#e2e8f0 !important; color:#0f172a !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor [data-commerce-spark-editor] :is(.text-white,.text-slate-300,.text-slate-400) {
+    color:#334155 !important; -webkit-text-fill-color:#334155 !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor [data-commerce-spark-editor] button.bg-violet-500 {
+    background:#7c3aed !important; color:#fff !important; -webkit-text-fill-color:#fff !important;
+}
+:root[data-theme="light"] [data-cosmic-commerce-templates="visual-editor"] button[class*="border-violet"] {
+    color:#6d28d9 !important; -webkit-text-fill-color:#6d28d9 !important;
+}
+
+.cosmic-branding-portal-card { border-color:rgba(167,139,250,.24); background:rgba(124,58,237,.08); }
+:root[data-theme="light"] .cosmic-branding-portal-card { border-color:#ddd6fe !important; background:#f5f3ff !important; }
+:root[data-theme="dark"] .cosmic-branding-portal-card { border-color:rgba(167,139,250,.26) !important; background:rgba(124,58,237,.08) !important; }
+
+:root[data-theme="light"] .cosmic-branding-page .cosmic-branding-live-preview [style*="background-color"] .text-white,
+:root[data-theme="light"] .cosmic-branding-page .cosmic-branding-live-preview button.text-white { color:#fff !important; -webkit-text-fill-color:#fff !important; }
+
+/* Logo hotfix: keep customize/generate controls readable in dark mode. */
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-company-label {
+    color:#cbd5e1 !important; -webkit-text-fill-color:#cbd5e1 !important;
+}
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-company-input {
+    background:#ffffff !important; color:#0f172a !important; -webkit-text-fill-color:#0f172a !important;
+    border-color:#94a3b8 !important;
+}
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-company-input::placeholder {
+    color:#64748b !important; -webkit-text-fill-color:#64748b !important; opacity:1 !important;
+}
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-back-button {
+    color:#cbd5e1 !important; -webkit-text-fill-color:#cbd5e1 !important;
+}
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-back-button:hover {
+    background:rgba(255,255,255,.07) !important; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important;
 }

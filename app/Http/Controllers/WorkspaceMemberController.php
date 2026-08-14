@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
-use App\Jobs\SendCosmicEventMailJob;
+use App\Jobs\SendWorkspaceInvitationMailJob;
 use App\Models\Workspace;
 use App\Models\WorkspaceInvitation;
 use App\Services\AgencyPlanEntitlementService;
@@ -48,8 +48,9 @@ class WorkspaceMemberController extends Controller
             throw ValidationException::withMessages(['email' => 'This person is already a workspace member.']);
         }
 
-        DB::transaction(function () use ($workspace, $request, $email, $data, $websiteIds) {
-            $existing = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+        $existing = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
+
+        DB::transaction(function () use ($workspace, $request, $email, $data, $websiteIds, $existing) {
             if ($existing) {
                 $workspace->users()->syncWithoutDetaching([$existing->id => ['role' => $data['role']]]);
                 foreach ($workspace->websites as $website) {
@@ -70,12 +71,31 @@ class WorkspaceMemberController extends Controller
             );
         });
 
-        $invitation = WorkspaceInvitation::query()->where('workspace_id', $workspace->id)->where('email', $email)->first();
-        if ($invitation) {
-            $invitee = User::query()->whereRaw('LOWER(email) = ?', [$email])->first();
-            if ($invitee) SendCosmicEventMailJob::dispatch($invitee->id, 'team', 'You were invited to a Cosmic workspace', 'Workspace invitation', 'You have been invited to join '.$workspace->name.' as '.$data['role'].'.', 'Review invitation', route('workspace-invitations.show', $invitation->token));
+        if ($existing) {
+            SendWorkspaceInvitationMailJob::dispatch(
+                $email,
+                'You were added to a Cosmic workspace',
+                'Workspace access ready',
+                'You now have access to '.$workspace->name.' as '.$data['role'].'. You can sign in with your existing account. If you forgot your password, use the password reset link on the sign-in screen.',
+                'Open Cosmic CMS',
+                route('dashboard'),
+                $existing->id,
+            );
+        } else {
+            $invitation = WorkspaceInvitation::query()->where('workspace_id', $workspace->id)->where('email', $email)->first();
+            if ($invitation) {
+                SendWorkspaceInvitationMailJob::dispatch(
+                    $email,
+                    'You were invited to a Cosmic workspace',
+                    'Workspace invitation',
+                    'You have been invited to join '.$workspace->name.' as '.$data['role'].'. Open the secure invitation to create your password and activate your account. The invitation expires in seven days.',
+                    'Accept invitation',
+                    route('workspace-invitations.show', $invitation->token),
+                );
+            }
         }
-        return back()->with('success', 'Team invitation created.');
+
+        return back()->with('success', $existing ? 'Team member added and notified by email.' : 'Team invitation sent by email.');
     }
 
     public function updateRole(Request $request, User $member, WorkspacePermissionService $permissions)
@@ -129,9 +149,15 @@ class WorkspaceMemberController extends Controller
             'expires_at' => now()->addDays(7),
         ])->save();
 
-        $invitee = User::query()->whereRaw('LOWER(email) = ?', [strtolower($invitation->email)])->first();
-        if ($invitee) SendCosmicEventMailJob::dispatch($invitee->id, 'team', 'Your workspace invitation was refreshed', 'Invitation refreshed', 'Your workspace invitation is available for another seven days.', 'Review invitation', route('workspace-invitations.show', $invitation->token));
-        return back()->with('success', 'Invitation refreshed for another seven days.');
+        SendWorkspaceInvitationMailJob::dispatch(
+            $invitation->email,
+            'Your Cosmic workspace invitation was refreshed',
+            'Invitation refreshed',
+            'Your workspace invitation is available for another seven days. Open the secure invitation to create your password and activate your account.',
+            'Accept invitation',
+            route('workspace-invitations.show', $invitation->token),
+        );
+        return back()->with('success', 'Invitation refreshed and emailed for another seven days.');
     }
 
     public function cancel(Request $request, WorkspaceInvitation $invitation)

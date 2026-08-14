@@ -29,6 +29,16 @@ class ThemePricingRegistry
             'violet' => ['label' => 'Violet', 'tier' => 'signature', 'credits' => 50],
             'ruby' => ['label' => 'Ruby', 'tier' => 'signature', 'credits' => 50],
             'asphalt' => ['label' => 'Asphalt', 'tier' => 'signature', 'credits' => 50],
+            'burgundy' => ['label' => 'Burgundy', 'tier' => 'signature', 'credits' => 50],
+            'sage' => ['label' => 'Sage', 'tier' => 'signature', 'credits' => 50],
+            'sandstone' => ['label' => 'Sandstone', 'tier' => 'signature', 'credits' => 50],
+            'copper' => ['label' => 'Copper', 'tier' => 'signature', 'credits' => 50],
+            'arctic' => ['label' => 'Arctic', 'tier' => 'signature', 'credits' => 50],
+            'blush' => ['label' => 'Blush', 'tier' => 'signature', 'credits' => 50],
+            'graphite' => ['label' => 'Graphite', 'tier' => 'signature', 'credits' => 50],
+            'cobalt' => ['label' => 'Cobalt', 'tier' => 'signature', 'credits' => 50],
+            'moss' => ['label' => 'Moss', 'tier' => 'signature', 'credits' => 50],
+            'champagne' => ['label' => 'Champagne', 'tier' => 'signature', 'credits' => 50],
         ];
     }
 

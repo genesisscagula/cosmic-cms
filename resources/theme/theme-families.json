@@ -24,7 +24,17 @@
     "plum",
     "olive",
     "stone",
-    "white"
+    "white",
+    "burgundy",
+    "sage",
+    "sandstone",
+    "copper",
+    "arctic",
+    "blush",
+    "graphite",
+    "cobalt",
+    "moss",
+    "champagne"
   ],
   "legacyFooterFamilies": {
     "dark": {
@@ -679,6 +689,216 @@
       "sub": "text-slate-400",
       "card": "bg-[#1e293b]",
       "border": "border-slate-700"
+    },
+    "burgundy": {
+      "bg": "bg-[#6B2035]",
+      "text": "text-white",
+      "sub": "text-white/75",
+      "card": "bg-[#7D2941]",
+      "border": "border-white/15",
+      "glow": "from-rose-400 via-rose-500",
+      "name": "Burgundy",
+      "category": "Luxury",
+      "description": "Deep wine tones for hospitality, fashion, and premium brands",
+      "palette": {
+        "accent": "#F4728A",
+        "background": "#6B2035",
+        "surface": "#7D2941",
+        "text": "#F8FAFC"
+      },
+      "buttonStyle": "rounded",
+      "cardStyle": "elevated",
+      "heroStyle": "editorial",
+      "ctaStyle": "solid"
+    },
+    "sage": {
+      "bg": "bg-[#667A63]",
+      "text": "text-white",
+      "sub": "text-white/75",
+      "card": "bg-[#788D74]",
+      "border": "border-white/15",
+      "glow": "from-emerald-400 via-emerald-500",
+      "name": "Sage",
+      "category": "Organic",
+      "description": "Quiet botanical greens for wellness, interiors, and lifestyle brands",
+      "palette": {
+        "accent": "#C4D6B0",
+        "background": "#667A63",
+        "surface": "#788D74",
+        "text": "#F8FAFC"
+      },
+      "buttonStyle": "rounded",
+      "cardStyle": "soft",
+      "heroStyle": "split",
+      "ctaStyle": "solid"
+    },
+    "sandstone": {
+      "bg": "bg-[#B46F47]",
+      "text": "text-white",
+      "sub": "text-white/75",
+      "card": "bg-[#C7835A]",
+      "border": "border-white/15",
+      "glow": "from-amber-400 via-amber-500",
+      "name": "Sandstone",
+      "category": "Warm",
+      "description": "Sun-washed earth tones for travel, architecture, and artisan brands",
+      "palette": {
+        "accent": "#F4C095",
+        "background": "#B46F47",
+        "surface": "#C7835A",
+        "text": "#F8FAFC"
+      },
+      "buttonStyle": "rounded",
+      "cardStyle": "soft",
+      "heroStyle": "editorial",
+      "ctaStyle": "solid"
+    },
+    "copper": {
+      "bg": "bg-[#8B4A2F]",
+      "text": "text-white",
+      "sub": "text-white/75",
+      "card": "bg-[#A35A3B]",
+      "border": "border-white/15",
+      "glow": "from-orange-400 via-orange-500",
+      "name": "Copper",
+      "category": "Bold",
+      "description": "Burnished copper warmth for makers, restaurants, and distinctive portfolios",
+      "palette": {
+        "accent": "#F59E6B",
+        "background": "#8B4A2F",
+        "surface": "#A35A3B",
+        "text": "#F8FAFC"
+      },
+      "buttonStyle": "rounded",
+      "cardStyle": "elevated",
+      "heroStyle": "split",
+      "ctaStyle": "solid"
+    },
+    "arctic": {
+      "bg": "bg-[#37677A]",
+      "text": "text-white",
+      "sub": "text-white/75",
+      "card": "bg-[#477D91]",
+      "border": "border-white/15",
+      "glow": "from-sky-400 via-sky-500",
+      "name": "Arctic",
+      "category": "Fresh",
+      "description": "Cool glacial blue for technology, health, and clean modern services",
+      "palette": {
+        "accent": "#9EDBE8",
+        "background": "#37677A",
+        "surface": "#477D91",
+        "text": "#F8FAFC"
+      },
+      "buttonStyle": "rounded",
+      "cardStyle": "soft",
+      "heroStyle": "centered",
+      "ctaStyle": "gradient"
+    },
+    "blush": {
+      "bg": "bg-[#A85F72]",
+      "text": "text-white",
+      "sub": "text-white/75",
+      "card": "bg-[#BB7184]",
+      "border": "border-white/15",
+      "glow": "from-rose-400 via-rose-500",
+      "name": "Blush",
+      "category": "Beauty",
+      "description": "Refined muted pink for beauty, events, boutiques, and personal brands",
+      "palette": {
+        "accent": "#F7B8C8",
+        "background": "#A85F72",
+        "surface": "#BB7184",
+        "text": "#F8FAFC"
+      },
+      "buttonStyle": "rounded",
+      "cardStyle": "soft",
+      "heroStyle": "editorial",
+      "ctaStyle": "solid"
+    },
+    "graphite": {
+      "bg": "bg-[#30343B]",
+      "text": "text-white",
+      "sub": "text-white/75",
+      "card": "bg-[#41464F]",
+      "border": "border-white/15",
+      "glow": "from-slate-400 via-slate-500",
+      "name": "Graphite",
+      "category": "Minimal",
+      "description": "Polished neutral graphite for studios, architecture, and professional teams",
+      "palette": {
+        "accent": "#B9C0CA",
+        "background": "#30343B",
+        "surface": "#41464F",
+        "text": "#F8FAFC"
+      },
+      "buttonStyle": "rounded",
+      "cardStyle": "elevated",
+      "heroStyle": "centered",
+      "ctaStyle": "solid"
+    },
+    "cobalt": {
+      "bg": "bg-[#2448A8]",
+      "text": "text-white",
+      "sub": "text-white/75",
+      "card": "bg-[#315AC2]",
+      "border": "border-white/15",
+      "glow": "from-blue-400 via-blue-500",
+      "name": "Cobalt",
+      "category": "Technology",
+      "description": "Electric confident blue for software, finance, and high-energy digital brands",
+      "palette": {
+        "accent": "#7DA7FF",
+        "background": "#2448A8",
+        "surface": "#315AC2",
+        "text": "#F8FAFC"
+      },
+      "buttonStyle": "rounded",
+      "cardStyle": "elevated",
+      "heroStyle": "centered",
+      "ctaStyle": "gradient"
+    },
+    "moss": {
+      "bg": "bg-[#405B3B]",
+      "text": "text-white",
+      "sub": "text-white/75",
+      "card": "bg-[#506E49]",
+      "border": "border-white/15",
+      "glow": "from-lime-400 via-lime-500",
+      "name": "Moss",
+      "category": "Nature",
+      "description": "Grounded forest neutrals for outdoor, sustainability, and craft businesses",
+      "palette": {
+        "accent": "#A8C686",
+        "background": "#405B3B",
+        "surface": "#506E49",
+        "text": "#F8FAFC"
+      },
+      "buttonStyle": "rounded",
+      "cardStyle": "soft",
+      "heroStyle": "split",
+      "ctaStyle": "solid"
+    },
+    "champagne": {
+      "bg": "bg-[#9A7650]",
+      "text": "text-white",
+      "sub": "text-white/75",
+      "card": "bg-[#B18A61]",
+      "border": "border-white/15",
+      "glow": "from-amber-400 via-amber-500",
+      "name": "Champagne",
+      "category": "Elegant",
+      "description": "Warm restrained gold for luxury services, weddings, and boutique hospitality",
+      "palette": {
+        "accent": "#F2D3A2",
+        "background": "#9A7650",
+        "surface": "#B18A61",
+        "text": "#F8FAFC"
+      },
+      "buttonStyle": "rounded",
+      "cardStyle": "elevated",
+      "heroStyle": "editorial",
+      "ctaStyle": "solid"
     }
   },
   "themeOrder": [
@@ -704,7 +924,17 @@
     "olive",
     "asphalt",
     "stone",
-    "white"
+    "white",
+    "burgundy",
+    "sage",
+    "sandstone",
+    "copper",
+    "arctic",
+    "blush",
+    "graphite",
+    "cobalt",
+    "moss",
+    "champagne"
   ],
   "featuredFamilies": [
     "violet",

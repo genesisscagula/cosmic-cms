@@ -16,8 +16,8 @@ export default function Report({ report, filters, branding, generated_at }) {
         <main className="min-h-screen bg-slate-100 px-4 py-8 text-slate-900 print:bg-white print:p-0">
             <div className="no-print mx-auto mb-5 flex max-w-6xl flex-col gap-3 rounded-2xl bg-white p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex flex-wrap gap-3">
-                    <select value={filters.website_id || ''} onChange={e=>apply('website_id', e.target.value)} className="rounded-xl border-slate-200 text-sm"><option value="">All websites</option>{websites.map(site=><option key={site.id} value={site.id}>{site.label}</option>)}</select>
-                    <select value={filters.days || 30} onChange={e=>apply('days', Number(e.target.value))} className="rounded-xl border-slate-200 text-sm"><option value={7}>Last 7 days</option><option value={30}>Last 30 days</option><option value={90}>Last 90 days</option></select>
+                    <select value={filters.website_id || ''} onChange={e=>apply('website_id', e.target.value)} className="cosmic-dashboard-select rounded-xl border-slate-200 text-sm"><option value="">All websites</option>{websites.map(site=><option key={site.id} value={site.id}>{site.label}</option>)}</select>
+                    <select value={filters.days || 30} onChange={e=>apply('days', Number(e.target.value))} className="cosmic-dashboard-select rounded-xl border-slate-200 text-sm"><option value={7}>Last 7 days</option><option value={30}>Last 30 days</option><option value={90}>Last 90 days</option></select>
                 </div>
                 <div className="flex gap-2"><button onClick={()=>history.back()} className="rounded-xl border border-slate-200 px-4 py-2 text-sm font-semibold">Back</button><button onClick={()=>window.print()} className="rounded-xl px-4 py-2 text-sm font-semibold text-white" style={{backgroundColor:branding.primary_color}}>Print / Save PDF</button></div>
             </div>

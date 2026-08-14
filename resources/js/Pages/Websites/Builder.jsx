@@ -463,24 +463,23 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
             if (right < left || bottom < top) return url;
 
-            // Preserve a tiny edge for antialiasing/shadows, but remove the
-            // generation canvas itself before contain/zoom math is calculated.
-            const padding = 6;
-            left = Math.max(0, left - padding);
-            top = Math.max(0, top - padding);
-            right = Math.min(width - 1, right + padding);
-            bottom = Math.min(height - 1, bottom + padding);
-
-            const tightWidth = Math.max(1, right - left + 1);
-            const tightHeight = Math.max(1, bottom - top + 1);
-            if (tightWidth === width && tightHeight === height) return url;
+            // Remove only the oversized generation canvas, then add deliberate
+            // transparent breathing room. The cropper contract is CONTAIN, not
+            // COVER: a freshly generated/matched logo must be fully visible at
+            // 100% zoom without the user rescuing clipped edges.
+            const visibleWidth = Math.max(1, right - left + 1);
+            const visibleHeight = Math.max(1, bottom - top + 1);
+            const paddingX = Math.max(8, Math.round(visibleWidth * 0.12));
+            const paddingY = Math.max(8, Math.round(visibleHeight * 0.12));
+            const tightWidth = visibleWidth + (paddingX * 2);
+            const tightHeight = visibleHeight + (paddingY * 2);
 
             const tightCanvas = document.createElement('canvas');
             tightCanvas.width = tightWidth;
             tightCanvas.height = tightHeight;
             const tightContext = tightCanvas.getContext('2d');
             tightContext.clearRect(0, 0, tightWidth, tightHeight);
-            tightContext.drawImage(canvas, left, top, tightWidth, tightHeight, 0, 0, tightWidth, tightHeight);
+            tightContext.drawImage(canvas, left, top, visibleWidth, visibleHeight, paddingX, paddingY, visibleWidth, visibleHeight);
             return tightCanvas.toDataURL('image/png');
         } catch (error) {
             console.warn('Logo pre-crop alpha trim unavailable; using original raster.', error);
@@ -784,16 +783,15 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
             let exportCanvas = canvas;
             if (right >= left && bottom >= top) {
-                // Keep a tiny transparent safety edge only; the large Cosmic
-                // cropper canvas must never become part of the final logo file.
-                const safetyPadding = 6;
-                left = Math.max(0, left - safetyPadding);
-                top = Math.max(0, top - safetyPadding);
-                right = Math.min(outputWidth - 1, right + safetyPadding);
-                bottom = Math.min(outputHeight - 1, bottom + safetyPadding);
-
-                const tightWidth = Math.max(1, right - left + 1);
-                const tightHeight = Math.max(1, bottom - top + 1);
+                // Preserve a real transparent safety area in the saved asset.
+                // Previously this collapsed the user's crop back to ~6px and
+                // effectively undid the cropper's 10–15% safe-area promise.
+                const visibleWidth = Math.max(1, right - left + 1);
+                const visibleHeight = Math.max(1, bottom - top + 1);
+                const safetyX = Math.max(8, Math.round(visibleWidth * 0.12));
+                const safetyY = Math.max(8, Math.round(visibleHeight * 0.12));
+                const tightWidth = visibleWidth + (safetyX * 2);
+                const tightHeight = visibleHeight + (safetyY * 2);
                 const tightCanvas = document.createElement('canvas');
                 tightCanvas.width = tightWidth;
                 tightCanvas.height = tightHeight;
@@ -803,12 +801,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     canvas,
                     left,
                     top,
-                    tightWidth,
-                    tightHeight,
-                    0,
-                    0,
-                    tightWidth,
-                    tightHeight
+                    visibleWidth,
+                    visibleHeight,
+                    safetyX,
+                    safetyY,
+                    visibleWidth,
+                    visibleHeight
                 );
                 exportCanvas = tightCanvas;
             }
@@ -1246,40 +1244,40 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     logo_theme_synced_theme: null,
                 }));
             } else {
-                // Preserve the exact cropped logo geometry for registered users.
-                // Theme adaptation changes color treatment only; never swap in a
-                // differently padded raster that makes the logo appear smaller.
-                const preservedLogoUrl = pending.logoUrl || data.global_header?.logo_image_url;
-                const preservedHeight = Math.max(24, Number(data.global_header?.logo_height || 60));
-                const preservedMaxWidth = Math.max(220, Number(data.global_header?.logo_max_width || 300));
-                const themeFilter = logoFilterFor(pending.theme);
-                setData((current) => ({
-                    ...current,
-                    global_header: {
-                        ...(current.global_header || {}),
-                        logo_image_url: preservedLogoUrl,
-                        logo_height: preservedHeight,
-                        logo_max_width: preservedMaxWidth,
-                        logo_filter: themeFilter,
-                        logo_filter_key: pending.theme,
-                    },
-                    global_footer: {
-                        ...(current.global_footer || {}),
-                        logo_image_url: preservedLogoUrl,
-                        logo_filter: themeFilter,
-                        logo_filter_key: pending.theme,
-                    },
-                }));
-                setLogoSyncState('synced');
-                setGlobalSelections((prev) => ({
-                    ...prev,
-                    logo_theme_sync_state: 'synced',
-                    logo_theme_sync_source: 'logo_to_theme_filter',
-                    logo_theme_synced_theme: pending.theme,
-                    brand_original_logo_url: prev.brand_original_logo_url || preservedLogoUrl,
-                    brand_active_logo_url: preservedLogoUrl,
-                    brand_logo_variants: { ...(prev.brand_logo_variants || {}), [pending.theme]: preservedLogoUrl },
-                }));
+                // IMPORTANT: use the AI-matched asset returned for the theme that
+                // was selected in this exact interaction. The old implementation
+                // discarded response.data.url and only applied a CSS filter to the
+                // previous logo, which made newly-added themes look like the prior
+                // palette (or plain black).
+                //
+                // `pending` is a synchronous snapshot captured by handleThemeChange
+                // before React state can lag, so its theme + palette are the source
+                // of truth for this adaptation request.
+                setPendingUploadedLogoThemeChoice(null);
+                if (String(response.data.url || '').toLowerCase().includes('.svg')) {
+                    applyTrialLogo(response.data.url);
+                    setLogoSyncState('synced');
+                    setGlobalSelections((prev) => ({
+                        ...prev,
+                        primary: pending.theme,
+                        brand_original_logo_url: prev.brand_original_logo_url || pending.logoUrl || data.global_header?.logo_image_url || response.data.url,
+                        brand_active_logo_url: response.data.url,
+                        brand_logo_variants: { ...(prev.brand_logo_variants || {}), [pending.theme]: response.data.url },
+                        logo_theme_sync_state: 'synced',
+                        logo_theme_sync_source: 'logo_to_theme',
+                        logo_theme_synced_theme: pending.theme,
+                    }));
+                } else {
+                    await openLogoCrop(response.data.url, data.global_header?.logo_text, {
+                        sourceKind: 'theme_match',
+                        entryPrompt: false,
+                        autoAdaptTheme: false,
+                    });
+                    // Keep the exact selected theme locked while the crop is open;
+                    // saveLogoCrop will persist the finished variant under it.
+                    setGlobalSelections((prev) => ({ ...prev, primary: pending.theme }));
+                    setLogoSyncState('theme_changed');
+                }
             }
             setHasUnsavedTheme(true);
             if (trialMode) {
@@ -1359,11 +1357,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const matchLogoToTheme = async () => {
         const logoUrl = data.global_header?.logo_image_url || '/storage/branding/your-logo.png';
         if (!logoUrl) return;
-        const themeKey = globalSelections?.primary || 'midnight';
+        // If a theme was just selected, pendingThemeLogoAdapt is the exact
+        // synchronous snapshot of that selection. Prefer it over React state so
+        // a fast Match Logo click can never reuse the previous theme palette.
+        const themeKey = pendingThemeLogoAdapt?.theme || globalSelections?.primary || 'midnight';
         const family = colorFamilies[themeKey] || colorFamilies.midnight;
-        const activePalette = themeKey === 'my-brand'
-            ? (globalSelections?.custom_brand_theme?.palette || family?.palette || {})
-            : (family?.palette || {});
+        const activePalette = pendingThemeLogoAdapt?.theme === themeKey && pendingThemeLogoAdapt?.palette
+            ? pendingThemeLogoAdapt.palette
+            : (themeKey === 'my-brand'
+                ? (globalSelections?.custom_brand_theme?.palette || family?.palette || {})
+                : (family?.palette || {}));
         const payload = {
             logo_url: logoUrl,
             theme_key: themeKey,
@@ -3616,14 +3619,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                         <span className="block text-base font-bold">✨ {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Regenerate Logo' : 'Generate Logo'}</span>
                                         <span className="mt-1 block text-xs text-emerald-50">Let Cosmic AI create a logo for this website · {trialActionCosts.generate_logo} Credits.</span>
                                     </button>
-                                    <button type="button" disabled={logoBusy} onClick={() => logoUploadRef.current?.click()} className="cosmic-logo-upload-card min-h-[104px] rounded-xl border-2 border-slate-300 bg-white px-5 py-5 text-left text-slate-950 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:opacity-70">
+                                    <button type="button" disabled={logoBusy} onClick={() => trialMode ? logoUploadRef.current?.click() : setLogoMediaLibraryOpen(true)} className="cosmic-logo-upload-card min-h-[104px] rounded-xl border-2 border-slate-300 bg-white px-5 py-5 text-left text-slate-950 shadow-sm transition hover:border-emerald-400 hover:bg-emerald-50 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-400 disabled:opacity-70">
                                         <span className="cosmic-logo-upload-title block text-base font-bold">↑ {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Replace Logo' : 'Upload Logo'}</span>
-                                        <span className="cosmic-logo-upload-help mt-1 block text-xs font-medium text-slate-600">SVG, PNG, JPG or WebP up to 2 MB.</span>
+                                        <span className="cosmic-logo-upload-help mt-1 block text-xs font-medium text-slate-600">{trialMode ? 'SVG, PNG, JPG or WebP up to 2 MB.' : 'Choose an existing logo or upload a new one in Media Library.'}</span>
                                     </button>
-                                    {!trialMode && <button type="button" disabled={logoBusy} onClick={() => setLogoMediaLibraryOpen(true)} className="cosmic-logo-media-card sm:col-span-2 min-h-[72px] rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 text-left text-violet-950 transition hover:border-violet-300 hover:bg-violet-100 disabled:opacity-60">
-                                        <span className="cosmic-logo-media-title block text-sm font-extrabold">▦ Choose from Media Library</span>
-                                        <span className="cosmic-logo-media-help mt-1 block text-xs text-violet-700">Reuse an existing logo or image already saved for this website.</span>
-                                    </button>}
                                     <input ref={logoUploadRef} type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" onChange={uploadTrialLogo} className="hidden" />
                                     {globalSelections?.brand_original_logo_url && String(globalSelections.brand_original_logo_url) !== String(data.global_header?.logo_image_url || '') && (
                                         <button type="button" disabled={logoBusy} onClick={restoreOriginalLogo} className="cosmic-logo-restore-card sm:col-span-2 min-h-[72px] w-full rounded-xl border px-5 py-4 text-left transition">
@@ -3650,11 +3649,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                             ) : (
                                 <div className="space-y-4">
                                     <div>
-                                        <label className="mb-2 block text-sm font-semibold text-slate-800">Company name</label>
-                                        <input type="text" maxLength={80} value={logoCompanyName} onChange={(event) => setLogoCompanyName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !logoBusy && logoCompanyName.trim().length >= 2) generateTrialLogo(); }} className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-emerald-500" placeholder="e.g. Northstar Construction" autoFocus />
+                                        <label className="cosmic-logo-company-label mb-2 block text-sm font-semibold text-slate-800">Company name</label>
+                                        <input type="text" maxLength={80} value={logoCompanyName} onChange={(event) => setLogoCompanyName(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !logoBusy && logoCompanyName.trim().length >= 2) generateTrialLogo(); }} className="cosmic-logo-company-input w-full rounded-xl border border-slate-300 px-4 py-3 text-sm text-slate-900 focus:border-emerald-500 focus:ring-emerald-500" placeholder="e.g. Northstar Construction" autoFocus />
                                     </div>
                                     <div className="flex items-center justify-between gap-3">
-                                        <button type="button" disabled={logoBusy} onClick={() => setShowLogoGenerateForm(false)} className="rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50">Back</button>
+                                        <button type="button" disabled={logoBusy} onClick={() => setShowLogoGenerateForm(false)} className="cosmic-logo-back-button rounded-lg px-4 py-2.5 text-sm font-semibold text-slate-600 hover:bg-slate-100 disabled:opacity-50">Back</button>
                                         <button type="button" disabled={logoBusy || logoCompanyName.trim().length < 2} onClick={generateTrialLogo} className="rounded-lg bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-50">{logoBusy ? 'Cosmic AI is creating…' : `${data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Regenerate Logo' : 'Generate Logo'} · ${trialActionCosts.generate_logo} Credits`}</button>
                                     </div>
                                 </div>

@@ -21,6 +21,16 @@ const THEME_CREDITS = {
     violet: 50,
     ruby: 50,
     asphalt: 50,
+    burgundy: 50,
+    sage: 50,
+    sandstone: 50,
+    copper: 50,
+    arctic: 50,
+    blush: 50,
+    graphite: 50,
+    cobalt: 50,
+    moss: 50,
+    champagne: 50,
 };
 
 export default function ThemeCard({

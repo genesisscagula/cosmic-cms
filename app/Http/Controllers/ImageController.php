@@ -316,10 +316,9 @@ class ImageController extends Controller
             return response()->json(['message' => 'Cosmic AI could not match this logo to the theme. No credits were charged.'], 500);
         }
 
-        if (($result['extension'] ?? '') === 'png') {
-            // Normalize every AI result back to the same navbar-safe crop flow used by Generate Logo.
-            $result['bytes'] = $canvas->trimTransparentPng($result['bytes'], 6);
-        }
+        // Keep the AI result's transparent breathing room intact. The visual
+        // cropper is the single authority for final logo geometry; trimming here
+        // used to undo its safe-area contract before the user could confirm it.
 
         $filename = 'theme-matched-logo-'.Str::lower(Str::random(10)).'.'.$result['extension'];
         $path = "websites/{$website->id}/logos/{$filename}";

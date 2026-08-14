@@ -4,7 +4,9 @@ namespace App\Services;
 
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use App\Models\MediaAsset;
 use RuntimeException;
+use Illuminate\Support\Str;
 
 class LogoThemeMatchService
 {
@@ -96,7 +98,9 @@ class LogoThemeMatchService
             'REFINEMENT LIMIT: this is not a redesign. You may make only restrained adjustments to spacing, balance, line weight, proportions, and typography cleanup when necessary for legibility or header fit. Keep the original composition recognizable at first glance.',
             'NO NEW ART DIRECTION: do not add 3D depth, glass effects, metallic materials, new shadows, new glows, new decorative layers, photographic effects, mockups, scenes, or stylistic treatments that were not already present in the source logo.',
             'If the source logo already contains gradients, shadows, highlights, or depth, preserve the character of those effects but remap them strictly within the supplied theme palette. Any interpolation must stay between the supplied palette colors only.',
-            "Use {$primaryHex} as the dominant anchor, {$secondaryHex} as the intentional accent, and {$tertiaryHex} only as restrained supporting/surface color. Do not swap their semantic roles unless required to preserve contrast and legibility.",
+            "PALETTE BALANCE: keep {$primaryHex} as the dominant family anchor (roughly 60–80% of visible colored area), but intentionally use {$secondaryHex} and/or {$tertiaryHex} for up to roughly 20–40% combined when the source logo has multiple logical parts and the extra color improves hierarchy, legibility, or polish. Suitable uses include icon sub-parts, selected lettering, dividers, small highlights, or secondary marks. Stay inside this exact color family; never invent a fourth hue.",
+            'Do not force a multicolor result when it would make the logo worse. If the source is intentionally minimal or one-color, a one-color adaptation is acceptable. If the source clearly contains multiple components, prefer a tasteful 2–3 color treatment rather than flattening every component into the dominant color.',
+            "Use {$primaryHex} as the dominant anchor, {$secondaryHex} as the intentional accent, and {$tertiaryHex} as a restrained supporting/surface color. Preserve semantic roles unless contrast or source-logo structure requires a small adjustment.",
             'All visible icon and wordmark pixels must remain crisp, fully opaque where the original artwork is opaque, and high-contrast on a white/light website header. Do not wash out the company name or reduce wordmark opacity.',
             "Prefer the source logo's existing horizontal arrangement. Rebalance only enough to make the complete mark comfortable in a website navbar.",
             'HEADER CROPPER TARGET IS MANDATORY: fit the complete visible logo safely inside a 650 × 200 pixel website-header frame (3.25:1). Preserve every existing wordmark line, icon, tagline, shadow, glow, highlight, and intentional decorative element.',
@@ -165,14 +169,58 @@ class LogoThemeMatchService
     {
         $path = parse_url($url, PHP_URL_PATH) ?: $url;
         $path = '/'.ltrim($path, '/');
-        if (! str_starts_with($path, '/storage/')) {
-            throw new RuntimeException('Only Cosmic-hosted logo files can be theme-matched.');
+
+        // Normal public-disk URL.
+        if (str_starts_with($path, '/storage/')) {
+            $relative = ltrim(substr($path, strlen('/storage/')), '/');
+            if ($relative === '' || str_contains($relative, '..')) {
+                throw new RuntimeException('The current logo path is invalid.');
+            }
+            return $relative;
         }
 
-        $relative = ltrim(substr($path, strlen('/storage/')), '/');
-        if ($relative === '' || str_contains($relative, '..')) {
-            throw new RuntimeException('The current logo path is invalid.');
+        // Media Library deliberately serves protected assets through a route
+        // instead of /storage. Resolve that route back to its Cosmic-owned
+        // public-disk file so Match Logo to Theme works with the new single
+        // Replace Logo -> Media Library flow.
+        if (preg_match('#^/websites/(\d+)/media-library/assets/([0-9a-fA-F-]{36})#', $path, $matches)) {
+            $asset = MediaAsset::query()
+                ->where('website_id', (int) $matches[1])
+                ->where('uuid', $matches[2])
+                ->first();
+            if ($asset && $asset->disk === 'public' && $asset->path && Storage::disk('public')->exists($asset->path)) {
+                return $asset->path;
+            }
         }
+
+        // Legacy/external logo: import a safe public image into Cosmic storage
+        // first. This keeps storage details invisible to the user and avoids the
+        // old "Only Cosmic-hosted" dead end. Private/local network targets are
+        // rejected to prevent this convenience import becoming an SSRF path.
+        $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+        $host = (string) parse_url($url, PHP_URL_HOST);
+        if (! in_array($scheme, ['http', 'https'], true) || $host === '') {
+            throw new RuntimeException('The current logo could not be imported. Replace the logo and try again.');
+        }
+        $ips = @gethostbynamel($host) ?: [];
+        if (! $ips || collect($ips)->contains(fn ($ip) => filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE) === false)) {
+            throw new RuntimeException('The current logo could not be imported safely. Replace the logo and try again.');
+        }
+
+        $response = Http::timeout(20)->withOptions(['allow_redirects' => ['max' => 3]])->get($url);
+        if ($response->failed() || strlen($response->body()) < 100 || strlen($response->body()) > 5 * 1024 * 1024) {
+            throw new RuntimeException('The current logo could not be imported. Replace the logo and try again.');
+        }
+        $mime = strtolower(trim(explode(';', (string) $response->header('Content-Type'))[0]));
+        $extension = match ($mime) {
+            'image/png' => 'png', 'image/jpeg' => 'jpg', 'image/webp' => 'webp', 'image/svg+xml' => 'svg',
+            default => null,
+        };
+        if (! $extension) {
+            throw new RuntimeException('The current logo is not a supported image. Replace the logo and try again.');
+        }
+        $relative = 'logos/imported/'.Str::lower(Str::random(24)).'.'.$extension;
+        Storage::disk('public')->put($relative, $response->body());
         return $relative;
     }
 
@@ -194,9 +242,24 @@ class LogoThemeMatchService
         $index = 0;
         $replace = function (array $match) use ($primaryHex, $secondaryHex, $tertiaryHex, &$index): string {
             $value = strtoupper($match[2]);
-            if (in_array($value, ['#FFFFFF', '#FFF', '#000000', '#000'], true)) {
+
+            // White is commonly a deliberate knockout/highlight in vector logos,
+            // so keep it intact. Black / near-black is different: most uploaded
+            // wordmarks and icons use black as the editable brand ink. The old
+            // matcher preserved black verbatim, which made every newly-added
+            // theme appear as a black logo even though the selected palette was
+            // correct. Map dark ink to the active theme primary instead.
+            if (in_array($value, ['#FFFFFF', '#FFF'], true)) {
                 return $match[0];
             }
+
+            if (in_array($value, ['#000000', '#000', '#111111', '#111', '#0F0F0F', '#101010', '#1A1A1A'], true)) {
+                return $match[1].$primaryHex.$match[3];
+            }
+
+            // Existing colored SVG parts are distributed through the selected
+            // theme family only. This keeps vector output crisp while allowing
+            // tasteful 2–3 color treatment without inventing unrelated hues.
             $colors = [$primaryHex, $secondaryHex, $tertiaryHex];
             $new = $colors[$index++ % count($colors)];
             return $match[1].$new.$match[3];
