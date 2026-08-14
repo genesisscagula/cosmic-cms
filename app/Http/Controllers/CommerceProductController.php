@@ -112,23 +112,29 @@ class CommerceProductController extends Controller
 
         $currencies = array_keys((array) config('cosmic-commerce.currencies', []));
         $data = $request->validate([
-            'enabled' => 'required|boolean',
-            'currency' => ['required','string', Rule::in($currencies)],
+            'enabled' => 'sometimes|boolean',
+            'currency' => ['sometimes','string', Rule::in($currencies)],
             'paypal_receiver_email' => ['nullable', 'email:rfc', 'max:190'],
+            'commerce_templates' => ['sometimes', 'array'],
+            'commerce_templates.*.preset' => ['required_with:commerce_templates', 'string', Rule::in(['premium','editorial','modern','minimal','magazine','bold'])],
+            'commerce_templates.*.sparks' => ['nullable', 'array', 'max:6'],
         ]);
 
         $settings = $commerce->settingsFor($website);
         $storeSettings = is_array($settings->settings) ? $settings->settings : [];
-        $receiver = strtolower(trim((string) ($data['paypal_receiver_email'] ?? '')));
+        $receiver = strtolower(trim((string) ($data['paypal_receiver_email'] ?? data_get($storeSettings, 'paypal_receiver_email', ''))));
         if ($receiver === '') {
             unset($storeSettings['paypal_receiver_email']);
         } else {
             $storeSettings['paypal_receiver_email'] = $receiver;
         }
+        if (array_key_exists('commerce_templates', $data)) {
+            $storeSettings['commerce_templates'] = $data['commerce_templates'];
+        }
 
         $settings->update([
-            'enabled' => (bool) $data['enabled'],
-            'currency' => strtoupper($data['currency']),
+            'enabled' => array_key_exists('enabled', $data) ? (bool) $data['enabled'] : (bool) $settings->enabled,
+            'currency' => array_key_exists('currency', $data) ? strtoupper($data['currency']) : $settings->currency,
             'settings' => $storeSettings,
         ]);
 

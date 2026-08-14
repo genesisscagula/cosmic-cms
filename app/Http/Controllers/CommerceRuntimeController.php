@@ -16,8 +16,10 @@ class CommerceRuntimeController extends Controller
             ->with(['commerceSetting'])
             ->firstOrFail();
 
-        abort_unless((bool) $website->commerceSetting?->enabled, 404);
-
+        // Catalog runtime is intentionally read-only. Keep it available for
+        // Preview/Export even when checkout is disabled so installed Shop pages
+        // can still render their published product catalog. Transactional routes
+        // remain independently gated by the commerce capability/settings layer.
         $settings = $website->commerceSetting;
         $currency = strtoupper((string) ($settings?->currency ?: config('cosmic-commerce.default_currency', 'USD')));
         $decimals = (int) config("cosmic-commerce.currencies.$currency.decimals", 2);

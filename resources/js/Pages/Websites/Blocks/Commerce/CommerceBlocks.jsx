@@ -68,6 +68,18 @@ function useCommerce(block, globalTheme, commerce) {
     return { family, colors, products, categories, currency, decimals, money, product };
 }
 
+
+const commerceControlScheme = (colors) => {
+    const text = String(colors?.text || '').toLowerCase();
+    const dark = ['#f8fafc', '#ffffff', '#fff', 'white'].includes(text);
+    return {
+        colorScheme: dark ? 'dark' : 'light',
+        optionStyle: dark
+            ? { backgroundColor: colors?.surface || colors?.background || '#0f172a', color: colors?.text || '#f8fafc' }
+            : { backgroundColor: colors?.surface || colors?.background || '#ffffff', color: colors?.text || '#0f172a' },
+    };
+};
+
 const Section = ({ colors, children }) => (
     <section className="w-full px-6 py-16 md:px-12 lg:py-20" style={{ background: colors.background, color: colors.text }}>
         <div className="mx-auto max-w-7xl">{children}</div>
@@ -112,19 +124,21 @@ const categoryUrl = (category) => category?.storefront_url || (category?.slug ? 
 const productPriceMinor = (product) => product?.sale_price_minor ?? product?.regular_price_minor ?? null;
 
 function CommerceCatalogToolbar({ categories, search, setSearch, category, setCategory, sort, setSort, colors }) {
+    const controls = commerceControlScheme(colors);
+    const selectStyle = { borderColor: colors.border, color: colors.text, background: colors.surface, colorScheme: controls.colorScheme };
     return (
         <div className="mb-7 grid gap-3 rounded-2xl border p-3 sm:grid-cols-[1fr_auto_auto]" style={{ borderColor: colors.border, background: colors.surface }}>
             <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products" className="min-h-11 rounded-xl border bg-transparent px-4 text-sm outline-none" style={{ borderColor: colors.border, color: colors.text }} />
-            <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-11 rounded-xl border bg-transparent px-3 text-sm font-semibold" style={{ borderColor: colors.border, color: colors.text }}>
-                <option value="" className="text-slate-900">All categories</option>
-                {categories.map((item) => <option key={item.id} value={String(item.id)} className="text-slate-900">{item.name}</option>)}
+            <select value={category} onChange={(event) => setCategory(event.target.value)} className="min-h-11 rounded-xl border px-3 text-sm font-semibold" style={selectStyle}>
+                <option value="" style={controls.optionStyle}>All categories</option>
+                {categories.map((item) => <option key={item.id} value={String(item.id)} style={controls.optionStyle}>{item.name}</option>)}
             </select>
-            <select value={sort} onChange={(event) => setSort(event.target.value)} className="min-h-11 rounded-xl border bg-transparent px-3 text-sm font-semibold" style={{ borderColor: colors.border, color: colors.text }}>
-                <option value="featured" className="text-slate-900">Featured</option>
-                <option value="newest" className="text-slate-900">Newest</option>
-                <option value="price_asc" className="text-slate-900">Price: low to high</option>
-                <option value="price_desc" className="text-slate-900">Price: high to low</option>
-                <option value="name" className="text-slate-900">Name</option>
+            <select value={sort} onChange={(event) => setSort(event.target.value)} className="min-h-11 rounded-xl border px-3 text-sm font-semibold" style={selectStyle}>
+                <option value="featured" style={controls.optionStyle}>Featured</option>
+                <option value="newest" style={controls.optionStyle}>Newest</option>
+                <option value="price_asc" style={controls.optionStyle}>Price: low to high</option>
+                <option value="price_desc" style={controls.optionStyle}>Price: high to low</option>
+                <option value="name" style={controls.optionStyle}>Name</option>
             </select>
         </div>
     );

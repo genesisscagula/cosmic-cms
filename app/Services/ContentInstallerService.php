@@ -57,8 +57,6 @@ class ContentInstallerService
     {
         return DB::transaction(function () use ($website, $type, $addNavigation): array {
             abort_unless((int) $type->website_id === (int) $website->id, 404);
-            abort_unless(in_array((string) $type->slug, ['blog', 'events', 'projects'], true), 422, 'Demo content is available for Blog, Events, and Projects.');
-
             $definition = $this->definitionForType($type);
             $this->installPage($website, $type, $definition);
             $created = $this->installDemoEntriesForType($website, $type);
@@ -223,6 +221,24 @@ class ContentInstallerService
                 ['studio-refresh','Studio Refresh','Brand','A brand and website refresh designed to create a clearer, more confident customer experience.','/storage/cms-images/background/background-7.avif',['client'=>'Studio Co.','services'=>'Brand, Web Design','completion_date'=>now()->subMonths(2)->toDateString(),'project_url'=>'#'],false],
                 ['harbour-campaign','Harbour Campaign','Campaign','A launch campaign bringing together a flexible visual system, landing experience and conversion-focused content.','/storage/cms-images/background/background-6.avif',['client'=>'Harbour Group','services'=>'Campaign, Content, Web Design','completion_date'=>now()->subMonths(3)->toDateString(),'project_url'=>'#'],false],
             ],
+            'news' => [
+                ['a-new-chapter-begins','A new chapter begins','Company news','A polished sample news story ready for your own announcement.','/storage/cms-images/background/background-2.avif',['author'=>'Editorial Team','source'=>'Company newsroom','news_date'=>now()->toDateString(),'external_url'=>''],true],
+            ],
+            'team' => [
+                ['alex-morgan','Alex Morgan','Leadership','Creative lead focused on thoughtful digital experiences.','/storage/cms-images/background/background-3.avif',['role'=>'Creative Director','department'=>'Design','email'=>'alex@example.com','linkedin_url'=>'','bio'=>'<p>Alex leads multidisciplinary teams and turns complex ideas into clear digital experiences.</p>'],true],
+            ],
+            'services' => [
+                ['digital-strategy','Digital Strategy','Strategy','Clear positioning, practical planning, and a focused roadmap.','/storage/cms-images/background/background-5.avif',['short_description'=>'Strategy and planning for ambitious digital products.','features'=>[['feature'=>'Discovery workshop'],['feature'=>'Roadmap planning'],['feature'=>'Launch strategy']],'cta_url'=>''],true],
+            ],
+            'testimonials' => [
+                ['a-thoughtful-partnership','A thoughtful partnership','Client story','A sample client story for your testimonial archive.','/storage/cms-images/background/background-4.avif',['person_name'=>'Jamie Lee','person_role'=>'Founder, Northstar','rating'=>5,'quote'=>'<p>The team made a complex project feel clear, collaborative, and easy to move forward.</p>'],true],
+            ],
+            'jobs' => [
+                ['senior-product-designer','Senior Product Designer','Design','Join a collaborative team building thoughtful digital products.','/storage/cms-images/background/background-6.avif',['department'=>'Design','location'=>'Remote','employment_type'=>'Full-time','salary'=>'Competitive','requirements'=>'<p>Strong product thinking, visual craft, and collaboration skills.</p>','apply_url'=>'','closing_date'=>''],true],
+            ],
+            'faqs' => [
+                ['how-does-this-work','How does this work?','General','A sample frequently asked question.','',['question'=>'How does this work?','answer'=>'<p>Create structured entries once, then reuse them across pages with dynamic content blocks.</p>','topic'=>'General','sort_priority'=>1],true],
+            ],
         ];
     }
 
@@ -239,7 +255,8 @@ class ContentInstallerService
 
     private function installDemoEntriesForType(Website $website, ContentType $type, ?array $entries = null): int
     {
-        $entries ??= $this->demoRows()[(string) $type->slug] ?? [];
+        $rows = $this->demoRows();
+        $entries ??= $rows[(string) $type->slug] ?? $rows[(string) ($type->preset_key ?? '')] ?? [];
         $created = 0;
 
         foreach ($entries as [$slug,$title,$category,$excerpt,$image,$custom,$featured]) {

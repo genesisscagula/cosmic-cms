@@ -431,8 +431,15 @@ class CmsHtmlCompiler
             foreach ($categories as $category) {
                 $categoryOptions .= "<option value='".e((string) ($category['id'] ?? ''))."'>".e((string) ($category['name'] ?? ''))."</option>";
             }
+            $commerceDarkControls = in_array(strtolower($textColor), ['#f8fafc', '#ffffff', '#fff', 'white'], true);
+            $commerceControlScheme = $commerceDarkControls ? 'dark' : 'light';
+            $commerceOptionBg = $surface;
+            $commerceOptionColor = $textColor;
+            $categoryOptions = str_replace('<option ', "<option style='background-color:{$commerceOptionBg};color:{$commerceOptionColor}' ", $categoryOptions);
+            $sortOptions = "<option value='featured' style='background-color:{$commerceOptionBg};color:{$commerceOptionColor}'>Featured</option><option value='newest' style='background-color:{$commerceOptionBg};color:{$commerceOptionColor}'>Newest</option><option value='price_asc' style='background-color:{$commerceOptionBg};color:{$commerceOptionColor}'>Price: low to high</option><option value='price_desc' style='background-color:{$commerceOptionBg};color:{$commerceOptionColor}'>Price: high to low</option><option value='name' style='background-color:{$commerceOptionBg};color:{$commerceOptionColor}'>Name</option>";
+            $commerceSelectStyle = "border-color:var(--commerce-border);color:var(--commerce-text);background:var(--commerce-surface);color-scheme:{$commerceControlScheme}";
             $toolbar = !array_key_exists('show_toolbar', $block) || $block['show_toolbar'] !== false
-                ? "<div data-commerce-toolbar class='mb-7 grid gap-3 rounded-2xl border p-3 sm:grid-cols-[1fr_auto_auto]' style='{$cardStyle}'><input data-catalog-search type='search' placeholder='Search products' class='min-h-11 rounded-xl border bg-transparent px-4 text-sm outline-none' style='border-color:var(--commerce-border);color:var(--commerce-text)'><select data-catalog-category class='min-h-11 rounded-xl border bg-transparent px-3 text-sm font-semibold' style='border-color:var(--commerce-border);color:var(--commerce-text)'>{$categoryOptions}</select><select data-catalog-sort class='min-h-11 rounded-xl border bg-transparent px-3 text-sm font-semibold' style='border-color:var(--commerce-border);color:var(--commerce-text)'><option value='featured'>Featured</option><option value='newest'>Newest</option><option value='price_asc'>Price: low to high</option><option value='price_desc'>Price: high to low</option><option value='name'>Name</option></select></div>"
+                ? "<div data-commerce-toolbar class='mb-7 grid gap-3 rounded-2xl border p-3 sm:grid-cols-[1fr_auto_auto]' style='{$cardStyle}'><input data-catalog-search type='search' placeholder='Search products' class='min-h-11 rounded-xl border bg-transparent px-4 text-sm outline-none' style='border-color:var(--commerce-border);color:var(--commerce-text)'><select data-catalog-category class='min-h-11 rounded-xl border px-3 text-sm font-semibold' style='{$commerceSelectStyle}'>{$categoryOptions}</select><select data-catalog-sort class='min-h-11 rounded-xl border px-3 text-sm font-semibold' style='{$commerceSelectStyle}'>{$sortOptions}</select></div>"
                 : '';
             $cards = '';
             foreach ($items as $index => $p) {
@@ -663,7 +670,7 @@ JS;
    public static function compile(array $blocks, string $primaryColor = null, array $context = []): string
     {
         $html = "";
-        self::$currentPageStyle = strtolower(trim((string) ($context['page_style'] ?? 'auto')));
+        self::$currentPageStyle = PageStyleRegistry::normalize($context['page_style'] ?? null);
     
         // 2. Mapping
 
@@ -1535,7 +1542,7 @@ HTML;
 
                         <a
                             href='{$ctaUrl}'
-                            class='{$buttonBg} {$buttonText} shrink-0 rounded-full px-8 py-4 text-sm font-semibold transition hover:opacity-90 lg:px-10'
+                            class='cosmic-primary-cta {$buttonBg} {$buttonText} shrink-0 rounded-full px-8 py-4 text-sm font-semibold transition hover:opacity-90 lg:px-10'
                         >
                             {$ctaLabel}
                         </a>

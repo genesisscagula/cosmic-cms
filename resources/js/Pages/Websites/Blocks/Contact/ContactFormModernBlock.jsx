@@ -68,7 +68,10 @@ function FormField({ field, inputClass, theme, nativeColorScheme }) {
         return <label className={`block text-sm font-semibold ${theme.text}`}>{label}<textarea className={`mt-2 min-h-32 w-full resize-y rounded-xl border px-4 py-3 text-sm outline-none transition focus:ring-2 focus:ring-violet-400/60 ${inputClass}`} placeholder={field.placeholder} required={field.required} /></label>;
     }
     if (field.type === "select") {
-        return <label className={`block text-sm font-semibold ${theme.text}`}>{label}<select style={{ colorScheme: nativeColorScheme }} className={`mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 focus:ring-violet-400/60 ${inputClass}`} defaultValue="" required={field.required}><option value="" disabled>{field.placeholder || "Select an option"}</option>{options.map((option) => <option className="bg-slate-900 text-white" key={option}>{option}</option>)}</select></label>;
+        const optionStyle = nativeColorScheme === "dark"
+            ? { backgroundColor: "#0f172a", color: "#f8fafc" }
+            : { backgroundColor: "#ffffff", color: "#0f172a" };
+        return <label className={`block text-sm font-semibold ${theme.text}`}>{label}<select style={{ colorScheme: nativeColorScheme }} className={`mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 focus:ring-violet-400/60 ${inputClass}`} defaultValue="" required={field.required}><option value="" disabled style={optionStyle}>{field.placeholder || "Select an option"}</option>{options.map((option) => <option style={optionStyle} key={option}>{option}</option>)}</select></label>;
     }
     if (field.type === "radio") {
         return <fieldset className={`text-sm font-semibold ${theme.text}`}><legend>{label}</legend><div className="mt-3 flex flex-wrap gap-3">{options.map((option) => <label className={`inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${theme.border}`} key={option}><input type="radio" name={field.name} required={field.required} />{option}</label>)}</div></fieldset>;

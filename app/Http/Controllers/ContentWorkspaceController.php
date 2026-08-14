@@ -255,6 +255,39 @@ class ContentWorkspaceController extends Controller
 
 
 
+    /** Rewrite generic Single/Archive Post Spark copy. Template entry data is never sent or changed. */
+    public function rewriteTemplateCopy(Request $request, Website $website, OpenAIClient $openAI, CreditService $credits)
+    {
+        $this->authorize('update', $website);
+        $validated = $request->validate([
+            'current_value' => ['required', 'string', 'max:5000'],
+            'instruction' => ['nullable', 'string', 'max:800'],
+            'field_role' => ['nullable', 'string', 'max:80'],
+        ]);
+        $cost = 10;
+        $reference = 'ai-template-copy-'.Str::uuid();
+        $credits->consume($request->user(), $cost, 'Rewrite Post Spark copy with Cosmic AI', $website, $reference, ['category' => 'ai']);
+        try {
+            $system = 'You are Cosmic AI inside Cosmic CMS. Rewrite only the supplied generic website section copy. Return plain text only: no markdown, quotes, labels or HTML. Preserve meaning unless the instruction asks otherwise. Keep headings concise and supporting copy polished. Do not invent statistics, awards, prices, guarantees or factual claims.';
+            $instruction = trim((string) ($validated['instruction'] ?? ''));
+            $prompt = implode("\n", array_filter([
+                'Website: '.($website->name ?: 'Website'),
+                'Industry: '.($website->industry ?: 'General'),
+                'Field role: '.($validated['field_role'] ?? 'website section copy'),
+                'Current copy: '.trim($validated['current_value']),
+                'Instruction: '.($instruction !== '' ? $instruction : 'Improve clarity and polish while preserving the meaning.'),
+            ]));
+            $text = trim((string) $openAI->chat($system, $prompt));
+            $text = trim(preg_replace('/^```(?:text)?\s*|\s*```$/i', '', $text), " \t\n\r\0\x0B\"");
+            abort_if($text === '', 502, 'Cosmic AI returned empty text.');
+            return response()->json(['text' => Str::limit($text, 5000, ''), 'credits_spent' => $cost, 'credit_balance' => $credits->balance($request->user())]);
+        } catch (\Throwable $e) {
+            $credits->refund($request->user(), $cost, 'Refund failed Post Spark copy rewrite', $website, $reference, ['category' => 'refund']);
+            report($e);
+            return response()->json(['message' => 'Cosmic AI could not rewrite this copy. Your credits were refunded.'], 503);
+        }
+    }
+
     /** Generate a reviewable custom-field schema with Cosmic AI. Nothing is saved until the user saves the content type. */
     public function generateFields(Request $request, Website $website, OpenAIClient $openAI, CreditService $credits)
     {
@@ -515,7 +548,7 @@ PROMPT;
             $contextPage = $website->pages()->where('page_type', 'standard')->orderBy('id')->first();
         }
 
-        $pageStyle = trim((string) ($website->page_style ?: $website->published_page_style ?: $contextPage?->page_style ?: $contextPage?->published_page_style ?: 'auto'));
+        $pageStyle = PageStyleRegistry::normalize($website->page_style ?: $website->published_page_style ?: $contextPage?->page_style ?: $contextPage?->published_page_style);
         $style = PageStyleRegistry::all()[$pageStyle] ?? null;
         $pattern = PageStyleRegistry::pattern($pageStyle);
         $firstSurface = strtolower((string) ($pattern[0] ?? 'primary'));
@@ -524,7 +557,7 @@ PROMPT;
         $header = is_array($website->global_header) ? $website->global_header : $website->published_global_header;
 
         return [
-            'page_style' => $pageStyle !== '' ? $pageStyle : 'auto',
+            'page_style' => $pageStyle,
             'page_style_direction' => (string) ($style['direction'] ?? 'clean'),
             'first_surface' => $firstSurface,
             'header_overlay_enabled' => is_array($header) && (bool) ($header['overlay_header_on_banner'] ?? false),

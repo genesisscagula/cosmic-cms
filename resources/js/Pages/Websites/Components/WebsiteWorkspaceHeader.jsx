@@ -3,7 +3,7 @@ import CreditBalanceBadge from "../../../Components/CosmicCredits/CreditBalanceB
 
 export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCount = 0, themeSummary, onNewPage, onPushLive, pushingLive, onOpenInquiries, onOpenProfile, onOpenSettings, creditBalance }) {
     return (
-        <header className="flex flex-col gap-4 lg:grid lg:grid-cols-[1fr_auto_1fr] lg:items-end">
+        <header className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(260px,1fr)_auto_auto] lg:items-end">
             <div>
                 <Link href={route("dashboard")} className="text-xs font-semibold text-violet-300 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">
                     &larr; Back to Websites
@@ -40,14 +40,14 @@ export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCoun
                 <button type="button" onClick={onOpenSettings} className="font-medium text-slate-500 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 focus:ring-offset-[#0a0a0b]">Settings</button>
             </div>
 
-            <div className="flex flex-wrap items-center gap-2 lg:justify-self-end">
+            <div className="flex flex-nowrap items-center gap-2 lg:justify-self-end">
                 <CreditBalanceBadge balance={creditBalance} className="h-10" />
                 <Link method="post" as="button" href={route("logout")} className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">Log out</Link>
                 <button type="button" onClick={onPushLive} disabled={pushingLive} className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/20 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50">
                     {pushingLive ? "Pushing live..." : "Push live update"}
                 </button>
-                <button type="button" onClick={onNewPage} className="inline-flex h-10 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400">
-                    <span aria-hidden="true">+</span>New Page
+                <button type="button" onClick={onNewPage} id="cosmic-new-page-button" className="cosmic-new-page-button inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400">
+                    <span aria-hidden="true">+</span><span className="whitespace-nowrap">New Page</span>
                 </button>
             </div>
         </header>

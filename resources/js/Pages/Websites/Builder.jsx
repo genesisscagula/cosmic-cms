@@ -136,9 +136,14 @@ const bindDefaultCommerceProduct = (block, commerce) => {
     return product ? { ...block, product_id: product.id } : block;
 };
 
+const publishHealthIssues = (health) => Object.values(health?.categories || {})
+    .flatMap((category) => category?.findings || [])
+    .filter((finding) => finding?.status === 'critical');
 
 
-export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'auto', pageStyleOptions = [], themeAccess: builderThemeAccess = null, commerce = { enabled:false, currency:'USD', currency_decimals:2, products:[], categories:[] }, contentWorkspace = { types: [] }, websiteAccessRole = null }) {
+
+
+export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'balanced', pageStyleOptions = [], themeAccess: builderThemeAccess = null, commerce = { enabled:false, currency:'USD', currency_decimals:2, products:[], categories:[] }, contentWorkspace = { types: [] }, websiteAccessRole = null }) {
     const { props } = usePage();
     const currentPlanKey = builderThemeAccess?.plan_key || props?.auth?.effectivePlanKey || props?.auth?.user?.plan_key || 'starter';
     // The Builder receives a route-specific entitlement payload because this
@@ -203,6 +208,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [sparkInsertTarget, setSparkInsertTarget] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
+    const [isCheckingHealth, setIsCheckingHealth] = useState(false);
+    const [publishHealthReview, setPublishHealthReview] = useState(null);
     const [previewUrl, setPreviewUrl] = useState(initialPreviewUrl);
     const [previewDeployedAt, setPreviewDeployedAt] = useState(initialPreviewDeployment?.deployed_at || null);
     const [previewDeploymentError, setPreviewDeploymentError] = useState(initialPreviewDeployment?.error || '');
@@ -267,7 +274,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [pageStatus, setPageStatus] = useState(page.status || 'draft');
     const [publishError, setPublishError] = useState(page.publish_error || '');
     const [blogPosts, setBlogPosts] = useState(initialBlogPosts);
-    const [currentPageStyle, setCurrentPageStyle] = useState(pageStyle || 'auto');
+    const [currentPageStyle, setCurrentPageStyle] = useState(['balanced','clean','premium'].includes(String(pageStyle || '').toLowerCase()) ? String(pageStyle).toLowerCase() : 'balanced');
     const [styleOptions, setStyleOptions] = useState(pageStyleOptions || []);
     const hasUnsavedChanges = isDirty || hasUnsavedTheme;
     const previewIsStale = Boolean(previewUrl) && (hasUnsavedChanges || pageStatus !== 'published');
@@ -1710,7 +1717,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 description,
                 blocks: stripClientBlockFields(data.blocks),
                 metadata: {
-                    page_style: currentPageStyle || 'auto',
+                    page_style: currentPageStyle || 'balanced',
                     section_count: data.blocks.length,
                     tags: ['Saved', 'Builder'],
                 },
@@ -1869,24 +1876,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         await saveDraft();
     };
 
-    const handlePublish = async () => {
-        setPublishError('');
-
-        // Always persist the exact Builder state first. This keeps publishing
-        // reliable after AI generation, adding/removing blocks, layout changes,
-        // header/footer edits, and theme changes—even when React's dirty state
-        // has not finished updating yet.
-        const saved = await saveDraft();
-
-        if (!saved) {
-            showCosmicNotification({
-                title: 'Save required before publishing',
-                message: 'Your latest Builder changes could not be saved, so publishing was stopped.',
-                tone: 'error',
-            });
-            return;
-        }
-
+    const performPublish = async () => {
         setIsPublishing(true);
 
         try {
@@ -1900,11 +1890,17 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 ? (response.data.preview_deployment_message || 'Preview deployment failed.')
                 : '');
             setPublishError('');
+
+            const postPublishHealth = response.data.health;
+            const healthSuffix = postPublishHealth
+                ? ` Website health: ${postPublishHealth.score}/100${postPublishHealth.summary?.critical > 0 ? ' · needs attention.' : postPublishHealth.summary?.warning > 0 ? ' · review warnings.' : '.'}`
+                : '';
+
             showCosmicNotification({
                 title: response.data.preview_deployment_failed ? 'Page published' : 'Published',
-                message: response.data.preview_deployment_failed
+                message: (response.data.preview_deployment_failed
                     ? (response.data.preview_deployment_message || 'Published successfully, but the preview could not be refreshed.')
-                    : 'Published and preview deployed successfully.',
+                    : 'Published and preview deployed successfully.') + healthSuffix,
                 tone: response.data.preview_deployment_failed ? 'warning' : 'success',
             });
         } catch (error) {
@@ -1919,6 +1915,56 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         } finally {
             setIsPublishing(false);
         }
+    };
+
+    const handlePublish = async () => {
+        setPublishError('');
+        setPublishHealthReview(null);
+
+        // Always persist the exact Builder state first. Health checks then scan
+        // the same saved draft that the publisher will use.
+        const saved = await saveDraft();
+
+        if (!saved) {
+            showCosmicNotification({
+                title: 'Save required before publishing',
+                message: 'Your latest Builder changes could not be saved, so publishing was stopped.',
+                tone: 'error',
+            });
+            return;
+        }
+
+        let needsReview = false;
+        setIsCheckingHealth(true);
+        try {
+            const response = await axios.get(route('websites.health.show', website.id), {
+                params: { page_id: page.id },
+            });
+            const health = response.data?.health;
+            const issues = publishHealthIssues(health);
+            if (issues.length > 0) {
+                setPublishHealthReview(health);
+                needsReview = true;
+            }
+        } catch (error) {
+            // Health is advisory. A temporary scanner problem must not strand a
+            // customer who has a valid saved draft ready to publish.
+            showCosmicNotification({
+                title: 'Health check unavailable',
+                message: 'Cosmic could not complete the pre-publish check, so publishing will continue normally.',
+                tone: 'warning',
+            });
+        } finally {
+            setIsCheckingHealth(false);
+        }
+
+        if (needsReview) return;
+        await performPublish();
+    };
+
+    const publishAfterHealthReview = async () => {
+        setPublishHealthReview(null);
+        await performPublish();
     };
 
     const moveBlock = (index, direction) => {
@@ -2083,9 +2129,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             return block.theme;
         }
 
-        const activeStyle = currentPageStyle === 'auto'
-            ? null
-            : styleOptions.find((style) => style.key === currentPageStyle);
+        const activeStyle = styleOptions.find((style) => style.key === currentPageStyle) || styleOptions.find((style) => style.key === 'balanced');
         const pattern = activeStyle?.pattern || [
             "primary",
             "white",
@@ -2226,7 +2270,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     );
     const firstBlockResolvedTheme = firstBlock ? resolveBlockTheme(firstBlock, 0) : null;
     const activePrimaryThemeKey = String(globalSelections?.primary || 'midnight').toLowerCase();
-    const normalizedPageStyle = String(currentPageStyle || 'auto').toLowerCase();
+    const normalizedPageStyle = ['balanced','clean','premium'].includes(String(currentPageStyle || '').toLowerCase()) ? String(currentPageStyle).toLowerCase() : 'balanced';
     const overlayThemeBlocked = ['stone', 'white'].includes(activePrimaryThemeKey);
     const overlayStyleBlocked = normalizedPageStyle === 'clean';
     const overlayHeaderCompatible = ['premium', 'balanced'].includes(normalizedPageStyle) && !overlayThemeBlocked;
@@ -2492,8 +2536,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                             theme: 'auto',
                                             _renderKey: createRenderKey(),
                                         })));
-                                        const appliedStyle = String(response.page_style || 'auto').toLowerCase();
-                                        setCurrentPageStyle(response.page_style || 'auto');
+                                        const appliedStyle = ['balanced','clean','premium'].includes(String(response.page_style || '').toLowerCase()) ? String(response.page_style).toLowerCase() : 'balanced';
+                                        setCurrentPageStyle(appliedStyle);
                                         if (appliedStyle === 'clean' && data.global_header?.overlay_header_on_banner) {
                                             updateHeader({ overlay_header_on_banner: false });
                                             showCosmicNotification({
@@ -2650,10 +2694,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     <button
                                         type="button"
                                         onClick={handlePublish}
-                                        disabled={isSaving || isPublishing}
+                                        disabled={isSaving || isPublishing || isCheckingHealth}
                                         className={`cosmic-primary-action inline-flex min-w-[88px] items-center justify-center bg-emerald-600 px-4 text-xs font-bold text-white transition hover:bg-emerald-500 focus:z-10 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 ${websiteAccessRole === 'website_editor' ? 'rounded-lg' : 'rounded-l-lg'}`}
                                     >
-                                        {isPublishing ? 'Publishing…' : 'Publish'}
+                                        {isCheckingHealth ? 'Checking…' : isPublishing ? 'Publishing…' : 'Publish'}
                                     </button>
 
                                     {websiteAccessRole !== 'website_editor' && <details className="group relative">
@@ -2690,6 +2734,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                                     <span aria-hidden="true" className="text-violet-400">▣</span>
                                                 </button>
                                             )}
+
+                                            <a
+                                                href={route('dashboard', { tab: 'health', website: website.id })}
+                                                className="cosmic-publish-menu-item flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
+                                            >
+                                                <span className="inline-flex items-center gap-2"><span className="text-emerald-500">✚</span> Website Health</span>
+                                                <span aria-hidden="true" className="text-slate-400">↗</span>
+                                            </a>
 
                                             {previewUrl ? (
                                                 <a
@@ -2760,8 +2812,22 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 4rem)) !important;
                             }
                         }
+                        /* Clean Page Style button contract: primary actions always use the
+                           website primary color, even when a Spark's Tailwind arbitrary-color
+                           class was supplied dynamically by the active theme. */
+                        .cosmic-builder-canvas[data-cosmic-page-style='clean'] .cosmic-builder-spark :is(a,button)[class*='bg-[#'],
+                        .cosmic-builder-canvas[data-cosmic-page-style='clean'] .cosmic-builder-spark :is(a,button)[class*='bg-primary'],
+                        .cosmic-builder-canvas[data-cosmic-page-style='clean'] .cosmic-builder-spark :is(a,button)[class*='bg-[var(--p)]'],
+                        .cosmic-builder-canvas[data-cosmic-page-style='clean'] .cosmic-builder-spark :is(a,button).cosmic-brand-bg {
+                            background: var(--p, var(--cosmic-brand-bg, #243447)) !important;
+                            background-color: var(--p, var(--cosmic-brand-bg, #243447)) !important;
+                            border-color: var(--p, var(--cosmic-brand-bg, #243447)) !important;
+                            color: #fff !important;
+                            -webkit-text-fill-color: #fff !important;
+                            opacity: 1 !important;
+                        }
                     `}</style>
-                    <div className={`cosmic-builder-canvas mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl lg:w-[min(86vw,1560px)] ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
+                    <div data-cosmic-page-style={normalizedPageStyle} className={`cosmic-builder-canvas mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl lg:w-[min(86vw,1560px)] ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
                         <div
                             className="relative flex w-full flex-col items-stretch overflow-hidden rounded-[11px]"
                             style={overlayHeaderActive ? { '--cosmic-overlay-header-height': `${overlayHeaderHeight || 80}px` } : undefined}
@@ -3423,6 +3489,59 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 </div>
             )}
 
+            {publishHealthReview && (() => {
+                const issues = publishHealthIssues(publishHealthReview);
+                const critical = issues.filter((finding) => finding.status === 'critical');
+                const warnings = issues.filter((finding) => finding.status === 'warning');
+                return (
+                    <div className="fixed inset-0 z-[10120] flex items-center justify-center bg-slate-950/75 p-4 backdrop-blur-sm">
+                        <div id="cosmic-publish-health-review" className="w-full max-w-2xl overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="cosmic-publish-health-title">
+                            <div className="border-b border-slate-200 px-6 py-5 sm:px-7">
+                                <div className="flex items-start justify-between gap-5">
+                                    <div>
+                                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">Pre-publish health check</p>
+                                        <h2 id="cosmic-publish-health-title" className="mt-2 text-xl font-bold text-slate-950">Review website health before publishing</h2>
+                                        <p className="mt-2 text-sm leading-6 text-slate-600">Your draft is saved. These checks do not change your content and you can still publish if you have reviewed the findings.</p>
+                                    </div>
+                                    <div className="shrink-0 rounded-2xl bg-slate-950 px-4 py-3 text-center text-white">
+                                        <p className="text-2xl font-extrabold">{publishHealthReview.score}</p>
+                                        <p className="text-[9px] font-bold uppercase tracking-[0.16em] text-slate-400">Health</p>
+                                    </div>
+                                </div>
+                                <div className="mt-4 flex flex-wrap gap-2">
+                                    {critical.length > 0 && <span className="rounded-full border border-rose-200 bg-rose-50 px-3 py-1 text-xs font-bold text-rose-700">{critical.length} critical</span>}
+                                    {warnings.length > 0 && <span className="rounded-full border border-amber-200 bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">{warnings.length} warning{warnings.length === 1 ? '' : 's'}</span>}
+                                    <span className="rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-xs font-semibold text-slate-600">Page is saved</span>
+                                </div>
+                            </div>
+
+                            <div className="max-h-[52vh] space-y-2 overflow-y-auto px-6 py-5 sm:px-7">
+                                {issues.slice(0, 8).map((finding) => (
+                                    <div key={finding.id} className={`rounded-2xl border p-4 ${finding.status === 'critical' ? 'border-rose-200 bg-rose-50/70' : 'border-amber-200 bg-amber-50/70'}`}>
+                                        <div className="flex items-center gap-2">
+                                            <span className={`h-2 w-2 rounded-full ${finding.status === 'critical' ? 'bg-rose-500' : 'bg-amber-500'}`} />
+                                            <span className={`text-[10px] font-extrabold uppercase tracking-[0.14em] ${finding.status === 'critical' ? 'text-rose-700' : 'text-amber-700'}`}>{finding.status}</span>
+                                            <span className="text-[10px] font-semibold uppercase tracking-[0.12em] text-slate-400">{finding.category}</span>
+                                        </div>
+                                        <p className="mt-2 text-sm font-bold text-slate-900">{finding.title}</p>
+                                        <p className="mt-1 text-xs leading-5 text-slate-600">{finding.message}</p>
+                                    </div>
+                                ))}
+                                {issues.length > 8 && <p className="px-1 pt-1 text-xs text-slate-500">+ {issues.length - 8} more finding{issues.length - 8 === 1 ? '' : 's'} in Website Health.</p>}
+                            </div>
+
+                            <div className="flex flex-col-reverse gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                                <a href={route('dashboard', { tab: 'health', website: website.id })} className="text-center text-sm font-bold text-violet-700 hover:text-violet-800">Open Health Center →</a>
+                                <div className="flex flex-col-reverse gap-2 sm:flex-row">
+                                    <button type="button" onClick={() => setPublishHealthReview(null)} className="rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold text-slate-700 hover:bg-slate-100">Cancel</button>
+                                    <button type="button" onClick={publishAfterHealthReview} disabled={isPublishing} className={`rounded-xl px-5 py-2.5 text-sm font-extrabold text-white disabled:opacity-50 ${critical.length > 0 ? 'bg-rose-600 hover:bg-rose-700' : 'bg-emerald-600 hover:bg-emerald-700'}`}>{isPublishing ? 'Publishing…' : critical.length > 0 ? 'Publish anyway' : 'Publish with warnings'}</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                );
+            })()}
+
             {logoBusy && logoAiAction && (
                 <div className="fixed inset-0 z-[10050] grid place-items-center bg-white/80 px-5 text-center backdrop-blur-md" role="status" aria-live="polite" aria-busy="true">
                     <div className="w-full max-w-xl rounded-[28px] border border-emerald-200/90 bg-white/95 px-6 py-8 shadow-[0_35px_100px_-30px_rgba(15,23,42,.35)] ring-1 ring-white sm:px-9 sm:py-10">
@@ -3501,9 +3620,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                         <span className="cosmic-logo-upload-title block text-base font-bold">↑ {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') ? 'Replace Logo' : 'Upload Logo'}</span>
                                         <span className="cosmic-logo-upload-help mt-1 block text-xs font-medium text-slate-600">SVG, PNG, JPG or WebP up to 2 MB.</span>
                                     </button>
-                                    {!trialMode && <button type="button" disabled={logoBusy} onClick={() => setLogoMediaLibraryOpen(true)} className="sm:col-span-2 min-h-[72px] rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 text-left text-violet-950 transition hover:border-violet-300 hover:bg-violet-100 disabled:opacity-60">
-                                        <span className="block text-sm font-extrabold">▦ Choose from Media Library</span>
-                                        <span className="mt-1 block text-xs text-violet-700">Reuse an existing logo or image already saved for this website.</span>
+                                    {!trialMode && <button type="button" disabled={logoBusy} onClick={() => setLogoMediaLibraryOpen(true)} className="cosmic-logo-media-card sm:col-span-2 min-h-[72px] rounded-xl border border-violet-200 bg-violet-50 px-5 py-4 text-left text-violet-950 transition hover:border-violet-300 hover:bg-violet-100 disabled:opacity-60">
+                                        <span className="cosmic-logo-media-title block text-sm font-extrabold">▦ Choose from Media Library</span>
+                                        <span className="cosmic-logo-media-help mt-1 block text-xs text-violet-700">Reuse an existing logo or image already saved for this website.</span>
                                     </button>}
                                     <input ref={logoUploadRef} type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" onChange={uploadTrialLogo} className="hidden" />
                                     {globalSelections?.brand_original_logo_url && String(globalSelections.brand_original_logo_url) !== String(data.global_header?.logo_image_url || '') && (

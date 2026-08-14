@@ -139,6 +139,8 @@ class OnboardingWorkspaceService
             'business_description' => $onboarding->business_description,
             'contact_email' => $onboarding->user->email,
             'api_token' => Str::random(60),
+            'page_style' => 'balanced',
+            'published_page_style' => 'balanced',
             'settings' => [
                 'theme_entitlement_seed' => $entitlementSeed,
             ],

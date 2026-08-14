@@ -613,6 +613,8 @@ class WebsiteController extends Controller
 	        // inquiries go to the account that created the website.
 	        'contact_email' => $request->user()->email,
 	        'api_token' => Str::random(60),
+            'page_style' => 'balanced',
+            'published_page_style' => 'balanced',
 	        // Every new website starts with a persistent My Brand Theme.
 	        // Blank websites seed it from Midnight; a Starter Kit replaces this
 	        // seed below with an exact editable copy of the kit color family.

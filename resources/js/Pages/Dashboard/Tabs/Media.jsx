@@ -105,7 +105,10 @@ function AssetCard({ asset, selected, viewMode, onSelect, onOpen, onContext, onD
 
 export default function Media({ websites = [] }) {
     const availableWebsites = useMemo(() => (websites || []).map((website) => ({ id: Number(website.id), name: website.name || "Untitled Website" })), [websites]);
-    const [websiteId, setWebsiteId] = useState(() => Number(availableWebsites[0]?.id || 0));
+    const [websiteId, setWebsiteId] = useState(() => {
+        const requested = typeof window !== "undefined" ? Number(new URLSearchParams(window.location.search).get("website") || 0) : 0;
+        return requested || Number(availableWebsites[0]?.id || 0);
+    });
     const [location, setLocation] = useState({ type: "all", id: null });
     const [folders, setFolders] = useState([]);
     const [assets, setAssets] = useState([]);

@@ -7,9 +7,9 @@ export default function NewPagePanel({ open, onClose, data, setData, errors, pro
 
     return (
         <div
-            className="fixed inset-0 isolate z-[100] flex items-end p-4 sm:items-center sm:justify-center"
+            id="cosmic-new-page-overlay" className="cosmic-new-page-overlay fixed inset-0 isolate z-[100] flex items-end p-4 sm:items-center sm:justify-center"
             style={{
-                backgroundColor: 'rgba(15, 23, 42, 0.32)',
+                backgroundColor: 'rgba(15, 23, 42, 0.42)',
                 backdropFilter: 'blur(8px)',
                 WebkitBackdropFilter: 'blur(8px)',
             }}
@@ -17,7 +17,7 @@ export default function NewPagePanel({ open, onClose, data, setData, errors, pro
             aria-modal="true"
             aria-labelledby="new-page-title"
         >
-            <div className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#18181b] p-5 shadow-2xl shadow-black/40">
+            <div id="cosmic-new-page-dialog" className="cosmic-new-page-dialog relative z-10 w-full max-w-md rounded-2xl border p-5 shadow-2xl">
                 <div className="flex items-start justify-between gap-4">
                     <div><h2 id="new-page-title" className="text-lg font-semibold text-white">{parentPage ? 'Create a child page' : 'Create a page'}</h2><p className="mt-1 text-sm text-slate-400">{parentPage ? <>This page will appear under <span className="font-medium text-slate-200">{parentPage.title}</span>.</> : 'Create a new standard page for this website.'}</p></div>
                     <div className="flex items-center gap-2">

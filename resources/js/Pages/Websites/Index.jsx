@@ -52,7 +52,11 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
     const [isInquiryInboxOpen, setIsInquiryInboxOpen] = useState(false);
     const [isWebsiteSettingsOpen, setIsWebsiteSettingsOpen] = useState(false);
     const [isBusinessProfileOpen, setIsBusinessProfileOpen] = useState(false);
-    const [workspaceContentTab, setWorkspaceContentTab] = useState('standard');
+    const [workspaceContentTab, setWorkspaceContentTab] = useState(() => {
+        if (typeof window === 'undefined') return 'standard';
+        const requested = new URLSearchParams(window.location.search).get('workspace');
+        return ['standard', 'posts', 'shop'].includes(requested) ? requested : 'standard';
+    });
     const [visibleInquiryCount, setVisibleInquiryCount] = useState(inquiryCount);
     // 2. Add state para sa footer modal[cite: 2]
     const [isFooterModalOpen, setIsFooterModalOpen] = useState(false);

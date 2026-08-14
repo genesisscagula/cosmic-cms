@@ -42,6 +42,7 @@ use App\Http\Controllers\CommerceCustomerController;
 use App\Http\Controllers\CommerceRuntimeController;
 use App\Http\Controllers\AiTextController;
 use App\Http\Controllers\MediaLibraryController;
+use App\Http\Controllers\WebsiteHealthController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -201,6 +202,9 @@ if (config('cosmic_preview.mode') === 'local') {
     Route::post('/preview/{slug}/cart/remove', [PreviewController::class, 'localCartRemove'])
         ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
         ->name('preview.local.cart.remove');
+    Route::get('/preview/{slug}/cart/summary', [PreviewController::class, 'localCartSummary'])
+        ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
+        ->name('preview.local.cart.summary');
     Route::post('/preview/{slug}/checkout/paypal', [CommerceCheckoutController::class, 'localCreate'])
         ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
         ->name('preview.local.checkout.paypal');
@@ -213,7 +217,8 @@ if (config('cosmic_preview.mode') === 'local') {
     Route::post('/preview/{slug}/account/register', [CommerceCustomerController::class, 'localRegister'])->where('slug', '[a-z0-9][a-z0-9-]{0,59}')->middleware('throttle:10,1')->name('preview.local.account.register');
     Route::post('/preview/{slug}/account/login', [CommerceCustomerController::class, 'localLogin'])->where('slug', '[a-z0-9][a-z0-9-]{0,59}')->middleware('throttle:15,1')->name('preview.local.account.login');
     Route::post('/preview/{slug}/account/logout', [CommerceCustomerController::class, 'localLogout'])->where('slug', '[a-z0-9][a-z0-9-]{0,59}')->name('preview.local.account.logout');
-    Route::post('/preview/{slug}/order-lookup', [CommerceCustomerController::class, 'localLookup'])->where('slug', '[a-z0-9][a-z0-9-]{0,59}')->middleware('throttle:20,1')->name('preview.local.order.lookup');
+    Route::post('/preview/{slug}/order', [CommerceCustomerController::class, 'localLookup'])->where('slug', '[a-z0-9][a-z0-9-]{0,59}')->middleware('throttle:20,1')->name('preview.local.order.lookup');
+    Route::post('/preview/{slug}/order-lookup', [CommerceCustomerController::class, 'localLookup'])->where('slug', '[a-z0-9][a-z0-9-]{0,59}')->middleware('throttle:20,1')->name('preview.local.order.lookup.legacy');
     Route::get('/preview/{slug}/{path?}', [PreviewController::class, 'local'])
         ->where('slug', '[a-z0-9][a-z0-9-]{0,59}')
         ->where('path', '.*')
@@ -244,6 +249,9 @@ if (config('cosmic_preview.mode') === 'subdomain' && filled(config('cosmic_previ
         Route::post('/cart/remove', [PreviewController::class, 'subdomainCartRemove'])
             ->where('preview', $previewSlugPattern)
             ->name('preview.subdomain.cart.remove');
+        Route::get('/cart/summary', [PreviewController::class, 'subdomainCartSummary'])
+            ->where('preview', $previewSlugPattern)
+            ->name('preview.subdomain.cart.summary');
         Route::post('/checkout/paypal', [CommerceCheckoutController::class, 'subdomainCreate'])
             ->where('preview', $previewSlugPattern)
             ->name('preview.subdomain.checkout.paypal');
@@ -256,7 +264,8 @@ if (config('cosmic_preview.mode') === 'subdomain' && filled(config('cosmic_previ
         Route::post('/account/register', [CommerceCustomerController::class, 'subdomainRegister'])->where('preview', $previewSlugPattern)->middleware('throttle:10,1')->name('preview.subdomain.account.register');
         Route::post('/account/login', [CommerceCustomerController::class, 'subdomainLogin'])->where('preview', $previewSlugPattern)->middleware('throttle:15,1')->name('preview.subdomain.account.login');
         Route::post('/account/logout', [CommerceCustomerController::class, 'subdomainLogout'])->where('preview', $previewSlugPattern)->name('preview.subdomain.account.logout');
-        Route::post('/order-lookup', [CommerceCustomerController::class, 'subdomainLookup'])->where('preview', $previewSlugPattern)->middleware('throttle:20,1')->name('preview.subdomain.order.lookup');
+        Route::post('/order', [CommerceCustomerController::class, 'subdomainLookup'])->where('preview', $previewSlugPattern)->middleware('throttle:20,1')->name('preview.subdomain.order.lookup');
+        Route::post('/order-lookup', [CommerceCustomerController::class, 'subdomainLookup'])->where('preview', $previewSlugPattern)->middleware('throttle:20,1')->name('preview.subdomain.order.lookup.legacy');
         Route::get('/{path?}', [PreviewController::class, 'subdomain'])
             ->where('preview', $previewSlugPattern)
             ->where('path', '.*')
@@ -459,6 +468,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/admin/queues/retry-failed', [QueueDashboardController::class, 'retryFailed'])->middleware('throttle:10,1')->name('admin.queues.retry-failed');
     Route::delete('/admin/queues/failed', [QueueDashboardController::class, 'forgetFailed'])->middleware('throttle:5,1')->name('admin.queues.forget-failed');
     Route::get('/dashboard', [WebsiteController::class, 'index'])->name('dashboard');
+    Route::get('/websites/{website}/health', [WebsiteHealthController::class, 'show'])
+        ->middleware('throttle:30,1')
+        ->name('websites.health.show');
     Route::get('/websites/{website}/media-library', [MediaLibraryController::class, 'index'])->name('media-library.index');
     Route::post('/websites/{website}/media-library/folders', [MediaLibraryController::class, 'storeFolder'])->middleware('throttle:cosmic-upload')->name('media-library.folders.store');
     Route::patch('/websites/{website}/media-library/folders/{folder}', [MediaLibraryController::class, 'updateFolder'])->name('media-library.folders.update');
@@ -569,6 +581,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::put('/websites/{website}/commerce/tax/rules/{rule}', [\App\Http\Controllers\CommerceTaxController::class, 'updateRule'])->name('commerce.tax.rules.update');
     Route::delete('/websites/{website}/commerce/tax/rules/{rule}', [\App\Http\Controllers\CommerceTaxController::class, 'destroyRule'])->name('commerce.tax.rules.destroy');
     Route::put('/websites/{website}/commerce/orders/{order}', [\App\Http\Controllers\CommerceOrderController::class, 'update'])->name('commerce.orders.update');
+    Route::post('/websites/{website}/commerce/orders/{order}/seen', [\App\Http\Controllers\CommerceOrderController::class, 'markSeen'])->name('commerce.orders.seen');
     Route::post('/websites/{website}/commerce/orders/{order}/refund', [\App\Http\Controllers\CommerceOrderController::class, 'refund'])->middleware('throttle:10,1')->name('commerce.orders.refund');
     Route::post('/websites/{website}/commerce/orders/{order}/restock', [\App\Http\Controllers\CommerceOrderController::class, 'restock'])->name('commerce.orders.restock');
     Route::post('/websites/{website}/commerce/orders/{order}/recover-payment', [\App\Http\Controllers\CommerceOrderController::class, 'recoverPayment'])->middleware('throttle:6,1')->name('commerce.orders.recover-payment');
@@ -601,6 +614,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::put('/websites/{website}/content-types/{contentType}', [ContentWorkspaceController::class, 'updateType'])->name('content-types.update');
     Route::delete('/websites/{website}/content-types/{contentType}', [ContentWorkspaceController::class, 'destroyType'])->name('content-types.destroy');
     Route::post('/websites/{website}/content-fields/generate', [ContentWorkspaceController::class, 'generateFields'])->middleware('throttle:cosmic-ai')->name('content-fields.generate');
+    Route::post('/websites/{website}/content/template-copy/rewrite', [ContentWorkspaceController::class, 'rewriteTemplateCopy'])->middleware('throttle:cosmic-ai')->name('content-template-copy.rewrite');
     Route::post('/websites/{website}/content-types/{contentType}/templates', [ContentWorkspaceController::class, 'storeTemplate'])->name('content-templates.store');
     Route::post('/websites/{website}/content-types/{contentType}/templates/generate', [ContentWorkspaceController::class, 'generateTemplate'])->middleware('throttle:cosmic-ai')->name('content-templates.generate');
     Route::put('/websites/{website}/content-types/{contentType}/templates/{template}', [ContentWorkspaceController::class, 'updateTemplate'])->name('content-templates.update');

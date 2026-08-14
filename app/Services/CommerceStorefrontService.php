@@ -8,6 +8,7 @@ use App\Models\CommerceOrder;
 use App\Models\CommerceProduct;
 use App\Models\CommerceProductCategory;
 use App\Models\Website;
+use App\Support\PageStyleRegistry;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -38,7 +39,17 @@ class CommerceStorefrontService
             ->with('commerceSetting')
             ->first();
 
-        if (! $website || ! $website->commerceSetting?->enabled) {
+        if (! $website) {
+            return null;
+        }
+
+        // Catalog/product previews remain renderable even when checkout is disabled.
+        // This lets Builder/export preview installed products without turning on payments.
+        $commerceEnabled = (bool) $website->commerceSetting?->enabled;
+        $isCatalogPreview = $normalized === 'shop'
+            || str_starts_with($normalized, 'shop/category/')
+            || str_starts_with($normalized, 'product/');
+        if (! $commerceEnabled && ! $isCatalogPreview) {
             return null;
         }
 
@@ -69,7 +80,7 @@ class CommerceStorefrontService
             return $this->account($website, $previewSlug, $request, $normalized);
         }
 
-        if ($normalized === 'order-lookup') {
+        if (in_array($normalized, ['order', 'order-lookup'], true)) {
             return $this->orderLookup($website, $previewSlug);
         }
 
@@ -247,7 +258,7 @@ class CommerceStorefrontService
             'categories' => $this->visibleCategories($website),
             'breadcrumbs' => [
                 ['label' => 'Shop', 'url' => $this->url($previewSlug, $this->paths->shop())],
-                ['label' => $customer ? 'Account' : 'Order lookup', 'url' => $customer ? $this->url($previewSlug, '/account') : $this->url($previewSlug, '/order-lookup')],
+                ['label' => $customer ? 'Account' : 'Order lookup', 'url' => $customer ? $this->url($previewSlug, '/account') : $this->url($previewSlug, '/order')],
                 ['label' => $order->order_number, 'url' => null],
             ],
         ]);
@@ -450,13 +461,15 @@ class CommerceStorefrontService
             : $this->normalizePalette($this->themes->palette($themeKey), $themeKey);
         $currency = strtoupper((string) ($website->commerceSetting?->currency ?: config('cosmic-commerce.default_currency', 'USD')));
         $currencyMeta = config('cosmic-commerce.currencies.'.$currency, config('cosmic-commerce.currencies.USD'));
-        $siteShell = $this->siteShell($website, $previewSlug, $themeKey);
+        $visual = $this->commerceVisualContract($website, $themeKey, $palette);
+        $siteShell = $this->siteShell($website, $previewSlug, $palette['primary'], $visual);
 
         $payload = array_merge($data, [
             'viewMode' => $viewMode,
             'website' => $website,
             'previewSlug' => $previewSlug,
             'palette' => $palette,
+            'commerceVisual' => $visual,
             'currency' => $currency,
             'currencyMeta' => $currencyMeta,
             'useSiteShell' => in_array($viewMode, ['product', 'category', 'cart', 'checkout', 'account-login', 'account-register', 'account', 'order-lookup', 'order-detail', 'order-success'], true) && $siteShell['header'] !== '',
@@ -473,7 +486,9 @@ class CommerceStorefrontService
             'accountLoginUrl' => $this->url($previewSlug, '/account/login'),
             'accountRegisterUrl' => $this->url($previewSlug, '/account/register'),
             'accountLogoutUrl' => $this->url($previewSlug, '/account/logout'),
-            'orderLookupUrl' => $this->url($previewSlug, '/order-lookup'),
+            'orderLookupUrl' => $this->url($previewSlug, '/order'),
+            'cartSummaryUrl' => $this->url($previewSlug, '/cart/summary'),
+            'commerceEnabled' => (bool) $website->commerceSetting?->enabled,
             'cartCount' => $this->cart->count($website),
             'pathUrl' => fn (string $path): string => $this->url($previewSlug, $path),
             'productUrl' => fn (CommerceProduct $product): string => $this->url($previewSlug, $this->paths->product($product)),
@@ -505,10 +520,10 @@ class CommerceStorefrontService
         return $block;
     }
 
-    private function siteShell(Website $website, string $previewSlug, string $primaryColor): array
+    private function siteShell(Website $website, string $previewSlug, string $primaryColor, array $visual = []): array
     {
-        $header = $website->published_global_header ?? $website->global_header;
-        $footer = $website->published_global_footer ?? $website->global_footer;
+        $header = $website->global_header ?? $website->published_global_header;
+        $footer = $website->global_footer ?? $website->published_global_footer;
 
         if (! is_array($header) && ! is_array($footer)) {
             return ['header' => '', 'footer' => ''];
@@ -559,12 +574,35 @@ class CommerceStorefrontService
             if (array_key_exists('cta_url', $header)) $header['cta_url'] = $resolve($header['cta_url']);
         }
 
-        $pageStyle = strtolower(trim((string) ($website->page_style ?: $website->published_page_style ?: 'auto')));
+        $pageStyle = PageStyleRegistry::normalize($website->page_style ?: $website->published_page_style);
         $shellContext = ['page_style' => $pageStyle];
+        if (is_array($header)) {
+            $header['overlay_header_on_banner'] = (bool) ($visual['overlay'] ?? false);
+        }
 
         return [
             'header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor, $shellContext) : '',
             'footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor, $shellContext) : '',
+        ];
+    }
+
+    private function commerceVisualContract(Website $website, string $themeKey, array $palette): array
+    {
+        $pageStyle = PageStyleRegistry::normalize($website->page_style ?: $website->published_page_style);
+        $clean = $pageStyle === 'clean';
+        $branded = in_array($pageStyle, ['premium', 'balanced'], true);
+        $header = $website->global_header ?? $website->published_global_header;
+        $overlayRequested = is_array($header) && (bool) ($header['overlay_header_on_banner'] ?? false);
+        $overlayCompatible = in_array($pageStyle, ['premium', 'balanced'], true) && ! in_array(strtolower($themeKey), ['stone', 'white'], true);
+
+        return [
+            'page_style' => $pageStyle,
+            'theme_key' => strtolower($themeKey),
+            'clean' => $clean,
+            'branded' => $branded,
+            'overlay' => $overlayRequested && $overlayCompatible,
+            'hero_background' => $clean ? ($palette['background'] ?? '#FFFFFF') : ($palette['primary'] ?? '#243447'),
+            'hero_text' => $clean ? '#0F172A' : '#FFFFFF',
         ];
     }
 
@@ -652,7 +690,7 @@ class CommerceStorefrontService
         return $path === 'shop'
             || $path === 'cart'
             || $path === 'checkout'
-            || in_array($path, ['account', 'account/login', 'account/register', 'order-lookup'], true)
+            || in_array($path, ['account', 'account/login', 'account/register', 'order', 'order-lookup'], true)
             || preg_match('#^order/[0-9a-f-]{36}(?:/success)?$#i', $path) === 1
             || str_starts_with($path, 'shop/category/')
             || str_starts_with($path, 'product/');

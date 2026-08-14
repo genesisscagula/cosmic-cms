@@ -113,14 +113,16 @@
                 <?php if ($product->sku): ?>SKU: {{ $product->sku }}<?php endif; ?>
             </div>
 
-            <?php if ($product->isPurchasable()): ?>
-                <form class="purchase-form" method="post" action="{{ $cartAddUrl }}">
+            <?php if ($product->isPurchasable() && ($commerceEnabled ?? false)): ?>
+                <form class="purchase-form" method="post" action="{{ $cartAddUrl }}" data-commerce-add-form>
                     <?= csrf_field() ?>
                     <input type="hidden" name="product" value="{{ $product->public_id }}">
                     <input id="selected-variant" type="hidden" name="variant" value="{{ $product->isVariable() ? ($product->defaultVariant()?->public_id ?? '') : '' }}">
                     <input id="purchase-quantity" class="input qty" type="number" name="quantity" min="1" max="{{ !$product->isVariable() && $simpleAvailable !== null ? min(99, max(1, $simpleAvailable)) : 99 }}" value="1" aria-label="Quantity">
                     <button id="add-to-cart" class="btn" type="submit">Add to cart</button>
                 </form>
+            <?php elseif (!($commerceEnabled ?? false)): ?>
+                <div class="notice">Shopping is currently disabled for this website. Product preview remains available.</div>
             <?php else: ?>
                 <div class="notice">This product is currently unavailable.</div>
             <?php endif; ?>

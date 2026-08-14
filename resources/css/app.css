@@ -5556,3 +5556,38 @@ body .cosmic-start-quick-idea.rounded-full.border {
     border-color: #e2e8f0 !important;
     background: #ffffff !important;
 }
+
+/* ==================================================================
+   Hotfix — workspace/new-page + logo modal contrast isolation
+   ================================================================== */
+#cosmic-new-page-button.cosmic-new-page-button {
+    background:#ffffff !important; color:#0f172a !important;
+    -webkit-text-fill-color:#0f172a !important; opacity:1 !important;
+    border:1px solid #e2e8f0 !important; box-shadow:0 8px 20px rgba(15,23,42,.06) !important;
+}
+#cosmic-new-page-button.cosmic-new-page-button:hover { background:#f8fafc !important; color:#020617 !important; }
+#cosmic-new-page-overlay.cosmic-new-page-overlay {
+    background:rgba(15,23,42,.42) !important;
+    backdrop-filter:blur(7px) !important; -webkit-backdrop-filter:blur(7px) !important;
+}
+:root[data-theme="light"] #cosmic-new-page-dialog.cosmic-new-page-dialog {
+    background:#ffffff !important; border-color:#dbe5df !important; color:#0f172a !important;
+    box-shadow:0 24px 60px rgba(15,23,42,.20) !important;
+}
+:root[data-theme="light"] #cosmic-new-page-dialog h2,
+:root[data-theme="light"] #cosmic-new-page-dialog label { color:#0f172a !important; -webkit-text-fill-color:#0f172a !important; }
+:root[data-theme="light"] #cosmic-new-page-dialog p { color:#64748b !important; -webkit-text-fill-color:#64748b !important; }
+:root[data-theme="light"] #cosmic-new-page-dialog input { background:#ffffff !important; color:#0f172a !important; border-color:#cbd5e1 !important; -webkit-text-fill-color:#0f172a !important; }
+:root[data-theme="dark"] #cosmic-new-page-dialog.cosmic-new-page-dialog { background:#18181b !important; border-color:rgba(255,255,255,.10) !important; color:#f8fafc !important; }
+
+#cosmic-logo-customize-modal .cosmic-logo-media-card {
+    background:#f5f3ff !important; border-color:#c4b5fd !important; color:#5b21b6 !important;
+    -webkit-text-fill-color:#5b21b6 !important; opacity:1 !important; filter:none !important;
+}
+#cosmic-logo-customize-modal .cosmic-logo-media-card:hover { background:#ede9fe !important; border-color:#8b5cf6 !important; }
+#cosmic-logo-customize-modal .cosmic-logo-media-title { color:#5b21b6 !important; -webkit-text-fill-color:#5b21b6 !important; }
+#cosmic-logo-customize-modal .cosmic-logo-media-help { color:#6d28d9 !important; -webkit-text-fill-color:#6d28d9 !important; }
+#cosmic-logo-customize-modal .cosmic-logo-media-card:disabled { opacity:.55 !important; }
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-media-card { background:rgba(109,40,217,.16) !important; border-color:rgba(167,139,250,.48) !important; }
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-media-title { color:#ede9fe !important; -webkit-text-fill-color:#ede9fe !important; }
+:root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-media-help { color:#c4b5fd !important; -webkit-text-fill-color:#c4b5fd !important; }

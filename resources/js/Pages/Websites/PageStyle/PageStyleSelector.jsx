@@ -5,7 +5,6 @@ import { confirmCosmicAction, showCosmicNotification } from '../../../Components
 const directionLabels = {
     clean: 'Clean & Professional',
     premium: 'Premium & Elegant',
-    bold: 'Bold & Creative',
 };
 
 export default function PageStyleSelector({
@@ -23,10 +22,8 @@ export default function PageStyleSelector({
     const [open, setOpen] = useState(false);
     const [applying, setApplying] = useState('');
     const rootRef = useRef(null);
-    const current = currentStyle || 'auto';
-    const currentLabel = current === 'auto'
-        ? 'Auto'
-        : suggestions.find((style) => style.key === current)?.label || current.replaceAll('_', ' ');
+    const current = ['balanced', 'clean', 'premium'].includes(String(currentStyle || '').toLowerCase()) ? String(currentStyle).toLowerCase() : 'balanced';
+    const currentLabel = suggestions.find((style) => style.key === current)?.label || 'Balanced';
 
     useEffect(() => {
         if (!open) return undefined;
@@ -132,7 +129,7 @@ export default function PageStyleSelector({
                         })}
                     </div>
                     <div className="border-t border-white/10 bg-white/[0.02] px-4 py-3 text-[11px] text-slate-500">
-                        Auto remains the safe default. Manual Spark colors are reset only after you confirm a new style.
+                        Balanced is the default. Clean and Premium are the only alternate site-wide page styles.
                     </div>
                 </div>
             )}

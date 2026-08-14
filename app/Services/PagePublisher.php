@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Helpers\CmsHtmlCompiler;
 use App\Models\Page;
 use App\Models\Website;
+use App\Support\PageStyleRegistry;
 
 class PagePublisher
 {
@@ -29,7 +30,7 @@ class PagePublisher
 
         $theme = $website->theme_settings ?? [];
         $primaryColor = $theme['primary'] ?? 'midnight';
-        return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['page_style' => $website->page_style ?: $page->page_style ?: 'auto']);
+        return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['page_style' => PageStyleRegistry::normalize($website->page_style ?: $page->page_style)]);
     }
 
     /**
@@ -79,7 +80,7 @@ class PagePublisher
         $contentContext = $this->structuredContentExportContext($website);
         $contentEntryPages = $this->structuredContentEntryPages($website);
 
-        $publishedShellStyle = strtolower(trim((string) ($website->published_page_style ?: $website->page_style ?: 'auto')));
+        $publishedShellStyle = PageStyleRegistry::normalize($website->published_page_style ?: $website->page_style);
         $publishedShellContext = ['page_style' => $publishedShellStyle];
 
         return [
@@ -199,7 +200,7 @@ class PagePublisher
                     return [
                         'title' => $entry->seo_title ?: $entry->title,
                         'slug' => $directory.'/'.$slug,
-                        'page_style' => strtolower(trim((string) ($website->published_page_style ?: $website->page_style ?: 'auto'))),
+                        'page_style' => PageStyleRegistry::normalize($website->published_page_style ?: $website->page_style),
                         // Export clean entry URLs as directories so standard Nginx/Apache
                         // index resolution serves /blog/my-post/ without requiring
                         // a custom try_files rule for /blog/my-post.html.
@@ -243,12 +244,12 @@ class PagePublisher
                 ->where(function ($query) { $query->where('slug', 'home')->orWhere('slug', ''); })
                 ->first();
         }
-        $pageStyle = trim((string) ($website?->published_page_style ?: $website?->page_style ?: $contextPage?->published_page_style ?: $contextPage?->page_style ?: 'auto'));
+        $pageStyle = PageStyleRegistry::normalize($website?->published_page_style ?: $website?->page_style ?: $contextPage?->published_page_style ?: $contextPage?->page_style);
         if ($pageStyle === 'clean') {
             $surface = 'white';
         } elseif ($miniBannerImage !== '') {
             $surface = 'primary';
-        } elseif (in_array($pageStyle, ['auto','balanced','premium','luxury','executive','refined','glass','cinematic','bold','creative','dynamic','contrast','immersive','startup','agency'], true)) {
+        } elseif (in_array($pageStyle, ['balanced','premium'], true)) {
             $surface = 'primary';
         }
 
@@ -343,7 +344,11 @@ class PagePublisher
     private function commerceExportContext(Website $website): array
     {
         $settings = $website->commerceSetting()->first();
-        if (! $settings?->enabled || ! filled($website->preview_slug)) {
+        // The exported Shop/catalog is a read-only storefront surface and should
+        // continue to show published, visible products even when checkout is
+        // temporarily disabled. Commerce `enabled` only gates transactional UI
+        // such as Add to cart / Checkout / mini cart, not catalog visibility.
+        if (! filled($website->preview_slug)) {
             return ['commerce' => [], 'commerce_runtime_endpoint' => ''];
         }
 

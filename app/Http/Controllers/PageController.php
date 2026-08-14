@@ -18,6 +18,7 @@ use App\Services\CreditService;
 use App\Services\ThemePlanAccessService;
 use App\Services\MediaAssetLifecycleService;
 use App\Services\MediaAssetSafetyService;
+use App\Services\WebsiteHealthService;
 use App\Services\TrialCreditService;
 use App\Support\PageStyleRegistry;
 use App\Services\BlogSparkRegistry;
@@ -168,6 +169,8 @@ class PageController extends Controller
         $currencyScale = 10 ** max(0, $currencyDecimals);
         $previewService = app(\App\Services\PreviewDeploymentService::class);
         $storefrontUrl = filled($website->preview_slug) ? $previewService->url($website, 'shop') : null;
+        $seenOrderIds = collect((array) data_get($settings?->settings, 'seen_order_ids', []))->map(fn ($id) => (int) $id)->filter()->values()->all();
+
         $commerceMediaUrl = static function (?string $url) use ($website): string {
             $url = trim((string) $url);
             if ($url === '') return '';
@@ -270,6 +273,7 @@ class PageController extends Controller
             'paypal_receiver_email' => $settings ? $capabilities->configuredPaypalReceiverEmail($website) : null,
             'paypal_receiver_effective_email' => $settings ? $capabilities->paypalReceiverEmail($website) : (string) config('cosmic-commerce.default_paypal_receiver_email', config('cosmic.platform_owner_email')),
             'paypal_receiver_default_email' => (string) config('cosmic-commerce.default_paypal_receiver_email', config('cosmic.platform_owner_email')),
+            'templates' => (array) data_get($settings?->settings, 'commerce_templates', []),
             'currency_decimals' => $currencyDecimals,
             'currencies' => collect(config('cosmic-commerce.currencies', []))->map(fn ($config, $code) => [
                 'code' => $code,
@@ -341,8 +345,9 @@ class PageController extends Controller
                 'product_ids' => array_values($coupon->product_ids ?? []),
                 'category_ids' => array_values($coupon->category_ids ?? []),
             ])->values(),
-            'orders' => $website->commerceOrders()->with(['items', 'refunds', 'events' => fn ($query) => $query->limit(80)])->latest('created_at')->limit(200)->get()->map(fn ($order) => [
+            'orders' => $website->commerceOrders()->with(['items.product:id,title,featured_image_url', 'refunds', 'events' => fn ($query) => $query->limit(80)])->latest('created_at')->limit(200)->get()->map(fn ($order) => [
                 'id' => $order->id,
+                'is_unread' => in_array($order->payment_status, ['paid', 'partially_refunded'], true) && ! in_array((int) $order->id, $seenOrderIds, true),
                 'public_id' => $order->public_id,
                 'order_number' => $order->order_number,
                 'status' => $order->status,
@@ -416,7 +421,7 @@ class PageController extends Controller
                     'title' => $item->title,
                     'sku' => $item->sku,
                     'option_label' => $item->option_label,
-                    'image_url' => $item->image_url,
+                    'image_url' => $commerceMediaUrl($item->image_url ?: $item->product?->featured_image_url),
                     'quantity' => (int) $item->quantity,
                     'unit_price_minor' => (int) $item->unit_price_minor,
                     'tax_minor' => (int) $item->tax_minor,
@@ -771,8 +776,8 @@ class PageController extends Controller
                     : []),
             'hasWebsiteContent' => $websiteMessaging !== '',
             'websiteContext' => $websiteContext,
-            'pageStyle' => $website->page_style ?: $page->page_style ?: 'auto',
-            'pageStyleOptions' => PageStyleRegistry::suggestions($website->industry, $website->page_style ?: $page->page_style),
+            'pageStyle' => PageStyleRegistry::normalize($website->page_style ?: $page->page_style),
+            'pageStyleOptions' => PageStyleRegistry::suggestions($website->industry, PageStyleRegistry::normalize($website->page_style ?: $page->page_style)),
             'trialMode' => $isTrialMode,
             'globalHeaderBlock' => $isTrialMode
                 ? [
@@ -933,7 +938,7 @@ class PageController extends Controller
         // Overlay Header compatibility is a product rule, not a CSS guess:
         // only Premium/Balanced with non-light theme families may persist it.
         if (array_key_exists('global_header', $validated)) {
-            $effectiveStyle = strtolower(trim((string) ($website->page_style ?: 'auto')));
+            $effectiveStyle = PageStyleRegistry::normalize($website->page_style);
             $effectiveTheme = strtolower(trim((string) (
                 data_get($validated, 'theme_settings.primary')
                 ?: data_get($website->theme_settings, 'primary')
@@ -1067,7 +1072,7 @@ class PageController extends Controller
                 $page->save();
             });
 
-            $globalStyle = $page->website->fresh()->page_style ?: 'auto';
+            $globalStyle = PageStyleRegistry::normalize($page->website->fresh()->page_style);
 
             return response()->json([
                 'status' => 'success',
@@ -1242,7 +1247,7 @@ class PageController extends Controller
         return $trial;
     }
 
-    public function publish(Request $request, Page $page, PagePublisher $publisher, CreditService $credits)
+    public function publish(Request $request, Page $page, PagePublisher $publisher, CreditService $credits, WebsiteHealthService $health)
     {
         $this->authorize('editBuilder', $page->website);
 
@@ -1317,7 +1322,7 @@ class PageController extends Controller
                 // Global Page Style is a website-level visual contract. Publishing any
                 // page must refresh already-published standard-page HTML so local preview,
                 // static preview, and connector/live output cannot retain an older style.
-                $publishedStyle = $website->published_page_style ?: $website->page_style ?: 'auto';
+                $publishedStyle = PageStyleRegistry::normalize($website->published_page_style ?: $website->page_style);
                 $primaryColor = (string) data_get($website->published_theme_settings ?: $website->theme_settings, 'primary', 'midnight');
                 $website->pages()
                     ->where('status', 'published')
@@ -1368,6 +1373,15 @@ class PageController extends Controller
             $previewDeploymentMessage = 'The page was published, but the preview deployment failed. Your previous preview remains available.';
         }
 
+        $postPublishHealth = null;
+        try {
+            $postPublishHealth = $health->scan($website->fresh());
+        } catch (Throwable $healthException) {
+            // Website Health is advisory and must never turn a successful publish
+            // into a failed request. Report scanner failures for follow-up instead.
+            report($healthException);
+        }
+
         return response()->json([
             'status' => 'published',
             'published_at' => $page->published_at?->toISOString(),
@@ -1378,6 +1392,7 @@ class PageController extends Controller
             'preview_deployed_at' => $website->fresh()->last_preview_deployed_at?->toISOString(),
             'credits_spent' => $themeCost,
             'credit_balance' => $credits->balance($request->user()),
+            'health' => $postPublishHealth,
         ]);
     }
 

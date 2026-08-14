@@ -227,7 +227,7 @@ class ContentStorefrontService
             if (array_key_exists('cta_url', $header)) $header['cta_url'] = $resolve($header['cta_url']);
         }
 
-        $pageStyle = strtolower(trim((string) ($website->page_style ?: $website->published_page_style ?: 'auto')));
+        $pageStyle = PageStyleRegistry::normalize($website->page_style ?: $website->published_page_style);
         $shellContext = ['page_style' => $pageStyle];
 
         return [
@@ -262,7 +262,7 @@ class ContentStorefrontService
             $contextPage = $website->pages()->where('page_type', 'standard')->orderBy('id')->first();
         }
 
-        $pageStyle = trim((string) ($website->page_style ?: $website->published_page_style ?: $contextPage?->page_style ?: $contextPage?->published_page_style ?: 'auto'));
+        $pageStyle = PageStyleRegistry::normalize($website->page_style ?: $website->published_page_style ?: $contextPage?->page_style ?: $contextPage?->published_page_style);
         $style = PageStyleRegistry::all()[$pageStyle] ?? null;
         $pattern = PageStyleRegistry::pattern($pageStyle);
         $firstSurface = strtolower((string) ($pattern[0] ?? 'primary'));
@@ -276,7 +276,7 @@ class ContentStorefrontService
             $firstSurface = 'white';
         } elseif (trim($miniBannerImage) !== '') {
             $firstSurface = 'primary';
-        } elseif (in_array($pageStyle, ['auto','balanced','premium','luxury','executive','refined','glass','cinematic','bold','creative','dynamic','contrast','immersive','startup','agency'], true)) {
+        } elseif (in_array($pageStyle, ['balanced','premium'], true)) {
             $firstSurface = 'primary';
         }
 
@@ -285,12 +285,12 @@ class ContentStorefrontService
         // a light editorial mini hero (or dark text over a primary mini hero).
         // Prefer an explicit semantic marker from saved/Luna templates, then
         // safely infer older template markup before falling back to page style.
-        if (trim($miniBannerImage) === '' && trim($renderedTemplateMarkup) !== '' && !in_array($pageStyle, ['clean','balanced','premium','luxury','executive','refined','glass','cinematic','bold','creative','dynamic','contrast','immersive','startup','agency'], true)) {
+        if (trim($miniBannerImage) === '' && trim($renderedTemplateMarkup) !== '' && !in_array($pageStyle, ['clean','balanced','premium'], true)) {
             $firstSurface = $this->dynamicTemplateFirstSurface($renderedTemplateMarkup, $firstSurface);
         }
 
         return [
-            'page_style' => $pageStyle !== '' ? $pageStyle : 'auto',
+            'page_style' => $pageStyle,
             'page_style_direction' => (string) ($style['direction'] ?? 'clean'),
             'first_surface' => $firstSurface,
             'header_overlay_enabled' => (bool) ($siteShell['header_overlay_enabled'] ?? false),

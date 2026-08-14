@@ -35,7 +35,10 @@ function initialData(website) {
 
 export default function Settings({ dashboard }) {
     const websites = dashboard?.settings?.websites || [];
-    const [selectedId, setSelectedId] = useState(dashboard?.settings?.default_website_id || websites[0]?.id || null);
+    const [selectedId, setSelectedId] = useState(() => {
+        const requested = typeof window !== "undefined" ? Number(new URLSearchParams(window.location.search).get("website") || 0) : 0;
+        return requested || dashboard?.settings?.default_website_id || websites[0]?.id || null;
+    });
     const website = useMemo(() => websites.find((item) => item.id === Number(selectedId)) || websites[0] || null, [websites, selectedId]);
     const [logoPreview, setLogoPreview] = useState(website?.logo_url || null);
     const [faviconPreview, setFaviconPreview] = useState(website?.favicon_url || null);

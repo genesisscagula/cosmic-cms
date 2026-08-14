@@ -104,6 +104,28 @@ class CommerceOrderController extends Controller
         return redirect()->back(303)->with('success', 'Order updated.');
     }
 
+    public function markSeen(Request $request, Website $website, CommerceOrder $order, \App\Services\CommerceCapabilityService $commerce): RedirectResponse
+    {
+        $this->authorize('update', $website);
+        abort_unless($order->website_id === $website->id, 404);
+
+        $settings = $commerce->settingsFor($website);
+        $storeSettings = is_array($settings->settings) ? $settings->settings : [];
+        $seenIds = collect((array) data_get($storeSettings, 'seen_order_ids', []))
+            ->map(fn ($id) => (int) $id)
+            ->filter()
+            ->push((int) $order->id)
+            ->unique()
+            ->take(-500)
+            ->values()
+            ->all();
+
+        $storeSettings['seen_order_ids'] = $seenIds;
+        $settings->forceFill(['settings' => $storeSettings])->save();
+
+        return redirect()->back(303);
+    }
+
     public function restock(Request $request, Website $website, CommerceOrder $order, CommerceInventoryService $inventory): RedirectResponse
     {
         $this->authorize('update', $website);

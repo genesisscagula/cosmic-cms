@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import Navigation from "./Components/Navigation";
 import Home from "./Tabs/Home";
 import Websites from "./Tabs/Websites";
+import Health from "./Tabs/Health";
 import Templates from "./Tabs/Templates";
 import Media from "./Tabs/Media";
 import Sparks from "./Tabs/Sparks";
@@ -16,6 +17,7 @@ import AppearanceSwitch from "../../Appearance/AppearanceSwitch";
 const tabs = {
     home: Home,
     websites: Websites,
+    health: Health,
     media: Media,
     templates: Templates,
     sparks: Sparks,

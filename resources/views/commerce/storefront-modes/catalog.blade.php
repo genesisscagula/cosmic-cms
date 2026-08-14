@@ -1,4 +1,3 @@
-        <section class="hero {{ $viewMode === 'category' ? 'category-hero' : '' }}" @if($viewMode === 'category' && filled($activeCategory?->banner_image_url)) style="background:linear-gradient(90deg,rgba(15,23,42,.74),rgba(15,23,42,.34)),url('{{ $assetUrl($activeCategory->banner_image_url) }}') center/cover" @endif><div class="wrap"><h1>{{ $title }}</h1><p>{{ $description }}</p></div></section>
         <section class="catalog"><div class="wrap catalog-layout">
             <aside class="filter-card"><div class="filter-title">Categories</div><a class="cat-link {{ !$activeCategory ? 'active' : '' }}" href="{{ $shopUrl }}"><span>All products</span></a>@foreach($categories as $category)<a class="cat-link {{ $activeCategory?->id === $category->id ? 'active' : '' }}" href="{{ $categoryUrl($category) }}"><span>{{ $category->name }}</span><span>{{ $category->products_count }}</span></a>@endforeach</aside>
             <div>
