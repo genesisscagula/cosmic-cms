@@ -5591,3 +5591,131 @@ body .cosmic-start-quick-idea.rounded-full.border {
 :root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-media-card { background:rgba(109,40,217,.16) !important; border-color:rgba(167,139,250,.48) !important; }
 :root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-media-title { color:#ede9fe !important; -webkit-text-fill-color:#ede9fe !important; }
 :root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-media-help { color:#c4b5fd !important; -webkit-text-fill-color:#c4b5fd !important; }
+
+/* ==================================================================
+   Light mode hotfix — Commerce + Posts visual template editors
+   Scoped with explicit parents so generic appearance utility remaps
+   cannot wash out violet actions or leave dark editor chrome behind.
+   ================================================================== */
+:root[data-theme="light"] .cosmic-commerce-workspace [data-commerce-workspace-tab] {
+    color:#475569 !important;
+    background:transparent !important;
+    -webkit-text-fill-color:#475569 !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace [data-commerce-workspace-tab][data-active="true"] {
+    background:#ede9fe !important;
+    color:#5b21b6 !important;
+    -webkit-text-fill-color:#5b21b6 !important;
+    box-shadow:inset 0 0 0 1px #c4b5fd !important;
+}
+:root[data-theme="light"] .cosmic-commerce-workspace [data-commerce-workspace-tab][data-active="true"] span {
+    color:inherit !important;
+    -webkit-text-fill-color:inherit !important;
+}
+
+:root[data-theme="light"] #cosmic-commerce-template-editor[data-cosmic-commerce-template-editor] {
+    background:#f1f5f9 !important;
+    color:#0f172a !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor[data-cosmic-commerce-template-editor] > div:first-child {
+    background:#ffffff !important;
+    border-color:#e2e8f0 !important;
+    box-shadow:0 1px 0 rgba(15,23,42,.04) !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor :is(.text-white,.text-slate-950) {
+    color:#0f172a !important;
+    -webkit-text-fill-color:#0f172a !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor :is(.text-slate-300,.text-slate-400) {
+    color:#475569 !important;
+    -webkit-text-fill-color:#475569 !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor :is(.text-violet-200,.text-violet-300) {
+    color:#6d28d9 !important;
+    -webkit-text-fill-color:#6d28d9 !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor .border-white\/10 {
+    border-color:#dbe4ee !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor .hover\:bg-white\/5:hover {
+    background:#f1f5f9 !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor .bg-white.text-slate-950 {
+    background:#ffffff !important;
+    color:#0f172a !important;
+    -webkit-text-fill-color:#0f172a !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor button.bg-violet-500,
+:root[data-theme="light"] #cosmic-commerce-template-editor button[class*="bg-violet-500"] {
+    background:#7c3aed !important;
+    color:#ffffff !important;
+    -webkit-text-fill-color:#ffffff !important;
+    border-color:#7c3aed !important;
+    opacity:1 !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor button.bg-violet-500:hover,
+:root[data-theme="light"] #cosmic-commerce-template-editor button[class*="bg-violet-500"]:hover {
+    background:#6d28d9 !important;
+}
+:root[data-theme="light"] #cosmic-commerce-template-editor > div:nth-child(2) {
+    background:#f1f5f9 !important;
+}
+
+:root[data-theme="light"] #cosmic-post-template-editor[data-cosmic-post-template-editor] {
+    background:#f1f5f9 !important;
+    color:#0f172a !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor > div > header {
+    background:#ffffff !important;
+    border-color:#e2e8f0 !important;
+    color:#0f172a !important;
+    box-shadow:0 1px 0 rgba(15,23,42,.04) !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor > div > main {
+    background:#f1f5f9 !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor :is(.text-white,.text-slate-950) {
+    color:#0f172a !important;
+    -webkit-text-fill-color:#0f172a !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor :is(.text-slate-300,.text-slate-400) {
+    color:#475569 !important;
+    -webkit-text-fill-color:#475569 !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor :is(.text-slate-500) {
+    color:#64748b !important;
+    -webkit-text-fill-color:#64748b !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor :is(.text-violet-200,.text-violet-300) {
+    color:#6d28d9 !important;
+    -webkit-text-fill-color:#6d28d9 !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor :is(.border-white\/10,.border-white\/5) {
+    border-color:#dbe4ee !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor :is(.bg-white\/5,.bg-white\/\[0\.04\],.bg-white\/\[0\.025\]) {
+    background:#ffffff !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor .hover\:bg-white\/5:hover {
+    background:#f1f5f9 !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor button.bg-violet-500,
+:root[data-theme="light"] #cosmic-post-template-editor button[class*="bg-violet-500"] {
+    background:#7c3aed !important;
+    color:#ffffff !important;
+    -webkit-text-fill-color:#ffffff !important;
+    border-color:#7c3aed !important;
+    opacity:1 !important;
+}
+:root[data-theme="light"] #cosmic-post-template-editor button.bg-violet-500:hover,
+:root[data-theme="light"] #cosmic-post-template-editor button[class*="bg-violet-500"]:hover {
+    background:#6d28d9 !important;
+}
+/* Selected layout button must stay visibly violet, not washed-out white. */
+:root[data-theme="light"] #cosmic-post-template-editor button.border-violet-400\/60,
+:root[data-theme="light"] #cosmic-post-template-editor button[class*="border-violet-400/60"] {
+    background:#ede9fe !important;
+    border-color:#8b5cf6 !important;
+    color:#5b21b6 !important;
+    -webkit-text-fill-color:#5b21b6 !important;
+}
