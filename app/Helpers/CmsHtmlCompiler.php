@@ -1542,7 +1542,7 @@ HTML;
 
                         <a
                             href='{$ctaUrl}'
-                            class='cosmic-primary-cta {$buttonBg} {$buttonText} shrink-0 rounded-full px-8 py-4 text-sm font-semibold transition hover:opacity-90 lg:px-10'
+                            class='cosmic-primary-cta {$buttonBg} {$buttonText} shrink-0 rounded-full px-8 py-4 text-sm font-semibold transition hover:opacity-90 lg:px-10' style='background:var(--p,var(--cosmic-primary,#243447));background-color:var(--p,var(--cosmic-primary,#243447));border-color:var(--p,var(--cosmic-primary,#243447));color:#fff;-webkit-text-fill-color:#fff'
                         >
                             {$ctaLabel}
                         </a>
@@ -1577,7 +1577,7 @@ HTML;
                         </div>
 
                         <div class='border-t border-slate-200 bg-slate-50 px-6 py-6'>
-                            <a data-cosmic-mobile-link href='{$ctaUrl}' class='{$buttonBg} {$buttonText} flex w-full items-center justify-center rounded-full px-7 py-4 text-center text-sm font-semibold shadow-lg transition hover:opacity-90'>
+                            <a data-cosmic-mobile-link href='{$ctaUrl}' class='cosmic-primary-cta {$buttonBg} {$buttonText} flex w-full items-center justify-center rounded-full px-7 py-4 text-center text-sm font-semibold shadow-lg transition hover:opacity-90' style='background:var(--p,var(--cosmic-primary,#243447));background-color:var(--p,var(--cosmic-primary,#243447));border-color:var(--p,var(--cosmic-primary,#243447));color:#fff;-webkit-text-fill-color:#fff'>
                                 {$ctaLabel}
                             </a>
                         </div>
