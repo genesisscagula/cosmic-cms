@@ -19,6 +19,7 @@ export const EditableImage = forwardRef(({
     className,
     src,
     showOverlay = true,
+    overlayVariant = "default",
     isBackground = false,
     imageQuery = '',
     blockType = ''
@@ -61,7 +62,6 @@ export const EditableImage = forwardRef(({
 
         if (!file) return;
 
-        console.log(file);
 
         setSelectedFile(file);
         setPreview(URL.createObjectURL(file));
@@ -94,9 +94,6 @@ export const EditableImage = forwardRef(({
         formData.append("block_index", blockIndex);
         formData.append("image", selectedFile);
 
-        for (const pair of formData.entries()) {
-            console.log(pair[0], pair[1]);
-        }
 
         try {
 
@@ -121,9 +118,6 @@ export const EditableImage = forwardRef(({
 
             console.error(error);
 
-            console.log(error.response);
-
-            console.log(error.response?.data);
 
             showCosmicNotification({
                 title: "Upload failed",
@@ -279,8 +273,11 @@ export const EditableImage = forwardRef(({
 
                 <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition flex items-center justify-center">
 
-                    <div className="opacity-0 group-hover:opacity-100 transition text-white text-sm font-medium bg-black/60 px-4 py-2 rounded-full backdrop-blur">
-                        📷 Edit Image
+                    <div className={overlayVariant === "compact"
+                        ? "opacity-0 group-hover:opacity-100 transition flex h-7 w-7 items-center justify-center rounded-full bg-black/70 text-[11px] text-white shadow-sm backdrop-blur"
+                        : "opacity-0 group-hover:opacity-100 transition text-white text-sm font-medium bg-black/60 px-4 py-2 rounded-full backdrop-blur"
+                    } title={overlayVariant === "compact" ? "Edit image" : undefined}>
+                        {overlayVariant === "compact" ? "📷" : "📷 Edit Image"}
                     </div>
 
                 </div>

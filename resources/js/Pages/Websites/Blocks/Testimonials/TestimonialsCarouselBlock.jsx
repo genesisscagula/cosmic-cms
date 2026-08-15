@@ -6,6 +6,7 @@ import { EditableImage } from "../Shared/EditableImage";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { RepeatableControls, cloneLast, removeLast } from "../Shared/RepeatableControls";
 
 export const TestimonialsCarouselSchema = {
 
@@ -308,6 +309,14 @@ export function TestimonialsCarouselBlock({
                 </div>
 
             </div>
+
+            <RepeatableControls
+                onAdd={() => onUpdate({testimonials: cloneLast(data.testimonials, data.testimonials?.[0] || {})})}
+                onRemove={() => onUpdate({testimonials: removeLast(data.testimonials, 1)})}
+                canRemove={(data.testimonials?.length || 0) > 1}
+                addLabel="Add testimonial"
+                removeLabel="Remove last testimonial"
+            />
 
         </section>
 

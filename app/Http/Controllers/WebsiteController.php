@@ -1088,7 +1088,7 @@ class WebsiteController extends Controller
 		            <link rel=\"preconnect\" href=\"https://fonts.bunny.net\">
 		            <link href=\"https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap\" rel=\"stylesheet\">
 		            <script src=\"https://cdn.tailwindcss.com\"></script>
-                    <style>[data-cosmic-spark]{padding-top:50px!important;padding-bottom:50px!important}main>[data-cosmic-spark]:not(:first-child){content-visibility:auto;contain-intrinsic-size:800px}@media(min-width:640px){[data-cosmic-spark]{padding-top:80px!important;padding-bottom:80px!important}}</style>
+                    <style>[data-cosmic-spark]{padding-top:50px!important;padding-bottom:50px!important}[data-cosmic-spark]{box-sizing:border-box;width:100%;max-width:100%;overflow-x:clip}[data-cosmic-spark] :is(img,video,iframe,svg,canvas){max-width:100%}[data-cosmic-spark] :is(h1,h2,h3,h4,h5,h6,p,a,button,label){overflow-wrap:anywhere}[data-cosmic-spark] .grid>*{min-width:0}[data-cosmic-spark] :is(input,select,textarea,button){max-width:100%}@media(max-width:639px){[data-cosmic-spark] table{display:block;width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}}main>[data-cosmic-spark]:not(:first-child){content-visibility:auto;contain-intrinsic-size:800px}@media(min-width:640px){[data-cosmic-spark]{padding-top:80px!important;padding-bottom:80px!important}}</style>
 		        </head>
 		        <body class=\"bg-slate-50 text-slate-900 font-sans\">";
 		        

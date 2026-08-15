@@ -58,6 +58,7 @@ function useCommerce(block, globalTheme, commerce) {
     const allProducts = Array.isArray(commerce?.products) ? commerce.products : [];
     const products = allProducts.filter((product) => product?.status === 'published' && product?.visibility !== 'hidden');
     const categories = Array.isArray(commerce?.categories) ? commerce.categories : [];
+    const countries = Array.isArray(commerce?.countries) ? commerce.countries : [];
     const currency = commerce?.currency || 'USD';
     const decimals = Number(commerce?.currency_decimals ?? 2);
     const scale = 10 ** Math.max(0, decimals);
@@ -65,7 +66,7 @@ function useCommerce(block, globalTheme, commerce) {
         ? '—'
         : new Intl.NumberFormat(undefined, { style: 'currency', currency }).format(Number(minor) / scale);
     const product = products.find((p) => Number(p.id) === Number(block?.product_id)) || products[0] || null;
-    return { family, colors, products, categories, currency, decimals, money, product };
+    return { family, colors, products, categories, countries, currency, decimals, money, product };
 }
 
 
@@ -105,7 +106,7 @@ const ProductBindingBar = ({ block, commerce, onUpdate, builderMode }) => {
             <select
                 value={block?.product_id || products[0]?.id || ''}
                 onChange={(event) => onUpdate?.({ product_id: Number(event.target.value) || null })}
-                className="min-w-[220px] rounded-lg border border-current/15 bg-transparent px-3 py-2 text-sm font-semibold"
+                className="w-full max-w-full rounded-lg border border-current/15 bg-transparent px-3 py-2 text-sm font-semibold sm:w-auto sm:min-w-[220px]"
             >
                 {products.length ? products.map((product) => <option key={product.id} value={product.id} className="text-slate-900">{product.title}</option>) : <option value="">No published products</option>}
             </select>
@@ -119,8 +120,8 @@ const imageUrl = (product) => product?.featured_image_url
     || product?.images?.[0]?.image_url
     || '/storage/cms-images/background/background-1.avif';
 
-const productUrl = (product) => product?.storefront_url || (product?.slug ? `/product/${product.slug}` : '#');
-const categoryUrl = (category) => category?.storefront_url || (category?.slug ? `/shop/category/${category.slug}` : '#');
+const productUrl = (product) => product?.storefront_url || (product?.slug ? `/product/${product.slug}` : '/shop');
+const categoryUrl = (category) => category?.storefront_url || (category?.slug ? `/shop/category/${category.slug}` : '/shop');
 const productPriceMinor = (product) => product?.sale_price_minor ?? product?.regular_price_minor ?? null;
 
 function CommerceCatalogToolbar({ categories, search, setSearch, category, setCategory, sort, setSort, colors }) {
@@ -229,7 +230,7 @@ export function CommerceFeaturedProductsBlock({ block, globalTheme, commerce }) 
 const CategoryBindingBar = ({ block, commerce, onUpdate, builderMode }) => {
     if (!builderMode) return null;
     const categories = commerce?.categories || [];
-    return <div className="mb-4 flex flex-col gap-2 rounded-xl border border-dashed border-violet-400/40 bg-violet-500/5 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-500">Collection binding</p><p className="text-xs opacity-65">Choose which live category this Spark merchandises.</p></div><select value={block?.category_id || categories[0]?.id || ''} onChange={(event)=>onUpdate?.({category_id:Number(event.target.value)||null})} className="min-w-[220px] rounded-lg border border-current/15 bg-transparent px-3 py-2 text-sm font-semibold">{categories.length ? categories.map((category)=><option key={category.id} value={category.id} className="text-slate-900">{category.name}</option>) : <option value="">No categories</option>}</select></div>;
+    return <div className="mb-4 flex flex-col gap-2 rounded-xl border border-dashed border-violet-400/40 bg-violet-500/5 p-3 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-[10px] font-bold uppercase tracking-[0.16em] text-violet-500">Collection binding</p><p className="text-xs opacity-65">Choose which live category this Spark merchandises.</p></div><select value={block?.category_id || categories[0]?.id || ''} onChange={(event)=>onUpdate?.({category_id:Number(event.target.value)||null})} className="w-full max-w-full rounded-lg border border-current/15 bg-transparent px-3 py-2 text-sm font-semibold sm:w-auto sm:min-w-[220px]">{categories.length ? categories.map((category)=><option key={category.id} value={category.id} className="text-slate-900">{category.name}</option>) : <option value="">No categories</option>}</select></div>;
 };
 
 export function CommerceFeaturedCollectionBlock({ block, globalTheme, commerce, onUpdate, builderMode = false }) {
@@ -441,22 +442,22 @@ function CartSummaryCard({ block, c, checkoutUrl, emphasized = false }) {
 
 export function CommerceCartClassicBlock({ block, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
-    const checkoutUrl = commerce?.runtime_urls?.checkout || '#';
-    const shopUrl = commerce?.runtime_urls?.shop || '#';
+    const checkoutUrl = commerce?.runtime_urls?.checkout || '/checkout';
+    const shopUrl = commerce?.runtime_urls?.shop || '/shop';
     return <Section colors={c.colors}><Head block={block} /><div className="grid gap-7 lg:grid-cols-[1fr_360px]"><div><CartPreviewLines c={c} /><a href={shopUrl} className="mt-5 inline-flex text-sm font-bold" style={{ color: c.colors.accent }}>← {block.continue_label || 'Continue shopping'}</a></div><CartSummaryCard block={block} c={c} checkoutUrl={checkoutUrl} /></div></Section>;
 }
 
 export function CommerceCartSplitBlock({ block, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
-    const checkoutUrl = commerce?.runtime_urls?.checkout || '#';
-    const shopUrl = commerce?.runtime_urls?.shop || '#';
+    const checkoutUrl = commerce?.runtime_urls?.checkout || '/checkout';
+    const shopUrl = commerce?.runtime_urls?.shop || '/shop';
     return <Section colors={c.colors}><div className="grid gap-8 lg:grid-cols-[1.2fr_.8fr] lg:items-start"><div><Head block={block} /><CartPreviewLines c={c} /><a href={shopUrl} className="mt-5 inline-flex text-sm font-bold" style={{ color: c.colors.accent }}>← {block.continue_label || 'Keep shopping'}</a></div><CartSummaryCard block={block} c={c} checkoutUrl={checkoutUrl} emphasized /></div></Section>;
 }
 
 export function CommerceCartCompactBlock({ block, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
-    const checkoutUrl = commerce?.runtime_urls?.checkout || '#';
-    const shopUrl = commerce?.runtime_urls?.shop || '#';
+    const checkoutUrl = commerce?.runtime_urls?.checkout || '/checkout';
+    const shopUrl = commerce?.runtime_urls?.shop || '/shop';
     return <Section colors={c.colors}><div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><Head block={block} /><a href={shopUrl} className="shrink-0 text-sm font-bold" style={{ color: c.colors.accent }}>← {block.continue_label || 'Back to shop'}</a></div><div className="grid gap-5 lg:grid-cols-[1fr_320px]"><CartPreviewLines c={c} compact /><CartSummaryCard block={block} c={c} checkoutUrl={checkoutUrl} /></div></Section>;
 }
 
@@ -469,16 +470,32 @@ function CheckoutField({ label, placeholder, wide = false, c }) {
 }
 
 function CheckoutCustomerPanel({ c, compact = false }) {
+    const controls = commerceControlScheme(c.colors);
+    const fallbackCountries = [
+        { code: 'PH', name: 'Philippines' }, { code: 'US', name: 'United States' },
+        { code: 'AU', name: 'Australia' }, { code: 'CA', name: 'Canada' },
+        { code: 'GB', name: 'United Kingdom' }, { code: 'SG', name: 'Singapore' },
+        { code: 'JP', name: 'Japan' }, { code: 'NZ', name: 'New Zealand' },
+    ];
+    const countries = c.countries?.length ? c.countries : fallbackCountries;
+    const [country, setCountry] = useState('');
     return <div className={`rounded-[26px] border ${compact ? 'p-4 sm:p-5' : 'p-5 sm:p-6'}`} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
         <div className="flex items-center justify-between gap-4"><h3 className="text-base font-bold">Customer details</h3><span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: c.colors.accent }}>Runtime bound</span></div>
         <div className="mt-5 grid gap-3 sm:grid-cols-2">
             <CheckoutField label="First name" placeholder="Alex" c={c} />
             <CheckoutField label="Last name" placeholder="Morgan" c={c} />
             <CheckoutField label="Email" placeholder="alex@example.com" wide c={c} />
-            <CheckoutField label="Country" placeholder="Select country" c={c} />
-            <CheckoutField label="Region" placeholder="State / region" c={c} />
+            <label>
+                <span className="mb-1.5 block text-[11px] font-bold uppercase tracking-[0.13em]" style={{ color: c.colors.muted }}>Country</span>
+                <select value={country} onChange={(event) => setCountry(event.target.value)} className="min-h-11 w-full rounded-xl border px-3.5 text-sm outline-none" style={{ borderColor: c.colors.border, background: c.colors.surface, color: c.colors.text, colorScheme: controls.colorScheme }}>
+                    <option value="" style={controls.optionStyle}>Select country / region</option>
+                    {countries.map((item) => <option key={item.code} value={item.code} style={controls.optionStyle}>{item.name}</option>)}
+                </select>
+            </label>
+            <CheckoutField label="Region" placeholder={country ? 'State / province / region' : 'Choose country first'} c={c} />
             {!compact ? <CheckoutField label="Street address" placeholder="123 Commerce Street" wide c={c} /> : null}
         </div>
+        <p className="mt-3 text-[11px] leading-5" style={{ color: c.colors.muted }}>{country ? `Preview destination: ${countries.find((item) => item.code === country)?.name || country}. Live checkout recalculates shipping and tax.` : 'Choose a country to preview the destination control. Live checkout remains server-calculated.'}</p>
     </div>;
 }
 
@@ -523,7 +540,7 @@ export function CommerceCheckoutExpressBlock({ block, globalTheme, commerce }) {
 
 export function CommerceMiniCartBlock({ block, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
-    const cartUrl = commerce?.runtime_urls?.cart || '#';
+    const cartUrl = commerce?.runtime_urls?.cart || '/cart';
     return (
         <Section colors={c.colors}>
             <div className="ml-auto max-w-md rounded-3xl border p-6 shadow-xl" style={{ borderColor: c.colors.border, background: c.colors.surface }}>

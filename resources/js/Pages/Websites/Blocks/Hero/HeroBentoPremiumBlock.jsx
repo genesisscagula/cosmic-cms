@@ -42,6 +42,7 @@ export function HeroBentoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
     const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const softCard = isPrimary ? "border-white/20 bg-white/10 text-white" : `${theme.border} ${theme.surface} ${theme.text}`;
     const softSub = isPrimary ? "text-white/70" : theme.sub;
+    const proofSub = isPrimary ? "text-white/70" : primaryTheme.sub;
 
     return (
         <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
@@ -69,7 +70,7 @@ export function HeroBentoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
 
                     <div className="grid gap-4 sm:grid-cols-2 lg:col-span-5">
                         <div className={`rounded-[2rem] border p-6 ${softCard}`}><EditableText value={data.metric_value} className="block text-5xl font-semibold tracking-[-.04em]" onSave={(metric_value)=>onUpdate({metric_value})}/><EditableText value={data.metric_label} className={`mt-3 block text-sm leading-6 ${softSub}`} onSave={(metric_label)=>onUpdate({metric_label})}/></div>
-                        <div className={`rounded-[2rem] border p-6 ${isPrimary ? 'border-white/20 bg-slate-950/20 text-white' : `${theme.border} ${primaryTheme.soft} ${theme.text}`}`}><EditableText value={data.proof_title} className="block text-lg font-semibold" onSave={(proof_title)=>onUpdate({proof_title})}/><EditableText value={data.proof_text} isTextArea className={`mt-3 block text-sm leading-6 ${softSub}`} onSave={(proof_text)=>onUpdate({proof_text})}/></div>
+                        <div className={`rounded-[2rem] border p-6 ${isPrimary ? 'border-white/20 bg-slate-950/20 text-white' : `${primaryTheme.border || theme.border} ${primaryTheme.card || primaryTheme.bg} ${primaryTheme.text}`}`}><EditableText value={data.proof_title} className="block text-lg font-semibold" onSave={(proof_title)=>onUpdate({proof_title})}/><EditableText value={data.proof_text} isTextArea className={`mt-3 block text-sm leading-6 ${proofSub}`} onSave={(proof_text)=>onUpdate({proof_text})}/></div>
                     </div>
                 </div>
             </div>

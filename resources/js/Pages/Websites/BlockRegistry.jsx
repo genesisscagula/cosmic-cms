@@ -58,7 +58,7 @@ import {
     StatsModernBlock,
     StatsModernSchema
 } from "./Blocks/Stats/StatsModernBlock";
-import { StatsAnimatedCountersPremiumBlock, StatsAnimatedCountersPremiumSchema, StatsRevenueDashboardPremiumBlock, StatsRevenueDashboardPremiumSchema, StatsGrowthChartsPremiumBlock, StatsGrowthChartsPremiumSchema, StatsAchievementsPremiumBlock, StatsAchievementsPremiumSchema } from "./Blocks/Stats/StatsPremiumBlocks";
+import { StatsAnimatedCountersPremiumBlock, StatsAnimatedCountersPremiumSchema, StatsRevenueDashboardPremiumBlock, StatsRevenueDashboardPremiumSchema, StatsGrowthChartsPremiumBlock, StatsGrowthChartsPremiumSchema, StatsAchievementsPremiumBlock, StatsAchievementsPremiumSchema, StatsGlobalPresencePremiumBlock, StatsGlobalPresencePremiumSchema, StatsTimelineMetricsPremiumBlock, StatsTimelineMetricsPremiumSchema } from "./Blocks/Stats/StatsPremiumBlocks";
 
 import {
     TeamModernBlock,
@@ -151,6 +151,11 @@ import {
     ContactFormModernSchema
 } from "./Blocks/Contact/ContactFormModernBlock";
 import { FaqAccordionBlock, FaqAccordionSchema } from "./Blocks/FAQ/FaqAccordionBlock";
+import { FaqAccordionProBlock, FaqAccordionProSchema, FaqSearchPremiumBlock, FaqSearchPremiumSchema, FaqCategoriesPremiumBlock, FaqCategoriesPremiumSchema, FaqSupportPortalPremiumBlock, FaqSupportPortalPremiumSchema } from "./Blocks/FAQ/FAQPremiumBlocks";
+import { FaqDocumentationPremiumBlock, FaqDocumentationPremiumSchema, LeadMagnetPremiumBlock, LeadMagnetPremiumSchema, FreeAuditPremiumBlock, FreeAuditPremiumSchema, WebsiteAuditPremiumBlock, WebsiteAuditPremiumSchema, QuoteFormPremiumBlock, QuoteFormPremiumSchema, RoiCalculatorPremiumBlock, RoiCalculatorPremiumSchema, CostCalculatorPremiumBlock, CostCalculatorPremiumSchema, ConsultationBookingPremiumBlock, ConsultationBookingPremiumSchema } from "./Blocks/Lead/LeadGenerationPremiumBlocks";
+import { SalesComparisonPremiumBlock, SalesComparisonPremiumSchema, SalesFeatureMatrixPremiumBlock, SalesFeatureMatrixPremiumSchema, SalesCompetitorComparisonPremiumBlock, SalesCompetitorComparisonPremiumSchema, SalesRoiPremiumBlock, SalesRoiPremiumSchema, SalesGuaranteePremiumBlock, SalesGuaranteePremiumSchema, SalesTrustPremiumBlock, SalesTrustPremiumSchema, SalesIntegrationsPremiumBlock, SalesIntegrationsPremiumSchema } from "./Blocks/Lead/SalesPremiumBlocks";
+import { AgencyDashboardPreviewPremiumBlock, AgencyDashboardPreviewPremiumSchema, AgencyClientPortalPremiumBlock, AgencyClientPortalPremiumSchema, AgencyWhiteLabelShowcasePremiumBlock, AgencyWhiteLabelShowcasePremiumSchema, AgencyWebsiteManagementPremiumBlock, AgencyWebsiteManagementPremiumSchema, AgencyMaintenancePlansPremiumBlock, AgencyMaintenancePlansPremiumSchema, AgencySupportPlansPremiumBlock, AgencySupportPlansPremiumSchema, AgencyWorkflowPremiumBlock, AgencyWorkflowPremiumSchema, AgencyProjectPipelinePremiumBlock, AgencyProjectPipelinePremiumSchema, AgencyClientReviewsPremiumBlock, AgencyClientReviewsPremiumSchema, AgencyWebsiteReportsPremiumBlock, AgencyWebsiteReportsPremiumSchema } from "./Blocks/Agency/AgencyPremiumBlocks";
+import { AiPromptShowcasePremiumBlock, AiPromptShowcasePremiumSchema, AiWorkflowPremiumBlock, AiWorkflowPremiumSchema, AiAssistantPremiumBlock, AiAssistantPremiumSchema, AiTimelinePremiumBlock, AiTimelinePremiumSchema, AiBuilderPremiumBlock, AiBuilderPremiumSchema, AiAutomationPremiumBlock, AiAutomationPremiumSchema, AiCreditsDashboardPremiumBlock, AiCreditsDashboardPremiumSchema, AiGenerationProcessPremiumBlock, AiGenerationProcessPremiumSchema, AiStatisticsPremiumBlock, AiStatisticsPremiumSchema, AiPromptExamplesPremiumBlock, AiPromptExamplesPremiumSchema } from "./Blocks/AI/AiPremiumBlocks";
 import { ContactDetailsBlock, ContactDetailsSchema } from "./Blocks/Contact/ContactDetailsBlock";
 import { LocationMapBlock, LocationMapSchema } from "./Blocks/Contact/LocationMapBlock";
 import { CaseStudiesGridBlock, CaseStudiesGridSchema } from "./Blocks/Collections/CaseStudiesGridBlock";
@@ -445,6 +450,8 @@ export const BlockRegistry = {
     stats_revenue_dashboard_premium: { component: StatsRevenueDashboardPremiumBlock, schema: StatsRevenueDashboardPremiumSchema },
     stats_growth_charts_premium: { component: StatsGrowthChartsPremiumBlock, schema: StatsGrowthChartsPremiumSchema },
     stats_achievements_premium: { component: StatsAchievementsPremiumBlock, schema: StatsAchievementsPremiumSchema },
+    stats_global_presence_premium: { component: StatsGlobalPresencePremiumBlock, schema: StatsGlobalPresencePremiumSchema },
+    stats_timeline_metrics_premium: { component: StatsTimelineMetricsPremiumBlock, schema: StatsTimelineMetricsPremiumSchema },
 
     team_modern: {
 
@@ -491,6 +498,45 @@ export const BlockRegistry = {
         component: FaqAccordionBlock,
         schema: FaqAccordionSchema,
     },
+    faq_accordion_pro: { component: FaqAccordionProBlock, schema: FaqAccordionProSchema },
+    faq_search_premium: { component: FaqSearchPremiumBlock, schema: FaqSearchPremiumSchema },
+    faq_categories_premium: { component: FaqCategoriesPremiumBlock, schema: FaqCategoriesPremiumSchema },
+    faq_support_portal_premium: { component: FaqSupportPortalPremiumBlock, schema: FaqSupportPortalPremiumSchema },
+    faq_documentation_premium: { component: FaqDocumentationPremiumBlock, schema: FaqDocumentationPremiumSchema },
+    lead_magnet_premium: { component: LeadMagnetPremiumBlock, schema: LeadMagnetPremiumSchema },
+    lead_free_audit_premium: { component: FreeAuditPremiumBlock, schema: FreeAuditPremiumSchema },
+    lead_website_audit_premium: { component: WebsiteAuditPremiumBlock, schema: WebsiteAuditPremiumSchema },
+    lead_quote_form_premium: { component: QuoteFormPremiumBlock, schema: QuoteFormPremiumSchema },
+    lead_roi_calculator_premium: { component: RoiCalculatorPremiumBlock, schema: RoiCalculatorPremiumSchema },
+    lead_cost_calculator_premium: { component: CostCalculatorPremiumBlock, schema: CostCalculatorPremiumSchema },
+    lead_consultation_booking_premium: { component: ConsultationBookingPremiumBlock, schema: ConsultationBookingPremiumSchema },
+    sales_comparison_premium: { component: SalesComparisonPremiumBlock, schema: SalesComparisonPremiumSchema },
+    sales_feature_matrix_premium: { component: SalesFeatureMatrixPremiumBlock, schema: SalesFeatureMatrixPremiumSchema },
+    sales_competitor_comparison_premium: { component: SalesCompetitorComparisonPremiumBlock, schema: SalesCompetitorComparisonPremiumSchema },
+    sales_roi_premium: { component: SalesRoiPremiumBlock, schema: SalesRoiPremiumSchema },
+    sales_guarantee_premium: { component: SalesGuaranteePremiumBlock, schema: SalesGuaranteePremiumSchema },
+    sales_trust_premium: { component: SalesTrustPremiumBlock, schema: SalesTrustPremiumSchema },
+    sales_integrations_premium: { component: SalesIntegrationsPremiumBlock, schema: SalesIntegrationsPremiumSchema },
+    agency_dashboard_preview_premium: { component: AgencyDashboardPreviewPremiumBlock, schema: AgencyDashboardPreviewPremiumSchema },
+    agency_client_portal_premium: { component: AgencyClientPortalPremiumBlock, schema: AgencyClientPortalPremiumSchema },
+    agency_white_label_showcase_premium: { component: AgencyWhiteLabelShowcasePremiumBlock, schema: AgencyWhiteLabelShowcasePremiumSchema },
+    agency_website_management_premium: { component: AgencyWebsiteManagementPremiumBlock, schema: AgencyWebsiteManagementPremiumSchema },
+    agency_maintenance_plans_premium: { component: AgencyMaintenancePlansPremiumBlock, schema: AgencyMaintenancePlansPremiumSchema },
+    agency_support_plans_premium: { component: AgencySupportPlansPremiumBlock, schema: AgencySupportPlansPremiumSchema },
+    agency_workflow_premium: { component: AgencyWorkflowPremiumBlock, schema: AgencyWorkflowPremiumSchema },
+    agency_project_pipeline_premium: { component: AgencyProjectPipelinePremiumBlock, schema: AgencyProjectPipelinePremiumSchema },
+    agency_client_reviews_premium: { component: AgencyClientReviewsPremiumBlock, schema: AgencyClientReviewsPremiumSchema },
+    agency_website_reports_premium: { component: AgencyWebsiteReportsPremiumBlock, schema: AgencyWebsiteReportsPremiumSchema },
+    ai_prompt_showcase_premium: { component: AiPromptShowcasePremiumBlock, schema: AiPromptShowcasePremiumSchema },
+    ai_workflow_premium: { component: AiWorkflowPremiumBlock, schema: AiWorkflowPremiumSchema },
+    ai_assistant_premium: { component: AiAssistantPremiumBlock, schema: AiAssistantPremiumSchema },
+    ai_timeline_premium: { component: AiTimelinePremiumBlock, schema: AiTimelinePremiumSchema },
+    ai_builder_premium: { component: AiBuilderPremiumBlock, schema: AiBuilderPremiumSchema },
+    ai_automation_premium: { component: AiAutomationPremiumBlock, schema: AiAutomationPremiumSchema },
+    ai_credits_dashboard_premium: { component: AiCreditsDashboardPremiumBlock, schema: AiCreditsDashboardPremiumSchema },
+    ai_generation_process_premium: { component: AiGenerationProcessPremiumBlock, schema: AiGenerationProcessPremiumSchema },
+    ai_statistics_premium: { component: AiStatisticsPremiumBlock, schema: AiStatisticsPremiumSchema },
+    ai_prompt_examples_premium: { component: AiPromptExamplesPremiumBlock, schema: AiPromptExamplesPremiumSchema },
 
     contact_details: {
         component: ContactDetailsBlock,

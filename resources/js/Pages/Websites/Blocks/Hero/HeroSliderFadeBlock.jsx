@@ -287,7 +287,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
             <div className="absolute bottom-16 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 sm:bottom-6">
                 <button type="button" onClick={() => openEditor(activeIndex)} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit slide</button>
                 <button type="button" onClick={() => imageRefs.current[activeIndex]?.openEditor()} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit image</button>
-                <button type="button" onClick={addSlide} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Add slide</button>
+                <button type="button" onClick={addSlide} className="cosmic-hero-slider-add rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Add slide</button>
             </div>
 
             <div className="absolute bottom-6 right-6 z-40 flex items-center gap-3 sm:right-10 lg:right-14">
@@ -306,7 +306,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
 
             {editingIndex !== null && draft && createPortal(
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEditor(); }}>
-                    <div className="max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151518] p-6 !text-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="hero-slider-edit-title">
+                    <div className="cosmic-hero-slider-editor max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151518] p-6 !text-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="hero-slider-edit-title">
                         <div className="flex items-start justify-between gap-4">
                             <div><p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-300">Hero slider</p><h3 id="hero-slider-edit-title" className="mt-1 text-xl font-bold">Edit slide {editingIndex + 1}</h3></div>
                             <button type="button" onClick={closeEditor} className="text-slate-400 hover:!text-white" aria-label="Close editor">×</button>
@@ -325,7 +325,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                             <label className="grid gap-2 text-sm font-semibold text-slate-200 sm:col-span-2"><span>Description</span><textarea rows="4" value={draft.description || ''} onChange={(event) => setDraft({ ...draft, description: event.target.value })} className="resize-y rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 !text-white outline-none focus:border-violet-400" /></label>
                         </div>
                         <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
-                            <button type="button" onClick={() => deleteSlide(editingIndex)} disabled={slides.length <= 1} className="rounded-lg px-4 py-2 text-sm font-semibold text-rose-300 hover:bg-rose-500/10 disabled:cursor-not-allowed disabled:opacity-40">Delete slide</button>
+                            <button type="button" onClick={() => deleteSlide(editingIndex)} disabled={slides.length <= 1} className="cosmic-hero-slider-delete rounded-lg border border-rose-500 bg-rose-600 px-4 py-2 text-sm font-bold !text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:border-slate-600 disabled:bg-slate-700 disabled:!text-slate-400 disabled:opacity-80">Delete slide</button>
                             <div className="flex gap-2"><button type="button" onClick={closeEditor} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button><button type="button" onClick={saveEditor} className="rounded-lg bg-white px-5 py-2 text-sm font-bold !text-slate-950 hover:bg-slate-100">Save slide</button></div>
                         </div>
                     </div>

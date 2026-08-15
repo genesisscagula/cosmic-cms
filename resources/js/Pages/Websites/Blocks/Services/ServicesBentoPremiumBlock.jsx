@@ -44,7 +44,8 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
     const isPrimary = block.resolvedTheme === "primary";
     const card = isPrimary ? "border-white/20 bg-white/10 text-white" : `${theme.border} ${theme.surface} ${theme.text}`;
     const muted = isPrimary ? "text-white/70" : theme.sub;
-    const soft = isPrimary ? "border-white/20 bg-slate-950/15 text-white" : `${theme.border} ${primaryTheme.soft} ${theme.text}`;
+    const softMuted = isPrimary ? "text-white/70" : primaryTheme.sub;
+    const soft = isPrimary ? "border-white/20 bg-slate-950/15 text-white" : `${primaryTheme.border || theme.border} ${primaryTheme.card || primaryTheme.bg} ${primaryTheme.text}`;
     const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
 
     const smallCards = [

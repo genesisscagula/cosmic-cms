@@ -1640,8 +1640,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
         const updatedBlocks = data.blocks.filter((_, i) => i !== index);
 
-        console.log("Before:", data.blocks.length);
-        console.log("After:", updatedBlocks.length);
 
         setData("blocks", updatedBlocks);
 
@@ -2813,6 +2811,43 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                         @media (max-width: 639px) {
                             .cosmic-overlay-first-spark > .cosmic-builder-spark > :first-child {
                                 padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 4rem)) !important;
+                            }
+                        }
+                        /* Sparks live/export visual contract: keep Builder spacing and overflow
+                           aligned with published HTML (50px mobile, 80px tablet+). */
+                        .cosmic-builder-spark {
+                            width: 100%;
+                            max-width: 100%;
+                            min-width: 0;
+                            overflow-x: clip;
+                        }
+                        .cosmic-builder-spark > section {
+                            box-sizing: border-box;
+                            max-width: 100%;
+                            padding-top: 50px !important;
+                            padding-bottom: 50px !important;
+                        }
+                        .cosmic-builder-spark :is(img,video,iframe,svg,canvas) {
+                            max-width: 100%;
+                        }
+                        .cosmic-builder-spark :is(h1,h2,h3,h4,h5,h6,p,a,button,label) {
+                            overflow-wrap: anywhere;
+                        }
+                        .cosmic-builder-spark .grid > * { min-width: 0; }
+                        .cosmic-builder-spark :is(input,select,textarea,button) { max-width: 100%; }
+                        @media (min-width: 640px) {
+                            .cosmic-builder-spark > section {
+                                padding-top: 80px !important;
+                                padding-bottom: 80px !important;
+                            }
+                        }
+                        @media (max-width: 639px) {
+                            .cosmic-builder-spark table {
+                                display: block;
+                                width: 100%;
+                                max-width: 100%;
+                                overflow-x: auto;
+                                -webkit-overflow-scrolling: touch;
                             }
                         }
                         /* Clean Page Style button contract: primary actions always use the

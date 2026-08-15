@@ -466,7 +466,7 @@ export function BlogHubBlock({
                                 <span className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`}>{featuredPost.category || "Featured article"}</span>
                                 <h3 className={`mt-4 text-3xl font-bold tracking-tight ${theme.text}`}>{featuredPost.title}</h3>
                                 {featuredPost.excerpt && <p className={`mt-4 text-base leading-7 ${theme.sub}`}>{featuredPost.excerpt}</p>}
-                                {isBuilder && <div className="mt-7 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit featured post</button><button type="button" onClick={() => requestDeletePost(featuredPost)} className="ml-auto text-sm font-semibold text-red-600 transition hover:text-red-700 hover:underline">Delete post</button></div>}
+                                {isBuilder && <div className="mt-7 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit featured post</button><button type="button" onClick={() => requestDeletePost(featuredPost)} className="cosmic-spark-custom-remove ml-auto inline-flex min-h-9 items-center justify-center rounded-lg border border-rose-500 bg-rose-600 px-3 py-2 text-xs font-bold !text-white shadow-sm transition hover:bg-rose-500">Delete post</button></div>}
                             </>
                         ) : (
                             <>
@@ -496,7 +496,7 @@ export function BlogHubBlock({
                                         </div>
                                         <h3 className={`mt-3 text-lg font-bold leading-snug ${theme.text}`}>{post.title}</h3>
                                         {post.excerpt && <p className={`mt-3 text-sm leading-6 ${theme.sub}`}>{post.excerpt}</p>}
-                                        {isBuilder && <div className="mt-4 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit post</button><button type="button" onClick={() => requestDeletePost(post)} className="ml-auto text-sm font-semibold text-red-600 transition hover:text-red-700 hover:underline">Delete post</button></div>}
+                                        {isBuilder && <div className="mt-4 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit post</button><button type="button" onClick={() => requestDeletePost(post)} className="cosmic-spark-custom-remove ml-auto inline-flex min-h-9 items-center justify-center rounded-lg border border-rose-500 bg-rose-600 px-3 py-2 text-xs font-bold !text-white shadow-sm transition hover:bg-rose-500">Delete post</button></div>}
                                     </>
                                 ) : (
                                     <>
@@ -512,7 +512,7 @@ export function BlogHubBlock({
 
                     </>
                 )}
-                {isBuilder && !viewingPost && <button type="button" onClick={() => openComposer()} className={`mt-7 rounded-xl border px-4 py-2 text-sm font-semibold transition hover:bg-white/10 ${theme.border} ${theme.text}`}>+ Add post</button>}
+                {isBuilder && !viewingPost && <button type="button" onClick={() => openComposer()} className="cosmic-spark-custom-add mt-7 inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold !text-slate-900 shadow-sm transition hover:bg-slate-100">+ Add post</button>}
 
                 {actionNotice && (
                     <ModalPortal>

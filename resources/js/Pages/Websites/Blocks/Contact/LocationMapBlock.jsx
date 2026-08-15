@@ -1,4 +1,5 @@
 import { EditableText } from "../Shared/EditableText";
+import { EditableButton } from "../Shared/EditableButton";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 
 export const LocationMapSchema = {
@@ -8,9 +9,9 @@ export const LocationMapSchema = {
     tags: ["location", "map", "directions", "contact"],
     defaults: {
         eyebrow: "Find us", heading: "Close when you need us", text: "Visit by appointment or get in touch to confirm the best time.",
-        location_name: "Your business location", address: "Serving your local area", service_area: "Appointments and service visits available.", directions_label: "Get directions",
+        location_name: "Your business location", address: "Serving your local area", service_area: "Appointments and service visits available.", directions_label: "Get directions", directions_url: "https://www.google.com/maps/search/?api=1&query=Your+Business+Location",
     },
-    fields: [{ key: "eyebrow", type: "text", label: "Eyebrow" }, { key: "heading", type: "text", label: "Heading" }, { key: "text", type: "textarea", label: "Supporting text" }, { key: "location_name", type: "text", label: "Location name" }, { key: "address", type: "textarea", label: "Address" }, { key: "service_area", type: "textarea", label: "Service area" }, { key: "directions_label", type: "text", label: "Directions button label" }],
+    fields: [{ key: "eyebrow", type: "text", label: "Eyebrow" }, { key: "heading", type: "text", label: "Heading" }, { key: "text", type: "textarea", label: "Supporting text" }, { key: "location_name", type: "text", label: "Location name" }, { key: "address", type: "textarea", label: "Address" }, { key: "service_area", type: "textarea", label: "Service area" }, { key: "directions_label", type: "text", label: "Directions button label" }, { key: "directions_url", type: "url", label: "Directions URL" }],
 };
 
 export function LocationMapBlock({ block, onUpdate, globalTheme }) {
@@ -32,7 +33,7 @@ export function LocationMapBlock({ block, onUpdate, globalTheme }) {
                         <EditableText value={data.location_name} className={`block text-lg font-semibold ${theme.text}`} onSave={(location_name) => onUpdate({ location_name })} />
                         <EditableText value={data.address} isTextArea className={`mt-2 block text-sm leading-6 ${theme.sub}`} onSave={(address) => onUpdate({ address })} />
                         <EditableText value={data.service_area} isTextArea className={`mt-3 block text-sm leading-6 ${theme.sub}`} onSave={(service_area) => onUpdate({ service_area })} />
-                        <EditableText value={data.directions_label} className={`mt-5 block text-sm font-semibold ${theme.text}`} onSave={(directions_label) => onUpdate({ directions_label })} />
+                        <EditableButton label={data.directions_label} url={data.directions_url} className={`mt-5 inline-flex rounded-full border px-4 py-2 text-sm font-semibold ${theme.border} ${theme.text}`} onSave={(directions_label, directions_url) => onUpdate({ directions_label, directions_url })} />
                     </div>
                 </div>
             </div>

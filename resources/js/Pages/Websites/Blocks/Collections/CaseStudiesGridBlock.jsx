@@ -59,12 +59,12 @@ export function CaseStudiesGridBlock({ block, blockIndex, onUpdate, globalTheme 
                                 <EditableText value={study.summary} isTextArea className={`mt-4 block text-sm leading-6 ${theme.sub}`} onSave={(summary) => updateStudy(index, "summary", summary)} />
                                 <EditableText value={study.result} className={`mt-6 block text-sm font-semibold ${theme.text}`} onSave={(result) => updateStudy(index, "result", result)} />
                                 <EditableText value={study.link_label} className={`mt-4 block text-sm font-semibold ${theme.text}`} onSave={(link_label) => updateStudy(index, "link_label", link_label)} />
-                                <button type="button" onClick={() => removeStudy(index)} disabled={data.studies.length <= 1} className="mt-5 w-fit text-xs font-semibold text-rose-600 hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40">Remove case study</button>
+                                <button type="button" onClick={() => removeStudy(index)} disabled={data.studies.length <= 1} className="cosmic-spark-custom-remove mt-5 inline-flex min-h-9 w-fit items-center justify-center rounded-lg border border-rose-500 bg-rose-600 px-3 py-2 text-xs font-bold !text-white shadow-sm transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-300 disabled:!text-slate-600 disabled:opacity-80">Remove case study</button>
                             </div>
                         </article>
                     ))}
                 </div>
-                <button type="button" onClick={addStudy} className={`mt-6 rounded-xl border px-4 py-2.5 text-sm font-semibold ${theme.border} ${theme.card} ${theme.text} transition hover:opacity-80`}>+ Add case study</button>
+                <button type="button" onClick={addStudy} className="cosmic-spark-custom-add mt-6 inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold !text-slate-900 shadow-sm transition hover:bg-slate-100">+ Add case study</button>
             </div>
         </section>
     );

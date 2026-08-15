@@ -916,6 +916,8 @@ PROMPT;
     private function statsRevenueDashboardPremiumSchema(): string { return "\n    stats_revenue_dashboard_premium\n\n    - type = stats_revenue_dashboard_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - period_label\n    - metrics (array of exactly 4 items: value, label, description)\n\n    Requirements:\n    - Financial/revenue figures must come directly from supplied user data.\n    - Never invent revenue, MRR/ARR, order value, margins, growth, customer counts, forecasts, or commercial performance.\n    - When figures are unavailable use — and editable neutral labels.\n    - Do not include markdown.\n"; }
     private function statsGrowthChartsPremiumSchema(): string { return "\n    stats_growth_charts_premium\n\n    - type = stats_growth_charts_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - chart_label\n    - series (array of exactly 6 items: label, value)\n    - metrics (array of exactly 3 items: value, label, description)\n\n    Requirements:\n    - Use chart values only when trend data is supplied by the user.\n    - value must be a numeric 0-100 display scale, not an invented business percentage.\n    - Never invent growth rates, retention, customer counts, financial results, or forecasts.\n    - If no verified data is supplied, use neutral editable placeholders for metrics and a non-factual sample display series.\n    - Do not include markdown.\n"; }
     private function statsAchievementsPremiumSchema(): string { return "\n    stats_achievements_premium\n\n    - type = stats_achievements_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - achievements (array of exactly 4 items: year, badge, title, text)\n\n    Requirements:\n    - Only present awards, recognitions, dates, certifications, growth milestones, rankings, or outcomes that the user explicitly supplies.\n    - Otherwise use clearly editable placeholder milestones such as 20XX and generic titles.\n    - Never fabricate achievements.\n    - Do not include markdown.\n"; }
+    private function statsGlobalPresencePremiumSchema(): string { return "\n    stats_global_presence_premium\n\n    - type = stats_global_presence_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - locations (array of exactly 4 items: region, value, label, description)\n\n    Requirements:\n    - Use only offices, markets, countries, regions, service areas, location counts, or geographic reach explicitly supplied by the user.\n    - Never invent global reach, office locations, market counts, countries served, or geographic performance claims.\n    - If verified geographic facts are unavailable, use neutral placeholders such as Region 01 and —.\n    - Do not include markdown.\n"; }
+    private function statsTimelineMetricsPremiumSchema(): string { return "\n    stats_timeline_metrics_premium\n\n    - type = stats_timeline_metrics_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - periods (array of exactly 4 items: period, value, label, description)\n\n    Requirements:\n    - Use only dates, periods, metrics, milestones, and measured results explicitly supplied by the user.\n    - Never invent historical figures, growth percentages, revenue, customer counts, achievements, or dates.\n    - If verified timeline data is unavailable, use clearly editable placeholders such as 20XX and —.\n    - Do not include markdown.\n"; }
 
     private function teamCardsPremiumSchema(): string { return $this->premiumTeamSchema('team_cards_premium'); }
     private function teamTimelinePremiumSchema(): string { return $this->premiumTeamSchema('team_timeline_premium'); }
@@ -984,7 +986,7 @@ PROMPT;
             'cta_newsletter_premium' => "\n    - input_placeholder\n    - privacy_note",
             'cta_calendly_premium' => "\n    - booking_url\n    - availability_note\n    - duration_label",
             'cta_free_trial_premium' => "\n    - trial_note\n    - benefit_one\n    - benefit_two\n    - benefit_three",
-            'cta_countdown_premium' => "\n    - countdown_days\n    - countdown_hours\n    - countdown_minutes\n    - countdown_seconds\n    - deadline_note",
+            'cta_countdown_premium' => "\n    - countdown_deadline\n    - countdown_days\n    - countdown_hours\n    - countdown_minutes\n    - countdown_seconds\n    - deadline_note",
             'cta_limited_offer_premium' => "\n    - offer_badge\n    - offer_detail\n    - terms_note",
             default => "\n    - secondary_label\n    - secondary_url",
         };
@@ -1004,7 +1006,7 @@ PROMPT;
     - For newsletter CTAs, keep privacy copy generic and do not claim a sending frequency unless supplied.
     - For demo or Calendly CTAs, use a factual booking invitation and a placeholder URL when no scheduling URL is supplied; never invent available dates or times.
     - For free-trial CTAs, do not invent trial length, card requirements, cancellation terms, included credits, or billing behavior.
-    - For countdown CTAs, only use a deadline supplied by the user. If none is supplied, keep countdown values at placeholder zeroes and ask the published copy to be updated; never manufacture urgency.
+    - For countdown CTAs, only use a deadline supplied by the user. Return countdown_deadline as an ISO-8601 date/time when supplied. If none is supplied, use countdown_deadline = demo:+7d and clearly identify it as a demo placeholder; never manufacture urgency.
     - For limited-offer CTAs, do not invent discounts, savings, expiry dates, scarcity, quantities, eligibility, or guarantees.
     - Do not include markdown.
 ";
@@ -1769,11 +1771,11 @@ PROMPT;
     - Use factual, concise contact copy appropriate to the requested business.
     - Never invent physical addresses, phone numbers, office hours, response times, support SLAs, booking availability, appointment duration, map coordinates, or staff availability.
     - Use clearly editable placeholder contact details when the user has not supplied real details.
-    - For appointment booking, use a placeholder URL when none is supplied and explicitly avoid fabricated dates or times.
-    - For map contact, do not invent coordinates or map embeds; use a supplied directions URL or a placeholder.
+    - For appointment booking, use https://calendly.com/ as the editable demo URL when none is supplied and explicitly avoid fabricated dates or times.
+    - For map contact, do not invent coordinates or map embeds; use a supplied directions URL or https://www.google.com/maps/search/?api=1&query=Your+Business+Location as the editable demo placeholder.
     - For FAQ + Contact, answer only generic process questions unless the user supplied business-specific facts; do not invent policies, guarantees, pricing, or turnaround times.
     - For Multi-step Contact, keep step labels concise and do not imply the form is submitted anywhere beyond the configured contact endpoint.
-    - For Live Chat CTA, never claim staff are online, available now, or will reply within a time window unless the user explicitly supplied that fact. Use a placeholder chat URL when none is supplied.
+    - For Live Chat CTA, never claim staff are online, available now, or will reply within a time window unless the user explicitly supplied that fact. Use https://www.messenger.com/ as the editable demo chat URL when none is supplied.
     - Do not include markdown.
 ";
     }
@@ -1854,6 +1856,340 @@ PROMPT;
     TXT;
     }
 
+    private function faqAccordionProSchema(): string
+    {
+        return $this->faqBasePremiumSchema('faq_accordion_pro', 'Generate exactly 6 useful FAQs. Use concise, factual answers and a premium editorial tone.');
+    }
+
+    private function faqSearchPremiumSchema(): string
+    {
+        return $this->faqBasePremiumSchema('faq_search_premium', 'Generate exactly 8 useful FAQs plus search_placeholder. Questions should cover distinct visitor intents so search is genuinely useful.', true);
+    }
+
+    private function faqCategoriesPremiumSchema(): string
+    {
+        return <<<TXT
+
+    faq_categories_premium
+
+    - type = faq_categories_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - categories (array of exactly 3 items)
+
+    Each category contains:
+    - title
+    - description
+    - faqs (array of exactly 2 items, each with question and answer)
+
+    Requirements:
+    - Build three genuinely distinct, useful topic groups for the requested business.
+    - Answers must be concise, factual, and based only on supplied business information or safe general process wording.
+    - Never invent prices, guarantees, certifications, response times, availability, policies, legal terms, or regulated claims.
+    - Do not use markdown or fake business facts.
+
+    TXT;
+    }
+
+    private function faqSupportPortalPremiumSchema(): string
+    {
+        return <<<TXT
+
+    faq_support_portal_premium
+
+    - type = faq_support_portal_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - topics (array of exactly 4 items: title, description, count_label)
+    - faqs (array of exactly 4 items: question, answer)
+
+    Requirements:
+    - Create four useful self-service support topics and four featured questions.
+    - primary_url must use a real supplied support/contact URL; if none is supplied use # rather than inventing one.
+    - Never invent support availability, response times, SLAs, ticket counts, documentation counts, guarantees, policies, or account features.
+    - Keep count_label qualitative (for example Guide, How-to, Account, Policy) unless a real count is supplied.
+    - Do not use markdown.
+
+    TXT;
+    }
+
+
+    private function faqDocumentationPremiumSchema(): string
+    {
+        return <<<TXT
+
+    faq_documentation_premium
+
+    - type = faq_documentation_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - topics (array of exactly 4 items: title, text)
+    - featured_title
+    - featured_text
+    - steps (array of exactly 3 items: title, text)
+
+    Requirements:
+    - Build documentation only from supplied product, service, onboarding, process, policy, or help information.
+    - primary_url must use a real supplied URL or #.
+    - Never invent API features, setup steps, policies, support guarantees, availability, response times, account capabilities, or technical requirements.
+    - Keep topics and steps clear, useful, and factual.
+    - Do not use markdown.
+
+    TXT;
+    }
+
+    private function leadMagnetPremiumSchema(): string
+    {
+        return <<<TXT
+
+    lead_magnet_premium
+
+    - type = lead_magnet_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - resource_label
+    - resource_title
+    - resource_text
+    - primary_label
+    - primary_url
+    - benefits (array of exactly 3 items: title, text)
+
+    Requirements:
+    - Use a real supplied resource, guide, checklist, template, report, download, or offer. If none exists, keep the content clearly placeholder-like instead of inventing an asset.
+    - Never invent download counts, results, guarantees, scarcity, testimonials, proprietary research, or claims about what the resource contains.
+    - primary_url must be supplied or #.
+    - Do not use markdown.
+
+    TXT;
+    }
+
+    private function leadFreeAuditPremiumSchema(): string
+    {
+        return <<<TXT
+
+    lead_free_audit_premium
+
+    - type = lead_free_audit_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - offer_label
+    - primary_label
+    - primary_url
+    - items (array of exactly 3 items: title, text)
+    - note
+
+    Requirements:
+    - Call the audit free only when the supplied business information explicitly says a free audit is offered.
+    - Describe only supplied or safely generic audit areas; do not invent eligibility, turnaround times, deliverables, scores, guarantees, savings, or findings.
+    - primary_url must be supplied or #.
+    - Do not use fake urgency or markdown.
+
+    TXT;
+    }
+
+    private function leadWebsiteAuditPremiumSchema(): string
+    {
+        return <<<TXT
+
+    lead_website_audit_premium
+
+    - type = lead_website_audit_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - audit_items (array of exactly 4 items: title, text)
+    - report_label
+    - report_title
+    - report_text
+
+    Requirements:
+    - Present the website audit as an offer or methodology unless an actual audit result was supplied.
+    - Never fabricate performance scores, SEO rankings, accessibility results, conversion rates, vulnerabilities, scan results, revenue impact, or before/after claims.
+    - primary_url must be supplied or #.
+    - Do not use markdown.
+
+    TXT;
+    }
+
+    private function leadQuoteFormPremiumSchema(): string
+    {
+        return <<<TXT
+
+    lead_quote_form_premium
+
+    - type = lead_quote_form_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - items (array of exactly 3 items: title, text)
+    - form_note
+
+    Requirements:
+    - Present this as a quote request, not an instant or guaranteed final price unless the supplied business information explicitly supports that workflow.
+    - Ask only for useful project, scope, quantity, timing, or service details.
+    - Never invent pricing, discounts, turnaround times, availability, minimum spend, deposits, or guarantees.
+    - primary_url must be supplied or #.
+    - Do not use markdown.
+
+    TXT;
+    }
+
+    private function leadRoiCalculatorPremiumSchema(): string
+    {
+        return <<<TXT
+
+    lead_roi_calculator_premium
+
+    - type = lead_roi_calculator_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - input_one_label
+    - input_two_label
+    - input_three_label
+    - result_label
+    - note
+
+    Requirements:
+    - Treat all ROI output as illustrative estimates based only on visitor-entered assumptions.
+    - Never invent revenue, savings, growth percentages, conversion lifts, benchmarks, guarantees, or expected returns.
+    - Use neutral labels that fit the requested business model.
+    - note must clearly state that actual results can vary.
+    - Do not use markdown.
+
+    TXT;
+    }
+
+    private function leadCostCalculatorPremiumSchema(): string
+    {
+        return <<<TXT
+
+    lead_cost_calculator_premium
+
+    - type = lead_cost_calculator_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - quantity_label
+    - rate_label
+    - result_label
+    - note
+
+    Requirements:
+    - Present calculator output as a rough estimate, not a confirmed quote.
+    - Never invent unit prices, taxes, shipping, labour costs, fees, discounts, minimums, or final totals unless explicitly supplied.
+    - Keep labels generic enough for visitor-entered quantity and rate values.
+    - note must explain that final pricing depends on real scope and terms.
+    - Do not use markdown.
+
+    TXT;
+    }
+
+    private function leadConsultationBookingPremiumSchema(): string
+    {
+        return <<<TXT
+
+    lead_consultation_booking_premium
+
+    - type = lead_consultation_booking_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - items (array of exactly 3 items: title, text)
+    - note
+
+    Requirements:
+    - Present this as a consultation request unless a real connected scheduler and confirmed booking flow are supplied.
+    - Never invent available slots, dates, duration, fees, response times, staff availability, or automatic confirmation.
+    - primary_url must be supplied or #.
+    - note should clarify that a request is not confirmed until the business or connected scheduler confirms it.
+    - Do not use markdown.
+
+    TXT;
+    }
+
+    private function salesComparisonPremiumSchema(): string { return $this->salesBasePremiumSchema('sales_comparison_premium', 'Compare only supplied options, features, terms, or criteria. Never invent pricing, guarantees, limits, or superiority claims.'); }
+
+    private function salesFeatureMatrixPremiumSchema(): string { return $this->salesBasePremiumSchema('sales_feature_matrix_premium', 'Use only real supplied capabilities, plan inclusions, support details, or terms. Never fabricate checkmarks, limits, or availability.'); }
+
+    private function salesCompetitorComparisonPremiumSchema(): string { return $this->salesBasePremiumSchema('sales_competitor_comparison_premium', 'Competitor claims must be factual, neutral, supportable, and supplied or verifiable. Never invent weaknesses, prices, market share, ratings, legal claims, or superiority.'); }
+
+    private function salesRoiPremiumSchema(): string { return $this->salesBasePremiumSchema('sales_roi_premium', 'Use transparent supplied assumptions only. Never invent ROI percentages, revenue, savings, payback periods, conversion lifts, benchmarks, forecasts, or guarantees.'); }
+
+    private function salesGuaranteePremiumSchema(): string { return $this->salesBasePremiumSchema('sales_guarantee_premium', 'Use only a real supplied guarantee, warranty, refund policy, assurance, or commitment. Never invent coverage, duration, remedies, exclusions, refunds, certifications, legal protections, or risk-free claims.'); }
+
+    private function salesTrustPremiumSchema(): string { return $this->salesBasePremiumSchema('sales_trust_premium', 'Use only supplied or verified trust signals. Never invent certifications, compliance status, customer counts, review ratings, client logos, security claims, awards, insurance, guarantees, uptime, or response times.'); }
+
+    private function salesIntegrationsPremiumSchema(): string { return $this->salesBasePremiumSchema('sales_integrations_premium', 'List only integrations, platforms, APIs, tools, or planned connections supplied by the business. Never imply native support, partnership, certification, or availability that was not supplied.'); }
+
+    private function agencyDashboardPreviewPremiumSchema(): string { return $this->agencyBasePremiumSchema('agency_dashboard_preview_premium', 'Use only supplied agency metrics, website counts, workflow states, reporting capabilities, or management features. Never invent client counts, revenue, uptime, conversions, growth, or status data.'); }
+    private function agencyClientPortalPremiumSchema(): string { return $this->agencyBasePremiumSchema('agency_client_portal_premium', 'Use only real supplied client portal capabilities. Never invent approvals, file sharing, billing, messaging, reporting, permissions, integrations, or access features.'); }
+    private function agencyWhiteLabelShowcasePremiumSchema(): string { return $this->agencyBasePremiumSchema('agency_white_label_showcase_premium', 'Use only real supplied white-label capabilities. Never invent custom domains, branding controls, reseller rights, removal of vendor branding, client ownership, or plan availability.'); }
+    private function agencyWebsiteManagementPremiumSchema(): string { return $this->agencyBasePremiumSchema('agency_website_management_premium', 'Use only real supplied multi-site management workflows and controls. Never invent monitoring, backups, security, analytics, publishing, permissions, maintenance, or reporting capabilities.'); }
+    private function agencyMaintenancePlansPremiumSchema(): string { return $this->agencyBasePremiumSchema('agency_maintenance_plans_premium', 'Use only real supplied maintenance scope, cadence, inclusions, exclusions, and terms. Never invent pricing, SLA, uptime guarantees, included hours, response times, backups, security coverage, or update frequency.'); }
+    private function agencySupportPlansPremiumSchema(): string { return $this->agencyBasePremiumSchema('agency_support_plans_premium', 'Use only real supplied support channels, coverage, escalation paths, and plan differences. Never invent support hours, response times, SLAs, priority levels, included hours, pricing, or guarantees.'); }
+    private function agencyWorkflowPremiumSchema(): string { return $this->agencyBasePremiumSchema('agency_workflow_premium', 'Use only the real supplied agency process or clearly editable generic stages. Never invent delivery times, approval guarantees, revision counts, team roles, or client commitments.'); }
+    private function agencyProjectPipelinePremiumSchema(): string { return $this->agencyBasePremiumSchema('agency_project_pipeline_premium', 'Use only supplied project stages or generic editable stage labels. Never invent client names, project counts, completion percentages, deadlines, budgets, current status, or launch dates.'); }
+    private function agencyClientReviewsPremiumSchema(): string { return $this->agencyBasePremiumSchema('agency_client_reviews_premium', 'Use only genuine supplied client feedback. Never invent names, companies, quotes, star ratings, testimonials, outcomes, awards, review counts, or endorsements. If no verified review is supplied, use clearly editable placeholder wording rather than presenting it as a real review.'); }
+    private function agencyWebsiteReportsPremiumSchema(): string { return $this->agencyBasePremiumSchema('agency_website_reports_premium', 'Use only real supplied reporting capabilities, metrics, data sources, maintenance activity, recommendations, and report cadence. Never invent traffic, conversions, uptime, rankings, revenue, security findings, client results, report frequency, or guaranteed improvements.'); }
+    private function aiPromptShowcasePremiumSchema(): string { return $this->aiBasePremiumSchema('ai_prompt_showcase_premium', 'Use only safe example prompts or supplied real prompts. Never imply unsupported model abilities, autonomous actions, integrations, results, processing times, accuracy, or guarantees.'); }
+    private function aiWorkflowPremiumSchema(): string { return $this->aiBasePremiumSchema('ai_workflow_premium', 'Describe only supported AI-assisted workflow stages. Never invent autonomous publishing, approvals, integrations, human review, processing time, accuracy, or guarantees.'); }
+    private function aiAssistantPremiumSchema(): string { return $this->aiBasePremiumSchema('ai_assistant_premium', 'Use clearly illustrative dialogue or supplied real conversation content. Never fabricate customer conversations, personal data, actions performed, integrations used, availability, or guaranteed outcomes.'); }
+    private function aiTimelinePremiumSchema(): string { return $this->aiBasePremiumSchema('ai_timeline_premium', 'Describe only supported generation stages. Never invent processing times, completion percentages, background work, autonomous actions, accuracy, performance, or guarantees.'); }
+    private function aiBuilderPremiumSchema(): string { return $this->aiBasePremiumSchema('ai_builder_premium', 'Describe only real supported builder actions and controls. Never invent autonomous publishing, unavailable editing modes, integrations, generated assets, processing times, accuracy, or guarantees.'); }
+    private function aiAutomationPremiumSchema(): string { return $this->aiBasePremiumSchema('ai_automation_premium', 'Use only real supported automations or clearly label planned/example workflows. Never invent triggers, external integrations, background jobs, notifications, approvals, autonomous actions, timing, or guarantees.'); }
+    private function aiCreditsDashboardPremiumSchema(): string { return $this->aiBasePremiumSchema('ai_credits_dashboard_premium', 'Use only supplied real credit balances, costs, plan rules, purchase paths, or clearly editable sample values. Never invent account balances, reset cadence, discounts, billing terms, consumption rates, or entitlement claims.'); }
+    private function aiGenerationProcessPremiumSchema(): string { return $this->aiBasePremiumSchema('ai_generation_process_premium', 'Describe only supported generation stages. Never invent live progress percentages, completion times, queued/background work, autonomous publishing, hidden agents, model accuracy, or guaranteed outcomes.'); }
+    private function aiStatisticsPremiumSchema(): string { return $this->aiBasePremiumSchema('ai_statistics_premium', 'Use only supplied or verified AI usage, adoption, generation, efficiency, quality, or business metrics. Never invent totals, percentages, time saved, accuracy, success rates, cost savings, customer counts, benchmarks, forecasts, or performance improvements. If no real metric is supplied, keep values clearly editable or non-factual.'); }
+    private function aiPromptExamplesPremiumSchema(): string { return $this->aiBasePremiumSchema('ai_prompt_examples_premium', 'Use clearly illustrative prompt examples unless the user supplied real prompts. Keep examples limited to supported capabilities. Never imply unsupported actions, integrations, autonomous publishing, guaranteed outputs, hidden data access, or capabilities not supplied.'); }
+
+
+    private function aiBasePremiumSchema(string $type, string $rule): string
+    {
+        return "\n    {$type}\n\n    - type = {$type}\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - items (array of exactly 3 items: title, text)\n    - note\n\n    Requirements:\n    - {$rule}\n    - Keep AI language concrete, understandable, and tied to capabilities actually supplied.\n    - Example prompts/dialogue must remain clearly illustrative unless explicitly supplied as real.\n    - Do not use markdown or fake product facts.\n";
+    }
+
+    private function agencyBasePremiumSchema(string $type, string $rule): string
+    {
+        return "\n    {$type}\n\n    - type = {$type}\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - items (array of exactly 3 items: title, text)\n    - note\n\n    Requirements:\n    - {$rule}\n    - Keep wording suitable for an agency-facing website section.\n    - Do not use markdown or fake business facts.\n";
+    }
+
+    private function salesBasePremiumSchema(string $type, string $rule): string
+    {
+        return "\n    {$type}\n\n    - type = {$type}\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - items (array of exactly 3 items: title, text)\n    - note\n\n    Requirements:\n    - {$rule}\n    - Keep language clear and decision-oriented without fake urgency.\n    - Do not use markdown.\n";
+    }
+
+    private function faqBasePremiumSchema(string $type, string $extra, bool $search = false): string
+    {
+        $searchField = $search ? "\n    - search_placeholder" : '';
+        return "\n    {$type}\n\n    - type = {$type}\n    - theme = auto\n    - eyebrow\n    - heading\n    - text{$searchField}\n    - faqs (array of question and answer items)\n\n    Requirements:\n    - {$extra}\n    - Keep questions relevant to the requested business, page, product, or service.\n    - Never invent awards, certifications, guarantees, exact policies, response times, pricing, availability, or regulated claims.\n    - Do not use markdown or fake business facts.\n";
+    }
+
     private function contactDetailsSchema(): string
     {
         return <<<TXT
@@ -1897,12 +2233,14 @@ PROMPT;
     - address
     - service_area
     - directions_label
+    - directions_url
 
     Requirements:
 
     - Write concise location and visit guidance matching the requested business.
-    - Do not invent a precise street address, map URL, landmark, or travel time when none was supplied.
+    - Do not invent a precise street address, landmark, or travel time when none was supplied.
     - Use a general service-area or appointment phrase when exact location details are unavailable.
+    - If no real directions URL is supplied, use https://www.google.com/maps/search/?api=1&query=Your+Business+Location as the editable demo placeholder.
     - directions_label must be a short action such as Get directions or Plan your visit.
     - Do not use markdown or placeholder copy.
 

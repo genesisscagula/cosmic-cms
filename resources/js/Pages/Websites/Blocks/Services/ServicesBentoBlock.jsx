@@ -6,6 +6,7 @@ import { EditableImage } from "../Shared/EditableImage";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { RepeatableControls, cloneLast, removeLast } from "../Shared/RepeatableControls";
 
 
 export const ServicesBentoSchema = {
@@ -249,6 +250,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                                 ${theme.border}
                                 rounded-3xl
                                 p-8
+                                relative
                                 flex
                                 flex-col
                                 md:flex-row
@@ -260,6 +262,8 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                                 hover:-translate-y-1
                             `}
                         >
+
+                            <button type="button" onClick={() => { if (services.length > 1) onUpdate({services: services.filter((_, idx) => idx !== index)}); }} disabled={services.length <= 1} className="absolute right-4 top-4 rounded-full border border-current/20 px-2.5 py-1 text-[10px] font-semibold opacity-70 hover:opacity-100 disabled:hidden">Remove</button>
 
                             {/* Icon */}
 
@@ -333,6 +337,14 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                     ))}
 
                 </div>
+
+                <RepeatableControls
+                    onAdd={() => onUpdate({services: cloneLast(services, services[0] || {})})}
+                    onRemove={() => onUpdate({services: removeLast(services, 1)})}
+                    canRemove={services.length > 1}
+                    addLabel="Add service"
+                    removeLabel="Remove last service"
+                />
 
             </div>
 

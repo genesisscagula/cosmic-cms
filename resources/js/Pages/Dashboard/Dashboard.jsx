@@ -52,9 +52,22 @@ export default function Dashboard({ websites, dashboard }) {
     };
 
     useEffect(() => {
-        // Browser Back can restore an older Inertia history snapshot. Refresh
-        // only the real website collection so a newly created site is visible.
-        router.reload({ only: ["websites", "dashboard"], preserveScroll: true, preserveState: true });
+        // Do not reload on every normal Dashboard mount. An Inertia reload can
+        // remount this page, which would create a reload -> remount loop.
+        // Only refresh when the browser restores this page from the back/forward
+        // cache, where the snapshot can genuinely be stale.
+        const handlePageShow = (event) => {
+            if (!event.persisted) return;
+
+            router.reload({
+                only: ["websites", "dashboard"],
+                preserveScroll: true,
+                preserveState: true,
+            });
+        };
+
+        window.addEventListener("pageshow", handlePageShow);
+        return () => window.removeEventListener("pageshow", handlePageShow);
     }, []);
 
     return (

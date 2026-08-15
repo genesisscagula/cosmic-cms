@@ -408,6 +408,7 @@ class PagePublisher
                 'storefront_url' => $previews->url($website, 'shop'),
                 'products' => $products,
                 'categories' => $categories,
+                'countries' => collect(config('cosmic-commerce.countries', []))->map(fn ($name, $code) => ['code' => $code, 'name' => $name])->values()->all(),
             ],
         ];
     }

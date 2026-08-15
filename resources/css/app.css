@@ -5792,3 +5792,86 @@ body .cosmic-start-quick-idea.rounded-full.border {
 :root[data-theme="dark"] #cosmic-logo-customize-modal .cosmic-logo-back-button:hover {
     background:rgba(255,255,255,.07) !important; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important;
 }
+
+/* ==================================================================
+   UI QA Patch 2 — custom Spark editor control isolation
+   Keep authoring controls legible regardless of the website section theme.
+   These classes are editor-only and do not change exported site markup.
+   ================================================================== */
+.cosmic-preview-isolation .cosmic-spark-custom-add,
+.cosmic-preview-isolation .cosmic-spark-custom-remove,
+.cosmic-preview-isolation .cosmic-hero-slider-add {
+    -webkit-text-fill-color: currentColor;
+}
+
+/* Contact field controls already own their modal palette; reinforce dark-mode
+   action contrast without widening the old light-mode override surface. */
+:root[data-theme="dark"] .cosmic-contact-field-remove:not(:disabled) {
+    background: #e11d48 !important;
+    border: 1px solid #fb7185 !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+    padding: .4rem .65rem;
+    border-radius: .5rem;
+}
+:root[data-theme="dark"] .cosmic-contact-field-remove:not(:disabled):hover {
+    background: #f43f5e !important;
+}
+:root[data-theme="dark"] .cosmic-contact-field-remove:disabled {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: .7 !important;
+}
+:root[data-theme="dark"] .cosmic-contact-add-field {
+    background: #fff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="dark"] .cosmic-contact-add-field:hover {
+    background: #f1f5f9 !important;
+    color: #020617 !important;
+    -webkit-text-fill-color: #020617 !important;
+}
+
+/* Hero slider editor is portalled to document.body, so explicitly protect it
+   from generic application light-mode remaps while retaining its dark editor. */
+.cosmic-hero-slider-editor,
+.cosmic-hero-slider-editor * {
+    box-sizing: border-box;
+}
+:root[data-theme="light"] .cosmic-hero-slider-editor {
+    background: #fff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: currentColor;
+}
+:root[data-theme="light"] .cosmic-hero-slider-editor h3,
+:root[data-theme="light"] .cosmic-hero-slider-editor label,
+:root[data-theme="light"] .cosmic-hero-slider-editor span {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-hero-slider-editor input,
+:root[data-theme="light"] .cosmic-hero-slider-editor textarea {
+    background: #fff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] .cosmic-hero-slider-editor .cosmic-hero-slider-delete:not(:disabled) {
+    background: #e11d48 !important;
+    border-color: #e11d48 !important;
+    color: #fff !important;
+    -webkit-text-fill-color: #fff !important;
+}
+:root[data-theme="light"] .cosmic-hero-slider-editor .cosmic-hero-slider-delete:disabled {
+    background: #e2e8f0 !important;
+    border-color: #cbd5e1 !important;
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+}
+
+/* Editor/live horizontal rails: keep scroll behavior without showing browser chrome. */
+.cosmic-hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.cosmic-hide-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }

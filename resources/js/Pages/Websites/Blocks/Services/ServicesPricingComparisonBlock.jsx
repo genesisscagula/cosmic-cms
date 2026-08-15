@@ -33,9 +33,10 @@ export function ServicesPricingComparisonBlock({ block, onUpdate, globalTheme })
     const data = { ...ServicesPricingComparisonSchema.defaults, ...block };
     const isPrimary = block.resolvedTheme === "primary";
     const muted = isPrimary ? "text-white/70" : theme.sub;
+    const featuredMuted = isPrimary ? "text-slate-600" : primaryTheme.sub;
     const border = isPrimary ? "border-white/20" : theme.border;
     const baseCard = isPrimary ? "bg-white/10 text-white" : `${theme.surface} ${theme.text}`;
-    const featuredCard = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.soft} ${theme.text}`;
+    const featuredCard = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.card || primaryTheme.bg} ${primaryTheme.text}`;
     const normalButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const featuredButton = isPrimary ? `${primaryTheme.bg} ${primaryTheme.text}` : `${primaryTheme.bg} ${primaryTheme.text}`;
     const rows = [1,2,3,4,5,6].map((n)=>({
@@ -63,13 +64,13 @@ export function ServicesPricingComparisonBlock({ block, onUpdate, globalTheme })
                     {plans.map((plan)=><article key={plan.key} className={`relative border-b p-6 sm:p-7 ${border} ${plan.featured?featuredCard:baseCard}`}>
                         {plan.featured && <EditableText value={data.growth_badge} className={`mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] ${primaryTheme.bg} ${primaryTheme.text}`} onSave={save('growth_badge')}/>} 
                         <EditableText value={plan.name} className="block text-xl font-semibold" onSave={save(`${plan.key}_name`)}/>
-                        <div className="mt-4 flex items-end gap-2"><EditableText value={plan.price} className="block text-4xl font-semibold tracking-[-.04em]" onSave={save(`${plan.key}_price`)}/><EditableText value={plan.period} className={`mb-1 text-xs font-semibold uppercase tracking-wider ${plan.featured&&!isPrimary?'text-slate-600':muted}`} onSave={save(`${plan.key}_period`)}/></div>
-                        <EditableText value={plan.description} isTextArea className={`mt-4 block text-sm leading-6 ${plan.featured&&!isPrimary?'text-slate-600':muted}`} onSave={save(`${plan.key}_description`)}/>
+                        <div className="mt-4 flex items-end gap-2"><EditableText value={plan.price} className="block text-4xl font-semibold tracking-[-.04em]" onSave={save(`${plan.key}_price`)}/><EditableText value={plan.period} className={`mb-1 text-xs font-semibold uppercase tracking-wider ${plan.featured?featuredMuted:muted}`} onSave={save(`${plan.key}_period`)}/></div>
+                        <EditableText value={plan.description} isTextArea className={`mt-4 block text-sm leading-6 ${plan.featured?featuredMuted:muted}`} onSave={save(`${plan.key}_description`)}/>
                         <EditableButton label={plan.label} url={plan.url} className={`mt-6 inline-flex min-h-[46px] w-full items-center justify-center rounded-full px-5 text-sm font-bold ${plan.featured?featuredButton:normalButton}`} onSave={(label,url)=>onUpdate({[`${plan.key}_button_label`]:label,[`${plan.key}_button_url`]:url})}/>
                     </article>)}
                     {rows.map((row,index)=><div key={row.label} className="contents">
                         <div className={`border-b p-5 lg:p-6 ${border} ${baseCard}`}><EditableText value={data[row.label]} className="text-sm font-semibold" onSave={save(row.label)}/></div>
-                        {['starter','growth','pro'].map((key)=><div key={key} className={`border-b p-5 text-sm lg:p-6 ${border} ${key==='growth'?featuredCard:baseCard}`}><EditableText value={data[row[key]]} className={key==='growth'&&!isPrimary?'font-semibold text-slate-800':'font-semibold'} onSave={save(row[key])}/></div>)}
+                        {['starter','growth','pro'].map((key)=><div key={key} className={`border-b p-5 text-sm lg:p-6 ${border} ${key==='growth'?featuredCard:baseCard}`}><EditableText value={data[row[key]]} className={`font-semibold ${key==='growth'?featuredMuted:''}`} onSave={save(row[key])}/></div>)}
                     </div>)}
                 </div>
             </div>

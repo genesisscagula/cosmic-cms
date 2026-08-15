@@ -1,6 +1,7 @@
 import { router } from "@inertiajs/react";
 import axios from "axios";
 import { useMemo, useState } from "react";
+import useInfiniteReveal from "../../../Hooks/useInfiniteReveal";
 import { ActualSparkPreview } from "../../Websites/Components/AddSectionModal";
 import { BlockRegistry } from "../../Websites/Components/SparkRegistry";
 
@@ -107,6 +108,17 @@ export default function Sparks({ dashboard }) {
                 return `${spark.name} ${spark.description} ${spark.category} ${spark.collection}`.toLowerCase().includes(normalized);
             });
     }, [marketItems, registry, activeView, category, query]);
+
+    const activeFilteredItems = activeView === "owned"
+        ? filteredOwned
+        : activeView === "marketplace"
+            ? filteredMarketplace
+            : filteredCollection;
+    const infiniteResetKey = `${activeView}|${category}|${marketFilter}|${query}`;
+    const { visibleItems: visibleSparks, hasMore: hasMoreSparks, sentinelRef: infiniteSentinelRef } = useInfiniteReveal(activeFilteredItems, {
+        batchSize: 12,
+        resetKey: infiniteResetKey,
+    });
 
     const removeSpark = async (spark) => {
         if (!window.confirm(`Remove “${spark.name}” from Owned Sparks?`)) return;
@@ -230,7 +242,7 @@ export default function Sparks({ dashboard }) {
                 {activeView === "owned" ? (
                     filteredOwned.length ? (
                         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            {filteredOwned.map((spark) => (
+                            {visibleSparks.map((spark) => (
                                 <OwnedSparkCard key={spark.key} spark={spark} busy={busyKey === spark.key} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onRemove={() => removeSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
                             ))}
                         </div>
@@ -240,7 +252,7 @@ export default function Sparks({ dashboard }) {
                 ) : activeView === "marketplace" ? (
                     filteredMarketplace.length ? (
                         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            {filteredMarketplace.map((spark, sparkIndex) => (
+                            {visibleSparks.map((spark, sparkIndex) => (
                                 <MarketplaceSparkCard key={spark.key} spark={spark} previewComponent={registry.get(spark.key)?.preview} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} busy={busyKey === spark.key} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
                             ))}
                         </div>
@@ -249,12 +261,18 @@ export default function Sparks({ dashboard }) {
                     )
                 ) : filteredCollection.length ? (
                     <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {filteredCollection.map((spark, sparkIndex) => (
+                        {visibleSparks.map((spark, sparkIndex) => (
                             <MarketplaceSparkCard key={spark.key} spark={spark} previewComponent={registry.get(spark.key)?.preview} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} busy={busyKey === spark.key} favoriteBusy={busyKey === `favorite-${spark.key}`} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} />
                         ))}
                     </div>
                 ) : (
                     <EmptyState title={activeView === "favorites" ? "No Favorite Sparks yet" : "No purchased Sparks yet"} description={activeView === "favorites" ? "Use the heart button on any marketplace Spark to save it here." : "Premium Sparks purchased with Cosmic Credits will remain available here."} action={<button type="button" onClick={() => switchView("marketplace")} className="mt-5 inline-flex rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950">Browse Marketplace</button>} />
+                )}
+
+                {activeFilteredItems.length > 0 && (
+                    <div ref={infiniteSentinelRef} className="mt-6 flex min-h-10 items-center justify-center text-xs text-slate-500" aria-hidden="true">
+                        {hasMoreSparks ? "Loading more Sparks…" : `${activeFilteredItems.length} Sparks loaded`}
+                    </div>
                 )}
             </div>
 

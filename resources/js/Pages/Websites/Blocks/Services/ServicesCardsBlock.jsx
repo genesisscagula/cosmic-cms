@@ -6,6 +6,7 @@ import { EditableImage } from "../Shared/EditableImage";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { RepeatableControls, cloneLast, removeLast } from "../Shared/RepeatableControls";
 
 export const ServicesCardsSchema = {
 
@@ -207,6 +208,8 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
                             className={`${theme.card} border ${theme.border} rounded-3xl p-8 h-full flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl`}
                         >
 
+                            <button type="button" onClick={() => { if (cardData.length > 1) onUpdate({cards: cardData.filter((_, idx) => idx !== i)}); }} disabled={cardData.length <= 1} className="absolute right-4 top-4 rounded-full border border-current/20 px-2.5 py-1 text-[10px] font-semibold opacity-70 hover:opacity-100 disabled:hidden">Remove</button>
+
                             {/* Icon */}
 
                             <div
@@ -280,6 +283,14 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
                     ))}
 
                 </div>
+
+                <RepeatableControls
+                    onAdd={() => onUpdate({cards: cloneLast(cardData, cardData[0] || {})})}
+                    onRemove={() => onUpdate({cards: removeLast(cardData, 1)})}
+                    canRemove={cardData.length > 1}
+                    addLabel="Add service card"
+                    removeLabel="Remove last service card"
+                />
 
             </div>
 
