@@ -176,7 +176,8 @@ function EventCards({ type, entries, theme }) { return <div className="grid gap-
 export function StructuredContentBlock({ block, onUpdate=()=>{}, globalTheme, contentWorkspace, builderMode=false }) {
     const schema=schemas[block.type] || ContentGridClassicSchema;
     const data={...schema.defaults,...block};
-    const theme=getEffectiveTheme(data.resolvedTheme || data.theme || "primary", globalTheme);
+    const selectedTheme=data.theme && data.theme !== "auto" ? data.theme : (data.resolvedTheme || "primary");
+    const theme=getEffectiveTheme(selectedTheme, globalTheme);
     const {type,entries}=filteredEntries(data,contentWorkspace);
     const empty=<div className={`rounded-2xl border border-dashed p-8 text-center ${theme.border} ${theme.sub}`}>No published {type?.name?.toLowerCase() || "entries"} match this Spark yet.</div>;
     let body=empty;

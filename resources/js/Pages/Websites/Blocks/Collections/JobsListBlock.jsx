@@ -15,7 +15,7 @@ export const JobsListSchema = {
 };
 
 export function JobsListBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const data = { ...JobsListSchema.defaults, ...block, jobs: Array.isArray(block.jobs) && block.jobs.length ? block.jobs : JobsListSchema.defaults.jobs };
     const updateJob = (index, field, value) => onUpdate({ jobs: data.jobs.map((job, jobIndex) => jobIndex === index ? { ...job, [field]: value } : job) });
     const addJob = () => onUpdate({ jobs: [...data.jobs, { ...JOB_PRESETS[data.jobs.length % JOB_PRESETS.length] }] });

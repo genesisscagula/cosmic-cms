@@ -32,7 +32,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
     const imageRef = useRef(null);
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
     const isLightMediaTheme = mediaOverlay.isLight;
     const overlayColor = mediaOverlay.overlayColor;

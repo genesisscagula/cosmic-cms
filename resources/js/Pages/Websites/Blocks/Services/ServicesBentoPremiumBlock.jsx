@@ -38,10 +38,10 @@ export const ServicesBentoPremiumSchema = {
 };
 
 export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...ServicesBentoPremiumSchema.defaults, ...block };
-    const isPrimary = block.resolvedTheme === "primary";
+    const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
     const card = isPrimary ? "border-white/20 bg-white/10 text-white" : `${theme.border} ${theme.surface} ${theme.text}`;
     const muted = isPrimary ? "text-white/70" : theme.sub;
     const softMuted = isPrimary ? "text-white/70" : primaryTheme.sub;

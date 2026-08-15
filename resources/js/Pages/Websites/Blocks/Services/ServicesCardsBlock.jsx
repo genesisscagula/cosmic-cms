@@ -133,10 +133,8 @@ export const ServicesCardsSchema = {
 
 export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
 
-    const theme = getEffectiveTheme(
-        block.resolvedTheme,
-        globalTheme
-    );
+    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
+    const theme = getEffectiveTheme(requestedTheme, globalTheme);
 
     const data = {
         ...ServicesCardsSchema.defaults,
@@ -205,10 +203,10 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
 
                         <div
                             key={i}
-                            className={`${theme.card} border ${theme.border} rounded-3xl p-8 h-full flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl`}
+                            className={`${theme.card} border ${theme.border} rounded-3xl p-8 h-full flex flex-col relative transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl`}
                         >
 
-                            <button type="button" onClick={() => { if (cardData.length > 1) onUpdate({cards: cardData.filter((_, idx) => idx !== i)}); }} disabled={cardData.length <= 1} className="absolute right-4 top-4 rounded-full border border-current/20 px-2.5 py-1 text-[10px] font-semibold opacity-70 hover:opacity-100 disabled:hidden">Remove</button>
+                            <button type="button" onClick={() => { if (cardData.length > 1) onUpdate({cards: cardData.filter((_, idx) => idx !== i)}); }} disabled={cardData.length <= 1} className="cosmic-spark-custom-remove absolute right-4 top-4 rounded-full border border-rose-500 bg-rose-600 px-2.5 py-1 text-[10px] font-semibold !text-white shadow-sm transition hover:bg-rose-500 disabled:hidden">Remove</button>
 
                             {/* Icon */}
 

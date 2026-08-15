@@ -144,10 +144,7 @@ export function TestimonialsCarouselBlock({
     globalTheme
 }) {
 
-    const theme = getEffectiveTheme(
-        block.resolvedTheme,
-        globalTheme
-    );
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
 
     const data = {
         ...TestimonialsCarouselSchema.defaults,
@@ -232,6 +229,7 @@ export function TestimonialsCarouselBlock({
                                 ${theme.border}
                                 rounded-3xl
                                 p-7
+                                relative
 
                                 transition-all
                                 duration-300
@@ -239,6 +237,15 @@ export function TestimonialsCarouselBlock({
                                 hover:shadow-2xl
                             `}
                         >
+
+                            <button
+                                type="button"
+                                onClick={() => data.testimonials.length > 1 && onUpdate({ testimonials: data.testimonials.filter((_, i) => i !== index) })}
+                                disabled={data.testimonials.length <= 1}
+                                className="absolute right-3 top-3 rounded-full border border-rose-500 bg-rose-600 px-2.5 py-1 text-[10px] font-semibold !text-white shadow-sm transition hover:bg-rose-500 disabled:hidden"
+                            >
+                                Remove
+                            </button>
 
                             {/* Stars */}
 

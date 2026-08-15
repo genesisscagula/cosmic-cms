@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { getEffectiveTheme } from '../../../../theme/Theme';
 import { colorFamilies } from '../../../../theme/colorFamilies';
+import { BoundedCountControls } from "../Shared/RepeatableControls";
 
 const schema = (type, title, purpose, defaults = {}) => ({
     type,
@@ -245,10 +246,11 @@ export function CommercePromoSplitBlock({ block, globalTheme, commerce }) {
     return <Section colors={c.colors}><div className="grid overflow-hidden rounded-[30px] border lg:grid-cols-[1.02fr_.98fr]" style={{borderColor:c.colors.border, background:c.colors.surface}}><div className="flex flex-col justify-center p-7 sm:p-10 lg:p-12"><p className="text-[11px] font-bold uppercase tracking-[0.2em]" style={{color:c.colors.accent}}>{block.eyebrow || 'Limited collection'}</p><h2 className="mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl">{block.heading}</h2><p className="mt-4 max-w-xl text-[15px] leading-7" style={{color:c.colors.muted}}>{block.text}</p><div><a href={block.button_url || '/shop'} className="mt-7 inline-flex min-h-11 items-center justify-center rounded-xl px-5 py-2.5 text-sm font-bold" style={{background:c.colors.accent, color:c.colors.background}}>{block.button_label || 'Shop the collection'}</a></div></div><img src={block.image_url || '/storage/cms-images/background/background-3.avif'} alt={block.image_alt || block.heading || ''} className="h-full min-h-[300px] w-full object-cover" /></div></Section>;
 }
 
-export function CommerceBenefitsStripBlock({ block, globalTheme, commerce }) {
+export function CommerceBenefitsStripBlock({ block, onUpdate, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
-    const items=[1,2,3,4].map((i)=>({title:block[`benefit_${i}_title`], text:block[`benefit_${i}_text`]})).filter((item)=>item.title);
-    return <Section colors={c.colors}><div className="rounded-[26px] border px-6 py-7 sm:px-8" style={{borderColor:c.colors.border, background:c.colors.surface}}>{block.heading ? <h2 className="mb-6 text-xl font-semibold tracking-[-0.03em]">{block.heading}</h2> : null}<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{items.map((item,index)=><div key={index} className="flex gap-3"><div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black" style={{background:`${c.colors.accent}1F`, color:c.colors.accent}}>✓</div><div><h3 className="text-sm font-bold">{item.title}</h3><p className="mt-1 text-xs leading-5" style={{color:c.colors.muted}}>{item.text}</p></div></div>)}</div></div></Section>;
+    const benefitCount=Math.max(1,Math.min(4,Number(block.benefit_count)||4));
+    const items=[1,2,3,4].slice(0,benefitCount).map((i)=>({title:block[`benefit_${i}_title`], text:block[`benefit_${i}_text`]})).filter((item)=>item.title);
+    return <Section colors={c.colors}><div><div className="rounded-[26px] border px-6 py-7 sm:px-8" style={{borderColor:c.colors.border, background:c.colors.surface}}>{block.heading ? <h2 className="mb-6 text-xl font-semibold tracking-[-0.03em]">{block.heading}</h2> : null}<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{items.map((item,index)=><div key={index} className="flex gap-3"><div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black" style={{background:`${c.colors.accent}1F`, color:c.colors.accent}}>✓</div><div><h3 className="text-sm font-bold">{item.title}</h3><p className="mt-1 text-xs leading-5" style={{color:c.colors.muted}}>{item.text}</p></div></div>)}</div></div><BoundedCountControls count={benefitCount} min={1} max={4} addLabel="Add benefit" removeLabel="Remove last benefit" onChange={benefit_count=>onUpdate?.({benefit_count})}/></div></Section>;
 }
 
 export function CommerceProductGridBlock({ block, globalTheme, commerce }) {

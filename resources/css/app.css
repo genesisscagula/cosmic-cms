@@ -5875,3 +5875,19 @@ body .cosmic-start-quick-idea.rounded-full.border {
 /* Editor/live horizontal rails: keep scroll behavior without showing browser chrome. */
 .cosmic-hide-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .cosmic-hide-scrollbar::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+
+/* Calendly Spark hotfix — keep the website CTA contract isolated from Builder UI overrides.
+   Scope is deliberately narrow; section/theme classes still own the actual palette. */
+.cosmic-builder-shell [data-cosmic-calendly] .cosmic-calendly-cta {
+    display: inline-flex !important;
+    min-height: 48px !important;
+    align-items: center !important;
+    justify-content: center !important;
+    border-radius: 9999px !important;
+    padding: .75rem 1.5rem !important;
+    font-size: .875rem !important;
+    line-height: 1.25rem !important;
+    font-weight: 700 !important;
+    text-decoration: none !important;
+}

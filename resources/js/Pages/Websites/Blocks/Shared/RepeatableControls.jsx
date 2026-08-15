@@ -1,7 +1,7 @@
-export function RepeatableControls({ onAdd, onRemove, canRemove = true, addLabel = "Add item", removeLabel = "Remove last", className = "" }) {
+export function RepeatableControls({ onAdd, onRemove, canAdd = true, canRemove = true, addLabel = "Add item", removeLabel = "Remove last", className = "" }) {
     return (
         <div className={`mt-6 flex flex-wrap items-center justify-center gap-2 ${className}`} data-cosmic-repeatable-controls>
-            <button type="button" onClick={onAdd} className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 shadow-sm transition hover:bg-slate-100">+ {addLabel}</button>
+            <button type="button" onClick={onAdd} disabled={!canAdd} className="rounded-full border border-slate-300 bg-white px-4 py-2 text-xs font-semibold text-slate-900 shadow-sm transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:bg-slate-200 disabled:text-slate-500 disabled:opacity-100">+ {addLabel}</button>
             <button type="button" onClick={onRemove} disabled={!canRemove} className="rounded-full border border-rose-500 bg-rose-600 px-4 py-2 text-xs font-semibold text-white shadow-sm transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-500 disabled:opacity-100">− {removeLabel}</button>
         </div>
     );

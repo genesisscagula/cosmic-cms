@@ -2,6 +2,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { BoundedCountControls } from "../Shared/RepeatableControls";
 
 export const ServicesHoverCardsSchema = {
     type: "services_hover_cards",
@@ -26,10 +27,10 @@ export const ServicesHoverCardsSchema = {
 };
 
 export function ServicesHoverCardsBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...ServicesHoverCardsSchema.defaults, ...block };
-    const isPrimary = block.resolvedTheme === "primary";
+    const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
     const muted = isPrimary ? "text-white/70" : theme.sub;
     const border = isPrimary ? "border-white/20" : theme.border;
     const card = isPrimary ? "bg-white/10 text-white" : `${theme.surface} ${theme.text}`;
@@ -37,7 +38,8 @@ export function ServicesHoverCardsBlock({ block, onUpdate, globalTheme }) {
     const hoverForeground = isPrimary ? "#0f172a" : "#ffffff";
     const buttonClass = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const save = (key) => (value) => onUpdate({ [key]: value });
-    const cards = ["one", "two", "three", "four", "five", "six"];
+    const cardCount = Math.max(1, Math.min(6, Number(data.service_count) || 6));
+    const cards = ["one", "two", "three", "four", "five", "six"].slice(0,cardCount);
 
     return <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
         <div className="mx-auto max-w-7xl">
@@ -64,6 +66,7 @@ export function ServicesHoverCardsBlock({ block, onUpdate, globalTheme }) {
                     </div>
                 </article>)}
             </div>
+            <BoundedCountControls count={cardCount} min={1} max={6} addLabel="Add service card" removeLabel="Remove last card" onChange={service_count=>onUpdate({service_count})}/>
         </div>
     </section>;
 }

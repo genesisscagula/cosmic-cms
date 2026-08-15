@@ -92,10 +92,8 @@ export const FeatureImageLeftSchema = {
 
 export function FeatureImageLeftBlock({ block, blockIndex, onUpdate, globalTheme }) {
 
-    const theme = getEffectiveTheme(
-        block.resolvedTheme,
-        globalTheme
-    );
+    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
+    const theme = getEffectiveTheme(requestedTheme, globalTheme);
 
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;

@@ -31,14 +31,14 @@ export const HeroVideoPremiumSchema = {
 };
 
 export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...HeroVideoPremiumSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
     const embeddedVideoUrl = getVideoEmbedUrl(data.video_url);
-    const resolvedTheme = block.resolvedTheme || "surface";
+    const resolvedTheme = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) || "surface";
     const isPrimary = resolvedTheme === "primary";
     const mediaOverlay = resolveMediaOverlay(globalTheme, resolvedTheme);
     const isLightMediaTheme = mediaOverlay.isLight;

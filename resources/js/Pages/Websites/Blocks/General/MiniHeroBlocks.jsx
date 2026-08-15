@@ -36,7 +36,7 @@ export const MiniHeroPromoSchema = {
 };
 
 function themeFor(block, globalTheme) {
-    const selected = block?.resolvedTheme || block?.theme || "primary";
+    const selected = block?.theme && block.theme !== "auto" ? block.theme : (block?.resolvedTheme || "primary");
     return getEffectiveTheme(selected, globalTheme);
 }
 

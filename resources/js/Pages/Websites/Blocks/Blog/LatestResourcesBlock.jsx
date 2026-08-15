@@ -1,6 +1,7 @@
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeAt } from "../Shared/RepeatableControls";
 
 export const LatestResourcesSchema = {
     type: "latest_resources",
@@ -27,10 +28,10 @@ export function LatestResourcesBlock({ block, onUpdate, globalTheme }) {
     const data = {
         ...LatestResourcesSchema.defaults,
         ...block,
-        resources: Array.isArray(block.resources) && block.resources.length ? block.resources.slice(0, 2) : LatestResourcesSchema.defaults.resources,
+        resources: Array.isArray(block.resources) && block.resources.length ? block.resources.slice(0, 6) : LatestResourcesSchema.defaults.resources,
     };
     const variant = data.layout_variant || "resources-01";
-    const selectedTheme = block.resolvedTheme || block.theme || "white";
+    const selectedTheme = block.theme && block.theme !== "auto" ? block.theme : (block.resolvedTheme || "white");
     const theme = getEffectiveTheme(selectedTheme, globalTheme);
     const updateResource = (index, key, value) => onUpdate({ resources: data.resources.map((resource, resourceIndex) => resourceIndex === index ? { ...resource, [key]: value } : resource) });
     const updateResourceButton = (index, cta_label, cta_url) => onUpdate({ resources: data.resources.map((resource, resourceIndex) => resourceIndex === index ? { ...resource, cta_label, cta_url } : resource) });
@@ -43,6 +44,11 @@ export function LatestResourcesBlock({ block, onUpdate, globalTheme }) {
                 <EditableText value={resource.title} className={`mt-4 block text-2xl font-bold leading-tight tracking-tight ${theme.text}`} onSave={(title) => updateResource(index, "title", title)} />
                 <EditableText value={resource.text} isTextArea className={`mt-4 block text-sm leading-6 ${theme.sub}`} onSave={(text) => updateResource(index, "text", text)} />
                 <EditableButton label={resource.cta_label} url={resource.cta_url} className={`mt-7 inline-flex text-sm font-semibold ${theme.text} underline underline-offset-4 transition`} onSave={(cta_label, cta_url) => updateResourceButton(index, cta_label, cta_url)} />
+                <RepeatableRemoveButton
+                    onRemove={() => onUpdate({ resources: removeAt(data.resources, index, 1) })}
+                    disabled={data.resources.length <= 1}
+                    label="Remove resource"
+                />
             </div>
         </article>
     );
@@ -59,6 +65,14 @@ export function LatestResourcesBlock({ block, onUpdate, globalTheme }) {
                     {variant === "resources-03" && <div className="grid gap-4">{data.resources.map((resource, index) => card(resource, index, true))}</div>}
                 </div>
                 {variant !== "resources-03" && <div className={`mt-10 grid gap-5 ${variant === "resources-02" ? "mx-auto max-w-4xl" : "md:grid-cols-2"}`}>{data.resources.map((resource, index) => card(resource, index, variant === "resources-02"))}</div>}
+                <RepeatableControls
+                    onAdd={() => data.resources.length < 6 && onUpdate({ resources: cloneLast(data.resources, LatestResourcesSchema.defaults.resources[0]) })}
+                    onRemove={() => onUpdate({ resources: removeAt(data.resources, data.resources.length - 1, 1) })}
+                    canAdd={data.resources.length < 6}
+                    canRemove={data.resources.length > 1}
+                    addLabel="Add resource"
+                    removeLabel="Remove last resource"
+                />
             </div>
         </section>
     );

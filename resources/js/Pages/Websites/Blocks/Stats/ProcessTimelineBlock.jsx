@@ -5,6 +5,7 @@ import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeAt } from "../Shared/RepeatableControls";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 
@@ -123,15 +124,19 @@ export const ProcessTimelineSchema = {
 
 export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme }) {
 
-    const theme = getEffectiveTheme(
-        block.resolvedTheme,
-        globalTheme
-    );
+    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
+    const theme = getEffectiveTheme(requestedTheme, globalTheme);
 
     const data = {
         ...ProcessTimelineSchema.defaults,
-        ...block
+        ...block,
+        steps: Array.isArray(block.steps) && block.steps.length ? block.steps : ProcessTimelineSchema.defaults.steps
     };
+
+    const steps = data.steps;
+    const updateStep = (index, field, value) => onUpdate({
+        steps: steps.map((step, stepIndex) => stepIndex === index ? { ...step, [field]: value } : step)
+    });
 
     return (
 
@@ -201,46 +206,25 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
                             <EditableText
                                 value={step.number}
                                 className={`block text-5xl font-bold opacity-20 mb-6 ${theme.text}`}
-                                onSave={(val) => {
-
-                                    const steps = [...data.steps];
-                                    steps[index].number = val;
-
-                                    onUpdate({
-                                        steps
-                                    });
-
-                                }}
+                                onSave={(val) => updateStep(index, "number", val)}
                             />
 
                             <EditableText
                                 value={step.title}
                                 className={`block text-2xl font-bold mb-4 ${theme.text}`}
-                                onSave={(val) => {
-
-                                    const steps = [...data.steps];
-                                    steps[index].title = val;
-
-                                    onUpdate({
-                                        steps
-                                    });
-
-                                }}
+                                onSave={(val) => updateStep(index, "title", val)}
                             />
 
                             <EditableText
                                 value={step.text}
                                 className={`block leading-7 ${theme.sub}`}
-                                onSave={(val) => {
+                                onSave={(val) => updateStep(index, "text", val)}
+                            />
 
-                                    const steps = [...data.steps];
-                                    steps[index].text = val;
-
-                                    onUpdate({
-                                        steps
-                                    });
-
-                                }}
+                            <RepeatableRemoveButton
+                                onRemove={() => onUpdate({ steps: removeAt(steps, index, 1) })}
+                                disabled={steps.length <= 1}
+                                label="Remove step"
                             />
 
                         </div>
@@ -248,6 +232,15 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
                     ))}
 
                 </div>
+
+                <RepeatableControls
+                    onAdd={() => steps.length < 8 && onUpdate({ steps: cloneLast(steps, ProcessTimelineSchema.defaults.steps[0]) })}
+                    onRemove={() => onUpdate({ steps: removeAt(steps, steps.length - 1, 1) })}
+                    canAdd={steps.length < 8}
+                    canRemove={steps.length > 1}
+                    addLabel="Add step"
+                    removeLabel="Remove last step"
+                />
 
             </div>
 

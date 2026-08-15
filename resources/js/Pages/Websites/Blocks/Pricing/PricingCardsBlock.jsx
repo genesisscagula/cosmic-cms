@@ -3,6 +3,7 @@ import { usePage } from "@inertiajs/react";
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
+import { RepeatableControls } from "../Shared/RepeatableControls";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
@@ -235,8 +236,9 @@ export function PricingCardsBlock({
     globalTheme
 }) {
 
+    const effectiveSectionTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
     const theme = getEffectiveTheme(
-        block.resolvedTheme,
+        effectiveSectionTheme,
         globalTheme
     );
 
@@ -268,7 +270,7 @@ export function PricingCardsBlock({
         : (globalTheme?.primary || "midnight");
     const primaryTheme = colorFamilies[globalPrimary] || colorFamilies.midnight;
 
-	const isPrimarySection = block.resolvedTheme === "primary";
+	const isPrimarySection = effectiveSectionTheme === "primary";
 
 	const buttonStyle = isPrimarySection
 	    ? {
@@ -308,6 +310,25 @@ export function PricingCardsBlock({
             plans
         });
 
+    };
+
+    const addFeature = (planIndex) => {
+        const plans = data.plans.map((plan, index) => {
+            if (index !== planIndex) return plan;
+            const features = Array.isArray(plan.features) ? plan.features : [];
+            const source = features.length ? features[features.length - 1] : { text: "New feature" };
+            return { ...plan, features: [...features, { ...source }] };
+        });
+        onUpdate({ plans });
+    };
+
+    const removeFeature = (planIndex) => {
+        const plans = data.plans.map((plan, index) => {
+            if (index !== planIndex) return plan;
+            const features = Array.isArray(plan.features) ? plan.features : [];
+            return { ...plan, features: features.length > 1 ? features.slice(0, -1) : features };
+        });
+        onUpdate({ plans });
     };
 
     return (
@@ -479,6 +500,15 @@ export function PricingCardsBlock({
                                 ))}
 
                             </div>
+
+                            <RepeatableControls
+                                onAdd={() => addFeature(index)}
+                                onRemove={() => removeFeature(index)}
+                                canRemove={(plan.features?.length || 0) > 1}
+                                addLabel="Add feature"
+                                removeLabel="Remove last feature"
+                                className="justify-start"
+                            />
 
                             {/* Button */}
 

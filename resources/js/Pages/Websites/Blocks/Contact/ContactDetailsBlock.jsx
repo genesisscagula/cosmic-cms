@@ -14,7 +14,7 @@ export const ContactDetailsSchema = {
 };
 
 export function ContactDetailsBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const data = { ...ContactDetailsSchema.defaults, ...block };
     const items = [["Email", "email"], ["Phone", "phone"], ["Visit", "address"], ["Hours", "hours"]];
 

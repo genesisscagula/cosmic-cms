@@ -2,6 +2,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { BoundedCountControls } from "../Shared/RepeatableControls";
 
 export const ServicesPricingComparisonSchema = {
     type: "services_pricing_comparison",
@@ -28,10 +29,10 @@ export const ServicesPricingComparisonSchema = {
 };
 
 export function ServicesPricingComparisonBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...ServicesPricingComparisonSchema.defaults, ...block };
-    const isPrimary = block.resolvedTheme === "primary";
+    const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
     const muted = isPrimary ? "text-white/70" : theme.sub;
     const featuredMuted = isPrimary ? "text-slate-600" : primaryTheme.sub;
     const border = isPrimary ? "border-white/20" : theme.border;
@@ -39,7 +40,8 @@ export function ServicesPricingComparisonBlock({ block, onUpdate, globalTheme })
     const featuredCard = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.card || primaryTheme.bg} ${primaryTheme.text}`;
     const normalButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const featuredButton = isPrimary ? `${primaryTheme.bg} ${primaryTheme.text}` : `${primaryTheme.bg} ${primaryTheme.text}`;
-    const rows = [1,2,3,4,5,6].map((n)=>({
+    const rowCount = Math.max(1, Math.min(6, Number(data.comparison_row_count) || 6));
+    const rows = [1,2,3,4,5,6].slice(0,rowCount).map((n)=>({
         label: `feature_${['one','two','three','four','five','six'][n-1]}`,
         starter: `starter_${['one','two','three','four','five','six'][n-1]}`,
         growth: `growth_${['one','two','three','four','five','six'][n-1]}`,
@@ -74,6 +76,7 @@ export function ServicesPricingComparisonBlock({ block, onUpdate, globalTheme })
                     </div>)}
                 </div>
             </div>
+            <BoundedCountControls count={rowCount} min={1} max={6} addLabel="Add comparison row" removeLabel="Remove last row" onChange={comparison_row_count=>onUpdate({comparison_row_count})}/>
             <EditableText value={data.footnote} isTextArea className={`mx-auto mt-6 block max-w-3xl text-center text-xs leading-5 ${muted}`} onSave={save('footnote')}/>
         </div>
     </section>;

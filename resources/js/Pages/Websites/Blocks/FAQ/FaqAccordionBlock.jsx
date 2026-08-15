@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeAt } from "../Shared/RepeatableControls";
 
 export const FaqAccordionSchema = {
     type: "faq_accordion",
@@ -29,7 +30,7 @@ export const FaqAccordionSchema = {
 };
 
 export function FaqAccordionBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const [openIndex, setOpenIndex] = useState(0);
     const data = {
         ...FaqAccordionSchema.defaults,
@@ -58,8 +59,25 @@ export function FaqAccordionBlock({ block, onUpdate, globalTheme }) {
                                 <button type="button" aria-label={isOpen ? "Collapse answer" : "Expand answer"} aria-expanded={isOpen} onClick={() => setOpenIndex(isOpen ? -1 : index)} className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border text-lg transition ${theme.border} ${theme.text}`}>{isOpen ? "−" : "+"}</button>
                             </div>
                             {isOpen && <div className="px-5 pb-5 sm:px-6 sm:pb-6"><EditableText value={faq.answer} isTextArea className={`block text-sm leading-6 ${theme.sub}`} onSave={(answer) => updateFaq(index, "answer", answer)} /></div>}
+                            <div className="px-5 pb-4 sm:px-6">
+                                <RepeatableRemoveButton
+                                    onRemove={() => onUpdate({ faqs: removeAt(data.faqs, index, 1) })}
+                                    disabled={data.faqs.length <= 1}
+                                    label="Remove question"
+                                />
+                            </div>
                         </article>;
                     })}
+                </div>
+                <div className="lg:col-start-2">
+                    <RepeatableControls
+                        onAdd={() => data.faqs.length < 12 && onUpdate({ faqs: cloneLast(data.faqs, FaqAccordionSchema.defaults.faqs[0]) })}
+                        onRemove={() => onUpdate({ faqs: removeAt(data.faqs, data.faqs.length - 1, 1) })}
+                        canAdd={data.faqs.length < 12}
+                        canRemove={data.faqs.length > 1}
+                        addLabel="Add question"
+                        removeLabel="Remove last question"
+                    />
                 </div>
             </div>
         </section>

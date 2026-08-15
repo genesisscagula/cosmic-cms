@@ -1,5 +1,6 @@
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeAt } from "../Shared/RepeatableControls";
 
 export const StatsModernSchema = {
     type: "stats_modern",
@@ -37,12 +38,13 @@ export const StatsModernSchema = {
 };
 
 export function StatsModernBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
+    const theme = getEffectiveTheme(requestedTheme, globalTheme);
     const data = {
         ...StatsModernSchema.defaults,
         ...block,
         metrics: Array.isArray(block.metrics) && block.metrics.length
-            ? block.metrics
+            ? block.metrics.slice(0, 4)
             : StatsModernSchema.defaults.metrics
     };
 
@@ -107,6 +109,14 @@ export function StatsModernBlock({ block, onUpdate, globalTheme }) {
                         </article>
                     ))}
                 </div>
+                <RepeatableControls
+                    onAdd={() => data.metrics.length < 4 && onUpdate({ metrics: cloneLast(data.metrics, StatsModernSchema.defaults.metrics[0]) })}
+                    onRemove={() => onUpdate({ metrics: removeAt(data.metrics, data.metrics.length - 1, 1) })}
+                    canAdd={data.metrics.length < 4}
+                    canRemove={data.metrics.length > 1}
+                    addLabel="Add metric"
+                    removeLabel="Remove last metric"
+                />
             </div>
         </section>
     );

@@ -14,7 +14,7 @@ export const EventsGridSchema = {
 };
 
 export function EventsGridBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const data = { ...EventsGridSchema.defaults, ...block, events: Array.isArray(block.events) && block.events.length ? block.events : EventsGridSchema.defaults.events };
     const updateEvent = (index, field, value) => onUpdate({ events: data.events.map((event, eventIndex) => eventIndex === index ? { ...event, [field]: value } : event) });
     const addEvent = () => onUpdate({ events: [...data.events, { ...EVENT_PRESETS[data.events.length % EVENT_PRESETS.length] }] });

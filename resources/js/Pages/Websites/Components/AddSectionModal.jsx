@@ -1,5 +1,5 @@
 import axios from "axios";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import useInfiniteReveal from "../../../Hooks/useInfiniteReveal";
 import { Link } from "@inertiajs/react";
 import { showCosmicNotification } from "../../../Components/CosmicNotification";
@@ -171,13 +171,16 @@ export default function AddSectionModal({
     websiteTheme = null,
     commerce = null,
     contentWorkspace = { types: [] },
+    preloadedCatalog = [],
+    preloadedCatalogLoading = false,
+    preloadedCatalogLoaded = false,
 }) {
     const { setBalance } = useCreditBalance();
     const [tab, setTab] = useState(ownedOnly ? "owned" : "marketplace");
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All");
-    const [catalog, setCatalog] = useState([]);
-    const [loading, setLoading] = useState(false);
+    const [catalog, setCatalog] = useState(() => Array.isArray(preloadedCatalog) ? preloadedCatalog : []);
+    const [loading, setLoading] = useState(Boolean(preloadedCatalogLoading));
     const [busyKey, setBusyKey] = useState(null);
     const [selected, setSelected] = useState(null);
     const [mode, setMode] = useState("quick");
@@ -187,6 +190,7 @@ export default function AddSectionModal({
     const [personalizingSpark, setPersonalizingSpark] = useState(false);
     const [personalizeProgress, setPersonalizeProgress] = useState(0);
     const [personalizeStage, setPersonalizeStage] = useState("Understanding your Spark...");
+    const marketplaceScrollRef = useRef(null);
 
 
     const previewVariants = ["primary", "white", "surface"];
@@ -225,14 +229,54 @@ export default function AddSectionModal({
     }, [personalizingSpark]);
 
     useEffect(() => {
+        if (Array.isArray(preloadedCatalog) && preloadedCatalog.length) {
+            setCatalog(preloadedCatalog);
+        }
+        setLoading(Boolean(preloadedCatalogLoading) && !(preloadedCatalog?.length > 0));
+    }, [preloadedCatalog, preloadedCatalogLoading]);
+
+    useEffect(() => {
         if (!open) return;
+
+        // Every normal Add Spark open starts from Marketplace and the top.
+        // Insert-near-section mode intentionally remains Owned-only.
         setTab(trialMode ? "marketplace" : (ownedOnly ? "owned" : "marketplace"));
+        setPreviewSpark(null);
+        setSelected(null);
+        setMode("quick");
+        setInstruction("");
+
+        window.requestAnimationFrame(() => {
+            marketplaceScrollRef.current?.scrollTo({ top: 0, behavior: "auto" });
+        });
+
+        // Builder normally preloads the catalog on landing. This is only a
+        // resilience fallback for a failed/aborted preload, never a per-open fetch.
+        if (preloadedCatalogLoaded || preloadedCatalogLoading || catalog.length) return;
+
+        let cancelled = false;
+        const endpoint = trialMode && trialToken
+            ? `/trial-assets/${trialToken}/sparks`
+            : "/sparks/catalog";
+
         setLoading(true);
-        axios.get(trialMode && trialToken ? `/trial-assets/${trialToken}/sparks` : "/sparks/catalog")
-            .then(({ data }) => setCatalog(data.sparks || []))
-            .catch(() => showCosmicNotification({ title: "Could not load Sparks", message: "Please refresh and try again.", tone: "error" }))
-            .finally(() => setLoading(false));
-    }, [open, ownedOnly, trialMode, trialToken]);
+        axios.get(endpoint)
+            .then(({ data }) => {
+                if (!cancelled) setCatalog(data.sparks || []);
+            })
+            .catch(() => {
+                if (!cancelled) {
+                    showCosmicNotification({ title: "Could not load Sparks", message: "Please refresh and try again.", tone: "error" });
+                }
+            })
+            .finally(() => {
+                if (!cancelled) setLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [open, ownedOnly, trialMode, trialToken, preloadedCatalogLoaded, preloadedCatalogLoading, catalog.length]);
 
     const registry = useMemo(() => new Map(BlockRegistry.map((item) => [item.type, item])), []);
     const items = useMemo(() => catalog.map((spark) => ({ ...spark, registry: registry.get(spark.key) })).filter((spark) => spark.registry), [catalog, registry]);
@@ -253,7 +297,7 @@ export default function AddSectionModal({
 
     const { visibleItems: visibleSparks, hasMore: hasMoreSparks, sentinelRef: infiniteSentinelRef } = useInfiniteReveal(visible, {
         batchSize: 12,
-        resetKey: `${open ? "open" : "closed"}|${tab}|${category}|${query}`,
+        resetKey: `${tab}|${category}|${query}`,
         rootMargin: "240px 0px",
     });
 
@@ -359,7 +403,7 @@ export default function AddSectionModal({
                 <div className="mt-4 flex gap-2 overflow-x-auto pb-1">{categories.map((item) => <button key={item} onClick={() => setCategory(item)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${category === item ? "bg-violet-400 text-slate-950" : "border border-white/10 text-slate-400 hover:text-white"}`}>{item}</button>)}</div>
             </header>
 
-            <div className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-7">
+            <div ref={marketplaceScrollRef} className="min-h-0 flex-1 overflow-y-auto p-5 sm:p-7">
                 {loading ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-72 animate-pulse rounded-2xl bg-white/[0.04]" />)}</div> : visible.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visibleSparks.map((spark, sparkIndex) => <article key={spark.key} className="cosmic-spark-card overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
                     <div className="h-40 overflow-hidden p-3"><div className="pointer-events-none h-full w-full"><SparkVisual spark={spark} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} websiteTheme={websiteTheme || "midnight"} /></div></div>
                     <div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-300">{spark.category}</p><h3 className="mt-1 text-base font-semibold">{spark.name}</h3></div><div className="flex items-center gap-2">{!trialMode && <button type="button" disabled={busyKey === `favorite-${spark.key}`} onClick={() => toggleFavorite(spark)} className={`cosmic-flat-icon flex h-8 w-8 items-center justify-center rounded-lg border text-sm ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button>}{spark.owned ? <span className="cosmic-owned-badge rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold text-emerald-200">{trialMode ? "Trial" : "✓ Owned"}</span> : Number(spark.credits || 0) === 0 ? <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] font-bold text-cyan-100">Built-in · Free</span> : <span className="rounded-full bg-amber-300/10 px-2.5 py-1 text-[10px] font-bold text-amber-100">⚡ {spark.credits}</span>}</div></div><p className="mt-2 line-clamp-2 text-xs leading-5 text-slate-400">{spark.description}</p><div className="mt-4 flex gap-2"><button type="button" onClick={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark(spark)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:border-violet-400/40 hover:bg-white/5">Preview</button>{spark.owned ? <button onClick={() => setSelected(spark)} className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-violet-100">Add to Page</button> : spark.can_install === false && spark.usage_state?.upgrade_url ? <Link href={spark.usage_state.upgrade_url} className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">{spark.usage_state.actionLabel || "Upgrade to add"}</Link> : spark.can_install === false && spark.usage_state?.action === "buy_credits" ? <Link href="/credits" className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">Add credits</Link> : <button disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold hover:bg-violet-500 disabled:opacity-50">{busyKey === spark.key ? "Adding..." : spark.usage_state?.actionLabel || (Number(spark.credits || 0) === 0 ? "Add Free Spark" : "Add to Owned")}</button>}</div></div>

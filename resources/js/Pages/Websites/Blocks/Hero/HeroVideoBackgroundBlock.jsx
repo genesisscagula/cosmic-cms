@@ -84,10 +84,8 @@ export function HeroVideoBackgroundBlock({
     onUpdate,
     globalTheme,
 }) {
-    const theme = getEffectiveTheme(
-        block.resolvedTheme,
-        globalTheme
-    );
+    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
+    const theme = getEffectiveTheme(requestedTheme, globalTheme);
 
     const primaryTheme =
         colorFamilies[globalTheme?.primary] ||

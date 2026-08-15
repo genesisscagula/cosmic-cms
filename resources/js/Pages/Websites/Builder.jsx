@@ -205,6 +205,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [layoutMenu, setLayoutMenu] = useState(null);
     const [layoutApplying, setLayoutApplying] = useState(null);
     const [sparkCatalog, setSparkCatalog] = useState([]);
+    const [sparkCatalogLoading, setSparkCatalogLoading] = useState(false);
+    const [sparkCatalogLoaded, setSparkCatalogLoaded] = useState(false);
     const [sparkInsertTarget, setSparkInsertTarget] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
@@ -322,12 +324,35 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     }, [hasUnsavedChanges, isPublishing, isSaving]);
 
     useEffect(() => {
-        if (!capabilities.canManageBlocks) return;
+        // Preload the Spark Marketplace as soon as Builder lands so opening
+        // Add Spark is a UI-only action, not another network round trip.
+        if (!(capabilities.canGenerateAi || capabilities.canManageBlocks || trialMode)) return;
 
-        axios.get('/sparks/catalog')
-            .then(({ data: responseData }) => setSparkCatalog(responseData.sparks || []))
-            .catch(() => setSparkCatalog([]));
-    }, [capabilities.canManageBlocks]);
+        let cancelled = false;
+        const endpoint = trialMode && trialToken
+            ? `/trial-assets/${trialToken}/sparks`
+            : '/sparks/catalog';
+
+        setSparkCatalogLoading(true);
+        axios.get(endpoint)
+            .then(({ data: responseData }) => {
+                if (cancelled) return;
+                setSparkCatalog(responseData.sparks || []);
+                setSparkCatalogLoaded(true);
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setSparkCatalog([]);
+                setSparkCatalogLoaded(false);
+            })
+            .finally(() => {
+                if (!cancelled) setSparkCatalogLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [capabilities.canGenerateAi, capabilities.canManageBlocks, trialMode, trialToken]);
 
     const trialActionCosts = {
         page_style: Number(cosmicPricing?.trial_actions?.page_style || 20),
@@ -3327,6 +3352,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     websiteTheme={globalSelections}
                     commerce={commerce}
                     contentWorkspace={contentWorkspace}
+                    preloadedCatalog={sparkCatalog}
+                    preloadedCatalogLoading={sparkCatalogLoading}
+                    preloadedCatalogLoaded={sparkCatalogLoaded}
                     ownedOnly={Boolean(sparkInsertTarget)}
                     contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : null}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}

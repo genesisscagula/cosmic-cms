@@ -26,7 +26,7 @@ export const CaseStudiesGridSchema = {
 };
 
 export function CaseStudiesGridBlock({ block, blockIndex, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const { website } = usePage().props;
     const data = {
         ...CaseStudiesGridSchema.defaults,

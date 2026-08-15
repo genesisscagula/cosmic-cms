@@ -172,10 +172,8 @@ export const ServicesBentoSchema = {
 
 export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
 
-    const theme = getEffectiveTheme(
-        block.resolvedTheme,
-        globalTheme
-    );
+    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
+    const theme = getEffectiveTheme(requestedTheme, globalTheme);
 
     const data = {
         ...ServicesBentoSchema.defaults,
@@ -263,7 +261,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                             `}
                         >
 
-                            <button type="button" onClick={() => { if (services.length > 1) onUpdate({services: services.filter((_, idx) => idx !== index)}); }} disabled={services.length <= 1} className="absolute right-4 top-4 rounded-full border border-current/20 px-2.5 py-1 text-[10px] font-semibold opacity-70 hover:opacity-100 disabled:hidden">Remove</button>
+                            <button type="button" onClick={() => { if (services.length > 1) onUpdate({services: services.filter((_, idx) => idx !== index)}); }} disabled={services.length <= 1} className="cosmic-spark-custom-remove absolute right-4 top-4 rounded-full border border-rose-500 bg-rose-600 px-2.5 py-1 text-[10px] font-semibold !text-white shadow-sm transition hover:bg-rose-500 disabled:hidden">Remove</button>
 
                             {/* Icon */}
 

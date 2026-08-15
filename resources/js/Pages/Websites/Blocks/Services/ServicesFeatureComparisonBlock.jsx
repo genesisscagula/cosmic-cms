@@ -2,6 +2,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { BoundedCountControls } from "../Shared/RepeatableControls";
 
 export const ServicesFeatureComparisonSchema = {
     type: "services_feature_comparison",
@@ -39,16 +40,17 @@ export const ServicesFeatureComparisonSchema = {
 };
 
 export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...ServicesFeatureComparisonSchema.defaults, ...block };
-    const isPrimary = block.resolvedTheme === "primary";
+    const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
     const muted = isPrimary ? "text-white/70" : theme.sub;
     const border = isPrimary ? "border-white/20" : theme.border;
     const baseCard = isPrimary ? "bg-white/10 text-white" : `${theme.surface} ${theme.text}`;
     const featuredCard = isPrimary ? "bg-white text-slate-950" : "bg-slate-900 text-white";
     const buttonClass = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
-    const words = ["one", "two", "three", "four", "five", "six", "seven", "eight"];
+    const rowCount = Math.max(1, Math.min(8, Number(data.feature_row_count) || 8));
+    const words = ["one", "two", "three", "four", "five", "six", "seven", "eight"].slice(0,rowCount);
     const save = (key) => (value) => onUpdate({ [key]: value });
     const options = [
         { key: "option_one", featured: false },
@@ -87,6 +89,7 @@ export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme })
                 </div>
             </div>
 
+            <BoundedCountControls count={rowCount} min={1} max={8} addLabel="Add feature row" removeLabel="Remove last row" onChange={feature_row_count=>onUpdate({feature_row_count})}/>
             <div className="mt-8 flex flex-col items-center gap-4 text-center">
                 <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[48px] items-center justify-center rounded-full px-7 text-sm font-bold ${buttonClass}`} onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })} />
                 <EditableText value={data.footnote} isTextArea className={`max-w-3xl text-xs leading-5 ${muted}`} onSave={save("footnote")} />

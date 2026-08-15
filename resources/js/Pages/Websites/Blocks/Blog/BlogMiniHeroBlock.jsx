@@ -18,7 +18,7 @@ export const BlogMiniHeroSchema = {
 
 export function BlogMiniHeroBlock({ block, onUpdate, globalTheme }) {
     const data = { ...BlogMiniHeroSchema.defaults, ...block };
-    const selectedTheme = block.resolvedTheme || block.theme || "primary";
+    const selectedTheme = block.theme && block.theme !== "auto" ? block.theme : (block.resolvedTheme || "primary");
     const theme = getEffectiveTheme(selectedTheme, globalTheme);
     const variant = data.layout_variant || "mini-header-01";
 

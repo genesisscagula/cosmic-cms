@@ -28,12 +28,12 @@ export const HeroSplitImageSchema = {
 };
 
 export function HeroSplitImageBlock({ block, blockIndex, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...HeroSplitImageSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
-    const isPrimarySection = block.resolvedTheme === "primary";
+    const isPrimarySection = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
     const primaryButtonStyle = isPrimarySection
         ? { bg: "bg-white", text: "text-slate-950" }
         : { bg: primaryTheme.bg, text: primaryTheme.text };

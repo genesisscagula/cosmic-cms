@@ -2,6 +2,7 @@ import { usePage } from "@inertiajs/react";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { RepeatableControls, RepeatableRemoveButton, removeAt } from "../Shared/RepeatableControls";
 
 const TEAM_MEMBER_PRESETS = [
     {
@@ -110,13 +111,14 @@ export const TeamModernSchema = {
 };
 
 export function TeamModernBlock({ block, blockIndex, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.resolvedTheme, globalTheme);
+    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
+    const theme = getEffectiveTheme(requestedTheme, globalTheme);
     const { website } = usePage().props;
     const data = {
         ...TeamModernSchema.defaults,
         ...block,
         members: Array.isArray(block.members) && block.members.length
-            ? block.members
+            ? block.members.slice(0, 8)
             : TeamModernSchema.defaults.members,
     };
 
@@ -204,28 +206,23 @@ export function TeamModernBlock({ block, blockIndex, onUpdate, globalTheme }) {
                                         onSave={(bio) => updateMember(index, "bio", bio)}
                                     />
                                 )}
-                                <button
-                                    type="button"
-                                    onClick={() => removeMember(index)}
+                                <RepeatableRemoveButton
+                                    onRemove={() => removeMember(index)}
                                     disabled={data.members.length <= 1}
-                                    className="mt-3 text-xs font-semibold text-rose-600 transition hover:text-rose-700 disabled:cursor-not-allowed disabled:opacity-40 focus:outline-none focus:ring-2 focus:ring-rose-400 focus:ring-offset-2"
-                                    aria-label={`Remove ${member.name || "team member"}`}
-                                >
-                                    Remove member
-                                </button>
+                                    label="Remove member"
+                                />
                             </div>
                         </article>
                     ))}
                 </div>
-                <div className="mt-6">
-                    <button
-                        type="button"
-                        onClick={addMember}
-                        className={`rounded-xl border ${theme.border} ${theme.card} px-4 py-2.5 text-sm font-semibold ${theme.text} transition hover:opacity-80 focus:outline-none focus:ring-2 focus:ring-violet-400 focus:ring-offset-2 focus:ring-offset-transparent`}
-                    >
-                        + Add team member
-                    </button>
-                </div>
+                <RepeatableControls
+                    onAdd={() => data.members.length < 8 && addMember()}
+                    onRemove={() => onUpdate({ members: removeAt(data.members, data.members.length - 1, 1) })}
+                    canAdd={data.members.length < 8}
+                    canRemove={data.members.length > 1}
+                    addLabel="Add team member"
+                    removeLabel="Remove last member"
+                />
             </div>
         </section>
     );

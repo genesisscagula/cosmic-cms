@@ -133,7 +133,7 @@ export function HeroBackgroundImageBlock({
     const imageRef = useRef(null);
 
     const theme = getEffectiveTheme(
-        block.resolvedTheme,
+        block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme,
         globalTheme
     );
 
