@@ -26,14 +26,49 @@ class SparkCompatibilityChecker
         'hero_bento_premium',
     ];
 
-    private const CTA = ['hero_centered_cta', 'image_cta_banner'];
+    private const CTA = ['hero_centered_cta', 'image_cta_banner', 'cta_glass_premium', 'cta_gradient_premium', 'cta_newsletter_premium', 'cta_book_demo_premium', 'cta_calendly_premium', 'cta_free_trial_premium', 'cta_countdown_premium', 'cta_limited_offer_premium'];
 
     private const TERMINAL = [
         'hero_centered_cta',
         'image_cta_banner',
+        'cta_glass_premium',
+        'cta_gradient_premium',
+        'cta_newsletter_premium',
+        'cta_book_demo_premium',
+        'cta_calendly_premium',
+        'cta_free_trial_premium',
+        'cta_countdown_premium',
+        'cta_limited_offer_premium',
         'contact_form_modern',
         'contact_details',
         'location_map',
+        'contact_split_premium',
+        'contact_map_premium',
+        'contact_appointment_premium',
+        'contact_support_center_premium',
+        'contact_faq_premium',
+        'contact_multistep_premium',
+        'contact_live_chat_premium',
+        'blog_magazine_premium',
+        'blog_featured_article_premium',
+        'blog_editors_pick_premium',
+        'blog_sidebar_news_premium',
+        'blog_newsletter_premium',
+        'blog_trending_premium',
+        'blog_categories_grid_premium',
+        'blog_author_profile_premium',
+        'footer_mega_premium',
+        'footer_agency_premium',
+        'footer_saas_premium',
+        'footer_luxury_premium',
+        'footer_dark_premium',
+        'footer_minimal_premium',
+        'team_cards_premium',
+        'team_timeline_premium',
+        'team_org_chart_premium',
+        'team_leadership_premium',
+        'team_culture_premium',
+        'team_open_positions_premium',
     ];
 
     /**
@@ -117,13 +152,14 @@ class SparkCompatibilityChecker
     {
         $groups = [
             'hero' => self::HEROES,
-            'services' => ['services_cards', 'services_bento', 'services_bento_premium', 'services_pricing_comparison', 'services_feature_comparison', 'services_hover_cards'],
+            'services' => ['services_cards', 'services_bento', 'services_bento_premium', 'services_pricing_comparison', 'services_feature_comparison', 'services_hover_cards', 'services_sticky_scroll', 'services_horizontal', 'services_interactive_tabs', 'services_mega_grid'],
             'cta' => self::CTA,
-            'pricing' => ['pricing_cards'],
-            'team' => ['team_modern'],
+            'pricing' => ['pricing_cards', 'pricing_comparison_premium', 'pricing_toggle_premium', 'pricing_enterprise_premium', 'pricing_calculator_premium', 'pricing_credit_premium', 'pricing_agency_premium', 'pricing_feature_matrix_premium'],
+            'team' => ['team_modern', 'team_cards_premium', 'team_timeline_premium', 'team_org_chart_premium', 'team_leadership_premium', 'team_culture_premium', 'team_open_positions_premium'],
             'contact_form' => ['contact_form_modern'],
             'location' => ['location_map'],
             'jobs' => ['jobs_list'],
+            'portfolio' => ['case_studies_grid', 'portfolio_masonry', 'portfolio_pinterest', 'portfolio_hover_video', 'portfolio_case_study', 'portfolio_before_after', 'portfolio_filterable', 'portfolio_animated', 'portfolio_project_timeline'],
             'events' => ['events_grid'],
         ];
 
@@ -158,14 +194,15 @@ class SparkCompatibilityChecker
     {
         $required = match ($intent) {
             'services' => ['services_cards', 'process_timeline'],
-            'pricing' => ['pricing_cards', 'faq_accordion'],
-            'team' => ['team_modern'],
+            'pricing' => ['pricing_cards', 'pricing_comparison_premium', 'pricing_toggle_premium', 'pricing_enterprise_premium', 'pricing_calculator_premium', 'pricing_credit_premium', 'pricing_agency_premium', 'pricing_feature_matrix_premium', 'faq_accordion'],
+            'team' => ['team_modern', 'team_cards_premium', 'team_timeline_premium', 'team_org_chart_premium', 'team_leadership_premium', 'team_culture_premium', 'team_open_positions_premium'],
             'contact' => ['contact_details', 'contact_form_modern'],
             'location' => ['location_map', 'contact_details'],
             'portfolio', 'case-studies', 'work' => ['case_studies_grid'],
             'careers', 'jobs' => ['jobs_list'],
+            'portfolio' => ['case_studies_grid', 'portfolio_masonry', 'portfolio_pinterest', 'portfolio_hover_video', 'portfolio_case_study', 'portfolio_before_after', 'portfolio_filterable', 'portfolio_animated', 'portfolio_project_timeline'],
             'events' => ['events_grid'],
-            'about', 'story' => ['feature_image_left', 'team_modern'],
+            'about', 'story' => ['about_timeline_story', 'team_modern'],
             default => [],
         };
 
@@ -186,13 +223,14 @@ class SparkCompatibilityChecker
         $defaults = match ($intent) {
             'contact' => ['hero_headline', 'contact_details', 'contact_form_modern'],
             'location' => ['hero_headline', 'location_map', 'contact_details'],
-            'pricing' => ['hero_headline', 'pricing_cards', 'feature_image_left', 'faq_accordion', 'hero_centered_cta'],
+            'pricing' => ['hero_headline', 'pricing_cards', 'pricing_comparison_premium', 'pricing_toggle_premium', 'pricing_enterprise_premium', 'pricing_calculator_premium', 'pricing_credit_premium', 'pricing_agency_premium', 'pricing_feature_matrix_premium', 'feature_image_left', 'faq_accordion', 'hero_centered_cta'],
             'services' => ['hero_headline', 'services_cards', 'feature_image_left', 'process_timeline', 'hero_centered_cta'],
-            'team' => ['hero_headline', 'feature_image_left', 'team_modern', 'testimonials_carousel', 'hero_centered_cta'],
-            'portfolio', 'case-studies', 'work' => ['hero_headline', 'case_studies_grid', 'stats_modern', 'testimonials_carousel', 'hero_centered_cta'],
+            'about', 'story' => ['hero_split_editorial', 'about_timeline_story', 'about_mission_grid', 'about_interactive_stats', 'about_brand_journey', 'about_awards_timeline', 'about_culture_section', 'about_office_gallery', 'team_modern'],
+            'team' => ['hero_headline', 'feature_image_left', 'team_modern', 'team_cards_premium', 'team_timeline_premium', 'team_org_chart_premium', 'team_leadership_premium', 'team_culture_premium', 'team_open_positions_premium', 'testimonials_carousel', 'testimonials_video_premium', 'testimonials_scrolling_marquee', 'testimonials_wall_of_love', 'testimonials_card_stack', 'testimonials_trust_dashboard', 'testimonials_review_grid', 'testimonials_review_carousel_pro', 'hero_centered_cta'],
+            'portfolio', 'case-studies', 'work' => ['hero_headline', 'case_studies_grid', 'stats_modern', 'testimonials_carousel', 'testimonials_video_premium', 'testimonials_scrolling_marquee', 'testimonials_wall_of_love', 'testimonials_card_stack', 'testimonials_trust_dashboard', 'testimonials_review_grid', 'testimonials_review_carousel_pro', 'hero_centered_cta'],
             'careers', 'jobs' => ['hero_headline', 'feature_image_left', 'jobs_list', 'hero_centered_cta'],
             'events' => ['hero_headline', 'events_grid', 'contact_form_modern'],
-            default => ['hero_headline', 'services_cards', 'feature_image_left', 'stats_modern', 'testimonials_carousel', 'hero_centered_cta'],
+            default => ['hero_headline', 'services_cards', 'feature_image_left', 'stats_modern', 'testimonials_carousel', 'testimonials_video_premium', 'testimonials_scrolling_marquee', 'testimonials_wall_of_love', 'testimonials_card_stack', 'testimonials_trust_dashboard', 'testimonials_review_grid', 'testimonials_review_carousel_pro', 'hero_centered_cta'],
         };
 
         foreach ($defaults as $spark) {

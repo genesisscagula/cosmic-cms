@@ -1,0 +1,1 @@
+export default function Preview(){return <div className="h-full w-full bg-slate-100 p-4"><div className="grid h-full grid-cols-2 gap-3 rounded-2xl bg-white p-4"><div className="rounded-xl bg-slate-100"/><div className="rounded-xl bg-slate-900"/></div></div>}

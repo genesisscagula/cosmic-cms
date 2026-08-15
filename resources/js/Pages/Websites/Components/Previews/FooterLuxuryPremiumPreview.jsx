@@ -1,0 +1,1 @@
+export default function FooterLuxuryPremiumPreview(){return <div className="rounded-xl bg-stone-950 p-4 text-center text-white"><div className="mx-auto h-2 w-20 rounded bg-white/25"/><div className="mx-auto mt-4 h-5 w-1/2 rounded bg-white/80"/><div className="mx-auto mt-3 h-2 w-2/3 rounded bg-white/20"/><div className="mt-5 h-px bg-white/10"/></div>}

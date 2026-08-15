@@ -365,6 +365,360 @@ PROMPT;
     }
 
 
+    private function aboutTimelineStorySchema(): string
+    {
+        return <<<TXT
+
+    about_timeline_story
+    - type = about_timeline_story
+    - theme = auto
+    - eyebrow, heading, text, primary_label, primary_url
+    - year_one, title_one, text_one
+    - year_two, title_two, text_two
+    - year_three, title_three, text_three
+    - year_four, title_four, text_four
+
+    Requirements:
+    - Tell a concise four-stage company or brand story in chronological order.
+    - Only use real years supplied by the user; otherwise use neutral labels such as "The beginning", "Next chapter", or "Today" in year fields.
+    - Keep each milestone factual and avoid invented achievements, clients, awards, or statistics.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function aboutFounderStorySchema(): string
+    {
+        return <<<TXT
+
+    about_founder_story
+    - type = about_founder_story
+    - theme = auto
+    - eyebrow, heading, text, quote
+    - founder_name, founder_role
+    - principle_one, principle_two, principle_three
+    - image_url
+    - primary_label, primary_url
+
+    Requirements:
+    - Write a human, editorial founder narrative grounded only in supplied facts.
+    - Never invent a founder name, biography detail, credential, quote, or title. Use neutral editable starter wording if absent.
+    - image_url must be an empty string; the application assigns the image.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function aboutMissionGridSchema(): string
+    {
+        return <<<TXT
+
+    about_mission_grid
+    - type = about_mission_grid
+    - theme = auto
+    - eyebrow, heading, text
+    - mission_label, mission_title, mission_text
+    - vision_label, vision_title, vision_text
+    - value_one_title, value_one_text
+    - value_two_title, value_two_text
+    - value_three_title, value_three_text
+
+    Requirements:
+    - Express one clear mission, one aspirational vision, and exactly three distinct values.
+    - Keep language specific to the supplied business rather than generic corporate slogans.
+    - Do not invent certifications, social impact claims, awards, or measurable outcomes.
+
+    TXT;
+    }
+
+    private function aboutInteractiveStatsSchema(): string
+    {
+        return <<<TXT
+
+    about_interactive_stats
+    - type = about_interactive_stats
+    - theme = auto
+    - eyebrow, heading, text
+    - stat_one_value, stat_one_label, stat_one_text
+    - stat_two_value, stat_two_label, stat_two_text
+    - stat_three_value, stat_three_label, stat_three_text
+    - stat_four_value, stat_four_label, stat_four_text
+    - footnote
+
+    Requirements:
+    - Use real metrics only when explicitly provided by the user.
+    - If verified numeric company metrics were not supplied, use non-factual editable starter labels instead of fabricated numbers.
+    - Keep every description concise and explain why each metric matters.
+    - Never invent customer counts, revenue, growth, awards, locations, years, or performance claims.
+
+    TXT;
+    }
+
+
+    private function aboutBrandJourneySchema(): string
+    {
+        return <<<TXT
+
+    about_brand_journey
+    - type = about_brand_journey
+    - theme = auto
+    - eyebrow, heading, text
+    - chapter_one_label, chapter_one_title, chapter_one_text
+    - chapter_two_label, chapter_two_title, chapter_two_text
+    - chapter_three_label, chapter_three_title, chapter_three_text
+    - chapter_four_label, chapter_four_title, chapter_four_text
+    - primary_label, primary_url
+
+    Requirements:
+    - Describe four distinct stages in the evolution of the brand, offer, positioning, or customer experience.
+    - Ground every chapter in supplied business facts. Do not invent dates, launches, acquisitions, clients, awards, or measurable results.
+    - Keep labels short and editorial rather than numeric unless real dates were supplied.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function aboutAwardsTimelineSchema(): string
+    {
+        return <<<TXT
+
+    about_awards_timeline
+    - type = about_awards_timeline
+    - theme = auto
+    - eyebrow, heading, text
+    - award_one_year, award_one_title, award_one_org
+    - award_two_year, award_two_title, award_two_org
+    - award_three_year, award_three_title, award_three_org
+    - award_four_year, award_four_title, award_four_org
+    - footnote
+
+    Requirements:
+    - Only include awards, honours, certifications, shortlistings, or recognition explicitly supplied by the user.
+    - Never fabricate award names, organisations, years, rankings, or certifications.
+    - If fewer than four verified recognitions exist, use clearly editable neutral starter wording rather than false claims.
+    - Keep the footnote reminding the user to verify recognition before publishing when starter content remains.
+
+    TXT;
+    }
+
+    private function aboutCultureSectionSchema(): string
+    {
+        return <<<TXT
+
+    about_culture_section
+    - type = about_culture_section
+    - theme = auto
+    - eyebrow, heading, text
+    - pillar_one_title, pillar_one_text
+    - pillar_two_title, pillar_two_text
+    - pillar_three_title, pillar_three_text
+    - pillar_four_title, pillar_four_text
+    - closing_line
+
+    Requirements:
+    - Write exactly four distinct behaviour-led culture principles.
+    - Prefer observable ways of working over generic corporate values.
+    - Keep each pillar concise, specific, and appropriate to the supplied business context.
+    - Do not invent benefits, employee statistics, certifications, awards, or workplace claims.
+
+    TXT;
+    }
+
+    private function aboutOfficeGallerySchema(): string
+    {
+        return <<<TXT
+
+    about_office_gallery
+    - type = about_office_gallery
+    - theme = auto
+    - eyebrow, heading, text
+    - image_one_url, image_one_caption
+    - image_two_url, image_two_caption
+    - image_three_url, image_three_caption
+
+    Requirements:
+    - Use this Spark for a real office, studio, venue, clinic, showroom, workshop, or team environment.
+    - image_one_url, image_two_url, and image_three_url must be empty strings; the application assigns images.
+    - Captions must stay generic unless the user supplied specific locations or room names.
+    - Do not claim facilities, locations, capacity, or amenities that were not supplied.
+
+    TXT;
+    }
+
+    private function portfolioMasonrySchema(): string
+    {
+        return <<<TXT
+
+    portfolio_masonry
+    - type = portfolio_masonry
+    - theme = auto
+    - eyebrow, heading, text, primary_label, primary_url
+    - project_one_title, project_one_meta, project_one_image_url through project_six_title, project_six_meta, project_six_image_url
+
+    Requirements:
+    - Write exactly six distinct project entries using only work or capabilities supported by the supplied business context.
+    - project_*_image_url must be empty strings; the application assigns images.
+    - Keep project_meta short and factual; do not invent clients, awards, dates, or results.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function portfolioPinterestSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_pinterest
+    - type = portfolio_pinterest
+    - theme = auto
+    - eyebrow, heading, text, primary_label, primary_url
+    - project_one_title, project_one_meta, project_one_image_url through project_six_title, project_six_meta, project_six_image_url
+
+    Requirements:
+    - Write exactly six concise visual-project entries suited to an image-first portfolio.
+    - project_*_image_url must be empty strings; the application assigns images.
+    - Do not invent client names, locations, awards, or performance claims.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function portfolioHoverVideoSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_hover_video
+    - type = portfolio_hover_video
+    - theme = auto
+    - eyebrow, heading, text, primary_label, primary_url
+    - project_one_title, project_one_meta, project_one_image_url, project_one_video_url through project_six_title, project_six_meta, project_six_image_url, project_six_video_url
+
+    Requirements:
+    - Write exactly six project entries.
+    - All image and video URL fields must be empty strings; the application or user supplies media.
+    - Content must remain meaningful when motion is unavailable; do not describe unsupported video footage.
+    - Do not invent clients, awards, dates, or results.
+
+    TXT;
+    }
+
+    private function portfolioCaseStudySchema(): string
+    {
+        return <<<TXT
+
+    portfolio_before_after
+    - type = portfolio_before_after
+    - Generate a truthful transformation comparison using supplied project facts. Never invent measurable outcomes.
+
+    portfolio_filterable
+    - type = portfolio_filterable
+    - Generate six projects with concise categories. Use only project/client facts supported by the prompt.
+
+    portfolio_animated
+    - type = portfolio_animated
+    - Generate four image-led project cards. Motion is visual treatment; do not invent claims.
+
+    portfolio_project_timeline
+    - type = portfolio_project_timeline
+    - Generate four plausible project stages based on supplied process details. Do not present invented client facts as real.
+
+    portfolio_case_study
+    - type = portfolio_case_study
+    - theme = auto
+    - eyebrow, heading, text, project_title, project_meta, image_url
+    - challenge_label, challenge_text, approach_label, approach_text, outcome_label, outcome_text
+    - metric_value, metric_label, primary_label, primary_url, footnote
+
+    Requirements:
+    - image_url must be an empty string; the application assigns an image.
+    - Never invent a client name, revenue figure, percentage, award, testimonial, or performance result.
+    - If no verified metric was supplied, metric_value must be "—" and metric_label should invite the user to add a verified result.
+    - Keep challenge, approach, and outcome useful but conservative and grounded in supplied context.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function servicesStickyScrollSchema(): string
+    {
+        return <<<TXT
+
+    services_sticky_scroll
+    - type = services_sticky_scroll
+    - theme = auto
+    - eyebrow, heading, text, primary_label, primary_url
+    - service_one_number, service_one_title, service_one_text through service_six_number, service_six_title, service_six_text
+
+    Requirements:
+    - Write exactly six distinct services in a logical sequence.
+    - Keep titles concise and service text focused on practical customer outcomes.
+    - Use short sequential service numbers such as 01 through 06.
+    - Do not invent clients, awards, guarantees, certifications, or performance results.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function servicesHorizontalSchema(): string
+    {
+        return <<<TXT
+
+    services_horizontal
+    - type = services_horizontal
+    - theme = auto
+    - eyebrow, heading, text, primary_label, primary_url
+    - service_one_number, service_one_title, service_one_text through service_six_number, service_six_title, service_six_text
+
+    Requirements:
+    - Write exactly six complementary services suitable for a horizontal browsing rail.
+    - Keep each service concise enough to scan quickly.
+    - Use short sequential service numbers such as 01 through 06.
+    - Do not invent unsupported claims or credentials.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function servicesInteractiveTabsSchema(): string
+    {
+        return <<<TXT
+
+    services_interactive_tabs
+    - type = services_interactive_tabs
+    - theme = auto
+    - eyebrow, heading, text, primary_label, primary_url
+    - tab_one_label, tab_one_title, tab_one_text through tab_four_label, tab_four_title, tab_four_text
+
+    Requirements:
+    - Write exactly four distinct service disciplines.
+    - Tab labels must be short; titles and text should explain the value of each discipline.
+    - Make the four tabs complementary rather than repetitive.
+    - Do not invent unsupported claims, clients, awards, or results.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function servicesMegaGridSchema(): string
+    {
+        return <<<TXT
+
+    services_mega_grid
+    - type = services_mega_grid
+    - theme = auto
+    - eyebrow, heading, text, primary_label, primary_url
+    - item_one_title, item_one_text through item_eight_title, item_eight_text
+
+    Requirements:
+    - Write exactly eight concise, distinct capabilities.
+    - Use this only when the business has a broad service portfolio or the user asks for a large capability grid.
+    - Keep descriptions compact and specific.
+    - Do not invent unsupported services or business claims; stay within supplied context.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
     private function servicesHoverCardsSchema(): string
     {
         return <<<TXT
@@ -558,6 +912,28 @@ PROMPT;
     TXT;
     }
 
+    private function statsAnimatedCountersPremiumSchema(): string { return "\n    stats_animated_counters_premium\n\n    - type = stats_animated_counters_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - metrics (array of exactly 4 items: value, label, description)\n\n    Requirements:\n    - Generate exactly 4 concise metrics.\n    - Never invent company statistics, percentages, customer counts, years, revenue, certifications, or performance claims.\n    - If verified values are not supplied, use clearly editable placeholders such as — instead of presenting sample numbers as facts.\n    - Do not include markdown.\n"; }
+    private function statsRevenueDashboardPremiumSchema(): string { return "\n    stats_revenue_dashboard_premium\n\n    - type = stats_revenue_dashboard_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - period_label\n    - metrics (array of exactly 4 items: value, label, description)\n\n    Requirements:\n    - Financial/revenue figures must come directly from supplied user data.\n    - Never invent revenue, MRR/ARR, order value, margins, growth, customer counts, forecasts, or commercial performance.\n    - When figures are unavailable use — and editable neutral labels.\n    - Do not include markdown.\n"; }
+    private function statsGrowthChartsPremiumSchema(): string { return "\n    stats_growth_charts_premium\n\n    - type = stats_growth_charts_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - chart_label\n    - series (array of exactly 6 items: label, value)\n    - metrics (array of exactly 3 items: value, label, description)\n\n    Requirements:\n    - Use chart values only when trend data is supplied by the user.\n    - value must be a numeric 0-100 display scale, not an invented business percentage.\n    - Never invent growth rates, retention, customer counts, financial results, or forecasts.\n    - If no verified data is supplied, use neutral editable placeholders for metrics and a non-factual sample display series.\n    - Do not include markdown.\n"; }
+    private function statsAchievementsPremiumSchema(): string { return "\n    stats_achievements_premium\n\n    - type = stats_achievements_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - achievements (array of exactly 4 items: year, badge, title, text)\n\n    Requirements:\n    - Only present awards, recognitions, dates, certifications, growth milestones, rankings, or outcomes that the user explicitly supplies.\n    - Otherwise use clearly editable placeholder milestones such as 20XX and generic titles.\n    - Never fabricate achievements.\n    - Do not include markdown.\n"; }
+
+    private function teamCardsPremiumSchema(): string { return $this->premiumTeamSchema('team_cards_premium'); }
+    private function teamTimelinePremiumSchema(): string { return $this->premiumTeamSchema('team_timeline_premium'); }
+    private function teamOrgChartPremiumSchema(): string { return $this->premiumTeamSchema('team_org_chart_premium'); }
+    private function teamLeadershipPremiumSchema(): string { return $this->premiumTeamSchema('team_leadership_premium'); }
+    private function teamCulturePremiumSchema(): string { return "\n    team_culture_premium\n\n    - type = team_culture_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - culture_label\n    - values (array of exactly 4 items: title, text)\n\n    Requirements:\n    - Generate exactly 4 concise culture principles.\n    - Do not invent employee satisfaction scores, awards, certifications, benefits, or workplace claims.\n    - Keep principles practical and editable when no company-specific culture facts are supplied.\n    - Do not include markdown.\n"; }
+    private function teamOpenPositionsPremiumSchema(): string { return "\n    team_open_positions_premium\n\n    - type = team_open_positions_premium\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - positions_label\n    - primary_label\n    - primary_url\n    - positions (array of exactly 4 items: title, meta, location, summary)\n\n    Requirements:\n    - Use real openings only when the user supplies them.\n    - Otherwise use clearly editable placeholder roles rather than presenting them as active vacancies.\n    - Never invent salaries, benefits, hiring deadlines, employment terms, locations, visa support, or application guarantees.\n    - Do not include markdown.\n"; }
+    private function premiumTeamSchema(string $type): string
+    {
+        $extra = match ($type) {
+            'team_timeline_premium' => "\n    - timeline_label",
+            'team_org_chart_premium' => "\n    - chart_label",
+            'team_leadership_premium' => "\n    - lead_label",
+            default => '',
+        };
+        return "\n    {$type}\n\n    - type = {$type}\n    - theme = auto\n    - eyebrow\n    - heading\n    - text{$extra}\n    - members (array of exactly 4 items)\n\n    Each member contains:\n    - name\n    - role\n    - bio\n    - image_url\n    - level\n\n    Requirements:\n    - Generate exactly 4 members.\n    - If real team information is not supplied, use clearly generic placeholder identities suitable for editing.\n    - Never invent credentials, awards, employment history, reporting relationships, tenure, qualifications, or personal achievements.\n    - For organization charts, use only hierarchy or reporting relationships explicitly supplied by the user; otherwise keep generic level labels only.\n    - Use existing avatar paths /storage/cms-images/avatars/avatar-1.jpg through avatar-4.jpg in order.\n    - Keep bios concise and professional.\n    - Do not include markdown.\n";
+    }
+
     private function teamModernSchema(): string
     {
         return <<<TXT
@@ -591,6 +967,86 @@ PROMPT;
     - Do not include markdown.
 
     TXT;
+    }
+
+
+    private function ctaGlassPremiumSchema(): string { return $this->premiumCtaSchema('cta_glass_premium'); }
+    private function ctaGradientPremiumSchema(): string { return $this->premiumCtaSchema('cta_gradient_premium'); }
+    private function ctaNewsletterPremiumSchema(): string { return $this->premiumCtaSchema('cta_newsletter_premium', true); }
+    private function ctaBookDemoPremiumSchema(): string { return $this->premiumCtaSchema('cta_book_demo_premium'); }
+    private function ctaCalendlyPremiumSchema(): string { return $this->premiumCtaSchema('cta_calendly_premium'); }
+    private function ctaFreeTrialPremiumSchema(): string { return $this->premiumCtaSchema('cta_free_trial_premium'); }
+    private function ctaCountdownPremiumSchema(): string { return $this->premiumCtaSchema('cta_countdown_premium'); }
+    private function ctaLimitedOfferPremiumSchema(): string { return $this->premiumCtaSchema('cta_limited_offer_premium'); }
+    private function premiumCtaSchema(string $type, bool $newsletter = false): string
+    {
+        $extra = match ($type) {
+            'cta_newsletter_premium' => "\n    - input_placeholder\n    - privacy_note",
+            'cta_calendly_premium' => "\n    - booking_url\n    - availability_note\n    - duration_label",
+            'cta_free_trial_premium' => "\n    - trial_note\n    - benefit_one\n    - benefit_two\n    - benefit_three",
+            'cta_countdown_premium' => "\n    - countdown_days\n    - countdown_hours\n    - countdown_minutes\n    - countdown_seconds\n    - deadline_note",
+            'cta_limited_offer_premium' => "\n    - offer_badge\n    - offer_detail\n    - terms_note",
+            default => "\n    - secondary_label\n    - secondary_url",
+        };
+        $primaryUrlField = $type === 'cta_calendly_premium' ? '' : "\n    - primary_url";
+        return "
+    {$type}
+    - type = {$type}
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label{$primaryUrlField}{$extra}
+
+    Requirements:
+    - Write concise conversion-focused CTA copy appropriate to the requested business.
+    - Do not invent discounts, availability, response times, guarantees, booking slots, subscriber counts, or other claims not supplied by the user.
+    - For newsletter CTAs, keep privacy copy generic and do not claim a sending frequency unless supplied.
+    - For demo or Calendly CTAs, use a factual booking invitation and a placeholder URL when no scheduling URL is supplied; never invent available dates or times.
+    - For free-trial CTAs, do not invent trial length, card requirements, cancellation terms, included credits, or billing behavior.
+    - For countdown CTAs, only use a deadline supplied by the user. If none is supplied, keep countdown values at placeholder zeroes and ask the published copy to be updated; never manufacture urgency.
+    - For limited-offer CTAs, do not invent discounts, savings, expiry dates, scarcity, quantities, eligibility, or guarantees.
+    - Do not include markdown.
+";
+    }
+
+    private function pricingComparisonPremiumSchema(): string { return $this->premiumPricingSchema('pricing_comparison_premium'); }
+    private function pricingTogglePremiumSchema(): string { return $this->premiumPricingSchema('pricing_toggle_premium'); }
+    private function pricingEnterprisePremiumSchema(): string { return $this->premiumPricingSchema('pricing_enterprise_premium'); }
+    private function pricingCalculatorPremiumSchema(): string { return $this->premiumPricingSchema('pricing_calculator_premium'); }
+    private function pricingCreditPremiumSchema(): string { return $this->premiumPricingSchema('pricing_credit_premium'); }
+    private function pricingAgencyPremiumSchema(): string { return $this->premiumPricingSchema('pricing_agency_premium'); }
+    private function pricingFeatureMatrixPremiumSchema(): string { return $this->premiumPricingSchema('pricing_feature_matrix_premium'); }
+    private function premiumPricingSchema(string $type): string
+    {
+        return "
+    {$type}
+    - type = {$type}
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+
+    Requirements:
+    - Generate concise premium pricing copy appropriate to the requested business.
+    - Never invent discounts, guarantees, SLAs, savings percentages, compliance claims, or exact prices unless supplied by the user.
+    - If pricing is unknown, use clearly editable placeholder values or Custom pricing.
+    - Keep calls to action factual and concise.
+    - Do not include markdown.
+";
+    }
+
+    private function testimonialsVideoPremiumSchema(): string { return $this->premiumTestimonialsSchema('testimonials_video_premium', true); }
+    private function testimonialsScrollingMarqueeSchema(): string { return $this->premiumTestimonialsSchema('testimonials_scrolling_marquee'); }
+    private function testimonialsWallOfLoveSchema(): string { return $this->premiumTestimonialsSchema('testimonials_wall_of_love'); }
+    private function testimonialsCardStackSchema(): string { return $this->premiumTestimonialsSchema('testimonials_card_stack'); }
+    private function testimonialsTrustDashboardSchema(): string { return $this->premiumTestimonialsSchema('testimonials_trust_dashboard'); }
+    private function testimonialsReviewGridSchema(): string { return $this->premiumTestimonialsSchema('testimonials_review_grid'); }
+    private function testimonialsReviewCarouselProSchema(): string { return $this->premiumTestimonialsSchema('testimonials_review_carousel_pro'); }
+    private function premiumTestimonialsSchema(string $type, bool $video = false): string
+    {
+        $videoFields = $video ? "\n    - video_url (optional; only use a URL supplied by the user)\n    - video_label" : '';
+        return "\n    {$type}\n    - type = {$type}\n    - theme = auto\n    - eyebrow\n    - heading\n    - text{$videoFields}\n    - testimonials (array of exactly 4 items)\n\n    Each testimonial contains: avatar, name, company, quote.\n    Requirements:\n    - Use the four existing avatar paths /storage/cms-images/avatars/avatar-1.jpg through avatar-4.jpg.\n    - Never invent a real customer endorsement. If no verified testimonial copy is supplied in the prompt, clearly write Sample review placeholder copy that the website owner must replace before publishing.\n    - Do not invent company names as if they are verified customers; placeholder examples must remain obviously generic.\n    - Keep quotes concise and natural.\n";
     }
 
     private function testimonialsSchema(): string
@@ -1233,6 +1689,93 @@ PROMPT;
         - poster_image_url must remain an empty string so the existing image-selection flow can assign the poster image.
 
         TXT;
+    }
+
+
+    private function contactSplitPremiumSchema(): string { return $this->premiumContactSchema('contact_split_premium'); }
+    private function contactMapPremiumSchema(): string { return $this->premiumContactSchema('contact_map_premium'); }
+    private function contactAppointmentPremiumSchema(): string { return $this->premiumContactSchema('contact_appointment_premium'); }
+    private function contactSupportCenterPremiumSchema(): string { return $this->premiumContactSchema('contact_support_center_premium'); }
+    private function contactFaqPremiumSchema(): string { return $this->premiumContactSchema('contact_faq_premium'); }
+    private function contactMultiStepPremiumSchema(): string { return $this->premiumContactSchema('contact_multistep_premium'); }
+    private function contactLiveChatPremiumSchema(): string { return $this->premiumContactSchema('contact_live_chat_premium'); }
+    private function blogMagazinePremiumSchema(): string { return $this->premiumBlogSchema('blog_magazine_premium'); }
+    private function blogFeaturedArticlePremiumSchema(): string { return $this->premiumBlogSchema('blog_featured_article_premium'); }
+    private function blogEditorsPickPremiumSchema(): string { return $this->premiumBlogSchema('blog_editors_pick_premium'); }
+    private function blogSidebarNewsPremiumSchema(): string { return $this->premiumBlogSchema('blog_sidebar_news_premium'); }
+    private function blogNewsletterPremiumSchema(): string { return $this->premiumBlogSchema('blog_newsletter_premium'); }
+    private function blogTrendingPremiumSchema(): string { return $this->premiumBlogSchema('blog_trending_premium'); }
+    private function blogCategoriesGridPremiumSchema(): string { return $this->premiumBlogSchema('blog_categories_grid_premium'); }
+    private function blogAuthorProfilePremiumSchema(): string { return $this->premiumBlogSchema('blog_author_profile_premium'); }
+    private function footerMegaPremiumSchema(): string { return $this->premiumFooterSchema('footer_mega_premium'); }
+    private function footerAgencyPremiumSchema(): string { return $this->premiumFooterSchema('footer_agency_premium'); }
+    private function footerSaasPremiumSchema(): string { return $this->premiumFooterSchema('footer_saas_premium'); }
+    private function footerLuxuryPremiumSchema(): string { return $this->premiumFooterSchema('footer_luxury_premium'); }
+    private function footerDarkPremiumSchema(): string { return $this->premiumFooterSchema('footer_dark_premium'); }
+    private function footerMinimalPremiumSchema(): string { return $this->premiumFooterSchema('footer_minimal_premium'); }
+    private function premiumFooterSchema(string $type): string
+    {
+        $extra = match ($type) {
+            'footer_mega_premium' => "\n    - group_one_title\n    - group_two_title\n    - group_three_title\n    - group_one_item\n    - group_two_item\n    - group_three_item",
+            'footer_agency_premium' => "\n    - eyebrow\n    - heading\n    - location\n    - email",
+            'footer_saas_premium' => "\n    - product_one\n    - product_two\n    - company_one\n    - company_two\n    - resource_one\n    - resource_two",
+            'footer_dark_premium' => "\n    - eyebrow\n    - meta_one\n    - meta_two",
+            'footer_minimal_premium' => "\n    - meta_one\n    - meta_two",
+            default => "\n    - eyebrow\n    - heading\n    - location\n    - social_one\n    - social_two",
+        };
+        return "\n    {$type}\n\n    - type = {$type}\n    - theme = auto\n    - brand_name\n    - tagline\n    - copyright\n    - primary_label\n    - primary_url\n    - link_one_label\n    - link_one_url\n    - link_two_label\n    - link_two_url\n    - link_three_label\n    - link_three_url{$extra}\n\n    Requirements:\n    - Use only business names, contact details, locations, social channels, legal wording, and navigation destinations supplied by the user or existing site context.\n    - Never invent addresses, email addresses, social handles, legal/company registration details, awards, availability, or guarantees.\n    - Keep footer copy concise and suitable for a site-wide closing section.\n    - Do not use markdown.\n";
+    }
+    private function premiumBlogSchema(string $type): string
+    {
+        $fields = match ($type) {
+            'blog_magazine_premium' => "\n    - feature_title\n    - feature_excerpt\n    - feature_image_url = \"\"\n    - story_one_title\n    - story_one_meta\n    - story_two_title\n    - story_two_meta\n    - story_three_title\n    - story_three_meta",
+            'blog_featured_article_premium' => "\n    - feature_category\n    - feature_title\n    - feature_excerpt\n    - feature_image_url = \"\"\n    - author_line",
+            'blog_editors_pick_premium' => "\n    - pick_title\n    - pick_excerpt\n    - pick_image_url = \"\"\n    - item_one\n    - item_two\n    - item_three",
+            'blog_newsletter_premium' => "\n    - newsletter_note\n    - topic_one\n    - topic_two\n    - topic_three",
+            'blog_trending_premium' => "\n    - item_one_title\n    - item_one_meta\n    - item_two_title\n    - item_two_meta\n    - item_three_title\n    - item_three_meta\n    - item_four_title\n    - item_four_meta",
+            'blog_categories_grid_premium' => "\n    - category_one\n    - category_one_text\n    - category_two\n    - category_two_text\n    - category_three\n    - category_three_text\n    - category_four\n    - category_four_text",
+            'blog_author_profile_premium' => "\n    - author_name\n    - author_role\n    - author_bio\n    - author_image_url = \"\"\n    - specialty_one\n    - specialty_two\n    - specialty_three",
+            default => "\n    - lead_title\n    - lead_excerpt\n    - lead_image_url = \"\"\n    - news_one_title\n    - news_one_meta\n    - news_two_title\n    - news_two_meta\n    - topic_one\n    - topic_two\n    - topic_three",
+        };
+        return "\n    {$type}\n\n    - type = {$type}\n    - theme = auto\n    - eyebrow\n    - heading\n    - text\n    - primary_label\n    - primary_url{$fields}\n\n    Requirements:\n    - Write concise editorial copy based only on supplied business context.\n    - Do not invent publication dates, authors, trending status, readership, subscriber counts, sending frequency, awards, or performance claims.
+    - For Author Profile, use identity/role/biography details only when supplied; otherwise keep neutral editable placeholders.
+    - For Trending, treat items as curated/featured unless genuine popularity data is supplied.\n    - Leave image URL fields empty so the image-selection flow can populate them.\n    - Do not use markdown.\n";
+    }
+    private function premiumContactSchema(string $type): string
+    {
+        $extra = match ($type) {
+            'contact_map_premium' => "\n    - map_label\n    - directions_label\n    - directions_url",
+            'contact_appointment_premium' => "\n    - booking_url\n    - appointment_note\n    - duration_label",
+            'contact_support_center_premium' => "\n    - support_one_title\n    - support_one_text\n    - support_two_title\n    - support_two_text\n    - support_three_title\n    - support_three_text",
+            'contact_faq_premium' => "\n    - faq_one_question\n    - faq_one_answer\n    - faq_two_question\n    - faq_two_answer\n    - faq_three_question\n    - faq_three_answer",
+            'contact_multistep_premium' => "\n    - step_one_title\n    - step_one_text\n    - step_two_title\n    - step_two_text\n    - step_three_title\n    - step_three_text\n    - submit_label",
+            'contact_live_chat_premium' => "\n    - chat_url\n    - chat_note\n    - secondary_label\n    - secondary_url",
+            default => '',
+        };
+        return "
+    {$type}
+    - type = {$type}
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - email
+    - phone
+    - address
+    - primary_label
+    - primary_url{$extra}
+
+    Requirements:
+    - Use factual, concise contact copy appropriate to the requested business.
+    - Never invent physical addresses, phone numbers, office hours, response times, support SLAs, booking availability, appointment duration, map coordinates, or staff availability.
+    - Use clearly editable placeholder contact details when the user has not supplied real details.
+    - For appointment booking, use a placeholder URL when none is supplied and explicitly avoid fabricated dates or times.
+    - For map contact, do not invent coordinates or map embeds; use a supplied directions URL or a placeholder.
+    - For FAQ + Contact, answer only generic process questions unless the user supplied business-specific facts; do not invent policies, guarantees, pricing, or turnaround times.
+    - For Multi-step Contact, keep step labels concise and do not imply the form is submitted anywhere beyond the configured contact endpoint.
+    - For Live Chat CTA, never claim staff are online, available now, or will reply within a time window unless the user explicitly supplied that fact. Use a placeholder chat URL when none is supplied.
+    - Do not include markdown.
+";
     }
 
     private function contactFormModernSchema(): string

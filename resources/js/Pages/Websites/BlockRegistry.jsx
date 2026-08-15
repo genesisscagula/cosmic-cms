@@ -35,6 +35,19 @@ import {
 import { ServicesPricingComparisonBlock, ServicesPricingComparisonSchema } from "./Blocks/Services/ServicesPricingComparisonBlock";
 import { ServicesFeatureComparisonBlock, ServicesFeatureComparisonSchema } from "./Blocks/Services/ServicesFeatureComparisonBlock";
 import { ServicesHoverCardsBlock, ServicesHoverCardsSchema } from "./Blocks/Services/ServicesHoverCardsBlock";
+import { ServicesStickyScrollBlock, ServicesStickyScrollSchema, ServicesHorizontalBlock, ServicesHorizontalSchema, ServicesInteractiveTabsBlock, ServicesInteractiveTabsSchema, ServicesMegaGridBlock, ServicesMegaGridSchema } from "./Blocks/Services/ServicesPremiumExtraBlocks";
+import { PortfolioMasonryBlock, PortfolioMasonrySchema, PortfolioPinterestBlock, PortfolioPinterestSchema, PortfolioHoverVideoBlock, PortfolioHoverVideoSchema, PortfolioCaseStudyBlock, PortfolioCaseStudySchema, PortfolioBeforeAfterBlock, PortfolioBeforeAfterSchema, PortfolioFilterableBlock, PortfolioFilterableSchema, PortfolioAnimatedBlock, PortfolioAnimatedSchema, PortfolioProjectTimelineBlock, PortfolioProjectTimelineSchema } from "./Blocks/Portfolio/PortfolioPremiumBlocks";
+
+import {
+    AboutTimelineStoryBlock, AboutTimelineStorySchema,
+    AboutFounderStoryBlock, AboutFounderStorySchema,
+    AboutMissionGridBlock, AboutMissionGridSchema,
+    AboutInteractiveStatsBlock, AboutInteractiveStatsSchema,
+    AboutBrandJourneyBlock, AboutBrandJourneySchema,
+    AboutAwardsTimelineBlock, AboutAwardsTimelineSchema,
+    AboutCultureSectionBlock, AboutCultureSectionSchema,
+    AboutOfficeGalleryBlock, AboutOfficeGallerySchema,
+} from "./Blocks/About/AboutPremiumBlocks";
 
 import {
     ProcessTimelineBlock,
@@ -45,23 +58,29 @@ import {
     StatsModernBlock,
     StatsModernSchema
 } from "./Blocks/Stats/StatsModernBlock";
+import { StatsAnimatedCountersPremiumBlock, StatsAnimatedCountersPremiumSchema, StatsRevenueDashboardPremiumBlock, StatsRevenueDashboardPremiumSchema, StatsGrowthChartsPremiumBlock, StatsGrowthChartsPremiumSchema, StatsAchievementsPremiumBlock, StatsAchievementsPremiumSchema } from "./Blocks/Stats/StatsPremiumBlocks";
 
 import {
     TeamModernBlock,
     TeamModernSchema
 } from "./Blocks/Team/TeamModernBlock";
+import { TeamCardsPremiumBlock, TeamCardsPremiumSchema, TeamTimelinePremiumBlock, TeamTimelinePremiumSchema, TeamOrgChartPremiumBlock, TeamOrgChartPremiumSchema, TeamLeadershipPremiumBlock, TeamLeadershipPremiumSchema, TeamCulturePremiumBlock, TeamCulturePremiumSchema, TeamOpenPositionsPremiumBlock, TeamOpenPositionsPremiumSchema } from "./Blocks/Team/TeamPremiumBlocks";
 
 
 import {
     TestimonialsCarouselBlock,
     TestimonialsCarouselSchema
 } from "./Blocks/Testimonials/TestimonialsCarouselBlock";
+import { TestimonialsVideoBlock, TestimonialsVideoSchema, TestimonialsMarqueeBlock, TestimonialsMarqueeSchema, TestimonialsWallOfLoveBlock, TestimonialsWallOfLoveSchema, TestimonialsCardStackBlock, TestimonialsCardStackSchema, TestimonialsTrustDashboardBlock, TestimonialsTrustDashboardSchema, TestimonialsReviewGridBlock, TestimonialsReviewGridSchema, TestimonialsReviewCarouselProBlock, TestimonialsReviewCarouselProSchema } from "./Blocks/Testimonials/TestimonialsPremiumBlocks";
 
 
 import {
     PricingCardsBlock,
     PricingCardsSchema
 } from "./Blocks/Pricing/PricingCardsBlock";
+import { PricingComparisonPremiumBlock, PricingComparisonPremiumSchema, PricingTogglePremiumBlock, PricingTogglePremiumSchema, PricingEnterprisePremiumBlock, PricingEnterprisePremiumSchema, PricingCalculatorPremiumBlock, PricingCalculatorPremiumSchema, PricingCreditPremiumBlock, PricingCreditPremiumSchema, PricingAgencyPremiumBlock, PricingAgencyPremiumSchema, PricingFeatureMatrixPremiumBlock, PricingFeatureMatrixPremiumSchema } from "./Blocks/Pricing/PricingPremiumBlocks";
+import { CtaGlassPremiumBlock, CtaGlassPremiumSchema, CtaGradientPremiumBlock, CtaGradientPremiumSchema, CtaNewsletterPremiumBlock, CtaNewsletterPremiumSchema, CtaBookDemoPremiumBlock, CtaBookDemoPremiumSchema, CtaCalendlyPremiumBlock, CtaCalendlyPremiumSchema, CtaFreeTrialPremiumBlock, CtaFreeTrialPremiumSchema, CtaCountdownPremiumBlock, CtaCountdownPremiumSchema, CtaLimitedOfferPremiumBlock, CtaLimitedOfferPremiumSchema } from "./Blocks/CTA/CtaPremiumBlocks";
+import { ContactSplitPremiumBlock, ContactSplitPremiumSchema, ContactMapPremiumBlock, ContactMapPremiumSchema, ContactAppointmentPremiumBlock, ContactAppointmentPremiumSchema, ContactSupportCenterPremiumBlock, ContactSupportCenterPremiumSchema, ContactFaqPremiumBlock, ContactFaqPremiumSchema, ContactMultiStepPremiumBlock, ContactMultiStepPremiumSchema, ContactLiveChatPremiumBlock, ContactLiveChatPremiumSchema } from "./Blocks/Contact/ContactPremiumBlocks";
 
 import {
     HeroBackgroundImageBlock,
@@ -139,6 +158,8 @@ import { JobsListBlock, JobsListSchema } from "./Blocks/Collections/JobsListBloc
 import { EventsGridBlock, EventsGridSchema } from "./Blocks/Collections/EventsGridBlock";
 import { BlogHubBlock, BlogHubSchema } from "./Blocks/Blog/BlogHubBlock";
 import { BlogMiniHeroBlock, BlogMiniHeroSchema } from "./Blocks/Blog/BlogMiniHeroBlock";
+import { BlogMagazinePremiumBlock, BlogMagazinePremiumSchema, BlogFeaturedArticlePremiumBlock, BlogFeaturedArticlePremiumSchema, BlogEditorsPickPremiumBlock, BlogEditorsPickPremiumSchema, BlogSidebarNewsPremiumBlock, BlogSidebarNewsPremiumSchema, BlogNewsletterPremiumBlock, BlogNewsletterPremiumSchema, BlogTrendingPremiumBlock, BlogTrendingPremiumSchema, BlogCategoriesGridPremiumBlock, BlogCategoriesGridPremiumSchema, BlogAuthorProfilePremiumBlock, BlogAuthorProfilePremiumSchema } from "./Blocks/Blog/BlogPremiumBlocks";
+import { FooterMegaPremiumBlock, FooterMegaPremiumSchema, FooterAgencyPremiumBlock, FooterAgencyPremiumSchema, FooterSaasPremiumBlock, FooterSaasPremiumSchema, FooterLuxuryPremiumBlock, FooterLuxuryPremiumSchema, FooterDarkPremiumBlock, FooterDarkPremiumSchema, FooterMinimalPremiumBlock, FooterMinimalPremiumSchema } from "./Blocks/Footer/FooterPremiumBlocks";
 import {
     MiniHeroMinimalBlock, MiniHeroMinimalSchema,
     MiniHeroSplitBlock, MiniHeroSplitSchema,
@@ -307,6 +328,21 @@ export const BlockRegistry = {
         schema: PricingCardsSchema
 
     },
+    pricing_comparison_premium: { component: PricingComparisonPremiumBlock, schema: PricingComparisonPremiumSchema },
+    pricing_toggle_premium: { component: PricingTogglePremiumBlock, schema: PricingTogglePremiumSchema },
+    pricing_enterprise_premium: { component: PricingEnterprisePremiumBlock, schema: PricingEnterprisePremiumSchema },
+    pricing_calculator_premium: { component: PricingCalculatorPremiumBlock, schema: PricingCalculatorPremiumSchema },
+    pricing_credit_premium: { component: PricingCreditPremiumBlock, schema: PricingCreditPremiumSchema },
+    pricing_agency_premium: { component: PricingAgencyPremiumBlock, schema: PricingAgencyPremiumSchema },
+    pricing_feature_matrix_premium: { component: PricingFeatureMatrixPremiumBlock, schema: PricingFeatureMatrixPremiumSchema },
+    cta_glass_premium: { component: CtaGlassPremiumBlock, schema: CtaGlassPremiumSchema },
+    cta_gradient_premium: { component: CtaGradientPremiumBlock, schema: CtaGradientPremiumSchema },
+    cta_newsletter_premium: { component: CtaNewsletterPremiumBlock, schema: CtaNewsletterPremiumSchema },
+    cta_book_demo_premium: { component: CtaBookDemoPremiumBlock, schema: CtaBookDemoPremiumSchema },
+    cta_calendly_premium: { component: CtaCalendlyPremiumBlock, schema: CtaCalendlyPremiumSchema },
+    cta_free_trial_premium: { component: CtaFreeTrialPremiumBlock, schema: CtaFreeTrialPremiumSchema },
+    cta_countdown_premium: { component: CtaCountdownPremiumBlock, schema: CtaCountdownPremiumSchema },
+    cta_limited_offer_premium: { component: CtaLimitedOfferPremiumBlock, schema: CtaLimitedOfferPremiumSchema },
 
     feature_image_left: {
 
@@ -360,6 +396,28 @@ export const BlockRegistry = {
         schema: ServicesHoverCardsSchema
     },
 
+    services_sticky_scroll: { component: ServicesStickyScrollBlock, schema: ServicesStickyScrollSchema },
+    services_horizontal: { component: ServicesHorizontalBlock, schema: ServicesHorizontalSchema },
+    services_interactive_tabs: { component: ServicesInteractiveTabsBlock, schema: ServicesInteractiveTabsSchema },
+    services_mega_grid: { component: ServicesMegaGridBlock, schema: ServicesMegaGridSchema },
+    portfolio_masonry: { component: PortfolioMasonryBlock, schema: PortfolioMasonrySchema },
+    portfolio_pinterest: { component: PortfolioPinterestBlock, schema: PortfolioPinterestSchema },
+    portfolio_hover_video: { component: PortfolioHoverVideoBlock, schema: PortfolioHoverVideoSchema },
+    portfolio_case_study: { component: PortfolioCaseStudyBlock, schema: PortfolioCaseStudySchema },
+    portfolio_before_after: { component: PortfolioBeforeAfterBlock, schema: PortfolioBeforeAfterSchema },
+    portfolio_filterable: { component: PortfolioFilterableBlock, schema: PortfolioFilterableSchema },
+    portfolio_animated: { component: PortfolioAnimatedBlock, schema: PortfolioAnimatedSchema },
+    portfolio_project_timeline: { component: PortfolioProjectTimelineBlock, schema: PortfolioProjectTimelineSchema },
+
+    about_timeline_story: { component: AboutTimelineStoryBlock, schema: AboutTimelineStorySchema },
+    about_founder_story: { component: AboutFounderStoryBlock, schema: AboutFounderStorySchema },
+    about_mission_grid: { component: AboutMissionGridBlock, schema: AboutMissionGridSchema },
+    about_interactive_stats: { component: AboutInteractiveStatsBlock, schema: AboutInteractiveStatsSchema },
+    about_brand_journey: { component: AboutBrandJourneyBlock, schema: AboutBrandJourneySchema },
+    about_awards_timeline: { component: AboutAwardsTimelineBlock, schema: AboutAwardsTimelineSchema },
+    about_culture_section: { component: AboutCultureSectionBlock, schema: AboutCultureSectionSchema },
+    about_office_gallery: { component: AboutOfficeGalleryBlock, schema: AboutOfficeGallerySchema },
+
 	hero_centered_cta: {
 
 	    component: HeroCenteredCTA,
@@ -383,6 +441,10 @@ export const BlockRegistry = {
         schema: StatsModernSchema
 
     },
+    stats_animated_counters_premium: { component: StatsAnimatedCountersPremiumBlock, schema: StatsAnimatedCountersPremiumSchema },
+    stats_revenue_dashboard_premium: { component: StatsRevenueDashboardPremiumBlock, schema: StatsRevenueDashboardPremiumSchema },
+    stats_growth_charts_premium: { component: StatsGrowthChartsPremiumBlock, schema: StatsGrowthChartsPremiumSchema },
+    stats_achievements_premium: { component: StatsAchievementsPremiumBlock, schema: StatsAchievementsPremiumSchema },
 
     team_modern: {
 
@@ -391,14 +453,24 @@ export const BlockRegistry = {
         schema: TeamModernSchema
 
     },
+    team_cards_premium: { component: TeamCardsPremiumBlock, schema: TeamCardsPremiumSchema },
+    team_timeline_premium: { component: TeamTimelinePremiumBlock, schema: TeamTimelinePremiumSchema },
+    team_org_chart_premium: { component: TeamOrgChartPremiumBlock, schema: TeamOrgChartPremiumSchema },
+    team_leadership_premium: { component: TeamLeadershipPremiumBlock, schema: TeamLeadershipPremiumSchema },
+    team_culture_premium: { component: TeamCulturePremiumBlock, schema: TeamCulturePremiumSchema },
+    team_open_positions_premium: { component: TeamOpenPositionsPremiumBlock, schema: TeamOpenPositionsPremiumSchema },
 
     testimonials_carousel: {
-
         component: TestimonialsCarouselBlock,
-
         schema: TestimonialsCarouselSchema
-
     },
+    testimonials_video_premium: { component: TestimonialsVideoBlock, schema: TestimonialsVideoSchema },
+    testimonials_scrolling_marquee: { component: TestimonialsMarqueeBlock, schema: TestimonialsMarqueeSchema },
+    testimonials_wall_of_love: { component: TestimonialsWallOfLoveBlock, schema: TestimonialsWallOfLoveSchema },
+    testimonials_card_stack: { component: TestimonialsCardStackBlock, schema: TestimonialsCardStackSchema },
+    testimonials_trust_dashboard: { component: TestimonialsTrustDashboardBlock, schema: TestimonialsTrustDashboardSchema },
+    testimonials_review_grid: { component: TestimonialsReviewGridBlock, schema: TestimonialsReviewGridSchema },
+    testimonials_review_carousel_pro: { component: TestimonialsReviewCarouselProBlock, schema: TestimonialsReviewCarouselProSchema },
 
     contact_form_modern: {
 
@@ -407,6 +479,13 @@ export const BlockRegistry = {
         schema: ContactFormModernSchema
 
     },
+    contact_split_premium: { component: ContactSplitPremiumBlock, schema: ContactSplitPremiumSchema },
+    contact_map_premium: { component: ContactMapPremiumBlock, schema: ContactMapPremiumSchema },
+    contact_appointment_premium: { component: ContactAppointmentPremiumBlock, schema: ContactAppointmentPremiumSchema },
+    contact_support_center_premium: { component: ContactSupportCenterPremiumBlock, schema: ContactSupportCenterPremiumSchema },
+    contact_faq_premium: { component: ContactFaqPremiumBlock, schema: ContactFaqPremiumSchema },
+    contact_multistep_premium: { component: ContactMultiStepPremiumBlock, schema: ContactMultiStepPremiumSchema },
+    contact_live_chat_premium: { component: ContactLiveChatPremiumBlock, schema: ContactLiveChatPremiumSchema },
 
     faq_accordion: {
         component: FaqAccordionBlock,
@@ -442,6 +521,20 @@ export const BlockRegistry = {
         component: BlogHubBlock,
         schema: BlogHubSchema,
     },
+    blog_magazine_premium: { component: BlogMagazinePremiumBlock, schema: BlogMagazinePremiumSchema },
+    blog_featured_article_premium: { component: BlogFeaturedArticlePremiumBlock, schema: BlogFeaturedArticlePremiumSchema },
+    blog_editors_pick_premium: { component: BlogEditorsPickPremiumBlock, schema: BlogEditorsPickPremiumSchema },
+    blog_sidebar_news_premium: { component: BlogSidebarNewsPremiumBlock, schema: BlogSidebarNewsPremiumSchema },
+    blog_newsletter_premium: { component: BlogNewsletterPremiumBlock, schema: BlogNewsletterPremiumSchema },
+    blog_trending_premium: { component: BlogTrendingPremiumBlock, schema: BlogTrendingPremiumSchema },
+    blog_categories_grid_premium: { component: BlogCategoriesGridPremiumBlock, schema: BlogCategoriesGridPremiumSchema },
+    blog_author_profile_premium: { component: BlogAuthorProfilePremiumBlock, schema: BlogAuthorProfilePremiumSchema },
+    footer_mega_premium: { component: FooterMegaPremiumBlock, schema: FooterMegaPremiumSchema },
+    footer_agency_premium: { component: FooterAgencyPremiumBlock, schema: FooterAgencyPremiumSchema },
+    footer_saas_premium: { component: FooterSaasPremiumBlock, schema: FooterSaasPremiumSchema },
+    footer_luxury_premium: { component: FooterLuxuryPremiumBlock, schema: FooterLuxuryPremiumSchema },
+    footer_dark_premium: { component: FooterDarkPremiumBlock, schema: FooterDarkPremiumSchema },
+    footer_minimal_premium: { component: FooterMinimalPremiumBlock, schema: FooterMinimalPremiumSchema },
 
     blog_mini_hero: {
         component: BlogMiniHeroBlock,

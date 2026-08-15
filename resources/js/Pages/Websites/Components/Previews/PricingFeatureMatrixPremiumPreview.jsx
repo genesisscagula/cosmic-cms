@@ -1,0 +1,1 @@
+export default function Preview(){return <div className="h-full w-full bg-slate-100 p-4"><div className="grid h-full grid-cols-4 gap-px overflow-hidden rounded-xl bg-slate-300">{Array.from({length:16}).map((_,i)=><div key={i} className={`${i<4?"bg-slate-900":"bg-white"}`}/>)}</div></div>}

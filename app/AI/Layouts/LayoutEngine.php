@@ -225,6 +225,14 @@ class LayoutEngine
             return 'hero_saas_dashboard';
         }
 
+        if ($category === 'portfolio' && $prompt !== null && preg_match('/\b(masonry|editorial portfolio)\b/i', $prompt) === 1) { return 'portfolio_masonry'; }
+        if ($category === 'portfolio' && $prompt !== null && preg_match('/\b(pinterest|inspiration board|visual archive)\b/i', $prompt) === 1) { return 'portfolio_pinterest'; }
+        if ($category === 'portfolio' && $prompt !== null && preg_match('/\b(hover video|motion preview|video portfolio)\b/i', $prompt) === 1) { return 'portfolio_hover_video'; }
+        if ($category === 'portfolio' && $prompt !== null && preg_match('/\b(case study|featured project|project story)\b/i', $prompt) === 1) { return 'portfolio_case_study'; }
+        if ($category === 'portfolio' && $prompt !== null && preg_match('/\b(before after|before \/ after|transformation|redesign comparison|renovation comparison)\b/i', $prompt) === 1) { return 'portfolio_before_after'; }
+        if ($category === 'portfolio' && $prompt !== null && preg_match('/\b(filter|filterable|categories|project index|sort projects)\b/i', $prompt) === 1) { return 'portfolio_filterable'; }
+        if ($category === 'portfolio' && $prompt !== null && preg_match('/\b(animated|motion|interactive portfolio|moving portfolio)\b/i', $prompt) === 1) { return 'portfolio_animated'; }
+        if ($category === 'portfolio' && $prompt !== null && preg_match('/\b(project timeline|project process|from brief to launch|project journey)\b/i', $prompt) === 1) { return 'portfolio_project_timeline'; }
         if ($category === 'services' && $prompt !== null && preg_match('/\b(hover cards|interactive service cards|service hover|hover services|animated service cards)\b/i', $prompt) === 1) {
             return 'services_hover_cards';
         }
@@ -240,6 +248,118 @@ class LayoutEngine
         if ($category === 'services' && $prompt !== null && preg_match('/\b(premium services|bento services|service bento|asymmetrical services|integrated services|agency services|consulting services|specialist team)\b/i', $prompt) === 1) {
             return 'services_bento_premium';
         }
+
+
+        if ($category === 'cta' && $prompt !== null && preg_match('/\b(glass cta|frosted cta|glass call to action)\b/i', $prompt) === 1) { return 'cta_glass_premium'; }
+        if ($category === 'cta' && $prompt !== null && preg_match('/\b(gradient cta|gradient call to action|bold cta)\b/i', $prompt) === 1) { return 'cta_gradient_premium'; }
+        if ($category === 'cta' && $prompt !== null && preg_match('/\b(newsletter|email signup|subscribe|mailing list)\b/i', $prompt) === 1) { return 'cta_newsletter_premium'; }
+        if ($category === 'cta' && $prompt !== null && preg_match('/\b(book demo|book a demo|schedule demo|request demo|demo call)\b/i', $prompt) === 1) { return 'cta_book_demo_premium'; }
+        if ($category === 'cta' && $prompt !== null && preg_match('/\b(calendly|calendar booking|schedule a call|book a call|appointment link)\b/i', $prompt) === 1) { return 'cta_calendly_premium'; }
+        if ($category === 'cta' && $prompt !== null && preg_match('/\b(free trial|start trial|try free|trial signup)\b/i', $prompt) === 1) { return 'cta_free_trial_premium'; }
+        if ($category === 'cta' && $prompt !== null && preg_match('/\b(countdown|launch timer|event countdown|deadline timer)\b/i', $prompt) === 1) { return 'cta_countdown_premium'; }
+        if ($category === 'cta' && $prompt !== null && preg_match('/\b(limited offer|special offer|promotion|promo offer)\b/i', $prompt) === 1) { return 'cta_limited_offer_premium'; }
+        if ($category === 'contact' && $prompt !== null && preg_match('/\b(split contact|contact form|inquiry form|contact us)\b/i', $prompt) === 1) { return 'contact_split_premium'; }
+        if ($category === 'contact' && $prompt !== null && preg_match('/\b(map contact|location contact|directions|find us|visit us)\b/i', $prompt) === 1) { return 'contact_map_premium'; }
+        if ($category === 'contact' && $prompt !== null && preg_match('/\b(appointment booking|book appointment|schedule appointment|booking contact)\b/i', $prompt) === 1) { return 'contact_appointment_premium'; }
+        if ($category === 'contact' && $prompt !== null && preg_match('/\b(support center|help center|technical support|billing support|customer support)\b/i', $prompt) === 1) { return 'contact_support_center_premium'; }
+        if ($category === 'contact' && $prompt !== null && preg_match('/\b(faq contact|faq \+ contact|questions and contact|contact faq|common questions)\b/i', $prompt) === 1) { return 'contact_faq_premium'; }
+        if ($category === 'contact' && $prompt !== null && preg_match('/\b(multi[- ]?step contact|multi[- ]?step form|guided inquiry|staged inquiry|step form)\b/i', $prompt) === 1) { return 'contact_multistep_premium'; }
+        if ($category === 'contact' && $prompt !== null && preg_match('/\b(live chat|chat with us|chat support|messenger|whatsapp chat|start chat)\b/i', $prompt) === 1) { return 'contact_live_chat_premium'; }
+        if ($category === 'blog' && $prompt !== null && preg_match('/\b(magazine|editorial magazine|journal layout)\b/i', $prompt) === 1) { return 'blog_magazine_premium'; }
+        if ($category === 'blog' && $prompt !== null && preg_match('/\b(featured article|feature story|lead article)\b/i', $prompt) === 1) { return 'blog_featured_article_premium'; }
+        if ($category === 'blog' && $prompt !== null && preg_match('/\b(editor.?s pick|editors pick|curated reads)\b/i', $prompt) === 1) { return 'blog_editors_pick_premium'; }
+        if ($category === 'blog' && $prompt !== null && preg_match('/\b(sidebar news|news sidebar|news layout|latest news)\b/i', $prompt) === 1) { return 'blog_sidebar_news_premium'; }
+        if ($category === 'blog' && $prompt !== null && preg_match('/\b(newsletter|subscribe|email updates)\b/i', $prompt) === 1) { return 'blog_newsletter_premium'; }
+        if ($category === 'blog' && $prompt !== null && preg_match('/\b(trending|popular posts|featured reads)\b/i', $prompt) === 1) { return 'blog_trending_premium'; }
+        if ($category === 'blog' && $prompt !== null && preg_match('/\b(categories grid|browse categories|topics grid|blog categories)\b/i', $prompt) === 1) { return 'blog_categories_grid_premium'; }
+        if ($category === 'blog' && $prompt !== null && preg_match('/\b(author profile|about the author|writer profile|editor profile)\b/i', $prompt) === 1) { return 'blog_author_profile_premium'; }
+        if ($category === 'footer' && $prompt !== null && preg_match('/\b(mega footer|large footer|multi column footer)\b/i', $prompt) === 1) { return 'footer_mega_premium'; }
+        if ($category === 'footer' && $prompt !== null && preg_match('/\b(agency footer|creative agency footer|studio footer)\b/i', $prompt) === 1) { return 'footer_agency_premium'; }
+        if ($category === 'footer' && $prompt !== null && preg_match('/\b(saas footer|software footer|product footer)\b/i', $prompt) === 1) { return 'footer_saas_premium'; }
+        if ($category === 'footer' && $prompt !== null && preg_match('/\b(luxury footer|premium footer|minimal luxury footer)\b/i', $prompt) === 1) { return 'footer_luxury_premium'; }
+        if ($category === 'footer' && $prompt !== null && preg_match('/\b(dark footer|black footer|high contrast footer)\b/i', $prompt) === 1) { return 'footer_dark_premium'; }
+        if ($category === 'footer' && $prompt !== null && preg_match('/\b(minimal footer|simple footer|compact footer|clean footer)\b/i', $prompt) === 1) { return 'footer_minimal_premium'; }
+        if ($category === 'team' && $prompt !== null && preg_match('/\b(open positions|open roles|careers|jobs|hiring|vacancies)\b/i', $prompt) === 1) { return 'team_open_positions_premium'; }
+        if ($category === 'team' && $prompt !== null && preg_match('/\b(team culture|work culture|company culture|culture values)\b/i', $prompt) === 1) { return 'team_culture_premium'; }
+        if ($category === 'team' && $prompt !== null && preg_match('/\b(organization chart|org chart|team hierarchy)\b/i', $prompt) === 1) { return 'team_org_chart_premium'; }
+        if ($category === 'team' && $prompt !== null && preg_match('/\b(leadership|leadership team|executive team)\b/i', $prompt) === 1) { return 'team_leadership_premium'; }
+        if ($category === 'team' && $prompt !== null && preg_match('/\b(team timeline|people timeline|team journey)\b/i', $prompt) === 1) { return 'team_timeline_premium'; }
+        if ($category === 'team' && $prompt !== null && preg_match('/\b(team cards|team grid|people cards)\b/i', $prompt) === 1) { return 'team_cards_premium'; }
+        if ($category === 'pricing' && $prompt !== null && preg_match('/\b(comparison table|compare plans|pricing matrix|feature matrix)\b/i', $prompt) === 1) { return 'pricing_comparison_premium'; }
+        if ($category === 'pricing' && $prompt !== null && preg_match('/\b(monthly yearly|monthly \/ yearly|billing toggle|annual billing|yearly pricing)\b/i', $prompt) === 1) { return 'pricing_toggle_premium'; }
+        if ($category === 'pricing' && $prompt !== null && preg_match('/\b(enterprise pricing|custom pricing|talk to sales|enterprise plan)\b/i', $prompt) === 1) { return 'pricing_enterprise_premium'; }
+        if ($category === 'pricing' && $prompt !== null && preg_match('/\b(pricing calculator|price calculator|cost estimator|pricing estimator|estimate price)\b/i', $prompt) === 1) { return 'pricing_calculator_premium'; }
+        if ($category === 'pricing' && $prompt !== null && preg_match('/\b(credit pricing|credit packs|credits pack|prepaid credits|usage credits|token packs)\b/i', $prompt) === 1) { return 'pricing_credit_premium'; }
+        if ($category === 'pricing' && $prompt !== null && preg_match('/\b(agency pricing|agency plans|client sites|client capacity|agency package)\b/i', $prompt) === 1) { return 'pricing_agency_premium'; }
+        if ($category === 'pricing' && $prompt !== null && preg_match('/\b(feature matrix|capability matrix|detailed features|plan features)\b/i', $prompt) === 1) { return 'pricing_feature_matrix_premium'; }
+        if ($category === 'testimonials' && $prompt !== null && preg_match('/\b(video testimonial|customer video|video review)\b/i', $prompt) === 1) { return 'testimonials_video_premium'; }
+        if ($category === 'testimonials' && $prompt !== null && preg_match('/\b(marquee|scrolling testimonials|testimonial rail)\b/i', $prompt) === 1) { return 'testimonials_scrolling_marquee'; }
+        if ($category === 'testimonials' && $prompt !== null && preg_match('/\b(wall of love|testimonial wall|review wall)\b/i', $prompt) === 1) { return 'testimonials_wall_of_love'; }
+        if ($category === 'testimonials' && $prompt !== null && preg_match('/\b(card stack|stacked testimonials|stacked reviews)\b/i', $prompt) === 1) { return 'testimonials_card_stack'; }
+        if ($category === 'testimonials' && $prompt !== null && preg_match('/\b(trust dashboard|review dashboard|social proof dashboard)\b/i', $prompt) === 1) { return 'testimonials_trust_dashboard'; }
+        if ($category === 'testimonials' && $prompt !== null && preg_match('/\b(review grid|testimonial grid|reviews grid)\b/i', $prompt) === 1) { return 'testimonials_review_grid'; }
+        if ($category === 'testimonials' && $prompt !== null && preg_match('/\b(review carousel pro|premium review carousel|featured reviews carousel)\b/i', $prompt) === 1) { return 'testimonials_review_carousel_pro'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(sticky|scroll story|detailed services|service chapters)\b/i', $prompt) === 1) { return 'services_sticky_scroll'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(horizontal|sideways|scrolling rail|service rail)\b/i', $prompt) === 1) { return 'services_horizontal'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(tabs|tabbed|interactive tabs|service tabs)\b/i', $prompt) === 1) { return 'services_interactive_tabs'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(mega grid|many services|full capability|capability grid)\b/i', $prompt) === 1) { return 'services_mega_grid'; }
+        if ($category === 'about' && $prompt !== null && preg_match('/\b(founder|founder story|our founder|origin story)\b/i', $prompt) === 1) {
+            return 'about_founder_story';
+        }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(sticky|scroll story|detailed services|service chapters)\b/i', $prompt) === 1) { return 'services_sticky_scroll'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(horizontal|sideways|scrolling rail|service rail)\b/i', $prompt) === 1) { return 'services_horizontal'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(tabs|tabbed|interactive tabs|service tabs)\b/i', $prompt) === 1) { return 'services_interactive_tabs'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(mega grid|many services|full capability|capability grid)\b/i', $prompt) === 1) { return 'services_mega_grid'; }
+        if ($category === 'about' && $prompt !== null && preg_match('/\b(mission|vision|values|purpose)\b/i', $prompt) === 1) {
+            return 'about_mission_grid';
+        }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(sticky|scroll story|detailed services|service chapters)\b/i', $prompt) === 1) { return 'services_sticky_scroll'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(horizontal|sideways|scrolling rail|service rail)\b/i', $prompt) === 1) { return 'services_horizontal'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(tabs|tabbed|interactive tabs|service tabs)\b/i', $prompt) === 1) { return 'services_interactive_tabs'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(mega grid|many services|full capability|capability grid)\b/i', $prompt) === 1) { return 'services_mega_grid'; }
+        if ($category === 'about' && $prompt !== null && preg_match('/\b(company stats|company statistics|numbers|metrics|proof|milestones in numbers)\b/i', $prompt) === 1) {
+            return 'about_interactive_stats';
+        }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(sticky|scroll story|detailed services|service chapters)\b/i', $prompt) === 1) { return 'services_sticky_scroll'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(horizontal|sideways|scrolling rail|service rail)\b/i', $prompt) === 1) { return 'services_horizontal'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(tabs|tabbed|interactive tabs|service tabs)\b/i', $prompt) === 1) { return 'services_interactive_tabs'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(mega grid|many services|full capability|capability grid)\b/i', $prompt) === 1) { return 'services_mega_grid'; }
+        if ($category === 'about' && $prompt !== null && preg_match('/\b(office|studio|workspace|workplace|gallery|inside the studio|our space|showroom|clinic interior)\b/i', $prompt) === 1) {
+            return 'about_office_gallery';
+        }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(sticky|scroll story|detailed services|service chapters)\b/i', $prompt) === 1) { return 'services_sticky_scroll'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(horizontal|sideways|scrolling rail|service rail)\b/i', $prompt) === 1) { return 'services_horizontal'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(tabs|tabbed|interactive tabs|service tabs)\b/i', $prompt) === 1) { return 'services_interactive_tabs'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(mega grid|many services|full capability|capability grid)\b/i', $prompt) === 1) { return 'services_mega_grid'; }
+        if ($category === 'about' && $prompt !== null && preg_match('/\b(award|awards|recognition|recognitions|honours|honors|shortlisted|certification)\b/i', $prompt) === 1) {
+            return 'about_awards_timeline';
+        }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(sticky|scroll story|detailed services|service chapters)\b/i', $prompt) === 1) { return 'services_sticky_scroll'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(horizontal|sideways|scrolling rail|service rail)\b/i', $prompt) === 1) { return 'services_horizontal'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(tabs|tabbed|interactive tabs|service tabs)\b/i', $prompt) === 1) { return 'services_interactive_tabs'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(mega grid|many services|full capability|capability grid)\b/i', $prompt) === 1) { return 'services_mega_grid'; }
+        if ($category === 'about' && $prompt !== null && preg_match('/\b(culture|how we work|working principles|team values|behaviours|behaviors)\b/i', $prompt) === 1) {
+            return 'about_culture_section';
+        }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(sticky|scroll story|detailed services|service chapters)\b/i', $prompt) === 1) { return 'services_sticky_scroll'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(horizontal|sideways|scrolling rail|service rail)\b/i', $prompt) === 1) { return 'services_horizontal'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(tabs|tabbed|interactive tabs|service tabs)\b/i', $prompt) === 1) { return 'services_interactive_tabs'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(mega grid|many services|full capability|capability grid)\b/i', $prompt) === 1) { return 'services_mega_grid'; }
+        if ($category === 'about' && $prompt !== null && preg_match('/\b(brand journey|brand evolution|identity evolution|brand story|rebrand|positioning evolution)\b/i', $prompt) === 1) {
+            return 'about_brand_journey';
+        }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(sticky|scroll story|detailed services|service chapters)\b/i', $prompt) === 1) { return 'services_sticky_scroll'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(horizontal|sideways|scrolling rail|service rail)\b/i', $prompt) === 1) { return 'services_horizontal'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(tabs|tabbed|interactive tabs|service tabs)\b/i', $prompt) === 1) { return 'services_interactive_tabs'; }
+        if ($category === 'services' && $prompt !== null && preg_match('/\b(mega grid|many services|full capability|capability grid)\b/i', $prompt) === 1) { return 'services_mega_grid'; }
+        if ($category === 'about' && $prompt !== null && preg_match('/\b(timeline|history|journey|our story|milestones)\b/i', $prompt) === 1) {
+            return 'about_timeline_story';
+        }
+
+        if ($category === 'stats' && $prompt !== null && preg_match('/\b(revenue|mrr|arr|sales dashboard|commercial dashboard|financial dashboard)\b/i', $prompt) === 1) { return 'stats_revenue_dashboard_premium'; }
+        if ($category === 'stats' && $prompt !== null && preg_match('/\b(growth chart|growth charts|trend|trends|chart|trajectory)\b/i', $prompt) === 1) { return 'stats_growth_charts_premium'; }
+        if ($category === 'stats' && $prompt !== null && preg_match('/\b(achievement|achievements|milestone|milestones|recognition|recognitions)\b/i', $prompt) === 1) { return 'stats_achievements_premium'; }
+        if ($category === 'stats' && $prompt !== null && preg_match('/\b(animated counter|animated counters|counter|counters|numbers|metrics)\b/i', $prompt) === 1) { return 'stats_animated_counters_premium'; }
 
         $sections = [
             'hero' => [
@@ -258,22 +378,25 @@ class LayoutEngine
                 'hero_video_background',
                 'hero_floating_cards',
             ],
-            'services' => ['services_cards', 'services_bento', 'services_bento_premium', 'services_pricing_comparison', 'services_feature_comparison', 'services_hover_cards'],
+            'services' => ['services_cards', 'services_bento', 'services_bento_premium', 'services_pricing_comparison', 'services_feature_comparison', 'services_hover_cards', 'services_sticky_scroll', 'services_horizontal', 'services_interactive_tabs', 'services_mega_grid'],
+            'about' => ['about_timeline_story', 'about_founder_story', 'about_mission_grid', 'about_interactive_stats', 'about_brand_journey', 'about_awards_timeline', 'about_culture_section', 'about_office_gallery'],
+            'portfolio' => ['case_studies_grid', 'portfolio_masonry', 'portfolio_pinterest', 'portfolio_hover_video', 'portfolio_case_study', 'portfolio_before_after', 'portfolio_filterable', 'portfolio_animated', 'portfolio_project_timeline'],
             'feature' => ['feature_image_left', 'feature_image_right'],
-            'pricing' => ['pricing_cards'],
-            'testimonials' => ['testimonials_carousel'],
+            'pricing' => ['pricing_cards', 'pricing_comparison_premium', 'pricing_toggle_premium', 'pricing_enterprise_premium', 'pricing_calculator_premium', 'pricing_credit_premium', 'pricing_agency_premium', 'pricing_feature_matrix_premium'],
+            'testimonials' => ['testimonials_carousel', 'testimonials_video_premium', 'testimonials_scrolling_marquee', 'testimonials_wall_of_love', 'testimonials_card_stack', 'testimonials_trust_dashboard', 'testimonials_review_grid', 'testimonials_review_carousel_pro'],
             'process' => ['process_timeline'],
-            'stats' => ['stats_modern'],
-            'team' => ['team_modern'],
-            'cta' => ['hero_centered_cta', 'image_cta_banner'],
+            'stats' => ['stats_modern', 'stats_animated_counters_premium', 'stats_revenue_dashboard_premium', 'stats_growth_charts_premium', 'stats_achievements_premium'],
+            'team' => ['team_modern', 'team_cards_premium', 'team_timeline_premium', 'team_org_chart_premium', 'team_leadership_premium', 'team_culture_premium', 'team_open_positions_premium'],
+            'cta' => ['hero_centered_cta', 'image_cta_banner', 'cta_glass_premium', 'cta_gradient_premium', 'cta_newsletter_premium', 'cta_book_demo_premium', 'cta_calendly_premium', 'cta_free_trial_premium', 'cta_countdown_premium', 'cta_limited_offer_premium'],
             'faq' => ['faq_accordion'],
-            'contact' => ['contact_form_modern', 'contact_details', 'location_map'],
+            'contact' => ['contact_form_modern', 'contact_details', 'location_map', 'contact_split_premium', 'contact_map_premium', 'contact_appointment_premium', 'contact_support_center_premium', 'contact_faq_premium', 'contact_multistep_premium', 'contact_live_chat_premium'],
             'location' => ['location_map'],
             'case_studies' => ['case_studies_grid'],
-            'portfolio' => ['case_studies_grid'],
             'careers' => ['jobs_list'],
             'jobs' => ['jobs_list'],
             'events' => ['events_grid'],
+            'blog' => ['blog_hub', 'blog_magazine_premium', 'blog_featured_article_premium', 'blog_editors_pick_premium', 'blog_sidebar_news_premium', 'blog_newsletter_premium', 'blog_trending_premium', 'blog_categories_grid_premium', 'blog_author_profile_premium'],
+            'footer' => ['footer_mega_premium', 'footer_agency_premium', 'footer_saas_premium', 'footer_luxury_premium', 'footer_dark_premium', 'footer_minimal_premium'],
         ];
 
         $candidates = $sections[$category] ?? [];
