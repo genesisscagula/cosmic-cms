@@ -3,7 +3,7 @@ import { usePage } from "@inertiajs/react";
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
-import { RepeatableControls } from "../Shared/RepeatableControls";
+import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
@@ -331,6 +331,39 @@ export function PricingCardsBlock({
         onUpdate({ plans });
     };
 
+    const removeFeatureAt = (planIndex, featureIndex) => {
+        const plans = data.plans.map((plan, index) => {
+            if (index !== planIndex || (plan.features?.length || 0) <= 1) return plan;
+            return { ...plan, features: plan.features.filter((_, i) => i !== featureIndex) };
+        });
+        onUpdate({ plans });
+    };
+
+    const addPlan = () => {
+        if (data.plans.length >= 6) return;
+        const source = data.plans.length
+            ? data.plans[data.plans.length - 1]
+            : PricingCardsSchema.defaults.plans[0];
+        onUpdate({
+            plans: [
+                ...data.plans,
+                {
+                    ...source,
+                    title: source?.title ? `${source.title} Copy` : "New Plan",
+                    featured: false,
+                    features: Array.isArray(source?.features)
+                        ? source.features.map((feature) => ({ ...feature }))
+                        : []
+                }
+            ]
+        });
+    };
+
+    const removePlanAt = (planIndex) => {
+        if (data.plans.length <= 1) return;
+        onUpdate({ plans: data.plans.filter((_, index) => index !== planIndex) });
+    };
+
     return (
 
         <section
@@ -396,9 +429,17 @@ export function PricingCardsBlock({
                                 duration-300
                                 hover:-translate-y-2
                                 hover:shadow-2xl
+                                group
                                 ${plan.featured ? "scale-105 ring-2 ring-white/40" : ""}
                             `}
                         >
+
+                            <RepeatableRemoveButton
+                                overlay
+                                label="Remove pricing plan"
+                                disabled={data.plans.length <= 1}
+                                onRemove={() => removePlanAt(index)}
+                            />
 
                             {plan.badge && (
 
@@ -466,7 +507,7 @@ export function PricingCardsBlock({
 
                                     <div
                                         key={featureIndex}
-                                        className="flex items-center gap-3"
+                                        className="group relative flex items-center gap-3 pr-10"
                                     >
 
                                         <svg
@@ -495,6 +536,14 @@ export function PricingCardsBlock({
                                             }
                                         />
 
+                                        <RepeatableRemoveButton
+                                            overlay
+                                            placement="row"
+                                            label="Remove feature"
+                                            disabled={(plan.features?.length || 0) <= 1}
+                                            onRemove={() => removeFeatureAt(index, featureIndex)}
+                                        />
+
                                     </div>
 
                                 ))}
@@ -507,6 +556,7 @@ export function PricingCardsBlock({
                                 canRemove={(plan.features?.length || 0) > 1}
                                 addLabel="Add feature"
                                 removeLabel="Remove last feature"
+                                showRemove={false}
                                 className="justify-start"
                             />
 
@@ -544,6 +594,13 @@ export function PricingCardsBlock({
                     ))}
 
                 </div>
+
+                <RepeatableControls
+                    onAdd={addPlan}
+                    canAdd={data.plans.length < 6}
+                    showRemove={false}
+                    addLabel="Add pricing plan"
+                />
 
             </div>
 

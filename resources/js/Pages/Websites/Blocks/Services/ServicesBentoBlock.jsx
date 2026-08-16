@@ -6,7 +6,7 @@ import { EditableImage } from "../Shared/EditableImage";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { RepeatableControls, cloneLast, removeLast } from "../Shared/RepeatableControls";
+import { RepeatableControls, RepeatableRemoveButton, cloneLast } from "../Shared/RepeatableControls";
 
 
 export const ServicesBentoSchema = {
@@ -243,6 +243,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                         <div
                             key={index}
                             className={`
+                                group
                                 ${theme.card}
                                 border
                                 ${theme.border}
@@ -261,7 +262,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                             `}
                         >
 
-                            <button type="button" onClick={() => { if (services.length > 1) onUpdate({services: services.filter((_, idx) => idx !== index)}); }} disabled={services.length <= 1} className="cosmic-spark-custom-remove absolute right-4 top-4 rounded-full border border-rose-500 bg-rose-600 px-2.5 py-1 text-[10px] font-semibold !text-white shadow-sm transition hover:bg-rose-500 disabled:hidden">Remove</button>
+                            <RepeatableRemoveButton onRemove={() => onUpdate({ services: services.filter((_, idx) => idx !== index) })} disabled={services.length <= 1} label="Remove service" overlay />
 
                             {/* Icon */}
 
@@ -338,10 +339,8 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
 
                 <RepeatableControls
                     onAdd={() => onUpdate({services: cloneLast(services, services[0] || {})})}
-                    onRemove={() => onUpdate({services: removeLast(services, 1)})}
-                    canRemove={services.length > 1}
                     addLabel="Add service"
-                    removeLabel="Remove last service"
+                    showRemove={false}
                 />
 
             </div>

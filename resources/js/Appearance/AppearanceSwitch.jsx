@@ -7,15 +7,22 @@ const options = [
 ];
 
 export default function AppearanceSwitch({ compact = false }) {
-    const { mode, setMode } = useAppearance();
+    const { mode, resolvedTheme, setMode } = useAppearance();
 
     if (compact) {
-        const current = options.find((option) => option.value === mode) ?? options[0];
-        const next = options[(options.findIndex((option) => option.value === mode) + 1) % options.length];
+        const activeTheme = resolvedTheme === 'dark' ? 'dark' : 'light';
         return (
-            <button type="button" onClick={() => setMode(next.value)} className="cosmic-appearance-button cosmic-flat-icon" title={`Appearance: ${current.label}. Switch to ${next.label}.`}>
-                <span aria-hidden="true">{current.icon}</span><span className="sr-only">Appearance: {current.label}</span>
-            </button>
+            <div className={`cosmic-appearance-toggle is-${activeTheme}`} role="group" aria-label="Appearance">
+                <span className="cosmic-appearance-toggle-thumb" aria-hidden="true" />
+                <button type="button" onClick={() => setMode('light')} aria-pressed={activeTheme === 'light'} className={activeTheme === 'light' ? 'is-active is-light' : 'is-light'} title="Light mode">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.93 4.93l1.42 1.42M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.42-1.42M17.66 6.34l1.41-1.41"/></svg>
+                    <span className="sr-only">Light mode</span>
+                </button>
+                <button type="button" onClick={() => setMode('dark')} aria-pressed={activeTheme === 'dark'} className={activeTheme === 'dark' ? 'is-active is-dark' : 'is-dark'} title="Dark mode">
+                    <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20.5 14.2A8.5 8.5 0 0 1 9.8 3.5 8.5 8.5 0 1 0 20.5 14.2Z"/></svg>
+                    <span className="sr-only">Dark mode</span>
+                </button>
+            </div>
         );
     }
 

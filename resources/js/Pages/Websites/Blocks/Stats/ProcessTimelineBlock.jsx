@@ -200,7 +200,7 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
 
                         <div
                             key={index}
-                            className={`relative rounded-3xl ${theme.card} p-8 border ${theme.border}`}
+                            className={`group relative rounded-3xl ${theme.card} p-8 border ${theme.border}`}
                         >
 
                             <EditableText
@@ -225,6 +225,7 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
                                 onRemove={() => onUpdate({ steps: removeAt(steps, index, 1) })}
                                 disabled={steps.length <= 1}
                                 label="Remove step"
+                                overlay
                             />
 
                         </div>
@@ -237,9 +238,8 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
                     onAdd={() => steps.length < 8 && onUpdate({ steps: cloneLast(steps, ProcessTimelineSchema.defaults.steps[0]) })}
                     onRemove={() => onUpdate({ steps: removeAt(steps, steps.length - 1, 1) })}
                     canAdd={steps.length < 8}
-                    canRemove={steps.length > 1}
                     addLabel="Add step"
-                    removeLabel="Remove last step"
+                    showRemove={false}
                 />
 
             </div>

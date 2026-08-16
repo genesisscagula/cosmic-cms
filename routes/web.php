@@ -2,6 +2,7 @@
 
 use App\Helpers\CmsHtmlCompiler;
 use App\Http\Controllers\AI\AIController;
+use App\Http\Controllers\AI\AiLibrarySearchController;
 use App\Http\Controllers\PageTemplateController;
 use App\Http\Controllers\TrialAssetLibraryController;
 use App\Http\Controllers\ImageController;
@@ -634,6 +635,7 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::post('/websites/{website}/update-theme', [PageController::class, 'updateTheme'])->name('websites.update-theme');
 
     Route::post('/ai/generate', [\App\Http\Controllers\AIChatController::class, 'generate'])->middleware('throttle:cosmic-ai')->name('ai.generate');
+    Route::post('/ai/library-search', AiLibrarySearchController::class)->middleware(['throttle:cosmic-ai', \App\Http\Middleware\RejectOversizedRequest::class . ':32'])->name('ai.library-search');
     Route::post('/ai/select-sections', [AIController::class, 'selectSections'])->middleware('throttle:cosmic-ai')->name('ai.select-sections');
     Route::post('/ai/select-section', [AIController::class, 'selectSection'])->middleware('throttle:cosmic-ai')->name('ai.select-section');
     Route::post('/ai/generate-content', [AIController::class, 'generateContent'])->middleware('throttle:cosmic-ai')->name('ai.generate-content');

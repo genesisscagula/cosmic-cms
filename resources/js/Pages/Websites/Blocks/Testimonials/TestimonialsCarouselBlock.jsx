@@ -6,7 +6,7 @@ import { EditableImage } from "../Shared/EditableImage";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { RepeatableControls, cloneLast, removeLast } from "../Shared/RepeatableControls";
+import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeLast } from "../Shared/RepeatableControls";
 
 export const TestimonialsCarouselSchema = {
 
@@ -229,7 +229,7 @@ export function TestimonialsCarouselBlock({
                                 ${theme.border}
                                 rounded-3xl
                                 p-7
-                                relative
+                                group relative
 
                                 transition-all
                                 duration-300
@@ -238,14 +238,12 @@ export function TestimonialsCarouselBlock({
                             `}
                         >
 
-                            <button
-                                type="button"
-                                onClick={() => data.testimonials.length > 1 && onUpdate({ testimonials: data.testimonials.filter((_, i) => i !== index) })}
+                            <RepeatableRemoveButton
+                                overlay
+                                label="Remove testimonial"
                                 disabled={data.testimonials.length <= 1}
-                                className="absolute right-3 top-3 rounded-full border border-rose-500 bg-rose-600 px-2.5 py-1 text-[10px] font-semibold !text-white shadow-sm transition hover:bg-rose-500 disabled:hidden"
-                            >
-                                Remove
-                            </button>
+                                onRemove={() => data.testimonials.length > 1 && onUpdate({ testimonials: data.testimonials.filter((_, i) => i !== index) })}
+                            />
 
                             {/* Stars */}
 
@@ -309,6 +307,7 @@ export function TestimonialsCarouselBlock({
 
                             </div>
 
+
                         </div>
 
                     ))}
@@ -323,6 +322,7 @@ export function TestimonialsCarouselBlock({
                 canRemove={(data.testimonials?.length || 0) > 1}
                 addLabel="Add testimonial"
                 removeLabel="Remove last testimonial"
+                showRemove={false}
             />
 
         </section>

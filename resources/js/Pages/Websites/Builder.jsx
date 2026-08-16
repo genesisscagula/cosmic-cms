@@ -207,6 +207,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [sparkCatalog, setSparkCatalog] = useState([]);
     const [sparkCatalogLoading, setSparkCatalogLoading] = useState(false);
     const [sparkCatalogLoaded, setSparkCatalogLoaded] = useState(false);
+    const [pageTemplateCatalog, setPageTemplateCatalog] = useState([]);
+    const [pageTemplateCatalogLoading, setPageTemplateCatalogLoading] = useState(false);
+    const [pageTemplateCatalogLoaded, setPageTemplateCatalogLoaded] = useState(false);
     const [sparkInsertTarget, setSparkInsertTarget] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
@@ -353,6 +356,39 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             cancelled = true;
         };
     }, [capabilities.canGenerateAi, capabilities.canManageBlocks, trialMode, trialToken]);
+
+
+    useEffect(() => {
+        // Templates follow the same fast-open contract as Sparks: fetch catalog
+        // data once on Builder landing, keep it in memory, and never refetch just
+        // because the modal was closed and reopened. Rendering remains lazy.
+        if (!(capabilities.canGenerateAi || trialMode)) return;
+
+        let cancelled = false;
+        const endpoint = trialMode && trialToken
+            ? `/trial-assets/${trialToken}/templates`
+            : '/page-templates/catalog';
+
+        setPageTemplateCatalogLoading(true);
+        axios.get(endpoint)
+            .then(({ data: responseData }) => {
+                if (cancelled) return;
+                setPageTemplateCatalog(responseData.templates || []);
+                setPageTemplateCatalogLoaded(true);
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setPageTemplateCatalog([]);
+                setPageTemplateCatalogLoaded(false);
+            })
+            .finally(() => {
+                if (!cancelled) setPageTemplateCatalogLoading(false);
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [capabilities.canGenerateAi, trialMode, trialToken]);
 
     const trialActionCosts = {
         page_style: Number(cosmicPricing?.trial_actions?.page_style || 20),
@@ -3390,6 +3426,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     onThemeChange={handleThemeChange}
                     themeAccess={themeAccess}
                     customTheme={globalSelections?.custom_brand_theme}
+                    preloadedCatalog={pageTemplateCatalog}
+                    preloadedCatalogLoading={pageTemplateCatalogLoading}
+                    preloadedCatalogLoaded={pageTemplateCatalogLoaded}
                     hasLogo={hasRealBrandLogo}
                     brandMatchNeeded={brandMatchNeeded}
                     onMatchBrandToLogo={matchThemeToLogo}

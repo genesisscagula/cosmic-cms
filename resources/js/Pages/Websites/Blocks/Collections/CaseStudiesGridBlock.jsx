@@ -1,6 +1,7 @@
 import { usePage } from "@inertiajs/react";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
+import { RepeatableRemoveButton } from "../Shared/RepeatableControls";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 
 const STUDY_PRESETS = [
@@ -51,7 +52,7 @@ export function CaseStudiesGridBlock({ block, blockIndex, onUpdate, globalTheme 
                 </div>
                 <div className="grid gap-5 lg:grid-cols-2">
                     {data.studies.map((study, index) => (
-                        <article key={index} className={`group overflow-hidden rounded-3xl border ${theme.border} ${theme.card} ${index === 0 ? "lg:col-span-2 lg:grid lg:grid-cols-2" : ""}`}>
+                        <article key={index} className={`group relative overflow-hidden rounded-3xl border ${theme.border} ${theme.card} ${index === 0 ? "lg:col-span-2 lg:grid lg:grid-cols-2" : ""}`}>
                             <EditableImage websiteId={website?.id} blockIndex={blockIndex} src={study.image_url || STUDY_PRESETS[index % STUDY_PRESETS.length].image_url} className={`w-full ${index === 0 ? "min-h-[18rem] lg:h-full" : "aspect-[16/10]"}`} onSave={(image_url) => updateStudy(index, "image_url", image_url)} />
                             <div className={`flex flex-col justify-center p-6 sm:p-8 ${index === 0 ? "lg:p-10" : ""}`}>
                                 <EditableText value={study.category} className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`} onSave={(category) => updateStudy(index, "category", category)} />
@@ -59,8 +60,8 @@ export function CaseStudiesGridBlock({ block, blockIndex, onUpdate, globalTheme 
                                 <EditableText value={study.summary} isTextArea className={`mt-4 block text-sm leading-6 ${theme.sub}`} onSave={(summary) => updateStudy(index, "summary", summary)} />
                                 <EditableText value={study.result} className={`mt-6 block text-sm font-semibold ${theme.text}`} onSave={(result) => updateStudy(index, "result", result)} />
                                 <EditableText value={study.link_label} className={`mt-4 block text-sm font-semibold ${theme.text}`} onSave={(link_label) => updateStudy(index, "link_label", link_label)} />
-                                <button type="button" onClick={() => removeStudy(index)} disabled={data.studies.length <= 1} className="cosmic-spark-custom-remove mt-5 inline-flex min-h-9 w-fit items-center justify-center rounded-lg border border-rose-500 bg-rose-600 px-3 py-2 text-xs font-bold !text-white shadow-sm transition hover:bg-rose-500 disabled:cursor-not-allowed disabled:border-slate-400 disabled:bg-slate-300 disabled:!text-slate-600 disabled:opacity-80">Remove case study</button>
                             </div>
+                            <RepeatableRemoveButton overlay label="Remove case study" disabled={data.studies.length <= 1} onRemove={() => removeStudy(index)} />
                         </article>
                     ))}
                 </div>

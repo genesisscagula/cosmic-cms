@@ -1,5 +1,6 @@
 import axios from 'axios';
-import { useEffect, useMemo, useState } from 'react';
+import { memo, useDeferredValue, useEffect, useMemo, useState } from 'react';
+import useInfiniteReveal from '../../../Hooks/useInfiniteReveal';
 import { showCosmicNotification } from '../../../Components/CosmicNotification';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { BlockRegistry } from '../BlockRegistry';
@@ -26,8 +27,8 @@ function buildBlocks(template, previewMode = false) {
     }).filter((block) => BlockRegistry[block.type]);
 }
 
-function TemplateMiniPreview({ template, websiteTheme }) {
-    const blocks = buildBlocks(template, true).slice(0, 6);
+const TemplateMiniPreview = memo(function TemplateMiniPreview({ template, websiteTheme }) {
+    const blocks = useMemo(() => buildBlocks(template, true).slice(0, 6), [template]);
 
     return (
         <div className="h-52 overflow-hidden rounded-xl bg-white text-slate-900">
@@ -48,7 +49,7 @@ function TemplateMiniPreview({ template, websiteTheme }) {
             </div>
         </div>
     );
-}
+});
 
 export default function PageTemplatesModal({
     open,
@@ -68,11 +69,18 @@ export default function PageTemplatesModal({
     brandMatchNeeded,
     onMatchBrandToLogo,
     brandMatchBusy,
+    preloadedCatalog = [],
+    preloadedCatalogLoading = false,
+    preloadedCatalogLoaded = false,
 }) {
     const { setBalance } = useCreditBalance();
-    const [templates, setTemplates] = useState([]);
+    const [templates, setTemplates] = useState(() => preloadedCatalogLoaded ? preloadedCatalog : []);
     const [tab, setTab] = useState('marketplace');
     const [query, setQuery] = useState('');
+    const deferredQuery = useDeferredValue(query);
+    const [aiSearchBusy, setAiSearchBusy] = useState(false);
+    const [aiResults, setAiResults] = useState(null);
+    const [aiPrompt, setAiPrompt] = useState('');
     const [tag, setTag] = useState('All');
     const [busy, setBusy] = useState(null);
     const [selected, setSelected] = useState(null);
@@ -86,7 +94,14 @@ export default function PageTemplatesModal({
     const [deleteTarget, setDeleteTarget] = useState(null);
 
     useEffect(() => {
-        if (!open) return;
+        if (!preloadedCatalogLoaded) return;
+        setTemplates(preloadedCatalog || []);
+    }, [preloadedCatalog, preloadedCatalogLoaded]);
+
+    useEffect(() => {
+        // Builder preloads this catalog on landing. Only fall back to a modal-time
+        // request when that preload was unavailable, preventing repeat fetches on reopen.
+        if (!open || preloadedCatalogLoaded || preloadedCatalogLoading || templates.length > 0) return;
 
         axios
             .get(trialMode && trialToken ? `/trial-assets/${trialToken}/templates` : '/page-templates/catalog')
@@ -96,24 +111,81 @@ export default function PageTemplatesModal({
                 message: 'Please refresh and try again.',
                 tone: 'error',
             }));
-    }, [open, trialMode, trialToken]);
+    }, [open, preloadedCatalogLoaded, preloadedCatalogLoading, templates.length, trialMode, trialToken]);
 
     const tags = useMemo(
         () => ['All', ...new Set(templates.flatMap((item) => item.tags || []))],
         [templates],
     );
 
-    const visible = useMemo(() => templates.filter((item) => {
-        if (tab === 'marketplace' && item.saved) return false;
-        if (tab === 'purchased' && !item.purchased) return false;
-        if (tab === 'saved' && !item.saved) return false;
-        if (tab === 'favorites' && !item.favorited) return false;
-        if (tag !== 'All' && !(item.tags || []).includes(tag)) return false;
+    const normalizedQuery = deferredQuery.trim().toLowerCase();
+    const aiResultMap = useMemo(() => new Map((aiResults || []).map((result, index) => [result.id, { ...result, rank: index }])), [aiResults]);
+    const visible = useMemo(() => {
+        const filtered = templates.filter((item) => {
+            if (tab === 'marketplace' && item.saved) return false;
+            if (tab === 'purchased' && !item.purchased) return false;
+            if (tab === 'saved' && !item.saved) return false;
+            if (tab === 'favorites' && !item.favorited) return false;
+            if (tag !== 'All' && !(item.tags || []).includes(tag)) return false;
 
-        return `${item.name} ${item.description} ${(item.tags || []).join(' ')}`
-            .toLowerCase()
-            .includes(query.trim().toLowerCase());
-    }), [templates, tab, tag, query]);
+            if (aiResults) return aiResultMap.has(item.key);
+            if (!normalizedQuery) return true;
+
+            return `${item.name} ${item.description} ${(item.tags || []).join(' ')} ${(item.aliases || []).join(' ')} ${(item.industry || []).join(' ')}`
+                .toLowerCase()
+                .includes(normalizedQuery);
+        });
+
+        if (aiResults) {
+            filtered.sort((a, b) => (aiResultMap.get(a.key)?.rank ?? 999) - (aiResultMap.get(b.key)?.rank ?? 999));
+        }
+
+        return filtered;
+    }, [templates, tab, tag, normalizedQuery, aiResults, aiResultMap]);
+
+    const runAiSearch = async () => {
+        const prompt = query.trim();
+        if (aiSearchBusy || prompt.length < 2 || trialMode || tab !== 'marketplace') return;
+
+        setAiSearchBusy(true);
+        try {
+            const { data } = await axios.post('/ai/library-search', {
+                type: 'templates',
+                prompt,
+                limit: 8,
+            });
+            const results = Array.isArray(data?.results) ? data.results : [];
+            setAiResults(results);
+            setAiPrompt(prompt);
+            setTag('All');
+            if (!results.length) {
+                showCosmicNotification({
+                    title: 'No AI matches yet',
+                    message: 'Try describing the industry, style, audience, or features you want.',
+                    tone: 'warning',
+                });
+            }
+        } catch (error) {
+            showCosmicNotification({
+                title: 'AI Template Search unavailable',
+                message: error.response?.data?.message || 'Normal template search is still available.',
+                tone: 'error',
+            });
+        } finally {
+            setAiSearchBusy(false);
+        }
+    };
+
+    const clearAiSearch = () => {
+        setAiResults(null);
+        setAiPrompt('');
+    };
+
+    const { visibleItems: revealedTemplates, hasMore, sentinelRef } = useInfiniteReveal(visible, {
+        batchSize: 12,
+        resetKey: `${tab}|${tag}|${normalizedQuery}|${aiPrompt}`,
+        rootMargin: '420px 0px',
+    });
 
     const isInstalling = Boolean(selected && busy === `install-${selected.key}`);
     const isPersonalizing = Boolean(isInstalling && mode === 'personalized');
@@ -354,20 +426,50 @@ export default function PageTemplatesModal({
                             <button
                                 key={value}
                                 type="button"
-                                onClick={() => setTab(value)}
+                                onClick={() => { setTab(value); clearAiSearch(); }}
                                 className={`cosmic-template-tab rounded-full px-4 py-2 text-xs font-bold capitalize ${tab === value ? 'is-active' : ''}`}
                             >
                                 {trialMode && value === 'marketplace' ? 'Trial Templates' : value === 'saved' ? 'Saved Templates' : value}
                             </button>
                         ))}
 
-                        <input
-                            value={query}
-                            onChange={(e) => setQuery(e.target.value)}
-                            placeholder="Search templates..."
-                            className="cosmic-template-input ml-auto h-9 min-w-48 rounded-xl border px-3 text-xs outline-none"
-                        />
+                        <div className="ml-auto flex min-w-0 items-center gap-2">
+                            <input
+                                value={query}
+                                onChange={(e) => {
+                                    setQuery(e.target.value);
+                                    if (aiResults) clearAiSearch();
+                                }}
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter' && !trialMode && tab === 'marketplace') {
+                                        event.preventDefault();
+                                        runAiSearch();
+                                    }
+                                }}
+                                placeholder="Search, or describe the website you need..."
+                                className="cosmic-template-input h-9 min-w-52 sm:min-w-80 rounded-xl border px-3 text-xs outline-none"
+                            />
+                            {!trialMode && tab === 'marketplace' && (
+                                <button
+                                    type="button"
+                                    disabled={aiSearchBusy || query.trim().length < 2}
+                                    onClick={runAiSearch}
+                                    className="cosmic-template-accent inline-flex h-9 shrink-0 items-center gap-1.5 rounded-xl px-3 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50"
+                                    title="Let Luna rank the best matching Templates"
+                                >
+                                    <span aria-hidden="true">✦</span>
+                                    {aiSearchBusy ? 'Searching…' : 'Ask Luna'}
+                                </button>
+                            )}
+                        </div>
                     </div>
+
+                    {aiResults && (
+                        <div className="cosmic-template-muted mt-3 flex flex-wrap items-center gap-2 text-xs">
+                            <span><b>✦ Luna results</b> for “{aiPrompt}” · {visible.length} match{visible.length === 1 ? '' : 'es'}</span>
+                            <button type="button" onClick={clearAiSearch} className="cosmic-template-secondary rounded-full border px-2.5 py-1 text-[11px] font-semibold">Clear AI results</button>
+                        </div>
+                    )}
 
                     <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
                         {tags.map((value) => (
@@ -385,7 +487,7 @@ export default function PageTemplatesModal({
 
                 <div className="overflow-y-auto p-5 sm:p-7">
                     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                        {visible.map((template) => (
+                        {revealedTemplates.map((template) => (
                             <article key={template.key} className="cosmic-template-card overflow-hidden rounded-2xl border">
                                 <div
                                     role="button"
@@ -406,6 +508,9 @@ export default function PageTemplatesModal({
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <h3 className="font-semibold">{template.name}</h3>
+                                            {aiResults && aiResultMap.get(template.key)?.reason && (
+                                                <p className="mt-1 text-[11px] leading-4 text-emerald-600 dark:text-emerald-300">✦ {aiResultMap.get(template.key).reason}</p>
+                                            )}
                                             <div className="mt-1 flex flex-wrap gap-1">
                                                 {(template.tags || []).slice(0, 3).map((itemTag) => (
                                                     <span key={itemTag} className="cosmic-template-tag rounded-full px-2 py-0.5 text-[9px] font-bold">
@@ -464,6 +569,12 @@ export default function PageTemplatesModal({
                             </article>
                         ))}
                     </div>
+
+                    {hasMore && (
+                        <div ref={sentinelRef} className="flex justify-center py-5" aria-hidden="true">
+                            <span className="cosmic-template-muted text-[11px]">Loading more templates…</span>
+                        </div>
+                    )}
 
                     {!visible.length && (
                         <div className="cosmic-template-muted py-16 text-center text-sm">{tab === 'saved' ? 'No saved templates yet. Save a page from the Builder and it will appear here.' : 'No templates match this view.'}</div>

@@ -37,18 +37,19 @@ export function LatestResourcesBlock({ block, onUpdate, globalTheme }) {
     const updateResourceButton = (index, cta_label, cta_url) => onUpdate({ resources: data.resources.map((resource, resourceIndex) => resourceIndex === index ? { ...resource, cta_label, cta_url } : resource) });
 
     const card = (resource, index, compact = false) => (
-        <article key={index} className={`group border ${theme.border} ${theme.card} shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${compact ? "grid gap-4 rounded-2xl p-6 sm:grid-cols-[130px_1fr]" : "rounded-2xl p-7 sm:p-8"}`}>
+        <article key={index} className={`group relative border ${theme.border} ${theme.card} shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${compact ? "grid gap-4 rounded-2xl p-6 sm:grid-cols-[130px_1fr]" : "rounded-2xl p-7 sm:p-8"}`}>
+            <RepeatableRemoveButton
+                overlay
+                onRemove={() => onUpdate({ resources: removeAt(data.resources, index, 1) })}
+                disabled={data.resources.length <= 1}
+                label="Remove resource"
+            />
             {compact && <div className={`flex min-h-28 items-center justify-center rounded-xl ${theme.bg} text-3xl font-black ${theme.sub}`}>0{index + 1}</div>}
             <div>
                 <EditableText value={resource.eyebrow} className={`block text-[11px] font-semibold uppercase tracking-[0.22em] ${theme.sub}`} onSave={(eyebrow) => updateResource(index, "eyebrow", eyebrow)} />
                 <EditableText value={resource.title} className={`mt-4 block text-2xl font-bold leading-tight tracking-tight ${theme.text}`} onSave={(title) => updateResource(index, "title", title)} />
                 <EditableText value={resource.text} isTextArea className={`mt-4 block text-sm leading-6 ${theme.sub}`} onSave={(text) => updateResource(index, "text", text)} />
                 <EditableButton label={resource.cta_label} url={resource.cta_url} className={`mt-7 inline-flex text-sm font-semibold ${theme.text} underline underline-offset-4 transition`} onSave={(cta_label, cta_url) => updateResourceButton(index, cta_label, cta_url)} />
-                <RepeatableRemoveButton
-                    onRemove={() => onUpdate({ resources: removeAt(data.resources, index, 1) })}
-                    disabled={data.resources.length <= 1}
-                    label="Remove resource"
-                />
             </div>
         </article>
     );
@@ -72,6 +73,7 @@ export function LatestResourcesBlock({ block, onUpdate, globalTheme }) {
                     canRemove={data.resources.length > 1}
                     addLabel="Add resource"
                     removeLabel="Remove last resource"
+                    showRemove={false}
                 />
             </div>
         </section>

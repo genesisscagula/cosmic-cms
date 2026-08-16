@@ -193,6 +193,32 @@ body { background: var(--cosmic-bg); color: var(--cosmic-text); }
     color: var(--cosmic-text); box-shadow: var(--cosmic-shadow); transition: transform .15s ease, background .2s ease;
 }
 .cosmic-appearance-button:hover { transform: translateY(-1px); background: var(--cosmic-surface-muted); }
+
+/* Premium day/night appearance switch — dashboard compact control. */
+.cosmic-appearance-toggle {
+    position: relative; display: inline-grid; grid-template-columns: repeat(2, 2rem); align-items: center;
+    padding: .2rem; border: 1px solid var(--cosmic-border); border-radius: 999px;
+    background: #e5e7eb; box-shadow: 0 8px 24px rgba(15,23,42,.10);
+    transition: background-color .2s ease, border-color .2s ease, box-shadow .2s ease; isolation: isolate;
+}
+.cosmic-appearance-toggle.is-dark { background: #20232b; border-color: rgba(255,255,255,.12); box-shadow: 0 8px 24px rgba(0,0,0,.24); }
+.cosmic-appearance-toggle-thumb {
+    position: absolute; z-index: 0; left: .2rem; top: .2rem; width: 2rem; height: 2rem; border-radius: 999px;
+    background: #fff; box-shadow: 0 2px 8px rgba(15,23,42,.14); transform: translateX(0);
+    transition: transform .2s cubic-bezier(.2,.8,.2,1), background-color .2s ease, box-shadow .2s ease;
+}
+.cosmic-appearance-toggle.is-dark .cosmic-appearance-toggle-thumb { transform: translateX(2rem); background: #343844; box-shadow: 0 2px 8px rgba(0,0,0,.28); }
+.cosmic-appearance-toggle button {
+    position: relative; z-index: 1; display: inline-flex; width: 2rem; height: 2rem; align-items: center; justify-content: center;
+    border: 0; border-radius: 999px; background: transparent; color: #9ca3af; transition: color .18s ease, transform .18s ease;
+}
+.cosmic-appearance-toggle button:hover { transform: scale(1.06); }
+.cosmic-appearance-toggle button svg { width: 1.05rem; height: 1.05rem; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+.cosmic-appearance-toggle button.is-dark svg { fill: currentColor; stroke-width: 1.6; }
+.cosmic-appearance-toggle button.is-light.is-active { color: #eab308; }
+.cosmic-appearance-toggle button.is-dark.is-active { color: #a78bfa; }
+.cosmic-appearance-toggle button:focus-visible { outline: 2px solid #10b981 !important; outline-offset: 2px !important; }
+@media (prefers-reduced-motion: reduce) { .cosmic-appearance-toggle, .cosmic-appearance-toggle-thumb, .cosmic-appearance-toggle button { transition: none; } }
 .cosmic-appearance-segment { display: inline-flex; gap: .25rem; padding: .25rem; border: 1px solid var(--cosmic-border); border-radius: .9rem; background: var(--cosmic-surface-muted); }
 .cosmic-appearance-segment button { display: inline-flex; align-items: center; gap: .4rem; border-radius: .7rem; padding: .55rem .8rem; color: var(--cosmic-text-muted); font-size: .8rem; font-weight: 600; }
 .cosmic-appearance-segment button.is-active { background: var(--cosmic-surface); color: var(--cosmic-text); box-shadow: 0 4px 14px rgba(15,23,42,.08); }

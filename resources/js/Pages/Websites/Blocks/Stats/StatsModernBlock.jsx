@@ -86,7 +86,7 @@ export function StatsModernBlock({ block, onUpdate, globalTheme }) {
                     {data.metrics.slice(0, 4).map((metric, index) => (
                         <article
                             key={index}
-                            className={`min-w-0 border-b p-6 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 lg:p-7 ${theme.border}`}
+                            className={`group relative min-w-0 border-b p-6 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 lg:p-7 ${theme.border}`}
                         >
                             <EditableText
                                 value={metric.value}
@@ -106,6 +106,12 @@ export function StatsModernBlock({ block, onUpdate, globalTheme }) {
                                     onSave={(description) => updateMetric(index, "description", description)}
                                 />
                             )}
+                            <RepeatableRemoveButton
+                                onRemove={() => onUpdate({ metrics: removeAt(data.metrics, index, 1) })}
+                                disabled={data.metrics.length <= 1}
+                                label="Remove metric"
+                                overlay
+                            />
                         </article>
                     ))}
                 </div>
@@ -113,9 +119,8 @@ export function StatsModernBlock({ block, onUpdate, globalTheme }) {
                     onAdd={() => data.metrics.length < 4 && onUpdate({ metrics: cloneLast(data.metrics, StatsModernSchema.defaults.metrics[0]) })}
                     onRemove={() => onUpdate({ metrics: removeAt(data.metrics, data.metrics.length - 1, 1) })}
                     canAdd={data.metrics.length < 4}
-                    canRemove={data.metrics.length > 1}
                     addLabel="Add metric"
-                    removeLabel="Remove last metric"
+                    showRemove={false}
                 />
             </div>
         </section>

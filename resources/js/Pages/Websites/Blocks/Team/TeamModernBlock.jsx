@@ -178,7 +178,7 @@ export function TeamModernBlock({ block, blockIndex, onUpdate, globalTheme }) {
                     {data.members.map((member, index) => (
                         <article
                             key={index}
-                            className={`overflow-hidden rounded-2xl border ${theme.border} ${theme.card}`}
+                            className={`group relative overflow-hidden rounded-2xl border ${theme.border} ${theme.card}`}
                         >
                             <EditableImage
                                 websiteId={website?.id}
@@ -210,6 +210,7 @@ export function TeamModernBlock({ block, blockIndex, onUpdate, globalTheme }) {
                                     onRemove={() => removeMember(index)}
                                     disabled={data.members.length <= 1}
                                     label="Remove member"
+                                    overlay
                                 />
                             </div>
                         </article>
@@ -219,9 +220,8 @@ export function TeamModernBlock({ block, blockIndex, onUpdate, globalTheme }) {
                     onAdd={() => data.members.length < 8 && addMember()}
                     onRemove={() => onUpdate({ members: removeAt(data.members, data.members.length - 1, 1) })}
                     canAdd={data.members.length < 8}
-                    canRemove={data.members.length > 1}
                     addLabel="Add team member"
-                    removeLabel="Remove last member"
+                    showRemove={false}
                 />
             </div>
         </section>

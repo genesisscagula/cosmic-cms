@@ -2,7 +2,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { BoundedCountControls } from "../Shared/RepeatableControls";
+import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
 
 export const ServicesHoverCardsSchema = {
     type: "services_hover_cards",
@@ -53,7 +53,8 @@ export function ServicesHoverCardsBlock({ block, onUpdate, globalTheme }) {
             </div>
 
             <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                {cards.map((word) => <article key={word} data-cosmic-services-hover-card="true" style={{ "--cosmic-hover-card-bg": hoverBackground, "--cosmic-hover-card-fg": hoverForeground }} className={`group relative min-h-[300px] overflow-hidden rounded-[1.75rem] border p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl sm:p-7 ${border} ${card}`}>
+                {cards.map((word, cardIndex) => <article key={word} data-cosmic-services-hover-card="true" style={{ "--cosmic-hover-card-bg": hoverBackground, "--cosmic-hover-card-fg": hoverForeground }} className={`group relative min-h-[300px] overflow-hidden rounded-[1.75rem] border p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl sm:p-7 ${border} ${card}`}>
+                    <RepeatableRemoveButton overlay label="Remove service card" disabled={cardCount<=1} onRemove={()=>{const all=["one","two","three","four","five","six"];const fields=["number","title","summary","text","link"];const patch={service_count:cardCount-1};for(let x=cardIndex;x<cardCount-1;x++){fields.forEach(f=>patch[`card_${all[x]}_${f}`]=data[`card_${all[x+1]}_${f}`]??"");}onUpdate(patch)}}/>
                     <div className="flex items-start justify-between gap-4">
                         <EditableText value={data[`card_${word}_number`]} className={`text-xs font-black tracking-[.2em] ${muted}`} onSave={save(`card_${word}_number`)} />
                         <span className={`flex h-10 w-10 items-center justify-center rounded-full border text-lg transition group-hover:rotate-45 ${border}`}>↗</span>
@@ -66,7 +67,7 @@ export function ServicesHoverCardsBlock({ block, onUpdate, globalTheme }) {
                     </div>
                 </article>)}
             </div>
-            <BoundedCountControls count={cardCount} min={1} max={6} addLabel="Add service card" removeLabel="Remove last card" onChange={service_count=>onUpdate({service_count})}/>
+            <RepeatableControls onAdd={()=>cardCount<6&&onUpdate({service_count:cardCount+1})} canAdd={cardCount<6} showRemove={false} addLabel="Add service card"/>
         </div>
     </section>;
 }

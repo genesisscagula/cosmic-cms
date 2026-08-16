@@ -3,6 +3,7 @@ import { createPortal } from "react-dom";
 import axios from "axios";
 import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
+import { RepeatableRemoveButton } from "../Shared/RepeatableControls";
 import MediaPickerModal from "@/Components/Media/MediaPickerModal";
 
 export const BlogHubSchema = {
@@ -454,7 +455,8 @@ export function BlogHubBlock({
                     </article>
                 ) : (
                     <>
-                <article className={`${showIntro ? "mt-12" : ""} grid overflow-hidden rounded-3xl border ${theme.border} ${theme.card} ${variant === "blog-cards-02" ? "md:grid-cols-[.8fr_1.2fr]" : variant === "blog-cards-03" ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
+                <article className={`${showIntro ? "mt-12" : ""} group relative grid overflow-hidden rounded-3xl border ${theme.border} ${theme.card} ${variant === "blog-cards-02" ? "md:grid-cols-[.8fr_1.2fr]" : variant === "blog-cards-03" ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
+                    {hasSavedPosts && isBuilder && <RepeatableRemoveButton overlay onRemove={() => requestDeletePost(featuredPost)} label="Delete featured post" />}
                     {hasSavedPosts ? (
                         <img src={featuredPost.image_url || "/storage/cms-images/background/background-1.avif"} alt={featuredPost.title || "Featured article"} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`} />
                     ) : (
@@ -466,7 +468,7 @@ export function BlogHubBlock({
                                 <span className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`}>{featuredPost.category || "Featured article"}</span>
                                 <h3 className={`mt-4 text-3xl font-bold tracking-tight ${theme.text}`}>{featuredPost.title}</h3>
                                 {featuredPost.excerpt && <p className={`mt-4 text-base leading-7 ${theme.sub}`}>{featuredPost.excerpt}</p>}
-                                {isBuilder && <div className="mt-7 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit featured post</button><button type="button" onClick={() => requestDeletePost(featuredPost)} className="cosmic-spark-custom-remove ml-auto inline-flex min-h-9 items-center justify-center rounded-lg border border-rose-500 bg-rose-600 px-3 py-2 text-xs font-bold !text-white shadow-sm transition hover:bg-rose-500">Delete post</button></div>}
+                                {isBuilder && <div className="mt-7 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit featured post</button></div>}
                             </>
                         ) : (
                             <>
@@ -481,7 +483,8 @@ export function BlogHubBlock({
 
                 <div className={`mt-7 grid gap-5 ${variant === "blog-cards-02" ? "lg:grid-cols-2" : variant === "blog-cards-03" ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
                     {visiblePosts.slice(0, 4).map((post, index) => (
-                        <article key={post.id || index} className={`overflow-hidden rounded-2xl border ${theme.border} ${theme.card}`}>
+                        <article key={post.id || index} className={`group relative overflow-hidden rounded-2xl border ${theme.border} ${theme.card}`}>
+                            {hasSavedPosts && isBuilder && <RepeatableRemoveButton overlay onRemove={() => requestDeletePost(post)} label="Delete post" />}
                             {hasSavedPosts ? (
                                 <img src={post.image_url || "/storage/cms-images/background/background-1.avif"} alt="" className="h-44 w-full object-cover" />
                             ) : (
@@ -496,7 +499,7 @@ export function BlogHubBlock({
                                         </div>
                                         <h3 className={`mt-3 text-lg font-bold leading-snug ${theme.text}`}>{post.title}</h3>
                                         {post.excerpt && <p className={`mt-3 text-sm leading-6 ${theme.sub}`}>{post.excerpt}</p>}
-                                        {isBuilder && <div className="mt-4 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit post</button><button type="button" onClick={() => requestDeletePost(post)} className="cosmic-spark-custom-remove ml-auto inline-flex min-h-9 items-center justify-center rounded-lg border border-rose-500 bg-rose-600 px-3 py-2 text-xs font-bold !text-white shadow-sm transition hover:bg-rose-500">Delete post</button></div>}
+                                        {isBuilder && <div className="mt-4 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit post</button></div>}
                                     </>
                                 ) : (
                                     <>

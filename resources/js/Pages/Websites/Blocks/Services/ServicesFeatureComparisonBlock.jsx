@@ -2,7 +2,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { BoundedCountControls } from "../Shared/RepeatableControls";
+import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
 
 export const ServicesFeatureComparisonSchema = {
     type: "services_feature_comparison",
@@ -78,8 +78,9 @@ export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme })
                         <EditableText value={data[`${option.key}_text`]} isTextArea className={`mt-4 block text-sm leading-6 ${option.featured && !isPrimary ? "text-white/65" : muted}`} onSave={save(`${option.key}_text`)} />
                     </article>)}
 
-                    {words.map((word) => <div key={word} className="contents">
-                        <div className={`border-b p-5 lg:p-6 ${border} ${baseCard}`}>
+                    {words.map((word, rowIndex) => <div key={word} className="contents">
+                        <div className={`group relative border-b p-5 pr-12 lg:p-6 lg:pr-12 ${border} ${baseCard}`}>
+                            <RepeatableRemoveButton overlay placement="row" label="Remove feature row" disabled={rowCount<=1} onRemove={()=>{const all=["one","two","three","four","five","six","seven","eight"];const patch={feature_row_count:rowCount-1};for(let x=rowIndex;x<rowCount-1;x++){const a=all[x],b=all[x+1];patch[`feature_${a}`]=data[`feature_${b}`]??"";options.forEach(({key})=>{patch[`${key}_${a}`]=data[`${key}_${b}`]??"";});}onUpdate(patch)}} />
                             <EditableText value={data[`feature_${word}`]} className="text-sm font-semibold" onSave={save(`feature_${word}`)} />
                         </div>
                         {options.map((option) => <div key={`${word}-${option.key}`} className={`border-b p-5 text-sm lg:p-6 ${border} ${option.featured ? featuredCard : baseCard}`}>
@@ -89,7 +90,7 @@ export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme })
                 </div>
             </div>
 
-            <BoundedCountControls count={rowCount} min={1} max={8} addLabel="Add feature row" removeLabel="Remove last row" onChange={feature_row_count=>onUpdate({feature_row_count})}/>
+            <RepeatableControls onAdd={()=>rowCount<8&&onUpdate({feature_row_count:rowCount+1})} canAdd={rowCount<8} showRemove={false} addLabel="Add feature row"/>
             <div className="mt-8 flex flex-col items-center gap-4 text-center">
                 <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[48px] items-center justify-center rounded-full px-7 text-sm font-bold ${buttonClass}`} onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })} />
                 <EditableText value={data.footnote} isTextArea className={`max-w-3xl text-xs leading-5 ${muted}`} onSave={save("footnote")} />

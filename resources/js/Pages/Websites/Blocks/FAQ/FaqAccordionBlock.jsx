@@ -53,19 +53,18 @@ export function FaqAccordionBlock({ block, onUpdate, globalTheme }) {
                 <div className={`overflow-hidden rounded-2xl border ${theme.border} ${theme.card}`}>
                     {data.faqs.map((faq, index) => {
                         const isOpen = openIndex === index;
-                        return <article key={index} className={`border-b last:border-b-0 ${theme.border}`}>
+                        return <article key={index} className={`group relative border-b last:border-b-0 ${theme.border}`}>
                             <div className="flex items-start gap-4 p-5 sm:p-6">
                                 <EditableText value={faq.question} className={`flex-1 text-base font-semibold ${theme.text}`} onSave={(question) => updateFaq(index, "question", question)} />
                                 <button type="button" aria-label={isOpen ? "Collapse answer" : "Expand answer"} aria-expanded={isOpen} onClick={() => setOpenIndex(isOpen ? -1 : index)} className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border text-lg transition ${theme.border} ${theme.text}`}>{isOpen ? "−" : "+"}</button>
                             </div>
                             {isOpen && <div className="px-5 pb-5 sm:px-6 sm:pb-6"><EditableText value={faq.answer} isTextArea className={`block text-sm leading-6 ${theme.sub}`} onSave={(answer) => updateFaq(index, "answer", answer)} /></div>}
-                            <div className="px-5 pb-4 sm:px-6">
-                                <RepeatableRemoveButton
-                                    onRemove={() => onUpdate({ faqs: removeAt(data.faqs, index, 1) })}
-                                    disabled={data.faqs.length <= 1}
-                                    label="Remove question"
-                                />
-                            </div>
+                            <RepeatableRemoveButton
+                                overlay
+                                onRemove={() => onUpdate({ faqs: removeAt(data.faqs, index, 1) })}
+                                disabled={data.faqs.length <= 1}
+                                label="Remove question"
+                            />
                         </article>;
                     })}
                 </div>
@@ -77,6 +76,7 @@ export function FaqAccordionBlock({ block, onUpdate, globalTheme }) {
                         canRemove={data.faqs.length > 1}
                         addLabel="Add question"
                         removeLabel="Remove last question"
+                        showRemove={false}
                     />
                 </div>
             </div>

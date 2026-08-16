@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { getEffectiveTheme } from '../../../../theme/Theme';
 import { colorFamilies } from '../../../../theme/colorFamilies';
-import { BoundedCountControls } from "../Shared/RepeatableControls";
+import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
 
 const schema = (type, title, purpose, defaults = {}) => ({
     type,
@@ -248,9 +248,24 @@ export function CommercePromoSplitBlock({ block, globalTheme, commerce }) {
 
 export function CommerceBenefitsStripBlock({ block, onUpdate, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
-    const benefitCount=Math.max(1,Math.min(4,Number(block.benefit_count)||4));
-    const items=[1,2,3,4].slice(0,benefitCount).map((i)=>({title:block[`benefit_${i}_title`], text:block[`benefit_${i}_text`]})).filter((item)=>item.title);
-    return <Section colors={c.colors}><div><div className="rounded-[26px] border px-6 py-7 sm:px-8" style={{borderColor:c.colors.border, background:c.colors.surface}}>{block.heading ? <h2 className="mb-6 text-xl font-semibold tracking-[-0.03em]">{block.heading}</h2> : null}<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{items.map((item,index)=><div key={index} className="flex gap-3"><div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black" style={{background:`${c.colors.accent}1F`, color:c.colors.accent}}>✓</div><div><h3 className="text-sm font-bold">{item.title}</h3><p className="mt-1 text-xs leading-5" style={{color:c.colors.muted}}>{item.text}</p></div></div>)}</div></div><BoundedCountControls count={benefitCount} min={1} max={4} addLabel="Add benefit" removeLabel="Remove last benefit" onChange={benefit_count=>onUpdate?.({benefit_count})}/></div></Section>;
+    const benefitCount = Math.max(1, Math.min(4, Number(block.benefit_count) || 4));
+    const items = [1, 2, 3, 4].slice(0, benefitCount).map((slot) => ({
+        slot,
+        title: block[`benefit_${slot}_title`],
+        text: block[`benefit_${slot}_text`],
+    }));
+    const removeBenefit = (index) => {
+        if (benefitCount <= 1) return;
+        const patch = { benefit_count: benefitCount - 1 };
+        for (let slot = index + 1; slot < benefitCount; slot += 1) {
+            patch[`benefit_${slot}_title`] = block[`benefit_${slot + 1}_title`] || '';
+            patch[`benefit_${slot}_text`] = block[`benefit_${slot + 1}_text`] || '';
+        }
+        patch[`benefit_${benefitCount}_title`] = '';
+        patch[`benefit_${benefitCount}_text`] = '';
+        onUpdate?.(patch);
+    };
+    return <Section colors={c.colors}><div><div className="rounded-[26px] border px-6 py-7 sm:px-8" style={{borderColor:c.colors.border, background:c.colors.surface}}>{block.heading ? <h2 className="mb-6 text-xl font-semibold tracking-[-0.03em]">{block.heading}</h2> : null}<div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-4">{items.map((item,index)=><div key={item.slot} className="group relative flex gap-3 pr-9"><RepeatableRemoveButton overlay onRemove={() => removeBenefit(index)} disabled={benefitCount <= 1} label="Remove benefit"/><div className="mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black" style={{background:`${c.colors.accent}1F`, color:c.colors.accent}}>✓</div><div><h3 className="text-sm font-bold">{item.title}</h3><p className="mt-1 text-xs leading-5" style={{color:c.colors.muted}}>{item.text}</p></div></div>)}</div></div><RepeatableControls onAdd={() => benefitCount < 4 && onUpdate?.({ benefit_count: benefitCount + 1 })} onRemove={() => {}} canAdd={benefitCount < 4} canRemove={false} addLabel="Add benefit" showRemove={false}/></div></Section>;
 }
 
 export function CommerceProductGridBlock({ block, globalTheme, commerce }) {

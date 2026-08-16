@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import useInfiniteReveal from "../../../Hooks/useInfiniteReveal";
 import { ActualSparkPreview } from "../../Websites/Components/AddSectionModal";
 import { BlockRegistry } from "../../Websites/Components/SparkRegistry";
+import { showCosmicNotification } from "../../../Components/CosmicNotification";
 
 const viewCopy = {
     owned: {
@@ -45,6 +46,9 @@ export default function Sparks({ dashboard }) {
     const [activeView, setActiveView] = useState("marketplace");
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All");
+    const [aiResults, setAiResults] = useState(null);
+    const [aiPrompt, setAiPrompt] = useState("");
+    const [aiSearchBusy, setAiSearchBusy] = useState(false);
     const [marketFilter, setMarketFilter] = useState("all");
     const [busyKey, setBusyKey] = useState(null);
     const [previewSpark, setPreviewSpark] = useState(null);
@@ -55,6 +59,7 @@ export default function Sparks({ dashboard }) {
     const ownedCount = marketItems.filter((item) => item.owned).length || library.count;
     const favoriteCount = marketItems.filter((item) => item.favorited).length;
     const purchasedCount = marketItems.filter((item) => item.purchased).length;
+    const aiResultMap = useMemo(() => new Map((aiResults || []).map((result, index) => [result.id, { ...result, rank: index + 1 }])), [aiResults]);
 
     const views = [
         { id: "marketplace", label: "Marketplace", count: marketplace.count },
@@ -68,13 +73,15 @@ export default function Sparks({ dashboard }) {
 
         return library.items.filter((spark) => {
             if (category !== "All" && spark.category !== category) return false;
+            if (aiResults && !aiResultMap.has(spark.key)) return false;
+            if (aiResults) return true;
             if (!normalized) return true;
 
             return `${spark.name} ${spark.description} ${spark.category} ${spark.collection}`
                 .toLowerCase()
                 .includes(normalized);
         });
-    }, [library.items, category, query]);
+    }, [library.items, category, query, aiResults, aiResultMap]);
 
     const filteredMarketplace = useMemo(() => {
         const normalized = query.trim().toLowerCase();
@@ -83,18 +90,20 @@ export default function Sparks({ dashboard }) {
             .filter((spark) => registry.has(spark.key))
             .filter((spark) => {
                 if (category !== "All" && spark.category !== category) return false;
+                if (aiResults && !aiResultMap.has(spark.key)) return false;
                 if (marketFilter === "free" && !spark.is_free) return false;
                 if (marketFilter === "premium" && !spark.is_premium) return false;
                 if (marketFilter === "new" && !spark.is_new) return false;
                 if (marketFilter === "popular" && !spark.popular) return false;
                 if (marketFilter === "staff" && !spark.staff_pick) return false;
+                if (aiResults) return true;
                 if (!normalized) return true;
 
                 return `${spark.name} ${spark.description} ${spark.category} ${spark.collection}`
                     .toLowerCase()
                     .includes(normalized);
             });
-    }, [marketItems, registry, category, marketFilter, query]);
+    }, [marketItems, registry, category, marketFilter, query, aiResults, aiResultMap]);
 
 
     const filteredCollection = useMemo(() => {
@@ -104,16 +113,19 @@ export default function Sparks({ dashboard }) {
             .filter((spark) => activeView === "favorites" ? spark.favorited : spark.purchased)
             .filter((spark) => {
                 if (category !== "All" && spark.category !== category) return false;
+                if (aiResults && !aiResultMap.has(spark.key)) return false;
+                if (aiResults) return true;
                 if (!normalized) return true;
                 return `${spark.name} ${spark.description} ${spark.category} ${spark.collection}`.toLowerCase().includes(normalized);
             });
-    }, [marketItems, registry, activeView, category, query]);
+    }, [marketItems, registry, activeView, category, query, aiResults, aiResultMap]);
 
-    const activeFilteredItems = activeView === "owned"
+    const activeFilteredItemsRaw = activeView === "owned"
         ? filteredOwned
         : activeView === "marketplace"
             ? filteredMarketplace
             : filteredCollection;
+    const activeFilteredItems = aiResults ? [...activeFilteredItemsRaw].sort((a, b) => (aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : activeFilteredItemsRaw;
     const infiniteResetKey = `${activeView}|${category}|${marketFilter}|${query}`;
     const { visibleItems: visibleSparks, hasMore: hasMoreSparks, sentinelRef: infiniteSentinelRef } = useInfiniteReveal(activeFilteredItems, {
         batchSize: 12,
@@ -170,11 +182,29 @@ export default function Sparks({ dashboard }) {
         }
     };
 
+    const clearAiSearch = () => { setAiResults(null); setAiPrompt(""); };
+    const runAiSearch = async () => {
+        const prompt = query.trim();
+        if (prompt.length < 2 || aiSearchBusy) return;
+        setAiSearchBusy(true);
+        try {
+            const { data } = await axios.post('/ai/library-search', { type: 'sparks', prompt, limit: 10 });
+            setAiResults(Array.isArray(data.results) ? data.results : []);
+            setAiPrompt(prompt);
+            setActiveView('marketplace');
+            setCategory('All');
+            setMarketFilter('all');
+        } catch (error) {
+            showCosmicNotification({ title: 'Luna search unavailable', message: error.response?.data?.message || 'Normal Spark search is still available.', tone: 'error' });
+        } finally { setAiSearchBusy(false); }
+    };
+
     const switchView = (view) => {
         setActiveView(view);
         setQuery("");
         setCategory("All");
         setMarketFilter("all");
+        clearAiSearch();
     };
 
     return (
@@ -220,7 +250,8 @@ export default function Sparks({ dashboard }) {
 
                     {(["owned", "marketplace", "favorites", "purchased"].includes(activeView)) && (
                         <div className="flex w-full max-w-xl flex-col gap-2 sm:flex-row">
-                            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder={`Search ${activeView === "owned" ? "Owned " : ""}Sparks...`} className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.035] px-4 text-sm text-white placeholder:text-slate-600 focus:border-violet-400 focus:outline-none" />
+                            <input value={query} onChange={(event) => { setQuery(event.target.value); if (aiResults) clearAiSearch(); }} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); runAiSearch(); } }} placeholder={`Search ${activeView === "owned" ? "Owned " : ""}Sparks, or describe what you need...`} className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.035] px-4 text-sm text-white placeholder:text-slate-600 focus:border-violet-400 focus:outline-none" />
+                            <button type="button" disabled={aiSearchBusy || query.trim().length < 2} onClick={runAiSearch} className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-violet-400 px-3 text-xs font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50"><span aria-hidden="true">✦</span>{aiSearchBusy ? 'Searching…' : 'Ask Luna'}</button>
                             <select value={category} onChange={(event) => setCategory(event.target.value)} className="h-11 rounded-xl border border-white/10 bg-[#18181b] px-4 text-sm text-slate-200 focus:border-violet-400 focus:outline-none">
                                 <option>All</option>
                                 {(activeView === "owned" ? library.categories : marketplace.categories).map((item) => <option key={item}>{item}</option>)}
@@ -228,6 +259,8 @@ export default function Sparks({ dashboard }) {
                         </div>
                     )}
                 </div>
+
+                {aiResults && <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400"><span><b className="text-violet-200">✦ Luna results</b> for “{aiPrompt}” · {activeFilteredItems.length} match{activeFilteredItems.length === 1 ? '' : 'es'}</span><button type="button" onClick={clearAiSearch} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white">Clear AI results</button></div>}
 
                 {activeView === "marketplace" && (
                     <div className="mt-6 flex flex-wrap gap-2">
