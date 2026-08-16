@@ -2,7 +2,7 @@ import { usePage } from "@inertiajs/react";
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
-import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 export const HeroBentoPremiumSchema = {
@@ -33,20 +33,22 @@ export const HeroBentoPremiumSchema = {
 };
 
 export function HeroBentoPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
-    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
+    const heroState = getHeroThemeState(block, globalTheme);
+    const { theme, isPrimary } = heroState;
+    const primaryKey = typeof globalTheme === "string" ? globalTheme : (globalTheme?.primary || "midnight");
+    const primaryTheme = colorFamilies[primaryKey] || colorFamilies.midnight;
     const data = { ...HeroBentoPremiumSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
-    const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
     const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const softCard = isPrimary ? "border-white/20 bg-white/10 text-white" : `${theme.border} ${theme.surface} ${theme.text}`;
     const softSub = isPrimary ? "text-white/70" : theme.sub;
     const proofSub = isPrimary ? "text-white/70" : primaryTheme.sub;
+    const familyGlow = primaryTheme.gradient?.glowSoft || "rgba(124,58,237,.16)";
 
     return (
         <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_80%_12%,rgba(16,185,129,.13),transparent_28%)]" />
+            <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at 80% 12%, ${familyGlow}, transparent 28%)`, opacity: heroState.isLight ? 0.45 : 1 }} />
             <div className="relative mx-auto max-w-7xl">
                 <div className="grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_auto]">
                     <div className={`rounded-[2rem] border p-7 sm:p-10 lg:col-span-7 lg:row-span-2 ${softCard}`}>

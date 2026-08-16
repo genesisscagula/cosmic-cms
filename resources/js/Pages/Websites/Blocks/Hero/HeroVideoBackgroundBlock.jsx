@@ -7,6 +7,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { EditableVideoSource } from "../Shared/EditableVideoSource";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 export const HeroVideoBackgroundSchema = {
@@ -84,13 +85,12 @@ export function HeroVideoBackgroundBlock({
     onUpdate,
     globalTheme,
 }) {
-    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
-    const theme = getEffectiveTheme(requestedTheme, globalTheme);
+    const { requestedTheme, theme, isPrimary: isPrimarySection } = getHeroThemeState(block, globalTheme);
 
     const primaryTheme =
         colorFamilies[globalTheme?.primary] ||
         colorFamilies.emerald;
-    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const mediaOverlay = resolveMediaOverlay(globalTheme, resolveHeroThemeRequest(block, globalTheme));
     const isLightMediaTheme = mediaOverlay.isLight;
     const mediaStyle = isLightMediaTheme
         ? {

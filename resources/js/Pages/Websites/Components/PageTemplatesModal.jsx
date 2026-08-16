@@ -118,6 +118,13 @@ export default function PageTemplatesModal({
         [templates],
     );
 
+    const tabCounts = useMemo(() => ({
+        marketplace: templates.filter((item) => !item.saved).length,
+        purchased: templates.filter((item) => item.purchased && !item.saved).length,
+        saved: templates.filter((item) => item.saved).length,
+        favorites: templates.filter((item) => item.favorited && !item.saved).length,
+    }), [templates]);
+
     const normalizedQuery = deferredQuery.trim().toLowerCase();
     const aiResultMap = useMemo(() => new Map((aiResults || []).map((result, index) => [result.id, { ...result, rank: index }])), [aiResults]);
     const visible = useMemo(() => {
@@ -422,16 +429,26 @@ export default function PageTemplatesModal({
                     </div>
 
                     <div className="mt-5 flex flex-wrap items-center gap-2">
-                        {(trialMode ? ['marketplace'] : ['marketplace', 'purchased', 'saved', 'favorites']).map((value) => (
-                            <button
-                                key={value}
-                                type="button"
-                                onClick={() => { setTab(value); clearAiSearch(); }}
-                                className={`cosmic-template-tab rounded-full px-4 py-2 text-xs font-bold capitalize ${tab === value ? 'is-active' : ''}`}
-                            >
-                                {trialMode && value === 'marketplace' ? 'Trial Templates' : value === 'saved' ? 'Saved Templates' : value}
-                            </button>
-                        ))}
+                        <div className="cosmic-template-tabs flex max-w-full gap-1 overflow-x-auto rounded-xl border p-1">
+                            {(trialMode ? ['marketplace'] : ['marketplace', 'purchased', 'saved', 'favorites']).map((value) => {
+                                const label = trialMode && value === 'marketplace'
+                                    ? 'Trial Templates'
+                                    : value === 'saved'
+                                        ? 'Saved Templates'
+                                        : value.charAt(0).toUpperCase() + value.slice(1);
+
+                                return (
+                                    <button
+                                        key={value}
+                                        type="button"
+                                        onClick={() => { setTab(value); clearAiSearch(); }}
+                                        className={`cosmic-template-tab whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === value ? 'is-active' : ''}`}
+                                    >
+                                        {label} ({tabCounts[value] ?? 0})
+                                    </button>
+                                );
+                            })}
+                        </div>
 
                         <div className="ml-auto flex min-w-0 items-center gap-2">
                             <input

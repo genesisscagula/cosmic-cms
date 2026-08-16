@@ -1,6 +1,7 @@
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 export const HeroAiConversationSchema = {
@@ -30,10 +31,11 @@ export const HeroAiConversationSchema = {
 };
 
 export function HeroAiConversationBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
-    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
+    const { requestedTheme, theme } = getHeroThemeState(block, globalTheme);
+    const primaryKey = typeof globalTheme === "string" ? globalTheme : (globalTheme?.primary || "midnight");
+    const primaryTheme = colorFamilies[primaryKey] || colorFamilies.midnight;
     const data = { ...HeroAiConversationSchema.defaults, ...block };
-    const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
+    const isPrimary = requestedTheme === "primary";
     const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const userBubble = isPrimary
         ? "bg-white text-slate-950"
@@ -44,10 +46,12 @@ export function HeroAiConversationBlock({ block, onUpdate, globalTheme }) {
     const composerSurface = isPrimary
         ? "bg-white/10 border-white/20 text-white"
         : `${theme.card} ${theme.border} ${theme.text}`;
+    const familyGlow = primaryTheme.gradient?.glowSoft || "rgba(124,58,237,.16)";
+    const isLight = requestedTheme === "white" || requestedTheme === "surface" || requestedTheme === "stone";
 
     return (
         <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_75%_25%,rgba(16,185,129,.16),transparent_34%)]" />
+            <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at 75% 25%, ${familyGlow}, transparent 34%)`, opacity: isLight ? 0.45 : 1 }} />
             <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-16">
                 <div>
                     <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${theme.sub}`} onSave={(eyebrow)=>onUpdate({eyebrow})}/>

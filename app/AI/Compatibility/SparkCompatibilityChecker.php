@@ -24,6 +24,40 @@ class SparkCompatibilityChecker
         'hero_ai_conversation',
         'hero_agency_showcase',
         'hero_bento_premium',
+        'hero_ken_burns_premium',
+        'hero_crossfade_gallery_premium',
+        'hero_cinematic_slider_premium',
+        'hero_split_slider_premium',
+        'hero_vertical_story_premium',
+        'hero_parallax_layers_premium',
+        'hero_mouse_parallax_premium',
+        'hero_reveal_parallax_premium',
+        'hero_zoom_scroll_premium',
+        'hero_pinned_story_premium',
+        'hero_video_cinematic_premium',
+        'hero_video_split_premium',
+        'hero_aurora_motion_premium',
+        'hero_mesh_gradient_motion_premium',
+        'hero_spotlight_cursor_premium',
+        'hero_floating_cards_motion_premium',
+        'hero_3d_tilt_product_premium',
+        'hero_infinite_marquee_premium',
+        'hero_rotating_words_premium',
+        'hero_typewriter_premium',
+        'hero_curtain_reveal_premium',
+        'hero_image_mask_reveal_premium',
+        'hero_stacked_cards_premium',
+        'hero_perspective_carousel_premium',
+        'hero_before_after_premium',
+        'hero_scroll_morph_premium',
+        'hero_glass_orb_premium',
+        'hero_particle_constellation_premium',
+        'hero_grid_pulse_tech_premium',
+        'hero_light_trails_premium',
+        'hero_device_showcase_premium',
+        'hero_app_screens_carousel_premium',
+        'hero_editorial_image_sequence_premium',
+        'hero_interactive_bento_premium',
     ];
 
     private const CTA = ['hero_centered_cta', 'image_cta_banner', 'cta_glass_premium', 'cta_gradient_premium', 'cta_newsletter_premium', 'cta_book_demo_premium', 'cta_calendly_premium', 'cta_free_trial_premium', 'cta_countdown_premium', 'cta_limited_offer_premium'];
@@ -139,7 +173,7 @@ class SparkCompatibilityChecker
                 return false;
             }
 
-            if ($section === 'hero_parallax' && ! $wantsParallax) {
+            if (in_array($section, ['hero_parallax', 'hero_parallax_layers_premium'], true) && ! $wantsParallax) {
                 $changes[] = 'removed_unrequested_parallax_hero';
                 return false;
             }

@@ -3,6 +3,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { resolveMediaOverlay } from "../../../../theme/mediaOverlay";
 
@@ -28,14 +29,14 @@ export const HeroLuxuryFullscreenSchema = {
 };
 
 export function HeroLuxuryFullscreenBlock({ block, blockIndex, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
+    const { requestedTheme, theme } = getHeroThemeState(block, globalTheme);
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
     const data = { ...HeroLuxuryFullscreenSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
-    const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
-    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const isPrimary = requestedTheme === "primary";
+    const mediaOverlay = resolveMediaOverlay(globalTheme, resolveHeroThemeRequest(block, globalTheme));
     const isLightMediaTheme = mediaOverlay.isLight;
     const overlayColor = mediaOverlay.overlayColor;
     const primaryButton = isLightMediaTheme

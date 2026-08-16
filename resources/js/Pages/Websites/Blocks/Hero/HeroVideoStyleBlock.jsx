@@ -6,6 +6,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { EditableVideoSource } from "../Shared/EditableVideoSource";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 export const HeroVideoStyleSchema = {
@@ -36,8 +37,7 @@ export function HeroVideoStyleBlock({
     onUpdate,
     globalTheme,
 }) {
-    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
-    const theme = getEffectiveTheme(requestedTheme, globalTheme);
+    const { requestedTheme, theme } = getHeroThemeState(block, globalTheme);
 
     const primaryTheme =
         colorFamilies[globalTheme?.primary] ||
@@ -56,8 +56,7 @@ export function HeroVideoStyleBlock({
         props.page?.website_id ||
         props.website?.id;
 
-    const isPrimarySection =
-        block.resolvedTheme === "primary";
+    const isPrimarySection = requestedTheme === "primary";
 
     const primaryButtonStyle = isPrimarySection
         ? {

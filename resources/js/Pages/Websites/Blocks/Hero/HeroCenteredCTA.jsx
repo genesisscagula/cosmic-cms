@@ -1,8 +1,6 @@
-import { usePage } from "@inertiajs/react";
-
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
-import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 
@@ -85,8 +83,8 @@ export const HeroCenteredCTASchema = {
 
 export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
 
-    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
-    const theme = getEffectiveTheme(requestedTheme, globalTheme);
+    const heroState = getHeroThemeState(block, globalTheme);
+    const { theme, isPrimary } = heroState;
 
     const data = {
         ...HeroCenteredCTASchema.defaults,
@@ -94,14 +92,14 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
     };
 
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
-    const isPrimarySection = block.resolvedTheme === "primary";
-    const primaryButtonStyle = isPrimarySection
+    const primaryButtonStyle = isPrimary
         ? "bg-white text-slate-950"
         : `${primaryTheme.bg} ${primaryTheme.text}`;
 
     return (
 
         <section
+            data-cosmic-hero-theme={heroState.requestedTheme}
             className={`relative flex min-h-[500px] w-full items-center overflow-hidden border-b px-7 py-20 text-center sm:min-h-[560px] sm:px-10 sm:py-24 lg:min-h-[620px] lg:px-12 lg:py-28 ${theme.bg} ${theme.border} transition-colors duration-500`}
         >
 

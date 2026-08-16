@@ -37,15 +37,8 @@ export function resolveMediaOverlay(globalTheme, resolvedTheme) {
     const cleanPageStyle = String(normalizedGlobalTheme.pageStyle || normalizedGlobalTheme.page_style || "").toLowerCase() === "clean";
     const sectionRequestedLight = cleanPageStyle || LIGHT_MEDIA_THEMES.has(sectionTheme);
 
-    // Background-image/video banners use a cinematic contrast contract in BOTH
-    // light and dark website themes. A light site can still have a photographic
-    // hero, but the photo is darkened and the copy stays white. This avoids the
-    // fragile "white wash + dark text" path where busy images can bleed through
-    // and make headings unreadable in previews or on the live site.
-    //
-    // Keep the requested light state as metadata for future UI decisions, while
-    // `isLight` intentionally remains false so every media block selects its
-    // high-contrast white-copy branch.
+    // Hero/media state contract: primary uses the active family color as the
+    // overlay tint; white/surface and Clean use a strong white wash with slate copy.
     const themeKey = colorFamilies[sectionTheme]
         ? sectionTheme
         : (normalizedGlobalTheme.primary || "midnight");
@@ -54,12 +47,12 @@ export function resolveMediaOverlay(globalTheme, resolvedTheme) {
     const primaryWeight = sectionRequestedLight
         ? 0.18
         : (NEUTRAL_DARK_THEMES.has(themeKey) ? 0.35 : 0.62);
-    const overlayColor = cleanPageStyle
+    const overlayColor = sectionRequestedLight
         ? '#ffffff'
-        : blendHex(primaryHex, SLATE_950, primaryWeight);
+        : primaryHex;
 
     return {
-        isLight: cleanPageStyle,
+        isLight: sectionRequestedLight,
         requestedLight: sectionRequestedLight,
         themeKey,
         overlayColor,

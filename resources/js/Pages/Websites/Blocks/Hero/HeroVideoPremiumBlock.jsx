@@ -5,6 +5,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { EditableVideoSource, getVideoEmbedUrl } from "../Shared/EditableVideoSource";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 
@@ -31,15 +32,14 @@ export const HeroVideoPremiumSchema = {
 };
 
 export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
+    const { requestedTheme, theme, isPrimary } = getHeroThemeState(block, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...HeroVideoPremiumSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const [isVideoEditorOpen, setIsVideoEditorOpen] = useState(false);
     const embeddedVideoUrl = getVideoEmbedUrl(data.video_url);
-    const resolvedTheme = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) || "surface";
-    const isPrimary = resolvedTheme === "primary";
+    const resolvedTheme = requestedTheme || "surface";
     const mediaOverlay = resolveMediaOverlay(globalTheme, resolvedTheme);
     const isLightMediaTheme = mediaOverlay.isLight;
     const primaryButton = isPrimary

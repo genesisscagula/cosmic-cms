@@ -4,6 +4,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 
@@ -32,8 +33,8 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
     const imageRef = useRef(null);
-    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
-    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const { requestedTheme, theme, isPrimary } = getHeroThemeState(block, globalTheme);
+    const mediaOverlay = resolveMediaOverlay(globalTheme, resolveHeroThemeRequest(block, globalTheme));
     const isLightMediaTheme = mediaOverlay.isLight;
     const overlayColor = mediaOverlay.overlayColor;
     const mediaStyle = isLightMediaTheme

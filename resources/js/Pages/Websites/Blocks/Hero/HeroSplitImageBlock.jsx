@@ -4,6 +4,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 export const HeroSplitImageSchema = {
@@ -28,12 +29,12 @@ export const HeroSplitImageSchema = {
 };
 
 export function HeroSplitImageBlock({ block, blockIndex, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
+    const { requestedTheme, theme } = getHeroThemeState(block, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...HeroSplitImageSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
-    const isPrimarySection = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
+    const isPrimarySection = requestedTheme === "primary";
     const primaryButtonStyle = isPrimarySection
         ? { bg: "bg-white", text: "text-slate-950" }
         : { bg: primaryTheme.bg, text: primaryTheme.text };

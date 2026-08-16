@@ -1,6 +1,7 @@
 import { usePage } from "@inertiajs/react";
 import { useEffect, useRef } from "react";
 import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
@@ -57,7 +58,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const websiteId = props.page?.website_id || props.website?.id;
     const normalizedGlobalTheme = typeof globalTheme === 'string' ? { primary: globalTheme } : (globalTheme || {});
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary] || colorFamilies.midnight;
-    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const mediaOverlay = resolveMediaOverlay(globalTheme, resolveHeroThemeRequest(block, globalTheme));
     const isLightMediaTheme = mediaOverlay.isLight;
     const overlayColor = mediaOverlay.overlayColor;
     const configuredOverlayOpacity = Math.max(20, Math.min(90, Number(data.overlayOpacity) || 64));

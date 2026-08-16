@@ -2,7 +2,7 @@ import { usePage } from "@inertiajs/react";
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
-import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 export const HeroAgencyShowcaseSchema = {
@@ -40,18 +40,19 @@ export const HeroAgencyShowcaseSchema = {
 };
 
 export function HeroAgencyShowcaseBlock({ block, blockIndex, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
-    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
+    const heroState = getHeroThemeState(block, globalTheme);
+    const { theme, isPrimary } = heroState;
+    const primaryKey = typeof globalTheme === "string" ? globalTheme : (globalTheme?.primary || "midnight");
+    const primaryTheme = colorFamilies[primaryKey] || colorFamilies.midnight;
     const data = { ...HeroAgencyShowcaseSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
-    const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
     const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const metricSurface = isPrimary ? "border-white/20 bg-white/10 text-white" : `${theme.border} ${theme.surface} ${theme.text}`;
 
     return (
         <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_18%_15%,rgba(16,185,129,.14),transparent_30%)]" />
+            <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at 18% 15%, ${primaryTheme.gradient?.glowSoft || "rgba(124,58,237,.14)"}, transparent 30%)` }} />
             <div className="relative mx-auto max-w-7xl">
                 <div className="grid items-end gap-10 lg:grid-cols-[1fr_.72fr] lg:gap-16">
                     <div>

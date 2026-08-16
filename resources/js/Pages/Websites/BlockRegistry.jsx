@@ -110,6 +110,51 @@ import { HeroVideoPremiumBlock, HeroVideoPremiumSchema } from "./Blocks/Hero/Her
 import { HeroAiConversationBlock, HeroAiConversationSchema } from "./Blocks/Hero/HeroAiConversationBlock";
 import { HeroAgencyShowcaseBlock, HeroAgencyShowcaseSchema } from "./Blocks/Hero/HeroAgencyShowcaseBlock";
 import { HeroBentoPremiumBlock, HeroBentoPremiumSchema } from "./Blocks/Hero/HeroBentoPremiumBlock";
+import {
+    HeroKenBurnsPremiumBlock, HeroKenBurnsPremiumSchema,
+    HeroCrossfadeGalleryPremiumBlock, HeroCrossfadeGalleryPremiumSchema,
+    HeroCinematicSliderPremiumBlock, HeroCinematicSliderPremiumSchema,
+    HeroSplitSliderPremiumBlock, HeroSplitSliderPremiumSchema,
+    HeroVerticalStoryPremiumBlock, HeroVerticalStoryPremiumSchema,
+    HeroParallaxLayersPremiumBlock, HeroParallaxLayersPremiumSchema,
+    HeroMouseParallaxPremiumBlock, HeroMouseParallaxPremiumSchema,
+} from "./Blocks/Hero/AnimatedHeroPremiumBlocks";
+import {
+    HeroRevealParallaxPremiumBlock, HeroRevealParallaxPremiumSchema,
+    HeroZoomScrollPremiumBlock, HeroZoomScrollPremiumSchema,
+    HeroPinnedStoryPremiumBlock, HeroPinnedStoryPremiumSchema,
+    HeroVideoCinematicPremiumBlock, HeroVideoCinematicPremiumSchema,
+    HeroVideoSplitPremiumBlock, HeroVideoSplitPremiumSchema,
+    HeroAuroraMotionPremiumBlock, HeroAuroraMotionPremiumSchema,
+    HeroMeshGradientMotionPremiumBlock, HeroMeshGradientMotionPremiumSchema,
+} from "./Blocks/Hero/AnimatedHeroPremiumPatch2Blocks";
+import {
+    HeroSpotlightCursorPremiumBlock, HeroSpotlightCursorPremiumSchema,
+    HeroFloatingCardsMotionPremiumBlock, HeroFloatingCardsMotionPremiumSchema,
+    Hero3dTiltProductPremiumBlock, Hero3dTiltProductPremiumSchema,
+    HeroInfiniteMarqueePremiumBlock, HeroInfiniteMarqueePremiumSchema,
+    HeroRotatingWordsPremiumBlock, HeroRotatingWordsPremiumSchema,
+    HeroTypewriterPremiumBlock, HeroTypewriterPremiumSchema,
+    HeroCurtainRevealPremiumBlock, HeroCurtainRevealPremiumSchema,
+} from "./Blocks/Hero/AnimatedHeroPremiumPatch3Blocks";
+import {
+    HeroImageMaskRevealPremiumBlock, HeroImageMaskRevealPremiumSchema,
+    HeroStackedCardsPremiumBlock, HeroStackedCardsPremiumSchema,
+    HeroPerspectiveCarouselPremiumBlock, HeroPerspectiveCarouselPremiumSchema,
+    HeroBeforeAfterPremiumBlock, HeroBeforeAfterPremiumSchema,
+    HeroScrollMorphPremiumBlock, HeroScrollMorphPremiumSchema,
+    HeroGlassOrbPremiumBlock, HeroGlassOrbPremiumSchema,
+    HeroParticleConstellationPremiumBlock, HeroParticleConstellationPremiumSchema,
+} from "./Blocks/Hero/AnimatedHeroPremiumPatch4Blocks";
+import {
+    HeroGridPulseTechPremiumBlock, HeroGridPulseTechPremiumSchema,
+    HeroLightTrailsPremiumBlock, HeroLightTrailsPremiumSchema,
+    HeroDeviceShowcasePremiumBlock, HeroDeviceShowcasePremiumSchema,
+    HeroAppScreensCarouselPremiumBlock, HeroAppScreensCarouselPremiumSchema,
+    HeroEditorialImageSequencePremiumBlock, HeroEditorialImageSequencePremiumSchema,
+    HeroInteractiveBentoPremiumBlock, HeroInteractiveBentoPremiumSchema,
+} from "./Blocks/Hero/AnimatedHeroPremiumPatch5Blocks";
+
 
 import {
     HeroSplitEditorialBlock,
@@ -317,6 +362,41 @@ export const BlockRegistry = {
     hero_ai_conversation: { component: HeroAiConversationBlock, schema: HeroAiConversationSchema },
     hero_agency_showcase: { component: HeroAgencyShowcaseBlock, schema: HeroAgencyShowcaseSchema },
     hero_bento_premium: { component: HeroBentoPremiumBlock, schema: HeroBentoPremiumSchema },
+    hero_ken_burns_premium: { component: HeroKenBurnsPremiumBlock, schema: HeroKenBurnsPremiumSchema },
+    hero_crossfade_gallery_premium: { component: HeroCrossfadeGalleryPremiumBlock, schema: HeroCrossfadeGalleryPremiumSchema },
+    hero_cinematic_slider_premium: { component: HeroCinematicSliderPremiumBlock, schema: HeroCinematicSliderPremiumSchema },
+    hero_split_slider_premium: { component: HeroSplitSliderPremiumBlock, schema: HeroSplitSliderPremiumSchema },
+    hero_vertical_story_premium: { component: HeroVerticalStoryPremiumBlock, schema: HeroVerticalStoryPremiumSchema },
+    hero_parallax_layers_premium: { component: HeroParallaxLayersPremiumBlock, schema: HeroParallaxLayersPremiumSchema },
+    hero_mouse_parallax_premium: { component: HeroMouseParallaxPremiumBlock, schema: HeroMouseParallaxPremiumSchema },
+    hero_reveal_parallax_premium: { component: HeroRevealParallaxPremiumBlock, schema: HeroRevealParallaxPremiumSchema },
+    hero_zoom_scroll_premium: { component: HeroZoomScrollPremiumBlock, schema: HeroZoomScrollPremiumSchema },
+    hero_pinned_story_premium: { component: HeroPinnedStoryPremiumBlock, schema: HeroPinnedStoryPremiumSchema },
+    hero_video_cinematic_premium: { component: HeroVideoCinematicPremiumBlock, schema: HeroVideoCinematicPremiumSchema },
+    hero_video_split_premium: { component: HeroVideoSplitPremiumBlock, schema: HeroVideoSplitPremiumSchema },
+    hero_aurora_motion_premium: { component: HeroAuroraMotionPremiumBlock, schema: HeroAuroraMotionPremiumSchema },
+    hero_mesh_gradient_motion_premium: { component: HeroMeshGradientMotionPremiumBlock, schema: HeroMeshGradientMotionPremiumSchema },
+    hero_spotlight_cursor_premium: { component: HeroSpotlightCursorPremiumBlock, schema: HeroSpotlightCursorPremiumSchema },
+    hero_floating_cards_motion_premium: { component: HeroFloatingCardsMotionPremiumBlock, schema: HeroFloatingCardsMotionPremiumSchema },
+    hero_3d_tilt_product_premium: { component: Hero3dTiltProductPremiumBlock, schema: Hero3dTiltProductPremiumSchema },
+    hero_infinite_marquee_premium: { component: HeroInfiniteMarqueePremiumBlock, schema: HeroInfiniteMarqueePremiumSchema },
+    hero_rotating_words_premium: { component: HeroRotatingWordsPremiumBlock, schema: HeroRotatingWordsPremiumSchema },
+    hero_typewriter_premium: { component: HeroTypewriterPremiumBlock, schema: HeroTypewriterPremiumSchema },
+    hero_curtain_reveal_premium: { component: HeroCurtainRevealPremiumBlock, schema: HeroCurtainRevealPremiumSchema },
+    hero_image_mask_reveal_premium: { component: HeroImageMaskRevealPremiumBlock, schema: HeroImageMaskRevealPremiumSchema },
+    hero_stacked_cards_premium: { component: HeroStackedCardsPremiumBlock, schema: HeroStackedCardsPremiumSchema },
+    hero_perspective_carousel_premium: { component: HeroPerspectiveCarouselPremiumBlock, schema: HeroPerspectiveCarouselPremiumSchema },
+    hero_before_after_premium: { component: HeroBeforeAfterPremiumBlock, schema: HeroBeforeAfterPremiumSchema },
+    hero_scroll_morph_premium: { component: HeroScrollMorphPremiumBlock, schema: HeroScrollMorphPremiumSchema },
+    hero_glass_orb_premium: { component: HeroGlassOrbPremiumBlock, schema: HeroGlassOrbPremiumSchema },
+    hero_particle_constellation_premium: { component: HeroParticleConstellationPremiumBlock, schema: HeroParticleConstellationPremiumSchema },
+    hero_grid_pulse_tech_premium: { component: HeroGridPulseTechPremiumBlock, schema: HeroGridPulseTechPremiumSchema },
+    hero_light_trails_premium: { component: HeroLightTrailsPremiumBlock, schema: HeroLightTrailsPremiumSchema },
+    hero_device_showcase_premium: { component: HeroDeviceShowcasePremiumBlock, schema: HeroDeviceShowcasePremiumSchema },
+    hero_app_screens_carousel_premium: { component: HeroAppScreensCarouselPremiumBlock, schema: HeroAppScreensCarouselPremiumSchema },
+    hero_editorial_image_sequence_premium: { component: HeroEditorialImageSequencePremiumBlock, schema: HeroEditorialImageSequencePremiumSchema },
+    hero_interactive_bento_premium: { component: HeroInteractiveBentoPremiumBlock, schema: HeroInteractiveBentoPremiumSchema },
+
 
     image_cta_banner: {
 

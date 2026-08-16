@@ -4,6 +4,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 export const HeroFloatingGlassSchema = {
@@ -32,12 +33,12 @@ export const HeroFloatingGlassSchema = {
 };
 
 export function HeroFloatingGlassBlock({ block, blockIndex, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
+    const { requestedTheme, theme } = getHeroThemeState(block, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...HeroFloatingGlassSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
-    const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
+    const isPrimary = requestedTheme === "primary";
     const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
 
     return (

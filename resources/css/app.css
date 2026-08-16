@@ -3360,16 +3360,30 @@ body .cosmic-start-quick-idea.rounded-full.border {
     border-color: color-mix(in srgb, var(--cosmic-primary) 34%, var(--cosmic-border));
     transform: translateY(-1px);
 }
+.cosmic-template-tabs {
+    background: color-mix(in srgb, var(--cosmic-surface) 84%, transparent);
+    border-color: var(--cosmic-border);
+}
 .cosmic-template-tag,
-.cosmic-template-tab,
 .cosmic-template-filter {
     background: var(--cosmic-surface-muted);
     color: var(--cosmic-text-muted);
     border-color: var(--cosmic-border);
 }
+.cosmic-template-tab {
+    background: transparent;
+    color: var(--cosmic-text-muted);
+    border-color: transparent;
+    transition: background-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+.cosmic-template-tab:hover:not(.is-active) {
+    color: var(--cosmic-text);
+    background: color-mix(in srgb, var(--cosmic-text) 5%, transparent);
+}
 .cosmic-template-tab.is-active {
     background: var(--cosmic-text);
     color: var(--cosmic-surface);
+    box-shadow: 0 1px 2px rgba(0, 0, 0, .12);
 }
 .cosmic-template-filter.is-active {
     background: color-mix(in srgb, var(--cosmic-primary) 12%, var(--cosmic-surface));
@@ -5916,4 +5930,15 @@ body .cosmic-start-quick-idea.rounded-full.border {
     line-height: 1.25rem !important;
     font-weight: 700 !important;
     text-decoration: none !important;
+}
+
+/* Cosmic premium animated hero motion — lightweight and reduced-motion safe. */
+@keyframes cosmic-hero-kenburns {
+    0% { transform: scale(1.04) translate3d(-0.5%, -0.3%, 0); }
+    50% { transform: scale(1.11) translate3d(0.8%, 0.5%, 0); }
+    100% { transform: scale(1.16) translate3d(-0.2%, 0.8%, 0); }
+}
+.cosmic-hero-kenburns { animation: cosmic-hero-kenburns 18s ease-in-out infinite alternate; will-change: transform; }
+@media (prefers-reduced-motion: reduce) {
+    .cosmic-hero-kenburns { animation: none !important; transform: none !important; }
 }

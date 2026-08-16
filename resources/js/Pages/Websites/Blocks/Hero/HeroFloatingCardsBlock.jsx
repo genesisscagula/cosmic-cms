@@ -4,6 +4,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 export const HeroFloatingCardsSchema = {
@@ -37,8 +38,7 @@ export function HeroFloatingCardsBlock({
     onUpdate,
     globalTheme,
 }) {
-    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
-    const theme = getEffectiveTheme(requestedTheme, globalTheme);
+    const { requestedTheme, theme } = getHeroThemeState(block, globalTheme);
     const primaryTheme =
         colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
 
@@ -53,8 +53,7 @@ export function HeroFloatingCardsBlock({
         props.page?.website_id ||
         props.website?.id;
 
-    const isPrimarySection =
-        block.resolvedTheme === "primary";
+    const isPrimarySection = requestedTheme === "primary";
 
     const primaryButtonStyle = isPrimarySection
         ? {

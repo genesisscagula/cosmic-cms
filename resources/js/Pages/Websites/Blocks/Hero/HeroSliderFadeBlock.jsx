@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom';
 import { usePage } from '@inertiajs/react';
 import { EditableImage } from '../Shared/EditableImage';
 import { getEffectiveTheme } from '../../../../theme/Theme';
+import { getHeroThemeState, resolveHeroThemeRequest } from '../../../../theme/heroTheme';
 import { colorFamilies } from '../../../../theme/colorFamilies';
 import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 
@@ -102,7 +103,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const data = { ...HeroSliderFadeSchema, ...(block || {}) };
-    const resolvedTheme = block?.resolvedTheme || data?.resolvedTheme || data?.theme || 'surface';
+    const resolvedTheme = resolveHeroThemeRequest(block, globalTheme) || 'surface';
     const mediaOverlay = resolveMediaOverlay(globalTheme, resolvedTheme);
     const isLightMediaTheme = mediaOverlay.isLight;
     const overlayColor = mediaOverlay.overlayColor;

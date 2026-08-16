@@ -7,6 +7,7 @@ import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 
@@ -132,10 +133,7 @@ export function HeroBackgroundImageBlock({
 
     const imageRef = useRef(null);
 
-    const theme = getEffectiveTheme(
-        block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme,
-        globalTheme
-    );
+    const { requestedTheme, theme } = getHeroThemeState(block, globalTheme);
 
     const data = {
         ...HeroBackgroundImageSchema.defaults,
@@ -155,7 +153,7 @@ export function HeroBackgroundImageBlock({
     const primaryTheme = colorFamilies[normalizedGlobalTheme.primary]
         || colorFamilies.midnight;
 
-    const mediaOverlay = resolveMediaOverlay(globalTheme, block.resolvedTheme);
+    const mediaOverlay = resolveMediaOverlay(globalTheme, resolveHeroThemeRequest(block, globalTheme));
     const isLightMediaTheme = mediaOverlay.isLight;
     // Light sections keep a strong white wash. Colored/dark sections blend the
     // active theme background with slate so the image stays branded without a

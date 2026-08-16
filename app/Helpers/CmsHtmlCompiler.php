@@ -49,6 +49,11 @@ class CmsHtmlCompiler
         $theme['border'] ??= 'border-slate-200';
         $theme['bg'] ??= 'bg-white';
         $theme['text'] ??= 'text-slate-950';
+        $theme['gradient'] ??= ($themes['midnight']['gradient'] ?? [
+            'from' => '#071426', 'via' => '#111936', 'to' => '#28164D',
+            'glow' => '#7C3AED', 'glowSoft' => 'rgba(124, 58, 237, 0.20)',
+            'glowStrong' => 'rgba(124, 58, 237, 0.38)', 'angle' => 120,
+        ]);
 
         return $theme;
     }
@@ -703,9 +708,15 @@ JS;
 
             $blockTheme = $block['theme'] ?? "auto";
 
-            // Clean owns the complete light section rhythm. Historical explicit
-            // Spark theme values must not re-introduce primary/double-white runs.
-            if (self::$currentPageStyle === 'clean' || $blockTheme === "auto") {
+            // Clean owns the complete light section rhythm. Every full Hero is
+            // explicitly forced to WHITE so a hero inserted later in the page can
+            // never inherit a primary/surface slot from the alternating pattern.
+            // Non-hero Sparks keep the normal Clean rhythm.
+            $blockType = (string) ($block['type'] ?? '');
+            $isFullHero = str_starts_with($blockType, 'hero_');
+            if (self::$currentPageStyle === 'clean' && $isFullHero) {
+                $blockTheme = 'white';
+            } elseif (self::$currentPageStyle === 'clean' || $blockTheme === "auto") {
                 $blockTheme = $pattern[$index % count($pattern)];
             }
 
@@ -3635,10 +3646,13 @@ HTML;
                 $userBubble = $isPrimarySection ? 'bg-white text-slate-950' : "{$primaryTheme['bg']} text-white";
                 $assistantBubble = $isPrimarySection ? 'border-white/20 bg-white/12 text-white' : "{$theme['card']} {$theme['border']} {$theme['text']}";
                 $composerSurface = $isPrimarySection ? 'border-white/20 bg-white/10 text-white' : "{$theme['card']} {$theme['border']} {$theme['text']}";
+                $familyGlow = e((string) ($primaryTheme['gradient']['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
+                $decorOpacity = in_array($resolvedTheme, ['white', 'surface', 'stone'], true) ? '0.45' : '1';
                 $chipHtml = ''; foreach ($chips as $chip) { $chipHtml .= "<span class='rounded-full border px-3 py-2 text-xs font-semibold {$theme['border']} {$theme['surface']} {$theme['sub']}'>{$chip}</span>"; }
 
                 $html .= "
                 <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                    <div class='pointer-events-none absolute inset-0' style='background:radial-gradient(circle at 75% 25%, {$familyGlow}, transparent 34%);opacity:{$decorOpacity}'></div>
                     <div class='relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-16'>
                         <div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 text-5xl font-semibold leading-[.96] tracking-[-.05em] sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1><p class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div><div class='mt-8 flex flex-wrap gap-2'>{$chipHtml}</div></div>
                         <div class='relative rounded-[2rem] border p-4 shadow-2xl sm:p-6 {$theme['border']} {$theme['surface']}'>
@@ -3718,11 +3732,14 @@ HTML;
                 $featureCard = $isPrimarySection ? 'border-white/20 bg-white/10 text-white' : "{$theme['border']} {$theme['bg']} {$theme['text']}";
                 $proofCard = $isPrimarySection ? 'border-white/20 bg-slate-950/20 text-white' : "{$primaryTheme['border']} {$primaryTheme['card']} {$primaryTheme['text']}";
                 $proofSub = $isPrimarySection ? 'text-white/70' : $primaryTheme['sub'];
+                $familyGlow = e((string) ($primaryTheme['gradient']['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
+                $decorOpacity = in_array($resolvedTheme, ['white', 'surface', 'stone'], true) ? '0.45' : '1';
                 $imageStyle = $imageUrl ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;" : '';
                 $cardHtml = ''; foreach ($cardLabels as $label) { $cardHtml .= "<div class='rounded-2xl border px-4 py-4 text-sm font-semibold {$featureCard}'>{$label}</div>"; }
 
                 $html .= "
                 <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                    <div class='pointer-events-none absolute inset-0' style='background:radial-gradient(circle at 80% 12%, {$familyGlow}, transparent 28%);opacity:{$decorOpacity}'></div>
                     <div class='relative mx-auto max-w-7xl'>
                         <div class='grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_auto]'>
                             <div class='rounded-[2rem] border p-7 sm:p-10 lg:col-span-7 lg:row-span-2 {$softCard}'><span class='text-xs font-bold uppercase tracking-[.28em] {$softSub}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.055em] sm:text-6xl lg:text-7xl'>{$heading}</h1><p class='mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$softSub}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$secondaryButton}'>{$secondaryLabel}</a></div><div class='mt-10 grid gap-3 sm:grid-cols-3'>{$cardHtml}</div></div>
@@ -4848,7 +4865,366 @@ HTML;
 
                 </section>";
 
+
                 break;
+
+                case 'hero_grid_pulse_tech_premium':
+                case 'hero_light_trails_premium':
+                case 'hero_device_showcase_premium':
+                case 'hero_app_screens_carousel_premium':
+                case 'hero_editorial_image_sequence_premium':
+                case 'hero_interactive_bento_premium':
+                    $p5Type = (string) ($block['type'] ?? 'hero_grid_pulse_tech_premium');
+                    $p5Id = 'cosmic-p5-' . substr(sha1($p5Type . '|' . json_encode($block) . '|' . uniqid('', true)), 0, 12);
+                    $resolvedTheme = (string) ($blockTheme ?? $block['resolvedTheme'] ?? $selectedThemeName ?? 'primary');
+                    $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                    $isPrimaryHero = !$lightMedia && ($resolvedTheme === 'primary' || $resolvedTheme === 'auto');
+                    $primaryThemeForHero = self::getTheme($primaryColor ?: 'midnight');
+                    $primaryBgHex = e((string) ($primaryThemeForHero['palette']['background'] ?? '#0f766e'));
+                    $gradient = $primaryThemeForHero['gradient'] ?? [];
+                    $gradientFrom = e((string) ($gradient['from'] ?? '#071426'));
+                    $gradientVia = e((string) ($gradient['via'] ?? '#111936'));
+                    $gradientTo = e((string) ($gradient['to'] ?? '#28164D'));
+                    $gradientGlow = e((string) ($gradient['glow'] ?? '#7C3AED'));
+                    $gradientGlowSoft = e((string) ($gradient['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
+                    $gradientAngle = max(0, min(360, (int) ($gradient['angle'] ?? 120)));
+                    $stateClass = $lightMedia ? ' cosmic-p5-light' : ($isPrimaryHero ? ' cosmic-p5-primary' : '');
+                    $heroStyle = $lightMedia ? 'background:#fff;color:#0f172a' : ($isPrimaryHero ? "background:{$primaryBgHex};color:#fff" : 'background:#020617;color:#fff');
+                    $gradientVars = "--p5-primary:{$primaryBgHex};--p5-from:{$gradientFrom};--p5-via:{$gradientVia};--p5-to:{$gradientTo};--p5-glow:{$gradientGlow};--p5-glow-soft:{$gradientGlowSoft};--p5-angle:{$gradientAngle}deg";
+                    $eyebrow = e((string) ($block['eyebrow'] ?? 'DESIGNED TO MOVE'));
+                    $heading = e((string) ($block['heading'] ?? 'A premium opening with motion built into the story.'));
+                    $body = e((string) ($block['text'] ?? 'Lightweight animation adds depth while keeping the message clear.'));
+                    $primaryLabel = e((string) ($block['primary_label'] ?? 'Get started'));
+                    $primaryUrl = e((string) ($block['primary_url'] ?? '#'));
+                    $secondaryLabel = e((string) ($block['secondary_label'] ?? 'Explore more'));
+                    $secondaryUrl = e((string) ($block['secondary_url'] ?? '#'));
+                    $image1 = e(self::staticAssetUrl((string) ($block['image_url'] ?? '/storage/cms-images/background/background-1.avif')));
+                    $image2 = e(self::staticAssetUrl((string) ($block['image_url_2'] ?? '/storage/cms-images/background/background-2.avif')));
+                    $image3 = e(self::staticAssetUrl((string) ($block['image_url_3'] ?? '/storage/cms-images/background/background-3.avif')));
+                    $copy = "<div class='p5-copy'><p>{$eyebrow}</p><h1>{$heading}</h1><div class='p5-body'>{$body}</div><div class='p5-actions'><a href='{$primaryUrl}'>{$primaryLabel}</a><a class='secondary' href='{$secondaryUrl}'>{$secondaryLabel}</a></div></div>";
+                    if ($p5Type === 'hero_device_showcase_premium') $visual = "<div class='p5-device'><img src='{$image1}' alt='' decoding='async'><img loading='lazy' decoding='async' src='{$image2}' alt=''></div>";
+                    elseif ($p5Type === 'hero_app_screens_carousel_premium') $visual = "<div class='p5-screens'><img src='{$image1}' alt='' decoding='async'><img loading='lazy' decoding='async' src='{$image2}' alt=''><img loading='lazy' decoding='async' src='{$image3}' alt=''></div>";
+                    elseif ($p5Type === 'hero_editorial_image_sequence_premium') $visual = "<div class='p5-editorial'><img src='{$image1}' alt='' decoding='async'><img loading='lazy' decoding='async' src='{$image2}' alt=''><img loading='lazy' decoding='async' src='{$image3}' alt=''></div>";
+                    elseif ($p5Type === 'hero_interactive_bento_premium') $visual = "<div class='p5-bento'><img src='{$image1}' alt='' decoding='async'><img loading='lazy' decoding='async' src='{$image2}' alt=''><img loading='lazy' decoding='async' src='{$image3}' alt=''></div>";
+                    else $visual = "<div class='p5-abstract'><i></i><i></i><i></i><i></i></div>";
+                    $html .= "<section id='{$p5Id}' class='cosmic-p5{$stateClass}' data-type='{$p5Type}' style='{$heroStyle};{$gradientVars}'><div class='p5-grid'>{$copy}{$visual}</div></section><style>
+#{$p5Id}{min-height:86svh;overflow:hidden}#{$p5Id} *{box-sizing:border-box}#{$p5Id} .p5-grid{display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;gap:4rem;min-height:86svh;max-width:80rem;margin:auto;padding:6rem 3.5rem}#{$p5Id} .p5-copy{max-width:44rem}#{$p5Id} .p5-copy>p{font-size:.75rem;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.65)}#{$p5Id} h1{font-size:clamp(3rem,6vw,6rem);line-height:.96;letter-spacing:-.045em;margin:1.25rem 0}#{$p5Id} .p5-body{max-width:38rem;line-height:1.8;color:rgba(255,255,255,.72)}#{$p5Id} .p5-actions{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:2rem}#{$p5Id} .p5-actions a{padding:.85rem 1.3rem;border-radius:999px;background:#fff;color:#0f172a;text-decoration:none;font-weight:800}#{$p5Id} .p5-actions a.secondary{background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.25)}#{$p5Id} img{width:100%;height:100%;object-fit:cover}#{$p5Id} .p5-device,#{$p5Id} .p5-screens,#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento,#{$p5Id} .p5-abstract{position:relative;height:30rem}
+#{$p5Id} .p5-device img:first-child{position:absolute;inset:8% 4%;height:76%;border:8px solid #1e293b;border-radius:1.8rem;animation:p5Float 5s ease-in-out infinite}#{$p5Id} .p5-device img:last-child{position:absolute;right:2%;bottom:2%;width:28%;height:58%;border:7px solid #1e293b;border-radius:1.7rem;animation:p5Float 4.4s .6s ease-in-out infinite}#{$p5Id} .p5-screens img{position:absolute;left:50%;top:50%;width:38%;height:88%;border-radius:1.6rem;transform:translate(-50%,-50%);box-shadow:0 2rem 5rem #0008;border:1px solid rgba(255,255,255,.15)}#{$p5Id} .p5-screens img:nth-child(2){transform:translate(-115%,-50%) scale(.82);opacity:.55}#{$p5Id} .p5-screens img:nth-child(3){transform:translate(15%,-50%) scale(.82);opacity:.55}#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}#{$p5Id} .p5-editorial img,#{$p5Id} .p5-bento img{border-radius:1.6rem;min-height:0}#{$p5Id} .p5-editorial img:first-child,#{$p5Id} .p5-bento img:first-child{grid-row:span 2}#{$p5Id} .p5-bento img{transition:transform .35s ease}#{$p5Id} .p5-bento img:hover{transform:scale(1.025)}
+#{$p5Id} .p5-abstract{border:1px solid rgba(255,255,255,.12);border-radius:2rem;background-image:radial-gradient(circle at 70% 25%,var(--p5-glow-soft),transparent 38%),linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:auto,42px 42px,42px 42px}#{$p5Id}[data-type='hero_light_trails_premium'] .p5-abstract{background-image:linear-gradient(var(--p5-angle),var(--p5-from),var(--p5-via),var(--p5-to))}#{$p5Id} .p5-abstract i{position:absolute;left:-20%;width:140%;height:1px;background:linear-gradient(90deg,transparent,var(--p5-glow),transparent);animation:p5Beam 4s ease-in-out infinite}#{$p5Id} .p5-abstract i:nth-child(1){top:20%}#{$p5Id} .p5-abstract i:nth-child(2){top:40%;animation-delay:.4s}#{$p5Id} .p5-abstract i:nth-child(3){top:60%;animation-delay:.8s}#{$p5Id} .p5-abstract i:nth-child(4){top:80%;animation-delay:1.2s}
+#{$p5Id}.cosmic-p5-light{background:#fff!important;color:#0f172a!important}#{$p5Id}.cosmic-p5-light .p5-copy>p{color:#64748b}#{$p5Id}.cosmic-p5-light .p5-body{color:#475569}#{$p5Id}.cosmic-p5-light .p5-actions a{background:var(--p5-primary);color:#fff}#{$p5Id}.cosmic-p5-light .p5-actions a.secondary{background:rgba(255,255,255,.78);color:#0f172a;border-color:#cbd5e1}#{$p5Id}.cosmic-p5-light .p5-abstract{border-color:#e2e8f0;background-image:radial-gradient(circle at 70% 25%,var(--p5-glow-soft),transparent 38%),linear-gradient(rgba(100,116,139,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(100,116,139,.14) 1px,transparent 1px);background-size:auto,42px 42px,42px 42px}#{$p5Id}.cosmic-p5-light[data-type='hero_light_trails_premium'] .p5-abstract{background:rgba(255,255,255,.65)}#{$p5Id}.cosmic-p5-light .p5-device img{border-color:#cbd5e1}#{$p5Id}.cosmic-p5-light .p5-screens img{border-color:#e2e8f0}
+@keyframes p5Float{50%{transform:translateY(-12px)}}@keyframes p5Beam{50%{transform:translateX(14%);opacity:.3}}@media(max-width:850px){#{$p5Id} .p5-grid{grid-template-columns:1fr;padding:5rem 1.5rem;gap:2rem}#{$p5Id} .p5-device,#{$p5Id} .p5-screens,#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento,#{$p5Id} .p5-abstract{height:24rem}}@media(prefers-reduced-motion:reduce){#{$p5Id} *{animation:none!important;scroll-behavior:auto!important}}
+</style>";
+                    if ($p5Type === 'hero_app_screens_carousel_premium') {
+                        $html .= "<script>(function(){const r=document.getElementById(" . json_encode($p5Id) . " );if(!r||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const cards=[...r.querySelectorAll('.p5-screens img')];let a=0,id=0;const paint=()=>cards.forEach((el,i)=>{let d=(i-a+3)%3;if(d===2)d=-1;el.style.transition='transform .7s ease,opacity .7s ease';el.style.transform='translate(-50%,-50%) translateX('+(d*65)+'%) scale('+(d===0?1:.82)+')';el.style.opacity=d===0?1:.5;el.style.zIndex=d===0?3:1});const stop=()=>{if(id){clearInterval(id);id=0}},start=()=>{if(!id)id=setInterval(()=>{a=(a+1)%3;paint()},3000)};paint();new IntersectionObserver(([e])=>e.isIntersecting?start():stop(),{rootMargin:'120px'}).observe(r)})();</script>";
+                    }
+                    break;
+
+                case 'hero_image_mask_reveal_premium':
+                case 'hero_stacked_cards_premium':
+                case 'hero_perspective_carousel_premium':
+                case 'hero_before_after_premium':
+                case 'hero_scroll_morph_premium':
+                case 'hero_glass_orb_premium':
+                case 'hero_particle_constellation_premium':
+                    $motion4Type = (string) ($block['type'] ?? 'hero_image_mask_reveal_premium');
+                    $motion4Id = 'cosmic-motion4-hero-' . substr(sha1($motion4Type . '|' . json_encode($block) . '|' . uniqid('', true)), 0, 12);
+                    $resolvedTheme = (string) ($blockTheme ?? $block['resolvedTheme'] ?? $selectedThemeName ?? 'primary');
+                    $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                    $motion4StateClass = $lightMedia ? ' cosmic-motion4-light' : '';
+                    $primaryThemeForHero = self::getTheme($primaryColor ?: 'midnight');
+                    $primaryBgHex = e((string) ($primaryThemeForHero['palette']['background'] ?? '#0f766e'));
+                    $heroGradient = is_array($primaryThemeForHero['gradient'] ?? null) ? $primaryThemeForHero['gradient'] : ['glow'=>'#7C3AED','glowSoft'=>'rgba(124, 58, 237, 0.20)','glowStrong'=>'rgba(124, 58, 237, 0.38)'];
+                    $heroGradientGlow = e((string) ($heroGradient['glow'] ?? '#7C3AED'));
+                    $heroGradientGlowSoft = e((string) ($heroGradient['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
+                    $heroGradientGlowStrong = e((string) ($heroGradient['glowStrong'] ?? 'rgba(124, 58, 237, 0.38)'));
+                    $heroGradientVars = "--hero-glow:{$heroGradientGlow};--hero-glow-soft:{$heroGradientGlowSoft};--hero-glow-strong:{$heroGradientGlowStrong};";
+                    $eyebrow = e((string) ($block['eyebrow'] ?? 'MOTION, WITH PURPOSE'));
+                    $heading = e((string) ($block['heading'] ?? 'Give the first screen a premium sense of depth.'));
+                    $body = e((string) ($block['text'] ?? 'Distinct interaction and restrained motion create a memorable opening.'));
+                    $primaryLabel = e((string) ($block['primary_label'] ?? 'Start a project'));
+                    $primaryUrl = e((string) ($block['primary_url'] ?? '#'));
+                    $secondaryLabel = e((string) ($block['secondary_label'] ?? 'Explore more'));
+                    $secondaryUrl = e((string) ($block['secondary_url'] ?? '#'));
+                    $image1 = e(self::staticAssetUrl((string) ($block['image_url'] ?? '/storage/cms-images/background/background-1.avif')));
+                    $image2 = e(self::staticAssetUrl((string) ($block['image_url_2'] ?? '/storage/cms-images/background/background-2.avif')));
+                    $image3 = e(self::staticAssetUrl((string) ($block['image_url_3'] ?? '/storage/cms-images/background/background-3.avif')));
+                    $split = max(20, min(80, (int) ($block['splitPosition'] ?? 52)));
+                    $strength = max(10, min(40, (int) ($block['motionStrength'] ?? 28)));
+                    $particleCount = max(18, min(54, (int) ($block['particleCount'] ?? 36)));
+                    $copy = "<div class='cosmic-motion4-copy'><p>{$eyebrow}</p><h1>{$heading}</h1><div class='cosmic-motion4-body'>{$body}</div><div class='cosmic-motion4-actions'><a href='{$primaryUrl}'>{$primaryLabel}</a><a class='secondary' href='{$secondaryUrl}'>{$secondaryLabel}</a></div></div>";
+
+                    if ($motion4Type === 'hero_image_mask_reveal_premium') {
+                        $scene = "<div class='cosmic-motion4-mask'><img src='{$image1}' alt='' decoding='async'></div><div class='cosmic-motion4-shade'></div><div class='cosmic-motion4-copywrap'>{$copy}</div>";
+                    } elseif ($motion4Type === 'hero_stacked_cards_premium') {
+                        $scene = "<div class='cosmic-motion4-grid'>{$copy}<div class='cosmic-motion4-stack' data-active='0'><article><img src='{$image1}' alt=''></article><article><img loading='lazy' src='{$image2}' alt=''></article><article><img loading='lazy' src='{$image3}' alt=''></article></div></div>";
+                    } elseif ($motion4Type === 'hero_perspective_carousel_premium') {
+                        $scene = "<div class='cosmic-motion4-grid'>{$copy}<div class='cosmic-motion4-carousel' data-active='0'><button type='button'><img src='{$image1}' alt=''></button><button type='button'><img loading='lazy' src='{$image2}' alt=''></button><button type='button'><img loading='lazy' src='{$image3}' alt=''></button></div></div>";
+                    } elseif ($motion4Type === 'hero_before_after_premium') {
+                        $scene = "<div class='cosmic-motion4-grid'>{$copy}<div class='cosmic-motion4-beforeafter' data-split='{$split}'><img class='before' src='{$image1}' alt='Before'><div class='after'><img src='{$image2}' alt='After'></div><div class='divider'><span>↔</span></div><b class='label before-label'>Before</b><b class='label after-label'>After</b></div></div>";
+                    } elseif ($motion4Type === 'hero_scroll_morph_premium') {
+                        $scene = "<div class='cosmic-motion4-sticky'><div class='cosmic-motion4-grid'>{$copy}<div class='cosmic-motion4-morph' data-strength='{$strength}'><img src='{$image1}' alt=''></div></div></div>";
+                    } elseif ($motion4Type === 'hero_glass_orb_premium') {
+                        $scene = "<div class='cosmic-motion4-orb orb-a'></div><div class='cosmic-motion4-orb orb-b'></div><div class='cosmic-motion4-orb orb-c'></div><div class='cosmic-motion4-copywrap'>{$copy}</div>";
+                    } else {
+                        $scene = "<canvas class='cosmic-motion4-particles' data-count='{$particleCount}' aria-hidden='true'></canvas><div class='cosmic-motion4-copywrap'>{$copy}</div>";
+                    }
+                    $extraClass = $motion4Type === 'hero_scroll_morph_premium' ? ' cosmic-motion4-tall' : '';
+                    $html .= "<section id='{$motion4Id}' class='cosmic-motion4{$extraClass}{$motion4StateClass}' data-type='{$motion4Type}' style='{$heroGradientVars}'>{$scene}</section>";
+                    $html .= "<style>
+#{$motion4Id}{position:relative;isolation:isolate;min-height:86svh;overflow:hidden;background:#020617;color:#fff}#{$motion4Id}.cosmic-motion4-tall{min-height:110svh;overflow:visible}#{$motion4Id} *{box-sizing:border-box}#{$motion4Id} .cosmic-motion4-copywrap{position:relative;z-index:4;display:flex;align-items:center;min-height:86svh;max-width:80rem;margin:auto;padding:6rem 3.5rem}#{$motion4Id} .cosmic-motion4-copy{max-width:46rem}#{$motion4Id} .cosmic-motion4-copy>p{font-size:.75rem;font-weight:800;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.68)}#{$motion4Id} .cosmic-motion4-copy h1{margin:1.4rem 0 0;font-size:clamp(3rem,7vw,6.7rem);line-height:.94;letter-spacing:-.05em}#{$motion4Id} .cosmic-motion4-body{max-width:42rem;margin-top:1.5rem;font-size:1.06rem;line-height:1.8;color:rgba(255,255,255,.74)}#{$motion4Id} .cosmic-motion4-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}#{$motion4Id} .cosmic-motion4-actions a{padding:.85rem 1.35rem;border-radius:999px;background:#fff;color:#0f172a;font-size:.9rem;font-weight:800;text-decoration:none}#{$motion4Id} .cosmic-motion4-actions a.secondary{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#fff;backdrop-filter:blur(12px)}#{$motion4Id} .cosmic-motion4-grid{position:relative;z-index:3;display:grid;grid-template-columns:.86fr 1.14fr;align-items:center;gap:4rem;min-height:86svh;max-width:80rem;margin:auto;padding:6rem 3.5rem}#{$motion4Id} .cosmic-motion4-mask{position:absolute;inset:0;animation:cosmicMotion4Mask 1.35s cubic-bezier(.22,1,.36,1) both}#{$motion4Id} .cosmic-motion4-mask img{width:100%;height:100%;object-fit:cover}#{$motion4Id} .cosmic-motion4-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,6,23,.82),rgba(2,6,23,.24),rgba(2,6,23,.12));z-index:2}@keyframes cosmicMotion4Mask{0%{clip-path:inset(16% 28% round 36px);transform:scale(1.08)}100%{clip-path:inset(0 round 0);transform:scale(1)}}
+#{$motion4Id} .cosmic-motion4-stack{position:relative;height:34rem}#{$motion4Id} .cosmic-motion4-stack article{position:absolute;left:8%;right:8%;top:50%;overflow:hidden;padding:.45rem;border:1px solid rgba(255,255,255,.15);border-radius:2rem;background:rgba(255,255,255,.08);box-shadow:0 2rem 5rem rgba(0,0,0,.35);transition:transform .7s ease,opacity .7s ease}#{$motion4Id} .cosmic-motion4-stack article img{display:block;width:100%;aspect-ratio:16/11;object-fit:cover;border-radius:1.6rem}
+#{$motion4Id} .cosmic-motion4-carousel{position:relative;height:30rem;perspective:1200px}#{$motion4Id} .cosmic-motion4-carousel button{position:absolute;left:50%;top:50%;width:70%;padding:.45rem;border:1px solid rgba(255,255,255,.15);border-radius:1.8rem;background:#0f172a;box-shadow:0 2rem 5rem rgba(0,0,0,.4);transition:transform .7s ease,opacity .7s ease;cursor:pointer}#{$motion4Id} .cosmic-motion4-carousel img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:1.45rem}
+#{$motion4Id} .cosmic-motion4-beforeafter{position:relative;aspect-ratio:4/3;overflow:hidden;border:1px solid rgba(255,255,255,.15);border-radius:2rem;box-shadow:0 2rem 5rem rgba(0,0,0,.4);touch-action:none;user-select:none}#{$motion4Id} .cosmic-motion4-beforeafter>img,#{$motion4Id} .cosmic-motion4-beforeafter .after img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}#{$motion4Id} .cosmic-motion4-beforeafter .after{position:absolute;inset-block:0;left:0;overflow:hidden}#{$motion4Id} .cosmic-motion4-beforeafter .after img{max-width:none}#{$motion4Id} .cosmic-motion4-beforeafter .divider{position:absolute;inset-block:0;width:1px;background:#fff}#{$motion4Id} .cosmic-motion4-beforeafter .divider span{position:absolute;left:50%;top:50%;display:grid;width:3rem;height:3rem;place-items:center;transform:translate(-50%,-50%);border:1px solid rgba(255,255,255,.4);border-radius:50%;background:rgba(2,6,23,.82)}#{$motion4Id} .cosmic-motion4-beforeafter .label{position:absolute;bottom:1rem;padding:.35rem .65rem;border-radius:999px;background:rgba(2,6,23,.72);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em}#{$motion4Id} .before-label{left:1rem}#{$motion4Id} .after-label{right:1rem;background:rgba(255,255,255,.9)!important;color:#0f172a}
+#{$motion4Id} .cosmic-motion4-sticky{position:sticky;top:0;min-height:86svh}#{$motion4Id} .cosmic-motion4-morph{overflow:hidden;border:1px solid rgba(255,255,255,.15);border-radius:2.25rem;box-shadow:0 2rem 5rem rgba(0,0,0,.4);transform:scale(.78);transform-origin:center;will-change:transform,border-radius}#{$motion4Id} .cosmic-motion4-morph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+#{$motion4Id} .cosmic-motion4-orb{position:absolute;border:1px solid rgba(255,255,255,.16);border-radius:50%;background:rgba(255,255,255,.08);backdrop-filter:blur(24px);box-shadow:inset 0 0 4rem rgba(255,255,255,.1),0 2rem 5rem var(--hero-glow-soft)}#{$motion4Id} .orb-a{right:9%;top:14%;width:16rem;height:16rem;animation:cosmicMotion4OrbA 8s ease-in-out infinite}#{$motion4Id} .orb-b{right:30%;bottom:8%;width:10rem;height:10rem;animation:cosmicMotion4OrbB 7s ease-in-out infinite}#{$motion4Id} .orb-c{left:55%;top:42%;width:6rem;height:6rem;animation:cosmicMotion4OrbA 6s ease-in-out -1.5s infinite}#{$motion4Id}[data-type='hero_glass_orb_premium']{background:radial-gradient(circle at 30% 20%,var(--hero-glow-soft),transparent 30%),radial-gradient(circle at 80% 70%,var(--hero-glow-strong),transparent 34%),#020617}@keyframes cosmicMotion4OrbA{50%{transform:translate3d(30px,-28px,0) scale(1.08)}}@keyframes cosmicMotion4OrbB{50%{transform:translate3d(-26px,24px,0) scale(.94)}}
+#{$motion4Id} .cosmic-motion4-particles{position:absolute;inset:0;width:100%;height:100%;opacity:.82}#{$motion4Id}[data-type='hero_particle_constellation_premium']{background:radial-gradient(circle at 70% 25%,var(--hero-glow-soft),transparent 35%),#020617}
+#{$motion4Id}.cosmic-motion4-light{background:#fff!important;color:#0f172a}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-copy>p,#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-body{color:#475569}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-actions a{background:{$primaryBgHex};color:#fff}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-actions a.secondary{background:rgba(255,255,255,.82);color:#0f172a;border-color:#cbd5e1}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-shade{background:linear-gradient(90deg,rgba(255,255,255,.95),rgba(255,255,255,.86),rgba(255,255,255,.72))}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-orb{opacity:.32}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-particles{opacity:.18}
+@media(max-width:900px){#{$motion4Id} .cosmic-motion4-grid{grid-template-columns:1fr;gap:2.5rem;padding:5rem 1.5rem}#{$motion4Id} .cosmic-motion4-copywrap{padding:5rem 1.5rem}#{$motion4Id} .cosmic-motion4-stack{height:25rem}#{$motion4Id} .cosmic-motion4-carousel{height:24rem}}@media(prefers-reduced-motion:reduce){#{$motion4Id} .cosmic-motion4-mask,#{$motion4Id} .cosmic-motion4-orb{animation:none!important}#{$motion4Id} .cosmic-motion4-mask{clip-path:none!important;transform:none!important}}
+</style>";
+                    if ($motion4Type === 'hero_stacked_cards_premium') {
+                        $html .= "<script>(function(){const r=document.getElementById(" . json_encode($motion4Id) . ");if(!r)return;const s=r.querySelector('.cosmic-motion4-stack'),cards=[...s.children];let a=0;const paint=()=>cards.forEach((c,i)=>{let d=(i-a+cards.length)%cards.length;c.style.transform='translateY(calc(-50% + '+(d*26)+'px)) translateX('+(d*18)+'px) scale('+(1-d*.055)+')';c.style.opacity=1-d*.22;c.style.zIndex=10-d});paint();if(!matchMedia('(prefers-reduced-motion: reduce)').matches){let id=0;const stop=()=>{if(id){clearInterval(id);id=0}},start=()=>{if(!id)id=setInterval(()=>{a=(a+1)%cards.length;paint()},3200)};new IntersectionObserver(([e])=>e.isIntersecting?start():stop(),{rootMargin:'120px'}).observe(r)}})();</script>";
+                    } elseif ($motion4Type === 'hero_perspective_carousel_premium') {
+                        $html .= "<script>(function(){const r=document.getElementById(" . json_encode($motion4Id) . ");if(!r)return;const c=r.querySelector('.cosmic-motion4-carousel'),cards=[...c.children];let a=0;const paint=()=>cards.forEach((el,i)=>{let d=(i-a+3)%3;if(d===2)d=-1;el.style.transform='translate(-50%,-50%) translateX('+(d*38)+'%) translateZ('+(d===0?70:-70)+'px) rotateY('+(d*-18)+'deg) scale('+(d===0?1:.82)+')';el.style.opacity=d===0?1:.55;el.style.zIndex=d===0?20:10});cards.forEach((el,i)=>el.addEventListener('click',()=>{a=i;paint()}));paint();if(!matchMedia('(prefers-reduced-motion: reduce)').matches){let id=0;const stop=()=>{if(id){clearInterval(id);id=0}},start=()=>{if(!id)id=setInterval(()=>{a=(a+1)%3;paint()},3600)};new IntersectionObserver(([e])=>e.isIntersecting?start():stop(),{rootMargin:'120px'}).observe(r)}})();</script>";
+                    } elseif ($motion4Type === 'hero_before_after_premium') {
+                        $html .= "<script>(function(){const r=document.getElementById(" . json_encode($motion4Id) . ");if(!r)return;const b=r.querySelector('.cosmic-motion4-beforeafter'),after=b.querySelector('.after'),img=after.querySelector('img'),line=b.querySelector('.divider');let drag=false;const set=p=>{p=Math.max(4,Math.min(96,p));after.style.width=p+'%';img.style.width=b.clientWidth+'px';line.style.left=p+'%'};set(Number(b.dataset.split||52));const move=e=>{if(!drag)return;const q=b.getBoundingClientRect();set((e.clientX-q.left)/q.width*100)};b.addEventListener('pointerdown',e=>{drag=true;b.setPointerCapture&&b.setPointerCapture(e.pointerId);move(e)});b.addEventListener('pointermove',move);b.addEventListener('pointerup',()=>drag=false);b.addEventListener('pointercancel',()=>drag=false);addEventListener('resize',()=>set(parseFloat(after.style.width)||52),{passive:true})})();</script>";
+                    } elseif ($motion4Type === 'hero_scroll_morph_premium') {
+                        $html .= "<script>(function(){const r=document.getElementById(" . json_encode($motion4Id) . ");if(!r||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const f=r.querySelector('.cosmic-motion4-morph'),s=Number(f.dataset.strength||28);let raf=0;const run=()=>{const b=r.getBoundingClientRect();if(b.bottom<0||b.top>innerHeight)return;cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{const p=Math.max(0,Math.min(1,(innerHeight-b.top)/(innerHeight+b.height*.45)));f.style.transform='scale('+(.78+p*.22)+')';f.style.borderRadius=Math.max(0,36-p*s)+'px'})};run();addEventListener('scroll',run,{passive:true});addEventListener('resize',run,{passive:true})})();</script>";
+                    } elseif ($motion4Type === 'hero_particle_constellation_premium') {
+                        $html .= "<script>(function(){const r=document.getElementById(" . json_encode($motion4Id) . " );if(!r)return;const c=r.querySelector('.cosmic-motion4-particles'),x=c.getContext('2d'),n=Number(c.dataset.count||36),reduced=matchMedia('(prefers-reduced-motion: reduce)').matches,pts=Array.from({length:n},(_,i)=>({x:(i*73%997)/997,y:(i*137%991)/991,vx:((i%5)-2)*.00008,vy:(((i*3)%5)-2)*.00008}));let raf=0,visible=true;const draw=()=>{cancelAnimationFrame(raf);const d=Math.min(2,devicePixelRatio||1),w=c.clientWidth,h=c.clientHeight;if(!w||!h)return;if(c.width!==Math.round(w*d)||c.height!==Math.round(h*d)){c.width=Math.round(w*d);c.height=Math.round(h*d);x.setTransform(d,0,0,d,0,0)}x.clearRect(0,0,w,h);x.fillStyle='rgba(255,255,255,.7)';x.strokeStyle='rgba(148,163,184,.16)';pts.forEach(p=>{if(!reduced&&visible){p.x=(p.x+p.vx+1)%1;p.y=(p.y+p.vy+1)%1}x.beginPath();x.arc(p.x*w,p.y*h,1.4,0,Math.PI*2);x.fill()});for(let i=0;i<pts.length;i++)for(let j=i+1;j<pts.length;j++){const a=pts[i],b=pts[j],dx=(a.x-b.x)*w,dy=(a.y-b.y)*h,dist=Math.hypot(dx,dy);if(dist<130){x.globalAlpha=(1-dist/130)*.75;x.beginPath();x.moveTo(a.x*w,a.y*h);x.lineTo(b.x*w,b.y*h);x.stroke();x.globalAlpha=1}}if(!reduced&&visible)raf=requestAnimationFrame(draw)};new IntersectionObserver(([e])=>{visible=e.isIntersecting;if(visible)draw();else cancelAnimationFrame(raf)},{rootMargin:'120px'}).observe(r);draw();addEventListener('resize',()=>visible&&draw(),{passive:true})})();</script>";
+                    }
+                    break;
+
+                case 'hero_spotlight_cursor_premium':
+                case 'hero_floating_cards_motion_premium':
+                case 'hero_3d_tilt_product_premium':
+                case 'hero_infinite_marquee_premium':
+                case 'hero_rotating_words_premium':
+                case 'hero_typewriter_premium':
+                case 'hero_curtain_reveal_premium':
+                    $motion3Type = (string) ($block['type'] ?? 'hero_spotlight_cursor_premium');
+                    $motion3Id = 'cosmic-motion3-hero-' . substr(sha1($motion3Type . '|' . json_encode($block) . '|' . uniqid('', true)), 0, 12);
+                    $resolvedTheme = (string) ($blockTheme ?? $block['resolvedTheme'] ?? $selectedThemeName ?? 'primary');
+                    $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                    $motion3StateClass = $lightMedia ? ' cosmic-motion3-light' : '';
+                    $primaryThemeForHero = self::getTheme($primaryColor ?: 'midnight');
+                    $primaryBgHex = e((string) ($primaryThemeForHero['palette']['background'] ?? '#0f766e'));
+                    $heroGradient = is_array($primaryThemeForHero['gradient'] ?? null) ? $primaryThemeForHero['gradient'] : ['glow'=>'#7C3AED','glowSoft'=>'rgba(124, 58, 237, 0.20)','glowStrong'=>'rgba(124, 58, 237, 0.38)'];
+                    $heroGradientGlow = e((string) ($heroGradient['glow'] ?? '#7C3AED'));
+                    $heroGradientGlowSoft = e((string) ($heroGradient['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
+                    $heroGradientGlowStrong = e((string) ($heroGradient['glowStrong'] ?? 'rgba(124, 58, 237, 0.38)'));
+                    $heroGradientVars = "--hero-glow:{$heroGradientGlow};--hero-glow-soft:{$heroGradientGlowSoft};--hero-glow-strong:{$heroGradientGlowStrong};";
+                    $eyebrow = e((string) ($block['eyebrow'] ?? 'MOTION THAT EARNS ATTENTION'));
+                    $heading = e((string) ($block['heading'] ?? 'Make the opening feel alive without slowing the page down.'));
+                    $body = e((string) ($block['text'] ?? 'Premium interaction and restrained motion keep the message clear.'));
+                    $primaryLabel = e((string) ($block['primary_label'] ?? 'Start a project'));
+                    $primaryUrl = e((string) ($block['primary_url'] ?? '#'));
+                    $secondaryLabel = e((string) ($block['secondary_label'] ?? 'Explore more'));
+                    $secondaryUrl = e((string) ($block['secondary_url'] ?? '#'));
+                    $overlay = max(0.20, min(0.85, ((float) ($block['overlayOpacity'] ?? 54)) / 100));
+                    $pointerStrength = max(6, min(28, (int) ($block['pointerStrength'] ?? 14)));
+                    $interval = max(1400, min(5000, (int) ($block['interval'] ?? 2600)));
+                    $image1 = e(self::staticAssetUrl((string) ($block['image_url'] ?? '/storage/cms-images/background/background-1.avif')));
+                    $image2 = e(self::staticAssetUrl((string) ($block['image_url_2'] ?? '/storage/cms-images/background/background-2.avif')));
+                    $image3 = e(self::staticAssetUrl((string) ($block['image_url_3'] ?? '/storage/cms-images/background/background-3.avif')));
+                    $rawWords = $block['rotating_words'] ?? ['faster','smarter','beautifully'];
+                    if (is_string($rawWords)) { $rawWords = array_values(array_filter(array_map('trim', explode(',', $rawWords)))); }
+                    if (!is_array($rawWords) || $rawWords === []) { $rawWords = ['faster','smarter','beautifully']; }
+                    $words = array_values(array_slice(array_map(fn($word) => e((string) $word), $rawWords), 0, 6));
+                    $wordsJson = json_encode($words, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+                    $actions = "<div class='cosmic-motion3-actions'><a class='cosmic-motion3-primary' href='{$primaryUrl}'>{$primaryLabel}</a><a class='cosmic-motion3-secondary' href='{$secondaryUrl}'>{$secondaryLabel}</a></div>";
+                    $baseCopy = "<div class='cosmic-motion3-copy'><p class='cosmic-motion3-eyebrow'>{$eyebrow}</p><h1>{$heading}</h1><p class='cosmic-motion3-body'>{$body}</p>{$actions}</div>";
+
+                    if ($motion3Type === 'hero_spotlight_cursor_premium') {
+                        $html .= "<section id='{$motion3Id}' style='{$heroGradientVars}' class='cosmic-motion3-hero cosmic-motion3-spotlight{$motion3StateClass}'><div class='cosmic-motion3-glow'></div><div class='cosmic-motion3-copy-wrap'>{$baseCopy}</div></section>";
+                    } elseif ($motion3Type === 'hero_floating_cards_motion_premium') {
+                        $cards = "<div class='cosmic-motion3-cards'><article><img src='{$image1}' alt='' width='900' height='560'><i></i><b></b></article><article><img src='{$image2}' alt='' width='900' height='560' loading='lazy'><i></i><b></b></article><article><img src='{$image3}' alt='' width='900' height='560' loading='lazy'><i></i><b></b></article></div>";
+                        $html .= "<section id='{$motion3Id}' style='{$heroGradientVars}' class='cosmic-motion3-hero cosmic-motion3-floating{$motion3StateClass}'><div class='cosmic-motion3-bg'><img src='{$image1}' alt='' width='1920' height='1080'></div><div class='cosmic-motion3-overlay' style='opacity:{$overlay}'></div><div class='cosmic-motion3-gridwrap'><div class='cosmic-motion3-copy-wrap'>{$baseCopy}</div>{$cards}</div></section>";
+                    } elseif ($motion3Type === 'hero_3d_tilt_product_premium') {
+                        $product = "<div class='cosmic-motion3-product'><div class='cosmic-motion3-product-card'><img src='{$image1}' alt='' width='1200' height='750'><div class='cosmic-motion3-metrics'><span><b>98.4%</b><small>Live metric</small></span><span><b>2.4x</b><small>Live metric</small></span><span><b>24/7</b><small>Live metric</small></span></div></div></div>";
+                        $html .= "<section id='{$motion3Id}' style='{$heroGradientVars}' class='cosmic-motion3-hero cosmic-motion3-tilt{$motion3StateClass}' data-pointer-strength='{$pointerStrength}'><div class='cosmic-motion3-gridwrap'><div class='cosmic-motion3-copy-wrap'>{$baseCopy}</div>{$product}</div></section>";
+                    } elseif ($motion3Type === 'hero_infinite_marquee_premium') {
+                        $line1 = str_repeat('BUILD • LAUNCH • GROW • ', 4); $line2 = str_repeat('DESIGN • MOTION • STORY • ', 4); $line3 = str_repeat('IDEAS • PRODUCTS • PEOPLE • ', 4);
+                        $html .= "<section id='{$motion3Id}' style='{$heroGradientVars}' class='cosmic-motion3-hero cosmic-motion3-marquee{$motion3StateClass}'><div class='cosmic-motion3-marquee-bg'><div>{$line1}</div><div>{$line2}</div><div>{$line3}</div></div><div class='cosmic-motion3-copy-wrap'>{$baseCopy}</div></section>";
+                    } elseif (in_array($motion3Type, ['hero_rotating_words_premium','hero_typewriter_premium'], true)) {
+                        $effect = $motion3Type === 'hero_typewriter_premium' ? 'typewriter' : 'rotate';
+                        $dynamicCopy = "<div class='cosmic-motion3-copy'><p class='cosmic-motion3-eyebrow'>{$eyebrow}</p><h1>{$heading} <span class='cosmic-motion3-dynamic' data-effect='{$effect}'></span></h1><p class='cosmic-motion3-body'>{$body}</p>{$actions}</div>";
+                        $html .= "<section id='{$motion3Id}' style='{$heroGradientVars}' class='cosmic-motion3-hero cosmic-motion3-dynamic-hero{$motion3StateClass}' data-words='{$wordsJson}' data-interval='{$interval}'><div class='cosmic-motion3-copy-wrap'>{$dynamicCopy}</div></section>";
+                    } else {
+                        $html .= "<section id='{$motion3Id}' style='{$heroGradientVars}' class='cosmic-motion3-hero cosmic-motion3-curtain{$motion3StateClass}'><div class='cosmic-motion3-bg'><img src='{$image1}' alt='' width='1920' height='1080'></div><div class='cosmic-motion3-overlay' style='opacity:{$overlay}'></div><div class='cosmic-motion3-copy-wrap'>{$baseCopy}</div><div class='cosmic-motion3-curtain-left'></div><div class='cosmic-motion3-curtain-right'></div></section>";
+                    }
+
+                    $html .= "<style>
+#{$motion3Id}.cosmic-motion3-hero{position:relative;isolation:isolate;overflow:hidden;min-height:86svh;background:#020617;color:#fff}#{$motion3Id} .cosmic-motion3-copy-wrap{position:relative;z-index:5;display:flex;align-items:center;min-height:86svh;width:100%;max-width:80rem;margin:0 auto;padding:6rem 3rem}#{$motion3Id} .cosmic-motion3-copy{max-width:48rem}#{$motion3Id} .cosmic-motion3-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$motion3Id} h1{margin-top:1.5rem;font-size:clamp(3rem,7vw,5.4rem);line-height:.95;letter-spacing:-.045em;font-weight:700}#{$motion3Id} .cosmic-motion3-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.75)}#{$motion3Id} .cosmic-motion3-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$motion3Id} .cosmic-motion3-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$motion3Id} .cosmic-motion3-primary{background:#fff;color:#0f172a}#{$motion3Id} .cosmic-motion3-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff}#{$motion3Id} .cosmic-motion3-bg{position:absolute;inset:0}#{$motion3Id} .cosmic-motion3-bg img{width:100%;height:100%;object-fit:cover}#{$motion3Id} .cosmic-motion3-overlay{position:absolute;inset:0;z-index:2;background:#020617}
+#{$motion3Id}.cosmic-motion3-spotlight{background:radial-gradient(circle at 20% 20%,var(--hero-glow-soft),transparent 32%),radial-gradient(circle at 85% 70%,var(--hero-glow-strong),transparent 28%),#020617}#{$motion3Id} .cosmic-motion3-glow{position:absolute;width:22rem;height:22rem;border-radius:999px;background:var(--hero-glow-soft);filter:blur(60px);transform:translate(-50%,-50%);pointer-events:none}
+#{$motion3Id} .cosmic-motion3-gridwrap{position:relative;z-index:5;display:grid;grid-template-columns:1fr .9fr;gap:4rem;align-items:center;min-height:86svh;max-width:80rem;margin:0 auto;padding:6rem 3rem}#{$motion3Id} .cosmic-motion3-gridwrap .cosmic-motion3-copy-wrap{padding:0;min-height:auto}.cosmic-motion3-cards{position:relative;height:33rem}.cosmic-motion3-cards article{position:absolute;width:72%;padding:.75rem;border:1px solid rgba(255,255,255,.15);border-radius:1.75rem;background:rgba(255,255,255,.1);backdrop-filter:blur(16px);box-shadow:0 30px 80px rgba(0,0,0,.35);animation:cosmicMotion3Float 7s ease-in-out infinite}.cosmic-motion3-cards article:nth-child(2){left:11%;top:5rem;animation-duration:8.4s}.cosmic-motion3-cards article:nth-child(3){left:22%;top:10rem;animation-duration:9.8s}.cosmic-motion3-cards img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:1.2rem}.cosmic-motion3-cards i,.cosmic-motion3-cards b{display:block;height:.5rem;border-radius:999px;background:rgba(255,255,255,.28);margin:1rem 1rem 0}.cosmic-motion3-cards i{width:6rem}.cosmic-motion3-cards b{width:10rem;background:rgba(255,255,255,.12);margin-bottom:.8rem}@keyframes cosmicMotion3Float{50%{transform:translateY(-18px) rotate(2deg)}}
+#{$motion3Id} .cosmic-motion3-product{perspective:1200px}#{$motion3Id} .cosmic-motion3-product-card{overflow:hidden;padding:.75rem;border:1px solid rgba(255,255,255,.15);border-radius:2rem;background:rgba(255,255,255,.09);box-shadow:0 34px 90px rgba(0,0,0,.4);transition:transform .2s ease;will-change:transform}#{$motion3Id} .cosmic-motion3-product-card>img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:1.5rem}#{$motion3Id} .cosmic-motion3-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;padding:1rem}#{$motion3Id} .cosmic-motion3-metrics span{padding:1rem;border-radius:1rem;background:rgba(255,255,255,.08)}#{$motion3Id} .cosmic-motion3-metrics b,#{$motion3Id} .cosmic-motion3-metrics small{display:block}#{$motion3Id} .cosmic-motion3-metrics small{margin-top:.25rem;color:rgba(255,255,255,.5)}
+#{$motion3Id}.cosmic-motion3-marquee .cosmic-motion3-marquee-bg{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:2rem;opacity:.09;pointer-events:none}#{$motion3Id} .cosmic-motion3-marquee-bg>div{width:max-content;white-space:nowrap;font-size:clamp(5rem,14vw,13rem);line-height:.8;font-weight:900;letter-spacing:-.06em;animation:cosmicMotion3Marquee 26s linear infinite}#{$motion3Id} .cosmic-motion3-marquee-bg>div:nth-child(2){animation-direction:reverse;animation-duration:31s}@keyframes cosmicMotion3Marquee{to{transform:translateX(-50%)}}
+#{$motion3Id}.cosmic-motion3-dynamic-hero{background:radial-gradient(circle at 80% 20%,var(--hero-glow-soft),transparent 34%),#020617}#{$motion3Id} .cosmic-motion3-dynamic{color:var(--hero-glow)}#{$motion3Id} .cosmic-motion3-dynamic[data-effect='typewriter']{color:var(--hero-glow)}#{$motion3Id} .cosmic-motion3-dynamic[data-effect='typewriter']::after{content:'';display:inline-block;width:3px;height:.9em;margin-left:.12em;vertical-align:-.05em;background:var(--hero-glow);animation:cosmicMotion3Blink .8s steps(1) infinite}@keyframes cosmicMotion3Blink{50%{opacity:0}}
+#{$motion3Id} .cosmic-motion3-curtain-left,#{$motion3Id} .cosmic-motion3-curtain-right{position:absolute;z-index:10;top:0;bottom:0;width:50%;background:#020617;pointer-events:none}#{$motion3Id} .cosmic-motion3-curtain-left{left:0;animation:cosmicMotion3CurtainL 1.25s cubic-bezier(.76,0,.24,1) .15s both}#{$motion3Id} .cosmic-motion3-curtain-right{right:0;animation:cosmicMotion3CurtainR 1.25s cubic-bezier(.76,0,.24,1) .15s both}@keyframes cosmicMotion3CurtainL{to{transform:translateX(-102%)}}@keyframes cosmicMotion3CurtainR{to{transform:translateX(102%)}}
+#{$motion3Id}.cosmic-motion3-light{background:#fff!important;color:#0f172a}#{$motion3Id}.cosmic-motion3-light .cosmic-motion3-eyebrow,#{$motion3Id}.cosmic-motion3-light .cosmic-motion3-body{color:#475569}#{$motion3Id}.cosmic-motion3-light .cosmic-motion3-primary{background:{$primaryBgHex};color:#fff}#{$motion3Id}.cosmic-motion3-light .cosmic-motion3-secondary{background:rgba(255,255,255,.82);color:#0f172a;border-color:#cbd5e1}#{$motion3Id}.cosmic-motion3-light .cosmic-motion3-overlay{background:#fff!important;opacity:.92!important}#{$motion3Id}.cosmic-motion3-light .cosmic-motion3-glow,#{$motion3Id}.cosmic-motion3-light .cosmic-motion3-marquee-bg{opacity:.12}#{$motion3Id}.cosmic-motion3-light .cosmic-motion3-curtain-left,#{$motion3Id}.cosmic-motion3-light .cosmic-motion3-curtain-right{background:#fff}
+@media(max-width:900px){#{$motion3Id} .cosmic-motion3-gridwrap{grid-template-columns:1fr;padding:5rem 1.5rem}#{$motion3Id} .cosmic-motion3-cards{display:none}#{$motion3Id} .cosmic-motion3-copy-wrap{padding:5rem 1.5rem}.cosmic-motion3-product{margin-top:1rem}}@media(prefers-reduced-motion:reduce){#{$motion3Id} .cosmic-motion3-glow{display:none}.cosmic-motion3-cards article,#{$motion3Id} .cosmic-motion3-marquee-bg>div,#{$motion3Id} .cosmic-motion3-dynamic[data-effect='typewriter']::after{animation:none!important}#{$motion3Id} .cosmic-motion3-curtain-left,#{$motion3Id} .cosmic-motion3-curtain-right{display:none}}
+</style>";
+                    if ($motion3Type === 'hero_spotlight_cursor_premium') {
+                        $html .= "<script>(function(){const r=document.getElementById(" . json_encode($motion3Id) . ");if(!r||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const g=r.querySelector('.cosmic-motion3-glow');let f=0;r.addEventListener('pointermove',e=>{const b=r.getBoundingClientRect();cancelAnimationFrame(f);f=requestAnimationFrame(()=>{g.style.left=(e.clientX-b.left)+'px';g.style.top=(e.clientY-b.top)+'px';});},{passive:true});})();</script>";
+                    } elseif ($motion3Type === 'hero_3d_tilt_product_premium') {
+                        $html .= "<script>(function(){const r=document.getElementById(" . json_encode($motion3Id) . ");if(!r||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const c=r.querySelector('.cosmic-motion3-product-card');const s=Number(r.dataset.pointerStrength||12);let f=0;r.addEventListener('pointermove',e=>{const b=r.getBoundingClientRect(),x=(e.clientX-b.left)/b.width-.5,y=(e.clientY-b.top)/b.height-.5;cancelAnimationFrame(f);f=requestAnimationFrame(()=>c.style.transform='perspective(1200px) rotateX('+(-y*s)+'deg) rotateY('+(x*s)+'deg) translateZ(18px)');},{passive:true});r.addEventListener('pointerleave',()=>c.style.transform='perspective(1200px) rotateX(0) rotateY(0)');})();</script>";
+                    } elseif (in_array($motion3Type, ['hero_rotating_words_premium','hero_typewriter_premium'], true)) {
+                        $html .= "<script>(function(){const r=document.getElementById(" . json_encode($motion3Id) . ");if(!r)return;let words=[];try{words=JSON.parse(r.dataset.words||'[]')}catch(e){};if(!words.length)return;const el=r.querySelector('.cosmic-motion3-dynamic');if(!el)return;if(matchMedia('(prefers-reduced-motion: reduce)').matches){el.textContent=words[0];return}const hold=Number(r.dataset.interval||2600);let visible=true,timer=0,i=0,t='',del=false;const clear=()=>{if(timer){clearTimeout(timer);timer=0}};const schedule=(fn,ms)=>{clear();if(visible)timer=setTimeout(fn,ms)};const rotate=()=>{i=(i+1)%words.length;el.animate([{opacity:0,transform:'translateY(8px)'},{opacity:1,transform:'translateY(0)'}],{duration:320});el.textContent=words[i];schedule(rotate,hold)};const type=()=>{const w=words[i];if(!del&&t===w){del=true;return schedule(type,hold)}if(del&&t===''){del=false;i=(i+1)%words.length;return schedule(type,220)}t=w.slice(0,t.length+(del?-1:1));el.textContent=t;schedule(type,del?45:70)};const run=()=>{if(el.dataset.effect==='rotate'){if(!el.textContent)el.textContent=words[0];schedule(rotate,hold)}else{if(!t&&!el.textContent)el.textContent='';schedule(type,70)}};new IntersectionObserver(([e])=>{visible=e.isIntersecting;if(visible)run();else clear()},{rootMargin:'120px'}).observe(r)})();</script>";
+                    }
+                    break;
+
+                case 'hero_reveal_parallax_premium':
+                case 'hero_zoom_scroll_premium':
+                case 'hero_pinned_story_premium':
+                case 'hero_video_cinematic_premium':
+                case 'hero_video_split_premium':
+                case 'hero_aurora_motion_premium':
+                case 'hero_mesh_gradient_motion_premium':
+                    $motionType = (string) ($block['type'] ?? 'hero_reveal_parallax_premium');
+                    $motionId = 'cosmic-motion2-hero-' . substr(sha1($motionType . '|' . json_encode($block) . '|' . uniqid('', true)), 0, 12);
+                    $eyebrow = e((string) ($block['eyebrow'] ?? 'MOTION, WITH PURPOSE'));
+                    $heading = e((string) ($block['heading'] ?? 'Turn the first screen into an experience.'));
+                    $body = e((string) ($block['text'] ?? 'Premium motion adds depth while keeping the message clear and fast.'));
+                    $primaryLabel = e((string) ($block['primary_label'] ?? 'Start a project'));
+                    $primaryUrl = e((string) ($block['primary_url'] ?? '#'));
+                    $secondaryLabel = e((string) ($block['secondary_label'] ?? 'Explore more'));
+                    $secondaryUrl = e((string) ($block['secondary_url'] ?? '#'));
+                    $resolvedTheme = (string) ($blockTheme ?? $block['resolvedTheme'] ?? $selectedThemeName ?? 'primary');
+                    $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                    $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
+                    $overlay = max($lightMedia ? 0.90 : 0.48, min($lightMedia ? 0.96 : 0.72, ((float) ($block['overlayOpacity'] ?? 56)) / 100));
+                    $stateClass = $lightMedia ? ' cosmic-motion2-light' : '';
+                    $motionStrength = max(10, min(48, (int) ($block['motionStrength'] ?? 24)));
+                    $image1 = e(self::staticAssetUrl((string) ($block['image_url'] ?? '/storage/cms-images/background/background-1.avif')));
+                    $image2 = e(self::staticAssetUrl((string) ($block['image_url_2'] ?? '/storage/cms-images/background/background-2.avif')));
+                    $image3 = e(self::staticAssetUrl((string) ($block['image_url_3'] ?? '/storage/cms-images/background/background-3.avif')));
+                    $primaryThemeForHero = self::getTheme($primaryColor ?: 'midnight');
+                    $primaryBgHex = e((string) ($primaryThemeForHero['palette']['background'] ?? '#0f766e'));
+                    $lightPrimaryStyle = $lightMedia ? " style='background:{$primaryBgHex};color:#fff'" : '';
+                    $poster = e(self::staticAssetUrl((string) ($block['poster_image_url'] ?? $block['image_url'] ?? '/storage/cms-images/background/background-1.avif')));
+                    $video = e(self::staticAssetUrl((string) ($block['video_url'] ?? '/storage/cms-videos/hero-placeholder.mp4')));
+                    $copy = "<div class='cosmic-motion2-copy'><p class='cosmic-motion2-eyebrow'>{$eyebrow}</p><h1>{$heading}</h1><p class='cosmic-motion2-body'>{$body}</p><div class='cosmic-motion2-actions'><a class='cosmic-motion2-primary'{$lightPrimaryStyle} href='{$primaryUrl}'>{$primaryLabel}</a><a class='cosmic-motion2-secondary' href='{$secondaryUrl}'>{$secondaryLabel}</a></div></div>";
+
+                    if (in_array($motionType, ['hero_aurora_motion_premium', 'hero_mesh_gradient_motion_premium'], true)) {
+                        $gradientTheme = self::getTheme($primaryColor ?: 'midnight');
+                        $gradient = $gradientTheme['gradient'] ?? [];
+                        $gradientFrom = e((string) ($gradient['from'] ?? '#071426'));
+                        $gradientVia = e((string) ($gradient['via'] ?? '#111936'));
+                        $gradientTo = e((string) ($gradient['to'] ?? '#28164D'));
+                        $gradientGlow = e((string) ($gradient['glow'] ?? '#7C3AED'));
+                        $gradientGlowSoft = e((string) ($gradient['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
+                        $gradientGlowStrong = e((string) ($gradient['glowStrong'] ?? 'rgba(124, 58, 237, 0.38)'));
+                        $gradientAngle = max(0, min(360, (int) ($gradient['angle'] ?? 120)));
+                        $gradientVars = "--cg-from:{$gradientFrom};--cg-via:{$gradientVia};--cg-to:{$gradientTo};--cg-glow:{$gradientGlow};--cg-glow-soft:{$gradientGlowSoft};--cg-glow-strong:{$gradientGlowStrong};--cg-angle:{$gradientAngle}deg";
+                        $isMesh = $motionType === 'hero_mesh_gradient_motion_premium';
+                        $motionLayer = $isMesh
+                            ? "<div class='cosmic-motion2-mesh'></div><div class='cosmic-motion2-grid'></div>"
+                            : "<div class='cosmic-motion2-aurora cosmic-motion2-aurora-a'></div><div class='cosmic-motion2-aurora cosmic-motion2-aurora-b'></div><div class='cosmic-motion2-aurora cosmic-motion2-aurora-c'></div>";
+                        $html .= "<section id='{$motionId}' class='cosmic-motion2-hero cosmic-motion2-gradient{$stateClass}' style='{$gradientVars}'>{$motionLayer}<div class='cosmic-motion2-shade'></div><div class='cosmic-motion2-copy-wrap'>{$copy}</div></section>";
+                    } elseif (in_array($motionType, ['hero_video_cinematic_premium', 'hero_video_split_premium'], true)) {
+                        $splitClass = $motionType === 'hero_video_split_premium' ? ' cosmic-motion2-video-split' : '';
+                        $media = "<div class='cosmic-motion2-video'><video autoplay muted loop playsinline preload='metadata' poster='{$poster}'><source src='{$video}'></video><div class='cosmic-motion2-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion2-media-gradient'></div></div>";
+                        $html .= "<section id='{$motionId}' class='cosmic-motion2-hero{$splitClass}{$stateClass}'>{$media}<div class='cosmic-motion2-copy-wrap'>{$copy}</div></section>";
+                    } elseif ($motionType === 'hero_pinned_story_premium') {
+                        $html .= "<section id='{$motionId}' class='cosmic-motion2-pinned{$stateClass}' data-motion-strength='{$motionStrength}'><div class='cosmic-motion2-sticky'><div class='cosmic-motion2-story-media is-active' data-story='0'><img src='{$image1}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async'></div><div class='cosmic-motion2-story-media' data-story='1'><img src='{$image2}' alt='' width='1920' height='1080' loading='lazy' decoding='async'></div><div class='cosmic-motion2-story-media' data-story='2'><img src='{$image3}' alt='' width='1920' height='1080' loading='lazy' decoding='async'></div><div class='cosmic-motion2-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion2-media-gradient'></div><div class='cosmic-motion2-copy-wrap'>{$copy}</div><div class='cosmic-motion2-dots'><span class='is-active'></span><span></span><span></span></div></div></section>";
+                    } else {
+                        $modeClass = $motionType === 'hero_reveal_parallax_premium' ? ' cosmic-motion2-reveal' : ' cosmic-motion2-zoom';
+                        $html .= "<section id='{$motionId}' class='cosmic-motion2-hero{$modeClass}{$stateClass}' data-motion-strength='{$motionStrength}'><div class='cosmic-motion2-scroll-media'><img src='{$image1}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async'></div><div class='cosmic-motion2-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion2-media-gradient'></div><div class='cosmic-motion2-copy-wrap'>{$copy}</div></section>";
+                    }
+
+                    $html .= "<style>
+#{$motionId}.cosmic-motion2-hero{position:relative;isolation:isolate;overflow:hidden;min-height:86svh;background:#020617;color:#fff}#{$motionId} .cosmic-motion2-copy-wrap{position:relative;z-index:4;display:flex;align-items:center;min-height:86svh;width:100%;max-width:80rem;margin:0 auto;padding:6rem 3rem}#{$motionId} .cosmic-motion2-copy{max-width:48rem}#{$motionId} .cosmic-motion2-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$motionId} h1{margin-top:1.5rem;font-size:clamp(3rem,7vw,5.4rem);line-height:.95;letter-spacing:-.045em;font-weight:700}#{$motionId} .cosmic-motion2-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.75)}#{$motionId} .cosmic-motion2-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$motionId} .cosmic-motion2-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$motionId} .cosmic-motion2-primary{background:#fff;color:#0f172a}#{$motionId} .cosmic-motion2-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(10px)}#{$motionId} .cosmic-motion2-overlay{position:absolute;inset:0;background:#020617;z-index:2}#{$motionId} .cosmic-motion2-media-gradient{position:absolute;inset:0;z-index:3;background:linear-gradient(90deg,rgba(2,6,23,.72),rgba(2,6,23,.18),rgba(2,6,23,.04))}
+#{$motionId} .cosmic-motion2-scroll-media{position:absolute;inset:0;overflow:hidden;will-change:transform;transform:scale(1.04)}#{$motionId} .cosmic-motion2-scroll-media img{width:100%;height:100%;object-fit:cover}#{$motionId}.cosmic-motion2-reveal .cosmic-motion2-scroll-media{clip-path:inset(8% 4% 8% 4% round 28px)}
+#{$motionId} .cosmic-motion2-video{position:absolute;inset:0;overflow:hidden;background:#0f172a}#{$motionId} .cosmic-motion2-video video{width:100%;height:100%;object-fit:cover}#{$motionId}.cosmic-motion2-video-split{display:grid;grid-template-columns:.9fr 1.1fr;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-copy-wrap{grid-column:1;grid-row:1;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-video{position:relative;grid-column:2;grid-row:1;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-media-gradient{background:linear-gradient(90deg,rgba(2,6,23,.25),rgba(2,6,23,.02))}
+#{$motionId}.cosmic-motion2-pinned{position:relative;height:165svh;background:#020617;color:#fff}#{$motionId} .cosmic-motion2-sticky{position:sticky;top:0;height:100svh;overflow:hidden;isolation:isolate}#{$motionId} .cosmic-motion2-story-media{position:absolute;inset:0;opacity:0;transform:scale(1.04);transition:opacity .7s ease,transform .7s ease}#{$motionId} .cosmic-motion2-story-media.is-active{opacity:1;transform:scale(1)}#{$motionId} .cosmic-motion2-story-media img{width:100%;height:100%;object-fit:cover}#{$motionId} .cosmic-motion2-dots{position:absolute;right:2rem;bottom:2rem;z-index:5;display:flex;gap:.5rem}#{$motionId} .cosmic-motion2-dots span{display:block;width:20px;height:4px;border-radius:999px;background:rgba(255,255,255,.3);transition:.35s ease}#{$motionId} .cosmic-motion2-dots span.is-active{width:48px;background:#fff}
+@keyframes cosmicAurora{$motionId}{0%,100%{transform:translate3d(-8%,-5%,0) rotate(-8deg) scale(1)}50%{transform:translate3d(10%,8%,0) rotate(8deg) scale(1.12)}}@keyframes cosmicMesh{$motionId}{0%,100%{transform:translate3d(-4%,-3%,0) scale(1)}33%{transform:translate3d(7%,-5%,0) scale(1.08)}66%{transform:translate3d(2%,8%,0) scale(1.13)}}#{$motionId}.cosmic-motion2-gradient{background:linear-gradient(var(--cg-angle),var(--cg-from),var(--cg-via),var(--cg-to))}#{$motionId} .cosmic-motion2-shade{position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(2,6,23,.06),rgba(2,6,23,.68))}#{$motionId} .cosmic-motion2-aurora{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform}#{$motionId} .cosmic-motion2-aurora-a{left:-15%;top:-35%;width:75%;height:90%;background:var(--cg-glow-strong);animation:cosmicAurora{$motionId} 14s ease-in-out infinite}#{$motionId} .cosmic-motion2-aurora-b{right:-15%;bottom:-30%;width:70%;height:85%;background:color-mix(in srgb,var(--cg-via) 72%,transparent);animation:cosmicAurora{$motionId} 18s ease-in-out infinite reverse}#{$motionId} .cosmic-motion2-aurora-c{left:40%;top:25%;width:45%;height:45%;background:var(--cg-glow-soft);filter:blur(100px)}#{$motionId} .cosmic-motion2-mesh{position:absolute;inset:-25%;opacity:.88;filter:blur(58px);background:radial-gradient(circle at 20% 25%,var(--cg-glow-strong),transparent 28%),radial-gradient(circle at 75% 20%,var(--cg-glow-soft),transparent 31%),radial-gradient(circle at 65% 78%,color-mix(in srgb,var(--cg-via) 75%,transparent),transparent 30%),radial-gradient(circle at 25% 80%,color-mix(in srgb,var(--cg-to) 72%,transparent),transparent 28%);animation:cosmicMesh{$motionId} 16s ease-in-out infinite}#{$motionId} .cosmic-motion2-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:56px 56px}
+#{$motionId}.cosmic-motion2-light,#{$motionId}.cosmic-motion2-pinned.cosmic-motion2-light{background:#fff;color:#0f172a}#{$motionId}.cosmic-motion2-light .cosmic-motion2-eyebrow{color:#64748b}#{$motionId}.cosmic-motion2-light .cosmic-motion2-body{color:#475569}#{$motionId}.cosmic-motion2-light .cosmic-motion2-primary{background:var(--cosmic-primary-bg,#0f766e);color:#fff}#{$motionId}.cosmic-motion2-light .cosmic-motion2-secondary{border-color:#cbd5e1;background:rgba(255,255,255,.72);color:#0f172a}#{$motionId}.cosmic-motion2-light .cosmic-motion2-media-gradient{background:linear-gradient(90deg,rgba(255,255,255,.78),rgba(255,255,255,.34),rgba(255,255,255,.12))}#{$motionId}.cosmic-motion2-light.cosmic-motion2-gradient{background:#fff!important}#{$motionId}.cosmic-motion2-light .cosmic-motion2-aurora,#{$motionId}.cosmic-motion2-light .cosmic-motion2-mesh,#{$motionId}.cosmic-motion2-light .cosmic-motion2-grid{opacity:.10!important}#{$motionId}.cosmic-motion2-light .cosmic-motion2-shade{background:rgba(255,255,255,.92)}#{$motionId}.cosmic-motion2-light .cosmic-motion2-dots span{background:rgba(100,116,139,.35)}#{$motionId}.cosmic-motion2-light .cosmic-motion2-dots span.is-active{background:#334155}
+@media(max-width:900px){#{$motionId} .cosmic-motion2-copy-wrap{padding:5rem 1.5rem}#{$motionId}.cosmic-motion2-video-split{display:block;min-height:86svh}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-video{position:absolute;inset:0;min-height:0}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-copy-wrap{min-height:86svh}#{$motionId}.cosmic-motion2-pinned{height:145svh}}
+@media(prefers-reduced-motion:reduce){#{$motionId} .cosmic-motion2-scroll-media,#{$motionId} .cosmic-motion2-story-media,#{$motionId} .cosmic-motion2-aurora,#{$motionId} .cosmic-motion2-mesh{animation:none!important;transition:none!important;transform:none!important}#{$motionId}.cosmic-motion2-reveal .cosmic-motion2-scroll-media{clip-path:none!important}}
+</style>";
+
+                    if (in_array($motionType, ['hero_reveal_parallax_premium', 'hero_zoom_scroll_premium', 'hero_pinned_story_premium'], true)) {
+                        $html .= "<script>(function(){const root=document.getElementById('{$motionId}');if(!root)return;const reduced=matchMedia('(prefers-reduced-motion: reduce)');const type='{$motionType}';let raf=null;function update(){if(reduced.matches)return;const r=root.getBoundingClientRect(),vh=innerHeight||1;if(type==='hero_pinned_story_premium'){const span=Math.max(1,r.height-vh),p=Math.max(0,Math.min(1,-r.top/span)),chapter=Math.min(2,Math.floor(p*3));root.querySelectorAll('[data-story]').forEach((el,i)=>el.classList.toggle('is-active',i===chapter));root.querySelectorAll('.cosmic-motion2-dots span').forEach((el,i)=>el.classList.toggle('is-active',i===chapter));return;}if(r.bottom<0||r.top>vh)return;const p=Math.max(0,Math.min(1,(vh-r.top)/(vh+r.height))),media=root.querySelector('.cosmic-motion2-scroll-media');if(!media)return;if(raf)cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{if(type==='hero_reveal_parallax_premium'){const inset=Math.max(0,(1-p)*10);media.style.clipPath='inset('+inset+'% '+(inset*.55)+'% '+inset+'% '+(inset*.55)+'% round '+Math.max(0,(1-p)*32)+'px)';media.style.transform='translate3d(0,'+((.5-p)*{$motionStrength})+'px,0) scale('+(1.06-p*.035)+')';}else{media.style.transform='scale('+(1.02+p*({$motionStrength}/500))+') translate3d(0,'+((p-.5)*{$motionStrength}*.35)+'px,0)';}});}addEventListener('scroll',update,{passive:true});addEventListener('resize',update,{passive:true});update();})();</script>";
+                    }
+                    break;
+
+                case 'hero_ken_burns_premium':
+                case 'hero_crossfade_gallery_premium':
+                case 'hero_cinematic_slider_premium':
+                case 'hero_split_slider_premium':
+                case 'hero_vertical_story_premium':
+                case 'hero_parallax_layers_premium':
+                case 'hero_mouse_parallax_premium':
+                    $animatedType = (string) ($block['type'] ?? 'hero_ken_burns_premium');
+                    $animatedId = 'cosmic-motion-hero-' . substr(sha1($animatedType . '|' . json_encode($block) . '|' . uniqid('', true)), 0, 12);
+                    $eyebrow = e((string) ($block['eyebrow'] ?? 'MOTION, WITH PURPOSE'));
+                    $heading = e((string) ($block['heading'] ?? 'A premium first impression that feels alive.'));
+                    $body = e((string) ($block['text'] ?? 'Pair confident messaging with considered motion and a clear next step.'));
+                    $primaryLabel = e((string) ($block['primary_label'] ?? 'Start a project'));
+                    $primaryUrl = e((string) ($block['primary_url'] ?? '#'));
+                    $secondaryLabel = e((string) ($block['secondary_label'] ?? 'Explore more'));
+                    $secondaryUrl = e((string) ($block['secondary_url'] ?? '#'));
+                    $images = array_values(array_filter([
+                        (string) ($block['image_url'] ?? ''),
+                        (string) ($block['image_url_2'] ?? ''),
+                        (string) ($block['image_url_3'] ?? ''),
+                    ]));
+                    if ($images === []) {
+                        $images = ['/storage/cms-images/background/background-1.avif'];
+                    }
+                    $resolvedTheme = (string) ($blockTheme ?? $block['resolvedTheme'] ?? $selectedThemeName ?? 'primary');
+                    $lightMedia = self::$currentPageStyle === 'clean' || in_array($resolvedTheme, ['white', 'surface', 'stone'], true);
+                    $overlayHex = self::mediaOverlayColor($resolvedTheme, $primaryColor);
+                    $overlay = max($lightMedia ? 0.90 : 0.48, min($lightMedia ? 0.96 : 0.72, ((float) ($block['overlayOpacity'] ?? 58)) / 100));
+                    $stateClass = $lightMedia ? ' cosmic-motion-light' : '';
+                    $primaryThemeForHero = self::getTheme($primaryColor ?: 'midnight');
+                    $primaryBgHex = e((string) ($primaryThemeForHero['palette']['background'] ?? '#0f766e'));
+                    $lightPrimaryStyle = $lightMedia ? " style='background:{$primaryBgHex};color:#fff'" : '';
+                    $interval = max(3200, (int) ($block['interval'] ?? 5000));
+                    $isSplit = $animatedType === 'hero_split_slider_premium';
+                    $isVertical = $animatedType === 'hero_vertical_story_premium';
+                    $isKenBurns = $animatedType === 'hero_ken_burns_premium';
+                    $isLayered = in_array($animatedType, ['hero_parallax_layers_premium', 'hero_mouse_parallax_premium'], true);
+                    $mediaMarkup = '';
+                    foreach ($images as $imageIndex => $rawImage) {
+                        $image = e(self::staticAssetUrl($rawImage));
+                        $activeClass = $imageIndex === 0 ? 'is-active' : '';
+                        $kenClass = $isKenBurns && $imageIndex === 0 ? ' cosmic-motion-kenburns' : '';
+                        $layerAttr = $isLayered ? " data-motion-layer='{$imageIndex}'" : '';
+                        $mediaMarkup .= "<div class='cosmic-motion-media {$activeClass}{$kenClass}' data-slide='{$imageIndex}'{$layerAttr}><img src='{$image}' alt='' width='1920' height='1080' " . ($imageIndex === 0 ? "loading='eager' fetchpriority='high'" : "loading='lazy'") . " decoding='async'></div>";
+                    }
+                    $dots = '';
+                    if (in_array($animatedType, ['hero_crossfade_gallery_premium','hero_cinematic_slider_premium','hero_split_slider_premium','hero_vertical_story_premium'], true) && count($images) > 1) {
+                        foreach ($images as $imageIndex => $_) {
+                            $dots .= "<span class='cosmic-motion-dot " . ($imageIndex === 0 ? 'is-active' : '') . "' data-dot='{$imageIndex}'></span>";
+                        }
+                    }
+                    $layoutClass = $isSplit ? ' cosmic-motion-split' : '';
+                    $html .= "
+<section id='{$animatedId}' class='cosmic-motion-hero{$layoutClass}{$stateClass}' data-motion-type='{$animatedType}' data-interval='{$interval}'>
+  <div class='cosmic-motion-media-wrap'>{$mediaMarkup}<div class='cosmic-motion-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion-gradient'></div></div>
+  <div class='cosmic-motion-copy-wrap'><div class='cosmic-motion-copy'>
+    <p class='cosmic-motion-eyebrow'>{$eyebrow}</p>
+    <h1>{$heading}</h1>
+    <p class='cosmic-motion-body'>{$body}</p>
+    <div class='cosmic-motion-actions'><a href='{$primaryUrl}' class='cosmic-motion-primary'{$lightPrimaryStyle}>{$primaryLabel}</a><a href='{$secondaryUrl}' class='cosmic-motion-secondary'>{$secondaryLabel}</a></div>
+    " . ($dots !== '' ? "<div class='cosmic-motion-progress'>{$dots}</div>" : '') . "
+  </div></div>
+</section>
+<style>
+#{$animatedId}{position:relative;isolation:isolate;overflow:hidden;min-height:82svh;background:#020617;color:#fff;display:flex}#{$animatedId} .cosmic-motion-media-wrap{position:absolute;inset:0;overflow:hidden}#{$animatedId} .cosmic-motion-media{position:absolute;inset:0;opacity:0;transform:scale(1.025);transition:opacity 1s ease,transform 1s ease}#{$animatedId} .cosmic-motion-media.is-active{opacity:1;transform:scale(1)}#{$animatedId} .cosmic-motion-media img{width:100%;height:100%;object-fit:cover}#{$animatedId} .cosmic-motion-overlay{position:absolute;inset:0;background:#020617}#{$animatedId} .cosmic-motion-gradient{position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,6,23,.76),rgba(2,6,23,.22),rgba(2,6,23,.06))}#{$animatedId} .cosmic-motion-copy-wrap{position:relative;z-index:3;width:100%;max-width:80rem;margin:auto;display:flex;align-items:center;min-height:82svh;padding:6rem 3rem}#{$animatedId} .cosmic-motion-copy{max-width:48rem}#{$animatedId} .cosmic-motion-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$animatedId} h1{margin-top:1.5rem;font-size:clamp(3rem,7vw,5.4rem);line-height:.95;letter-spacing:-.045em;font-weight:700}#{$animatedId} .cosmic-motion-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.74)}#{$animatedId} .cosmic-motion-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$animatedId} .cosmic-motion-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$animatedId} .cosmic-motion-primary{background:#fff;color:#0f172a}#{$animatedId} .cosmic-motion-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(10px)}#{$animatedId} .cosmic-motion-progress{display:flex;align-items:center;gap:.5rem;margin-top:2.5rem}#{$animatedId} .cosmic-motion-dot{height:4px;width:20px;border-radius:999px;background:rgba(255,255,255,.3);transition:width .4s ease,background .4s ease}#{$animatedId} .cosmic-motion-dot.is-active{width:48px;background:#fff}
+#{$animatedId}.cosmic-motion-split{display:grid;grid-template-columns:.9fr 1.1fr;min-height:720px}#{$animatedId}.cosmic-motion-split .cosmic-motion-copy-wrap{grid-column:1;grid-row:1;min-height:720px;padding:5rem 3rem}#{$animatedId}.cosmic-motion-split .cosmic-motion-media-wrap{position:relative;grid-column:2;grid-row:1;min-height:720px}#{$animatedId}.cosmic-motion-split .cosmic-motion-gradient{background:linear-gradient(90deg,rgba(2,6,23,.45),rgba(2,6,23,.04))}
+#{$animatedId}.cosmic-motion-light{background:#fff;color:#0f172a}#{$animatedId}.cosmic-motion-light .cosmic-motion-eyebrow{color:#64748b}#{$animatedId}.cosmic-motion-light .cosmic-motion-body{color:#475569}#{$animatedId}.cosmic-motion-light .cosmic-motion-primary{background:var(--cosmic-primary-bg,#0f766e);color:#fff}#{$animatedId}.cosmic-motion-light .cosmic-motion-secondary{border-color:#cbd5e1;background:rgba(255,255,255,.72);color:#0f172a}#{$animatedId}.cosmic-motion-light .cosmic-motion-gradient{background:linear-gradient(90deg,rgba(255,255,255,.78),rgba(255,255,255,.34),rgba(255,255,255,.12))}#{$animatedId}.cosmic-motion-light .cosmic-motion-dot{background:rgba(100,116,139,.35)}#{$animatedId}.cosmic-motion-light .cosmic-motion-dot.is-active{background:#334155}
+#{$animatedId}[data-motion-type='hero_vertical_story_premium'] .cosmic-motion-media{opacity:0;transform:translateY(100%)}#{$animatedId}[data-motion-type='hero_vertical_story_premium'] .cosmic-motion-media.is-active{opacity:1;transform:translateY(0)}
+@keyframes cosmicKenBurns{$animatedId}{0%{transform:scale(1.04) translate(-.5%,-.3%)}50%{transform:scale(1.11) translate(.8%,.5%)}100%{transform:scale(1.16) translate(-.2%,.8%)}}#{$animatedId} .cosmic-motion-kenburns{opacity:1;animation:cosmicKenBurns{$animatedId} 18s ease-in-out infinite alternate;will-change:transform}
+@media(max-width:900px){#{$animatedId}.cosmic-motion-split{display:block;min-height:82svh}#{$animatedId}.cosmic-motion-split .cosmic-motion-media-wrap{position:absolute;inset:0;min-height:0}#{$animatedId}.cosmic-motion-split .cosmic-motion-copy-wrap{min-height:82svh;padding:5rem 1.5rem}#{$animatedId} .cosmic-motion-copy-wrap{padding:5rem 1.5rem}}
+@media(prefers-reduced-motion:reduce){#{$animatedId} .cosmic-motion-media,#{$animatedId} .cosmic-motion-kenburns{transition:none!important;animation:none!important;transform:none!important}}
+</style>";
+                    if (count($images) > 1 || $isLayered) {
+                        $strength = $animatedType === 'hero_mouse_parallax_premium' ? max(6, min(28, (int) ($block['pointerStrength'] ?? 16))) : max(8, min(36, (int) ($block['parallaxStrength'] ?? 22)));
+                        $html .= "<script>(function(){const root=document.getElementById('{$animatedId}');if(!root)return;const reduced=window.matchMedia('(prefers-reduced-motion: reduce)');const type=root.dataset.motionType;const slides=[...root.querySelectorAll('[data-slide]')];const dots=[...root.querySelectorAll('[data-dot]')];let active=0,timer=null,raf=null;function show(i){active=(i+slides.length)%slides.length;slides.forEach((el,n)=>el.classList.toggle('is-active',n===active));dots.forEach((el,n)=>el.classList.toggle('is-active',n===active));}if(!reduced.matches&&['hero_crossfade_gallery_premium','hero_cinematic_slider_premium','hero_split_slider_premium','hero_vertical_story_premium'].includes(type)&&slides.length>1){timer=setInterval(()=>show(active+1),Number(root.dataset.interval)||5000);}function move(x,y){root.querySelectorAll('[data-motion-layer]').forEach((el,n)=>{const d=(n+1)*.38;el.style.transform='translate3d('+(x*d)+'px,'+(y*d)+'px,0) scale('+(1.04+n*.025)+')';});}function pointer(e){if(type!=='hero_mouse_parallax_premium'||reduced.matches)return;const r=root.getBoundingClientRect();const x=((e.clientX-r.left)/Math.max(1,r.width)-.5)*{$strength};const y=((e.clientY-r.top)/Math.max(1,r.height)-.5)*{$strength};if(raf)cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>move(x,y));}function scroll(){if(type!=='hero_parallax_layers_premium'||reduced.matches)return;const r=root.getBoundingClientRect(),vh=innerHeight||1;if(r.bottom<0||r.top>vh)return;const y=((vh-r.top)/(vh+r.height)-.5)*{$strength};if(raf)cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>move(0,y));}root.addEventListener('pointermove',pointer,{passive:true});root.addEventListener('pointerleave',()=>move(0,0),{passive:true});addEventListener('scroll',scroll,{passive:true});scroll();})();</script>";
+                    }
+                    break;
             }
 
             $fragment = substr($html, $fragmentStart);

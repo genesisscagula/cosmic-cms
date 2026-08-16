@@ -1,0 +1,77 @@
+import { useEffect, useRef, useState } from "react";
+import { EditableText } from "../Shared/EditableText";
+import { EditableButton } from "../Shared/EditableButton";
+import { colorFamilies } from "../../../../theme/colorFamilies";
+import { getHeroThemeState } from "../../../../theme/heroTheme";
+
+const base={eyebrow:"DESIGNED TO MOVE",heading:"A premium opening with motion built into the story.",text:"Lightweight animation adds depth while keeping the message and conversion path clear.",primary_label:"Get started",primary_url:"/start",secondary_label:"Explore more",secondary_url:"/features",image_url:"/storage/cms-images/background/background-1.avif",image_url_2:"/storage/cms-images/background/background-2.avif",image_url_3:"/storage/cms-images/background/background-3.avif"};
+const schema=(type,title,purpose,aliases)=>({type,title,category:"Hero",purpose,description:`${title} is a Pro animated hero with reduced-motion safeguards.`,access:"pro",isPremium:true,badge:"PRO",credits:175,tags:["hero","premium","animated",...aliases],aliases:[title.toLowerCase(),...aliases],defaults:{...base},fields:[{type:"text",name:"eyebrow",label:"Eyebrow"},{type:"textarea",name:"heading",label:"Heading"},{type:"textarea",name:"text",label:"Description"},{type:"button",name:"primary",label:"Primary Button"},{type:"button",name:"secondary",label:"Secondary Button"},{type:"image",name:"image_url",label:"Primary Image"},{type:"image",name:"image_url_2",label:"Secondary Image"},{type:"image",name:"image_url_3",label:"Third Image"}]});
+export const HeroGridPulseTechPremiumSchema=schema("hero_grid_pulse_tech_premium","Grid Pulse Tech Hero","Animated technical grid with a restrained moving pulse.",["grid pulse","tech grid","ai hero","cybersecurity","developer"]);
+export const HeroLightTrailsPremiumSchema=schema("hero_light_trails_premium","Beam / Light Trails Hero","Slow luminous trails for premium technology and launch pages.",["light trails","beam hero","glow lines","technology","launch"]);
+export const HeroDeviceShowcasePremiumSchema=schema("hero_device_showcase_premium","Device Showcase Hero","Floating laptop and phone frames for product-led websites.",["device showcase","phone laptop","app hero","saas product","device mockup"]);
+export const HeroAppScreensCarouselPremiumSchema=schema("hero_app_screens_carousel_premium","App Screens Carousel Hero","Cycles layered app screens with lightweight motion.",["app screens","screens carousel","mobile app","product carousel","ui showcase"]);
+export const HeroEditorialImageSequencePremiumSchema=schema("hero_editorial_image_sequence_premium","Editorial Image Sequence Hero","Editorial image sequence for fashion, hospitality and creative brands.",["editorial images","image sequence","fashion hero","hotel hero","creative"]);
+export const HeroInteractiveBentoPremiumSchema=schema("hero_interactive_bento_premium","Interactive Bento Hero","Responsive bento tiles subtly expand on interaction.",["interactive bento","bento hero","hover tiles","agency hero","product grid"]);
+
+function heroVisualState(block, globalTheme){
+  const state=getHeroThemeState(block,globalTheme);
+  const primaryKey=typeof globalTheme==="string"?globalTheme:(globalTheme?.primary||"midnight");
+  const primaryTheme=colorFamilies[primaryKey]||colorFamilies.midnight;
+  const gradient=primaryTheme.gradient||colorFamilies.midnight.gradient;
+  const sectionClass=state.isLight?`${state.theme.bg} ${state.theme.text}`:(state.isPrimary?`${primaryTheme.bg} ${primaryTheme.text}`:"bg-slate-950 text-white");
+  return {...state,primaryTheme,gradient,sectionClass};
+}
+
+function Copy({d,onUpdate,visual}){
+  const primary=visual.isLight?`${visual.primaryTheme.bg} ${visual.primaryTheme.text}`:"bg-white text-slate-950 hover:bg-white/90";
+  const secondary=visual.isLight?`border-slate-300 bg-white/75 ${visual.theme.text}`:"border-white/25 bg-white/5 text-white";
+  return <div className="relative z-20 max-w-2xl">
+    <EditableText value={d.eyebrow} className={`text-xs font-bold uppercase tracking-[.3em] ${visual.isLight?visual.theme.sub:"text-white/65"}`} onSave={v=>onUpdate({eyebrow:v})}/>
+    <EditableText value={d.heading} className={`mt-5 block text-5xl font-semibold leading-[.96] tracking-[-.045em] sm:text-6xl ${visual.isLight?visual.theme.text:"text-white"}`} onSave={v=>onUpdate({heading:v})}/>
+    <EditableText value={d.text} className={`mt-6 block max-w-xl text-base leading-8 ${visual.isLight?visual.theme.sub:"text-white/70"}`} onSave={v=>onUpdate({text:v})}/>
+    <div className="mt-8 flex flex-wrap gap-3">
+      <EditableButton label={d.primary_label} url={d.primary_url} onSave={(label,url)=>onUpdate({primary_label:label,primary_url:url})} className={`rounded-full px-6 py-3 text-sm font-bold ${primary}`}/>
+      <EditableButton label={d.secondary_label} url={d.secondary_url} onSave={(label,url)=>onUpdate({secondary_label:label,secondary_url:url})} className={`rounded-full border px-6 py-3 text-sm font-bold ${secondary}`}/>
+    </div>
+  </div>;
+}
+
+function Shell({children,visual,className="",style}){
+  return <section className={`relative isolate min-h-[86svh] overflow-hidden ${visual.sectionClass} ${className}`} data-cosmic-hero-theme={visual.requestedTheme} style={style}>
+    <style>{`@media(prefers-reduced-motion:reduce){.cosmic-p5-motion{animation:none!important;transform:none!important;transition:none!important}}`}</style>
+    <div className="mx-auto grid min-h-[86svh] max-w-7xl items-center gap-12 px-6 py-20 lg:grid-cols-[.9fr_1.1fr] lg:px-14">{children}</div>
+  </section>;
+}
+
+export function HeroGridPulseTechPremiumBlock({block,onUpdate,globalTheme}){
+  const d={...HeroGridPulseTechPremiumSchema.defaults,...block};const visual=heroVisualState(block,globalTheme);const g=visual.gradient;
+  const gridColor=visual.isLight?"rgba(100,116,139,.16)":"rgba(255,255,255,.10)";
+  return <Shell visual={visual}><Copy d={d} onUpdate={onUpdate} visual={visual}/><div className={`relative h-[430px] overflow-hidden rounded-[32px] border ${visual.isLight?"border-slate-200 bg-white/70":"border-white/10 bg-black/10"}`} style={{backgroundImage:`radial-gradient(circle at 70% 25%, ${g.glowSoft}, transparent 38%)`}}><div className="absolute inset-0 opacity-60" style={{backgroundImage:`linear-gradient(${gridColor} 1px,transparent 1px),linear-gradient(90deg,${gridColor} 1px,transparent 1px)`,backgroundSize:"42px 42px"}}/><div className="cosmic-p5-motion absolute left-0 top-1/2 h-px w-1/2" style={{background:`linear-gradient(90deg,transparent,${g.glow},transparent)`,animation:"p5scan 3.5s ease-in-out infinite"}}/><style>{`@keyframes p5scan{50%{transform:translateX(100%) translateY(-140px)}}`}</style></div></Shell>;
+}
+
+export function HeroLightTrailsPremiumBlock({block,onUpdate,globalTheme}){
+  const d={...HeroLightTrailsPremiumSchema.defaults,...block};const visual=heroVisualState(block,globalTheme);const g=visual.gradient;
+  const background=visual.isLight?"rgba(255,255,255,.62)":`linear-gradient(${g.angle||120}deg,${g.from},${g.via},${g.to})`;
+  return <Shell visual={visual}><Copy d={d} onUpdate={onUpdate} visual={visual}/><div className={`relative h-[430px] overflow-hidden rounded-[32px] border ${visual.isLight?"border-slate-200":"border-white/10"}`} style={{background}}>{[0,1,2,3].map(i=><i key={i} className="cosmic-p5-motion absolute left-[-20%] h-px w-[140%]" style={{top:`${20+i*20}%`,background:`linear-gradient(90deg,transparent,${visual.isLight?g.glow:g.glow},transparent)`,opacity:visual.isLight?.55:.85,transform:`rotate(${-12+i*7}deg)`,animation:`p5beam ${4+i*.7}s ease-in-out ${i*.3}s infinite`}}/>)}<style>{`@keyframes p5beam{50%{transform:translateX(12%) rotate(-4deg);opacity:.35}}`}</style></div></Shell>;
+}
+
+export function HeroDeviceShowcasePremiumBlock({block,onUpdate,globalTheme}){
+  const d={...HeroDeviceShowcasePremiumSchema.defaults,...block};const visual=heroVisualState(block,globalTheme);const frame=visual.isLight?"border-slate-300 bg-slate-100":"border-slate-800 bg-slate-900";
+  return <Shell visual={visual}><Copy d={d} onUpdate={onUpdate} visual={visual}/><div className="relative h-[480px]"><div className={`cosmic-p5-motion absolute inset-x-[5%] top-[12%] overflow-hidden rounded-[26px] border-[8px] shadow-2xl ${frame}`} style={{animation:"p5float 5s ease-in-out infinite"}}><img src={d.image_url} alt="" decoding="async" className="aspect-[16/10] w-full object-cover"/></div><div className={`cosmic-p5-motion absolute bottom-[5%] right-[4%] w-[28%] overflow-hidden rounded-[28px] border-[7px] shadow-2xl ${frame}`} style={{animation:"p5float 4.4s ease-in-out .7s infinite"}}><img src={d.image_url_2} alt="" loading="lazy" decoding="async" className="aspect-[9/16] w-full object-cover"/></div><style>{`@keyframes p5float{50%{transform:translateY(-12px)}}`}</style></div></Shell>;
+}
+
+export function HeroAppScreensCarouselPremiumBlock({block,onUpdate,globalTheme}){
+  const d={...HeroAppScreensCarouselPremiumSchema.defaults,...block};const visual=heroVisualState(block,globalTheme);const [a,setA]=useState(0);const root=useRef(null);
+  useEffect(()=>{if(matchMedia('(prefers-reduced-motion: reduce)').matches)return;const el=root.current;if(!el)return;let id=0;const stop=()=>{if(id){clearInterval(id);id=0;}};const start=()=>{if(!id)id=setInterval(()=>setA(v=>(v+1)%3),3000);};const io=new IntersectionObserver(([entry])=>entry?.isIntersecting?start():stop(),{rootMargin:'120px'});io.observe(el);return()=>{stop();io.disconnect();};},[]);
+  const imgs=[d.image_url,d.image_url_2,d.image_url_3];return <div ref={root}><Shell visual={visual}><Copy d={d} onUpdate={onUpdate} visual={visual}/><div className="relative h-[470px]">{imgs.map((src,i)=>{let x=(i-a+3)%3;if(x===2)x=-1;return <img key={i} src={src} alt="" loading={i?'lazy':'eager'} decoding="async" className={`absolute left-1/2 top-1/2 aspect-[9/16] w-[42%] rounded-[28px] border object-cover shadow-2xl transition-all duration-700 ${visual.isLight?"border-slate-200":"border-white/15"}`} style={{transform:`translate(-50%,-50%) translateX(${x*58}%) scale(${x===0?1:.84})`,opacity:x===0?1:.5,zIndex:x===0?3:1}}/>})}</div></Shell></div>;
+}
+
+export function HeroEditorialImageSequencePremiumBlock({block,onUpdate,globalTheme}){
+  const d={...HeroEditorialImageSequencePremiumSchema.defaults,...block};const visual=heroVisualState(block,globalTheme);const imgs=[d.image_url,d.image_url_2,d.image_url_3];
+  return <Shell visual={visual}><Copy d={d} onUpdate={onUpdate} visual={visual}/><div className="grid grid-cols-2 gap-4">{imgs.map((src,i)=><img key={i} src={src} alt="" loading={i?'lazy':'eager'} decoding="async" className={`cosmic-p5-motion w-full rounded-[28px] object-cover shadow-xl ${i===0?'col-span-2 aspect-[16/7]':'aspect-square'}`} style={{animation:`p5editorial ${5+i}s ease-in-out ${i*.5}s infinite`}}/>)}<style>{`@keyframes p5editorial{50%{transform:translateY(-8px) scale(1.015)}}`}</style></div></Shell>;
+}
+
+export function HeroInteractiveBentoPremiumBlock({block,onUpdate,globalTheme}){
+  const d={...HeroInteractiveBentoPremiumSchema.defaults,...block};const visual=heroVisualState(block,globalTheme);const imgs=[d.image_url,d.image_url_2,d.image_url_3];
+  return <Shell visual={visual}><Copy d={d} onUpdate={onUpdate} visual={visual}/><div className="grid h-[470px] grid-cols-2 grid-rows-2 gap-3">{imgs.map((src,i)=><div key={i} className={`group overflow-hidden rounded-[28px] border transition-transform duration-300 hover:z-10 hover:scale-[1.025] ${visual.isLight?"border-slate-200 bg-white":"border-white/10 bg-white/5"} ${i===0?'row-span-2':''}`}><img src={src} alt="" loading={i?'lazy':'eager'} decoding="async" className="h-full w-full object-cover transition-transform duration-700 group-hover:scale-105"/></div>)}</div></Shell>;
+}

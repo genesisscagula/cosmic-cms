@@ -142,7 +142,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#052E2B",
+        "via": "#064E3B",
+        "to": "#0F3D46",
+        "glow": "#10B981",
+        "glowSoft": "rgba(16, 185, 129, 0.20)",
+        "glowStrong": "rgba(16, 185, 129, 0.38)",
+        "angle": 120
+      }
     },
     "coffee": {
       "bg": "bg-[#4A2A14]",
@@ -163,7 +172,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "editorial",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#21140F",
+        "via": "#3A2118",
+        "to": "#4A2C20",
+        "glow": "#C08457",
+        "glowSoft": "rgba(192, 132, 87, 0.20)",
+        "glowStrong": "rgba(192, 132, 87, 0.38)",
+        "angle": 120
+      }
     },
     "rose": {
       "bg": "bg-[#A13D63]",
@@ -184,7 +202,16 @@
       "buttonStyle": "pill",
       "cardStyle": "soft",
       "heroStyle": "editorial",
-      "ctaStyle": "gradient"
+      "ctaStyle": "gradient",
+      "gradient": {
+        "from": "#3B1926",
+        "via": "#4F212E",
+        "to": "#59292E",
+        "glow": "#FB7185",
+        "glowSoft": "rgba(251, 113, 133, 0.20)",
+        "glowStrong": "rgba(251, 113, 133, 0.38)",
+        "angle": 120
+      }
     },
     "dark": {
       "bg": "bg-[#1F2937]",
@@ -205,7 +232,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "outline",
       "heroStyle": "centered",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#0D1116",
+        "via": "#181D28",
+        "to": "#1F2232",
+        "glow": "#94A3B8",
+        "glowSoft": "rgba(148, 163, 184, 0.20)",
+        "glowStrong": "rgba(148, 163, 184, 0.38)",
+        "angle": 120
+      }
     },
     "ocean": {
       "bg": "bg-[#24598F]",
@@ -226,7 +262,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#102234",
+        "via": "#162B4A",
+        "to": "#1D2A55",
+        "glow": "#38BDF8",
+        "glowSoft": "rgba(56, 189, 248, 0.20)",
+        "glowStrong": "rgba(56, 189, 248, 0.38)",
+        "angle": 120
+      }
     },
     "indigo": {
       "bg": "bg-[#4F46A5]",
@@ -247,7 +292,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "glass",
       "heroStyle": "centered",
-      "ctaStyle": "gradient"
+      "ctaStyle": "gradient",
+      "gradient": {
+        "from": "#1F1C3D",
+        "via": "#2D2550",
+        "to": "#3E2D5A",
+        "glow": "#A78BFA",
+        "glowSoft": "rgba(167, 139, 250, 0.20)",
+        "glowStrong": "rgba(167, 139, 250, 0.38)",
+        "angle": 120
+      }
     },
     "amber": {
       "bg": "bg-[#A16207]",
@@ -268,7 +322,16 @@
       "buttonStyle": "pill",
       "cardStyle": "soft",
       "heroStyle": "image",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#3A2506",
+        "via": "#553C07",
+        "to": "#60550E",
+        "glow": "#FBBF24",
+        "glowSoft": "rgba(251, 191, 36, 0.20)",
+        "glowStrong": "rgba(251, 191, 36, 0.38)",
+        "angle": 120
+      }
     },
     "charcoal": {
       "bg": "bg-[#3A3A3A]",
@@ -289,7 +352,16 @@
       "buttonStyle": "square",
       "cardStyle": "outline",
       "heroStyle": "editorial",
-      "ctaStyle": "outline"
+      "ctaStyle": "outline",
+      "gradient": {
+        "from": "#1A1212",
+        "via": "#2B1E1D",
+        "to": "#362924",
+        "glow": "#D4D4D8",
+        "glowSoft": "rgba(212, 212, 216, 0.20)",
+        "glowStrong": "rgba(212, 212, 216, 0.38)",
+        "angle": 120
+      }
     },
     "violet": {
       "bg": "bg-[#5B3FA3]",
@@ -310,7 +382,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "glass",
       "heroStyle": "centered",
-      "ctaStyle": "gradient"
+      "ctaStyle": "gradient",
+      "gradient": {
+        "from": "#231A3C",
+        "via": "#332250",
+        "to": "#442A5A",
+        "glow": "#C084FC",
+        "glowSoft": "rgba(192, 132, 252, 0.20)",
+        "glowStrong": "rgba(192, 132, 252, 0.38)",
+        "angle": 120
+      }
     },
     "teal": {
       "bg": "bg-[#186B66]",
@@ -331,7 +412,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#0B2725",
+        "via": "#103C3E",
+        "to": "#173E49",
+        "glow": "#2DD4BF",
+        "glowSoft": "rgba(45, 212, 191, 0.20)",
+        "glowStrong": "rgba(45, 212, 191, 0.38)",
+        "angle": 120
+      }
     },
     "ruby": {
       "bg": "bg-[#A12649]",
@@ -352,7 +442,16 @@
       "buttonStyle": "pill",
       "cardStyle": "elevated",
       "heroStyle": "image",
-      "ctaStyle": "gradient"
+      "ctaStyle": "gradient",
+      "gradient": {
+        "from": "#3B111D",
+        "via": "#511622",
+        "to": "#5C1E1F",
+        "glow": "#FB7185",
+        "glowSoft": "rgba(251, 113, 133, 0.20)",
+        "glowStrong": "rgba(251, 113, 133, 0.38)",
+        "angle": 120
+      }
     },
     "forest": {
       "bg": "bg-[#2E5E3E]",
@@ -373,7 +472,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#122318",
+        "via": "#1C3527",
+        "to": "#243F34",
+        "glow": "#4ADE80",
+        "glowSoft": "rgba(74, 222, 128, 0.20)",
+        "glowStrong": "rgba(74, 222, 128, 0.38)",
+        "angle": 120
+      }
     },
     "midnight": {
       "bg": "bg-[#243447]",
@@ -394,7 +502,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#071426",
+        "via": "#111936",
+        "to": "#28164D",
+        "glow": "#7C3AED",
+        "glowSoft": "rgba(124, 58, 237, 0.20)",
+        "glowStrong": "rgba(124, 58, 237, 0.38)",
+        "angle": 120
+      }
     },
     "obsidian": {
       "bg": "bg-[#171717]",
@@ -415,7 +532,16 @@
       "buttonStyle": "square",
       "cardStyle": "glass",
       "heroStyle": "editorial",
-      "ctaStyle": "outline"
+      "ctaStyle": "outline",
+      "gradient": {
+        "from": "#150F0F",
+        "via": "#261B1A",
+        "to": "#312521",
+        "glow": "#E5E7EB",
+        "glowSoft": "rgba(229, 231, 235, 0.20)",
+        "glowStrong": "rgba(229, 231, 235, 0.38)",
+        "angle": 120
+      }
     },
     "navy": {
       "bg": "bg-[#214B7A]",
@@ -436,7 +562,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#0E1D2D",
+        "via": "#152642",
+        "to": "#1C264D",
+        "glow": "#60A5FA",
+        "glowSoft": "rgba(96, 165, 250, 0.20)",
+        "glowStrong": "rgba(96, 165, 250, 0.38)",
+        "angle": 120
+      }
     },
     "void": {
       "bg": "bg-[#111827]",
@@ -457,7 +592,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "glass",
       "heroStyle": "centered",
-      "ctaStyle": "gradient"
+      "ctaStyle": "gradient",
+      "gradient": {
+        "from": "#0C1018",
+        "via": "#141A2B",
+        "to": "#1C1D36",
+        "glow": "#818CF8",
+        "glowSoft": "rgba(129, 140, 248, 0.20)",
+        "glowStrong": "rgba(129, 140, 248, 0.38)",
+        "angle": 120
+      }
     },
     "espresso": {
       "bg": "bg-[#4B2E1E]",
@@ -478,7 +622,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
       "heroStyle": "editorial",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#1C120C",
+        "via": "#2F2115",
+        "to": "#3A2F1C",
+        "glow": "#FB923C",
+        "glowSoft": "rgba(251, 146, 60, 0.20)",
+        "glowStrong": "rgba(251, 146, 60, 0.38)",
+        "angle": 120
+      }
     },
     "terracotta": {
       "bg": "bg-[#A04A2C]",
@@ -499,7 +652,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "image",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#3B1D13",
+        "via": "#502C19",
+        "to": "#5A3F21",
+        "glow": "#FB923C",
+        "glowSoft": "rgba(251, 146, 60, 0.20)",
+        "glowStrong": "rgba(251, 146, 60, 0.38)",
+        "angle": 120
+      }
     },
     "asphalt": {
       "bg": "bg-[#2A2A2A]",
@@ -520,7 +682,16 @@
       "buttonStyle": "square",
       "cardStyle": "outline",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#150F0F",
+        "via": "#261B1A",
+        "to": "#312521",
+        "glow": "#A1A1AA",
+        "glowSoft": "rgba(161, 161, 170, 0.20)",
+        "glowStrong": "rgba(161, 161, 170, 0.38)",
+        "angle": 120
+      }
     },
     "sapphire": {
       "bg": "bg-[#0F4C81]",
@@ -541,7 +712,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
       "heroStyle": "centered",
-      "ctaStyle": "gradient"
+      "ctaStyle": "gradient",
+      "gradient": {
+        "from": "#081D2F",
+        "via": "#0B2648",
+        "to": "#122353",
+        "glow": "#38BDF8",
+        "glowSoft": "rgba(56, 189, 248, 0.20)",
+        "glowStrong": "rgba(56, 189, 248, 0.38)",
+        "angle": 120
+      }
     },
     "plum": {
       "bg": "bg-[#5B214A]",
@@ -562,7 +742,16 @@
       "buttonStyle": "pill",
       "cardStyle": "glass",
       "heroStyle": "editorial",
-      "ctaStyle": "gradient"
+      "ctaStyle": "gradient",
+      "gradient": {
+        "from": "#210E1C",
+        "via": "#361529",
+        "to": "#401D2C",
+        "glow": "#E879F9",
+        "glowSoft": "rgba(232, 121, 249, 0.20)",
+        "glowStrong": "rgba(232, 121, 249, 0.38)",
+        "angle": 120
+      }
     },
     "olive": {
       "bg": "bg-[#4D5D2D]",
@@ -583,7 +772,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#1D2212",
+        "via": "#2A351B",
+        "to": "#2E3F23",
+        "glow": "#A3E635",
+        "glowSoft": "rgba(163, 230, 53, 0.20)",
+        "glowStrong": "rgba(163, 230, 53, 0.38)",
+        "angle": 120
+      }
     },
     "stone": {
       "bg": "bg-[#F7F7F5]",
@@ -604,7 +802,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "editorial",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#1E1E15",
+        "via": "#2E2F20",
+        "to": "#353A27",
+        "glow": "#78716C",
+        "glowSoft": "rgba(120, 113, 108, 0.20)",
+        "glowStrong": "rgba(120, 113, 108, 0.38)",
+        "angle": 120
+      }
     },
     "white": {
       "bg": "bg-[#FEFEFD]",
@@ -625,7 +832,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "centered",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#212112",
+        "via": "#31341B",
+        "to": "#373E23",
+        "glow": "#4F46E5",
+        "glowSoft": "rgba(79, 70, 229, 0.20)",
+        "glowStrong": "rgba(79, 70, 229, 0.38)",
+        "angle": 120
+      }
     },
     "light": {
       "bg": "bg-white",
@@ -674,7 +890,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "outline",
       "heroStyle": "centered",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#1B2027",
+        "via": "#262C39",
+        "to": "#2D3044",
+        "glow": "#93C5FD",
+        "glowSoft": "rgba(147, 197, 253, 0.20)",
+        "glowStrong": "rgba(147, 197, 253, 0.38)",
+        "angle": 120
+      }
     },
     "slate-light": {
       "bg": "bg-[#475569]",
@@ -709,7 +934,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
       "heroStyle": "editorial",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#270E15",
+        "via": "#3D141C",
+        "to": "#471C1C",
+        "glow": "#F4728A",
+        "glowSoft": "rgba(244, 114, 138, 0.20)",
+        "glowStrong": "rgba(244, 114, 138, 0.38)",
+        "angle": 120
+      }
     },
     "sage": {
       "bg": "bg-[#667A63]",
@@ -730,7 +964,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#243222",
+        "via": "#2E432D",
+        "to": "#344E38",
+        "glow": "#C4D6B0",
+        "glowSoft": "rgba(196, 214, 176, 0.20)",
+        "glowStrong": "rgba(196, 214, 176, 0.38)",
+        "angle": 120
+      }
     },
     "sandstone": {
       "bg": "bg-[#B46F47]",
@@ -751,7 +994,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "editorial",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#40291C",
+        "via": "#543A24",
+        "to": "#5D4C2C",
+        "glow": "#F4C095",
+        "glowSoft": "rgba(244, 192, 149, 0.20)",
+        "glowStrong": "rgba(244, 192, 149, 0.38)",
+        "angle": 120
+      }
     },
     "copper": {
       "bg": "bg-[#8B4A2F]",
@@ -772,7 +1024,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#331D14",
+        "via": "#482C1B",
+        "to": "#523D23",
+        "glow": "#F59E6B",
+        "glowSoft": "rgba(245, 158, 107, 0.20)",
+        "glowStrong": "rgba(245, 158, 107, 0.38)",
+        "angle": 120
+      }
     },
     "arctic": {
       "bg": "bg-[#37677A]",
@@ -793,7 +1054,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "centered",
-      "ctaStyle": "gradient"
+      "ctaStyle": "gradient",
+      "gradient": {
+        "from": "#16272D",
+        "via": "#1F3440",
+        "to": "#27374A",
+        "glow": "#9EDBE8",
+        "glowSoft": "rgba(158, 219, 232, 0.20)",
+        "glowStrong": "rgba(158, 219, 232, 0.38)",
+        "angle": 120
+      }
     },
     "blush": {
       "bg": "bg-[#A85F72]",
@@ -814,7 +1084,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "editorial",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#3A2228",
+        "via": "#4C2C31",
+        "to": "#563434",
+        "glow": "#F7B8C8",
+        "glowSoft": "rgba(247, 184, 200, 0.20)",
+        "glowStrong": "rgba(247, 184, 200, 0.38)",
+        "angle": 120
+      }
     },
     "graphite": {
       "bg": "bg-[#30343B]",
@@ -835,7 +1114,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
       "heroStyle": "centered",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#111318",
+        "via": "#1B1F29",
+        "to": "#232434",
+        "glow": "#B9C0CA",
+        "glowSoft": "rgba(185, 192, 202, 0.20)",
+        "glowStrong": "rgba(185, 192, 202, 0.38)",
+        "angle": 120
+      }
     },
     "cobalt": {
       "bg": "bg-[#2448A8]",
@@ -856,7 +1144,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
       "heroStyle": "centered",
-      "ctaStyle": "gradient"
+      "ctaStyle": "gradient",
+      "gradient": {
+        "from": "#101C3D",
+        "via": "#152154",
+        "to": "#1D1D5E",
+        "glow": "#7DA7FF",
+        "glowSoft": "rgba(125, 167, 255, 0.20)",
+        "glowStrong": "rgba(125, 167, 255, 0.38)",
+        "angle": 120
+      }
     },
     "moss": {
       "bg": "bg-[#405B3B]",
@@ -877,7 +1174,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "soft",
       "heroStyle": "split",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#192217",
+        "via": "#233322",
+        "to": "#293E2C",
+        "glow": "#A8C686",
+        "glowSoft": "rgba(168, 198, 134, 0.20)",
+        "glowStrong": "rgba(168, 198, 134, 0.38)",
+        "angle": 120
+      }
     },
     "champagne": {
       "bg": "bg-[#9A7650]",
@@ -898,7 +1204,16 @@
       "buttonStyle": "rounded",
       "cardStyle": "elevated",
       "heroStyle": "editorial",
-      "ctaStyle": "solid"
+      "ctaStyle": "solid",
+      "gradient": {
+        "from": "#392D20",
+        "via": "#4C3E29",
+        "to": "#554D32",
+        "glow": "#F2D3A2",
+        "glowSoft": "rgba(242, 211, 162, 0.20)",
+        "glowStrong": "rgba(242, 211, 162, 0.38)",
+        "angle": 120
+      }
     }
   },
   "themeOrder": [

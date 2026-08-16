@@ -3,6 +3,7 @@ import { usePage } from "@inertiajs/react";
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 export const HeroSaasDashboardSchema = {
@@ -37,10 +38,10 @@ export const HeroSaasDashboardSchema = {
 };
 
 export function HeroSaasDashboardBlock({ block, onUpdate, globalTheme }) {
-    const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
+    const { requestedTheme, theme } = getHeroThemeState(block, globalTheme);
     const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
     const data = { ...HeroSaasDashboardSchema.defaults, ...block };
-    const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
+    const isPrimary = requestedTheme === "primary";
     const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
 
     const metrics = [

@@ -5,6 +5,7 @@ import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 
@@ -89,8 +90,7 @@ export const HeroHeadlineSchema = {
 
 export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) {
 
-    const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
-    const theme = getEffectiveTheme(requestedTheme, globalTheme);
+    const { requestedTheme, theme } = getHeroThemeState(block, globalTheme);
 
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
@@ -104,7 +104,7 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
     // Primary CTA always follows the website accent color
     const primaryTheme = colorFamilies[globalTheme.primary];
 
-    const isPrimarySection = block.resolvedTheme === "primary";
+    const isPrimarySection = requestedTheme === "primary";
 
     const buttonStyle = isPrimarySection
     ? {
