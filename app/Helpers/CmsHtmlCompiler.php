@@ -2104,16 +2104,17 @@ HTML;
                 $footerBrand = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
                     : "<div class='text-lg font-bold text-slate-900'>{$brand}</div>";
-                $megaBrand = $logoImageUrl !== ''
-                    ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
-                    : "<div class='text-lg font-bold text-white'>{$brand}</div>";
-
                 $mega = is_array($block['mega_footer'] ?? null) ? $block['mega_footer'] : [];
                 $megaEnabled = (bool) ($block['mega_enabled'] ?? $mega['enabled'] ?? false);
                 $megaThemeMode = in_array(($mega['theme'] ?? 'auto'), ['auto', 'primary', 'white', 'surface'], true) ? ($mega['theme'] ?? 'auto') : 'auto';
                 $megaResolvedTheme = $megaThemeMode === 'auto' ? $blockTheme : $megaThemeMode;
                 $megaSelectedThemeName = $megaResolvedTheme === 'white' ? 'white' : ($megaResolvedTheme === 'surface' ? 'stone' : ($primaryColor ?: 'midnight'));
                 $primaryTheme = self::getTheme($megaSelectedThemeName);
+                $megaLogoHeight = max(44, min(64, $logoHeight + 10));
+                $megaLogoFilter = $megaResolvedTheme === 'primary' ? 'brightness(0) invert(1)' : $logoFilter;
+                $megaBrand = $logoImageUrl !== ''
+                    ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$megaLogoHeight}px;max-height:64px;filter:{$megaLogoFilter}' class='w-auto max-w-[300px] object-contain'>"
+                    : "<div class='text-xl font-bold " . ($megaResolvedTheme === 'primary' ? 'text-white' : $primaryTheme['text']) . "'>{$brand}</div>";
                 if ($megaEnabled) {
                     $tagline = e($mega['tagline'] ?? 'A premium information-rich footer.');
                     $primaryLabel = e($mega['primary_label'] ?? 'Get in touch');
@@ -2136,11 +2137,11 @@ HTML;
                             $url = e($item['url'] ?? '#');
                             $itemsHtml .= "<a href='{$url}' class='block py-1 text-sm transition hover:opacity-70'>{$label}</a>";
                         }
-                        $columnHtml .= "<div class='min-w-0'><p class='text-[10px] font-bold uppercase tracking-[.20em] {$primaryTheme['sub']}'>{$title}</p><div class='mt-3 space-y-1.5'>{$itemsHtml}</div></div>";
+                        $columnHtml .= "<div class='min-w-0'><p class='text-xs font-bold uppercase tracking-[.16em] {$primaryTheme['sub']}'>{$title}</p><div class='mt-3 space-y-1.5'>{$itemsHtml}</div></div>";
                     }
                     $columnCount = max(1, count($columns));
                     $gridClass = $columnCount >= 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : ($columnCount === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : ($columnCount === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'));
-                    $html .= "<section class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 {$primaryTheme['bg']} {$primaryTheme['text']} {$primaryTheme['border']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(220px,.75fr)_2fr]'><div class='min-w-0'>{$megaBrand}<p class='mt-4 max-w-sm text-sm leading-6 {$primaryTheme['sub']}'>{$tagline}</p><a href='{$primaryUrl}' class='mt-5 inline-flex text-sm font-semibold hover:opacity-75'>{$primaryLabel}</a></div><div class='grid gap-7 {$gridClass}'>{$columnHtml}</div></div></section>";
+                    $html .= "<section class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 {$primaryTheme['bg']} {$primaryTheme['text']} {$primaryTheme['border']}'><div class='mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(260px,.72fr)_2.2fr]'><div class='min-w-0'>{$megaBrand}<p class='mt-4 max-w-sm text-sm leading-6 {$primaryTheme['sub']}'>{$tagline}</p><a href='{$primaryUrl}' class='mt-5 inline-flex text-sm font-semibold hover:opacity-75'>{$primaryLabel}</a></div><div class='grid gap-7 {$gridClass}'>{$columnHtml}</div></div></section>";
                 }
 
                 $legalLeft = $megaEnabled

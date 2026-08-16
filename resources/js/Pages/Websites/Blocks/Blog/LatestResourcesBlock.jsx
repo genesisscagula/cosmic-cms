@@ -55,7 +55,7 @@ export function LatestResourcesBlock({ block, onUpdate, globalTheme }) {
     );
 
     return (
-        <section className={`${theme.bg} ${theme.text} px-6 py-16 transition-colors duration-500 sm:px-8 lg:px-12 lg:py-24`}>
+        <section className={`group/repeatable-section ${theme.bg} ${theme.text} px-6 py-16 transition-colors duration-500 sm:px-8 lg:px-12 lg:py-24`}>
             <div className="mx-auto max-w-7xl">
                 <div className={variant === "resources-02" ? "mx-auto max-w-3xl text-center" : variant === "resources-03" ? "grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-start" : ""}>
                     <div className="max-w-3xl">

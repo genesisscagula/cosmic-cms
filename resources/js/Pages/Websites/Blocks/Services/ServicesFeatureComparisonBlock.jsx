@@ -58,7 +58,7 @@ export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme })
         { key: "option_three", featured: false },
     ];
 
-    return <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
+    return <section className={`group/repeatable-section relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
         <div className="mx-auto max-w-7xl">
             <div className="max-w-3xl">
                 <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${muted}`} onSave={save("eyebrow")} />
@@ -71,19 +71,19 @@ export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme })
                     <div className={`hidden border-b p-6 lg:block ${border}`}>
                         <span className={`text-xs font-bold uppercase tracking-[.22em] ${muted}`}>Capabilities</span>
                     </div>
-                    {options.map((option) => <article key={option.key} className={`relative border-b p-6 sm:p-7 ${border} ${option.featured ? featuredCard : baseCard}`}>
+                    {options.map((option) => <article key={option.key} className={`group relative relative border-b p-6 sm:p-7 ${border} ${option.featured ? featuredCard : baseCard}`}>
                         {option.featured && <EditableText value={data.option_two_badge} className={`mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] ${primaryTheme.bg} ${primaryTheme.text}`} onSave={save("option_two_badge")} />}
                         <EditableText value={data[`${option.key}_kicker`]} className={`block text-[11px] font-bold uppercase tracking-[.2em] ${option.featured && !isPrimary ? "text-white/65" : muted}`} onSave={save(`${option.key}_kicker`)} />
                         <EditableText value={data[`${option.key}_name`]} className="mt-3 block text-2xl font-semibold tracking-[-.03em]" onSave={save(`${option.key}_name`)} />
                         <EditableText value={data[`${option.key}_text`]} isTextArea className={`mt-4 block text-sm leading-6 ${option.featured && !isPrimary ? "text-white/65" : muted}`} onSave={save(`${option.key}_text`)} />
                     </article>)}
 
-                    {words.map((word, rowIndex) => <div key={word} className="contents">
+                    {words.map((word, rowIndex) => <div key={word} className="group relative contents">
                         <div className={`group relative border-b p-5 pr-12 lg:p-6 lg:pr-12 ${border} ${baseCard}`}>
                             <RepeatableRemoveButton overlay placement="row" label="Remove feature row" disabled={rowCount<=1} onRemove={()=>{const all=["one","two","three","four","five","six","seven","eight"];const patch={feature_row_count:rowCount-1};for(let x=rowIndex;x<rowCount-1;x++){const a=all[x],b=all[x+1];patch[`feature_${a}`]=data[`feature_${b}`]??"";options.forEach(({key})=>{patch[`${key}_${a}`]=data[`${key}_${b}`]??"";});}onUpdate(patch)}} />
                             <EditableText value={data[`feature_${word}`]} className="text-sm font-semibold" onSave={save(`feature_${word}`)} />
                         </div>
-                        {options.map((option) => <div key={`${word}-${option.key}`} className={`border-b p-5 text-sm lg:p-6 ${border} ${option.featured ? featuredCard : baseCard}`}>
+                        {options.map((option) => <div key={`${word}-${option.key}`} className={`group relative border-b p-5 text-sm lg:p-6 ${border} ${option.featured ? featuredCard : baseCard}`}>
                             <EditableText value={data[`${option.key}_${word}`]} className={option.featured && !isPrimary ? "font-semibold text-white" : "font-semibold"} onSave={save(`${option.key}_${word}`)} />
                         </div>)}
                     </div>)}

@@ -173,7 +173,7 @@ export function TestimonialsCarouselBlock({
     return (
 
         <section
-            className={`relative py-32 px-7 overflow-hidden ${theme.bg} transition-colors duration-500`}
+            className={`group/repeatable-section relative py-32 px-7 overflow-hidden ${theme.bg} transition-colors duration-500`}
         >
 
             <div className="max-w-7xl mx-auto">

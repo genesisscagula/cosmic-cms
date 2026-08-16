@@ -143,7 +143,7 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
     return (
 
         <section
-            className={`relative py-32 px-7 overflow-hidden ${theme.bg} transition-colors duration-500`}
+            className={`group/repeatable-section relative py-32 px-7 overflow-hidden ${theme.bg} transition-colors duration-500`}
         >
 
             <div

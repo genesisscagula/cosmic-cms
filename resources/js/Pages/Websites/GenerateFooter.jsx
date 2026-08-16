@@ -45,9 +45,10 @@ const IconButton = ({ children, title, onClick, danger = false, disabled = false
     </button>
 );
 
-function FooterLogo({ block, dark = false }) {
+function FooterLogo({ block, dark = false, mega = false, forceWhite = false }) {
     const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
-    const logoHeight = Math.min(56, Math.max(24, Number(block.logo_height || 36)));
+    const baseHeight = Number(block.logo_height || 36);
+    const logoHeight = mega ? Math.min(64, Math.max(44, baseHeight + 10)) : Math.min(56, Math.max(24, baseHeight));
     if (logoImageUrl) {
         return (
             <img
@@ -55,10 +56,10 @@ function FooterLogo({ block, dark = false }) {
                 alt={block.logo_text || 'Website logo'}
                 style={{
                     height: `${logoHeight}px`,
-                    maxHeight: '56px',
-                    filter: logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter),
+                    maxHeight: mega ? '64px' : '56px',
+                    filter: forceWhite ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter),
                 }}
-                className="w-auto max-w-[250px] object-contain"
+                className={`w-auto object-contain ${mega ? "max-w-[300px]" : "max-w-[250px]"}`}
             />
         );
     }
@@ -153,9 +154,9 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
         <div className="w-full">
             {megaEnabled && (
                 <section className={`w-full ${megaTheme?.bg || 'bg-slate-800'} ${megaTheme?.text || 'text-white'} border-b ${megaTheme?.border || 'border-slate-700'} px-6 py-10 sm:px-8 sm:py-12`}>
-                    <div className="mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(260px,.72fr)_2.2fr]">
+                    <div className="mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(280px,.9fr)_minmax(0,1.65fr)] lg:items-start">
                         <div className="min-w-0">
-                            <FooterLogo block={block} dark={effectiveMegaTheme === 'primary'} />
+                            <FooterLogo block={block} dark={effectiveMegaTheme === 'primary'} mega forceWhite={effectiveMegaTheme === 'primary'} />
                             {editorMode ? (
                                 <>
                                     <div className="group/footer-field relative mt-4 max-w-sm rounded-lg py-1 pr-9">
@@ -175,13 +176,13 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                             )}
                         </div>
 
-                        <div>
-                            <div className={`grid gap-7 ${mega.columns.length >= 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : mega.columns.length === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : mega.columns.length === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
+                        <div className="group/columns ml-auto w-full lg:max-w-[860px]">
+                            <div className={`grid gap-x-8 gap-y-7 ${mega.columns.length >= 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : mega.columns.length === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : mega.columns.length === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
                                 {mega.columns.map((column, columnIndex) => (
                                     <div key={`${column.title}-${columnIndex}`} className="group/column relative min-w-0">
                                         {editorMode ? (
                                             <div className="flex items-center gap-2">
-                                                <button type="button" onClick={() => openEditor({ kind: 'column', columnIndex, title: 'Edit footer column' })} className={`min-w-0 flex-1 text-left text-xs font-bold uppercase tracking-[0.18em] transition ${megaTheme?.sub || 'text-slate-500'} hover:opacity-75`}>{column.title}</button>
+                                                <button type="button" onClick={() => openEditor({ kind: 'column', columnIndex, title: 'Edit footer column' })} className={`min-w-0 flex-1 text-left text-[13px] font-bold uppercase tracking-[0.16em] transition ${megaTheme?.sub || 'text-slate-500'} hover:opacity-75`}>{column.title}</button>
                                                 <div className="flex opacity-0 transition group-hover/column:opacity-100 focus-within:opacity-100">
                                                     <IconButton title="Edit column" onClick={() => openEditor({ kind: 'column', columnIndex, title: 'Edit footer column' })}>✎</IconButton>
                                                     <IconButton title="Move column left" disabled={columnIndex === 0} onClick={() => moveColumn(columnIndex, -1)}>←</IconButton>
@@ -190,7 +191,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                                 </div>
                                             </div>
                                         ) : (
-                                            <p className={`text-xs font-bold uppercase tracking-[0.18em] ${megaTheme?.sub || 'text-slate-300'}`}>{column.title}</p>
+                                            <p className={`text-[13px] font-bold uppercase tracking-[0.16em] ${megaTheme?.sub || 'text-slate-300'}`}>{column.title}</p>
                                         )}
 
                                         <div className="mt-3 space-y-1.5">
@@ -198,7 +199,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                                 <div key={`${item.label}-${itemIndex}`} className="group/item relative">
                                                     {editorMode ? (
                                                         <div className="flex items-center justify-between gap-2 rounded-lg px-1 py-1 hover:bg-white/5">
-                                                            <button type="button" onClick={() => openEditor({ kind: 'menu', columnIndex, itemIndex, title: 'Edit footer link' })} className="min-w-0 flex-1 truncate text-left text-[13px] text-current transition hover:opacity-75">{item.label}</button>
+                                                            <button type="button" onClick={() => openEditor({ kind: 'menu', columnIndex, itemIndex, title: 'Edit footer link' })} className="min-w-0 flex-1 truncate text-left text-sm text-current transition hover:opacity-75">{item.label}</button>
                                                             <div className="flex opacity-0 transition group-hover/item:opacity-100 focus-within:opacity-100">
                                                                 <IconButton title="Edit menu" onClick={() => openEditor({ kind: 'menu', columnIndex, itemIndex, title: 'Edit footer link' })}>✎</IconButton>
                                                                 <IconButton title="Move menu up" disabled={itemIndex === 0} onClick={() => moveMenu(columnIndex, itemIndex, -1)}>↑</IconButton>
@@ -207,20 +208,20 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                                             </div>
                                                         </div>
                                                     ) : (
-                                                        <a href={item.url || '#'} className="block py-1 text-[13px] text-current transition hover:opacity-70">{item.label}</a>
+                                                        <a href={item.url || '#'} className="block py-1 text-sm text-current transition hover:opacity-70">{item.label}</a>
                                                     )}
                                                 </div>
                                             ))}
                                         </div>
                                         {editorMode && (
-                                            <button type="button" disabled={column.items.length >= 6} onClick={() => addMenu(columnIndex)} className="mt-3 rounded-full border border-current/20 px-3 py-1.5 text-[11px] font-semibold opacity-75 transition hover:opacity-100 disabled:cursor-not-allowed disabled:opacity-35">+ Add menu</button>
+                                            <button type="button" disabled={column.items.length >= 6} onClick={() => addMenu(columnIndex)} className="mt-3 rounded-md border border-dashed border-current/45 bg-transparent px-3 py-1.5 text-[11px] font-semibold opacity-0 transition hover:border-current hover:opacity-100 group-hover/column:opacity-80 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-35">+ Add menu</button>
                                         )}
                                     </div>
                                 ))}
                             </div>
                             {editorMode && (
-                                <div className="mt-7 flex justify-center">
-                                    <button type="button" disabled={mega.columns.length >= 4} onClick={addColumn} className="rounded-full bg-white px-4 py-2 text-xs font-semibold text-slate-900 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-40">+ Add Column</button>
+                                <div className="mt-7 flex justify-end">
+                                    <button type="button" disabled={mega.columns.length >= 4} onClick={addColumn} className="rounded-md border border-dashed border-current/45 bg-transparent px-4 py-2 text-xs font-semibold opacity-0 transition hover:border-current hover:opacity-100 group-hover/columns:opacity-80 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-35">+ Add Column</button>
                                 </div>
                             )}
                         </div>

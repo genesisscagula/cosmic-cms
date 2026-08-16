@@ -161,7 +161,7 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
     return (
 
         <section
-            className={`w-full py-32 px-7 md:px-8 transition-colors duration-500 ${theme.bg}`}
+            className={`group/repeatable-section w-full py-32 px-7 md:px-8 transition-colors duration-500 ${theme.bg}`}
         >
 
             <div className="max-w-7xl mx-auto">

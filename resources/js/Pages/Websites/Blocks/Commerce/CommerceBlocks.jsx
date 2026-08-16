@@ -83,7 +83,7 @@ const commerceControlScheme = (colors) => {
 };
 
 const Section = ({ colors, children }) => (
-    <section className="w-full px-6 py-16 md:px-12 lg:py-20" style={{ background: colors.background, color: colors.text }}>
+    <section className="group/repeatable-section w-full px-6 py-16 md:px-12 lg:py-20" style={{ background: colors.background, color: colors.text }}>
         <div className="mx-auto max-w-7xl">{children}</div>
     </section>
 );
@@ -529,7 +529,7 @@ function CheckoutOrderSummary({ block, c, emphasized = false }) {
     const subtotal = items.reduce((sum, product, index) => sum + Number(productPriceMinor(product) || 0) * (index + 1), 0);
     return <aside className={`rounded-[26px] border p-5 sm:p-6 ${emphasized ? 'lg:sticky lg:top-6' : ''}`} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
         <div className="flex items-center justify-between"><h3 className="text-base font-bold">Order summary</h3><span className="text-[10px] font-bold uppercase tracking-[0.14em]" style={{ color: c.colors.accent }}>Preview</span></div>
-        <div className="mt-5 space-y-3">{items.length ? items.map((product, index) => <div key={product.id} className="flex items-center gap-3"><img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className="h-12 w-12 rounded-xl object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{product.title}</p><p className="text-[11px]" style={{ color: c.colors.muted }}>Qty {index + 1}</p></div><strong className="text-xs">{c.money(Number(productPriceMinor(product) || 0) * (index + 1))}</strong></div>) : <p className="text-sm" style={{ color: c.colors.muted }}>Live order items appear at checkout.</p>}</div>
+        <div className="mt-5 space-y-3">{items.length ? items.map((product, index) => <div key={product.id} className="group relative flex items-center gap-3"><img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className="h-12 w-12 rounded-xl object-cover" /><div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{product.title}</p><p className="text-[11px]" style={{ color: c.colors.muted }}>Qty {index + 1}</p></div><strong className="text-xs">{c.money(Number(productPriceMinor(product) || 0) * (index + 1))}</strong></div>) : <p className="text-sm" style={{ color: c.colors.muted }}>Live order items appear at checkout.</p>}</div>
         <div className="my-5 border-t" style={{ borderColor: c.colors.border }} />
         <div className="flex items-center justify-between text-sm"><span style={{ color: c.colors.muted }}>Preview subtotal</span><strong>{c.money(subtotal)}</strong></div>
         <div className="mt-3 flex items-center justify-between text-sm"><span style={{ color: c.colors.muted }}>Shipping & tax</span><span>Calculated live</span></div>

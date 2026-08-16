@@ -127,7 +127,7 @@ export default function Sparks({ dashboard }) {
             : filteredCollection;
     const activeFilteredItems = aiResults ? [...activeFilteredItemsRaw].sort((a, b) => (aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : activeFilteredItemsRaw;
     const infiniteResetKey = `${activeView}|${category}|${marketFilter}|${query}`;
-    const { visibleItems: visibleSparks, hasMore: hasMoreSparks, sentinelRef: infiniteSentinelRef } = useInfiniteReveal(activeFilteredItems, {
+    const { visibleItems: visibleSparks, hasMore: hasMoreSparks, isRevealing: isRevealingSparks, sentinelRef: infiniteSentinelRef } = useInfiniteReveal(activeFilteredItems, {
         batchSize: 12,
         resetKey: infiniteResetKey,
     });
@@ -304,7 +304,7 @@ export default function Sparks({ dashboard }) {
 
                 {activeFilteredItems.length > 0 && (
                     <div ref={infiniteSentinelRef} className="mt-6 flex min-h-10 items-center justify-center text-xs text-slate-500" aria-hidden="true">
-                        {hasMoreSparks ? "Loading more Sparks…" : `${activeFilteredItems.length} Sparks loaded`}
+                        {hasMoreSparks ? (isRevealingSparks ? "Loading more Sparks…" : "Scroll for more Sparks") : `${activeFilteredItems.length} Sparks loaded`}
                     </div>
                 )}
             </div>

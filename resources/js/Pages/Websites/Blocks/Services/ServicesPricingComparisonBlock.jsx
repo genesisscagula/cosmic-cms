@@ -53,7 +53,7 @@ export function ServicesPricingComparisonBlock({ block, onUpdate, globalTheme })
         { key:"pro", name:data.pro_name, price:data.pro_price, period:data.pro_period, description:data.pro_description, label:data.pro_button_label, url:data.pro_button_url },
     ];
     const save=(key)=>(value)=>onUpdate({[key]:value});
-    return <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
+    return <section className={`group/repeatable-section relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
         <div className="mx-auto max-w-7xl">
             <div className="max-w-3xl">
                 <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${muted}`} onSave={save('eyebrow')}/>

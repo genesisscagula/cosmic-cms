@@ -367,7 +367,7 @@ export function PricingCardsBlock({
     return (
 
         <section
-            className={`relative px-6 py-20 sm:px-8 lg:py-24 ${theme.bg} transition-colors duration-500`}
+            className={`group/repeatable-section group/pricing-section relative px-6 py-20 sm:px-8 lg:py-24 ${theme.bg} transition-colors duration-500`}
         >
 
             <div className="max-w-7xl mx-auto">
@@ -560,6 +560,8 @@ export function PricingCardsBlock({
                                 removeLabel="Remove last feature"
                                 showRemove={false}
                                 className="justify-start"
+                                hoverScope="pricing-card"
+                                addButtonClassName={`${theme.text}`}
                             />
 
                             {/* Button */}
@@ -602,6 +604,9 @@ export function PricingCardsBlock({
                     canAdd={data.plans.length < 6}
                     showRemove={false}
                     addLabel="Add pricing plan"
+                    hoverScope="pricing-section"
+                    addButtonClassName={`${theme.text}`}
+                    className="justify-start"
                 />
 
             </div>

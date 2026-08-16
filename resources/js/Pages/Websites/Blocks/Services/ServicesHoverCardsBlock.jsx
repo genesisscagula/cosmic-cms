@@ -41,7 +41,7 @@ export function ServicesHoverCardsBlock({ block, onUpdate, globalTheme }) {
     const cardCount = Math.max(1, Math.min(6, Number(data.service_count) || 6));
     const cards = ["one", "two", "three", "four", "five", "six"].slice(0,cardCount);
 
-    return <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
+    return <section className={`group/repeatable-section relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
         <div className="mx-auto max-w-7xl">
             <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
                 <div className="max-w-3xl">

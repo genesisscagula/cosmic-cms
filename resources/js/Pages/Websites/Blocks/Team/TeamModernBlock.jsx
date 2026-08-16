@@ -149,7 +149,7 @@ export function TeamModernBlock({ block, blockIndex, onUpdate, globalTheme }) {
     };
 
     return (
-        <section className={`px-6 py-16 sm:px-8 lg:py-20 ${theme.bg} transition-colors duration-500`}>
+        <section className={`group/repeatable-section px-6 py-16 sm:px-8 lg:py-20 ${theme.bg} transition-colors duration-500`}>
             <div className="mx-auto max-w-7xl">
                 <div className="mb-10 max-w-2xl space-y-4 sm:mb-12">
                     {data.eyebrow && (

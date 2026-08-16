@@ -430,7 +430,7 @@ export function BlogHubBlock({
     const deletePost = () => requestDeletePost(editingPost);
 
     return (
-        <section className={`px-6 py-16 sm:px-8 lg:px-12 lg:py-24 ${theme.bg} transition-colors duration-500`}>
+        <section className={`group/repeatable-section px-6 py-16 sm:px-8 lg:px-12 lg:py-24 ${theme.bg} transition-colors duration-500`}>
             <div className="mx-auto max-w-7xl">
                 {showIntro && (
                     <div className="max-w-3xl">
@@ -441,7 +441,7 @@ export function BlogHubBlock({
                 )}
 
                 {viewingPost ? (
-                    <article className={`${showIntro ? "mt-12" : ""} mx-auto w-full max-w-6xl`}>
+                    <article className={`group relative ${showIntro ? "mt-12" : ""} mx-auto w-full max-w-6xl`}>
                         <button type="button" onClick={() => setViewingPost(null)} className={`mb-5 text-sm font-semibold hover:underline ${theme.text}`}>← Back to all posts</button>
                         {viewingPost.image_url && <img src={viewingPost.image_url} alt={viewingPost.title} className="max-h-[620px] w-full rounded-[15px] object-cover" />}
                         <div className="mx-auto max-w-4xl py-10 sm:py-14">
@@ -455,7 +455,7 @@ export function BlogHubBlock({
                     </article>
                 ) : (
                     <>
-                <article className={`${showIntro ? "mt-12" : ""} group relative grid overflow-hidden rounded-3xl border ${theme.border} ${theme.card} ${variant === "blog-cards-02" ? "md:grid-cols-[.8fr_1.2fr]" : variant === "blog-cards-03" ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
+                <article className={`group relative ${showIntro ? "mt-12" : ""} group relative grid overflow-hidden rounded-3xl border ${theme.border} ${theme.card} ${variant === "blog-cards-02" ? "md:grid-cols-[.8fr_1.2fr]" : variant === "blog-cards-03" ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
                     {hasSavedPosts && isBuilder && <RepeatableRemoveButton overlay onRemove={() => requestDeletePost(featuredPost)} label="Delete featured post" />}
                     {hasSavedPosts ? (
                         <img src={featuredPost.image_url || "/storage/cms-images/background/background-1.avif"} alt={featuredPost.title || "Featured article"} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`} />

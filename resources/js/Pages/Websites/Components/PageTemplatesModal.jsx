@@ -190,7 +190,7 @@ export default function PageTemplatesModal({
         setAiPrompt('');
     };
 
-    const { visibleItems: revealedTemplates, hasMore, sentinelRef } = useInfiniteReveal(visible, {
+    const { visibleItems: revealedTemplates, hasMore, isRevealing, sentinelRef } = useInfiniteReveal(visible, {
         batchSize: 12,
         resetKey: `${tab}|${tag}|${normalizedQuery}|${aiPrompt}`,
         rootMargin: '420px 0px',
@@ -613,7 +613,7 @@ export default function PageTemplatesModal({
 
                     {hasMore && (
                         <div ref={sentinelRef} className="flex justify-center py-5" aria-hidden="true">
-                            <span className="cosmic-template-muted text-[11px]">Loading more templates…</span>
+                            <span className="cosmic-template-muted text-[11px]">{isRevealing ? 'Loading more templates…' : 'Scroll for more templates'}</span>
                         </div>
                     )}
 
