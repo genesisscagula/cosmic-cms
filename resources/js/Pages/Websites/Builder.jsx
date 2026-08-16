@@ -880,8 +880,24 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 const visibleHeight = Math.max(1, bottom - top + 1);
                 const safetyX = Math.max(8, Math.round(visibleWidth * 0.12));
                 const safetyY = Math.max(8, Math.round(visibleHeight * 0.12));
-                const tightWidth = visibleWidth + (safetyX * 2);
-                const tightHeight = visibleHeight + (safetyY * 2);
+                const paddedWidth = visibleWidth + (safetyX * 2);
+                const paddedHeight = visibleHeight + (safetyY * 2);
+
+                // The saved PNG must stay inside the server/header contract.
+                // Safety padding can otherwise make an already-wide 650x200
+                // crop exceed either axis and trigger a 422 in the crop endpoint.
+                const containScale = Math.min(
+                    1,
+                    outputWidth / paddedWidth,
+                    outputHeight / paddedHeight
+                );
+                const tightWidth = Math.max(1, Math.round(paddedWidth * containScale));
+                const tightHeight = Math.max(1, Math.round(paddedHeight * containScale));
+                const scaledVisibleWidth = Math.max(1, Math.round(visibleWidth * containScale));
+                const scaledVisibleHeight = Math.max(1, Math.round(visibleHeight * containScale));
+                const scaledSafetyX = Math.max(0, Math.round(safetyX * containScale));
+                const scaledSafetyY = Math.max(0, Math.round(safetyY * containScale));
+
                 const tightCanvas = document.createElement('canvas');
                 tightCanvas.width = tightWidth;
                 tightCanvas.height = tightHeight;
@@ -893,10 +909,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     top,
                     visibleWidth,
                     visibleHeight,
-                    safetyX,
-                    safetyY,
-                    visibleWidth,
-                    visibleHeight
+                    scaledSafetyX,
+                    scaledSafetyY,
+                    scaledVisibleWidth,
+                    scaledVisibleHeight
                 );
                 exportCanvas = tightCanvas;
             }

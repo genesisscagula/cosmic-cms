@@ -178,6 +178,16 @@ class ImageController extends Controller
         $bytes = $canvas->trimTransparentPng($bytes, 8);
         $dimensions = $this->pngDimensions($bytes) ?: $dimensions;
 
+        // Defensive parity with the browser cropper: never allow a padded or
+        // legacy client crop to exceed the 650x200 header contract. Fit first,
+        // then trim again so the stored asset remains tight rather than a full
+        // transparent header canvas.
+        if ((int) ($dimensions['width'] ?? 0) > 650 || (int) ($dimensions['height'] ?? 0) > 200) {
+            $bytes = $canvas->fitTransparentPngToCanvas($bytes, 650, 200, 0.08);
+            $bytes = $canvas->trimTransparentPng($bytes, 8);
+            $dimensions = $this->pngDimensions($bytes) ?: $dimensions;
+        }
+
         $filename = 'cropped-logo-'.Str::lower(Str::random(10)).'.png';
         $path = "websites/{$website->id}/logos/{$filename}";
         Storage::disk('public')->put($path, $bytes);
