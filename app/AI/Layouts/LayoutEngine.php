@@ -312,12 +312,6 @@ class LayoutEngine
         if ($category === 'blog' && $prompt !== null && preg_match('/\b(trending|popular posts|featured reads)\b/i', $prompt) === 1) { return 'blog_trending_premium'; }
         if ($category === 'blog' && $prompt !== null && preg_match('/\b(categories grid|browse categories|topics grid|blog categories)\b/i', $prompt) === 1) { return 'blog_categories_grid_premium'; }
         if ($category === 'blog' && $prompt !== null && preg_match('/\b(author profile|about the author|writer profile|editor profile)\b/i', $prompt) === 1) { return 'blog_author_profile_premium'; }
-        if ($category === 'footer' && $prompt !== null && preg_match('/\b(mega footer|large footer|multi column footer)\b/i', $prompt) === 1) { return 'footer_mega_premium'; }
-        if ($category === 'footer' && $prompt !== null && preg_match('/\b(agency footer|creative agency footer|studio footer)\b/i', $prompt) === 1) { return 'footer_agency_premium'; }
-        if ($category === 'footer' && $prompt !== null && preg_match('/\b(saas footer|software footer|product footer)\b/i', $prompt) === 1) { return 'footer_saas_premium'; }
-        if ($category === 'footer' && $prompt !== null && preg_match('/\b(luxury footer|premium footer|minimal luxury footer)\b/i', $prompt) === 1) { return 'footer_luxury_premium'; }
-        if ($category === 'footer' && $prompt !== null && preg_match('/\b(dark footer|black footer|high contrast footer)\b/i', $prompt) === 1) { return 'footer_dark_premium'; }
-        if ($category === 'footer' && $prompt !== null && preg_match('/\b(minimal footer|simple footer|compact footer|clean footer)\b/i', $prompt) === 1) { return 'footer_minimal_premium'; }
         if ($category === 'team' && $prompt !== null && preg_match('/\b(open positions|open roles|careers|jobs|hiring|vacancies)\b/i', $prompt) === 1) { return 'team_open_positions_premium'; }
         if ($category === 'team' && $prompt !== null && preg_match('/\b(team culture|work culture|company culture|culture values)\b/i', $prompt) === 1) { return 'team_culture_premium'; }
         if ($category === 'team' && $prompt !== null && preg_match('/\b(organization chart|org chart|team hierarchy)\b/i', $prompt) === 1) { return 'team_org_chart_premium'; }
@@ -437,7 +431,6 @@ class LayoutEngine
             'jobs' => ['jobs_list'],
             'events' => ['events_grid'],
             'blog' => ['blog_hub', 'blog_magazine_premium', 'blog_featured_article_premium', 'blog_editors_pick_premium', 'blog_sidebar_news_premium', 'blog_newsletter_premium', 'blog_trending_premium', 'blog_categories_grid_premium', 'blog_author_profile_premium'],
-            'footer' => ['footer_mega_premium', 'footer_agency_premium', 'footer_saas_premium', 'footer_luxury_premium', 'footer_dark_premium', 'footer_minimal_premium'],
         ];
 
         $candidates = $sections[$category] ?? [];

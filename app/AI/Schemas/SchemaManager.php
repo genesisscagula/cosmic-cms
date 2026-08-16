@@ -165,12 +165,6 @@ class SchemaManager
             'blog_trending_premium' => 'blogTrendingPremiumSchema',
             'blog_categories_grid_premium' => 'blogCategoriesGridPremiumSchema',
             'blog_author_profile_premium' => 'blogAuthorProfilePremiumSchema',
-            'footer_mega_premium' => 'footerMegaPremiumSchema',
-            'footer_agency_premium' => 'footerAgencyPremiumSchema',
-            'footer_saas_premium' => 'footerSaasPremiumSchema',
-            'footer_luxury_premium' => 'footerLuxuryPremiumSchema',
-            'footer_dark_premium' => 'footerDarkPremiumSchema',
-            'footer_minimal_premium' => 'footerMinimalPremiumSchema',
 
             'faq_accordion' => 'faqAccordionSchema',
             'faq_accordion_pro' => 'faqAccordionProSchema',

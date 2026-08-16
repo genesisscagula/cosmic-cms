@@ -1,3 +1,4 @@
+import { useRef } from "react";
 import { usePage } from "@inertiajs/react";
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
@@ -35,6 +36,7 @@ export function HeroLuxuryFullscreenBlock({ block, blockIndex, onUpdate, globalT
     const data = { ...HeroLuxuryFullscreenSchema.defaults, ...block };
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
+    const imageRef = useRef(null);
     const isPrimary = requestedTheme === "primary";
     const mediaOverlay = resolveMediaOverlay(globalTheme, resolveHeroThemeRequest(block, globalTheme));
     const isLightMediaTheme = mediaOverlay.isLight;
@@ -64,22 +66,27 @@ export function HeroLuxuryFullscreenBlock({ block, blockIndex, onUpdate, globalT
             divider: "bg-white/35",
         };
 
+    const handleImageEdit = (event) => {
+        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable=\'true\'], [role=\'button\'], [data-cosmic-edit-control]")) return;
+        imageRef.current?.openEditor();
+    };
+
     return (
-        <section data-cosmic-media-banner="true" className={`relative min-h-[82vh] overflow-hidden ${theme.bg}`}>
-            <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} isBackground className="absolute inset-0 h-full w-full object-cover" onSave={(image_url)=>onUpdate({image_url})} />
+        <section onClick={handleImageEdit} data-cosmic-media-banner="true" className={`relative overflow-hidden ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+            <EditableImage ref={imageRef} websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} isBackground className="absolute inset-0 h-full w-full object-cover" onSave={(image_url)=>onUpdate({image_url})} />
             <div
                 className="pointer-events-none absolute inset-0"
                 style={{ backgroundColor: overlayColor, opacity: isLightMediaTheme ? 0.96 : 0.52 }}
             />
             <div className={`pointer-events-none absolute inset-0 ${isLightMediaTheme ? "bg-gradient-to-r from-white/72 via-white/48 to-white/24" : "bg-gradient-to-r from-slate-950/30 via-transparent to-transparent"}`} />
             <div className={`pointer-events-none absolute inset-0 ${isLightMediaTheme ? "bg-gradient-to-t from-white/56 via-white/20 to-white/24" : "bg-gradient-to-t from-slate-950/34 via-transparent to-slate-950/8"}`} />
-            <div className="relative mx-auto flex min-h-[82vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
+            <div className="relative mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14" style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                 <div className={`flex items-center justify-between border-b pb-5 ${copy.border}`}>
                     <EditableText value={data.eyebrow} className={`text-[11px] font-bold uppercase tracking-[.34em] ${copy.eyebrow}`} onSave={(eyebrow)=>onUpdate({eyebrow})}/>
                     <EditableText value={data.edition_label} className={`text-xs font-medium ${copy.edition}`} onSave={(edition_label)=>onUpdate({edition_label})}/>
                 </div>
-                <div className="max-w-5xl py-14 sm:py-20 lg:py-24">
-                    <EditableText value={data.heading} className={`block max-w-5xl text-5xl font-medium leading-[.92] tracking-[-.055em] sm:text-7xl lg:text-[7.2rem] ${copy.heading}`} onSave={(heading)=>onUpdate({heading})}/>
+                <div className="max-w-5xl py-0">
+                    <EditableText value={data.heading} className={`block max-w-5xl text-4xl font-medium leading-[.96] tracking-[-.05em] sm:text-5xl lg:text-6xl xl:text-7xl ${copy.heading}`} onSave={(heading)=>onUpdate({heading})}/>
                     <EditableText value={data.text} isTextArea className={`mt-7 block max-w-xl text-base leading-7 sm:text-lg sm:leading-8 ${copy.body}`} onSave={(text)=>onUpdate({text})}/>
                     <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                         <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label,primary_url)=>onUpdate({primary_label,primary_url})}/>

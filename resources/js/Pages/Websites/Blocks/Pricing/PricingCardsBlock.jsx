@@ -429,7 +429,7 @@ export function PricingCardsBlock({
                                 duration-300
                                 hover:-translate-y-2
                                 hover:shadow-2xl
-                                group
+                                group/pricing-card
                                 ${plan.featured ? "scale-105 ring-2 ring-white/40" : ""}
                             `}
                         >
@@ -439,6 +439,7 @@ export function PricingCardsBlock({
                                 label="Remove pricing plan"
                                 disabled={data.plans.length <= 1}
                                 onRemove={() => removePlanAt(index)}
+                                hoverScope="pricing-card"
                             />
 
                             {plan.badge && (
@@ -507,7 +508,7 @@ export function PricingCardsBlock({
 
                                     <div
                                         key={featureIndex}
-                                        className="group relative flex items-center gap-3 pr-10"
+                                        className="group/pricing-feature relative flex items-center gap-3 pr-10"
                                     >
 
                                         <svg
@@ -542,6 +543,7 @@ export function PricingCardsBlock({
                                             label="Remove feature"
                                             disabled={(plan.features?.length || 0) <= 1}
                                             onRemove={() => removeFeatureAt(index, featureIndex)}
+                                            hoverScope="pricing-feature"
                                         />
 
                                     </div>

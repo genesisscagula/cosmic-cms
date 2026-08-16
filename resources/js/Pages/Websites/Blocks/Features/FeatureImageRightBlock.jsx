@@ -95,6 +95,8 @@ export function FeatureImageRightBlock({ block, blockIndex, onUpdate, globalThem
 
     const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
     const theme = getEffectiveTheme(requestedTheme, globalTheme);
+    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.midnight;
+    const themeGlow = primaryTheme?.gradient?.glowSoft || "rgba(96, 165, 250, 0.10)";
 
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
@@ -112,17 +114,8 @@ export function FeatureImageRightBlock({ block, blockIndex, onUpdate, globalThem
 
             {/* Background Glow */}
             <div
-                className="
-                    absolute
-                    top-10
-                    right-[-180px]
-                    w-[450px]
-                    h-[450px]
-                    rounded-full
-                    bg-blue-500/10
-                    blur-[170px]
-                    pointer-events-none
-                "
+                className="absolute top-10 right-[-180px] h-[450px] w-[450px] rounded-full blur-[170px] pointer-events-none"
+                style={{ backgroundColor: themeGlow }}
             />
 
             <div className="max-w-7xl mx-auto flex flex-col md:flex-row-reverse items-center justify-between gap-20">

@@ -47,6 +47,7 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
     const softMuted = isPrimary ? "text-white/70" : primaryTheme.sub;
     const soft = isPrimary ? "border-white/20 bg-slate-950/15 text-white" : `${primaryTheme.border || theme.border} ${primaryTheme.card || primaryTheme.bg} ${primaryTheme.text}`;
     const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
+    const familyGlow = primaryTheme.gradient?.glowSoft || "rgba(124, 58, 237, 0.20)";
 
     const smallCards = [
         ["service_two_number", "service_two_title", "service_two_text"],
@@ -57,7 +58,7 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
 
     return (
         <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_18%,rgba(16,185,129,.11),transparent_26%)]" />
+            <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at 12% 18%, ${familyGlow}, transparent 26%)` }} />
             <div className="relative mx-auto max-w-7xl">
                 <div className="grid gap-8 lg:grid-cols-[1fr_.72fr] lg:items-end lg:gap-16">
                     <div>

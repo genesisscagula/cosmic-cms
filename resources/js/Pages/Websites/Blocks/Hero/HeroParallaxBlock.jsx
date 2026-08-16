@@ -157,7 +157,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
     };
 
     const contentWidth = data.contentAlign === "center" ? "max-w-4xl" : "max-w-3xl";
-    const heroHeight = data.height === "large" ? "min-h-[720px]" : "min-h-[88svh] lg:min-h-screen";
+    const heroHeight = data.height === "large" ? "min-h-[720px]" : "";
 
     const handleSectionImageEdit = (event) => {
         // Keep text, buttons, and other Builder controls independently editable.
@@ -173,8 +173,9 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
         <section
             data-cosmic-media-banner="true"
             ref={sectionRef}
-            className={`relative isolate flex cursor-pointer overflow-hidden py-12 sm:py-16 lg:py-20 ${heroHeight}`}
+            className={`relative isolate flex cursor-pointer overflow-hidden py-0 ${heroHeight}`}
             onClick={handleSectionImageEdit}
+            style={data.height === "screen" ? {minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"} : undefined}
         >
             <div
                 className="cosmic-parallax-media absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform"
@@ -212,7 +213,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
 
                     <EditableText
                         value={data.heading}
-                        className={`mt-7 text-5xl font-semibold leading-[0.96] tracking-[-0.045em] sm:text-6xl md:text-7xl lg:text-[6.5rem] ${mediaStyle.heading}`}
+                        className={`mt-7 text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`}
                         onSave={(value) => onUpdate({ heading: value })}
                     />
 

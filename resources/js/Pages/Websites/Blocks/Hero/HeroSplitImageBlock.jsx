@@ -40,7 +40,7 @@ export function HeroSplitImageBlock({ block, blockIndex, onUpdate, globalTheme }
         : { bg: primaryTheme.bg, text: primaryTheme.text };
 
     return (
-        <section className={`relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 ${theme.bg} transition-colors duration-500`}>
+        <section className={`relative overflow-hidden px-7 py-0 sm:px-10 lg:px-12 ${theme.bg} transition-colors duration-500`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
             <div className={`pointer-events-none absolute -left-32 top-1/2 h-80 w-80 -translate-y-1/2 rounded-full ${primaryTheme.bg} opacity-[0.08] blur-[110px]`} />
 
             <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-20">
@@ -53,7 +53,7 @@ export function HeroSplitImageBlock({ block, blockIndex, onUpdate, globalTheme }
 
                     <EditableText
                         value={data.heading}
-                        className={`mt-5 block text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl ${theme.text}`}
+                        className={`mt-5 block text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`}
                         onSave={(heading) => onUpdate({ heading })}
                     />
 

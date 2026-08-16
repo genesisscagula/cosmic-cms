@@ -22,10 +22,12 @@ class PageTemplateController extends Controller
 
         $marketplace = collect(PageTemplateCatalog::all())->map(function ($template) use ($purchased, $favorites) {
             $unlock = $purchased->get($template['key']);
-            $isPurchased = (bool) ($unlock?->is_installed);
+            // Template ownership is permanent once an unlock record exists.
+            // `is_installed` is a workspace state used by Sparks and must not make a paid Template look unowned.
+            $isPurchased = (bool) $unlock;
 
             return [...$template,
-                'credits' => PageTemplateCatalog::PURCHASE_CREDITS,
+                'credits' => PageTemplateCatalog::price($template['key']),
                 'personalize_credits' => PageTemplateCatalog::PERSONALIZE_CREDITS,
                 // Keep `owned` during the transition so existing install logic remains backwards-compatible.
                 'owned' => $isPurchased,
@@ -236,13 +238,24 @@ class PageTemplateController extends Controller
             $user = User::query()->whereKey($request->user()->id)->lockForUpdate()->firstOrFail();
             $existing = $user->cosmicUnlocks()->where('unlock_type', 'template')->where('unlock_key', $key)->lockForUpdate()->first();
             if ($existing) {
-                if (!$existing->is_installed) $existing->update(['is_installed' => true]);
-                return response()->json(['message' => 'Template is already purchased.', 'owned' => true, 'credit_balance' => $credits->balance($user)]);
+                return response()->json([
+                    'message' => 'Template is already purchased.',
+                    'owned' => true,
+                    'purchased' => true,
+                    'credits_charged' => 0,
+                    'credit_balance' => $credits->balance($user),
+                ]);
             }
-            $price = PageTemplateCatalog::PURCHASE_CREDITS;
+            $price = PageTemplateCatalog::price($key);
             $tx = $credits->consume($user, $price, 'Purchased Template: '.$template['name'], null, 'template-'.$key.'-'.uniqid(), ['template_key' => $key, 'product_type' => 'template_purchase']);
             CosmicUnlock::create(['user_id' => $user->id, 'unlock_type' => 'template', 'unlock_key' => $key, 'credits_paid' => $price, 'is_installed' => true]);
-            return response()->json(['message' => $template['name'].' purchased and added to Purchased Templates.', 'owned' => true, 'credit_balance' => (int) $tx->balance_after]);
+            return response()->json([
+                'message' => $template['name'].' purchased and added to Purchased Templates.',
+                'owned' => true,
+                'purchased' => true,
+                'credits_charged' => $price,
+                'credit_balance' => (int) $tx->balance_after,
+            ]);
         }, 3);
     }
 

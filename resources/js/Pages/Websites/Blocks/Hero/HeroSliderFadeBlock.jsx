@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { usePage } from '@inertiajs/react';
 import { EditableImage } from '../Shared/EditableImage';
+import { EditableImageGallery } from '../Shared/EditableImageGallery';
 import { getEffectiveTheme } from '../../../../theme/Theme';
 import { getHeroThemeState, resolveHeroThemeRequest } from '../../../../theme/heroTheme';
 import { colorFamilies } from '../../../../theme/colorFamilies';
@@ -132,6 +133,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
     const slides = useMemo(() => rawSlides.map(normalizeSlide), [rawSlides]);
     getEffectiveTheme(data.theme, globalTheme); // Keep parity with the shared block contract.
     const imageRefs = useRef([]);
+    const galleryRef = useRef(null);
     const [activeIndex, setActiveIndex] = useState(0);
     const [paused, setPaused] = useState(false);
     const [reducedMotion, setReducedMotion] = useState(false);
@@ -160,6 +162,15 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
     }, [data.autoplay_interval, data.interval, paused, reducedMotion, slides.length]);
 
     const updateSlides = (nextSlides) => onUpdate({ slides: nextSlides });
+    const saveGalleryImages = (urls) => {
+        const next = urls.map((url, index) => ({ ...(slides[index] || emptySlide()), image_url: url }));
+        if (next.length) updateSlides(next);
+        setActiveIndex((current) => Math.min(current, Math.max(0, next.length - 1)));
+    };
+    const handleGalleryEdit = (event) => {
+        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable='true'], [role='button'], [data-cosmic-edit-control]")) return;
+        galleryRef.current?.openEditor();
+    };
     const updateSlide = (index, patch) => updateSlides(slides.map((slide, slideIndex) => (
         slideIndex === index ? { ...slide, ...patch } : slide
     )));
@@ -211,7 +222,8 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
     return (
         <section
             data-cosmic-media-banner="true"
-            className="relative isolate min-h-[620px] overflow-hidden sm:min-h-[700px] lg:min-h-[760px]"
+            className="relative isolate overflow-hidden"
+            onClick={handleGalleryEdit}
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
             onFocusCapture={() => setPaused(true)}
@@ -244,14 +256,14 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
             <div className={`absolute inset-0 z-20 bg-gradient-to-r ${sliderMediaStyle.gradientX}`} />
             <div className={`absolute inset-0 z-20 bg-gradient-to-t ${sliderMediaStyle.gradientY}`} />
 
-            <div className="relative z-30 mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-24 sm:min-h-[700px] sm:px-10 lg:min-h-[760px] lg:px-14">
+            <div className="relative z-30 mx-auto flex max-w-7xl items-center px-6 py-0 sm:px-10 lg:px-14" style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                 <div className={`max-w-3xl ${sliderMediaStyle.textWrap}`} aria-live="polite">
                     {activeSlide.eyebrow && (
                         <p className={`mb-5 text-xs font-bold uppercase tracking-[0.32em] sm:text-sm ${sliderMediaStyle.eyebrow}`}>
                             {activeSlide.eyebrow}
                         </p>
                     )}
-                    <h2 className="max-w-3xl text-5xl font-bold leading-[0.98] tracking-[-0.04em] sm:text-6xl lg:text-7xl">
+                    <h2 className="max-w-3xl text-4xl font-bold leading-[1] tracking-[-0.04em] sm:text-5xl lg:text-6xl xl:text-7xl">
                         {activeSlide.heading}
                     </h2>
                     <p className={`mt-7 max-w-2xl text-base leading-8 sm:text-lg ${sliderMediaStyle.body}`}>
@@ -287,7 +299,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
 
             <div className="absolute bottom-16 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 sm:bottom-6">
                 <button type="button" onClick={() => openEditor(activeIndex)} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit slide</button>
-                <button type="button" onClick={() => imageRefs.current[activeIndex]?.openEditor()} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit image</button>
+                <button type="button" data-cosmic-edit-control onClick={() => galleryRef.current?.openEditor()} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit images</button>
                 <button type="button" onClick={addSlide} className="cosmic-hero-slider-add rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Add slide</button>
             </div>
 
@@ -304,6 +316,8 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                 <button type="button" onClick={previous} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" aria-label="Previous slide">←</button>
                 <button type="button" onClick={next} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" aria-label="Next slide">→</button>
             </div>
+
+            <EditableImageGallery ref={galleryRef} websiteId={websiteId} images={slides.map((slide)=>slide.image_url).filter(Boolean)} maxItems={12} title="Hero slider images" onSave={saveGalleryImages} />
 
             {editingIndex !== null && draft && createPortal(
                 <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEditor(); }}>

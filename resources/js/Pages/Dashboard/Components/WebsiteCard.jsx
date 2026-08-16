@@ -37,8 +37,11 @@ export default function WebsiteCard({ website, viewMode = "grid", onEdit, onDupl
 
             {menuOpen && <div className="cosmic-website-actions-menu absolute right-4 top-14 z-40 w-52 rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl shadow-slate-950/20">
                 <button type="button" onClick={() => { onDownloadConnector(website); setMenuOpen(false); }}>Download connector</button>
-                <button type="button" onClick={() => { onConnectLiveSite(website); setMenuOpen(false); }}>Connect live site</button>
-                <button type="button" data-tone="success" onClick={() => { onPushLiveUpdate(website); setMenuOpen(false); }}>Push live update</button>
+                {website.liveConnected ? (
+                    <button type="button" data-tone="success" onClick={() => { onPushLiveUpdate(website); setMenuOpen(false); }}>Push to live</button>
+                ) : (
+                    <button type="button" onClick={() => { onConnectLiveSite(website); setMenuOpen(false); }}>Connect to live</button>
+                )}
                 <button type="button" onClick={() => { onDuplicate(website); setMenuOpen(false); }}>Duplicate</button>
                 {website.canTransferOwnership && <button type="button" data-tone="accent" onClick={() => { onTransferOwnership(website); setMenuOpen(false); }}>Transfer ownership</button>}
                 <div className="my-1 border-t border-slate-100" />

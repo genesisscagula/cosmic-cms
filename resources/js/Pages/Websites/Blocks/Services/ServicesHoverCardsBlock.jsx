@@ -28,13 +28,13 @@ export const ServicesHoverCardsSchema = {
 
 export function ServicesHoverCardsBlock({ block, onUpdate, globalTheme }) {
     const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
-    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
+    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.midnight;
     const data = { ...ServicesHoverCardsSchema.defaults, ...block };
     const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
     const muted = isPrimary ? "text-white/70" : theme.sub;
     const border = isPrimary ? "border-white/20" : theme.border;
     const card = isPrimary ? "bg-white/10 text-white" : `${theme.surface} ${theme.text}`;
-    const hoverBackground = isPrimary ? "#ffffff" : (primaryTheme?.palette?.background || "#0B5D4B");
+    const hoverBackground = isPrimary ? "#ffffff" : (primaryTheme?.palette?.background || theme?.palette?.background || "#243447");
     const hoverForeground = isPrimary ? "#0f172a" : "#ffffff";
     const buttonClass = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const save = (key) => (value) => onUpdate({ [key]: value });

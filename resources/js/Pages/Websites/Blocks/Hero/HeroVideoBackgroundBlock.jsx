@@ -211,7 +211,7 @@ export function HeroVideoBackgroundBlock({
                 className={`pointer-events-none absolute -left-40 top-16 h-96 w-96 rounded-full ${primaryTheme.bg} opacity-[0.18] blur-[150px]`}
             />
 
-            <div className="pointer-events-none relative z-10 mx-auto flex min-h-[680px] max-w-7xl items-center px-7 py-24 sm:px-10 lg:px-12">
+            <div className="pointer-events-none relative z-10 mx-auto flex max-w-7xl items-center px-7 py-0 sm:px-10 lg:px-12" style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                 <div className="pointer-events-auto max-w-3xl">
                     <EditableText
                         value={data.tagline}
@@ -223,7 +223,7 @@ export function HeroVideoBackgroundBlock({
 
                     <EditableText
                         value={data.heading}
-                        className={`mt-6 block text-5xl font-bold leading-[0.98] tracking-tight sm:text-6xl lg:text-8xl ${mediaStyle.heading}`}
+                        className={`mt-6 block text-4xl font-bold leading-[0.98] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`}
                         onSave={(heading) =>
                             onUpdate({ heading })
                         }

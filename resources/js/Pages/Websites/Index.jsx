@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Head, useForm, Link, router, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
-import { MinimalFooter, DetailedFooter } from './GenerateFooter';
+import { MinimalFooter } from './GenerateFooter';
 import WebsiteWorkspaceHeader from './Components/WebsiteWorkspaceHeader';
 import NewPagePanel from './Components/NewPagePanel';
 import PageList from './Components/PageList';
@@ -23,6 +23,43 @@ import { ACTION_PRICING } from '../../cosmic/pricing';
 const WebsiteWorkspaceShell = ({ children }) => <>{children}</>;
 const countMenuItems = (items = []) => items.reduce((total, item) => total + 1 + countMenuItems(item.children || []), 0);
 const legacyHeaderLogoSamples = new Set(['AkongLogo', 'DesignKaBai', 'CosmicCMS']);
+
+const defaultMegaFooter = {
+    enabled: false,
+    theme: 'auto',
+    tagline: 'A premium information-rich footer.',
+    primary_label: 'Get in touch',
+    primary_url: '#contact',
+    columns: [
+        { title: 'Company', items: [{ label: 'About us', url: '#about' }, { label: 'Careers', url: '#careers' }, { label: 'Contact', url: '#contact' }] },
+        { title: 'Services', items: [{ label: 'What we do', url: '#services' }, { label: 'Solutions', url: '#solutions' }, { label: 'Pricing', url: '#pricing' }] },
+        { title: 'Resources', items: [{ label: 'Insights', url: '#insights' }, { label: 'Guides', url: '#guides' }, { label: 'Updates', url: '#updates' }] },
+    ],
+};
+
+const normalizeGlobalFooter = (footer, websiteName) => {
+    const source = footer && typeof footer === 'object' ? footer : {};
+    const mega = source.mega_footer && typeof source.mega_footer === 'object' ? source.mega_footer : {};
+    return {
+        ...source,
+        type: 'minimal_footer',
+        theme: source.theme || 'white',
+        logo_text: source.logo_text || websiteName,
+        copyright: source.copyright || `© ${new Date().getFullYear()}. All rights reserved.`,
+        privacy_label: source.privacy_label || 'Privacy Policy',
+        privacy_url: source.privacy_url || '/privacy-policy',
+        terms_label: source.terms_label || 'Terms & Conditions',
+        terms_url: source.terms_url || '/terms-and-conditions',
+        mega_enabled: Boolean(source.mega_enabled ?? mega.enabled ?? false),
+        mega_footer: {
+            ...defaultMegaFooter,
+            ...mega,
+            enabled: Boolean(source.mega_enabled ?? mega.enabled ?? false),
+            columns: Array.isArray(mega.columns) && mega.columns.length ? mega.columns : defaultMegaFooter.columns,
+        },
+    };
+};
+
 
 const replaceLegacyHeaderLogo = (header, websiteName) => {
     if (!header || !legacyHeaderLogoSamples.has((header.logo_text || '').trim())) {
@@ -49,6 +86,10 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
     const [isSaving, setIsSaving] = useState(false);
     const [isLogoUploading, setIsLogoUploading] = useState(false);
     const [isPushingLive, setIsPushingLive] = useState(false);
+    const [isCheckingLive, setIsCheckingLive] = useState(false);
+    const [isLiveConnected, setIsLiveConnected] = useState(Boolean(website?.deployment_verified_at));
+    const [isConnectorSetupOpen, setIsConnectorSetupOpen] = useState(false);
+    const [connectorError, setConnectorError] = useState(website?.deployment_error || "");
     const [isInquiryInboxOpen, setIsInquiryInboxOpen] = useState(false);
     const [isWebsiteSettingsOpen, setIsWebsiteSettingsOpen] = useState(false);
     const [isBusinessProfileOpen, setIsBusinessProfileOpen] = useState(false);
@@ -58,15 +99,8 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
         return ['standard', 'posts', 'shop'].includes(requested) ? requested : 'standard';
     });
     const [visibleInquiryCount, setVisibleInquiryCount] = useState(inquiryCount);
-    // 2. Add state para sa footer modal[cite: 2]
     const [isFooterModalOpen, setIsFooterModalOpen] = useState(false);
-    
-    // I-set ang default nga object kung null ang globalFooterBlock
-    const [savedFooter, setSavedFooter] = useState(globalFooterBlock || { 
-        type: 'minimal_footer', 
-        logo_text: 'CosmicCMS', 
-        copyright: '© 2026. All rights reserved.' 
-    });
+    const [savedFooter, setSavedFooter] = useState(() => normalizeGlobalFooter(globalFooterBlock, website.name));
 
     const updateFooterContent = (updatedFields) => {
         setSavedFooter(prev => ({ ...prev, ...updatedFields }));
@@ -82,9 +116,23 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
     useEffect(() => {
         // Kung naay gipasa nga props, i-update ang state
         if (globalFooterBlock) {
-            setSavedFooter(globalFooterBlock);
+            setSavedFooter(normalizeGlobalFooter(globalFooterBlock, website.name));
         }
     }, [globalFooterBlock]);
+
+    useEffect(() => {
+        setIsLiveConnected(Boolean(website?.deployment_verified_at));
+        setConnectorError(website?.deployment_error || "");
+    }, [website?.deployment_verified_at, website?.deployment_error]);
+
+    useEffect(() => {
+        if (!isConnectorSetupOpen) return undefined;
+        const handleConnectorEscape = (event) => {
+            if (event.key === 'Escape' && !isCheckingLive) setIsConnectorSetupOpen(false);
+        };
+        window.addEventListener('keydown', handleConnectorEscape);
+        return () => window.removeEventListener('keydown', handleConnectorEscape);
+    }, [isConnectorSetupOpen, isCheckingLive]);
 
     useEffect(() => {
         if (!isHeaderModalOpen && !isFooterModalOpen) return undefined;
@@ -217,7 +265,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                 if (response.data.credit_balance !== undefined) {
                     setCreditBalance(response.data.credit_balance);
                 }
-                showCosmicNotification({ title: 'Header saved', message: 'Use Push live update when you are ready to send this header to the live site.', tone: 'success' });
+                showCosmicNotification({ title: 'Header saved', message: 'Use Push to live when you are ready to send this header to the live site.', tone: 'success' });
                 router.reload({ 
                     only: ['globalHeaderBlock'],
                     onSuccess: () => {
@@ -241,7 +289,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
             });
             
             if (response.data.status === 'success') {
-                showCosmicNotification({ title: 'Footer saved', message: 'Use Push live update when you are ready to send this footer to the live site.', tone: 'success' });
+                showCosmicNotification({ title: 'Footer saved', message: 'Use Push to live when you are ready to send this footer to the live site.', tone: 'success' });
                 router.reload({ 
                     only: ['globalFooterBlock'],
                     onSuccess: () => {
@@ -257,19 +305,57 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
         }
     };
 
+    const verifyLiveConnection = async ({ quiet = false } = {}) => {
+        setIsCheckingLive(true);
+        try {
+            const response = await axios.post(route('websites.deployment-connector.verify', website.id));
+            setIsLiveConnected(true);
+            setConnectorError('');
+            setIsConnectorSetupOpen(false);
+            if (!quiet) showCosmicNotification({ title: 'Live site connected', message: response.data.message || 'The Cosmic connector is ready.', tone: 'success' });
+            return true;
+        } catch (error) {
+            const message = error.response?.data?.message || 'The Cosmic connector could not be reached at this website.';
+            setIsLiveConnected(false);
+            setConnectorError(message);
+            setIsConnectorSetupOpen(true);
+            return false;
+        } finally {
+            setIsCheckingLive(false);
+        }
+    };
+
     const pushLiveUpdate = async () => {
-        if (!await confirmCosmicAction({ title: 'Push live update?', message: `All published pages for ${website.name} will be sent to the connected live site.`, confirmLabel: 'Push update', tone: 'info' })) return;
+        if (!isLiveConnected) {
+            await verifyLiveConnection();
+            return;
+        }
+
+        if (!await confirmCosmicAction({ title: 'Push to live?', message: `All published pages for ${website.name} will be sent to the connected live site.`, confirmLabel: 'Push to live', tone: 'info' })) return;
 
         setIsPushingLive(true);
 
         try {
             const response = await axios.post(route('websites.deployment-connector.push', website.id));
+            setIsLiveConnected(true);
             showCosmicNotification({ title: 'Live site updated', message: response.data.message, tone: 'success' });
         } catch (error) {
-            showCosmicNotification({ title: 'Live update failed', message: error.response?.data?.message || 'The live update could not be pushed.', tone: 'error' });
+            const message = error.response?.data?.message || 'The live update could not be pushed.';
+            const connectionFailure = error.response?.status === 422 && /(connector|connect|reach|verified|domain)/i.test(message);
+            if (connectionFailure) {
+                setIsLiveConnected(false);
+                setConnectorError(message);
+                setIsConnectorSetupOpen(true);
+            } else {
+                showCosmicNotification({ title: 'Live update failed', message, tone: 'error' });
+            }
         } finally {
             setIsPushingLive(false);
         }
+    };
+
+    const downloadConnector = () => {
+        window.location.href = route('websites.deployment-connector.download', website.id);
     };
 
     const deletePage = async (page) => {
@@ -313,7 +399,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
             <div className="cosmic-ui-shell min-h-screen bg-[#0a0a0b] px-4 py-6 text-slate-100 sm:px-6 lg:px-10 lg:py-10">
                 <div className="mx-auto max-w-6xl space-y-7">
-                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={visibleInquiryCount} themeSummary={themeSummary} onNewPage={() => openNewPage()} onPushLive={pushLiveUpdate} pushingLive={isPushingLive} onOpenInquiries={() => setIsInquiryInboxOpen(true)} onOpenProfile={() => setIsBusinessProfileOpen(true)} onOpenSettings={() => setIsWebsiteSettingsOpen(true)} creditBalance={creditBalance} />
+                    <WebsiteWorkspaceHeader website={website} pageCount={pages?.length || 0} inquiryCount={visibleInquiryCount} themeSummary={themeSummary} onNewPage={() => openNewPage()} onLiveAction={pushLiveUpdate} liveConnected={isLiveConnected} pushingLive={isPushingLive} checkingLive={isCheckingLive} onOpenInquiries={() => setIsInquiryInboxOpen(true)} onOpenProfile={() => setIsBusinessProfileOpen(true)} onOpenSettings={() => setIsWebsiteSettingsOpen(true)} creditBalance={creditBalance} />
 
                     <WebsiteLaunchGuide pages={pages || []} onNewPage={() => openNewPage()} />
 
@@ -356,6 +442,37 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                     {isBusinessProfileOpen ? <BusinessProfileModal website={website} onClose={() => setIsBusinessProfileOpen(false)} onSaved={() => { showCosmicNotification({ title: 'Business profile saved', message: 'Future AI drafts will use these details as context.', tone: 'success' }); router.reload(); }} /> : null}
                     {isWebsiteSettingsOpen ? <WebsiteSettingsModal website={website} onClose={() => setIsWebsiteSettingsOpen(false)} onSaved={() => { showCosmicNotification({ title: 'Website settings saved', message: 'Download a new connector if you changed the live URL or inquiry recipient email.', tone: 'success' }); router.reload(); }} /> : null}
                     
+                    {isConnectorSetupOpen ? (
+                        <div className="fixed inset-0 z-[160] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="cosmic-live-connector-title" onMouseDown={(event) => { if (event.target === event.currentTarget && !isCheckingLive) setIsConnectorSetupOpen(false); }}>
+                            <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#121216] p-6 shadow-2xl">
+                                <div className="flex items-start justify-between gap-4">
+                                    <div>
+                                        <p className="text-xs font-semibold uppercase tracking-[0.18em] text-violet-300">Cosmic live connector</p>
+                                        <h2 id="cosmic-live-connector-title" className="mt-2 text-xl font-semibold text-white">Connect this website to live</h2>
+                                        <p className="mt-2 text-sm leading-6 text-slate-400">Cosmic could not verify the connector yet. Install it once, then future updates can be pushed directly from this dashboard.</p>
+                                    </div>
+                                    <button type="button" onClick={() => setIsConnectorSetupOpen(false)} disabled={isCheckingLive} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-sm text-slate-400 transition hover:bg-white/10 hover:text-white disabled:opacity-50" aria-label="Close connector setup">×</button>
+                                </div>
+
+                                {connectorError ? <div className="mt-4 rounded-xl border border-amber-400/20 bg-amber-400/[0.06] px-4 py-3 text-sm leading-6 text-amber-100">{connectorError}</div> : null}
+
+                                <div className="mt-5 rounded-xl border border-white/10 bg-white/[0.03] p-4">
+                                    <ol className="space-y-3 text-sm leading-6 text-slate-300">
+                                        <li><span className="mr-2 font-semibold text-white">1.</span>Download and extract the Cosmic connector ZIP.</li>
+                                        <li><span className="mr-2 font-semibold text-white">2.</span>Upload the <code className="rounded bg-black/30 px-1.5 py-0.5 text-violet-200">cosmic-cms</code> folder to your website root directory.</li>
+                                        <li><span className="mr-2 font-semibold text-white">3.</span>Upload the included <code className="rounded bg-black/30 px-1.5 py-0.5 text-violet-200">.htaccess</code> to the root. If you already have one, back it up and merge the Cosmic rules instead of replacing your existing rules.</li>
+                                        <li><span className="mr-2 font-semibold text-white">4.</span>Return here and click <strong className="text-white">Check connection</strong>.</li>
+                                    </ol>
+                                </div>
+
+                                <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+                                    <button type="button" onClick={downloadConnector} className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 px-4 text-sm font-semibold text-slate-200 transition hover:bg-white/10">Download connector</button>
+                                    <button type="button" onClick={() => verifyLiveConnection()} disabled={isCheckingLive} className="inline-flex h-10 items-center justify-center rounded-xl bg-emerald-400 px-4 text-sm font-semibold text-emerald-950 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-60">{isCheckingLive ? 'Checking connection...' : 'Check connection'}</button>
+                                </div>
+                            </div>
+                        </div>
+                    ) : null}
+
                     {/* INPUT FORM PANEL */}
                     <div className="hidden p-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
                         <h3 className="text-lg font-medium text-gray-900 mb-1">Create New Dynamic Page</h3>
@@ -488,7 +605,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                         </div>
 
                         {/* LIVE PREVIEW FIELD */}
-                        <div className="cosmic-footer-preview mb-6 rounded-xl border border-white/10 bg-black/20 px-3 pb-3 pt-5">
+                        <div className="cosmic-footer-preview mb-6 rounded-xl border border-white/10 bg-black/20 px-2 pb-2 pt-5 sm:px-3 sm:pb-3">
                             <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</h3>
                             {savedHeader ? (
                                 <div className="w-full overflow-hidden rounded-lg">
@@ -558,7 +675,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                                     <div>
                                         <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Menu links</h3>
                                         <p className="mt-1 text-xs leading-5 text-slate-400">
-                                            Use the exact published page slug for static links. <span className="text-slate-300">home</span> opens the homepage; <span className="text-slate-300">about</span> becomes <span className="text-slate-300">/about</span> after Push live update.
+                                            Use the exact published page slug for static links. <span className="text-slate-300">home</span> opens the homepage; <span className="text-slate-300">about</span> becomes <span className="text-slate-300">/about</span> after Push to live.
                                         </p>
                                     </div>
                                     <p className="text-[11px] text-slate-500">External URLs and #section anchors stay unchanged.</p>
@@ -685,69 +802,52 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
             {isFooterModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
                     <button type="button" aria-label="Close footer dialog" onClick={() => !isSaving && setIsFooterModalOpen(false)} className="absolute inset-0 cursor-default" />
-                    <div role="dialog" aria-modal="true" aria-labelledby="edit-footer-title" className="cosmic-global-footer-modal relative max-h-[calc(100dvh-2rem)] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6">
+                    <div role="dialog" aria-modal="true" aria-labelledby="edit-footer-title" className="cosmic-global-footer-modal relative max-h-[calc(100dvh-1.5rem)] w-[96vw] max-w-[1600px] overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6">
                         <div className="mb-5 flex items-start justify-between gap-4">
                             <div>
                                 <h2 id="edit-footer-title" className="text-xl font-semibold text-white">Edit global footer</h2>
-                                <p className="mt-1 text-sm text-slate-400">Choose the footer used across this website.</p>
+                                <p className="mt-1 text-sm text-slate-400">Configure the shared footer used across this website.</p>
                             </div>
                             <button type="button" disabled={isSaving} onClick={() => setIsFooterModalOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Close">×</button>
                         </div>
 
-                        {/* LIVE PREVIEW FIELD */}
-                        <div className="cosmic-footer-preview mb-6 rounded-xl border border-white/10 bg-black/20 px-3 pb-3 pt-5">
-                            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</h3>
-                            {savedFooter ? (
-                                <div className="w-full">
-                                    {savedFooter.type === 'minimal_footer' && <MinimalFooter block={savedFooter} onUpdate={updateFooterContent} />}
-                                    {savedFooter.type === 'detailed_footer' && <DetailedFooter block={savedFooter} onUpdate={updateFooterContent} />}
+                        <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.025] p-4">
+                            <div className="flex items-center justify-between gap-4">
+                                <div>
+                                    <h3 className="text-sm font-semibold text-white">Enable Mega Footer</h3>
+                                    <p className="mt-1 text-xs leading-5 text-slate-400">Adds one global multi-column footer above the default legal footer on every page.</p>
                                 </div>
-                            ) : (
-                                <div className="py-7 text-center text-sm text-slate-500">
-                                    Choose a footer layout to preview it here.
-                                </div>
-                            )}
+                                <button
+                                    type="button"
+                                    role="switch"
+                                    aria-checked={Boolean(savedFooter?.mega_enabled)}
+                                    onClick={() => {
+                                        const enabled = !savedFooter?.mega_enabled;
+                                        updateFooterContent({
+                                            type: 'minimal_footer',
+                                            mega_enabled: enabled,
+                                            mega_footer: {
+                                                ...(savedFooter?.mega_footer || defaultMegaFooter),
+                                                enabled,
+                                            },
+                                        });
+                                    }}
+                                    className={`relative h-7 w-12 shrink-0 rounded-full transition ${savedFooter?.mega_enabled ? 'bg-violet-500' : 'bg-slate-700'}`}
+                                >
+                                    <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${savedFooter?.mega_enabled ? 'left-6' : 'left-1'}`} />
+                                </button>
+                            </div>
                         </div>
 
-                        {/* BLUEPRINTS ARCHIVE */}
-                        <div className="border-t border-white/10 pt-5">
-                            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Footer layouts</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                
-                                {/* TEMPLATE 1: MINIMAL */}
-                                <div className={`flex flex-col justify-between space-y-3 rounded-xl border p-4 transition ${savedFooter?.type === 'minimal_footer' ? 'border-violet-400/70 bg-violet-400/[0.07] ring-1 ring-violet-400/30' : 'border-white/10 bg-white/[0.03] hover:border-white/20'}`}>
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-white">Minimal footer</h4>
-                                        <p className="mt-1 text-xs leading-5 text-slate-400">A compact footer with brand and copyright.</p>
-                                    </div>
-                                    <button 
-                                        type="button"
-                                        onClick={() => updateFooterContent({ 
-                                            type: 'minimal_footer', 
-                                            copyright: '© 2026. All rights reserved.' // I-usab ni
-                                        })}
-                                        className="w-full rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
-                                    >
-                                        {savedFooter?.type === 'minimal_footer' ? 'Selected' : 'Use layout'}
-                                    </button>
-                                </div>
-
-                                {/* TEMPLATE 2: DETAILED */}
-                                <div className={`flex flex-col justify-between space-y-3 rounded-xl border p-4 transition ${savedFooter?.type === 'detailed_footer' ? 'border-violet-400/70 bg-violet-400/[0.07] ring-1 ring-violet-400/30' : 'border-white/10 bg-white/[0.03] hover:border-white/20'}`}>
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-white">Detailed footer</h4>
-                                        <p className="mt-1 text-xs leading-5 text-slate-400">A footer with additional navigation links.</p>
-                                    </div>
-                                    <button 
-                                        type="button"
-                                        onClick={() => updateFooterContent({ type: 'detailed_footer', description: 'Sample description' })}
-                                        className="w-full rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
-                                    >
-                                        {savedFooter?.type === 'detailed_footer' ? 'Selected' : 'Use layout'}
-                                    </button>
-                                </div>
-
+                        <div className="cosmic-footer-preview mb-6 rounded-xl border border-white/10 bg-black/20 px-2 pb-2 pt-5 sm:px-3 sm:pb-3">
+                            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Global footer preview</h3>
+                            <div className="w-full overflow-hidden rounded-lg">
+                                <MinimalFooter block={savedFooter} onUpdate={updateFooterContent} editorMode />
                             </div>
+                        </div>
+
+                        <div className="mb-6 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
+                            <p className="text-xs leading-5 text-slate-400"><span className="font-semibold text-slate-200">One global footer system.</span> When Mega Footer is enabled, the website logo moves into the Mega Footer and the legal footer below switches to Privacy Policy, Terms & Conditions, and copyright.</p>
                         </div>
 
                         {/* MASTER SUBMIT */}

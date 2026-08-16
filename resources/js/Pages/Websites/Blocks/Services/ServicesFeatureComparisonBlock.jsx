@@ -41,13 +41,13 @@ export const ServicesFeatureComparisonSchema = {
 
 export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme }) {
     const theme = getEffectiveTheme(block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme, globalTheme);
-    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.emerald;
+    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.midnight;
     const data = { ...ServicesFeatureComparisonSchema.defaults, ...block };
     const isPrimary = (block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme) === "primary";
     const muted = isPrimary ? "text-white/70" : theme.sub;
     const border = isPrimary ? "border-white/20" : theme.border;
     const baseCard = isPrimary ? "bg-white/10 text-white" : `${theme.surface} ${theme.text}`;
-    const featuredCard = isPrimary ? "bg-white text-slate-950" : "bg-slate-900 text-white";
+    const featuredCard = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.card || primaryTheme.bg} ${primaryTheme.text}`;
     const buttonClass = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const rowCount = Math.max(1, Math.min(8, Number(data.feature_row_count) || 8));
     const words = ["one", "two", "three", "four", "five", "six", "seven", "eight"].slice(0,rowCount);

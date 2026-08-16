@@ -28,7 +28,8 @@ function buildBlocks(template, previewMode = false) {
 }
 
 const TemplateMiniPreview = memo(function TemplateMiniPreview({ template, websiteTheme }) {
-    const blocks = useMemo(() => buildBlocks(template, true).slice(0, 6), [template]);
+    // Keep marketplace cards lightweight: the full six-section composition still renders in the dedicated Preview.
+    const blocks = useMemo(() => buildBlocks(template, true).slice(0, 3), [template]);
 
     return (
         <div className="h-52 overflow-hidden rounded-xl bg-white text-slate-900">
@@ -92,6 +93,7 @@ export default function PageTemplatesModal({
     const [renameName, setRenameName] = useState('');
     const [renameDescription, setRenameDescription] = useState('');
     const [deleteTarget, setDeleteTarget] = useState(null);
+    const trialSignupUrl = trialToken ? `/register?trial=${encodeURIComponent(trialToken)}` : '/register';
 
     useEffect(() => {
         if (!preloadedCatalogLoaded) return;
@@ -200,6 +202,9 @@ export default function PageTemplatesModal({
     if (!open) return null;
 
     const unlock = async (template) => {
+        // One marketplace mutation at a time. This prevents accidental multi-purchases
+        // from fast taps while the first credit transaction is still in flight.
+        if (busy || template?.owned || template?.saved) return;
         setBusy(template.key);
 
         try {
@@ -407,7 +412,7 @@ export default function PageTemplatesModal({
                         <div>
                             <p className="cosmic-template-eyebrow text-[10px] font-bold uppercase tracking-[0.22em]">Cosmic Builder</p>
                             <h2 className="mt-1 text-2xl font-semibold">✦ Templates</h2>
-                            <p className="cosmic-template-muted mt-1 text-sm">{trialMode ? 'Choose from a curated set of complete trial pages. The full Template library unlocks after signup.' : 'Install complete premium pages built from Cosmic Sparks.'}</p>
+                            <p className="cosmic-template-muted mt-1 text-sm">{trialMode ? '10 Templates are ready to use in your trial. Keep scrolling to preview the full library; sign up to unlock the rest.' : 'Install complete premium pages built from Cosmic Sparks.'}</p>
                         </div>
 
                         <div className="flex items-center gap-2">
@@ -427,6 +432,13 @@ export default function PageTemplatesModal({
                             </button>
                         </div>
                     </div>
+
+                    {trialMode && (
+                        <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-violet-400/20 bg-violet-400/[0.07] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between">
+                            <div><b className="text-violet-700 dark:text-violet-200">Trial access: 10 Templates available</b><p className="cosmic-template-muted mt-0.5 text-xs">Preview everything. Create a free account to unlock the full Template library.</p></div>
+                            <a href={trialSignupUrl} className="cosmic-template-accent shrink-0 rounded-xl px-4 py-2 text-center text-xs font-bold">Sign up to unlock</a>
+                        </div>
+                    )}
 
                     <div className="mt-5 flex flex-wrap items-center gap-2">
                         <div className="cosmic-template-tabs flex max-w-full gap-1 overflow-x-auto rounded-xl border p-1">
@@ -505,7 +517,7 @@ export default function PageTemplatesModal({
                 <div className="overflow-y-auto p-5 sm:p-7">
                     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
                         {revealedTemplates.map((template) => (
-                            <article key={template.key} className="cosmic-template-card overflow-hidden rounded-2xl border">
+                            <article key={template.key} className="cosmic-template-card relative overflow-hidden rounded-2xl border">
                                 <div
                                     role="button"
                                     tabIndex={0}
@@ -516,15 +528,23 @@ export default function PageTemplatesModal({
                                             setPreview(template);
                                         }
                                     }}
-                                    className="block w-full cursor-pointer p-3 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500"
+                                    className={`block w-full cursor-pointer p-3 text-left focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-500 ${template.trial_locked ? 'blur-[3px] saturate-50 opacity-60' : ''}`}
                                 >
                                     <TemplateMiniPreview template={template} websiteTheme={websiteTheme} />
                                 </div>
 
+                                {template.trial_locked && (
+                                    <div className="pointer-events-none absolute left-1/2 top-20 z-10 -translate-x-1/2 rounded-full border border-white/15 bg-slate-950/85 px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.14em] text-white shadow-xl backdrop-blur">🔒 Sign up to unlock</div>
+                                )}
                                 <div className="p-4 pt-1">
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
-                                            <h3 className="font-semibold">{template.name}</h3>
+                                            <div className="flex flex-wrap items-center gap-2">
+                                                <h3 className="font-semibold">{template.name}</h3>
+                                                {!template.saved && Number(template.credits || 0) >= 200 && (
+                                                    <span className="rounded-full border border-amber-300/40 bg-amber-400/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.14em] text-amber-600 dark:text-amber-300">Premium · ⚡{template.credits}</span>
+                                                )}
+                                            </div>
                                             {aiResults && aiResultMap.get(template.key)?.reason && (
                                                 <p className="mt-1 text-[11px] leading-4 text-emerald-600 dark:text-emerald-300">✦ {aiResultMap.get(template.key).reason}</p>
                                             )}
@@ -550,23 +570,27 @@ export default function PageTemplatesModal({
                                         )}
                                     </div>
 
-                                    <p className="cosmic-template-muted mt-3 min-h-10 text-xs leading-5">{template.description}</p>
+                                    <p className={`cosmic-template-muted mt-3 min-h-10 text-xs leading-5 ${template.trial_locked ? 'blur-[2px] select-none opacity-55' : ''}`}>{template.description}</p>
 
                                     <div className="mt-4 flex gap-2">
                                         <button type="button" onClick={() => setPreview(template)} className="cosmic-template-secondary rounded-xl border px-4 py-2.5 text-sm font-bold">
                                             Preview
                                         </button>
 
-                                        {template.owned ? (
+                                        {template.trial_locked ? (
+                                            <a href={trialSignupUrl} className="cosmic-template-accent flex-1 rounded-xl px-4 py-2.5 text-center text-sm font-bold">
+                                                Sign up to unlock
+                                            </a>
+                                        ) : template.owned ? (
                                             <button type="button" onClick={() => setSelected(template)} className="cosmic-template-primary flex-1 rounded-xl px-4 py-2.5 text-sm font-bold">
                                                 {template.saved ? 'Use Template' : 'Install'}
                                             </button>
                                         ) : (
                                             <button
                                                 type="button"
-                                                disabled={busy === template.key}
+                                                disabled={Boolean(busy)}
                                                 onClick={() => unlock(template)}
-                                                className="cosmic-template-accent flex-1 rounded-xl px-4 py-2.5 text-sm font-bold disabled:opacity-50"
+                                                className="cosmic-template-accent flex-1 rounded-xl px-4 py-2.5 text-sm font-bold disabled:cursor-wait disabled:opacity-50"
                                             >
                                                 {busy === template.key ? 'Purchasing…' : `Buy · ⚡${template.credits}`}
                                             </button>
@@ -610,7 +634,9 @@ export default function PageTemplatesModal({
                             </div>
 
                             <div className="flex shrink-0 items-center gap-2">
-                                {preview.owned ? (
+                                {preview.trial_locked ? (
+                                    <a href={trialSignupUrl} className="cosmic-template-accent rounded-xl px-4 py-2.5 text-sm font-bold sm:px-5">Sign up to unlock</a>
+                                ) : preview.owned ? (
                                     <button
                                         type="button"
                                         onClick={() => setSelected(preview)}
@@ -621,9 +647,9 @@ export default function PageTemplatesModal({
                                 ) : (
                                     <button
                                         type="button"
-                                        disabled={busy === preview.key}
+                                        disabled={Boolean(busy)}
                                         onClick={() => unlock(preview)}
-                                        className="cosmic-template-accent rounded-xl px-4 py-2.5 text-sm font-bold sm:px-5 disabled:opacity-50"
+                                        className="cosmic-template-accent rounded-xl px-4 py-2.5 text-sm font-bold sm:px-5 disabled:cursor-wait disabled:opacity-50"
                                     >
                                         {busy === preview.key ? 'Purchasing…' : `Buy · ⚡${preview.credits}`}
                                     </button>

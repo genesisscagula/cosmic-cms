@@ -42,7 +42,7 @@ return [
     ],
 
     'templates' => [
-        'limit' => 6,
+        'limit' => 10,
         'default' => [
             'split-conversion',
             'bento-launch',
@@ -50,6 +50,10 @@ return [
             'consulting-forward',
             'portfolio-canvas',
             'modern-showcase',
+            'parallax-authority',
+            'slider-showcase',
+            'editorial-luxe',
+            'glass-studio',
         ],
         'industry' => [
             'construction' => ['builder-pro', 'corporate-clarity'],

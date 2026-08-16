@@ -296,19 +296,53 @@ class ImageController extends Controller
             ];
 
             $brandMemory = (array) data_get($website->settings, 'brand_memory', []);
-            $sourceLogoUrl = trim((string) ($settings['brand_original_logo_url'] ?? $validated['logo_url']));
-            if ($sourceLogoUrl === '') $sourceLogoUrl = $validated['logo_url'];
-            if (empty($settings['brand_original_logo_url'])) {
-                $settings['brand_original_logo_url'] = $validated['logo_url'];
+            $currentLogoUrl = trim((string) $validated['logo_url']);
+            $originalLogoUrl = trim((string) ($settings['brand_original_logo_url'] ?? ''));
+            $activeLogoUrl = trim((string) ($settings['brand_active_logo_url'] ?? ''));
+
+            // Older local builds can retain a stale original URL after the logo is replaced,
+            // moved into Media Library, or the XAMPP host/port changes. Try the meaningful
+            // Cosmic-owned candidates in identity-first order instead of failing on one stale
+            // pointer. The matcher still enforces storage ownership / SSRF safety itself.
+            $logoCandidates = array_values(array_unique(array_filter([
+                $originalLogoUrl,
+                $currentLogoUrl,
+                $activeLogoUrl,
+            ], static fn ($url) => is_string($url) && trim($url) !== '')));
+
+            if ($logoCandidates === []) {
+                throw new \RuntimeException('No logo is available to match. Upload or generate a logo first.');
             }
-            $result = $matcher->match(
-                $sourceLogoUrl,
-                $logoPalette,
-                $themeName,
-                $brandMemory,
-                (string) ($website->name ?? ''),
-                (string) ($website->industry ?: 'business'),
-            );
+
+            $result = null;
+            $matchedSourceUrl = null;
+            $lastLogoError = null;
+            foreach ($logoCandidates as $candidateUrl) {
+                try {
+                    $result = $matcher->match(
+                        $candidateUrl,
+                        $logoPalette,
+                        $themeName,
+                        $brandMemory,
+                        (string) ($website->name ?? ''),
+                        (string) ($website->industry ?: 'business'),
+                    );
+                    $matchedSourceUrl = $candidateUrl;
+                    break;
+                } catch (\RuntimeException $candidateError) {
+                    $lastLogoError = $candidateError;
+                }
+            }
+
+            if (! is_array($result)) {
+                throw $lastLogoError ?: new \RuntimeException('The current logo could not be imported. Replace the logo and try again.');
+            }
+
+            if ($originalLogoUrl === '' || ($matchedSourceUrl !== null && $matchedSourceUrl !== $originalLogoUrl)) {
+                // Repair only the stale source pointer. The newly generated themed logo is saved
+                // separately as brand_active_logo_url below, preserving the source-vs-variant model.
+                $settings['brand_original_logo_url'] = $matchedSourceUrl;
+            }
         } catch (\RuntimeException $e) {
             return response()->json(['message' => $e->getMessage().' No credits were charged.'], 422);
         } catch (\Throwable $e) {

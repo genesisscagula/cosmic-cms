@@ -40,7 +40,7 @@ class DeploymentConnectorArchive
             throw new RuntimeException('The deployment connector archive could not be created.');
         }
 
-        $zip->addFromString('cosmic-sync/config.php', "<?php\n\nreturn " . var_export([
+        $zip->addFromString('cosmic-cms/config.php', "<?php\n\nreturn " . var_export([
             'sync_secret' => $secret,
             'contact_email' => $recipient,
             'cms_url' => rtrim(url('/'), '/'),
@@ -48,13 +48,13 @@ class DeploymentConnectorArchive
             'commerce_public_key' => $commerceSettings->public_key,
             'commerce_manifest_url' => rtrim(url('/'), '/') . '/api/v1/commerce/sites/' . $commerceSettings->public_key . '/manifest',
         ], true) . ";\n");
-        $zip->addFromString('cosmic-sync/sync.php', $this->receiverScript());
-        $zip->addFromString('cosmic-sync/contact.php', $this->contactReceiverScript());
-        $zip->addFromString('cosmic-sync/commerce.php', $this->commerceReceiverScript());
-        $zip->addFromString('cosmic-sync/.htaccess', "Options -Indexes\n\n<FilesMatch \"^(config\\.php|.*\\.(log|json))$\">\n    Require all denied\n</FilesMatch>\n");
-        $zip->addFromString('cosmic-sync/submissions/.htaccess', "Require all denied\n");
+        $zip->addFromString('cosmic-cms/sync.php', $this->receiverScript());
+        $zip->addFromString('cosmic-cms/contact.php', $this->contactReceiverScript());
+        $zip->addFromString('cosmic-cms/commerce.php', $this->commerceReceiverScript());
+        $zip->addFromString('cosmic-cms/.htaccess', "Options -Indexes\n\n<FilesMatch \"^(config\\.php|.*\\.(log|json))$\">\n    Require all denied\n</FilesMatch>\n");
+        $zip->addFromString('cosmic-cms/submissions/.htaccess', "Require all denied\n");
         $zip->addFromString('.htaccess', $this->cleanUrlHtaccess());
-        $zip->addFromString('cosmic-sync/README.txt', $this->readme($website));
+        $zip->addFromString('cosmic-cms/README.txt', $this->readme($website));
         $zip->close();
 
         return $archivePath;
@@ -68,23 +68,23 @@ class DeploymentConnectorArchive
 Cosmic CMS Deployment Connector
 
 1. Extract this ZIP directly into your website root. It creates:
-   - cosmic-sync/ (the protected deployment/contact connector plus commerce bridge)
+   - cosmic-cms/ (the protected deployment/contact connector plus commerce bridge)
    - .htaccess (clean URLs for compiled static pages)
 2. Do not rename config.php or sync.php.
 3. Your expected verification endpoint is:
-   {$domain}/cosmic-sync/sync.php?action=verify
-4. Return to Cosmic CMS and choose Connect live site.
-5. After your first successful Push live update, Apache clean URLs are enabled automatically:
+   {$domain}/cosmic-cms/sync.php?action=verify
+4. Return to Cosmic CMS and choose Connect to live.
+5. After your first successful Push to live, Apache clean URLs are enabled automatically:
    /about-us serves about-us.html and requests for /about-us.html redirect to /about-us.
 
 The connector accepts only requests with its unique Cosmic deployment secret.
 Do not expose config.php or share the connector archive publicly.
 
-All plans receive the commerce-ready connector. cosmic-sync/commerce.php?action=manifest
+All plans receive the commerce-ready connector. cosmic-cms/commerce.php?action=manifest
 returns a safe storefront manifest; live store capabilities activate only when the
 website owner's Cosmic plan includes commerce and the store is enabled.
 
-Published contact forms submit to cosmic-sync/contact.php. Each valid inquiry is
+Published contact forms submit to cosmic-cms/contact.php. Each valid inquiry is
 stored privately on the live site, forwarded to the Cosmic CMS Inquiry Inbox when
 the CMS is reachable, and emailed to the website owner's account when the server's
 PHP mail service is configured.
@@ -98,7 +98,7 @@ TEXT;
     {
         return <<<'HTACCESS'
 # Cosmic CMS clean static URLs
-# This managed block is added by cosmic-sync. Keep it if you want extensionless page URLs.
+# This managed block is added by Cosmic CMS. Keep it if you want extensionless page URLs.
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
@@ -110,11 +110,17 @@ TEXT;
     RewriteCond %{THE_REQUEST} \s/+(.+?)\.html[\s?] [NC]
     RewriteRule ^(.+)\.html$ /$1 [R=301,L,NE]
 
+    # Backward compatibility for pages previously compiled with /cosmic-sync/.
+    # If the legacy connector folder is not installed, route those requests to
+    # the current /cosmic-cms/ connector without redirecting POST requests.
+    RewriteCond %{DOCUMENT_ROOT}/cosmic-sync !-d
+    RewriteRule ^cosmic-sync/(.*)$ cosmic-cms/$1 [L]
+
     # Keep real files, directories, and the deployment connector untouched.
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
-    RewriteRule ^cosmic-sync(?:/|$) - [L]
+    RewriteRule ^(?:cosmic-cms|cosmic-sync)(?:/|$) - [L]
 
     # Serve a matching compiled HTML page for an extensionless request.
     RewriteCond %{REQUEST_FILENAME}.html -f
@@ -494,7 +500,7 @@ function cosmicCleanUrlRules(): string
 {
     return <<<'HTACCESS'
 # Cosmic CMS clean static URLs
-# This managed block is added by cosmic-sync. Keep it if you want extensionless page URLs.
+# This managed block is added by Cosmic CMS. Keep it if you want extensionless page URLs.
 <IfModule mod_rewrite.c>
     RewriteEngine On
 
@@ -506,11 +512,17 @@ function cosmicCleanUrlRules(): string
     RewriteCond %{THE_REQUEST} \s/+(.+?)\.html[\s?] [NC]
     RewriteRule ^(.+)\.html$ /$1 [R=301,L,NE]
 
+    # Backward compatibility for pages previously compiled with /cosmic-sync/.
+    # If the legacy connector folder is not installed, route those requests to
+    # the current /cosmic-cms/ connector without redirecting POST requests.
+    RewriteCond %{DOCUMENT_ROOT}/cosmic-sync !-d
+    RewriteRule ^cosmic-sync/(.*)$ cosmic-cms/$1 [L]
+
     # Keep real files, directories, and the deployment connector untouched.
     RewriteCond %{REQUEST_FILENAME} -f [OR]
     RewriteCond %{REQUEST_FILENAME} -d
     RewriteRule ^ - [L]
-    RewriteRule ^cosmic-sync(?:/|$) - [L]
+    RewriteRule ^(?:cosmic-cms|cosmic-sync)(?:/|$) - [L]
 
     # Serve a matching compiled HTML page for an extensionless request.
     RewriteCond %{REQUEST_FILENAME}.html -f

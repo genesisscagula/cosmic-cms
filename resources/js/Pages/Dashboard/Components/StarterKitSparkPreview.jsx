@@ -144,12 +144,6 @@ const sparkLabels = {
     team_leadership_premium: "Leadership",
     team_culture_premium: "Culture",
     team_open_positions_premium: "Open Positions",
-    footer_mega_premium: "Mega Footer",
-    footer_agency_premium: "Agency Footer",
-    footer_saas_premium: "SaaS Footer",
-    footer_luxury_premium: "Luxury Footer",
-    footer_dark_premium: "Dark Footer",
-    footer_minimal_premium: "Minimal Footer",
     contact_form_modern: "Contact",
 };
 

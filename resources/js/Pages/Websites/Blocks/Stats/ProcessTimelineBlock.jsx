@@ -126,6 +126,8 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
 
     const requestedTheme = block.theme && block.theme !== "auto" ? block.theme : block.resolvedTheme;
     const theme = getEffectiveTheme(requestedTheme, globalTheme);
+    const primaryTheme = colorFamilies[globalTheme?.primary] || colorFamilies.midnight;
+    const themeGlow = primaryTheme?.gradient?.glowSoft || "rgba(96, 165, 250, 0.10)";
 
     const data = {
         ...ProcessTimelineSchema.defaults,
@@ -145,17 +147,8 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
         >
 
             <div
-                className="
-                    absolute
-                    top-0
-                    right-[-180px]
-                    w-[420px]
-                    h-[420px]
-                    rounded-full
-                    bg-blue-500/10
-                    blur-[170px]
-                    pointer-events-none
-                "
+                className="absolute top-0 right-[-180px] h-[420px] w-[420px] rounded-full blur-[170px] pointer-events-none"
+                style={{ backgroundColor: themeGlow }}
             />
 
             <div className="max-w-7xl mx-auto">

@@ -140,12 +140,6 @@ class BlockPricingRegistry
             'blog_trending_premium' => ['label' => 'Trending', 'category' => 'signature', 'credits' => 135],
             'blog_categories_grid_premium' => ['label' => 'Categories Grid', 'category' => 'signature', 'credits' => 135],
             'blog_author_profile_premium' => ['label' => 'Author Profile', 'category' => 'signature', 'credits' => 135],
-            'footer_mega_premium' => ['label' => 'Mega Footer', 'category' => 'signature', 'credits' => 130],
-            'footer_agency_premium' => ['label' => 'Agency Footer', 'category' => 'signature', 'credits' => 130],
-            'footer_saas_premium' => ['label' => 'SaaS Footer', 'category' => 'signature', 'credits' => 130],
-            'footer_luxury_premium' => ['label' => 'Luxury Footer', 'category' => 'signature', 'credits' => 130],
-            'footer_dark_premium' => ['label' => 'Dark Footer', 'category' => 'signature', 'credits' => 130],
-            'footer_minimal_premium' => ['label' => 'Minimal Footer', 'category' => 'signature', 'credits' => 130],
             'newsletter_cta' => ['label' => 'Newsletter CTA', 'category' => 'growth', 'credits' => 20],
             'latest_resources' => ['label' => 'Latest Resources', 'category' => 'growth', 'credits' => 30],
 

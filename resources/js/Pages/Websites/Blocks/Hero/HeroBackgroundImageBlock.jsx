@@ -187,7 +187,7 @@ export function HeroBackgroundImageBlock({
     const heroHeight = {
         medium: "min-h-[500px]",
         large: "min-h-[650px]",
-        screen: "min-h-screen"
+        screen: ""
     };
 
     const alignment = {
@@ -222,14 +222,10 @@ export function HeroBackgroundImageBlock({
                 cursor-pointer
                 items-center
 
-                min-h-[72svh]
-                sm:min-h-[80vh]
-                md:min-h-[85vh]
-                lg:min-h-[90vh]
-
                 ${heroHeight[data.height]}
             `}
             onClick={handleSectionImageEdit}
+            style={data.height === "screen" ? {minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"} : undefined}
         >
 
             {/* Background Image */}
@@ -284,8 +280,7 @@ export function HeroBackgroundImageBlock({
                 mx-auto
                 px-6
                 sm:px-[8%]
-                py-20
-                sm:py-24
+                py-0
                 flex
                 flex-col
                 justify-center
@@ -315,7 +310,8 @@ export function HeroBackgroundImageBlock({
                         mt-6
                         text-4xl
                         sm:text-5xl
-                        md:text-7xl
+                        lg:text-6xl
+                        xl:text-7xl
                         font-bold
                         leading-tight
                         break-words

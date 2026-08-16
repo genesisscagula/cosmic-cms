@@ -104,12 +104,6 @@ import BlogNewsletterPremiumPreview from "./Previews/BlogNewsletterPremiumPrevie
 import BlogTrendingPremiumPreview from "./Previews/BlogTrendingPremiumPreview";
 import BlogCategoriesGridPremiumPreview from "./Previews/BlogCategoriesGridPremiumPreview";
 import BlogAuthorProfilePremiumPreview from "./Previews/BlogAuthorProfilePremiumPreview";
-import FooterMegaPremiumPreview from "./Previews/FooterMegaPremiumPreview";
-import FooterAgencyPremiumPreview from "./Previews/FooterAgencyPremiumPreview";
-import FooterSaasPremiumPreview from "./Previews/FooterSaasPremiumPreview";
-import FooterLuxuryPremiumPreview from "./Previews/FooterLuxuryPremiumPreview";
-import FooterDarkPremiumPreview from "./Previews/FooterDarkPremiumPreview";
-import FooterMinimalPremiumPreview from "./Previews/FooterMinimalPremiumPreview";
 
 import FaqAccordionPreview from "./Previews/FaqAccordionPreview";
 import FaqAccordionProPreview from "./Previews/FaqAccordionProPreview";
@@ -452,12 +446,6 @@ export const BlockRegistry = [
     { type:"blog_trending_premium", theme:"auto", title:"Trending", buttonLabel:"Add Trending", buttonClass:"bg-violet-600 hover:bg-violet-500", preview:BlogTrendingPremiumPreview, badge:"PRO", payload:{type:"blog_trending_premium",theme:"auto",eyebrow:"FEATURED NOW",heading:"What readers can explore next.",text:"A premium curated-story list."} },
     { type:"blog_categories_grid_premium", theme:"auto", title:"Categories Grid", buttonLabel:"Add Categories Grid", buttonClass:"bg-violet-600 hover:bg-violet-500", preview:BlogCategoriesGridPremiumPreview, badge:"PRO", payload:{type:"blog_categories_grid_premium",theme:"auto",eyebrow:"EXPLORE BY TOPIC",heading:"Find the ideas most useful to you.",text:"A premium category navigation grid."} },
     { type:"blog_author_profile_premium", theme:"auto", title:"Author Profile", buttonLabel:"Add Author Profile", buttonClass:"bg-violet-600 hover:bg-violet-500", preview:BlogAuthorProfilePremiumPreview, badge:"PRO", payload:{type:"blog_author_profile_premium",theme:"auto",eyebrow:"MEET THE AUTHOR",heading:"The voice behind the ideas.",text:"A premium author profile section."} },
-    { type:"footer_mega_premium", theme:"auto", title:"Mega Footer", buttonLabel:"Add Mega Footer", buttonClass:"bg-slate-700 hover:bg-slate-600", preview:FooterMegaPremiumPreview, badge:"PRO", payload:{type:"footer_mega_premium",theme:"auto",brand_name:"Your Brand",tagline:"A premium information-rich footer."} },
-    { type:"footer_agency_premium", theme:"auto", title:"Agency Footer", buttonLabel:"Add Agency Footer", buttonClass:"bg-slate-700 hover:bg-slate-600", preview:FooterAgencyPremiumPreview, badge:"PRO", payload:{type:"footer_agency_premium",theme:"auto",eyebrow:"NEXT PROJECT",heading:"Have something ambitious in mind?"} },
-    { type:"footer_saas_premium", theme:"auto", title:"SaaS Footer", buttonLabel:"Add SaaS Footer", buttonClass:"bg-slate-700 hover:bg-slate-600", preview:FooterSaasPremiumPreview, badge:"PRO", payload:{type:"footer_saas_premium",theme:"auto",brand_name:"Your Product",tagline:"A structured premium SaaS footer."} },
-    { type:"footer_luxury_premium", theme:"auto", title:"Luxury Footer", buttonLabel:"Add Luxury Footer", buttonClass:"bg-slate-700 hover:bg-slate-600", preview:FooterLuxuryPremiumPreview, badge:"PRO", payload:{type:"footer_luxury_premium",theme:"auto",eyebrow:"ESTABLISHED WITH INTENT",heading:"Crafted for people who value the details."} },
-    { type:"footer_dark_premium", theme:"auto", title:"Dark Footer", buttonLabel:"Add Dark Footer", buttonClass:"bg-slate-800 hover:bg-slate-700", preview:FooterDarkPremiumPreview, badge:"PRO", payload:{type:"footer_dark_premium",theme:"auto",eyebrow:"STAY CONNECTED",brand_name:"Your Brand",tagline:"A confident premium dark footer."} },
-    { type:"footer_minimal_premium", theme:"auto", title:"Minimal Footer", buttonLabel:"Add Minimal Footer", buttonClass:"bg-slate-600 hover:bg-slate-500", preview:FooterMinimalPremiumPreview, badge:"PRO", payload:{type:"footer_minimal_premium",theme:"auto",brand_name:"Your Brand",tagline:"A quiet premium footer."} },
     {
         type: "pricing_cards",
         theme: "auto",

@@ -3,13 +3,14 @@ import { usePage } from "@inertiajs/react";
 import { EditableText } from "../Shared/EditableText";
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
+import { EditableImageGallery } from "../Shared/EditableImageGallery";
 import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 const baseDefaults = {
     eyebrow: "MOTION, WITH PURPOSE",
-    heading: "A premium first impression that feels alive.",
+    heading: "Make the first screen move.",
     text: "Pair confident messaging with considered motion to create a hero that feels polished without getting in the way.",
     primary_label: "Start a project",
     primary_url: "/contact",
@@ -123,10 +124,19 @@ function AnimatedHeroPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const { props } = usePage();
     const websiteId = props.page?.website_id || props.website?.id;
     const rootRef = useRef(null);
+    const singleImageRef = useRef(null);
+    const galleryRef = useRef(null);
     const [active, setActive] = useState(0);
     const [isVisible, setIsVisible] = useState(true);
     const images = useMemo(() => [data.image_url, data.image_url_2, data.image_url_3].filter(Boolean), [data.image_url, data.image_url_2, data.image_url_3]);
     const isTimed = ["hero_crossfade_gallery_premium", "hero_cinematic_slider_premium", "hero_split_slider_premium", "hero_vertical_story_premium"].includes(block.type);
+    const usesGallery = block.type !== "hero_ken_burns_premium" && images.length > 1;
+    const updateGalleryImages = (next) => onUpdate({ image_url: next[0] || "", image_url_2: next[1] || "", image_url_3: next[2] || "" });
+    const handleMediaEdit = (event) => {
+        if (event.target.closest("button, a, input, textarea, select, label, [contenteditable=\'true\'], [role=\'button\'], [data-cosmic-edit-control]")) return;
+        if (usesGallery) galleryRef.current?.openEditor();
+        else singleImageRef.current?.openEditor();
+    };
 
     useEffect(() => {
         const root = rootRef.current;
@@ -215,6 +225,7 @@ function AnimatedHeroPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) 
                 >
                     {index === 0 ? (
                         <EditableImage
+                            ref={singleImageRef}
                             websiteId={websiteId}
                             blockIndex={blockIndex}
                             src={src}
@@ -235,12 +246,12 @@ function AnimatedHeroPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) 
     );
 
     return (
-        <section ref={rootRef} data-cosmic-media-banner="true" data-cosmic-hero-theme={heroState.requestedTheme} className={`relative isolate overflow-hidden ${isLight ? `${theme.bg} ${theme.text}` : "bg-slate-950 text-white"} ${split ? "lg:grid lg:grid-cols-[0.9fr_1.1fr]" : "min-h-[82svh]"}`}>
+        <section ref={rootRef} data-cosmic-media-banner="true" onClick={handleMediaEdit} data-cosmic-hero-theme={heroState.requestedTheme} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}} className={`relative isolate overflow-hidden ${isLight ? `${theme.bg} ${theme.text}` : "bg-slate-950 text-white"} ${split ? "lg:grid lg:grid-cols-[0.9fr_1.1fr]" : ""}`}>
             {split ? null : media}
-            <div className={`relative z-20 mx-auto flex min-h-[82svh] w-full max-w-7xl items-center px-6 py-24 sm:px-10 lg:px-14 ${split ? "lg:min-h-[720px]" : ""}`}>
+            <div className={`relative z-20 mx-auto flex w-full max-w-7xl items-center px-6 py-0 sm:px-10 lg:px-14 ${split ? "lg:min-h-[720px]" : ""}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                 <div className="max-w-3xl">
                     <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[0.32em] ${isLight ? theme.sub : "text-white/70"}`} onSave={(value) => onUpdate({ eyebrow: value })} />
-                    <EditableText value={data.heading} className={`mt-6 block text-5xl font-semibold leading-[0.95] tracking-[-0.045em] sm:text-6xl lg:text-7xl ${copyText}`} onSave={(value) => onUpdate({ heading: value })} />
+                    <EditableText value={data.heading} className={`mt-6 block text-4xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${copyText}`} onSave={(value) => onUpdate({ heading: value })} />
                     <EditableText value={data.text} className={`mt-7 block max-w-2xl text-base leading-8 sm:text-lg ${copySub}`} onSave={(value) => onUpdate({ text: value })} />
                     <div className="mt-9 flex flex-wrap gap-3">
                         <EditableButton label={data.primary_label} url={data.primary_url} onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })} className={`rounded-full px-6 py-3.5 text-sm font-bold transition ${primaryButton}`} />
@@ -254,6 +265,7 @@ function AnimatedHeroPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) 
                 </div>
             </div>
             {split && <div className="relative min-h-[560px] lg:min-h-[720px]">{media}</div>}
+            {usesGallery ? <EditableImageGallery ref={galleryRef} websiteId={websiteId} images={images} maxItems={3} title={`${schemaDef.title} images`} onSave={updateGalleryImages} /> : null}
         </section>
     );
 }

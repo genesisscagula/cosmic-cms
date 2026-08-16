@@ -643,6 +643,18 @@ class WebsiteController extends Controller
 	        ],
 	        'global_footer' => [
 	            'type' => 'minimal_footer',
+                'mega_enabled' => false,
+                'mega_footer' => [
+                    'enabled' => false,
+                    'tagline' => 'A premium information-rich footer.',
+                    'primary_label' => 'Get in touch',
+                    'primary_url' => '#contact',
+                    'columns' => [
+                        ['title' => 'Company', 'items' => [['label' => 'About us', 'url' => '#about'], ['label' => 'Careers', 'url' => '#careers'], ['label' => 'Contact', 'url' => '#contact']]],
+                        ['title' => 'Services', 'items' => [['label' => 'What we do', 'url' => '#services'], ['label' => 'Solutions', 'url' => '#solutions'], ['label' => 'Pricing', 'url' => '#pricing']]],
+                        ['title' => 'Resources', 'items' => [['label' => 'Insights', 'url' => '#insights'], ['label' => 'Guides', 'url' => '#guides'], ['label' => 'Updates', 'url' => '#updates']]],
+                    ],
+                ],
                 'theme' => 'white',
 	            'logo_text' => $request->name,
                 'logo_image_url' => '/storage/branding/your-logo.png',
@@ -905,7 +917,7 @@ class WebsiteController extends Controller
         $archivePath = $connector->create($website);
 
         return response()
-            ->download($archivePath, 'cosmic-sync-' . Str::slug($website->name) . '.zip')
+            ->download($archivePath, 'cosmic-cms-' . Str::slug($website->name) . '.zip')
             ->deleteFileAfterSend(true);
     }
 
@@ -946,15 +958,24 @@ class WebsiteController extends Controller
             return response()->json(['message' => 'Publish at least one page before pushing a live update.'], 422);
         }
 
-        $endpoint = rtrim((string) $website->domain, '/') . '/cosmic-sync/sync.php?action=receive_package';
-
         try {
-            $response = Http::timeout(20)
-                ->acceptJson()
-                ->withHeaders(['X-Cosmic-Sync-Secret' => $website->deployment_secret])
-                ->post($endpoint, $package);
+            $response = null;
+            foreach ($this->deploymentConnectorCandidates($website, 'receive_package') as $endpoint) {
+                try {
+                    $candidate = Http::timeout(20)
+                        ->acceptJson()
+                        ->withHeaders(['X-Cosmic-Sync-Secret' => $website->deployment_secret])
+                        ->post($endpoint, $package);
+                    if ($candidate->successful() && $candidate->json('status') === 'success') {
+                        $response = $candidate;
+                        break;
+                    }
+                } catch (\Throwable $candidateException) {
+                    report($candidateException);
+                }
+            }
 
-            if (! $response->successful() || $response->json('status') !== 'success') {
+            if (! $response) {
                 $website->update(['deployment_error' => 'The live site did not accept this update. Your existing live files were not changed.']);
 
                 return response()->json(['message' => $website->deployment_error], 422);
@@ -992,15 +1013,24 @@ class WebsiteController extends Controller
             return 'Download and install this website\'s deployment connector before connecting it.';
         }
 
-        $endpoint = rtrim((string) $website->domain, '/') . '/cosmic-sync/sync.php?action=verify';
-
         try {
-            $response = Http::timeout(10)
-                ->acceptJson()
-                ->withHeaders(['X-Cosmic-Sync-Secret' => $website->deployment_secret])
-                ->get($endpoint);
+            $response = null;
+            foreach ($this->deploymentConnectorCandidates($website, 'verify') as $endpoint) {
+                try {
+                    $candidate = Http::timeout(10)
+                        ->acceptJson()
+                        ->withHeaders(['X-Cosmic-Sync-Secret' => $website->deployment_secret])
+                        ->get($endpoint);
+                    if ($candidate->successful() && $candidate->json('status') === 'success') {
+                        $response = $candidate;
+                        break;
+                    }
+                } catch (\Throwable $candidateException) {
+                    report($candidateException);
+                }
+            }
 
-            if (! $response->successful() || $response->json('status') !== 'success') {
+            if (! $response) {
                 $error = 'The deployment connector could not be verified at the configured domain.';
                 $website->update([
                     'deployment_verified_at' => null,
@@ -1029,6 +1059,24 @@ class WebsiteController extends Controller
         return null;
     }
 
+    private function deploymentConnectorCandidates(Website $website, string $action): array
+    {
+        $base = rtrim((string) $website->domain, '/');
+
+        return [
+            $base . '/cosmic-cms/sync.php?action=' . rawurlencode($action),
+            $base . '/cosmic-sync/sync.php?action=' . rawurlencode($action),
+        ];
+    }
+
+    private function deploymentConnectorEndpoint(Website $website, string $action): string
+    {
+        // Prefer the new cosmic-cms connector. Existing cosmic-sync installs are
+        // still accepted by verification; users can download the latest connector
+        // before their next push to migrate safely.
+        return $this->deploymentConnectorCandidates($website, $action)[0];
+    }
+
 	public function saveFooter(Request $request, Website $website)
 	{
 	    $this->authorize('update', $website);
@@ -1037,11 +1085,56 @@ class WebsiteController extends Controller
 	        'footer_block' => 'required|array'
 	    ]);
 
-	    $website->global_footer = $request->footer_block;
-	    $website->published_global_footer = $request->footer_block;
-	    $website->save();
-	    
-	    return response()->json(['status' => 'success', 'data' => $website->global_footer]);
+        $footer = $request->input('footer_block', []);
+        $mega = is_array($footer['mega_footer'] ?? null) ? $footer['mega_footer'] : [];
+        $megaEnabled = (bool) ($footer['mega_enabled'] ?? $mega['enabled'] ?? false);
+
+        // Footer variants now live in the Website Shell. Keep one stable global
+        // footer shape and migrate any legacy Detailed Footer save back to it.
+        $footer['type'] = 'minimal_footer';
+        $footer['mega_enabled'] = $megaEnabled;
+        $footer['privacy_label'] = trim((string) ($footer['privacy_label'] ?? 'Privacy Policy')) ?: 'Privacy Policy';
+        $footer['privacy_url'] = trim((string) ($footer['privacy_url'] ?? '/privacy-policy')) ?: '/privacy-policy';
+        $footer['terms_label'] = trim((string) ($footer['terms_label'] ?? 'Terms & Conditions')) ?: 'Terms & Conditions';
+        $footer['terms_url'] = trim((string) ($footer['terms_url'] ?? '/terms-and-conditions')) ?: '/terms-and-conditions';
+        $footer['mega_footer'] = array_merge([
+            'enabled' => $megaEnabled,
+            'tagline' => 'A premium information-rich footer.',
+            'primary_label' => 'Get in touch',
+            'primary_url' => '#contact',
+            'columns' => [
+                ['title' => 'Company', 'items' => [['label' => 'About us', 'url' => '#about'], ['label' => 'Careers', 'url' => '#careers'], ['label' => 'Contact', 'url' => '#contact']]],
+                ['title' => 'Services', 'items' => [['label' => 'What we do', 'url' => '#services'], ['label' => 'Solutions', 'url' => '#solutions'], ['label' => 'Pricing', 'url' => '#pricing']]],
+                ['title' => 'Resources', 'items' => [['label' => 'Insights', 'url' => '#insights'], ['label' => 'Guides', 'url' => '#guides'], ['label' => 'Updates', 'url' => '#updates']]],
+            ],
+        ], $mega);
+        $footer['mega_footer']['enabled'] = $megaEnabled;
+        $columns = is_array($footer['mega_footer']['columns'] ?? null) ? array_values($footer['mega_footer']['columns']) : [];
+        $columns = array_slice($columns, 0, 4);
+        $footer['mega_footer']['columns'] = array_values(array_map(function ($column, $columnIndex) {
+            $column = is_array($column) ? $column : [];
+            $items = is_array($column['items'] ?? null) ? array_values($column['items']) : [];
+            $items = array_slice($items, 0, 6);
+            if (!$items) {
+                $items = [['label' => 'Menu item', 'url' => '#']];
+            }
+            return [
+                'title' => trim((string) ($column['title'] ?? ('Column ' . ($columnIndex + 1)))) ?: ('Column ' . ($columnIndex + 1)),
+                'items' => array_values(array_map(function ($item) {
+                    $item = is_array($item) ? $item : [];
+                    return [
+                        'label' => trim((string) ($item['label'] ?? 'Menu item')) ?: 'Menu item',
+                        'url' => trim((string) ($item['url'] ?? '#')) ?: '#',
+                    ];
+                }, $items)),
+            ];
+        }, $columns, array_keys($columns)));
+
+        $website->global_footer = $footer;
+        $website->published_global_footer = $footer;
+        $website->save();
+
+        return response()->json(['status' => 'success', 'data' => $website->global_footer]);
 	}
 
     public function downloadBridge()

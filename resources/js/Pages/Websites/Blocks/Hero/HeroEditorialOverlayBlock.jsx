@@ -65,7 +65,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
     const height = {
         medium: "min-h-[520px]",
         large: "min-h-[650px]",
-        screen: "min-h-[72svh] sm:min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh]",
+        screen: "",
     }[data.height] || "min-h-[650px]";
 
     const handleSectionImageEdit = (event) => {
@@ -77,7 +77,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
     };
 
     return (
-        <section data-cosmic-media-banner="true" className={`relative flex cursor-pointer overflow-hidden ${height}`} onClick={handleSectionImageEdit}>
+        <section data-cosmic-media-banner="true" className={`relative flex cursor-pointer overflow-hidden ${height}`} onClick={handleSectionImageEdit} style={data.height === "screen" ? {minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"} : undefined}>
             <EditableImage
                 ref={imageRef}
                 websiteId={websiteId}
@@ -94,7 +94,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
             />
             <div className={`pointer-events-none absolute inset-0 z-10 bg-gradient-to-r ${mediaStyle.gradient}`} />
 
-            <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24">
+            <div className="relative z-20 mx-auto flex w-full max-w-7xl items-center px-7 py-0">
                 <div className="max-w-3xl">
                     <EditableText
                         value={data.tagline}
@@ -103,7 +103,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
                     />
                     <EditableText
                         value={data.heading}
-                        className={`mt-5 block text-5xl font-bold leading-[1.03] tracking-tight sm:text-6xl md:text-7xl lg:text-8xl ${mediaStyle.heading}`}
+                        className={`mt-5 block text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`}
                         onSave={(heading) => onUpdate({ heading })}
                     />
                     <EditableText

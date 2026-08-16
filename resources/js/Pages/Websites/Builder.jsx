@@ -6,7 +6,8 @@ import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadg
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { logoFilterFor } from '@/Branding/logoFilters';
 
-import AddSectionModal from "./Components/AddSectionModal";
+import AddSectionModal, { ActualSparkPreview } from "./Components/AddSectionModal";
+import { BlockRegistry as MarketplaceSparkRegistry } from "./Components/SparkRegistry";
 import PageTemplatesModal from "./Components/PageTemplatesModal";
 import SavePageTemplateModal from "./Components/SavePageTemplateModal";
 import GeneratePageModal from "./Components/GeneratePageModal";
@@ -19,7 +20,7 @@ import { BlockRegistry } from "./BlockRegistry";
 import { BLOG_SPARK_GROUPS, FREE_BLOG_SPARKS } from "./Sparks/Blog";
 import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
 
-import { MinimalFooter, DetailedFooter } from './GenerateFooter';
+import { MinimalFooter } from './GenerateFooter';
 import MediaPickerModal from '@/Components/Media/MediaPickerModal';
 
 const MEDIA_FIELD_PATTERN = /(image|photo|avatar|poster|logo|video|media)/i;
@@ -143,6 +144,30 @@ const publishHealthIssues = (health) => Object.values(health?.categories || {})
 
 
 
+
+const withoutLegacyFooterSparks = (blocks = []) => (Array.isArray(blocks) ? blocks.filter((block) => !String(block?.type || '').startsWith('footer_')) : []);
+const normalizeGlobalFooterBlock = (footer = {}) => ({
+    ...(footer || {}),
+    type: 'minimal_footer',
+    privacy_label: footer?.privacy_label || 'Privacy Policy',
+    privacy_url: footer?.privacy_url || '/privacy-policy',
+    terms_label: footer?.terms_label || 'Terms & Conditions',
+    terms_url: footer?.terms_url || '/terms-and-conditions',
+    mega_enabled: Boolean(footer?.mega_enabled ?? footer?.mega_footer?.enabled ?? false),
+    mega_footer: {
+        theme: ['auto', 'primary', 'white', 'surface'].includes(footer?.mega_footer?.theme) ? footer.mega_footer.theme : 'auto',
+        enabled: Boolean(footer?.mega_enabled ?? footer?.mega_footer?.enabled ?? false),
+        tagline: footer?.mega_footer?.tagline || 'A premium information-rich footer.',
+        primary_label: footer?.mega_footer?.primary_label || 'Get in touch',
+        primary_url: footer?.mega_footer?.primary_url || '#contact',
+        columns: Array.isArray(footer?.mega_footer?.columns) && footer.mega_footer.columns.length ? footer.mega_footer.columns : [
+            { title: 'Company', items: [{ label: 'About us', url: '#about' }, { label: 'Careers', url: '#careers' }, { label: 'Contact', url: '#contact' }] },
+            { title: 'Services', items: [{ label: 'What we do', url: '#services' }, { label: 'Solutions', url: '#solutions' }, { label: 'Pricing', url: '#pricing' }] },
+            { title: 'Resources', items: [{ label: 'Insights', url: '#insights' }, { label: 'Guides', url: '#guides' }, { label: 'Updates', url: '#updates' }] },
+        ],
+    },
+});
+
 export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'balanced', pageStyleOptions = [], themeAccess: builderThemeAccess = null, commerce = { enabled:false, currency:'USD', currency_decimals:2, products:[], categories:[] }, contentWorkspace = { types: [] }, websiteAccessRole = null }) {
     const { props } = usePage();
     const currentPlanKey = builderThemeAccess?.plan_key || props?.auth?.effectivePlanKey || props?.auth?.user?.plan_key || 'starter';
@@ -180,9 +205,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
     // Gi-apil na ang global_header sa form state
     const { data, setData, setDefaults, isDirty } = useForm({
-        blocks: normalizeRenderKeys(page.blocks || []),
+        blocks: normalizeRenderKeys(withoutLegacyFooterSparks(page.blocks || [])),
         global_header: props.globalHeaderBlock || page.website?.global_header || defaultHeader,
-        global_footer: props.globalFooterBlock || page.website?.global_footer || { 
+        global_footer: normalizeGlobalFooterBlock(props.globalFooterBlock || page.website?.global_footer || { 
             type: 'minimal_footer',
             theme: 'white',
             logo_text: trialMode ? 'Your Logo' : (website?.name || 'Your Website'),
@@ -190,7 +215,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             logo_height: 36,
             logo_filter_key: 'midnight',
             copyright: '© 2026. All rights reserved.'
-        }
+        })
     });
 
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -198,12 +223,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [isGeneratePageOpen, setIsGeneratePageOpen] = useState(false);
+    const [isMegaFooterQuickEdit, setIsMegaFooterQuickEdit] = useState(false);
     const [aiResult, setAiResult] = useState(null);
     const [aiLoading, setAiLoading] = useState(false);
 
     const [themeMenu, setThemeMenu] = useState(null);
+    const [footerThemeMenu, setFooterThemeMenu] = useState(false);
     const [layoutMenu, setLayoutMenu] = useState(null);
     const [layoutApplying, setLayoutApplying] = useState(null);
+    const [layoutBusyKey, setLayoutBusyKey] = useState(null);
+    const [layoutPreview, setLayoutPreview] = useState(null);
     const [sparkCatalog, setSparkCatalog] = useState([]);
     const [sparkCatalogLoading, setSparkCatalogLoading] = useState(false);
     const [sparkCatalogLoaded, setSparkCatalogLoaded] = useState(false);
@@ -2243,36 +2272,81 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
         const currentBlock = BlockRegistry[blockType];
         const category = currentBlock?.schema?.category;
-        const ownedKeys = new Set(
-            sparkCatalog.filter((spark) => spark.owned).map((spark) => spark.key)
-        );
 
         if (!category) {
             return [];
         }
 
+        const catalogByKey = new Map(sparkCatalog.map((spark) => [spark.key, spark]));
+        const marketplaceByType = new Map(MarketplaceSparkRegistry.map((spark) => [spark.type, spark]));
+
+        // Change Layout is also a discovery surface: show every compatible Spark,
+        // not only already-owned layouts. Ownership controls whether it can be
+        // applied immediately; preview remains available before purchase.
         return Object.entries(BlockRegistry)
-            .filter(([type, registryItem]) =>
-                registryItem?.schema?.category === category &&
-                (type === blockType || ownedKeys.has(type))
-            )
-            .map(([type, registryItem]) => ({
-                id: type,
-                type,
-                title: registryItem.schema?.title || type.replaceAll('_', ' '),
-                kind: 'block-type',
-            }));
+            .filter(([, registryItem]) => registryItem?.schema?.category === category)
+            .map(([type, registryItem]) => {
+                const catalogItem = catalogByKey.get(type);
+                const marketplaceItem = marketplaceByType.get(type);
+                const isCurrent = type === blockType;
+
+                return {
+                    id: type,
+                    type,
+                    title: registryItem.schema?.title || type.replaceAll('_', ' '),
+                    description: catalogItem?.description || registryItem.schema?.description || '',
+                    kind: 'block-type',
+                    owned: isCurrent || Boolean(catalogItem?.owned),
+                    credits: Number(catalogItem?.credits || 0),
+                    canPreview: catalogItem?.can_preview !== false,
+                    canInstall: isCurrent || catalogItem?.can_install !== false,
+                    usageState: catalogItem?.usage_state || null,
+                    catalogItem: catalogItem && marketplaceItem ? { ...catalogItem, registry: marketplaceItem } : null,
+                };
+            });
     };
 
     const isCurrentLayout = (block, layout) => layout.kind === 'blog-variant'
         ? (block.layout_variant || BlockRegistry[block.type]?.schema?.defaults?.layout_variant) === layout.layoutVariant
         : block.type === layout.type;
 
+    const unlockLayoutSpark = async (layout) => {
+        if (!layout?.type || layout.owned || layoutBusyKey) return;
+
+        setLayoutBusyKey(layout.type);
+        try {
+            const { data: responseData } = await axios.post(`/sparks/${layout.type}/unlock`);
+            setSparkCatalog((current) => current.map((spark) => spark.key === layout.type ? { ...spark, owned: true } : spark));
+            setLayoutPreview((current) => current?.type === layout.type ? { ...current, owned: true, catalogItem: { ...current.catalogItem, owned: true } } : current);
+            if (typeof responseData?.credit_balance !== 'undefined') {
+                setCreditBalance(responseData.credit_balance);
+            }
+            showCosmicNotification({
+                title: Number(layout.credits || 0) === 0 ? 'Spark added' : 'Spark purchased',
+                message: responseData?.message || `${layout.title} is now available in Change Layout.`,
+                tone: 'success',
+            });
+        } catch (error) {
+            showCosmicNotification({
+                title: 'Could not add Spark',
+                message: error.response?.data?.message || 'Please try again.',
+                tone: 'error',
+            });
+        } finally {
+            setLayoutBusyKey(null);
+        }
+    };
+
     const changeBlockLayout = (index, layout) => {
         const currentBlock = data.blocks[index];
 
         if (!currentBlock || isCurrentLayout(currentBlock, layout)) {
             setLayoutMenu(null);
+            return;
+        }
+
+        if (layout.kind !== 'blog-variant' && !layout.owned) {
+            showCosmicNotification({ title: 'Purchase this Spark first', message: 'Preview or buy this layout before applying it to the page.', tone: 'warning' });
             return;
         }
 
@@ -2929,7 +3003,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     <div data-cosmic-page-style={normalizedPageStyle} className={`cosmic-builder-canvas mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl lg:w-[min(86vw,1560px)] ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
                         <div
                             className="relative flex w-full flex-col items-stretch overflow-hidden rounded-[11px]"
-                            style={overlayHeaderActive ? { '--cosmic-overlay-header-height': `${overlayHeaderHeight || 80}px` } : undefined}
+                            style={{ '--cosmic-overlay-header-height': `${overlayHeaderHeight || 80}px`, '--cosmic-header-height': `${overlayHeaderHeight || 80}px`, '--cosmic-hero-fold-height': overlayHeaderActive ? '100svh' : `calc(100svh - ${overlayHeaderHeight || 80}px)` }}
                         >
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}
@@ -3031,10 +3105,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
                                     <button
                                         type="button"
-                                        aria-label={`Change ${BlockRegistry[block.type]?.schema?.category || 'section'} Spark`}
+                                        aria-label={`Change ${BlockRegistry[block.type]?.schema?.category || 'section'} layout`}
                                         title={getCompatibleLayouts(block.type).length > 1
-                                            ? `Change ${BlockRegistry[block.type]?.schema?.category || 'section'} Spark`
-                                            : 'Add another owned Spark in this category to enable changing'}
+                                            ? `Change ${BlockRegistry[block.type]?.schema?.category || 'section'} layout`
+                                            : 'No alternate layouts are available in this category'}
                                         disabled={getCompatibleLayouts(block.type).length < 2}
                                         onClick={() => {
                                             setThemeMenu(null);
@@ -3048,8 +3122,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     {layoutMenu === index && (
                                         <div className="absolute top-12 right-10 z-50 w-64 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
                                             <div className="border-b border-slate-700 px-4 py-3">
-                                                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Change Spark</p>
-                                                <p className="mt-1 text-xs font-semibold text-white">{BLOG_SPARK_GROUPS[block.type] ? 'Choose from 3 free Blog Sparks' : `Owned ${BlockRegistry[block.type]?.schema?.category || 'Section'} Sparks`}</p>
+                                                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Change Layout</p>
+                                                <p className="mt-1 text-xs font-semibold text-white">{BLOG_SPARK_GROUPS[block.type] ? 'Choose from 3 free Blog layouts' : `Preview, buy, or use ${BlockRegistry[block.type]?.schema?.category || 'Section'} Sparks`}</p>
                                             </div>
 
                                             <div className="max-h-64 overflow-y-auto py-1 [scrollbar-color:rgb(100_116_139)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
@@ -3057,33 +3131,70 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                                     const current = isCurrentLayout(block, layout);
 
                                                     return (
-                                                        <button
+                                                        <div
                                                             key={layout.id}
-                                                            type="button"
-                                                            disabled={current}
-                                                            onClick={() => changeBlockLayout(index, layout)}
                                                             aria-current={current ? "true" : undefined}
-                                                            className={`group/layout flex w-full items-center gap-3 border-l-2 px-4 py-3 text-left text-sm transition-all duration-200 focus:outline-none ${current
-                                                                ? 'cursor-default border-violet-400 bg-violet-500/10 text-white'
-                                                                : 'border-transparent text-slate-200 hover:border-violet-400/60 hover:bg-slate-800 focus:bg-slate-800'}`}
+                                                            className={`group/layout border-l-2 px-3 py-3 transition-all duration-200 ${current
+                                                                ? 'border-violet-400 bg-violet-500/10'
+                                                                : 'border-transparent hover:border-violet-400/60 hover:bg-slate-800'}`}
                                                         >
-                                                            {layout.kind === 'blog-variant' && (
-                                                                <span className={`grid h-10 w-12 shrink-0 gap-1 rounded-lg border p-1.5 transition ${current ? 'border-violet-400/40 bg-violet-400/10' : 'border-slate-700 bg-slate-950 group-hover/layout:border-slate-500'}`} aria-hidden="true">
-                                                                    <span className={`rounded-sm ${layout.preview === 'center' || layout.preview === 'compact' ? 'mx-auto w-7' : 'w-full'} bg-slate-500/70`} />
-                                                                    <span className={`rounded-sm bg-slate-700 ${layout.preview === 'split' || layout.preview === 'stacked' ? 'w-2/3' : 'w-full'}`} />
-                                                                    <span className={`rounded-sm bg-slate-700 ${layout.preview === 'magazine' || layout.preview === 'cards' ? 'grid grid-cols-2 gap-0.5' : ''}`} />
-                                                                </span>
-                                                            )}
-                                                            <span className="min-w-0 flex-1">
-                                                                <span className="block truncate font-semibold">{layout.title}</span>
+                                                            <div className="flex items-center gap-3">
                                                                 {layout.kind === 'blog-variant' && (
-                                                                    <span className="mt-0.5 block text-[10px] leading-4 text-slate-500">{layout.description || 'Free Blog Spark'}</span>
+                                                                    <span className={`grid h-10 w-12 shrink-0 gap-1 rounded-lg border p-1.5 transition ${current ? 'border-violet-400/40 bg-violet-400/10' : 'border-slate-700 bg-slate-950 group-hover/layout:border-slate-500'}`} aria-hidden="true">
+                                                                        <span className={`rounded-sm ${layout.preview === 'center' || layout.preview === 'compact' ? 'mx-auto w-7' : 'w-full'} bg-slate-500/70`} />
+                                                                        <span className={`rounded-sm bg-slate-700 ${layout.preview === 'split' || layout.preview === 'stacked' ? 'w-2/3' : 'w-full'}`} />
+                                                                        <span className={`rounded-sm bg-slate-700 ${layout.preview === 'magazine' || layout.preview === 'cards' ? 'grid grid-cols-2 gap-0.5' : ''}`} />
+                                                                    </span>
                                                                 )}
-                                                            </span>
-                                                            {current && (
-                                                                <span className="rounded-full bg-violet-400/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-violet-300">Current</span>
+                                                                <span className="min-w-0 flex-1">
+                                                                    <span className="block truncate text-sm font-semibold text-slate-100">{layout.title}</span>
+                                                                    {layout.description && <span className="mt-0.5 block line-clamp-1 text-[10px] leading-4 text-slate-500">{layout.description}</span>}
+                                                                </span>
+                                                                {current ? (
+                                                                    <span className="rounded-full bg-violet-400/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-violet-300">Current</span>
+                                                                ) : layout.kind !== 'blog-variant' && layout.owned ? (
+                                                                    <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-emerald-300">Owned</span>
+                                                                ) : null}
+                                                            </div>
+                                                            {!current && (
+                                                                <div className="mt-2 flex gap-2 pl-0">
+                                                                    {layout.kind !== 'blog-variant' && (
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={!layout.canPreview || !layout.catalogItem}
+                                                                            onClick={() => layout.catalogItem && setLayoutPreview({ ...layout, blockIndex: index })}
+                                                                            className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 transition hover:border-violet-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
+                                                                        >
+                                                                            Preview
+                                                                        </button>
+                                                                    )}
+                                                                    {layout.kind === 'blog-variant' || layout.owned ? (
+                                                                        <button
+                                                                            type="button"
+                                                                            onClick={() => changeBlockLayout(index, layout)}
+                                                                            className="rounded-lg bg-white px-3 py-1.5 text-[10px] font-bold text-slate-950 hover:bg-violet-100"
+                                                                        >
+                                                                            Use layout
+                                                                        </button>
+                                                                    ) : layout.canInstall ? (
+                                                                        <button
+                                                                            type="button"
+                                                                            disabled={layoutBusyKey === layout.type}
+                                                                            onClick={() => unlockLayoutSpark(layout)}
+                                                                            className="rounded-lg bg-violet-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-violet-500 disabled:opacity-50"
+                                                                        >
+                                                                            {layoutBusyKey === layout.type ? 'Buying…' : Number(layout.credits || 0) === 0 ? 'Add Free' : `Buy · ⚡ ${layout.credits}`}
+                                                                        </button>
+                                                                    ) : layout.usageState?.action === 'buy_credits' ? (
+                                                                        <Link href="/credits" className="rounded-lg bg-amber-200 px-3 py-1.5 text-[10px] font-bold text-slate-950">Add credits</Link>
+                                                                    ) : layout.usageState?.upgrade_url ? (
+                                                                        <Link href={layout.usageState.upgrade_url} className="rounded-lg bg-amber-200 px-3 py-1.5 text-[10px] font-bold text-slate-950">Upgrade</Link>
+                                                                    ) : (
+                                                                        <span className="rounded-lg border border-white/10 px-3 py-1.5 text-[10px] font-bold text-slate-500">Unavailable</span>
+                                                                    )}
+                                                                </div>
                                                             )}
-                                                        </button>
+                                                        </div>
                                                     );
                                                 })}
                                             </div>
@@ -3246,17 +3357,37 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
                     {/* FOOTER RENDERER */}
                     {data.global_footer && (
-                        <div className="relative group w-full mt-auto">
-                            
-                            {/* Footer Theme Dropdown (Upper Left) */}
-
-                            {/* Footer Components */}
-                            {data.global_footer.type === 'minimal_footer' && (
-                                <MinimalFooter block={data.global_footer} onUpdate={updateFooter} />
+                        <div className="relative group/footer w-full mt-auto">
+                            {capabilities.canEditGlobalShell && (
+                                <div className="cosmic-block-toolbar pointer-events-none absolute left-1/2 top-5 z-[70] -translate-x-1/2 opacity-0 transition-all duration-300 group-hover/footer:opacity-100 focus-within:opacity-100">
+                                    <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/90 px-3 py-2 shadow-2xl backdrop-blur-xl">
+                                        <div className="flex flex-col px-2 leading-none">
+                                            <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400">Mega Footer</span>
+                                            <span className="mt-1 text-[9px] font-bold uppercase tracking-[0.2em] text-amber-300">
+                                                {(data.global_footer?.mega_footer?.theme || 'auto') === 'auto' && '✨ Auto'}
+                                                {(data.global_footer?.mega_footer?.theme || 'auto') === 'primary' && '🟦 Primary'}
+                                                {(data.global_footer?.mega_footer?.theme || 'auto') === 'white' && '⬜ White'}
+                                                {(data.global_footer?.mega_footer?.theme || 'auto') === 'surface' && '🩶 Surface'}
+                                            </span>
+                                        </div>
+                                        <div className="h-5 w-px bg-slate-700" />
+                                        <button type="button" title="Add Spark above footer" aria-label="Add Spark above footer" onClick={() => { setSparkInsertTarget({ index: data.blocks.length, position: 'above' }); setIsModalOpen(true); }} className="h-8 w-8 rounded-lg text-emerald-300 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-emerald-400">↑</button>
+                                        <div className="relative">
+                                            <button type="button" title="Footer theme" aria-label="Footer theme" onClick={() => setFooterThemeMenu((value) => !value)} className="h-8 w-8 rounded-lg text-slate-300 transition hover:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-violet-400">🎨</button>
+                                            {footerThemeMenu && (
+                                                <div className="absolute right-0 top-10 w-44 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
+                                                    {[['auto','✨ Auto'],['primary','🟦 Primary'],['white','⬜ White'],['surface','🩶 Surface']].map(([value,label]) => (
+                                                        <button key={value} type="button" onClick={() => { updateFooter({ mega_footer: { ...(data.global_footer?.mega_footer || {}), enabled: Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled), theme: value } }); setFooterThemeMenu(false); }} className="w-full px-4 py-3 text-left text-sm text-slate-200 transition hover:bg-slate-800">{label}</button>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                        <button type="button" role="switch" title="Enable or disable Mega Footer" aria-label="Enable or disable Mega Footer" aria-checked={Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled)} onClick={() => { const enabled = !Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled); updateFooter({ mega_enabled: enabled, mega_footer: { ...(data.global_footer?.mega_footer || {}), enabled, theme: data.global_footer?.mega_footer?.theme || 'auto' } }); }} className={`relative h-7 w-12 shrink-0 rounded-full transition ${Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled) ? 'bg-emerald-500' : 'bg-slate-700'}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled) ? 'left-6' : 'left-1'}`} /></button>
+                                        {Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled) && <button type="button" onClick={() => setIsMegaFooterQuickEdit((value) => !value)} className="h-8 rounded-lg px-2 text-[11px] font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white">{isMegaFooterQuickEdit ? 'Done' : 'Edit'}</button>}
+                                    </div>
+                                </div>
                             )}
-                            {data.global_footer.type === 'detailed_footer' && (
-                                <DetailedFooter block={data.global_footer} onUpdate={updateFooter} />
-                            )}
+                            <MinimalFooter block={normalizeGlobalFooterBlock(data.global_footer)} onUpdate={updateFooter} editorMode={isMegaFooterQuickEdit} resolvedTheme={resolveBlockTheme({ theme: data.global_footer?.mega_footer?.theme || 'auto' }, data.blocks.length)} />
                         </div>
                     )}
                 </div>
@@ -3372,6 +3503,34 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
             </div>
             
+            {layoutPreview?.catalogItem && (
+                <div className="fixed inset-0 z-[940] flex items-center justify-center bg-slate-950/80 p-2 sm:p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setLayoutPreview(null); }}>
+                    <section className="flex h-[92vh] w-[95vw] max-w-[1600px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#111116] shadow-2xl">
+                        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">Layout preview</p>
+                                <h3 className="mt-1 text-lg font-semibold text-white">{layoutPreview.title}</h3>
+                            </div>
+                            <button type="button" onClick={() => setLayoutPreview(null)} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/5">Close</button>
+                        </div>
+                        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-950 p-3 sm:p-5">
+                            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white">
+                                <ActualSparkPreview spark={layoutPreview.catalogItem} previewVariant="primary" websiteTheme={globalSelections} commerce={commerce} contentWorkspace={contentWorkspace} />
+                            </div>
+                        </div>
+                        <div className="flex justify-end gap-2 border-t border-white/10 px-5 py-4">
+                            {layoutPreview.owned ? (
+                                <button type="button" onClick={() => { changeBlockLayout(layoutPreview.blockIndex, layoutPreview); setLayoutPreview(null); }} className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-950 hover:bg-violet-100">Use layout</button>
+                            ) : layoutPreview.canInstall ? (
+                                <button type="button" disabled={layoutBusyKey === layoutPreview.type} onClick={() => unlockLayoutSpark(layoutPreview)} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-50">
+                                    {layoutBusyKey === layoutPreview.type ? 'Buying…' : Number(layoutPreview.credits || 0) === 0 ? 'Add Free Spark' : `Buy Spark · ⚡ ${layoutPreview.credits}`}
+                                </button>
+                            ) : null}
+                        </div>
+                    </section>
+                </div>
+            )}
+
             {(capabilities.canGenerateAi || trialMode) && (
                 <AddSectionModal
                     open={isModalOpen}

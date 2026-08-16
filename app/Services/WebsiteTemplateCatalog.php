@@ -266,6 +266,18 @@ class WebsiteTemplateCatalog
             ],
             'global_footer' => [
                 'type' => 'minimal_footer',
+                'mega_enabled' => false,
+                'mega_footer' => [
+                    'enabled' => false,
+                    'tagline' => 'A premium information-rich footer.',
+                    'primary_label' => 'Get in touch',
+                    'primary_url' => '#contact',
+                    'columns' => [
+                        ['title' => 'Company', 'items' => [['label' => 'About us', 'url' => '#about'], ['label' => 'Careers', 'url' => '#careers'], ['label' => 'Contact', 'url' => '#contact']]],
+                        ['title' => 'Services', 'items' => [['label' => 'What we do', 'url' => '#services'], ['label' => 'Solutions', 'url' => '#solutions'], ['label' => 'Pricing', 'url' => '#pricing']]],
+                        ['title' => 'Resources', 'items' => [['label' => 'Insights', 'url' => '#insights'], ['label' => 'Guides', 'url' => '#guides'], ['label' => 'Updates', 'url' => '#updates']]],
+                    ],
+                ],
                 'logo_text' => $websiteName,
                 'copyright' => '© '.now()->year.'. All rights reserved.',
             ],

@@ -284,7 +284,7 @@ class CmsHtmlCompiler
         return $normalized ?: $defaults;
     }
 
-    private static function contactFieldsMarkup(array $fields, array $theme, string $inputClasses, string $nativeColorScheme): string
+    private static function contactFieldsMarkup(array $fields, array $theme, string $inputClasses, string $nativeColorScheme, string $accentColor = '#475569'): string
     {
         $markup = '';
 
@@ -334,12 +334,12 @@ class CmsHtmlCompiler
                     $options = '';
                     foreach ($field['options'] as $option) {
                         $option = e($option);
-                        $options .= "<label class='flex items-center gap-2 text-sm font-medium {$theme['sub']}'><input class='h-4 w-4 rounded border-slate-400 text-violet-500' type='checkbox' name='{$name}[]' value='{$option}'>{$option}</label>";
+                        $options .= "<label class='flex items-center gap-2 text-sm font-medium {$theme['sub']}'><input style='accent-color:{$accentColor}' class='h-4 w-4 rounded border-slate-400' type='checkbox' name='{$name}[]' value='{$option}'>{$option}</label>";
                     }
                     $markup .= "<fieldset class='text-sm font-semibold {$theme['text']}'><legend>{$label}{$requiredMark}</legend><div class='mt-3 space-y-2'>{$options}</div></fieldset>";
                     continue;
                 }
-                $markup .= "<label class='flex items-start gap-3 text-sm font-medium {$theme['text']}'><input class='mt-1 h-4 w-4 rounded border-slate-400 text-violet-500' type='checkbox' name='{$name}' value='yes'{$required}><span>{$label}{$requiredMark}</span></label>";
+                $markup .= "<label class='flex items-start gap-3 text-sm font-medium {$theme['text']}'><input style='accent-color:{$accentColor}' class='mt-1 h-4 w-4 rounded border-slate-400' type='checkbox' name='{$name}' value='yes'{$required}><span>{$label}{$requiredMark}</span></label>";
                 continue;
             }
 
@@ -697,6 +697,18 @@ JS;
 
 
         foreach ($blocks as $index => $block) {
+            $legacyBlockType = (string) ($block['type'] ?? '');
+            if ($legacyBlockType === 'detailed_footer') {
+                // Retired global footer layout: render it through the one stable
+                // Website Shell footer so existing sites never lose their footer.
+                $block['type'] = 'minimal_footer';
+                $legacyBlockType = 'minimal_footer';
+            }
+            if (str_starts_with($legacyBlockType, 'footer_') && $legacyBlockType !== 'minimal_footer') {
+                // Footer Sparks were retired in favor of the global Website Shell footer.
+                // Silently skip legacy page blocks so older websites remain export-safe.
+                continue;
+            }
 
             // Track only the HTML emitted by this Spark so we can attach its
             // semantic resolved theme to the first section without touching
@@ -1068,48 +1080,6 @@ JS;
                     $html .= "<section class='px-6 py-20 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$header}{$body}</div></section>";
                     break;
 
-                case 'footer_mega_premium':
-                case 'footer_agency_premium':
-                case 'footer_saas_premium':
-                case 'footer_luxury_premium':
-                case 'footer_dark_premium':
-                case 'footer_minimal_premium':
-                    $variant = $type;
-                    $brand = e($block['brand_name'] ?? 'Your Brand');
-                    $tagline = e($block['tagline'] ?? 'A concise closing statement for the business.');
-                    $copyright = e($block['copyright'] ?? '© Your Brand. All rights reserved.');
-                    $url = e($block['primary_url'] ?? '#'); $label = e($block['primary_label'] ?? 'Get in touch');
-                    $footerLinks = [];
-                    foreach (['one','two','three'] as $word) {
-                        $linkLabel = e($block["link_{$word}_label"] ?? ucfirst($word));
-                        $linkUrl = e($block["link_{$word}_url"] ?? '#');
-                        $footerLinks[] = "<a href='{$linkUrl}' class='hover:underline'>{$linkLabel}</a>";
-                    }
-                    $links = implode(' · ', $footerLinks);
-                    if ($variant === 'footer_dark_premium') {
-                        $eyebrow=e($block['eyebrow']??'STAY CONNECTED'); $meta1=e($block['meta_one']??'Privacy'); $meta2=e($block['meta_two']??'Terms');
-                        $body="<div class='grid gap-10 border-b border-white/10 pb-12 lg:grid-cols-[1.5fr_1fr]'><div><p class='text-xs font-bold uppercase tracking-wider text-white/50'>{$eyebrow}</p><h2 class='mt-5 text-4xl font-semibold text-white'>{$brand}</h2><p class='mt-4 max-w-xl text-white/65'>{$tagline}</p><a href='{$url}' class='mt-7 inline-block font-bold text-white'>{$label}</a></div><div class='grid grid-cols-2 gap-6 self-end text-sm text-white/70'>{$footerLinks[0]}{$footerLinks[1]}{$footerLinks[2]}<span class='text-white/50'>{$meta1}</span></div></div><div class='flex flex-col gap-4 pt-6 text-xs text-white/45 sm:flex-row sm:justify-between'><span>{$copyright}</span><span>{$meta1} · {$meta2}</span></div>";
-                        $html .= "<footer class='bg-slate-950 px-6 py-16 text-white'><div class='mx-auto max-w-7xl'>{$body}</div></footer>";
-                        break;
-                    } elseif ($variant === 'footer_minimal_premium') {
-                        $meta1=e($block['meta_one']??'Privacy'); $meta2=e($block['meta_two']??'Terms');
-                        $body="<div class='flex flex-col gap-7 border-t pt-8 md:flex-row md:items-center md:justify-between {$theme['border']}'><div><h2 class='text-lg font-semibold {$theme['text']}'>{$brand}</h2><p class='mt-1 text-sm {$theme['sub']}'>{$tagline}</p></div><div class='flex flex-wrap gap-x-6 gap-y-3 text-sm {$theme['text']}'>{$footerLinks[0]}{$footerLinks[1]}{$footerLinks[2]}<span class='{$theme['sub']}'>{$meta1}</span><span class='{$theme['sub']}'>{$meta2}</span></div><p class='text-xs {$theme['sub']}'>{$copyright}</p></div>";
-                        $html .= "<footer class='px-6 py-10 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$body}</div></footer>";
-                        break;
-                    } elseif ($variant === 'footer_agency_premium') {
-                        $eyebrow=e($block['eyebrow']??'NEXT PROJECT');$heading=e($block['heading']??'Have something ambitious in mind?');$location=e($block['location']??'Your location');$email=e($block['email']??'');
-                        $body="<p class='text-xs font-bold uppercase tracking-wider {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-5 max-w-5xl text-5xl font-semibold {$theme['text']}'>{$heading}</h2><a href='{$url}' class='mt-8 inline-block text-lg font-bold {$theme['text']}'>{$label}</a><div class='mt-14 grid gap-8 border-t pt-8 md:grid-cols-3 {$theme['border']}'><div><p class='text-2xl font-semibold {$theme['text']}'>{$brand}</p><p class='mt-2 text-sm {$theme['sub']}'>{$location}</p></div><p class='text-sm {$theme['text']}'>{$email}</p><p class='text-sm md:text-right {$theme['sub']}'>{$copyright}</p></div>";
-                    } elseif ($variant === 'footer_saas_premium') {
-                        $cols=''; foreach([['Product','product_one','product_two'],['Company','company_one','company_two'],['Resources','resource_one','resource_two']] as $c){$a=e($block[$c[1]]??'Link');$b=e($block[$c[2]]??'Link');$cols.="<div><p class='text-xs font-bold uppercase tracking-wider {$theme['sub']}'>{$c[0]}</p><p class='mt-4 {$theme['text']}'>{$a}</p><p class='mt-3 {$theme['text']}'>{$b}</p></div>";} $body="<div class='rounded-3xl border p-7 sm:p-10 {$theme['card']} {$theme['border']}'><div class='grid gap-10 lg:grid-cols-[1.2fr_2fr]'><div><h2 class='text-3xl font-semibold {$theme['text']}'>{$brand}</h2><p class='mt-4 max-w-sm {$theme['sub']}'>{$tagline}</p><a href='{$url}' class='mt-6 inline-block font-bold {$theme['text']}'>{$label}</a></div><div class='grid grid-cols-2 gap-8 sm:grid-cols-3'>{$cols}</div></div><p class='mt-8 border-t pt-6 text-xs {$theme['border']} {$theme['sub']}'>{$copyright}</p></div>";
-                    } elseif ($variant === 'footer_luxury_premium') {
-                        $eyebrow=e($block['eyebrow']??'ESTABLISHED WITH INTENT');$heading=e($block['heading']??'Crafted for people who value the details.');$location=e($block['location']??'Your location');$s1=e($block['social_one']??'Instagram');$s2=e($block['social_two']??'LinkedIn');$body="<div class='text-center'><p class='text-xs font-bold uppercase tracking-wider {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-8 text-5xl font-medium {$theme['text']}'>{$brand}</h2><p class='mx-auto mt-5 max-w-2xl text-lg {$theme['sub']}'>{$heading}</p><a href='{$url}' class='mt-8 inline-block font-semibold {$theme['text']}'>{$label}</a><div class='mt-16 flex flex-col gap-5 border-t pt-7 text-sm sm:flex-row sm:justify-between {$theme['border']}'><span class='{$theme['sub']}'>{$location}</span><span class='{$theme['text']}'>{$s1} · {$s2}</span><span class='{$theme['sub']}'>{$copyright}</span></div></div>";
-                    } else {
-                        $groupCount=max(1,min(3,(int)($block['group_count']??3)));
-                        $groups=''; foreach(array_slice(['one','two','three'],0,$groupCount) as $w){$gt=e($block["group_{$w}_title"]??'Explore');$gi=e($block["group_{$w}_item"]??'Link');$groups.="<div><p class='text-xs font-bold uppercase tracking-wider {$theme['sub']}'>{$gt}</p><p class='mt-4 text-lg {$theme['text']}'>{$gi}</p></div>";} $body="<div class='grid gap-10 border-b pb-12 lg:grid-cols-[1.2fr_2fr] lg:gap-16 {$theme['border']}'><div><h2 class='text-3xl font-semibold {$theme['text']}'>{$brand}</h2><p class='mt-4 max-w-sm {$theme['sub']}'>{$tagline}</p><a href='{$url}' class='mt-6 inline-block font-bold {$theme['text']}'>{$label}</a></div><div class='grid gap-8 sm:grid-cols-3'>{$groups}</div></div><div class='flex flex-col gap-4 pt-6 sm:flex-row sm:items-center sm:justify-between'><p class='text-xs {$theme['sub']}'>{$copyright}</p><div class='flex gap-5 text-sm {$theme['text']}'>{$footerLinks[0]}{$footerLinks[1]}{$footerLinks[2]}</div></div>";
-                    }
-                    $html .= "<footer class='px-6 py-16 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$body}</div></footer>";
-                    break;
-
                 case 'agency_dashboard_preview_premium':
                 case 'agency_client_portal_premium':
                 case 'agency_white_label_showcase_premium':
@@ -1192,7 +1162,7 @@ JS;
                         <span class='block text-xs font-semibold uppercase tracking-[0.32em] {$theme['sub']}'>
                             {$tagline}
                         </span>
-                        <h1 class='block max-w-5xl text-5xl font-bold leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
+                        <h1 class='block max-w-5xl text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>
                             {$heading}
                         </h1>
                         <p class='mx-auto max-w-3xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>
@@ -1535,7 +1505,9 @@ JS;
                 $contactNativeControlStyles .= "[data-cosmic-contact-form][data-cosmic-contact-scheme='light'] [data-cosmic-contact-select] option{background:#fff!important;color:#0f172a!important}";
                 $contactNativeControlStyles .= "[data-cosmic-contact-form][data-cosmic-contact-scheme='dark'] [data-cosmic-contact-select]{background:rgba(15,23,42,.38)!important;color:#f8fafc!important;border-color:rgba(255,255,255,.22)!important}";
                 $contactNativeControlStyles .= "[data-cosmic-contact-form][data-cosmic-contact-scheme='dark'] [data-cosmic-contact-select] option{background:#0f172a!important;color:#f8fafc!important}";
-                $formFields = self::contactFieldsMarkup(self::contactFields($block['fields'] ?? null), $theme, $inputClasses, $nativeColorScheme);
+                $contactPrimaryTheme = self::getTheme($primaryColor ?: 'midnight');
+                $contactAccent = (string) ($contactPrimaryTheme['palette']['accent'] ?? $contactPrimaryTheme['palette']['background'] ?? '#475569');
+                $formFields = self::contactFieldsMarkup(self::contactFields($block['fields'] ?? null), $theme, $inputClasses, $nativeColorScheme, $contactAccent);
 
                 $html .= "
                 <section class='relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']}'>
@@ -1875,6 +1847,12 @@ HTML;
                     }
                     section[data-cosmic-block-type^='hero_'] > .relative,
                     section[data-cosmic-block-type='image_cta_banner'] > .relative { width: 100%; }
+                    /* Full-bleed image/video/motion heroes own their internal spacing.
+                       Do not inject generic top/bottom section padding around the media canvas. */
+                    section[data-cosmic-block-type^='hero_'].cosmic-hero-media-edge {
+                        padding-top: 0 !important;
+                        padding-bottom: 0 !important;
+                    }
                     @supports (height: 100svh) {
                         section[data-cosmic-block-type^='hero_'],
                         section[data-cosmic-block-type='image_cta_banner'] {
@@ -1884,7 +1862,7 @@ HTML;
                     @media (max-width: 767px) {
                         section[data-cosmic-block-type^='hero_'],
                         section[data-cosmic-block-type='image_cta_banner'] {
-                            min-height: auto;
+                            min-height: calc(100svh - var(--cosmic-header-flow-offset, 0px));
                             padding-top: clamp(3.5rem, 8vh, 5.5rem) !important;
                             padding-bottom: clamp(3.5rem, 8vh, 5.5rem) !important;
                         }
@@ -2112,6 +2090,10 @@ HTML;
                 case 'minimal_footer':
                 $brand = e($block['logo_text'] ?? 'Your Logo');
                 $copy = e($block['copyright'] ?? '© ' . date('Y') . '. All rights reserved.');
+                $privacyLabel = e($block['privacy_label'] ?? 'Privacy Policy');
+                $privacyUrl = e($block['privacy_url'] ?? '/privacy-policy');
+                $termsLabel = e($block['terms_label'] ?? 'Terms & Conditions');
+                $termsUrl = e($block['terms_url'] ?? '/terms-and-conditions');
                 $rawLogoImageUrl = (string) ($block['logo_image_url'] ?? '');
                 $logoImageUrl = e(self::staticAssetUrl($rawLogoImageUrl));
                 $logoHeight = max(24, min(56, (int) ($block['logo_height'] ?? 36)));
@@ -2119,18 +2101,57 @@ HTML;
                 $logoFilter = e(self::isDefaultLogoPlaceholder($rawLogoImageUrl)
                     ? (string) ($block['logo_filter'] ?? self::logoFilter($logoFilterKey))
                     : 'none');
-                $stoneTheme = self::getTheme('stone'); // Hardcoded stone theme
                 $footerBrand = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
-                    : "<div class='font-bold text-lg {$stoneTheme['text']}'>{$brand}</div>";
+                    : "<div class='text-lg font-bold text-slate-900'>{$brand}</div>";
+                $megaBrand = $logoImageUrl !== ''
+                    ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
+                    : "<div class='text-lg font-bold text-white'>{$brand}</div>";
 
+                $mega = is_array($block['mega_footer'] ?? null) ? $block['mega_footer'] : [];
+                $megaEnabled = (bool) ($block['mega_enabled'] ?? $mega['enabled'] ?? false);
+                $megaThemeMode = in_array(($mega['theme'] ?? 'auto'), ['auto', 'primary', 'white', 'surface'], true) ? ($mega['theme'] ?? 'auto') : 'auto';
+                $megaResolvedTheme = $megaThemeMode === 'auto' ? $blockTheme : $megaThemeMode;
+                $megaSelectedThemeName = $megaResolvedTheme === 'white' ? 'white' : ($megaResolvedTheme === 'surface' ? 'stone' : ($primaryColor ?: 'midnight'));
+                $primaryTheme = self::getTheme($megaSelectedThemeName);
+                if ($megaEnabled) {
+                    $tagline = e($mega['tagline'] ?? 'A premium information-rich footer.');
+                    $primaryLabel = e($mega['primary_label'] ?? 'Get in touch');
+                    $primaryUrl = e($mega['primary_url'] ?? '#contact');
+                    $columns = is_array($mega['columns'] ?? null) ? array_slice(array_values($mega['columns']), 0, 4) : [];
+                    if (!$columns) {
+                        $columns = [
+                            ['title' => 'Company', 'items' => [['label' => 'About us', 'url' => '#about'], ['label' => 'Careers', 'url' => '#careers'], ['label' => 'Contact', 'url' => '#contact']]],
+                            ['title' => 'Services', 'items' => [['label' => 'What we do', 'url' => '#services'], ['label' => 'Solutions', 'url' => '#solutions'], ['label' => 'Pricing', 'url' => '#pricing']]],
+                            ['title' => 'Resources', 'items' => [['label' => 'Insights', 'url' => '#insights'], ['label' => 'Guides', 'url' => '#guides'], ['label' => 'Updates', 'url' => '#updates']]],
+                        ];
+                    }
+                    $columnHtml = '';
+                    foreach ($columns as $column) {
+                        $title = e($column['title'] ?? 'More');
+                        $items = is_array($column['items'] ?? null) ? array_slice(array_values($column['items']), 0, 6) : [];
+                        $itemsHtml = '';
+                        foreach ($items as $item) {
+                            $label = e($item['label'] ?? 'Menu item');
+                            $url = e($item['url'] ?? '#');
+                            $itemsHtml .= "<a href='{$url}' class='block py-1 text-sm transition hover:opacity-70'>{$label}</a>";
+                        }
+                        $columnHtml .= "<div class='min-w-0'><p class='text-[10px] font-bold uppercase tracking-[.20em] {$primaryTheme['sub']}'>{$title}</p><div class='mt-3 space-y-1.5'>{$itemsHtml}</div></div>";
+                    }
+                    $columnCount = max(1, count($columns));
+                    $gridClass = $columnCount >= 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : ($columnCount === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : ($columnCount === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'));
+                    $html .= "<section class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 {$primaryTheme['bg']} {$primaryTheme['text']} {$primaryTheme['border']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(220px,.75fr)_2fr]'><div class='min-w-0'>{$megaBrand}<p class='mt-4 max-w-sm text-sm leading-6 {$primaryTheme['sub']}'>{$tagline}</p><a href='{$primaryUrl}' class='mt-5 inline-flex text-sm font-semibold hover:opacity-75'>{$primaryLabel}</a></div><div class='grid gap-7 {$gridClass}'>{$columnHtml}</div></div></section>";
+                }
+
+                $legalLeft = $megaEnabled
+                    ? "<div class='flex flex-wrap items-center gap-x-5 gap-y-2 text-sm'><a href='{$privacyUrl}' class='transition hover:text-slate-900'>{$privacyLabel}</a><a href='{$termsUrl}' class='transition hover:text-slate-900'>{$termsLabel}</a></div>"
+                    : $footerBrand;
                 $html .= "
-                <footer class='w-full {$stoneTheme['bg']} {$stoneTheme['sub']} flex flex-col items-start gap-3 border-t {$stoneTheme['border']} px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-12'>
-                    {$footerBrand}
+                <footer class='flex w-full flex-col items-start gap-4 border-t border-slate-200 bg-white px-6 py-8 text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10'>
+                    {$legalLeft}
                     <div class='text-sm sm:whitespace-nowrap'>{$copy}</div>
                 </footer>";
                 break;
-
 
 
                 case 'feature_image_left':
@@ -2220,13 +2241,14 @@ HTML;
                 $btnText = $isLight
                     ? self::getTheme($primaryColor)['text']
                     : 'text-slate-900';
+                $heroHeadlineGlow = e((string) (self::getTheme($primaryColor ?: 'midnight')['gradient']['glowSoft'] ?? 'rgba(96,165,250,.18)'));
                 $html .= "
-                <section class='relative w-full px-6 py-20 sm:px-[8%] sm:py-24 {$theme['bg']} overflow-hidden transition-colors duration-500'>
-                    <div class='absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-indigo-500 to-transparent opacity-30 blur-[120px] rounded-full'></div>
+                <section class='relative w-full px-6 py-0 sm:px-[8%] {$theme['bg']} overflow-hidden transition-colors duration-500'>
+                    <div class='absolute top-0 right-0 w-[500px] h-[500px] rounded-full opacity-30 blur-[120px]' style='background:radial-gradient(circle, {$heroHeadlineGlow}, transparent 68%)'></div>
                     
                     <div class='relative z-10 max-w-4xl'>
                         <span class='font-bold tracking-widest uppercase text-sm block {$theme['sub']}'>{$subtitle}</span>
-                        <h1 class='mt-6 text-4xl font-extrabold leading-[1.1] sm:text-5xl md:text-8xl block {$theme['text']}'>{$heading}</h1>
+                        <h1 class='mt-6 text-4xl font-extrabold leading-[1.02] sm:text-5xl lg:text-6xl xl:text-7xl block {$theme['text']}'>{$heading}</h1>
                         <div class='mt-6 max-w-2xl text-base sm:mt-8 sm:text-xl {$theme['sub']}'>{$text}</div>
 
                         <div class='mt-8 flex flex-col items-stretch gap-3 sm:mt-12 sm:flex-row sm:items-center sm:gap-4'>
@@ -2355,7 +2377,7 @@ HTML;
                 $muted = $isPrimarySection ? 'text-white/70' : $theme['sub'];
                 $border = $isPrimarySection ? 'border-white/20' : $theme['border'];
                 $card = $isPrimarySection ? 'bg-white/10 text-white' : "{$theme['surface']} {$theme['text']}";
-                $hoverBg = $isPrimarySection ? '#ffffff' : (string) ($primaryTheme['palette']['background'] ?? '#0B5D4B');
+                $hoverBg = $isPrimarySection ? '#ffffff' : (string) ($primaryTheme['palette']['background'] ?? $theme['palette']['background'] ?? '#243447');
                 $hoverFg = $isPrimarySection ? '#0f172a' : '#ffffff';
                 $buttonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
                 $buttonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
@@ -2389,7 +2411,7 @@ HTML;
                 $muted = $isPrimarySection ? 'text-white/70' : $theme['sub'];
                 $border = $isPrimarySection ? 'border-white/20' : $theme['border'];
                 $baseCard = $isPrimarySection ? 'bg-white/10 text-white' : "{$theme['surface']} {$theme['text']}";
-                $featuredCard = $isPrimarySection ? 'bg-white text-slate-950' : 'bg-slate-900 text-white';
+                $featuredCard = $isPrimarySection ? 'bg-white text-slate-950' : "{$primaryTheme['card']} {$primaryTheme['text']}";
                 $buttonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
                 $buttonText = $isPrimarySection ? 'text-slate-950' : $primaryTheme['text'];
                 $options = [
@@ -2483,6 +2505,7 @@ HTML;
                 $softMuted = $isPrimarySection ? 'text-white/70' : $primaryTheme['sub'];
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
                 $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
+                $servicesFamilyGlow = e((string) ($primaryTheme['gradient']['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
                 $smallHtml = '';
                 foreach ($serviceCards as $index => [$number, $title, $description]) {
                     $span = $index < 2 ? 'lg:col-span-5' : 'lg:col-span-4';
@@ -2491,6 +2514,7 @@ HTML;
 
                 $html .= "
                 <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                    <div class='pointer-events-none absolute inset-0' style='background:radial-gradient(circle at 12% 18%,{$servicesFamilyGlow},transparent 26%)'></div>
                     <div class='relative mx-auto max-w-7xl'>
                         <div class='grid gap-8 lg:grid-cols-[1fr_.72fr] lg:items-end lg:gap-16'>
                             <div><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>{$eyebrow}</span><h2 class='mt-5 max-w-4xl text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl {$theme['text']}'>{$heading}</h2></div>
@@ -2589,11 +2613,12 @@ HTML;
                 $text     = e($block['text'] ?? 'We follow a proven workflow to deliver consistent quality.');
 
                 $steps = $block['steps'] ?? [];
+                $processGlow = e((string) (self::getTheme($primaryColor ?: 'midnight')['gradient']['glowSoft'] ?? 'rgba(96,165,250,.12)'));
 
                 $html .= "
                 <section class='relative py-32 px-7 overflow-hidden {$theme['bg']} transition-colors duration-500'>
 
-                    <div class='absolute top-0 right-[-180px] w-[420px] h-[420px] rounded-full bg-blue-500/10 blur-[170px] pointer-events-none'></div>
+                    <div class='absolute top-0 right-[-180px] w-[420px] h-[420px] rounded-full blur-[170px] pointer-events-none' style='background:{$processGlow};'></div>
 
                     <div class='max-w-7xl mx-auto'>
 
@@ -3073,8 +3098,8 @@ HTML;
                     'medium' => 'min-h-[500px]',
                     'large' => 'min-h-[650px]',
                     // Legacy AI output used xl; the Builder renders it at 90vh.
-                    'xl' => 'min-h-[90vh]',
-                    default => 'min-h-screen',
+                    'xl' => 'min-h-[650px]',
+                    default => '',
                 };
 
                 $backgroundStyle = $backgroundImage
@@ -3092,7 +3117,7 @@ HTML;
                         style='background-color:{$overlayHex};opacity:{$overlayStrength};'>
                     </div>
 
-                    <div class='relative z-10 w-full max-w-7xl mx-auto px-6 py-20 sm:px-[8%] sm:py-24 flex flex-col justify-center {$alignment}'>
+                    <div class='relative z-10 w-full max-w-7xl mx-auto px-6 py-0 sm:px-[8%] flex flex-col justify-center {$alignment}'>
 
                         <span class='text-sm uppercase tracking-[0.35em] font-semibold {$taglineClass} block'>
                             {$tagline}
@@ -3222,7 +3247,7 @@ HTML;
                             <div class='absolute inset-0 {$sliderOverlayClass}' style='{$sliderOverlayStyle}'></div>
                             <div class='absolute inset-0 bg-gradient-to-r {$sliderGradientX}'></div>
                             <div class='absolute inset-0 bg-gradient-to-t {$sliderGradientY}'></div>
-                            <div class='relative z-10 mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-24 sm:min-h-[700px] sm:px-10 lg:min-h-[760px] lg:px-14'>
+                            <div class='relative z-10 mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-0 sm:min-h-[700px] sm:px-10 lg:min-h-[760px] lg:px-14'>
                                 <div class='max-w-3xl {$sliderText}' aria-live='polite'>
                                     " . ($eyebrow !== '' ? "<p class='mb-5 text-xs font-bold uppercase tracking-[0.32em] sm:text-sm {$sliderEyebrow}'>{$eyebrow}</p>" : '') . "
                                     <h2 class='max-w-3xl text-5xl font-bold leading-[0.98] tracking-[-0.04em] sm:text-6xl lg:text-7xl'>{$heading}</h2>
@@ -3356,7 +3381,7 @@ HTML;
                     ];
                     $alignmentClass = $alignmentClasses[$contentAlign];
                     $contentWidth = $contentAlign === 'center' ? 'max-w-4xl' : 'max-w-3xl';
-                    $heroHeight = $height === 'large' ? 'min-h-[720px]' : 'min-h-[88svh] lg:min-h-screen';
+                    $heroHeight = $height === 'large' ? 'min-h-[720px]' : '';
                     $buttonJustify = $contentAlign === 'center'
                         ? 'justify-center'
                         : ($contentAlign === 'right' ? 'justify-end' : 'justify-start');
@@ -3382,7 +3407,7 @@ HTML;
                     $scrollDot = $lightMedia ? 'bg-slate-900' : 'bg-white';
 
                     $html .= "
-                    <section id='{$parallaxId}' data-cosmic-parallax data-speed='{$parallaxSpeed}' class='relative isolate flex overflow-hidden py-12 sm:py-16 lg:py-20 {$heroHeight}'>
+                    <section id='{$parallaxId}' data-cosmic-parallax data-speed='{$parallaxSpeed}' class='relative isolate flex overflow-hidden py-0 {$heroHeight}'>
                         <div data-parallax-media class='absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform' style='transform:translate3d(0,0,0) scale(1.14)'>
                             <img src='{$imageUrl}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async' class='absolute inset-0 h-full w-full object-cover'>
                         </div>
@@ -3394,7 +3419,7 @@ HTML;
                                     <span class='h-2 w-2 rounded-full {$primaryTheme['bg']}'></span>
                                     <span class='text-xs font-bold uppercase tracking-[0.28em] {$eyebrowClass}'>{$eyebrow}</span>
                                 </div>
-                                <h1 class='mt-7 text-5xl font-semibold leading-[0.96] tracking-[-0.045em] sm:text-6xl md:text-7xl lg:text-[6.5rem] {$headingClass}'>{$heading}</h1>
+                                <h1 class='mt-7 text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$headingClass}'>{$heading}</h1>
                                 <p class='mt-7 text-base leading-8 sm:text-lg {$bodyClass} " . ($contentAlign === 'center' ? 'mx-auto max-w-2xl' : 'max-w-2xl') . "'>{$text}</p>
                                 <div class='mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row {$buttonJustify}'>
                                     <a href='{$primaryUrl}' class='inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition hover:-translate-y-0.5 {$primaryTheme['bg']} {$primaryTheme['text']}'>{$primaryLabel}</a>
@@ -3481,7 +3506,7 @@ HTML;
                 $effectiveOverlayOpacity = $lightMedia ? max(96, $overlayOpacity) : max(32, min(56, (int) round($overlayOpacity * 0.72)));
                 $heroHeight = match ($block['height'] ?? 'large') {
                     'medium' => 'min-h-[520px]',
-                    'screen' => 'min-h-[72svh] sm:min-h-[80vh] md:min-h-[85vh] lg:min-h-[90vh]',
+                    'screen' => '',
                     default => 'min-h-[650px]',
                 };
                 $primaryTheme = self::getTheme($primaryColor);
@@ -3504,7 +3529,7 @@ HTML;
                 <section class='relative flex overflow-hidden {$heroHeight}' style=\"{$backgroundStyle}\">
                     <div class='absolute inset-0 {$overlayClass}' style='background-color:{$overlayHex};opacity:" . ($effectiveOverlayOpacity / 100) . ";'></div>
                     <div class='absolute inset-0 bg-gradient-to-r {$gradientClass}'></div>
-                    <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center px-7 py-20 sm:py-24'>
+                    <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center px-7 py-0'>
                         <div class='max-w-3xl'>
                             <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$taglineClass}'>{$tagline}</span>
                             <h1 class='mt-5 text-5xl font-bold leading-[1.03] tracking-tight {$headingClass} sm:text-6xl md:text-7xl lg:text-8xl'>{$heading}</h1>
@@ -3544,7 +3569,7 @@ HTML;
                     <div class='relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-20'>
                         <div class='order-2 max-w-2xl lg:order-1'>
                             <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$theme['sub']}'>{$tagline}</span>
-                            <h1 class='mt-5 text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1>
+                            <h1 class='mt-5 text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1>
                             <div class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</div>
                             <div class='mt-8 flex flex-col gap-3 sm:flex-row sm:items-center'>
                                 <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a>
@@ -3606,15 +3631,15 @@ HTML;
                         </div>";
 
                 $html .= "
-                <section class='relative min-h-[84vh] overflow-hidden {$theme['bg']}'>
+                <section class='cosmic-hero-media-edge relative overflow-hidden {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
                     {$premiumBackgroundMedia}
                     <div class='absolute inset-0 {$premiumOverlayBase}' style='{$premiumOverlayStyle}'></div>
                     <div class='absolute inset-0 bg-gradient-to-r {$premiumGradientX}'></div>
                     <div class='absolute inset-0 bg-gradient-to-t {$premiumGradientY}'></div>
-                    <div class='relative mx-auto flex min-h-[84vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12'>
+                    <div class='relative mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
                         <div class='flex items-center justify-between border-b pb-5 {$premiumBorder}'><span class='text-[11px] font-bold uppercase tracking-[.34em] {$premiumEyebrow}'>{$eyebrow}</span><span class='rounded-full border px-4 py-2 text-[11px] font-semibold {$premiumBadge}'>{$mediaBadge}</span></div>
-                        <div class='max-w-4xl py-14 sm:py-20 lg:py-24'>
-                            <h1 class='max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.05em] sm:text-7xl lg:text-[6.6rem] {$premiumHeading}'>{$heading}</h1>
+                        <div class='max-w-4xl py-0'>
+                            <h1 class='max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$premiumHeading}'>{$heading}</h1>
                             <p class='mt-7 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$premiumBody}'>{$text}</p>
                             <div class='mt-9 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold {$premiumSecondary}'>{$secondaryLabel}</a></div>
                         </div>
@@ -3654,7 +3679,7 @@ HTML;
                 <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
                     <div class='pointer-events-none absolute inset-0' style='background:radial-gradient(circle at 75% 25%, {$familyGlow}, transparent 34%);opacity:{$decorOpacity}'></div>
                     <div class='relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-16'>
-                        <div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 text-5xl font-semibold leading-[.96] tracking-[-.05em] sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1><p class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div><div class='mt-8 flex flex-wrap gap-2'>{$chipHtml}</div></div>
+                        <div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1><p class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div><div class='mt-8 flex flex-wrap gap-2'>{$chipHtml}</div></div>
                         <div class='relative rounded-[2rem] border p-4 shadow-2xl sm:p-6 {$theme['border']} {$theme['surface']}'>
                             <div class='flex items-center justify-between border-b pb-4 {$theme['border']}'><div class='flex items-center gap-3'><div class='grid h-11 w-11 place-items-center rounded-2xl {$primaryTheme['bg']} {$primaryTheme['text']}'>✦</div><div><strong class='block text-sm {$theme['text']}'>{$assistantLabel}</strong><span class='mt-1 block text-xs {$theme['sub']}'>{$assistantStatus}</span></div></div><span class='rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[.18em] {$theme['border']} {$theme['bg']} {$theme['sub']}'>Live preview</span></div>
                             <div class='space-y-4 py-6'><div class='ml-auto max-w-[82%] rounded-[1.4rem] rounded-br-md px-5 py-4 text-sm leading-6 {$userBubble}'>{$userMessage}</div><div class='max-w-[88%] rounded-[1.4rem] rounded-bl-md border px-5 py-4 text-sm leading-6 {$assistantBubble}'>{$assistantMessage}</div></div>
@@ -3697,7 +3722,7 @@ HTML;
                 $html .= "
                 <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
                     <div class='relative mx-auto max-w-7xl'>
-                        <div class='grid items-end gap-10 lg:grid-cols-[1fr_.72fr] lg:gap-16'><div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.055em] sm:text-6xl lg:text-8xl {$theme['text']}'>{$heading}</h1></div><div class='lg:pb-2'><p class='text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-7 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div></div></div>
+                        <div class='grid items-end gap-10 lg:grid-cols-[1fr_.72fr] lg:gap-16'><div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1></div><div class='lg:pb-2'><p class='text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-7 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div></div></div>
                         <div class='mt-12 rounded-[2rem] border p-3 shadow-2xl sm:p-4 {$theme['border']} {$theme['surface']}'><div class='grid gap-3 md:grid-cols-2'><div class='relative min-h-[300px] overflow-hidden rounded-[1.45rem] grayscale sm:min-h-[390px]' style=\"{$beforeStyle}\"><div class='absolute inset-0 bg-slate-950/50'></div><div class='absolute inset-x-0 bottom-0 p-5 text-white sm:p-7'><span class='text-[11px] font-bold uppercase tracking-[.24em] text-white/70'>{$beforeLabel}</span><strong class='mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl'>{$beforeCaption}</strong></div></div><div class='relative min-h-[300px] overflow-hidden rounded-[1.45rem] sm:min-h-[390px]' style=\"{$afterStyle}\"><div class='absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent'></div><div class='absolute inset-x-0 bottom-0 p-5 text-white sm:p-7'><span class='text-[11px] font-bold uppercase tracking-[.24em] text-white/70'>{$afterLabel}</span><strong class='mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl'>{$afterCaption}</strong></div></div></div></div>
                         <div class='mt-6 grid gap-3 sm:grid-cols-3'>{$metricHtml}</div>
                         <div class='mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-t pt-7 {$theme['border']}'><span class='text-[10px] font-bold uppercase tracking-[.24em] {$theme['sub']}'>Selected client work</span><div class='flex flex-wrap items-center gap-x-8 gap-y-3'>{$logoHtml}</div></div>
@@ -3742,7 +3767,7 @@ HTML;
                     <div class='pointer-events-none absolute inset-0' style='background:radial-gradient(circle at 80% 12%, {$familyGlow}, transparent 28%);opacity:{$decorOpacity}'></div>
                     <div class='relative mx-auto max-w-7xl'>
                         <div class='grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_auto]'>
-                            <div class='rounded-[2rem] border p-7 sm:p-10 lg:col-span-7 lg:row-span-2 {$softCard}'><span class='text-xs font-bold uppercase tracking-[.28em] {$softSub}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.055em] sm:text-6xl lg:text-7xl'>{$heading}</h1><p class='mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$softSub}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$secondaryButton}'>{$secondaryLabel}</a></div><div class='mt-10 grid gap-3 sm:grid-cols-3'>{$cardHtml}</div></div>
+                            <div class='rounded-[2rem] border p-7 sm:p-10 lg:col-span-7 lg:row-span-2 {$softCard}'><span class='text-xs font-bold uppercase tracking-[.28em] {$softSub}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl'>{$heading}</h1><p class='mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$softSub}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$secondaryButton}'>{$secondaryLabel}</a></div><div class='mt-10 grid gap-3 sm:grid-cols-3'>{$cardHtml}</div></div>
                             <div class='relative min-h-[310px] overflow-hidden rounded-[2rem] lg:col-span-5' style=\"{$imageStyle}\"><div class='absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent'></div><div class='absolute inset-x-0 bottom-0 p-6 text-white sm:p-8'><strong class='text-sm font-semibold'>{$imageLabel}</strong></div></div>
                             <div class='grid gap-4 sm:grid-cols-2 lg:col-span-5'><div class='rounded-[2rem] border p-6 {$softCard}'><strong class='block text-5xl font-semibold tracking-[-.04em]'>{$metricValue}</strong><span class='mt-3 block text-sm leading-6 {$softSub}'>{$metricLabel}</span></div><div class='rounded-[2rem] border p-6 {$proofCard}'><strong class='block text-lg font-semibold'>{$proofTitle}</strong><span class='mt-3 block text-sm leading-6 {$proofSub}'>{$proofText}</span></div></div>
                         </div>
@@ -3788,10 +3813,10 @@ HTML;
                     <div class='absolute inset-0' style=\"{$overlayStyle}\"></div>
                     <div class='absolute inset-0 {$horizontalGradient}'></div>
                     <div class='absolute inset-0 {$verticalGradient}'></div>
-                    <div class='relative mx-auto flex min-h-[82vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12'>
+                    <div class='relative mx-auto flex min-h-[calc(100svh-var(--cosmic-header-flow-offset,0px))] max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14'>
                         <div class='flex items-center justify-between border-b pb-5 {$borderClass}'><span class='text-[11px] font-bold uppercase tracking-[.34em] {$eyebrowClass}'>{$eyebrow}</span><span class='text-xs font-medium {$editionClass}'>{$editionLabel}</span></div>
-                        <div class='max-w-5xl py-14 sm:py-20 lg:py-24'>
-                            <h1 class='max-w-5xl text-5xl font-medium leading-[.92] tracking-[-.055em] sm:text-7xl lg:text-[7.2rem] {$headingClass}'>{$heading}</h1>
+                        <div class='max-w-5xl py-0'>
+                            <h1 class='max-w-5xl text-4xl font-medium leading-[.96] tracking-[-.05em] sm:text-5xl lg:text-6xl xl:text-7xl {$headingClass}'>{$heading}</h1>
                             <p class='mt-7 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$bodyClass}'>{$text}</p>
                             <div class='mt-9 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold {$secondaryClass}'>{$secondaryLabel}</a></div>
                         </div>
@@ -3835,7 +3860,7 @@ HTML;
                     <div class='relative mx-auto max-w-7xl'>
                         <div class='mx-auto max-w-4xl text-center'>
                             <span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span>
-                            <h1 class='mt-5 text-5xl font-semibold leading-[.98] tracking-[-.05em] sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1>
+                            <h1 class='mt-5 text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1>
                             <p class='mx-auto mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p>
                             <div class='mt-8 flex flex-col justify-center gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div>
                         </div>
@@ -3878,7 +3903,7 @@ HTML;
                         <div class='grid items-center gap-10 lg:grid-cols-[minmax(0,.9fr)_minmax(460px,1.1fr)] lg:gap-14'>
                             <div class='relative z-20'>
                                 <span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span>
-                                <h1 class='mt-5 max-w-3xl text-5xl font-semibold leading-[.98] tracking-[-.05em] sm:text-6xl lg:text-7xl {$theme['text']}'>{$heading}</h1>
+                                <h1 class='mt-5 max-w-3xl text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1>
                                 <p class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p>
                                 <div class='mt-8 flex flex-col gap-3 sm:flex-row'>
                                     <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a>
@@ -3968,8 +3993,16 @@ HTML;
                 case 'cta_countdown_premium':
                 case 'cta_limited_offer_premium':
                     $eyebrow=e($block['eyebrow'] ?? 'NEXT STEP'); $heading=e($block['heading'] ?? 'Ready to move forward?'); $text=e($block['text'] ?? 'Give visitors one clear action.'); $label=e($block['primary_label'] ?? 'Get started'); $rawPrimaryUrl=trim((string) ($block['primary_url'] ?? '')); $variant=$block['type'] ?? 'cta_glass_premium'; $fallbackPrimaryUrl=match($variant){'cta_free_trial_premium'=>'/start','cta_newsletter_premium'=>'https://example.com/newsletter','cta_limited_offer_premium'=>'https://example.com/offer','cta_book_demo_premium'=>'https://example.com/demo',default=>'https://example.com'}; $url=e(($rawPrimaryUrl === '' || $rawPrimaryUrl === '#') ? $fallbackPrimaryUrl : $rawPrimaryUrl); $primaryTheme=self::getTheme($primaryColor);
-                    $ctaSectionBg = $variant === 'cta_gradient_premium' ? 'bg-gradient-to-br from-violet-950 via-slate-950 to-indigo-950' : $theme['bg'];
-                    $html .= "<section class='relative overflow-hidden px-6 py-20 sm:px-8 lg:py-24 {$ctaSectionBg}'><div class='mx-auto max-w-6xl'>";
+                    $ctaGradient = is_array($primaryTheme['gradient'] ?? null) ? $primaryTheme['gradient'] : [];
+                    $ctaGradientFrom = e((string) ($ctaGradient['from'] ?? '#071426'));
+                    $ctaGradientVia = e((string) ($ctaGradient['via'] ?? '#111936'));
+                    $ctaGradientTo = e((string) ($ctaGradient['to'] ?? '#28164D'));
+                    $ctaGradientGlow = e((string) ($ctaGradient['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
+                    $ctaGradientAngle = (float) ($ctaGradient['angle'] ?? 120);
+                    $ctaSectionBg = $variant === 'cta_gradient_premium' ? 'text-white' : $theme['bg'];
+                    $ctaGradientStyle = $variant === 'cta_gradient_premium' ? " style='background:linear-gradient({$ctaGradientAngle}deg,{$ctaGradientFrom},{$ctaGradientVia},{$ctaGradientTo})'" : '';
+                    $ctaGlow = $variant === 'cta_gradient_premium' ? "<div class='pointer-events-none absolute inset-0' style='background:radial-gradient(circle at 78% 18%,{$ctaGradientGlow},transparent 34%)'></div>" : '';
+                    $html .= "<section class='relative overflow-hidden px-6 py-20 sm:px-8 lg:py-24 {$ctaSectionBg}'{$ctaGradientStyle}>{$ctaGlow}<div class='relative mx-auto max-w-6xl'>";
                     if ($variant === 'cta_gradient_premium') {
                         $secondary=e($block['secondary_label'] ?? 'Learn more'); $secondaryUrl=e($block['secondary_url'] ?? '#');
                         $html .= "<div class='grid items-end gap-8 rounded-[2.25rem] border border-white/15 bg-white/5 p-8 text-white shadow-2xl backdrop-blur sm:p-12 lg:grid-cols-[1fr_auto]'><span class='text-xs font-bold uppercase tracking-[.24em] text-white/70'>{$eyebrow}</span><h2 class='mt-5 max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl'>{$heading}</h2><p class='mt-5 max-w-2xl leading-7 text-white/75'>{$text}</p><div class='mt-8 flex flex-wrap gap-3'><a href='{$url}' class='rounded-full bg-white px-6 py-3 text-sm font-bold text-slate-950'>{$label}</a><a href='{$secondaryUrl}' class='rounded-full border border-white/30 px-6 py-3 text-sm font-bold text-white'>{$secondary}</a></div></div>";
@@ -4358,7 +4391,7 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h1 class='mt-5 block text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
+                            <h1 class='mt-5 block text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>
                                 {$heading}
                             </h1>
 
@@ -4558,7 +4591,7 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h1 class='mt-5 block text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl {$theme['text']}'>
+                            <h1 class='mt-5 block text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>
                                 {$heading}
                             </h1>
 
@@ -4779,7 +4812,7 @@ HTML;
 
                     <div class='pointer-events-none absolute -left-40 top-16 h-96 w-96 rounded-full {$primaryTheme['bg']} opacity-[0.18] blur-[150px]'></div>
 
-                    <div class='relative z-10 mx-auto flex min-h-[680px] max-w-7xl items-center px-7 py-24 sm:px-10 lg:px-12'>
+                    <div class='relative z-10 mx-auto flex min-h-[680px] max-w-7xl items-center px-7 py-0 sm:px-10 lg:px-12'>
 
                         <div class='max-w-3xl'>
 
@@ -4787,7 +4820,7 @@ HTML;
                                 {$tagline}
                             </span>
 
-                            <h1 class='mt-6 block text-5xl font-bold leading-[0.98] tracking-tight sm:text-6xl lg:text-8xl {$videoHeading}'>
+                            <h1 class='mt-6 block text-4xl font-bold leading-[.98] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl {$videoHeading}'>
                                 {$heading}
                             </h1>
 
@@ -4892,7 +4925,7 @@ HTML;
                     $heroStyle = $lightMedia ? 'background:#fff;color:#0f172a' : ($isPrimaryHero ? "background:{$primaryBgHex};color:#fff" : 'background:#020617;color:#fff');
                     $gradientVars = "--p5-primary:{$primaryBgHex};--p5-from:{$gradientFrom};--p5-via:{$gradientVia};--p5-to:{$gradientTo};--p5-glow:{$gradientGlow};--p5-glow-soft:{$gradientGlowSoft};--p5-angle:{$gradientAngle}deg";
                     $eyebrow = e((string) ($block['eyebrow'] ?? 'DESIGNED TO MOVE'));
-                    $heading = e((string) ($block['heading'] ?? 'A premium opening with motion built into the story.'));
+                    $heading = e((string) ($block['heading'] ?? ($p5Type === 'hero_app_screens_carousel_premium' ? 'Show your best screens.' : 'Move the story forward.')));
                     $body = e((string) ($block['text'] ?? 'Lightweight animation adds depth while keeping the message clear.'));
                     $primaryLabel = e((string) ($block['primary_label'] ?? 'Get started'));
                     $primaryUrl = e((string) ($block['primary_url'] ?? '#'));
@@ -4908,11 +4941,11 @@ HTML;
                     elseif ($p5Type === 'hero_interactive_bento_premium') $visual = "<div class='p5-bento'><img src='{$image1}' alt='' decoding='async'><img loading='lazy' decoding='async' src='{$image2}' alt=''><img loading='lazy' decoding='async' src='{$image3}' alt=''></div>";
                     else $visual = "<div class='p5-abstract'><i></i><i></i><i></i><i></i></div>";
                     $html .= "<section id='{$p5Id}' class='cosmic-p5{$stateClass}' data-type='{$p5Type}' style='{$heroStyle};{$gradientVars}'><div class='p5-grid'>{$copy}{$visual}</div></section><style>
-#{$p5Id}{min-height:86svh;overflow:hidden}#{$p5Id} *{box-sizing:border-box}#{$p5Id} .p5-grid{display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;gap:4rem;min-height:86svh;max-width:80rem;margin:auto;padding:6rem 3.5rem}#{$p5Id} .p5-copy{max-width:44rem}#{$p5Id} .p5-copy>p{font-size:.75rem;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.65)}#{$p5Id} h1{font-size:clamp(3rem,6vw,6rem);line-height:.96;letter-spacing:-.045em;margin:1.25rem 0}#{$p5Id} .p5-body{max-width:38rem;line-height:1.8;color:rgba(255,255,255,.72)}#{$p5Id} .p5-actions{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:2rem}#{$p5Id} .p5-actions a{padding:.85rem 1.3rem;border-radius:999px;background:#fff;color:#0f172a;text-decoration:none;font-weight:800}#{$p5Id} .p5-actions a.secondary{background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.25)}#{$p5Id} img{width:100%;height:100%;object-fit:cover}#{$p5Id} .p5-device,#{$p5Id} .p5-screens,#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento,#{$p5Id} .p5-abstract{position:relative;height:30rem}
+#{$p5Id}{min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));overflow:hidden}#{$p5Id} *{box-sizing:border-box}#{$p5Id} .p5-grid{display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;gap:4rem;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));max-width:80rem;margin:auto;padding:0 3.5rem}#{$p5Id} .p5-copy{max-width:44rem}#{$p5Id} .p5-copy>p{font-size:.75rem;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.65)}#{$p5Id} h1{font-size:clamp(2.25rem,4.6vw,4.5rem);line-height:.98;letter-spacing:-.045em;margin:1.25rem 0}#{$p5Id} .p5-body{max-width:38rem;line-height:1.8;color:rgba(255,255,255,.72)}#{$p5Id} .p5-actions{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:2rem}#{$p5Id} .p5-actions a{padding:.85rem 1.3rem;border-radius:999px;background:#fff;color:#0f172a;text-decoration:none;font-weight:800}#{$p5Id} .p5-actions a.secondary{background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.25)}#{$p5Id} img{width:100%;height:100%;object-fit:cover}#{$p5Id} .p5-device,#{$p5Id} .p5-screens,#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento,#{$p5Id} .p5-abstract{position:relative;height:30rem}
 #{$p5Id} .p5-device img:first-child{position:absolute;inset:8% 4%;height:76%;border:8px solid #1e293b;border-radius:1.8rem;animation:p5Float 5s ease-in-out infinite}#{$p5Id} .p5-device img:last-child{position:absolute;right:2%;bottom:2%;width:28%;height:58%;border:7px solid #1e293b;border-radius:1.7rem;animation:p5Float 4.4s .6s ease-in-out infinite}#{$p5Id} .p5-screens img{position:absolute;left:50%;top:50%;width:38%;height:88%;border-radius:1.6rem;transform:translate(-50%,-50%);box-shadow:0 2rem 5rem #0008;border:1px solid rgba(255,255,255,.15)}#{$p5Id} .p5-screens img:nth-child(2){transform:translate(-115%,-50%) scale(.82);opacity:.55}#{$p5Id} .p5-screens img:nth-child(3){transform:translate(15%,-50%) scale(.82);opacity:.55}#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}#{$p5Id} .p5-editorial img,#{$p5Id} .p5-bento img{border-radius:1.6rem;min-height:0}#{$p5Id} .p5-editorial img:first-child,#{$p5Id} .p5-bento img:first-child{grid-row:span 2}#{$p5Id} .p5-bento img{transition:transform .35s ease}#{$p5Id} .p5-bento img:hover{transform:scale(1.025)}
 #{$p5Id} .p5-abstract{border:1px solid rgba(255,255,255,.12);border-radius:2rem;background-image:radial-gradient(circle at 70% 25%,var(--p5-glow-soft),transparent 38%),linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:auto,42px 42px,42px 42px}#{$p5Id}[data-type='hero_light_trails_premium'] .p5-abstract{background-image:linear-gradient(var(--p5-angle),var(--p5-from),var(--p5-via),var(--p5-to))}#{$p5Id} .p5-abstract i{position:absolute;left:-20%;width:140%;height:1px;background:linear-gradient(90deg,transparent,var(--p5-glow),transparent);animation:p5Beam 4s ease-in-out infinite}#{$p5Id} .p5-abstract i:nth-child(1){top:20%}#{$p5Id} .p5-abstract i:nth-child(2){top:40%;animation-delay:.4s}#{$p5Id} .p5-abstract i:nth-child(3){top:60%;animation-delay:.8s}#{$p5Id} .p5-abstract i:nth-child(4){top:80%;animation-delay:1.2s}
 #{$p5Id}.cosmic-p5-light{background:#fff!important;color:#0f172a!important}#{$p5Id}.cosmic-p5-light .p5-copy>p{color:#64748b}#{$p5Id}.cosmic-p5-light .p5-body{color:#475569}#{$p5Id}.cosmic-p5-light .p5-actions a{background:var(--p5-primary);color:#fff}#{$p5Id}.cosmic-p5-light .p5-actions a.secondary{background:rgba(255,255,255,.78);color:#0f172a;border-color:#cbd5e1}#{$p5Id}.cosmic-p5-light .p5-abstract{border-color:#e2e8f0;background-image:radial-gradient(circle at 70% 25%,var(--p5-glow-soft),transparent 38%),linear-gradient(rgba(100,116,139,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(100,116,139,.14) 1px,transparent 1px);background-size:auto,42px 42px,42px 42px}#{$p5Id}.cosmic-p5-light[data-type='hero_light_trails_premium'] .p5-abstract{background:rgba(255,255,255,.65)}#{$p5Id}.cosmic-p5-light .p5-device img{border-color:#cbd5e1}#{$p5Id}.cosmic-p5-light .p5-screens img{border-color:#e2e8f0}
-@keyframes p5Float{50%{transform:translateY(-12px)}}@keyframes p5Beam{50%{transform:translateX(14%);opacity:.3}}@media(max-width:850px){#{$p5Id} .p5-grid{grid-template-columns:1fr;padding:5rem 1.5rem;gap:2rem}#{$p5Id} .p5-device,#{$p5Id} .p5-screens,#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento,#{$p5Id} .p5-abstract{height:24rem}}@media(prefers-reduced-motion:reduce){#{$p5Id} *{animation:none!important;scroll-behavior:auto!important}}
+@keyframes p5Float{50%{transform:translateY(-12px)}}@keyframes p5Beam{50%{transform:translateX(14%);opacity:.3}}@media(max-width:850px){#{$p5Id} .p5-grid{grid-template-columns:1fr;padding:0 1.5rem;gap:2rem}#{$p5Id} .p5-device,#{$p5Id} .p5-screens,#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento,#{$p5Id} .p5-abstract{height:24rem}}@media(prefers-reduced-motion:reduce){#{$p5Id} *{animation:none!important;scroll-behavior:auto!important}}
 </style>";
                     if ($p5Type === 'hero_app_screens_carousel_premium') {
                         $html .= "<script>(function(){const r=document.getElementById(" . json_encode($p5Id) . " );if(!r||matchMedia('(prefers-reduced-motion: reduce)').matches)return;const cards=[...r.querySelectorAll('.p5-screens img')];let a=0,id=0;const paint=()=>cards.forEach((el,i)=>{let d=(i-a+3)%3;if(d===2)d=-1;el.style.transition='transform .7s ease,opacity .7s ease';el.style.transform='translate(-50%,-50%) translateX('+(d*65)+'%) scale('+(d===0?1:.82)+')';el.style.opacity=d===0?1:.5;el.style.zIndex=d===0?3:1});const stop=()=>{if(id){clearInterval(id);id=0}},start=()=>{if(!id)id=setInterval(()=>{a=(a+1)%3;paint()},3000)};paint();new IntersectionObserver(([e])=>e.isIntersecting?start():stop(),{rootMargin:'120px'}).observe(r)})();</script>";
@@ -4971,15 +5004,15 @@ HTML;
                     $extraClass = $motion4Type === 'hero_scroll_morph_premium' ? ' cosmic-motion4-tall' : '';
                     $html .= "<section id='{$motion4Id}' class='cosmic-motion4{$extraClass}{$motion4StateClass}' data-type='{$motion4Type}' style='{$heroGradientVars}'>{$scene}</section>";
                     $html .= "<style>
-#{$motion4Id}{position:relative;isolation:isolate;min-height:86svh;overflow:hidden;background:#020617;color:#fff}#{$motion4Id}.cosmic-motion4-tall{min-height:110svh;overflow:visible}#{$motion4Id} *{box-sizing:border-box}#{$motion4Id} .cosmic-motion4-copywrap{position:relative;z-index:4;display:flex;align-items:center;min-height:86svh;max-width:80rem;margin:auto;padding:6rem 3.5rem}#{$motion4Id} .cosmic-motion4-copy{max-width:46rem}#{$motion4Id} .cosmic-motion4-copy>p{font-size:.75rem;font-weight:800;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.68)}#{$motion4Id} .cosmic-motion4-copy h1{margin:1.4rem 0 0;font-size:clamp(3rem,7vw,6.7rem);line-height:.94;letter-spacing:-.05em}#{$motion4Id} .cosmic-motion4-body{max-width:42rem;margin-top:1.5rem;font-size:1.06rem;line-height:1.8;color:rgba(255,255,255,.74)}#{$motion4Id} .cosmic-motion4-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}#{$motion4Id} .cosmic-motion4-actions a{padding:.85rem 1.35rem;border-radius:999px;background:#fff;color:#0f172a;font-size:.9rem;font-weight:800;text-decoration:none}#{$motion4Id} .cosmic-motion4-actions a.secondary{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#fff;backdrop-filter:blur(12px)}#{$motion4Id} .cosmic-motion4-grid{position:relative;z-index:3;display:grid;grid-template-columns:.86fr 1.14fr;align-items:center;gap:4rem;min-height:86svh;max-width:80rem;margin:auto;padding:6rem 3.5rem}#{$motion4Id} .cosmic-motion4-mask{position:absolute;inset:0;animation:cosmicMotion4Mask 1.35s cubic-bezier(.22,1,.36,1) both}#{$motion4Id} .cosmic-motion4-mask img{width:100%;height:100%;object-fit:cover}#{$motion4Id} .cosmic-motion4-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,6,23,.82),rgba(2,6,23,.24),rgba(2,6,23,.12));z-index:2}@keyframes cosmicMotion4Mask{0%{clip-path:inset(16% 28% round 36px);transform:scale(1.08)}100%{clip-path:inset(0 round 0);transform:scale(1)}}
+#{$motion4Id}{position:relative;isolation:isolate;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));overflow:hidden;background:#020617;color:#fff}#{$motion4Id}.cosmic-motion4-tall{min-height:110svh;overflow:visible}#{$motion4Id} *{box-sizing:border-box}#{$motion4Id} .cosmic-motion4-copywrap{position:relative;z-index:4;display:flex;align-items:center;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));max-width:80rem;margin:auto;padding:0 3.5rem}#{$motion4Id} .cosmic-motion4-copy{max-width:46rem}#{$motion4Id} .cosmic-motion4-copy>p{font-size:.75rem;font-weight:800;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.68)}#{$motion4Id} .cosmic-motion4-copy h1{margin:1.4rem 0 0;font-size:clamp(3rem,7vw,6.7rem);line-height:.94;letter-spacing:-.05em}#{$motion4Id} .cosmic-motion4-body{max-width:42rem;margin-top:1.5rem;font-size:1.06rem;line-height:1.8;color:rgba(255,255,255,.74)}#{$motion4Id} .cosmic-motion4-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}#{$motion4Id} .cosmic-motion4-actions a{padding:.85rem 1.35rem;border-radius:999px;background:#fff;color:#0f172a;font-size:.9rem;font-weight:800;text-decoration:none}#{$motion4Id} .cosmic-motion4-actions a.secondary{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#fff;backdrop-filter:blur(12px)}#{$motion4Id} .cosmic-motion4-grid{position:relative;z-index:3;display:grid;grid-template-columns:.86fr 1.14fr;align-items:center;gap:4rem;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));max-width:80rem;margin:auto;padding:0 3.5rem}#{$motion4Id} .cosmic-motion4-mask{position:absolute;inset:0;animation:cosmicMotion4Mask 1.35s cubic-bezier(.22,1,.36,1) both}#{$motion4Id} .cosmic-motion4-mask img{width:100%;height:100%;object-fit:cover}#{$motion4Id} .cosmic-motion4-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,6,23,.82),rgba(2,6,23,.24),rgba(2,6,23,.12));z-index:2}@keyframes cosmicMotion4Mask{0%{clip-path:inset(16% 28% round 36px);transform:scale(1.08)}100%{clip-path:inset(0 round 0);transform:scale(1)}}
 #{$motion4Id} .cosmic-motion4-stack{position:relative;height:34rem}#{$motion4Id} .cosmic-motion4-stack article{position:absolute;left:8%;right:8%;top:50%;overflow:hidden;padding:.45rem;border:1px solid rgba(255,255,255,.15);border-radius:2rem;background:rgba(255,255,255,.08);box-shadow:0 2rem 5rem rgba(0,0,0,.35);transition:transform .7s ease,opacity .7s ease}#{$motion4Id} .cosmic-motion4-stack article img{display:block;width:100%;aspect-ratio:16/11;object-fit:cover;border-radius:1.6rem}
 #{$motion4Id} .cosmic-motion4-carousel{position:relative;height:30rem;perspective:1200px}#{$motion4Id} .cosmic-motion4-carousel button{position:absolute;left:50%;top:50%;width:70%;padding:.45rem;border:1px solid rgba(255,255,255,.15);border-radius:1.8rem;background:#0f172a;box-shadow:0 2rem 5rem rgba(0,0,0,.4);transition:transform .7s ease,opacity .7s ease;cursor:pointer}#{$motion4Id} .cosmic-motion4-carousel img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:1.45rem}
 #{$motion4Id} .cosmic-motion4-beforeafter{position:relative;aspect-ratio:4/3;overflow:hidden;border:1px solid rgba(255,255,255,.15);border-radius:2rem;box-shadow:0 2rem 5rem rgba(0,0,0,.4);touch-action:none;user-select:none}#{$motion4Id} .cosmic-motion4-beforeafter>img,#{$motion4Id} .cosmic-motion4-beforeafter .after img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}#{$motion4Id} .cosmic-motion4-beforeafter .after{position:absolute;inset-block:0;left:0;overflow:hidden}#{$motion4Id} .cosmic-motion4-beforeafter .after img{max-width:none}#{$motion4Id} .cosmic-motion4-beforeafter .divider{position:absolute;inset-block:0;width:1px;background:#fff}#{$motion4Id} .cosmic-motion4-beforeafter .divider span{position:absolute;left:50%;top:50%;display:grid;width:3rem;height:3rem;place-items:center;transform:translate(-50%,-50%);border:1px solid rgba(255,255,255,.4);border-radius:50%;background:rgba(2,6,23,.82)}#{$motion4Id} .cosmic-motion4-beforeafter .label{position:absolute;bottom:1rem;padding:.35rem .65rem;border-radius:999px;background:rgba(2,6,23,.72);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em}#{$motion4Id} .before-label{left:1rem}#{$motion4Id} .after-label{right:1rem;background:rgba(255,255,255,.9)!important;color:#0f172a}
-#{$motion4Id} .cosmic-motion4-sticky{position:sticky;top:0;min-height:86svh}#{$motion4Id} .cosmic-motion4-morph{overflow:hidden;border:1px solid rgba(255,255,255,.15);border-radius:2.25rem;box-shadow:0 2rem 5rem rgba(0,0,0,.4);transform:scale(.78);transform-origin:center;will-change:transform,border-radius}#{$motion4Id} .cosmic-motion4-morph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
+#{$motion4Id} .cosmic-motion4-sticky{position:sticky;top:0;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$motion4Id} .cosmic-motion4-morph{overflow:hidden;border:1px solid rgba(255,255,255,.15);border-radius:2.25rem;box-shadow:0 2rem 5rem rgba(0,0,0,.4);transform:scale(.78);transform-origin:center;will-change:transform,border-radius}#{$motion4Id} .cosmic-motion4-morph img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover}
 #{$motion4Id} .cosmic-motion4-orb{position:absolute;border:1px solid rgba(255,255,255,.16);border-radius:50%;background:rgba(255,255,255,.08);backdrop-filter:blur(24px);box-shadow:inset 0 0 4rem rgba(255,255,255,.1),0 2rem 5rem var(--hero-glow-soft)}#{$motion4Id} .orb-a{right:9%;top:14%;width:16rem;height:16rem;animation:cosmicMotion4OrbA 8s ease-in-out infinite}#{$motion4Id} .orb-b{right:30%;bottom:8%;width:10rem;height:10rem;animation:cosmicMotion4OrbB 7s ease-in-out infinite}#{$motion4Id} .orb-c{left:55%;top:42%;width:6rem;height:6rem;animation:cosmicMotion4OrbA 6s ease-in-out -1.5s infinite}#{$motion4Id}[data-type='hero_glass_orb_premium']{background:radial-gradient(circle at 30% 20%,var(--hero-glow-soft),transparent 30%),radial-gradient(circle at 80% 70%,var(--hero-glow-strong),transparent 34%),#020617}@keyframes cosmicMotion4OrbA{50%{transform:translate3d(30px,-28px,0) scale(1.08)}}@keyframes cosmicMotion4OrbB{50%{transform:translate3d(-26px,24px,0) scale(.94)}}
 #{$motion4Id} .cosmic-motion4-particles{position:absolute;inset:0;width:100%;height:100%;opacity:.82}#{$motion4Id}[data-type='hero_particle_constellation_premium']{background:radial-gradient(circle at 70% 25%,var(--hero-glow-soft),transparent 35%),#020617}
 #{$motion4Id}.cosmic-motion4-light{background:#fff!important;color:#0f172a}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-copy>p,#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-body{color:#475569}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-actions a{background:{$primaryBgHex};color:#fff}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-actions a.secondary{background:rgba(255,255,255,.82);color:#0f172a;border-color:#cbd5e1}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-shade{background:linear-gradient(90deg,rgba(255,255,255,.95),rgba(255,255,255,.86),rgba(255,255,255,.72))}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-orb{opacity:.32}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-particles{opacity:.18}
-@media(max-width:900px){#{$motion4Id} .cosmic-motion4-grid{grid-template-columns:1fr;gap:2.5rem;padding:5rem 1.5rem}#{$motion4Id} .cosmic-motion4-copywrap{padding:5rem 1.5rem}#{$motion4Id} .cosmic-motion4-stack{height:25rem}#{$motion4Id} .cosmic-motion4-carousel{height:24rem}}@media(prefers-reduced-motion:reduce){#{$motion4Id} .cosmic-motion4-mask,#{$motion4Id} .cosmic-motion4-orb{animation:none!important}#{$motion4Id} .cosmic-motion4-mask{clip-path:none!important;transform:none!important}}
+@media(max-width:900px){#{$motion4Id} .cosmic-motion4-grid{grid-template-columns:1fr;gap:2.5rem;padding:0 1.5rem}#{$motion4Id} .cosmic-motion4-copywrap{padding:0 1.5rem}#{$motion4Id} .cosmic-motion4-stack{height:25rem}#{$motion4Id} .cosmic-motion4-carousel{height:24rem}}@media(prefers-reduced-motion:reduce){#{$motion4Id} .cosmic-motion4-mask,#{$motion4Id} .cosmic-motion4-orb{animation:none!important}#{$motion4Id} .cosmic-motion4-mask{clip-path:none!important;transform:none!important}}
 </style>";
                     if ($motion4Type === 'hero_stacked_cards_premium') {
                         $html .= "<script>(function(){const r=document.getElementById(" . json_encode($motion4Id) . ");if(!r)return;const s=r.querySelector('.cosmic-motion4-stack'),cards=[...s.children];let a=0;const paint=()=>cards.forEach((c,i)=>{let d=(i-a+cards.length)%cards.length;c.style.transform='translateY(calc(-50% + '+(d*26)+'px)) translateX('+(d*18)+'px) scale('+(1-d*.055)+')';c.style.opacity=1-d*.22;c.style.zIndex=10-d});paint();if(!matchMedia('(prefers-reduced-motion: reduce)').matches){let id=0;const stop=()=>{if(id){clearInterval(id);id=0}},start=()=>{if(!id)id=setInterval(()=>{a=(a+1)%cards.length;paint()},3200)};new IntersectionObserver(([e])=>e.isIntersecting?start():stop(),{rootMargin:'120px'}).observe(r)}})();</script>";
@@ -5054,9 +5087,9 @@ HTML;
                     }
 
                     $html .= "<style>
-#{$motion3Id}.cosmic-motion3-hero{position:relative;isolation:isolate;overflow:hidden;min-height:86svh;background:#020617;color:#fff}#{$motion3Id} .cosmic-motion3-copy-wrap{position:relative;z-index:5;display:flex;align-items:center;min-height:86svh;width:100%;max-width:80rem;margin:0 auto;padding:6rem 3rem}#{$motion3Id} .cosmic-motion3-copy{max-width:48rem}#{$motion3Id} .cosmic-motion3-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$motion3Id} h1{margin-top:1.5rem;font-size:clamp(3rem,7vw,5.4rem);line-height:.95;letter-spacing:-.045em;font-weight:700}#{$motion3Id} .cosmic-motion3-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.75)}#{$motion3Id} .cosmic-motion3-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$motion3Id} .cosmic-motion3-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$motion3Id} .cosmic-motion3-primary{background:#fff;color:#0f172a}#{$motion3Id} .cosmic-motion3-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff}#{$motion3Id} .cosmic-motion3-bg{position:absolute;inset:0}#{$motion3Id} .cosmic-motion3-bg img{width:100%;height:100%;object-fit:cover}#{$motion3Id} .cosmic-motion3-overlay{position:absolute;inset:0;z-index:2;background:#020617}
+#{$motion3Id}.cosmic-motion3-hero{position:relative;isolation:isolate;overflow:hidden;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));background:#020617;color:#fff}#{$motion3Id} .cosmic-motion3-copy-wrap{position:relative;z-index:5;display:flex;align-items:center;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));width:100%;max-width:80rem;margin:0 auto;padding:0 3rem}#{$motion3Id} .cosmic-motion3-copy{max-width:48rem}#{$motion3Id} .cosmic-motion3-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$motion3Id} h1{margin-top:1.5rem;font-size:clamp(3rem,7vw,5.4rem);line-height:.95;letter-spacing:-.045em;font-weight:700}#{$motion3Id} .cosmic-motion3-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.75)}#{$motion3Id} .cosmic-motion3-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$motion3Id} .cosmic-motion3-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$motion3Id} .cosmic-motion3-primary{background:#fff;color:#0f172a}#{$motion3Id} .cosmic-motion3-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff}#{$motion3Id} .cosmic-motion3-bg{position:absolute;inset:0}#{$motion3Id} .cosmic-motion3-bg img{width:100%;height:100%;object-fit:cover}#{$motion3Id} .cosmic-motion3-overlay{position:absolute;inset:0;z-index:2;background:#020617}
 #{$motion3Id}.cosmic-motion3-spotlight{background:radial-gradient(circle at 20% 20%,var(--hero-glow-soft),transparent 32%),radial-gradient(circle at 85% 70%,var(--hero-glow-strong),transparent 28%),#020617}#{$motion3Id} .cosmic-motion3-glow{position:absolute;width:22rem;height:22rem;border-radius:999px;background:var(--hero-glow-soft);filter:blur(60px);transform:translate(-50%,-50%);pointer-events:none}
-#{$motion3Id} .cosmic-motion3-gridwrap{position:relative;z-index:5;display:grid;grid-template-columns:1fr .9fr;gap:4rem;align-items:center;min-height:86svh;max-width:80rem;margin:0 auto;padding:6rem 3rem}#{$motion3Id} .cosmic-motion3-gridwrap .cosmic-motion3-copy-wrap{padding:0;min-height:auto}.cosmic-motion3-cards{position:relative;height:33rem}.cosmic-motion3-cards article{position:absolute;width:72%;padding:.75rem;border:1px solid rgba(255,255,255,.15);border-radius:1.75rem;background:rgba(255,255,255,.1);backdrop-filter:blur(16px);box-shadow:0 30px 80px rgba(0,0,0,.35);animation:cosmicMotion3Float 7s ease-in-out infinite}.cosmic-motion3-cards article:nth-child(2){left:11%;top:5rem;animation-duration:8.4s}.cosmic-motion3-cards article:nth-child(3){left:22%;top:10rem;animation-duration:9.8s}.cosmic-motion3-cards img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:1.2rem}.cosmic-motion3-cards i,.cosmic-motion3-cards b{display:block;height:.5rem;border-radius:999px;background:rgba(255,255,255,.28);margin:1rem 1rem 0}.cosmic-motion3-cards i{width:6rem}.cosmic-motion3-cards b{width:10rem;background:rgba(255,255,255,.12);margin-bottom:.8rem}@keyframes cosmicMotion3Float{50%{transform:translateY(-18px) rotate(2deg)}}
+#{$motion3Id} .cosmic-motion3-gridwrap{position:relative;z-index:5;display:grid;grid-template-columns:1fr .9fr;gap:4rem;align-items:center;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));max-width:80rem;margin:0 auto;padding:0 3rem}#{$motion3Id} .cosmic-motion3-gridwrap .cosmic-motion3-copy-wrap{padding:0;min-height:auto}.cosmic-motion3-cards{position:relative;height:33rem}.cosmic-motion3-cards article{position:absolute;width:72%;padding:.75rem;border:1px solid rgba(255,255,255,.15);border-radius:1.75rem;background:rgba(255,255,255,.1);backdrop-filter:blur(16px);box-shadow:0 30px 80px rgba(0,0,0,.35);animation:cosmicMotion3Float 7s ease-in-out infinite}.cosmic-motion3-cards article:nth-child(2){left:11%;top:5rem;animation-duration:8.4s}.cosmic-motion3-cards article:nth-child(3){left:22%;top:10rem;animation-duration:9.8s}.cosmic-motion3-cards img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:1.2rem}.cosmic-motion3-cards i,.cosmic-motion3-cards b{display:block;height:.5rem;border-radius:999px;background:rgba(255,255,255,.28);margin:1rem 1rem 0}.cosmic-motion3-cards i{width:6rem}.cosmic-motion3-cards b{width:10rem;background:rgba(255,255,255,.12);margin-bottom:.8rem}@keyframes cosmicMotion3Float{50%{transform:translateY(-18px) rotate(2deg)}}
 #{$motion3Id} .cosmic-motion3-product{perspective:1200px}#{$motion3Id} .cosmic-motion3-product-card{overflow:hidden;padding:.75rem;border:1px solid rgba(255,255,255,.15);border-radius:2rem;background:rgba(255,255,255,.09);box-shadow:0 34px 90px rgba(0,0,0,.4);transition:transform .2s ease;will-change:transform}#{$motion3Id} .cosmic-motion3-product-card>img{display:block;width:100%;aspect-ratio:16/10;object-fit:cover;border-radius:1.5rem}#{$motion3Id} .cosmic-motion3-metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:.75rem;padding:1rem}#{$motion3Id} .cosmic-motion3-metrics span{padding:1rem;border-radius:1rem;background:rgba(255,255,255,.08)}#{$motion3Id} .cosmic-motion3-metrics b,#{$motion3Id} .cosmic-motion3-metrics small{display:block}#{$motion3Id} .cosmic-motion3-metrics small{margin-top:.25rem;color:rgba(255,255,255,.5)}
 #{$motion3Id}.cosmic-motion3-marquee .cosmic-motion3-marquee-bg{position:absolute;inset:0;display:flex;flex-direction:column;justify-content:center;gap:2rem;opacity:.09;pointer-events:none}#{$motion3Id} .cosmic-motion3-marquee-bg>div{width:max-content;white-space:nowrap;font-size:clamp(5rem,14vw,13rem);line-height:.8;font-weight:900;letter-spacing:-.06em;animation:cosmicMotion3Marquee 26s linear infinite}#{$motion3Id} .cosmic-motion3-marquee-bg>div:nth-child(2){animation-direction:reverse;animation-duration:31s}@keyframes cosmicMotion3Marquee{to{transform:translateX(-50%)}}
 #{$motion3Id}.cosmic-motion3-dynamic-hero{background:radial-gradient(circle at 80% 20%,var(--hero-glow-soft),transparent 34%),#020617}#{$motion3Id} .cosmic-motion3-dynamic{color:var(--hero-glow)}#{$motion3Id} .cosmic-motion3-dynamic[data-effect='typewriter']{color:var(--hero-glow)}#{$motion3Id} .cosmic-motion3-dynamic[data-effect='typewriter']::after{content:'';display:inline-block;width:3px;height:.9em;margin-left:.12em;vertical-align:-.05em;background:var(--hero-glow);animation:cosmicMotion3Blink .8s steps(1) infinite}@keyframes cosmicMotion3Blink{50%{opacity:0}}
@@ -5126,25 +5159,26 @@ HTML;
                         $media = "<div class='cosmic-motion2-video'><video autoplay muted loop playsinline preload='metadata' poster='{$poster}'><source src='{$video}'></video><div class='cosmic-motion2-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion2-media-gradient'></div></div>";
                         $html .= "<section id='{$motionId}' class='cosmic-motion2-hero{$splitClass}{$stateClass}'>{$media}<div class='cosmic-motion2-copy-wrap'>{$copy}</div></section>";
                     } elseif ($motionType === 'hero_pinned_story_premium') {
-                        $html .= "<section id='{$motionId}' class='cosmic-motion2-pinned{$stateClass}' data-motion-strength='{$motionStrength}'><div class='cosmic-motion2-sticky'><div class='cosmic-motion2-story-media is-active' data-story='0'><img src='{$image1}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async'></div><div class='cosmic-motion2-story-media' data-story='1'><img src='{$image2}' alt='' width='1920' height='1080' loading='lazy' decoding='async'></div><div class='cosmic-motion2-story-media' data-story='2'><img src='{$image3}' alt='' width='1920' height='1080' loading='lazy' decoding='async'></div><div class='cosmic-motion2-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion2-media-gradient'></div><div class='cosmic-motion2-copy-wrap'>{$copy}</div><div class='cosmic-motion2-dots'><span class='is-active'></span><span></span><span></span></div></div></section>";
+                        $html .= "<section id='{$motionId}' class='cosmic-hero-media-edge cosmic-motion2-pinned{$stateClass}' data-motion-strength='{$motionStrength}'><div class='cosmic-motion2-sticky'><div class='cosmic-motion2-story-media is-active' data-story='0'><img src='{$image1}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async'></div><div class='cosmic-motion2-story-media' data-story='1'><img src='{$image2}' alt='' width='1920' height='1080' loading='lazy' decoding='async'></div><div class='cosmic-motion2-story-media' data-story='2'><img src='{$image3}' alt='' width='1920' height='1080' loading='lazy' decoding='async'></div><div class='cosmic-motion2-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion2-media-gradient'></div><div class='cosmic-motion2-copy-wrap'>{$copy}</div><div class='cosmic-motion2-dots'><span class='is-active'></span><span></span><span></span></div></div></section>";
                     } else {
                         $modeClass = $motionType === 'hero_reveal_parallax_premium' ? ' cosmic-motion2-reveal' : ' cosmic-motion2-zoom';
-                        $html .= "<section id='{$motionId}' class='cosmic-motion2-hero{$modeClass}{$stateClass}' data-motion-strength='{$motionStrength}'><div class='cosmic-motion2-scroll-media'><img src='{$image1}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async'></div><div class='cosmic-motion2-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion2-media-gradient'></div><div class='cosmic-motion2-copy-wrap'>{$copy}</div></section>";
+                        $html .= "<section id='{$motionId}' class='cosmic-hero-media-edge cosmic-motion2-hero{$modeClass}{$stateClass}' data-motion-strength='{$motionStrength}'><div class='cosmic-motion2-scroll-media'><img src='{$image1}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async'></div><div class='cosmic-motion2-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion2-media-gradient'></div><div class='cosmic-motion2-copy-wrap'>{$copy}</div></section>";
                     }
 
                     $html .= "<style>
-#{$motionId}.cosmic-motion2-hero{position:relative;isolation:isolate;overflow:hidden;min-height:86svh;background:#020617;color:#fff}#{$motionId} .cosmic-motion2-copy-wrap{position:relative;z-index:4;display:flex;align-items:center;min-height:86svh;width:100%;max-width:80rem;margin:0 auto;padding:6rem 3rem}#{$motionId} .cosmic-motion2-copy{max-width:48rem}#{$motionId} .cosmic-motion2-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$motionId} h1{margin-top:1.5rem;font-size:clamp(3rem,7vw,5.4rem);line-height:.95;letter-spacing:-.045em;font-weight:700}#{$motionId} .cosmic-motion2-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.75)}#{$motionId} .cosmic-motion2-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$motionId} .cosmic-motion2-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$motionId} .cosmic-motion2-primary{background:#fff;color:#0f172a}#{$motionId} .cosmic-motion2-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(10px)}#{$motionId} .cosmic-motion2-overlay{position:absolute;inset:0;background:#020617;z-index:2}#{$motionId} .cosmic-motion2-media-gradient{position:absolute;inset:0;z-index:3;background:linear-gradient(90deg,rgba(2,6,23,.72),rgba(2,6,23,.18),rgba(2,6,23,.04))}
+#{$motionId}.cosmic-motion2-hero{position:relative;isolation:isolate;overflow:hidden;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));background:#020617;color:#fff}#{$motionId} .cosmic-motion2-copy-wrap{position:relative;z-index:4;display:flex;align-items:center;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));width:100%;max-width:80rem;margin:0 auto;padding:0 3rem}#{$motionId} .cosmic-motion2-copy{max-width:48rem}#{$motionId} .cosmic-motion2-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$motionId} h1{margin-top:1.5rem;font-size:clamp(2.25rem,4.6vw,4.5rem);line-height:.98;letter-spacing:-.045em;font-weight:700}#{$motionId} .cosmic-motion2-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.75)}#{$motionId} .cosmic-motion2-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$motionId} .cosmic-motion2-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$motionId} .cosmic-motion2-primary{background:#fff;color:#0f172a}#{$motionId} .cosmic-motion2-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(10px)}#{$motionId} .cosmic-motion2-overlay{position:absolute;inset:0;background:#020617;z-index:2}#{$motionId} .cosmic-motion2-media-gradient{position:absolute;inset:0;z-index:3;background:linear-gradient(90deg,rgba(2,6,23,.72),rgba(2,6,23,.18),rgba(2,6,23,.04))}
 #{$motionId} .cosmic-motion2-scroll-media{position:absolute;inset:0;overflow:hidden;will-change:transform;transform:scale(1.04)}#{$motionId} .cosmic-motion2-scroll-media img{width:100%;height:100%;object-fit:cover}#{$motionId}.cosmic-motion2-reveal .cosmic-motion2-scroll-media{clip-path:inset(8% 4% 8% 4% round 28px)}
 #{$motionId} .cosmic-motion2-video{position:absolute;inset:0;overflow:hidden;background:#0f172a}#{$motionId} .cosmic-motion2-video video{width:100%;height:100%;object-fit:cover}#{$motionId}.cosmic-motion2-video-split{display:grid;grid-template-columns:.9fr 1.1fr;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-copy-wrap{grid-column:1;grid-row:1;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-video{position:relative;grid-column:2;grid-row:1;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-media-gradient{background:linear-gradient(90deg,rgba(2,6,23,.25),rgba(2,6,23,.02))}
-#{$motionId}.cosmic-motion2-pinned{position:relative;height:165svh;background:#020617;color:#fff}#{$motionId} .cosmic-motion2-sticky{position:sticky;top:0;height:100svh;overflow:hidden;isolation:isolate}#{$motionId} .cosmic-motion2-story-media{position:absolute;inset:0;opacity:0;transform:scale(1.04);transition:opacity .7s ease,transform .7s ease}#{$motionId} .cosmic-motion2-story-media.is-active{opacity:1;transform:scale(1)}#{$motionId} .cosmic-motion2-story-media img{width:100%;height:100%;object-fit:cover}#{$motionId} .cosmic-motion2-dots{position:absolute;right:2rem;bottom:2rem;z-index:5;display:flex;gap:.5rem}#{$motionId} .cosmic-motion2-dots span{display:block;width:20px;height:4px;border-radius:999px;background:rgba(255,255,255,.3);transition:.35s ease}#{$motionId} .cosmic-motion2-dots span.is-active{width:48px;background:#fff}
+#{$motionId}.cosmic-motion2-pinned{position:relative;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));background:#020617;color:#fff}#{$motionId} .cosmic-motion2-sticky{position:relative;height:calc(100svh - var(--cosmic-header-flow-offset,0px));overflow:hidden;isolation:isolate}#{$motionId} .cosmic-motion2-story-media{position:absolute;inset:0;opacity:0;transform:scale(1.04);transition:opacity .7s ease,transform .7s ease}#{$motionId} .cosmic-motion2-story-media.is-active{opacity:1;transform:scale(1)}#{$motionId} .cosmic-motion2-story-media img{width:100%;height:100%;object-fit:cover}#{$motionId} .cosmic-motion2-dots{position:absolute;right:2rem;bottom:2rem;z-index:5;display:flex;gap:.5rem}#{$motionId} .cosmic-motion2-dots span{display:block;width:20px;height:4px;border-radius:999px;background:rgba(255,255,255,.3);transition:.35s ease}#{$motionId} .cosmic-motion2-dots span.is-active{width:48px;background:#fff}
 @keyframes cosmicAurora{$motionId}{0%,100%{transform:translate3d(-8%,-5%,0) rotate(-8deg) scale(1)}50%{transform:translate3d(10%,8%,0) rotate(8deg) scale(1.12)}}@keyframes cosmicMesh{$motionId}{0%,100%{transform:translate3d(-4%,-3%,0) scale(1)}33%{transform:translate3d(7%,-5%,0) scale(1.08)}66%{transform:translate3d(2%,8%,0) scale(1.13)}}#{$motionId}.cosmic-motion2-gradient{background:linear-gradient(var(--cg-angle),var(--cg-from),var(--cg-via),var(--cg-to))}#{$motionId} .cosmic-motion2-shade{position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(2,6,23,.06),rgba(2,6,23,.68))}#{$motionId} .cosmic-motion2-aurora{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform}#{$motionId} .cosmic-motion2-aurora-a{left:-15%;top:-35%;width:75%;height:90%;background:var(--cg-glow-strong);animation:cosmicAurora{$motionId} 14s ease-in-out infinite}#{$motionId} .cosmic-motion2-aurora-b{right:-15%;bottom:-30%;width:70%;height:85%;background:color-mix(in srgb,var(--cg-via) 72%,transparent);animation:cosmicAurora{$motionId} 18s ease-in-out infinite reverse}#{$motionId} .cosmic-motion2-aurora-c{left:40%;top:25%;width:45%;height:45%;background:var(--cg-glow-soft);filter:blur(100px)}#{$motionId} .cosmic-motion2-mesh{position:absolute;inset:-25%;opacity:.88;filter:blur(58px);background:radial-gradient(circle at 20% 25%,var(--cg-glow-strong),transparent 28%),radial-gradient(circle at 75% 20%,var(--cg-glow-soft),transparent 31%),radial-gradient(circle at 65% 78%,color-mix(in srgb,var(--cg-via) 75%,transparent),transparent 30%),radial-gradient(circle at 25% 80%,color-mix(in srgb,var(--cg-to) 72%,transparent),transparent 28%);animation:cosmicMesh{$motionId} 16s ease-in-out infinite}#{$motionId} .cosmic-motion2-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:56px 56px}
 #{$motionId}.cosmic-motion2-light,#{$motionId}.cosmic-motion2-pinned.cosmic-motion2-light{background:#fff;color:#0f172a}#{$motionId}.cosmic-motion2-light .cosmic-motion2-eyebrow{color:#64748b}#{$motionId}.cosmic-motion2-light .cosmic-motion2-body{color:#475569}#{$motionId}.cosmic-motion2-light .cosmic-motion2-primary{background:var(--cosmic-primary-bg,#0f766e);color:#fff}#{$motionId}.cosmic-motion2-light .cosmic-motion2-secondary{border-color:#cbd5e1;background:rgba(255,255,255,.72);color:#0f172a}#{$motionId}.cosmic-motion2-light .cosmic-motion2-media-gradient{background:linear-gradient(90deg,rgba(255,255,255,.78),rgba(255,255,255,.34),rgba(255,255,255,.12))}#{$motionId}.cosmic-motion2-light.cosmic-motion2-gradient{background:#fff!important}#{$motionId}.cosmic-motion2-light .cosmic-motion2-aurora,#{$motionId}.cosmic-motion2-light .cosmic-motion2-mesh,#{$motionId}.cosmic-motion2-light .cosmic-motion2-grid{opacity:.10!important}#{$motionId}.cosmic-motion2-light .cosmic-motion2-shade{background:rgba(255,255,255,.92)}#{$motionId}.cosmic-motion2-light .cosmic-motion2-dots span{background:rgba(100,116,139,.35)}#{$motionId}.cosmic-motion2-light .cosmic-motion2-dots span.is-active{background:#334155}
-@media(max-width:900px){#{$motionId} .cosmic-motion2-copy-wrap{padding:5rem 1.5rem}#{$motionId}.cosmic-motion2-video-split{display:block;min-height:86svh}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-video{position:absolute;inset:0;min-height:0}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-copy-wrap{min-height:86svh}#{$motionId}.cosmic-motion2-pinned{height:145svh}}
+@media(max-width:900px){#{$motionId} .cosmic-motion2-copy-wrap{padding:0 1.5rem}#{$motionId}.cosmic-motion2-video-split{display:block;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-video{position:absolute;inset:0;min-height:0}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-copy-wrap{min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$motionId}.cosmic-motion2-pinned{min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$motionId} .cosmic-motion2-sticky{height:calc(100svh - var(--cosmic-header-flow-offset,0px))}}
 @media(prefers-reduced-motion:reduce){#{$motionId} .cosmic-motion2-scroll-media,#{$motionId} .cosmic-motion2-story-media,#{$motionId} .cosmic-motion2-aurora,#{$motionId} .cosmic-motion2-mesh{animation:none!important;transition:none!important;transform:none!important}#{$motionId}.cosmic-motion2-reveal .cosmic-motion2-scroll-media{clip-path:none!important}}
 </style>";
 
+                    if ($motionType === 'hero_pinned_story_premium') { $html .= "<script>(function(){const root=document.getElementById('{$motionId}');if(!root)return;const reduced=matchMedia('(prefers-reduced-motion: reduce)');let chapter=0,timer=null;function paint(){root.querySelectorAll('[data-story]').forEach((el,i)=>el.classList.toggle('is-active',i===chapter));root.querySelectorAll('.cosmic-motion2-dots span').forEach((el,i)=>el.classList.toggle('is-active',i===chapter));}const io=new IntersectionObserver(([e])=>{if(timer){clearInterval(timer);timer=null;}if(e&&e.isIntersecting&&!reduced.matches){timer=setInterval(()=>{chapter=(chapter+1)%3;paint();},4200);}},{threshold:.2});io.observe(root);paint();})();</script>"; }
                     if (in_array($motionType, ['hero_reveal_parallax_premium', 'hero_zoom_scroll_premium', 'hero_pinned_story_premium'], true)) {
-                        $html .= "<script>(function(){const root=document.getElementById('{$motionId}');if(!root)return;const reduced=matchMedia('(prefers-reduced-motion: reduce)');const type='{$motionType}';let raf=null;function update(){if(reduced.matches)return;const r=root.getBoundingClientRect(),vh=innerHeight||1;if(type==='hero_pinned_story_premium'){const span=Math.max(1,r.height-vh),p=Math.max(0,Math.min(1,-r.top/span)),chapter=Math.min(2,Math.floor(p*3));root.querySelectorAll('[data-story]').forEach((el,i)=>el.classList.toggle('is-active',i===chapter));root.querySelectorAll('.cosmic-motion2-dots span').forEach((el,i)=>el.classList.toggle('is-active',i===chapter));return;}if(r.bottom<0||r.top>vh)return;const p=Math.max(0,Math.min(1,(vh-r.top)/(vh+r.height))),media=root.querySelector('.cosmic-motion2-scroll-media');if(!media)return;if(raf)cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{if(type==='hero_reveal_parallax_premium'){const inset=Math.max(0,(1-p)*10);media.style.clipPath='inset('+inset+'% '+(inset*.55)+'% '+inset+'% '+(inset*.55)+'% round '+Math.max(0,(1-p)*32)+'px)';media.style.transform='translate3d(0,'+((.5-p)*{$motionStrength})+'px,0) scale('+(1.06-p*.035)+')';}else{media.style.transform='scale('+(1.02+p*({$motionStrength}/500))+') translate3d(0,'+((p-.5)*{$motionStrength}*.35)+'px,0)';}});}addEventListener('scroll',update,{passive:true});addEventListener('resize',update,{passive:true});update();})();</script>";
+                        $html .= "<script>(function(){const root=document.getElementById('{$motionId}');if(!root)return;const reduced=matchMedia('(prefers-reduced-motion: reduce)');const type='{$motionType}';let raf=null;function update(){if(reduced.matches)return;const r=root.getBoundingClientRect(),vh=innerHeight||1;if(type==='hero_pinned_story_premium'){return;}if(r.bottom<0||r.top>vh)return;const p=Math.max(0,Math.min(1,(vh-r.top)/(vh+r.height))),media=root.querySelector('.cosmic-motion2-scroll-media');if(!media)return;if(raf)cancelAnimationFrame(raf);raf=requestAnimationFrame(()=>{if(type==='hero_reveal_parallax_premium'){const inset=Math.max(0,(1-p)*10);media.style.clipPath='inset('+inset+'% '+(inset*.55)+'% '+inset+'% '+(inset*.55)+'% round '+Math.max(0,(1-p)*32)+'px)';media.style.transform='translate3d(0,'+((.5-p)*{$motionStrength})+'px,0) scale('+(1.06-p*.035)+')';}else{media.style.transform='scale('+(1.02+p*({$motionStrength}/500))+') translate3d(0,'+((p-.5)*{$motionStrength}*.35)+'px,0)';}});}addEventListener('scroll',update,{passive:true});addEventListener('resize',update,{passive:true});update();})();</script>";
                     }
                     break;
 
@@ -5201,7 +5235,7 @@ HTML;
                     }
                     $layoutClass = $isSplit ? ' cosmic-motion-split' : '';
                     $html .= "
-<section id='{$animatedId}' class='cosmic-motion-hero{$layoutClass}{$stateClass}' data-motion-type='{$animatedType}' data-interval='{$interval}'>
+<section id='{$animatedId}' class='cosmic-hero-media-edge cosmic-motion-hero{$layoutClass}{$stateClass}' data-motion-type='{$animatedType}' data-interval='{$interval}'>
   <div class='cosmic-motion-media-wrap'>{$mediaMarkup}<div class='cosmic-motion-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion-gradient'></div></div>
   <div class='cosmic-motion-copy-wrap'><div class='cosmic-motion-copy'>
     <p class='cosmic-motion-eyebrow'>{$eyebrow}</p>
@@ -5212,12 +5246,12 @@ HTML;
   </div></div>
 </section>
 <style>
-#{$animatedId}{position:relative;isolation:isolate;overflow:hidden;min-height:82svh;background:#020617;color:#fff;display:flex}#{$animatedId} .cosmic-motion-media-wrap{position:absolute;inset:0;overflow:hidden}#{$animatedId} .cosmic-motion-media{position:absolute;inset:0;opacity:0;transform:scale(1.025);transition:opacity 1s ease,transform 1s ease}#{$animatedId} .cosmic-motion-media.is-active{opacity:1;transform:scale(1)}#{$animatedId} .cosmic-motion-media img{width:100%;height:100%;object-fit:cover}#{$animatedId} .cosmic-motion-overlay{position:absolute;inset:0;background:#020617}#{$animatedId} .cosmic-motion-gradient{position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,6,23,.76),rgba(2,6,23,.22),rgba(2,6,23,.06))}#{$animatedId} .cosmic-motion-copy-wrap{position:relative;z-index:3;width:100%;max-width:80rem;margin:auto;display:flex;align-items:center;min-height:82svh;padding:6rem 3rem}#{$animatedId} .cosmic-motion-copy{max-width:48rem}#{$animatedId} .cosmic-motion-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$animatedId} h1{margin-top:1.5rem;font-size:clamp(3rem,7vw,5.4rem);line-height:.95;letter-spacing:-.045em;font-weight:700}#{$animatedId} .cosmic-motion-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.74)}#{$animatedId} .cosmic-motion-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$animatedId} .cosmic-motion-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$animatedId} .cosmic-motion-primary{background:#fff;color:#0f172a}#{$animatedId} .cosmic-motion-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(10px)}#{$animatedId} .cosmic-motion-progress{display:flex;align-items:center;gap:.5rem;margin-top:2.5rem}#{$animatedId} .cosmic-motion-dot{height:4px;width:20px;border-radius:999px;background:rgba(255,255,255,.3);transition:width .4s ease,background .4s ease}#{$animatedId} .cosmic-motion-dot.is-active{width:48px;background:#fff}
-#{$animatedId}.cosmic-motion-split{display:grid;grid-template-columns:.9fr 1.1fr;min-height:720px}#{$animatedId}.cosmic-motion-split .cosmic-motion-copy-wrap{grid-column:1;grid-row:1;min-height:720px;padding:5rem 3rem}#{$animatedId}.cosmic-motion-split .cosmic-motion-media-wrap{position:relative;grid-column:2;grid-row:1;min-height:720px}#{$animatedId}.cosmic-motion-split .cosmic-motion-gradient{background:linear-gradient(90deg,rgba(2,6,23,.45),rgba(2,6,23,.04))}
+#{$animatedId}{position:relative;isolation:isolate;overflow:hidden;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));background:#020617;color:#fff;display:flex}#{$animatedId} .cosmic-motion-media-wrap{position:absolute;inset:0;overflow:hidden}#{$animatedId} .cosmic-motion-media{position:absolute;inset:0;opacity:0;transform:scale(1.025);transition:opacity 1s ease,transform 1s ease}#{$animatedId} .cosmic-motion-media.is-active{opacity:1;transform:scale(1)}#{$animatedId} .cosmic-motion-media img{width:100%;height:100%;object-fit:cover}#{$animatedId} .cosmic-motion-overlay{position:absolute;inset:0;background:#020617}#{$animatedId} .cosmic-motion-gradient{position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,6,23,.76),rgba(2,6,23,.22),rgba(2,6,23,.06))}#{$animatedId} .cosmic-motion-copy-wrap{position:relative;z-index:3;width:100%;max-width:80rem;margin:auto;display:flex;align-items:center;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));padding:0 3rem}#{$animatedId} .cosmic-motion-copy{max-width:48rem}#{$animatedId} .cosmic-motion-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$animatedId} h1{margin-top:1.5rem;font-size:clamp(3rem,7vw,5.4rem);line-height:.95;letter-spacing:-.045em;font-weight:700}#{$animatedId} .cosmic-motion-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.74)}#{$animatedId} .cosmic-motion-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$animatedId} .cosmic-motion-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$animatedId} .cosmic-motion-primary{background:#fff;color:#0f172a}#{$animatedId} .cosmic-motion-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(10px)}#{$animatedId} .cosmic-motion-progress{display:flex;align-items:center;gap:.5rem;margin-top:2.5rem}#{$animatedId} .cosmic-motion-dot{height:4px;width:20px;border-radius:999px;background:rgba(255,255,255,.3);transition:width .4s ease,background .4s ease}#{$animatedId} .cosmic-motion-dot.is-active{width:48px;background:#fff}
+#{$animatedId}.cosmic-motion-split{display:grid;grid-template-columns:.9fr 1.1fr;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$animatedId}.cosmic-motion-split .cosmic-motion-copy-wrap{grid-column:1;grid-row:1;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));padding:0 3rem}#{$animatedId}.cosmic-motion-split .cosmic-motion-media-wrap{position:relative;grid-column:2;grid-row:1;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$animatedId}.cosmic-motion-split .cosmic-motion-gradient{background:linear-gradient(90deg,rgba(2,6,23,.45),rgba(2,6,23,.04))}
 #{$animatedId}.cosmic-motion-light{background:#fff;color:#0f172a}#{$animatedId}.cosmic-motion-light .cosmic-motion-eyebrow{color:#64748b}#{$animatedId}.cosmic-motion-light .cosmic-motion-body{color:#475569}#{$animatedId}.cosmic-motion-light .cosmic-motion-primary{background:var(--cosmic-primary-bg,#0f766e);color:#fff}#{$animatedId}.cosmic-motion-light .cosmic-motion-secondary{border-color:#cbd5e1;background:rgba(255,255,255,.72);color:#0f172a}#{$animatedId}.cosmic-motion-light .cosmic-motion-gradient{background:linear-gradient(90deg,rgba(255,255,255,.78),rgba(255,255,255,.34),rgba(255,255,255,.12))}#{$animatedId}.cosmic-motion-light .cosmic-motion-dot{background:rgba(100,116,139,.35)}#{$animatedId}.cosmic-motion-light .cosmic-motion-dot.is-active{background:#334155}
 #{$animatedId}[data-motion-type='hero_vertical_story_premium'] .cosmic-motion-media{opacity:0;transform:translateY(100%)}#{$animatedId}[data-motion-type='hero_vertical_story_premium'] .cosmic-motion-media.is-active{opacity:1;transform:translateY(0)}
 @keyframes cosmicKenBurns{$animatedId}{0%{transform:scale(1.04) translate(-.5%,-.3%)}50%{transform:scale(1.11) translate(.8%,.5%)}100%{transform:scale(1.16) translate(-.2%,.8%)}}#{$animatedId} .cosmic-motion-kenburns{opacity:1;animation:cosmicKenBurns{$animatedId} 18s ease-in-out infinite alternate;will-change:transform}
-@media(max-width:900px){#{$animatedId}.cosmic-motion-split{display:block;min-height:82svh}#{$animatedId}.cosmic-motion-split .cosmic-motion-media-wrap{position:absolute;inset:0;min-height:0}#{$animatedId}.cosmic-motion-split .cosmic-motion-copy-wrap{min-height:82svh;padding:5rem 1.5rem}#{$animatedId} .cosmic-motion-copy-wrap{padding:5rem 1.5rem}}
+@media(max-width:900px){#{$animatedId}.cosmic-motion-split{display:block;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$animatedId}.cosmic-motion-split .cosmic-motion-media-wrap{position:absolute;inset:0;min-height:0}#{$animatedId}.cosmic-motion-split .cosmic-motion-copy-wrap{min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));padding:0 1.5rem}#{$animatedId} .cosmic-motion-copy-wrap{padding:0 1.5rem}}
 @media(prefers-reduced-motion:reduce){#{$animatedId} .cosmic-motion-media,#{$animatedId} .cosmic-motion-kenburns{transition:none!important;animation:none!important;transform:none!important}}
 </style>";
                     if (count($images) > 1 || $isLayered) {

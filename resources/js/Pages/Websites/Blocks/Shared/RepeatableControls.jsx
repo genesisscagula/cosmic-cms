@@ -26,7 +26,7 @@ export function cloneFlatSlot(data, prefixes, count, max = 8) {
     return patch;
 }
 
-export function RepeatableRemoveButton({ onRemove, disabled = false, label = "Remove", overlay = false, placement = "card" }) {
+export function RepeatableRemoveButton({ onRemove, disabled = false, label = "Remove", overlay = false, placement = "card", hoverScope = "default" }) {
     if (overlay) {
         return (
             <button
@@ -35,7 +35,7 @@ export function RepeatableRemoveButton({ onRemove, disabled = false, label = "Re
                 disabled={disabled}
                 title={label}
                 aria-label={label}
-                className={`${placement === "row" ? "right-0 top-1/2 -translate-y-1/2" : "right-3 top-3"} absolute z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300/80 bg-white/90 text-slate-500 opacity-70 shadow-sm backdrop-blur-sm transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:pointer-events-none disabled:opacity-25 sm:opacity-0 sm:group-hover:opacity-100 sm:focus:opacity-100`}
+                className={`${placement === "row" ? "right-0 top-1/2 -translate-y-1/2" : "right-3 top-3"} absolute z-20 inline-flex h-8 w-8 items-center justify-center rounded-full border border-slate-300/80 bg-white/90 text-slate-500 opacity-70 shadow-sm backdrop-blur-sm transition hover:border-rose-300 hover:bg-rose-50 hover:text-rose-600 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-slate-300 disabled:pointer-events-none disabled:opacity-25 sm:opacity-0 ${hoverScope === "pricing-card" ? "sm:group-hover/pricing-card:opacity-100" : hoverScope === "pricing-feature" ? "sm:group-hover/pricing-feature:opacity-100" : "sm:group-hover:opacity-100"} sm:focus:opacity-100`}
             >
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" className="h-4 w-4" aria-hidden="true">
                     <path d="M3 6h18" />

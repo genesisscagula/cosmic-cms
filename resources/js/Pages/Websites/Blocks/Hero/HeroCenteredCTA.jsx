@@ -129,7 +129,7 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
 
                 <EditableText
                     value={data.heading}
-                    className={`block max-w-5xl text-5xl font-bold leading-[1.03] tracking-tight sm:text-6xl lg:text-7xl ${theme.text}`}
+                    className={`block max-w-5xl text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`}
                     onSave={(val) =>
                         onUpdate({
                             heading: val

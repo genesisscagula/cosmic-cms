@@ -42,13 +42,13 @@ export function HeroFloatingGlassBlock({ block, blockIndex, onUpdate, globalThem
     const primaryButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
 
     return (
-        <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg} transition-colors duration-500`}>
+        <section className={`relative overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg} transition-colors duration-500`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
             <div className="pointer-events-none absolute inset-0 opacity-70" style={{backgroundImage:"radial-gradient(circle at 15% 20%, rgba(255,255,255,.2), transparent 30%), radial-gradient(circle at 85% 80%, rgba(148,163,184,.18), transparent 34%)"}} />
             <div className="relative mx-auto max-w-7xl">
                 <div className="grid items-center gap-10 lg:grid-cols-[minmax(0,.9fr)_minmax(460px,1.1fr)] lg:gap-14">
                     <div className="relative z-20">
                         <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${theme.sub}`} onSave={(eyebrow)=>onUpdate({eyebrow})} />
-                        <EditableText value={data.heading} className={`mt-5 block max-w-3xl text-5xl font-semibold leading-[.98] tracking-[-.05em] sm:text-6xl lg:text-7xl ${theme.text}`} onSave={(heading)=>onUpdate({heading})} />
+                        <EditableText value={data.heading} className={`mt-5 block max-w-3xl text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`} onSave={(heading)=>onUpdate({heading})} />
                         <EditableText value={data.text} isTextArea className={`mt-6 block max-w-xl text-base leading-7 sm:text-lg sm:leading-8 ${theme.sub}`} onSave={(text)=>onUpdate({text})} />
                         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                             <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label,primary_url)=>onUpdate({primary_label,primary_url})}/>

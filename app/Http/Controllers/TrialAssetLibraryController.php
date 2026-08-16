@@ -24,20 +24,29 @@ class TrialAssetLibraryController extends Controller
         $allowed = $access->templateKeys($trial);
 
         $templates = collect(PageTemplateCatalog::all())
-            ->whereIn('key', $allowed)
-            ->sortBy(fn (array $template) => array_search($template['key'], $allowed, true))
-            ->map(fn (array $template) => [...$template,
-                'credits' => 0,
-                'personalize_credits' => PageTemplateCatalog::PERSONALIZE_CREDITS,
-                'owned' => true,
-                'purchased' => false,
-                'source' => 'trial_curated',
-                'template_type' => 'page',
-                'status' => 'active',
-                'saved' => false,
-                'favorited' => false,
-                'trial_curated' => true,
-            ])
+            ->sortBy(function (array $template, int $index) use ($allowed) {
+                $position = array_search($template['key'], $allowed, true);
+                return $position === false ? 10000 + $index : $position;
+            })
+            ->map(function (array $template) use ($allowed) {
+                $isUnlocked = in_array($template['key'], $allowed, true);
+
+                return [...$template,
+                    'credits' => $isUnlocked ? 0 : (int) ($template['credits'] ?? 0),
+                    'personalize_credits' => PageTemplateCatalog::PERSONALIZE_CREDITS,
+                    'owned' => $isUnlocked,
+                    'purchased' => false,
+                    'source' => $isUnlocked ? 'trial_curated' : 'trial_locked',
+                    'template_type' => 'page',
+                    'status' => 'active',
+                    'saved' => false,
+                    'favorited' => false,
+                    'trial_curated' => $isUnlocked,
+                    'trial_locked' => ! $isUnlocked,
+                    'can_preview' => true,
+                    'can_install' => $isUnlocked,
+                ];
+            })
             ->values();
 
         return response()->json([
@@ -74,19 +83,28 @@ class TrialAssetLibraryController extends Controller
         $allowed = $access->sparkKeys($trial);
 
         $sparks = collect(SparkCatalog::all())
-            ->whereIn('key', $allowed)
-            ->sortBy(fn (array $spark) => array_search($spark['key'], $allowed, true))
-            ->map(fn (array $spark) => [...$spark,
-                'credits' => 0,
-                'owned' => true,
-                'purchased' => false,
-                'favorited' => false,
-                'shared' => false,
-                'can_preview' => true,
-                'can_install' => true,
-                'trial_curated' => true,
-                'usage_state' => ['actionLabel' => 'Add to Page'],
-            ])
+            ->sortBy(function (array $spark, int $index) use ($allowed) {
+                $position = array_search($spark['key'], $allowed, true);
+                return $position === false ? 10000 + $index : $position;
+            })
+            ->map(function (array $spark) use ($allowed) {
+                $isUnlocked = in_array($spark['key'], $allowed, true);
+
+                return [...$spark,
+                    'credits' => $isUnlocked ? 0 : (int) ($spark['credits'] ?? 0),
+                    'owned' => $isUnlocked,
+                    'purchased' => false,
+                    'favorited' => false,
+                    'shared' => false,
+                    'can_preview' => true,
+                    'can_install' => $isUnlocked,
+                    'trial_curated' => $isUnlocked,
+                    'trial_locked' => ! $isUnlocked,
+                    'usage_state' => $isUnlocked
+                        ? ['actionLabel' => 'Add to Page']
+                        : ['action' => 'signup', 'actionLabel' => 'Sign up to unlock'],
+                ];
+            })
             ->values();
 
         return response()->json([

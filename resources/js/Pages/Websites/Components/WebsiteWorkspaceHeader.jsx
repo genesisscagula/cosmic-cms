@@ -1,7 +1,7 @@
 import { Link } from "@inertiajs/react";
 import CreditBalanceBadge from "../../../Components/CosmicCredits/CreditBalanceBadge";
 
-export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCount = 0, themeSummary, onNewPage, onPushLive, pushingLive, onOpenInquiries, onOpenProfile, onOpenSettings, creditBalance }) {
+export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCount = 0, themeSummary, onNewPage, onLiveAction, liveConnected = false, pushingLive, checkingLive = false, onOpenInquiries, onOpenProfile, onOpenSettings, creditBalance }) {
     return (
         <header className="flex flex-col gap-4 lg:grid lg:grid-cols-[minmax(260px,1fr)_auto_auto] lg:items-end">
             <div>
@@ -43,8 +43,8 @@ export default function WebsiteWorkspaceHeader({ website, pageCount, inquiryCoun
             <div className="flex flex-nowrap items-center gap-2 lg:justify-self-end">
                 <CreditBalanceBadge balance={creditBalance} className="h-10" />
                 <Link method="post" as="button" href={route("logout")} className="inline-flex h-10 items-center justify-center rounded-xl border border-white/10 px-3 text-sm font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">Log out</Link>
-                <button type="button" onClick={onPushLive} disabled={pushingLive} className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/20 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50">
-                    {pushingLive ? "Pushing live..." : "Push live update"}
+                <button type="button" onClick={onLiveAction} disabled={pushingLive || checkingLive} className="inline-flex h-10 items-center justify-center rounded-xl border border-emerald-400/30 bg-emerald-400/10 px-4 text-sm font-semibold text-emerald-100 transition hover:bg-emerald-400/20 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50">
+                    {checkingLive ? "Checking..." : pushingLive ? "Pushing live..." : liveConnected ? "Push to live" : "Connect to live"}
                 </button>
                 <button type="button" onClick={onNewPage} id="cosmic-new-page-button" className="cosmic-new-page-button inline-flex h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-white px-4 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400">
                     <span aria-hidden="true">+</span><span className="whitespace-nowrap">New Page</span>

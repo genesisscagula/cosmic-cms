@@ -85,7 +85,7 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
 
     return (
         <>
-            <section data-cosmic-media-banner="true" className={`relative isolate min-h-[84vh] cursor-pointer overflow-hidden ${theme.bg}`}>
+            <section data-cosmic-media-banner="true" className={`relative isolate cursor-pointer overflow-hidden ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                 <div className="absolute inset-0">
                     <img src={data.poster_image_url} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover sm:hidden" />
                     {embeddedVideoUrl ? (
@@ -110,14 +110,14 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
 
                 <button type="button" aria-label="Edit background video" onPointerDown={openVideoEditor} className="absolute inset-0 z-[5] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300" />
 
-                <div className="pointer-events-none relative z-10 mx-auto flex min-h-[84vh] max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12">
+                <div className="pointer-events-none relative z-10 mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14" style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                     <div className={`pointer-events-auto flex items-center justify-between border-b pb-5 ${mediaStyle.topBorder}`}>
                         <EditableText value={data.eyebrow} className={`text-[11px] font-bold uppercase tracking-[.34em] ${mediaStyle.eyebrow}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
                         <EditableText value={data.media_badge} className={`rounded-full border px-4 py-2 text-[11px] font-semibold backdrop-blur-md ${mediaStyle.badge}`} onSave={(media_badge) => onUpdate({ media_badge })} />
                     </div>
 
-                    <div className="pointer-events-auto max-w-4xl py-14 sm:py-20 lg:py-24">
-                        <EditableText value={data.heading} className={`block max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.05em] sm:text-7xl lg:text-[6.6rem] ${mediaStyle.heading}`} onSave={(heading) => onUpdate({ heading })} />
+                    <div className="pointer-events-auto max-w-4xl py-0">
+                        <EditableText value={data.heading} className={`block max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`} onSave={(heading) => onUpdate({ heading })} />
                         <EditableText value={data.text} isTextArea className={`mt-7 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${mediaStyle.body}`} onSave={(text) => onUpdate({ text })} />
                         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                             <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label, primary_url) => onUpdate({ primary_label, primary_url })} />

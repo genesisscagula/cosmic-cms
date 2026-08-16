@@ -42,7 +42,7 @@ export function HeroSplitEditorialBlock({ block, blockIndex, onUpdate, globalThe
         : `${primaryTheme.bg} ${primaryTheme.text}`;
 
     return (
-        <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg} transition-colors duration-500`}>
+        <section className={`relative overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg} transition-colors duration-500`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-current to-transparent opacity-20" />
             <div className="relative mx-auto max-w-7xl">
                 <div className={`mb-10 flex items-center justify-between border-b pb-5 ${theme.border}`}>
@@ -62,7 +62,7 @@ export function HeroSplitEditorialBlock({ block, blockIndex, onUpdate, globalThe
                     <div className="relative z-10 lg:pb-8">
                         <EditableText
                             value={data.heading}
-                            className={`block max-w-4xl text-5xl font-semibold leading-[0.96] tracking-[-0.055em] sm:text-6xl lg:text-[5.5rem] ${theme.text}`}
+                            className={`block max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`}
                             onSave={(heading) => onUpdate({ heading })}
                         />
                         <div className="mt-8 grid gap-7 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-end">

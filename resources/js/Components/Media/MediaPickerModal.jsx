@@ -213,7 +213,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
     };
 
     if (!open || typeof document === 'undefined') return null;
-    return createPortal(<div className="cosmic-media-picker-overlay fixed inset-0 z-[1000005] flex items-center justify-center bg-slate-950/85 p-3 backdrop-blur-xl" onMouseDown={(e)=>{setFolderMenu(null);if(e.target===e.currentTarget)onClose?.();}}>
+    return createPortal(<div className="cosmic-media-picker-overlay fixed inset-0 z-[1000200] flex items-center justify-center bg-slate-950/85 p-3 backdrop-blur-xl" onMouseDown={(e)=>{setFolderMenu(null);if(e.target===e.currentTarget)onClose?.();}}>
         <div className="cosmic-media-picker-modal flex h-[88vh] w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b0f] shadow-2xl">
             <aside className="cosmic-media-picker-sidebar hidden w-64 shrink-0 border-r border-white/10 bg-white/[0.02] p-4 md:block">
                 <div className="mb-4"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-300">Cosmic Media</p><p className="mt-1 text-sm text-slate-500">Choose an existing image or upload a new one.</p></div>
@@ -248,14 +248,14 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
             </section>
         </div>
 
-        {folderMenu ? <div className="fixed z-[1000015] w-48 overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1e] p-1.5 shadow-2xl shadow-black/60" style={{left:folderMenu.x,top:folderMenu.y}} onMouseDown={(e)=>e.stopPropagation()}>
+        {folderMenu ? <div className="fixed z-[1000210] w-48 overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1e] p-1.5 shadow-2xl shadow-black/60" style={{left:folderMenu.x,top:folderMenu.y}} onMouseDown={(e)=>e.stopPropagation()}>
             <button type="button" onClick={()=>{setFolderDialog({mode:'create',parentId:folderMenu.folder.id,name:''});setFolderMenu(null);}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-slate-300 hover:bg-white/[0.06] hover:text-white"><span className="w-4 text-center">＋</span> New subfolder</button>
             <button type="button" onClick={()=>{setFolderDialog({mode:'rename',folder:folderMenu.folder,parentId:folderMenu.folder.parent_id,name:folderMenu.folder.name});setFolderMenu(null);}} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-slate-300 hover:bg-white/[0.06] hover:text-white"><span className="w-4 text-center">✎</span> Rename folder</button>
             <div className="my-1 h-px bg-white/[0.06]"/>
             <button type="button" onClick={()=>deleteFolder(folderMenu.folder)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-xs text-rose-300 hover:bg-rose-400/[0.08]"><span className="w-4 text-center">⌫</span> Delete folder</button>
         </div> : null}
 
-        {folderDialog ? <div className="fixed inset-0 z-[1000020] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm" onMouseDown={(e)=>{if(e.target===e.currentTarget)setFolderDialog(null);}}>
+        {folderDialog ? <div className="fixed inset-0 z-[1000220] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm" onMouseDown={(e)=>{if(e.target===e.currentTarget)setFolderDialog(null);}}>
             <form onSubmit={submitFolderDialog} className="w-full max-w-sm rounded-3xl border border-white/10 bg-[#151518] p-5 shadow-2xl shadow-black/60">
                 <div><h3 className="text-sm font-bold text-white">{folderDialog.mode==='rename'?'Rename folder':'New subfolder'}</h3><p className="mt-1 text-xs text-slate-500">{folderDialog.mode==='rename'?'Update the folder name.':`Inside ${folders.find((folder)=>Number(folder.id)===Number(folderDialog.parentId))?.name || 'selected folder'}`}</p></div>
                 <input autoFocus value={folderDialog.name || ''} onChange={(e)=>setFolderDialog((current)=>({...current,name:e.target.value}))} maxLength={120} placeholder="Folder name" className="mt-4 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400"/>

@@ -168,6 +168,7 @@ class LogoThemeMatchService
     private function publicDiskPathFromUrl(string $url): string
     {
         $path = parse_url($url, PHP_URL_PATH) ?: $url;
+        $path = rawurldecode((string) $path);
         $path = '/'.ltrim($path, '/');
 
         // Normal public-disk URL.

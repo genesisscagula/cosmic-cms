@@ -47,13 +47,13 @@ export function HeroBentoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
     const familyGlow = primaryTheme.gradient?.glowSoft || "rgba(124,58,237,.16)";
 
     return (
-        <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
+        <section className={`relative overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
             <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at 80% 12%, ${familyGlow}, transparent 28%)`, opacity: heroState.isLight ? 0.45 : 1 }} />
             <div className="relative mx-auto max-w-7xl">
                 <div className="grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_auto]">
                     <div className={`rounded-[2rem] border p-7 sm:p-10 lg:col-span-7 lg:row-span-2 ${softCard}`}>
                         <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${softSub}`} onSave={(eyebrow)=>onUpdate({eyebrow})}/>
-                        <EditableText value={data.heading} className="mt-5 block max-w-4xl text-5xl font-semibold leading-[.95] tracking-[-.055em] sm:text-6xl lg:text-7xl" onSave={(heading)=>onUpdate({heading})}/>
+                        <EditableText value={data.heading} className="mt-5 block max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl" onSave={(heading)=>onUpdate({heading})}/>
                         <EditableText value={data.text} isTextArea className={`mt-6 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${softSub}`} onSave={(text)=>onUpdate({text})}/>
                         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                             <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label,primary_url)=>onUpdate({primary_label,primary_url})}/>

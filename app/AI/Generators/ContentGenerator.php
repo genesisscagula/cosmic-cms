@@ -1709,23 +1709,12 @@ PROMPT;
     private function blogTrendingPremiumSchema(): string { return $this->premiumBlogSchema('blog_trending_premium'); }
     private function blogCategoriesGridPremiumSchema(): string { return $this->premiumBlogSchema('blog_categories_grid_premium'); }
     private function blogAuthorProfilePremiumSchema(): string { return $this->premiumBlogSchema('blog_author_profile_premium'); }
-    private function footerMegaPremiumSchema(): string { return $this->premiumFooterSchema('footer_mega_premium'); }
-    private function footerAgencyPremiumSchema(): string { return $this->premiumFooterSchema('footer_agency_premium'); }
-    private function footerSaasPremiumSchema(): string { return $this->premiumFooterSchema('footer_saas_premium'); }
-    private function footerLuxuryPremiumSchema(): string { return $this->premiumFooterSchema('footer_luxury_premium'); }
-    private function footerDarkPremiumSchema(): string { return $this->premiumFooterSchema('footer_dark_premium'); }
-    private function footerMinimalPremiumSchema(): string { return $this->premiumFooterSchema('footer_minimal_premium'); }
     private function premiumFooterSchema(string $type): string
     {
         $extra = match ($type) {
-            'footer_mega_premium' => "\n    - group_one_title\n    - group_two_title\n    - group_three_title\n    - group_one_item\n    - group_two_item\n    - group_three_item",
-            'footer_agency_premium' => "\n    - eyebrow\n    - heading\n    - location\n    - email",
-            'footer_saas_premium' => "\n    - product_one\n    - product_two\n    - company_one\n    - company_two\n    - resource_one\n    - resource_two",
-            'footer_dark_premium' => "\n    - eyebrow\n    - meta_one\n    - meta_two",
-            'footer_minimal_premium' => "\n    - meta_one\n    - meta_two",
             default => "\n    - eyebrow\n    - heading\n    - location\n    - social_one\n    - social_two",
         };
-        return "\n    {$type}\n\n    - type = {$type}\n    - theme = auto\n    - brand_name\n    - tagline\n    - copyright\n    - primary_label\n    - primary_url\n    - link_one_label\n    - link_one_url\n    - link_two_label\n    - link_two_url\n    - link_three_label\n    - link_three_url{$extra}\n\n    Requirements:\n    - Use only business names, contact details, locations, social channels, legal wording, and navigation destinations supplied by the user or existing site context.\n    - Never invent addresses, email addresses, social handles, legal/company registration details, awards, availability, or guarantees.\n    - Keep footer copy concise and suitable for a site-wide closing section.\n    - Do not use markdown.\n";
+        return "\n    {$type}\n\n    - type = {$type}\n    - theme = auto\n    - brand_name\n    - tagline\n    - primary_label\n    - primary_url\n    - link_one_label\n    - link_one_url\n    - link_two_label\n    - link_two_url\n    - link_three_label\n    - link_three_url{$extra}\n\n    Requirements:\n    - Use only business names, contact details, locations, social channels, legal wording, and navigation destinations supplied by the user or existing site context.\n    - Never invent addresses, email addresses, social handles, legal/company registration details, awards, availability, or guarantees.\n    - Keep footer copy concise and suitable for a site-wide closing section.\n    - Do not use markdown.\n";
     }
     private function premiumBlogSchema(string $type): string
     {

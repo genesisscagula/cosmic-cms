@@ -209,7 +209,6 @@ import { EventsGridBlock, EventsGridSchema } from "./Blocks/Collections/EventsGr
 import { BlogHubBlock, BlogHubSchema } from "./Blocks/Blog/BlogHubBlock";
 import { BlogMiniHeroBlock, BlogMiniHeroSchema } from "./Blocks/Blog/BlogMiniHeroBlock";
 import { BlogMagazinePremiumBlock, BlogMagazinePremiumSchema, BlogFeaturedArticlePremiumBlock, BlogFeaturedArticlePremiumSchema, BlogEditorsPickPremiumBlock, BlogEditorsPickPremiumSchema, BlogSidebarNewsPremiumBlock, BlogSidebarNewsPremiumSchema, BlogNewsletterPremiumBlock, BlogNewsletterPremiumSchema, BlogTrendingPremiumBlock, BlogTrendingPremiumSchema, BlogCategoriesGridPremiumBlock, BlogCategoriesGridPremiumSchema, BlogAuthorProfilePremiumBlock, BlogAuthorProfilePremiumSchema } from "./Blocks/Blog/BlogPremiumBlocks";
-import { FooterMegaPremiumBlock, FooterMegaPremiumSchema, FooterAgencyPremiumBlock, FooterAgencyPremiumSchema, FooterSaasPremiumBlock, FooterSaasPremiumSchema, FooterLuxuryPremiumBlock, FooterLuxuryPremiumSchema, FooterDarkPremiumBlock, FooterDarkPremiumSchema, FooterMinimalPremiumBlock, FooterMinimalPremiumSchema } from "./Blocks/Footer/FooterPremiumBlocks";
 import {
     MiniHeroMinimalBlock, MiniHeroMinimalSchema,
     MiniHeroSplitBlock, MiniHeroSplitSchema,
@@ -655,12 +654,6 @@ export const BlockRegistry = {
     blog_trending_premium: { component: BlogTrendingPremiumBlock, schema: BlogTrendingPremiumSchema },
     blog_categories_grid_premium: { component: BlogCategoriesGridPremiumBlock, schema: BlogCategoriesGridPremiumSchema },
     blog_author_profile_premium: { component: BlogAuthorProfilePremiumBlock, schema: BlogAuthorProfilePremiumSchema },
-    footer_mega_premium: { component: FooterMegaPremiumBlock, schema: FooterMegaPremiumSchema },
-    footer_agency_premium: { component: FooterAgencyPremiumBlock, schema: FooterAgencyPremiumSchema },
-    footer_saas_premium: { component: FooterSaasPremiumBlock, schema: FooterSaasPremiumSchema },
-    footer_luxury_premium: { component: FooterLuxuryPremiumBlock, schema: FooterLuxuryPremiumSchema },
-    footer_dark_premium: { component: FooterDarkPremiumBlock, schema: FooterDarkPremiumSchema },
-    footer_minimal_premium: { component: FooterMinimalPremiumBlock, schema: FooterMinimalPremiumSchema },
 
     blog_mini_hero: {
         component: BlogMiniHeroBlock,

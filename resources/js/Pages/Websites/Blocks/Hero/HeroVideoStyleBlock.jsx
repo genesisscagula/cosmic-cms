@@ -71,7 +71,7 @@ export function HeroVideoStyleBlock({
     return (
         <>
         <section
-            className={`relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 ${theme.bg} transition-colors duration-500`}
+            className={`relative overflow-hidden px-7 py-0 sm:px-10 lg:px-12 ${theme.bg} transition-colors duration-500`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}
         >
             <div
                 className={`pointer-events-none absolute -left-36 top-10 h-96 w-96 rounded-full ${primaryTheme.bg} opacity-[0.08] blur-[130px]`}
@@ -93,7 +93,7 @@ export function HeroVideoStyleBlock({
 
                     <EditableText
                         value={data.heading}
-                        className={`mt-5 block text-5xl font-bold leading-[1.02] tracking-tight sm:text-6xl lg:text-7xl ${theme.text}`}
+                        className={`mt-5 block text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`}
                         onSave={(heading) =>
                             onUpdate({ heading })
                         }
