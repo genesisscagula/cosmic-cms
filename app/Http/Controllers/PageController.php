@@ -1363,13 +1363,19 @@ class PageController extends Controller
 
     private function resolveTrialAccess(Request $request, Page $page): ?TrialGeneration
     {
-        if ($request->user()) {
-            return null;
-        }
-
+        // A trial token is a bearer credential for the generated trial page.
+        // Validate it before falling back to authenticated workspace authorization
+        // so opening a trial link while already signed in (for example as an
+        // Agency Pro tester) does not incorrectly hit WebsitePolicy and return 403.
         $token = trim((string) $request->query('token', $request->input('token', '')));
 
-        abort_if($token === '', 404);
+        if ($token === '') {
+            if ($request->user()) {
+                return null;
+            }
+
+            abort(404);
+        }
 
         $trial = TrialGeneration::query()
             ->where('token', $token)

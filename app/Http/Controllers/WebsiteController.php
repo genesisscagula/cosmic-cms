@@ -464,9 +464,11 @@ class WebsiteController extends Controller
                     'email' => $member->email,
                     'role' => $workspace?->roleFor($member) ?? 'owner',
                     'joined_at' => $member->pivot?->created_at?->toIso8601String(),
-                    'website_ids' => $isOwner
-                        ? $workspace->websites()->pluck('id')->map(fn ($id) => (int) $id)->values()
-                        : $member->assignedWebsites()->where('workspace_id', $workspace->id)->pluck('websites.id')->map(fn ($id) => (int) $id)->values(),
+                    'website_ids' => $workspace
+                        ? ($isOwner
+                            ? $workspace->websites()->pluck('id')->map(fn ($id) => (int) $id)->values()
+                            : $member->assignedWebsites()->where('workspace_id', $workspace->id)->pluck('websites.id')->map(fn ($id) => (int) $id)->values())
+                        : collect(),
                 ];
             })->values(),
             'invitations' => $pendingInvitations->map(fn ($invitation) => [

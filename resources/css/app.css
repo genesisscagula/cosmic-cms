@@ -6895,3 +6895,795 @@ body .cosmic-start-quick-idea.rounded-full.border {
     -webkit-text-fill-color: #ffffff !important;
     stroke: currentColor !important;
 }
+
+
+/* Add Spark preview QA — batch 1 (Sparks 1–15).
+   Preview-only guardrails: these never affect Builder sections or published/exported pages. */
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] {
+    width: 100%;
+    min-width: 0;
+    overflow-x: clip;
+    background: var(--cosmic-preview-bg, transparent);
+}
+
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] > section,
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] > div > section {
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
+}
+
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] :is(img, video, iframe, svg, canvas) {
+    max-width: 100%;
+}
+
+/* Full-fold heroes are useful on a live page, but in the Spark preview they must
+   fit below the preview toolbar rather than using the browser's full viewport. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="hero_headline"],
+    [data-cosmic-spark-type="hero_video_background"],
+    [data-cosmic-spark-type="hero_video_style"],
+    [data-cosmic-spark-type="hero_floating_cards"],
+    [data-cosmic-spark-type="hero_centered_cta"],
+    [data-cosmic-spark-type="hero_parallax"]
+) {
+    --cosmic-hero-fold-height: clamp(520px, 72vh, 660px);
+}
+
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="hero_video_background"],
+    [data-cosmic-spark-type="hero_video_style"],
+    [data-cosmic-spark-type="hero_floating_cards"],
+    [data-cosmic-spark-type="hero_centered_cta"],
+    [data-cosmic-spark-type="hero_parallax"]
+) > section {
+    min-height: clamp(520px, 72vh, 660px) !important;
+}
+
+/* Content Sparks 5–14: keep the real composition, but prevent preview-only
+   viewport clipping/oversized whitespace and allow grids to shrink safely. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="services_cards"],
+    [data-cosmic-spark-type="feature_image_left"],
+    [data-cosmic-spark-type="feature_image_right"],
+    [data-cosmic-spark-type="services_bento"],
+    [data-cosmic-spark-type="process_timeline"],
+    [data-cosmic-spark-type="stats_modern"],
+    [data-cosmic-spark-type="team_modern"],
+    [data-cosmic-spark-type="testimonials_carousel"],
+    [data-cosmic-spark-type="pricing_cards"]
+) > section {
+    overflow-x: clip !important;
+}
+
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="services_cards"],
+    [data-cosmic-spark-type="feature_image_left"],
+    [data-cosmic-spark-type="feature_image_right"],
+    [data-cosmic-spark-type="services_bento"],
+    [data-cosmic-spark-type="process_timeline"],
+    [data-cosmic-spark-type="stats_modern"],
+    [data-cosmic-spark-type="team_modern"],
+    [data-cosmic-spark-type="testimonials_carousel"],
+    [data-cosmic-spark-type="pricing_cards"]
+) :is(.grid, [class*="grid-cols-"]) {
+    min-width: 0;
+}
+
+/* Preview is read-only. Hide editor-only controls that can leak into a Spark
+   when a block bases visibility on hover rather than builderMode. */
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] :is(
+    [data-cosmic-builder-only="true"],
+    .cosmic-builder-only,
+    .cosmic-repeatable-add,
+    .cosmic-repeatable-delete,
+    .cosmic-image-edit-control
+) {
+    display: none !important;
+}
+
+/* Add Spark preview QA — batch 2 (Sparks 16–30).
+   Scope: Hero Split Editorial through Contact Form Modern.
+   Keep the showroom read-only and constrain full-page compositions to the
+   preview viewport without changing Builder/export/live rendering. */
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] [data-cosmic-edit-control] {
+    cursor: default !important;
+}
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] [data-cosmic-edit-control] > span[class*="absolute"],
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] [data-cosmic-edit-control] > button,
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] .cosmic-contact-edit-fields {
+    display: none !important;
+}
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] [data-cosmic-edit-control="text"],
+.cosmic-spark-preview-modal [data-cosmic-add-spark-preview="true"] [data-cosmic-edit-control="button"] {
+    pointer-events: none !important;
+}
+
+/* Batch 2 hero family: use the same compact fold as the first QA batch.
+   Several of these intentionally use 100svh on a live page. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="hero_split_editorial"],
+    [data-cosmic-spark-type="hero_floating_glass"],
+    [data-cosmic-spark-type="hero_saas_dashboard"],
+    [data-cosmic-spark-type="hero_luxury_fullscreen"],
+    [data-cosmic-spark-type="hero_video_premium"],
+    [data-cosmic-spark-type="hero_ai_conversation"],
+    [data-cosmic-spark-type="hero_agency_showcase"],
+    [data-cosmic-spark-type="hero_bento_premium"],
+    [data-cosmic-spark-type="hero_split_image"],
+    [data-cosmic-spark-type="image_cta_banner"]
+) {
+    --cosmic-hero-fold-height: clamp(520px, 72vh, 660px);
+}
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="hero_split_editorial"],
+    [data-cosmic-spark-type="hero_floating_glass"],
+    [data-cosmic-spark-type="hero_saas_dashboard"],
+    [data-cosmic-spark-type="hero_luxury_fullscreen"],
+    [data-cosmic-spark-type="hero_video_premium"],
+    [data-cosmic-spark-type="hero_ai_conversation"],
+    [data-cosmic-spark-type="hero_agency_showcase"],
+    [data-cosmic-spark-type="hero_bento_premium"],
+    [data-cosmic-spark-type="hero_split_image"],
+    [data-cosmic-spark-type="image_cta_banner"]
+) > section {
+    min-height: clamp(520px, 72vh, 660px) !important;
+    max-width: 100% !important;
+    overflow-x: clip !important;
+}
+
+/* Premium bento/service/contact sections must be allowed to shrink inside the
+   preview stage. This prevents long headings/cards from forcing horizontal
+   overflow while retaining the actual desktop composition. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="services_bento_premium"],
+    [data-cosmic-spark-type="services_pricing_comparison"],
+    [data-cosmic-spark-type="services_feature_comparison"],
+    [data-cosmic-spark-type="services_hover_cards"],
+    [data-cosmic-spark-type="contact_form_modern"]
+) > section {
+    max-width: 100% !important;
+    overflow-x: clip !important;
+}
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="services_bento_premium"],
+    [data-cosmic-spark-type="services_hover_cards"],
+    [data-cosmic-spark-type="contact_form_modern"]
+) :is(.grid, [class*="grid-cols-"]) {
+    min-width: 0;
+}
+
+/* Comparison Sparks are true desktop matrices. On narrower preview windows,
+   keep the matrix intact and scroll it inside its own rounded frame instead of
+   letting the modal crop columns/headings. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="services_pricing_comparison"],
+    [data-cosmic-spark-type="services_feature_comparison"]
+) section > div > .mt-12.overflow-hidden {
+    overflow-x: auto !important;
+    overscroll-behavior-inline: contain;
+    scrollbar-width: thin;
+}
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="services_pricing_comparison"],
+    [data-cosmic-spark-type="services_feature_comparison"]
+) section > div > .mt-12.overflow-hidden > .grid {
+    min-width: 900px;
+}
+
+/* Preview forms are presentation only: no caret, focus or accidental dialog. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="contact_form_modern"] :is(input, textarea, select) {
+    pointer-events: none !important;
+    caret-color: transparent !important;
+}
+
+/* Add Spark preview QA — batch 3 (Sparks 31–45).
+   Scope: premium review layouts, premium pricing, and CTA family.
+   These rules only affect the Add Spark showroom preview. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="testimonials_review_grid"],
+    [data-cosmic-spark-type="testimonials_review_carousel_pro"],
+    [data-cosmic-spark-type="pricing_comparison_premium"],
+    [data-cosmic-spark-type="pricing_toggle_premium"],
+    [data-cosmic-spark-type="pricing_enterprise_premium"],
+    [data-cosmic-spark-type="pricing_calculator_premium"],
+    [data-cosmic-spark-type="pricing_credit_premium"],
+    [data-cosmic-spark-type="pricing_agency_premium"],
+    [data-cosmic-spark-type="pricing_feature_matrix_premium"],
+    [data-cosmic-spark-type="cta_glass_premium"],
+    [data-cosmic-spark-type="cta_gradient_premium"],
+    [data-cosmic-spark-type="cta_newsletter_premium"],
+    [data-cosmic-spark-type="cta_book_demo_premium"],
+    [data-cosmic-spark-type="cta_calendly_premium"],
+    [data-cosmic-spark-type="cta_free_trial_premium"]
+) > section {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: clip !important;
+    padding-top: clamp(3.5rem, 6vw, 6rem) !important;
+    padding-bottom: clamp(3.5rem, 6vw, 6rem) !important;
+}
+
+/* Review Grid: four live-page columns become visually cramped inside the
+   modal stage because Tailwind responds to the browser viewport, not the
+   preview's narrower content area. Two preview columns preserve the cards. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="testimonials_review_grid"] > section .grid.md\:grid-cols-2.lg\:grid-cols-4 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+.cosmic-spark-preview-modal [data-cosmic-spark-type="testimonials_review_grid"] > section article,
+.cosmic-spark-preview-modal [data-cosmic-spark-type="testimonials_review_carousel_pro"] > section article {
+    min-width: 0 !important;
+    overflow-wrap: anywhere;
+}
+
+/* Comparison/matrix Sparks are intentionally wide on a real page. In the
+   showroom keep the matrix at a readable desktop width and scroll only the
+   matrix frame, rather than clipping columns or stretching the whole modal. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="pricing_comparison_premium"] > section .mt-12.overflow-hidden,
+.cosmic-spark-preview-modal [data-cosmic-spark-type="pricing_feature_matrix_premium"] > section .mt-12.overflow-hidden {
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    overflow-y: hidden !important;
+    overscroll-behavior-x: contain;
+}
+.cosmic-spark-preview-modal [data-cosmic-spark-type="pricing_comparison_premium"] > section .mt-12.overflow-hidden > .grid,
+.cosmic-spark-preview-modal [data-cosmic-spark-type="pricing_feature_matrix_premium"] > section .mt-12.overflow-hidden > .grid {
+    min-width: 760px !important;
+}
+
+/* Card-based pricing should shrink with the preview stage instead of letting
+   long plan names, prices, badges, or CTAs force horizontal overflow. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="pricing_toggle_premium"],
+    [data-cosmic-spark-type="pricing_enterprise_premium"],
+    [data-cosmic-spark-type="pricing_calculator_premium"],
+    [data-cosmic-spark-type="pricing_credit_premium"],
+    [data-cosmic-spark-type="pricing_agency_premium"]
+) > section :is(.grid, article, div) {
+    min-width: 0;
+}
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="pricing_toggle_premium"],
+    [data-cosmic-spark-type="pricing_credit_premium"],
+    [data-cosmic-spark-type="pricing_agency_premium"]
+) > section article {
+    overflow-wrap: anywhere;
+}
+
+/* CTA previews should showcase the complete composition without editor-only
+   affordances or form-like content escaping the preview width. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="cta_glass_premium"],
+    [data-cosmic-spark-type="cta_gradient_premium"],
+    [data-cosmic-spark-type="cta_newsletter_premium"],
+    [data-cosmic-spark-type="cta_book_demo_premium"],
+    [data-cosmic-spark-type="cta_calendly_premium"],
+    [data-cosmic-spark-type="cta_free_trial_premium"]
+) > section :is(.grid, form, input, button, a) {
+    max-width: 100%;
+    min-width: 0;
+}
+
+/* Add Spark preview QA — batch 4 (Sparks 46–60).
+   Scope: countdown/offer CTA, premium Contact family, and first six premium
+   Blog layouts. Keep all fixes inside the Add Sparks showroom. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="cta_countdown_premium"],
+    [data-cosmic-spark-type="cta_limited_offer_premium"],
+    [data-cosmic-spark-type="contact_split_premium"],
+    [data-cosmic-spark-type="contact_map_premium"],
+    [data-cosmic-spark-type="contact_appointment_premium"],
+    [data-cosmic-spark-type="contact_support_center_premium"],
+    [data-cosmic-spark-type="contact_faq_premium"],
+    [data-cosmic-spark-type="contact_multistep_premium"],
+    [data-cosmic-spark-type="contact_live_chat_premium"],
+    [data-cosmic-spark-type="blog_magazine_premium"],
+    [data-cosmic-spark-type="blog_featured_article_premium"],
+    [data-cosmic-spark-type="blog_editors_pick_premium"],
+    [data-cosmic-spark-type="blog_sidebar_news_premium"],
+    [data-cosmic-spark-type="blog_newsletter_premium"],
+    [data-cosmic-spark-type="blog_trending_premium"]
+) > section {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: clip !important;
+    padding-top: clamp(3.5rem, 6vw, 5.5rem) !important;
+    padding-bottom: clamp(3.5rem, 6vw, 5.5rem) !important;
+}
+
+/* These layouts use desktop grids on the real page. The preview lives inside a
+   narrower stage while Tailwind still sees the browser viewport, so explicitly
+   allow every grid/card child to shrink rather than pushing outside the modal. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="cta_countdown_premium"],
+    [data-cosmic-spark-type="cta_limited_offer_premium"],
+    [data-cosmic-spark-type="contact_split_premium"],
+    [data-cosmic-spark-type="contact_map_premium"],
+    [data-cosmic-spark-type="contact_appointment_premium"],
+    [data-cosmic-spark-type="contact_support_center_premium"],
+    [data-cosmic-spark-type="contact_faq_premium"],
+    [data-cosmic-spark-type="contact_multistep_premium"],
+    [data-cosmic-spark-type="contact_live_chat_premium"],
+    [data-cosmic-spark-type="blog_magazine_premium"],
+    [data-cosmic-spark-type="blog_featured_article_premium"],
+    [data-cosmic-spark-type="blog_editors_pick_premium"],
+    [data-cosmic-spark-type="blog_sidebar_news_premium"],
+    [data-cosmic-spark-type="blog_newsletter_premium"],
+    [data-cosmic-spark-type="blog_trending_premium"]
+) > section :is(.grid, article, aside, form, label, input, button, a) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* Contact previews are visual samples only. Prevent inputs, details and staged
+   navigation from stealing focus/clicks from the modal itself. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="contact_split_premium"],
+    [data-cosmic-spark-type="contact_faq_premium"],
+    [data-cosmic-spark-type="contact_multistep_premium"]
+) :is(input, textarea, select) {
+    pointer-events: none !important;
+    caret-color: transparent !important;
+}
+.cosmic-spark-preview-modal [data-cosmic-spark-type="contact_multistep_premium"] > section button {
+    pointer-events: none !important;
+}
+.cosmic-spark-preview-modal [data-cosmic-spark-type="contact_faq_premium"] > section summary {
+    cursor: default !important;
+}
+
+/* Contact support/FAQ cards can otherwise inherit browser-width desktop columns
+   and become too narrow in the preview stage. Two columns are a better showroom
+   representation while preserving the real page's three-column layout. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="contact_support_center_premium"] > section .grid.md\:grid-cols-3 {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+/* Premium Blog previews: keep editorial imagery substantial but stop fixed
+   430px/desktop media wells from dominating the popup. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="blog_magazine_premium"],
+    [data-cosmic-spark-type="blog_featured_article_premium"],
+    [data-cosmic-spark-type="blog_editors_pick_premium"],
+    [data-cosmic-spark-type="blog_sidebar_news_premium"]
+) > section :is(.h-72, .min-h-\[430px\]) {
+    height: clamp(250px, 34vw, 360px) !important;
+    min-height: 0 !important;
+}
+
+/* Sidebar News has a fixed 320px live-page rail. Let it shrink in the modal
+   instead of clipping the lead story when the preview stage is narrower. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="blog_sidebar_news_premium"] > section .lg\:grid-cols-\[1fr_320px\] {
+    grid-template-columns: minmax(0, 1fr) minmax(230px, 30%) !important;
+}
+
+/* Newsletter email mockup should stay on one readable line where possible but
+   gracefully wrap instead of forcing horizontal overflow. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="blog_newsletter_premium"] > section .mt-5.flex.gap-3 {
+    flex-wrap: wrap !important;
+}
+.cosmic-spark-preview-modal [data-cosmic-spark-type="blog_newsletter_premium"] > section .mt-5.flex.gap-3 > :first-child {
+    flex-basis: 240px;
+}
+
+/* Add Spark preview QA — batch 5 (Sparks 61–75).
+   Scope: Blog Categories/Author, classic pricing/parallax/background/slider,
+   editorial overlay, and the first premium hero family. All layout changes are
+   restricted to the Add Sparks showroom. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="blog_categories_grid_premium"],
+    [data-cosmic-spark-type="blog_author_profile_premium"]
+) > section {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    overflow-x: clip !important;
+    padding-top: clamp(3.5rem, 6vw, 5.5rem) !important;
+    padding-bottom: clamp(3.5rem, 6vw, 5.5rem) !important;
+}
+
+/* Category cards are intentionally roomy on a page; trim only the preview so
+   all four cards can be judged without a needlessly tall showroom section. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="blog_categories_grid_premium"] > section article.min-h-52 {
+    min-height: 10.5rem !important;
+}
+.cosmic-spark-preview-modal [data-cosmic-spark-type="blog_categories_grid_premium"] > section article .mt-10 {
+    margin-top: 1.75rem !important;
+}
+
+/* The author portrait uses a 420px live-page well. Keep the split composition,
+   but make the media proportional to the narrower preview stage. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="blog_author_profile_premium"] > section .min-h-\[420px\] {
+    min-height: clamp(280px, 36vw, 360px) !important;
+}
+.cosmic-spark-preview-modal [data-cosmic-spark-type="blog_author_profile_premium"] > section > div {
+    min-width: 0 !important;
+}
+
+/* Batch 5 hero run. These sections may use screen/650px heights live; in the
+   modal use one predictable fold so headings, media and CTAs remain visible. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="hero_parallax"],
+    [data-cosmic-spark-type="hero_background_image"],
+    [data-cosmic-spark-type="hero_slider_fade"],
+    [data-cosmic-spark-type="hero_editorial_overlay"],
+    [data-cosmic-spark-type="hero_split_editorial"],
+    [data-cosmic-spark-type="hero_floating_glass"],
+    [data-cosmic-spark-type="hero_saas_dashboard"],
+    [data-cosmic-spark-type="hero_luxury_fullscreen"],
+    [data-cosmic-spark-type="hero_video_premium"],
+    [data-cosmic-spark-type="hero_ai_conversation"],
+    [data-cosmic-spark-type="hero_agency_showcase"],
+    [data-cosmic-spark-type="hero_bento_premium"]
+) {
+    --cosmic-hero-fold-height: clamp(520px, 72vh, 650px);
+}
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="hero_parallax"],
+    [data-cosmic-spark-type="hero_background_image"],
+    [data-cosmic-spark-type="hero_slider_fade"],
+    [data-cosmic-spark-type="hero_editorial_overlay"],
+    [data-cosmic-spark-type="hero_split_editorial"],
+    [data-cosmic-spark-type="hero_floating_glass"],
+    [data-cosmic-spark-type="hero_saas_dashboard"],
+    [data-cosmic-spark-type="hero_luxury_fullscreen"],
+    [data-cosmic-spark-type="hero_video_premium"],
+    [data-cosmic-spark-type="hero_ai_conversation"],
+    [data-cosmic-spark-type="hero_agency_showcase"],
+    [data-cosmic-spark-type="hero_bento_premium"]
+) > section {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    min-height: clamp(520px, 72vh, 650px) !important;
+    overflow-x: clip !important;
+}
+
+/* Background-image/editorial heroes can carry explicit medium/large Tailwind
+   min-heights. Override those only inside the showroom so the shared fold wins. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="hero_background_image"],
+    [data-cosmic-spark-type="hero_editorial_overlay"]
+) > section.min-h-\[650px\] {
+    min-height: clamp(520px, 72vh, 650px) !important;
+}
+
+/* Floating Glass' visual stack is 560px tall live. Shrink the inner canvas so
+   it does not collide with the headline/CTA inside the compact preview fold. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="hero_floating_glass"] > section .min-h-\[480px\].sm\:min-h-\[560px\] {
+    min-height: clamp(390px, 47vw, 470px) !important;
+}
+.cosmic-spark-preview-modal [data-cosmic-spark-type="hero_floating_glass"] > section .lg\:grid-cols-\[minmax\(0\,\.9fr\)_minmax\(460px\,1\.1fr\)\] {
+    grid-template-columns: minmax(0, .92fr) minmax(360px, 1.08fr) !important;
+}
+
+/* Agency Showcase uses two 390px project cards below its headline. Reduce only
+   their preview media height to stop the hero becoming a giant scroll panel. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="hero_agency_showcase"] > section .min-h-\[300px\].sm\:min-h-\[390px\] {
+    min-height: clamp(240px, 29vw, 320px) !important;
+}
+
+/* Bento/AI/SaaS compositions contain nested grids/cards; allow every immediate
+   grid child to shrink instead of pushing outside the preview frame. */
+.cosmic-spark-preview-modal :is(
+    [data-cosmic-spark-type="hero_saas_dashboard"],
+    [data-cosmic-spark-type="hero_ai_conversation"],
+    [data-cosmic-spark-type="hero_agency_showcase"],
+    [data-cosmic-spark-type="hero_bento_premium"],
+    [data-cosmic-spark-type="hero_split_editorial"]
+) > section :is(.grid, [class*="grid-cols-"], article) {
+    min-width: 0 !important;
+}
+
+/* Slider navigation remains useful in the showroom, but Builder authoring
+   controls (Edit/Add) are not part of the design preview. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="hero_slider_fade"] :is(
+    .cosmic-hero-slider-add,
+    .cosmic-hero-slider-delete,
+    .cosmic-hero-slider-editor
+) {
+    display: none !important;
+}
+
+/* Pricing Cards was re-encountered at item 63; preserve its existing live grid
+   while ensuring long plan copy cannot widen the modal. */
+.cosmic-spark-preview-modal [data-cosmic-spark-type="pricing_cards"] > section :is(.grid, article, div) {
+    min-width: 0;
+    max-width: 100%;
+}
+
+/* Cosmic Add Sparks Preview QA — Patch 6 (catalog 76–90)
+   Keep motion-heavy premium heroes compact and self-contained in the showroom only. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_reveal_parallax_premium"],
+  [data-spark-type="hero_zoom_scroll_premium"],
+  [data-spark-type="hero_pinned_story_premium"],
+  [data-spark-type="hero_video_cinematic_premium"],
+  [data-spark-type="hero_video_split_premium"],
+  [data-spark-type="hero_aurora_motion_premium"],
+  [data-spark-type="hero_mesh_gradient_motion_premium"],
+  [data-spark-type="hero_spotlight_cursor_premium"],
+  [data-spark-type="hero_floating_cards_motion_premium"],
+  [data-spark-type="hero_3d_tilt_product_premium"],
+  [data-spark-type="hero_infinite_marquee_premium"],
+  [data-spark-type="hero_rotating_words_premium"],
+  [data-spark-type="hero_typewriter_premium"],
+  [data-spark-type="hero_curtain_reveal_premium"],
+  [data-spark-type="hero_image_mask_reveal_premium"]
+) {
+  min-height: clamp(340px, 46vw, 520px) !important;
+  height: auto !important;
+  max-height: 560px;
+  overflow: hidden;
+  contain: paint;
+}
+
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_reveal_parallax_premium"],
+  [data-spark-type="hero_zoom_scroll_premium"],
+  [data-spark-type="hero_pinned_story_premium"],
+  [data-spark-type="hero_video_cinematic_premium"],
+  [data-spark-type="hero_video_split_premium"],
+  [data-spark-type="hero_floating_cards_motion_premium"],
+  [data-spark-type="hero_3d_tilt_product_premium"],
+  [data-spark-type="hero_curtain_reveal_premium"],
+  [data-spark-type="hero_image_mask_reveal_premium"]
+) img,
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_video_cinematic_premium"],
+  [data-spark-type="hero_video_split_premium"]
+) video {
+  max-height: 520px;
+  object-fit: cover;
+}
+
+/* Preview should demonstrate the composition, not capture mouse/scroll gestures. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_reveal_parallax_premium"],
+  [data-spark-type="hero_zoom_scroll_premium"],
+  [data-spark-type="hero_pinned_story_premium"],
+  [data-spark-type="hero_spotlight_cursor_premium"],
+  [data-spark-type="hero_3d_tilt_product_premium"],
+  [data-spark-type="hero_curtain_reveal_premium"],
+  [data-spark-type="hero_image_mask_reveal_premium"]
+) {
+  pointer-events: none;
+}
+
+/* Motion/decorative layers must never enlarge the modal preview canvas. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_aurora_motion_premium"],
+  [data-spark-type="hero_mesh_gradient_motion_premium"],
+  [data-spark-type="hero_spotlight_cursor_premium"]
+) :is(.absolute, [style*="position: absolute"]) {
+  max-width: 100%;
+}
+
+/* Floating/3D cards shrink with the showroom instead of forcing desktop widths. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_floating_cards_motion_premium"],
+  [data-spark-type="hero_3d_tilt_product_premium"]
+) :is(.grid, [class*="grid-cols"]) {
+  min-width: 0;
+}
+
+/* Marquee remains clipped to the preview card; no page-level horizontal scrollbar. */
+[data-cosmic-add-spark-preview] [data-spark-type="hero_infinite_marquee_premium"] {
+  overflow-x: clip;
+}
+
+/* Long animated headline treatments must wrap safely in the narrow showroom. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_rotating_words_premium"],
+  [data-spark-type="hero_typewriter_premium"]
+) :is(h1, h2, [role="heading"]) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* Cosmic Add Sparks Preview QA — Patch 7 (catalog 91–105)
+   Complex card/carousel/device/editorial heroes stay compact inside the showroom only. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_stacked_cards_premium"],
+  [data-spark-type="hero_perspective_carousel_premium"],
+  [data-spark-type="hero_before_after_premium"],
+  [data-spark-type="hero_scroll_morph_premium"],
+  [data-spark-type="hero_glass_orb_premium"],
+  [data-spark-type="hero_particle_constellation_premium"],
+  [data-spark-type="hero_grid_pulse_tech_premium"],
+  [data-spark-type="hero_light_trails_premium"],
+  [data-spark-type="hero_device_showcase_premium"],
+  [data-spark-type="hero_app_screens_carousel_premium"],
+  [data-spark-type="hero_editorial_image_sequence_premium"],
+  [data-spark-type="hero_interactive_bento_premium"],
+  [data-spark-type="hero_editorial_overlay"],
+  [data-spark-type="hero_split_image"],
+  [data-spark-type="hero_floating_cards"]
+) {
+  min-height: clamp(340px, 46vw, 520px) !important;
+  height: auto !important;
+  max-height: 560px;
+  overflow: hidden;
+  contain: paint;
+}
+
+/* Card stacks, perspective carousels and app screenshots must not widen the popup. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_stacked_cards_premium"],
+  [data-spark-type="hero_perspective_carousel_premium"],
+  [data-spark-type="hero_device_showcase_premium"],
+  [data-spark-type="hero_app_screens_carousel_premium"],
+  [data-spark-type="hero_interactive_bento_premium"],
+  [data-spark-type="hero_floating_cards"]
+) :is(.grid, [class*="grid-cols"], [class*="flex"]) {
+  min-width: 0;
+}
+
+/* Limit large media wells in preview, preserving object-cover composition. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_stacked_cards_premium"],
+  [data-spark-type="hero_perspective_carousel_premium"],
+  [data-spark-type="hero_before_after_premium"],
+  [data-spark-type="hero_device_showcase_premium"],
+  [data-spark-type="hero_app_screens_carousel_premium"],
+  [data-spark-type="hero_editorial_image_sequence_premium"],
+  [data-spark-type="hero_editorial_overlay"],
+  [data-spark-type="hero_split_image"],
+  [data-spark-type="hero_floating_cards"]
+) img {
+  max-height: 500px;
+  object-fit: cover;
+}
+
+/* Gesture-heavy demos should show the design without hijacking showroom clicks/drags. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_stacked_cards_premium"],
+  [data-spark-type="hero_perspective_carousel_premium"],
+  [data-spark-type="hero_before_after_premium"],
+  [data-spark-type="hero_scroll_morph_premium"],
+  [data-spark-type="hero_app_screens_carousel_premium"],
+  [data-spark-type="hero_editorial_image_sequence_premium"]
+) {
+  pointer-events: none;
+}
+
+/* Decorative particle/grid/light layers must remain clipped to their Spark. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_glass_orb_premium"],
+  [data-spark-type="hero_particle_constellation_premium"],
+  [data-spark-type="hero_grid_pulse_tech_premium"],
+  [data-spark-type="hero_light_trails_premium"]
+) {
+  overflow: clip;
+}
+
+/* Editorial and split hero copy can shrink/wrap instead of pushing beyond preview width. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="hero_editorial_image_sequence_premium"],
+  [data-spark-type="hero_editorial_overlay"],
+  [data-spark-type="hero_split_image"]
+) :is(h1, h2, p) {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+/* Cosmic Add Sparks Preview QA — Patch 8 (catalog 106–120)
+   Structured content, collection grids, mini heroes and Blog Hub showroom normalization. */
+
+/* Dense content/collection grids should preview as readable cards instead of desktop-wide matrices. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="case_studies_grid"],
+  [data-spark-type="content_grid_classic"],
+  [data-spark-type="content_grid_editorial"],
+  [data-spark-type="content_grid_compact"],
+  [data-spark-type="content_latest_entries"],
+  [data-spark-type="content_events_grid"],
+  [data-spark-type="events_grid"],
+  [data-spark-type="blog_hub"]
+) :is(.grid, [class*="grid-cols"]) {
+  min-width: 0;
+}
+
+/* Prevent 4/5-column live layouts from becoming unreadably narrow in the Add Sparks card. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="content_grid_classic"],
+  [data-spark-type="content_grid_editorial"],
+  [data-spark-type="content_grid_compact"],
+  [data-spark-type="content_latest_entries"],
+  [data-spark-type="content_events_grid"],
+  [data-spark-type="events_grid"]
+) [class*="xl:grid-cols-4"],
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="content_grid_classic"],
+  [data-spark-type="content_grid_editorial"],
+  [data-spark-type="content_grid_compact"],
+  [data-spark-type="content_latest_entries"],
+  [data-spark-type="content_events_grid"],
+  [data-spark-type="events_grid"]
+) [class*="xl:grid-cols-5"] {
+  grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+}
+
+/* Timeline's live 420px media panel is too tall for a catalog preview. */
+[data-cosmic-add-spark-preview] [data-spark-type="process_timeline"] [class*="h-[420px]"] {
+  height: clamp(220px, 32vw, 320px) !important;
+}
+
+/* Case-study media remains cinematic but compact. */
+[data-cosmic-add-spark-preview] [data-spark-type="case_studies_grid"] [class*="min-h-[18rem]"] {
+  min-height: 220px !important;
+}
+
+/* Jobs and structured-entry rows may contain long metadata / CTA labels. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="jobs_list"],
+  [data-spark-type="content_featured_entry"],
+  [data-spark-type="content_latest_entries"]
+) :is(article, li, [class*="grid"]) {
+  min-width: 0;
+}
+
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="jobs_list"],
+  [data-spark-type="content_featured_entry"],
+  [data-spark-type="content_latest_entries"]
+) :is(h2, h3, p, a, span) {
+  overflow-wrap: anywhere;
+}
+
+/* Mini heroes are introductions, not full-fold sections in the showroom. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="blog_mini_hero"],
+  [data-spark-type="mini_hero_minimal"],
+  [data-spark-type="mini_hero_split"],
+  [data-spark-type="mini_hero_promo"]
+) {
+  min-height: 0 !important;
+  height: auto !important;
+  overflow: hidden;
+}
+
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="blog_mini_hero"],
+  [data-spark-type="mini_hero_split"],
+  [data-spark-type="mini_hero_promo"]
+) img {
+  max-height: 340px;
+  object-fit: cover;
+}
+
+/* Blog Hub contains builder/editor affordances and tall live media wells; showroom stays visual/read-only. */
+[data-cosmic-add-spark-preview] [data-spark-type="blog_hub"] :is(
+  [class*="h-[240px]"],
+  [class*="sm:h-[340px]"],
+  [class*="lg:h-[420px]"],
+  [class*="min-h-[260px]"],
+  [class*="min-h-[280px]"]
+) {
+  height: clamp(180px, 28vw, 300px) !important;
+  min-height: 180px !important;
+  max-height: 300px !important;
+}
+
+[data-cosmic-add-spark-preview] [data-spark-type="blog_hub"] :is(
+  .cosmic-blog-toolbar-button,
+  .cosmic-blog-image-button,
+  .cosmic-blog-ai-button,
+  .cosmic-blog-save-button
+) {
+  display: none !important;
+}
+
+/* Inputs/filters in structured previews are illustrative only and must not steal modal focus. */
+[data-cosmic-add-spark-preview] :is(
+  [data-spark-type="content_grid_classic"],
+  [data-spark-type="content_grid_editorial"],
+  [data-spark-type="content_grid_compact"],
+  [data-spark-type="content_events_grid"],
+  [data-spark-type="events_grid"],
+  [data-spark-type="blog_hub"]
+) :is(input, select, textarea) {
+  pointer-events: none !important;
+}

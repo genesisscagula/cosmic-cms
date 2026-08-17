@@ -203,9 +203,11 @@ class TrialGenerationController extends Controller
                     $validated['prompt']
                 )
             );
-            // Luna's visual-intent decision is a website-level default. The Trial
-            // Builder still exposes the same switch so the user can override it.
-            $finalThemeSettings['overlay_header_on_banner'] = (bool) ($generated['overlay_header_on_banner'] ?? false);
+            // Trial first impression must stay predictable: never let Luna
+            // automatically overlay the header on the generated hero/banner.
+            // The Trial Builder still exposes the switch so the visitor can
+            // explicitly enable overlay mode after generation if they want it.
+            $finalThemeSettings['overlay_header_on_banner'] = false;
             $trial->update(['preview_theme' => $finalThemeSettings]);
             $trial->setAttribute('preview_theme', $finalThemeSettings);
 
@@ -516,10 +518,10 @@ class TrialGenerationController extends Controller
                     'nonce' => (string) Str::uuid(),
                 ]
             );
-            // Full regeneration is allowed to make a fresh Luna header-layout
-            // decision. Manual trial toggles remain authoritative until the next
-            // full regeneration.
-            $freshThemeSettings['overlay_header_on_banner'] = (bool) ($generated['overlay_header_on_banner'] ?? false);
+            // A full trial regeneration also returns to the safe, clean default.
+            // Luna's visual-intent overlay suggestion is intentionally ignored
+            // for trial generations; the visitor can opt in again from Builder.
+            $freshThemeSettings['overlay_header_on_banner'] = false;
             $newToken = (string) Str::uuid();
 
             DB::transaction(function () use ($trial, $generated, $validated, $newToken, $profile, $freshThemeSettings, $freshMenuStructure, $freshBrandContext) {

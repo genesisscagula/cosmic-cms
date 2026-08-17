@@ -210,6 +210,17 @@ class RegisteredUserController extends Controller
     {
         $user = $request->user();
 
+        // Manual complimentary plans have no PendingOnboarding/PayPal record by
+        // design. If an old session or stale URL lands here, send the user to the
+        // dashboard instead of firstOrFail() returning a 404.
+        if ($user?->hasManualPlanEntitlement()) {
+            if ($user->onboarding_status !== 'complete') {
+                $user->forceFill(['onboarding_status' => 'complete'])->save();
+            }
+
+            return redirect()->route('dashboard');
+        }
+
         $onboarding = PendingOnboarding::query()
             ->where('user_id', $user->id)
             ->latest('id')

@@ -91,7 +91,13 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
 
     if (!Component) {
         return (
-            <div className="cosmic-preview-isolation cosmic-spark-preview-content w-full" data-cosmic-preview-isolation="true" data-cosmic-site-preview="true">
+            <div
+                className="cosmic-preview-isolation cosmic-spark-preview-content w-full"
+                data-cosmic-preview-isolation="true"
+                data-cosmic-site-preview="true"
+                data-cosmic-add-spark-preview="true"
+                data-cosmic-spark-type={spark.key}
+            >
                 <SparkVisual spark={spark} previewVariant={previewVariant} websiteTheme={websiteTheme} payloadOverride={payloadOverride} />
             </div>
         );
@@ -127,6 +133,8 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
             className="cosmic-preview-isolation cosmic-spark-preview-content w-full"
             data-cosmic-preview-isolation="true"
             data-cosmic-site-preview="true"
+            data-cosmic-add-spark-preview="true"
+            data-cosmic-spark-type={spark.key}
             data-preview-variant={previewVariant}
             data-preview-family={previewVariant === "primary" ? normalizedTheme.primary : previewVariant}
             style={{

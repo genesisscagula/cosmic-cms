@@ -20,6 +20,17 @@ class EnsureOnboardingComplete
             return $next($request);
         }
 
+        // Complimentary/manual customer plans are intentionally not backed by a
+        // PayPal PaymentOrder. Treat an active manual entitlement as fully active
+        // and never roll it back into pending_payment.
+        if ($user->hasManualPlanEntitlement()) {
+            if ($user->onboarding_status !== 'complete') {
+                $user->forceFill(['onboarding_status' => 'complete'])->save();
+            }
+
+            return $next($request);
+        }
+
         // A completed provisioning is authoritative: reaching this state means the
         // provisioning service already verified a paid + fulfilled order and created
         // the customer's workspace/site. Trust it even if user/payment flags are a

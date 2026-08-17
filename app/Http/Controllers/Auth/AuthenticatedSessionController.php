@@ -35,7 +35,17 @@ class AuthenticatedSessionController extends Controller
 
         $request->user()?->forceFill(['last_login_at' => now()])->save();
 
-        if ($request->user()?->onboarding_status === 'pending_payment') {
+        $user = $request->user();
+
+        if ($user?->hasManualPlanEntitlement()) {
+            if ($user->onboarding_status !== 'complete') {
+                $user->forceFill(['onboarding_status' => 'complete'])->save();
+            }
+
+            return redirect()->intended(route('dashboard', absolute: false));
+        }
+
+        if ($user?->onboarding_status === 'pending_payment') {
             return redirect()->route('onboarding.pending');
         }
 

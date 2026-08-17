@@ -250,11 +250,23 @@ class User extends Authenticatable
         return $plan !== '' ? $plan : 'starter';
     }
 
+    /**
+     * Manual plans are complimentary/internal entitlements and do not require a
+     * fulfilled PayPal order. Keep this separate from platform-owner checks so
+     * agency testers can use normal customer dashboards without billing.
+     */
+    public function hasManualPlanEntitlement(): bool
+    {
+        return strtolower(trim((string) $this->plan_provider)) === 'manual'
+            && strtolower(trim((string) $this->plan_status)) === 'active'
+            && strtolower(trim((string) $this->plan_key)) !== '';
+    }
+
     public function hasManualOwnerEntitlement(): bool
     {
         return $this->isPlatformOwner()
-            && $this->effectivePlanKey() === strtolower(trim((string) $this->plan_key))
-            && strtolower(trim((string) $this->plan_provider)) === 'manual';
+            && $this->hasManualPlanEntitlement()
+            && $this->effectivePlanKey() === strtolower(trim((string) $this->plan_key));
     }
 
     public function isClient(): bool

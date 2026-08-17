@@ -18,7 +18,8 @@ use App\Services\SmartLogoPromptService;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Intervention\Image\Facades\Image; // Import ni sa taas sa imong controller
+use Intervention\Image\Facades\Image;
+use App\Services\SvgLogoLightnessService; // Import ni sa taas sa imong controller
 
 class ImageController extends Controller
 {
@@ -619,7 +620,7 @@ class ImageController extends Controller
         return response()->json(['status' => 'success', 'url' => $original]);
     }
 
-    public function uploadLogo(Request $request)
+    public function uploadLogo(Request $request, SvgLogoLightnessService $svgLightness)
     {
         $request->validate([
             'website_id' => ['required', 'integer', 'exists:websites,id'],
@@ -631,7 +632,7 @@ class ImageController extends Controller
 
         $file = $request->file('image');
 
-        if (strtolower($file->getClientOriginalExtension()) === 'svg') {
+        if ($isSvg) {
             $svg = file_get_contents($file->getRealPath());
 
             if ($svg === false || preg_match('/<\s*(?:script|iframe|object|embed|foreignObject)\b|\son\w+\s*=|(?:href|xlink:href)\s*=\s*[\'\"]\s*(?:https?:|javascript:|data:)/i', $svg)) {
@@ -666,6 +667,9 @@ class ImageController extends Controller
             $themeSettings['brand_active_logo_url'] = $url;
             $themeSettings['brand_favicon_url'] = $url;
             $themeSettings['brand_logo_variants'] = [];
+            if ($svgAnalysis['is_majority_white']) {
+                $themeSettings['overlay_header_on_banner'] = true;
+            }
             $website->theme_settings = $themeSettings;
 
             // SVGs skip the raster cropper, so upload itself is their Save Logo
@@ -676,6 +680,9 @@ class ImageController extends Controller
             $header['logo_filter'] = 'none';
             $header['logo_height'] = max(60, (int) ($header['logo_height'] ?? 0));
             $header['logo_max_width'] = max(300, (int) ($header['logo_max_width'] ?? 0));
+            if ($svgAnalysis['is_majority_white']) {
+                $header['overlay_header_on_banner'] = true;
+            }
             $footer['logo_image_url'] = $url;
             $footer['logo_filter'] = 'none';
             if (! empty($header['logo_text'])) {
@@ -686,7 +693,12 @@ class ImageController extends Controller
             $website->save();
         }
 
-        return response()->json(['url' => $url]);
+        return response()->json([
+            'url' => $url,
+            'is_svg' => $isSvg,
+            'is_majority_white' => (bool) $svgAnalysis['is_majority_white'],
+            'light_ratio' => $svgAnalysis['light_ratio'],
+        ]);
     }
 
     // Function para sa pag-upload sa file

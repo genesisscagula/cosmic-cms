@@ -15,10 +15,11 @@ use App\Services\LogoCanvasService;
 use App\Services\ThemeColorResolver;
 use App\Services\ThemeLogoPaletteService;
 use App\Services\SmartLogoPromptService;
+use App\Services\SvgLogoLightnessService;
 
 class TrialBrandingController extends Controller
 {
-    public function uploadLogo(Request $request, TrialGeneration $trial)
+    public function uploadLogo(Request $request, TrialGeneration $trial, SvgLogoLightnessService $svgLightness)
     {
         $this->assertTrialAvailable($trial);
 
@@ -63,6 +64,12 @@ class TrialBrandingController extends Controller
             $previewTheme['brand_active_logo_url'] = $url;
             $previewTheme['brand_favicon_url'] = $url;
             $previewTheme['brand_logo_variants'] = [];
+            if ($svgAnalysis['is_majority_white']) {
+                // A white SVG would disappear against the default light header.
+                // Turn overlay on only as a local visibility safeguard after the
+                // user explicitly uploads the logo; /start generation remains OFF.
+                $previewTheme['overlay_header_on_banner'] = true;
+            }
         }
         $trial->update([
             'logo_url' => $url,
@@ -79,6 +86,9 @@ class TrialBrandingController extends Controller
             'status' => 'success',
             'url' => $url,
             'source' => 'upload',
+            'is_svg' => $extension === 'svg',
+            'is_majority_white' => (bool) $svgAnalysis['is_majority_white'],
+            'light_ratio' => $svgAnalysis['light_ratio'],
         ]);
     }
 

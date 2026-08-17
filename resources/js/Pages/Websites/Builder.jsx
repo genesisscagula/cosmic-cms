@@ -280,6 +280,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     });
     const [themeFromLogoPreview, setThemeFromLogoPreview] = useState(null);
     const [pendingUploadedLogoThemeChoice, setPendingUploadedLogoThemeChoice] = useState(null);
+    const [pendingSvgLogoMatch, setPendingSvgLogoMatch] = useState(null);
     const [pendingThemeLogoAdapt, setPendingThemeLogoAdapt] = useState(null);
     const [themeLogoAdaptBusy, setThemeLogoAdaptBusy] = useState(false);
     // H23: only confirmed Regenerate Page may bypass the unsaved-changes
@@ -1062,18 +1063,41 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             }
             if (file.type === 'image/svg+xml') {
                 applyTrialLogo(response.data.url);
+                setLogoSyncState('logo_changed');
                 setGlobalSelections((prev) => ({
                     ...prev,
                     brand_original_logo_url: response.data.url,
                     brand_active_logo_url: response.data.url,
                     brand_logo_variants: {},
+                    logo_theme_sync_state: 'logo_changed',
+                    logo_theme_sync_source: 'upload',
+                    logo_theme_synced_theme: null,
+                    ...(response.data?.is_majority_white ? { overlay_header_on_banner: true } : {}),
                 }));
-                setHasUnsavedTheme(true);
-                if (trialMode) {
-                    await autoAdaptThemeFromUploadedLogo(response.data.url);
-                } else {
-                    setPendingUploadedLogoThemeChoice(response.data.url);
+
+                // SVG uploads are free and keep the original artwork. If the
+                // uploaded SVG is predominantly white/light, make it visible by
+                // enabling header overlay locally. /start generation itself still
+                // defaults overlay OFF; this only reacts to an explicit upload.
+                if (response.data?.is_majority_white) {
+                    setData((current) => ({
+                        ...current,
+                        global_header: {
+                            ...(current.global_header || {}),
+                            overlay_header_on_banner: true,
+                        },
+                    }));
+                    showCosmicNotification({
+                        title: 'White logo detected',
+                        message: 'Overlay Header was enabled automatically so your light logo stays visible. You can turn it off anytime.',
+                        tone: 'success',
+                    });
                 }
+
+                setHasUnsavedTheme(true);
+                // Never auto-spend credits after an SVG upload. Offer the user a
+                // deliberate 50-credit Logo → Theme adaptation instead.
+                setPendingSvgLogoMatch(response.data.url);
             } else {
                 // Raster uploads remain user-controlled: crop first, then the
                 // confirmed crop becomes the source for automatic theme analysis.
@@ -1459,7 +1483,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         }
     };
 
-    const matchLogoToTheme = async () => {
+    const matchLogoToTheme = async (skipConfirmation = false) => {
         const logoUrl = data.global_header?.logo_image_url || '/storage/branding/your-logo.png';
         if (!logoUrl) return;
         // If a theme was just selected, pendingThemeLogoAdapt is the exact
@@ -1486,13 +1510,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         };
 
         const matchCost = trialMode ? trialActionCosts.match_logo_to_theme : 50;
-        const matchConfirmed = await confirmCosmicAction({
-            title: `Match logo to ${family?.name || 'current theme'}?`,
-            message: `${creditMessage(matchCost)} Primary color: ${payload.primary_hex}.`,
-            confirmLabel: `Use ${matchCost} Credits`,
-        });
-        if (!matchConfirmed) return;
+        if (!skipConfirmation) {
+            const matchConfirmed = await confirmCosmicAction({
+                title: `Match logo to ${family?.name || 'current theme'}?`,
+                message: `${creditMessage(matchCost)} Primary color: ${payload.primary_hex}.`,
+                confirmLabel: `Use ${matchCost} Credits`,
+            });
+            if (!matchConfirmed) return;
+        }
 
+        setPendingSvgLogoMatch(null);
         startLogoAiAction('logo_to_theme');
         setLogoBusy(true);
         try {
@@ -3135,7 +3162,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     </button>
 
                                     {layoutMenu === index && (
-                                        <div className="absolute top-12 right-10 z-50 w-64 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
+                                        <div id={`cosmic-layout-menu-${index}`} className="cosmic-layout-menu absolute top-12 right-10 z-50 w-64 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
                                             <div className="border-b border-slate-700 px-4 py-3">
                                                 <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Change Layout</p>
                                                 <p className="mt-1 text-xs font-semibold text-white">{BLOG_SPARK_GROUPS[block.type] ? 'Choose from 3 free Blog layouts' : `Preview, buy, or use ${BlockRegistry[block.type]?.schema?.category || 'Section'} Sparks`}</p>
@@ -3187,7 +3214,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                                                         <button
                                                                             type="button"
                                                                             onClick={() => changeBlockLayout(index, layout)}
-                                                                            className="rounded-lg bg-white px-3 py-1.5 text-[10px] font-bold text-slate-950 hover:bg-violet-100"
+                                                                            className="cosmic-layout-use-button rounded-lg !bg-white px-3 py-1.5 text-[10px] font-bold !text-slate-950 hover:!bg-violet-100"
+                                                                            style={{ color: '#0f172a' }}
                                                                         >
                                                                             Use layout
                                                                         </button>
@@ -3534,7 +3562,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                         </div>
                         <div className="flex justify-end gap-2 border-t border-white/10 px-5 py-4">
                             {layoutPreview.owned ? (
-                                <button type="button" onClick={() => { changeBlockLayout(layoutPreview.blockIndex, layoutPreview); setLayoutPreview(null); }} className="rounded-xl bg-white px-4 py-2 text-sm font-bold text-slate-950 hover:bg-violet-100">Use layout</button>
+                                <button type="button" onClick={() => { changeBlockLayout(layoutPreview.blockIndex, layoutPreview); setLayoutPreview(null); }} className="cosmic-layout-use-button rounded-xl !bg-white px-4 py-2 text-sm font-bold !text-slate-950 hover:!bg-violet-100" style={{ color: '#0f172a' }}>Use layout</button>
                             ) : layoutPreview.canInstall ? (
                                 <button type="button" disabled={layoutBusyKey === layoutPreview.type} onClick={() => unlockLayoutSpark(layoutPreview)} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-50">
                                     {layoutBusyKey === layoutPreview.type ? 'Buying…' : Number(layoutPreview.credits || 0) === 0 ? 'Add Free Spark' : `Buy Spark · ⚡ ${layoutPreview.credits}`}
@@ -3748,6 +3776,21 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     </button>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {pendingSvgLogoMatch && !logoBusy && (
+                <div className="fixed inset-0 z-[10045] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">
+                    <div id="cosmic-svg-logo-match-modal" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
+                        <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">SVG logo uploaded</p>
+                        <h3 className="mt-2 text-xl font-bold text-slate-950">Match this logo to the current theme?</h3>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">Your original SVG is already saved for free. Keep it exactly as uploaded, or let Cosmic AI adapt its color treatment to the active website theme.</p>
+                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">Match Logo to Theme uses 50 Cosmic Credits. Uploading the SVG itself uses 0 credits.</div>
+                        <div className="mt-6 grid gap-3 sm:grid-cols-2">
+                            <button type="button" onClick={() => { setPendingSvgLogoMatch(null); setLogoSyncState('logo_changed'); }} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">Keep Original · Free</button>
+                            <button type="button" onClick={() => matchLogoToTheme(true)} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700">✦ Match Logo · 50 Credits</button>
                         </div>
                     </div>
                 </div>
