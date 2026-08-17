@@ -57,7 +57,7 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
     ];
 
     return (
-        <section className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
+        <section data-cosmic-services-bento-premium="true" className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
             <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at 12% 18%, ${familyGlow}, transparent 26%)` }} />
             <div className="relative mx-auto max-w-7xl">
                 <div className="grid gap-8 lg:grid-cols-[1fr_.72fr] lg:items-end lg:gap-16">
@@ -100,9 +100,9 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
                         </article>
                     ))}
 
-                    <article className={`rounded-[2rem] border p-6 lg:col-span-4 ${soft}`}>
-                        <EditableText value={data.proof_value} className="block text-3xl font-semibold tracking-[-.035em]" onSave={(proof_value)=>onUpdate({proof_value})}/>
-                        <EditableText value={data.proof_label} className={`mt-3 block text-sm leading-6 ${muted}`} onSave={(proof_label)=>onUpdate({proof_label})}/>
+                    <article data-cosmic-services-bento-proof="true" className={`rounded-[2rem] border p-6 lg:col-span-4 ${soft}`}>
+                        <EditableText value={data.proof_value} className="cosmic-services-bento-proof-value block text-3xl font-semibold tracking-[-.035em]" onSave={(proof_value)=>onUpdate({proof_value})}/>
+                        <EditableText value={data.proof_label} className="cosmic-services-bento-proof-label mt-3 block text-sm leading-6" onSave={(proof_label)=>onUpdate({proof_label})}/>
                     </article>
                 </div>
             </div>

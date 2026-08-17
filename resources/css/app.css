@@ -7687,3 +7687,31 @@ body .cosmic-start-quick-idea.rounded-full.border {
 ) :is(input, select, textarea) {
   pointer-events: none !important;
 }
+
+
+/* Services Bento Premium — proof card contrast hotfix.
+   Scoped to this Spark so global editable/placeholder styles cannot wash out
+   the final dark proof card on white/surface section states. */
+[data-cosmic-services-bento-premium="true"] [data-cosmic-services-bento-proof="true"] {
+    color: rgb(248 250 252) !important;
+}
+[data-cosmic-services-bento-premium="true"] [data-cosmic-services-bento-proof="true"] :is(
+    .cosmic-services-bento-proof-value,
+    .cosmic-services-bento-proof-label,
+    [contenteditable="true"],
+    button
+) {
+    color: rgb(248 250 252) !important;
+}
+[data-cosmic-services-bento-premium="true"] [data-cosmic-services-bento-proof="true"] .cosmic-services-bento-proof-label {
+    color: rgb(226 232 240) !important;
+}
+[data-cosmic-services-bento-premium="true"] [data-cosmic-services-bento-proof="true"] :is(
+    [data-placeholder],
+    .text-slate-400,
+    .text-slate-500,
+    .text-slate-600
+) {
+    color: rgb(203 213 225) !important;
+    opacity: 1 !important;
+}
