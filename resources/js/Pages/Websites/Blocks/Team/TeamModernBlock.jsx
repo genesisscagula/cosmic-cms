@@ -206,7 +206,7 @@ export function TeamModernBlock({ block, blockIndex, onUpdate, globalTheme }) {
                                         onSave={(bio) => updateMember(index, "bio", bio)}
                                     />
                                 )}
-                                <RepeatableRemoveButton
+                                <RepeatableRemoveButton hoverScope="card"
                                     onRemove={() => removeMember(index)}
                                     disabled={data.members.length <= 1}
                                     label="Remove member"

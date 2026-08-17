@@ -51,9 +51,9 @@ export function HeroSaasDashboardBlock({ block, onUpdate, globalTheme }) {
     ];
 
     return (
-        <section className={`relative overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg} transition-colors duration-500`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+        <section className={`relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg} transition-colors duration-500`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
             <div className="pointer-events-none absolute inset-x-0 top-0 h-64 bg-gradient-to-b from-white/10 to-transparent" />
-            <div className="relative mx-auto max-w-7xl">
+            <div className="relative mx-auto w-full max-w-7xl">
                 <div className="mx-auto max-w-4xl text-center">
                     <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${theme.sub}`} onSave={(eyebrow)=>onUpdate({eyebrow})} />
                     <EditableText value={data.heading} className={`mt-5 block text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`} onSave={(heading)=>onUpdate({heading})} />

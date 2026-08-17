@@ -943,7 +943,7 @@ JS;
                 } else {
                     $miniInner = "<div class='max-w-3xl'><div><p class='text-xs font-semibold uppercase tracking-[0.28em] {$theme['sub']}'>{$eyebrow}</p><h1 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h1></div><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$theme['sub']}'>{$text}</p></div>";
                 }
-                $html .= "<section class='relative overflow-hidden border-b px-6 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']} {$theme['border']}'><div class='pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full {$theme['card']} opacity-10 blur-3xl'></div><div class='relative mx-auto max-w-7xl'>{$miniInner}</div></section>";
+                $html .= "<section class='relative overflow-hidden border-b px-6 py-12 sm:px-8 sm:py-14 lg:px-12 lg:py-16 {$theme['bg']} {$theme['border']}'><div class='pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full {$theme['card']} opacity-10 blur-3xl'></div><div class='relative mx-auto max-w-7xl'>{$miniInner}</div></section>";
                 break;
 
                 case 'blog_hub':
@@ -1836,8 +1836,7 @@ HTML;
                     /* Viewport-aware sizing for full Hero Sparks only. Keep mini heroes and
                        ordinary sections content-sized. A solid header consumes viewport space;
                        an overlay header lives inside the hero and therefore uses the full viewport. */
-                    section[data-cosmic-block-type^='hero_'],
-                    section[data-cosmic-block-type='image_cta_banner'] {
+                    section[data-cosmic-block-type^='hero_'] {
                         box-sizing: border-box;
                         min-height: calc(100vh - var(--cosmic-header-flow-offset, 0px));
                         padding-top: clamp(4.5rem, 9vh, 8rem) !important;
@@ -1845,8 +1844,7 @@ HTML;
                         display: flex;
                         align-items: center;
                     }
-                    section[data-cosmic-block-type^='hero_'] > .relative,
-                    section[data-cosmic-block-type='image_cta_banner'] > .relative { width: 100%; }
+                    section[data-cosmic-block-type^='hero_'] > .relative { width: 100%; }
                     /* Full-bleed image/video/motion heroes own their internal spacing.
                        Do not inject generic top/bottom section padding around the media canvas. */
                     section[data-cosmic-block-type^='hero_'].cosmic-hero-media-edge {
@@ -1854,14 +1852,12 @@ HTML;
                         padding-bottom: 0 !important;
                     }
                     @supports (height: 100svh) {
-                        section[data-cosmic-block-type^='hero_'],
-                        section[data-cosmic-block-type='image_cta_banner'] {
+                        section[data-cosmic-block-type^='hero_'] {
                             min-height: calc(100svh - var(--cosmic-header-flow-offset, 0px));
                         }
                     }
                     @media (max-width: 767px) {
-                        section[data-cosmic-block-type^='hero_'],
-                        section[data-cosmic-block-type='image_cta_banner'] {
+                        section[data-cosmic-block-type^='hero_'] {
                             min-height: calc(100svh - var(--cosmic-header-flow-offset, 0px));
                             padding-top: clamp(3.5rem, 8vh, 5.5rem) !important;
                             padding-bottom: clamp(3.5rem, 8vh, 5.5rem) !important;
@@ -2108,8 +2104,16 @@ HTML;
                 $megaEnabled = (bool) ($block['mega_enabled'] ?? $mega['enabled'] ?? false);
                 $megaThemeMode = in_array(($mega['theme'] ?? 'auto'), ['auto', 'primary', 'white', 'surface'], true) ? ($mega['theme'] ?? 'auto') : 'auto';
                 $megaResolvedTheme = $megaThemeMode === 'auto' ? $blockTheme : $megaThemeMode;
-                $megaSelectedThemeName = $megaResolvedTheme === 'white' ? 'white' : ($megaResolvedTheme === 'surface' ? 'stone' : ($primaryColor ?: 'midnight'));
+                $megaSelectedThemeName = $megaResolvedTheme === 'white' ? 'white' : ($primaryColor ?: 'midnight');
                 $primaryTheme = self::getTheme($megaSelectedThemeName);
+                if ($megaResolvedTheme === 'surface') {
+                    $primaryTheme = [
+                        'bg' => 'bg-[#F5F5F2]',
+                        'text' => 'text-slate-900',
+                        'sub' => 'text-slate-500',
+                        'border' => 'border-slate-200',
+                    ];
+                }
                 $megaLogoHeight = max(44, min(64, $logoHeight + 10));
                 $megaLogoFilter = $megaResolvedTheme === 'primary' ? 'brightness(0) invert(1)' : $logoFilter;
                 $megaBrand = $logoImageUrl !== ''
@@ -2140,8 +2144,8 @@ HTML;
                         $columnHtml .= "<div class='min-w-0'><p class='text-xs font-bold uppercase tracking-[.16em] {$primaryTheme['sub']}'>{$title}</p><div class='mt-3 space-y-1.5'>{$itemsHtml}</div></div>";
                     }
                     $columnCount = max(1, count($columns));
-                    $gridClass = $columnCount >= 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : ($columnCount === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : ($columnCount === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'));
-                    $html .= "<section class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 {$primaryTheme['bg']} {$primaryTheme['text']} {$primaryTheme['border']}'><div class='mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(260px,.72fr)_2.2fr]'><div class='min-w-0'>{$megaBrand}<p class='mt-4 max-w-sm text-sm leading-6 {$primaryTheme['sub']}'>{$tagline}</p><a href='{$primaryUrl}' class='mt-5 inline-flex text-sm font-semibold hover:opacity-75'>{$primaryLabel}</a></div><div class='grid gap-7 {$gridClass}'>{$columnHtml}</div></div></section>";
+                    $gridClass = $columnCount === 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : ($columnCount === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : ($columnCount === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'));
+                    $html .= "<section class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 {$primaryTheme['bg']} {$primaryTheme['text']} {$primaryTheme['border']}'><div class='mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:gap-16'><div class='min-w-0'>{$megaBrand}<p class='mt-4 max-w-sm text-sm leading-6 {$primaryTheme['sub']}'>{$tagline}</p><a href='{$primaryUrl}' class='mt-5 inline-flex text-sm font-semibold hover:opacity-75'>{$primaryLabel}</a></div><div class='grid gap-7 lg:ml-auto lg:w-full lg:max-w-[820px] {$gridClass}'>{$columnHtml}</div></div></section>";
                 }
 
                 $legalLeft = $megaEnabled
@@ -3566,8 +3570,8 @@ HTML;
                     : '';
 
                 $html .= "
-                <section class='relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']}'>
-                    <div class='relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-20'>
+                <section class='relative flex items-center overflow-hidden px-7 py-0 sm:px-10 lg:px-12 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
+                    <div class='relative mx-auto grid w-full max-w-7xl items-center gap-12 lg:grid-cols-[minmax(0,0.95fr)_minmax(0,1.05fr)] lg:gap-20'>
                         <div class='order-2 max-w-2xl lg:order-1'>
                             <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$theme['sub']}'>{$tagline}</span>
                             <h1 class='mt-5 text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1>
@@ -3677,9 +3681,9 @@ HTML;
                 $chipHtml = ''; foreach ($chips as $chip) { $chipHtml .= "<span class='rounded-full border px-3 py-2 text-xs font-semibold {$theme['border']} {$theme['surface']} {$theme['sub']}'>{$chip}</span>"; }
 
                 $html .= "
-                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                <section class='relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
                     <div class='pointer-events-none absolute inset-0' style='background:radial-gradient(circle at 75% 25%, {$familyGlow}, transparent 34%);opacity:{$decorOpacity}'></div>
-                    <div class='relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-16'>
+                    <div class='relative mx-auto grid w-full max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-16'>
                         <div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1><p class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div><div class='mt-8 flex flex-wrap gap-2'>{$chipHtml}</div></div>
                         <div class='relative rounded-[2rem] border p-4 shadow-2xl sm:p-6 {$theme['border']} {$theme['surface']}'>
                             <div class='flex items-center justify-between border-b pb-4 {$theme['border']}'><div class='flex items-center gap-3'><div class='grid h-11 w-11 place-items-center rounded-2xl {$primaryTheme['bg']} {$primaryTheme['text']}'>✦</div><div><strong class='block text-sm {$theme['text']}'>{$assistantLabel}</strong><span class='mt-1 block text-xs {$theme['sub']}'>{$assistantStatus}</span></div></div><span class='rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[.18em] {$theme['border']} {$theme['bg']} {$theme['sub']}'>Live preview</span></div>
@@ -3721,8 +3725,8 @@ HTML;
                 $logoHtml = ''; foreach ($logos as $logo) { $logoHtml .= "<span class='text-xs font-black tracking-[.15em] {$theme['text']}'>{$logo}</span>"; }
 
                 $html .= "
-                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
-                    <div class='relative mx-auto max-w-7xl'>
+                <section class='relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
+                    <div class='relative mx-auto w-full max-w-7xl'>
                         <div class='grid items-end gap-10 lg:grid-cols-[1fr_.72fr] lg:gap-16'><div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1></div><div class='lg:pb-2'><p class='text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-7 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div></div></div>
                         <div class='mt-12 rounded-[2rem] border p-3 shadow-2xl sm:p-4 {$theme['border']} {$theme['surface']}'><div class='grid gap-3 md:grid-cols-2'><div class='relative min-h-[300px] overflow-hidden rounded-[1.45rem] grayscale sm:min-h-[390px]' style=\"{$beforeStyle}\"><div class='absolute inset-0 bg-slate-950/50'></div><div class='absolute inset-x-0 bottom-0 p-5 text-white sm:p-7'><span class='text-[11px] font-bold uppercase tracking-[.24em] text-white/70'>{$beforeLabel}</span><strong class='mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl'>{$beforeCaption}</strong></div></div><div class='relative min-h-[300px] overflow-hidden rounded-[1.45rem] sm:min-h-[390px]' style=\"{$afterStyle}\"><div class='absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent'></div><div class='absolute inset-x-0 bottom-0 p-5 text-white sm:p-7'><span class='text-[11px] font-bold uppercase tracking-[.24em] text-white/70'>{$afterLabel}</span><strong class='mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl'>{$afterCaption}</strong></div></div></div></div>
                         <div class='mt-6 grid gap-3 sm:grid-cols-3'>{$metricHtml}</div>
@@ -3764,9 +3768,9 @@ HTML;
                 $cardHtml = ''; foreach ($cardLabels as $label) { $cardHtml .= "<div class='rounded-2xl border px-4 py-4 text-sm font-semibold {$featureCard}'>{$label}</div>"; }
 
                 $html .= "
-                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
+                <section class='relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
                     <div class='pointer-events-none absolute inset-0' style='background:radial-gradient(circle at 80% 12%, {$familyGlow}, transparent 28%);opacity:{$decorOpacity}'></div>
-                    <div class='relative mx-auto max-w-7xl'>
+                    <div class='relative mx-auto w-full max-w-7xl'>
                         <div class='grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_auto]'>
                             <div class='rounded-[2rem] border p-7 sm:p-10 lg:col-span-7 lg:row-span-2 {$softCard}'><span class='text-xs font-bold uppercase tracking-[.28em] {$softSub}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl'>{$heading}</h1><p class='mt-6 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$softSub}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$secondaryButton}'>{$secondaryLabel}</a></div><div class='mt-10 grid gap-3 sm:grid-cols-3'>{$cardHtml}</div></div>
                             <div class='relative min-h-[310px] overflow-hidden rounded-[2rem] lg:col-span-5' style=\"{$imageStyle}\"><div class='absolute inset-0 bg-gradient-to-t from-slate-950/75 via-slate-950/10 to-transparent'></div><div class='absolute inset-x-0 bottom-0 p-6 text-white sm:p-8'><strong class='text-sm font-semibold'>{$imageLabel}</strong></div></div>
@@ -3857,8 +3861,8 @@ HTML;
                 $logoHtml = ''; foreach ($logos as $logo) { $logoHtml .= "<span class='text-xs font-bold tracking-[.16em] {$theme['sub']}'>{$logo}</span>"; }
 
                 $html .= "
-                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
-                    <div class='relative mx-auto max-w-7xl'>
+                <section class='relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
+                    <div class='relative mx-auto w-full max-w-7xl'>
                         <div class='mx-auto max-w-4xl text-center'>
                             <span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span>
                             <h1 class='mt-5 text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1>
@@ -3899,8 +3903,8 @@ HTML;
                 $imageStyle = $imageUrl ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;" : '';
 
                 $html .= "
-                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
-                    <div class='relative mx-auto max-w-7xl'>
+                <section class='relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
+                    <div class='relative mx-auto w-full max-w-7xl'>
                         <div class='grid items-center gap-10 lg:grid-cols-[minmax(0,.9fr)_minmax(460px,1.1fr)] lg:gap-14'>
                             <div class='relative z-20'>
                                 <span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span>
@@ -3948,8 +3952,8 @@ HTML;
                     : '';
 
                 $html .= "
-                <section class='relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'>
-                    <div class='relative mx-auto max-w-7xl'>
+                <section class='relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
+                    <div class='relative mx-auto w-full max-w-7xl'>
                         <div class='mb-10 flex items-center justify-between border-b pb-5 {$theme['border']}'>
                             <span class='text-[11px] font-bold uppercase tracking-[0.34em] {$theme['sub']}'>{$eyebrow}</span>
                             <span class='text-xs {$theme['sub']}'>{$editorialIndex}</span>
@@ -4076,10 +4080,10 @@ HTML;
                     : 'border-white/45 bg-white/5 text-white hover:bg-white/10';
 
                 $html .= "
-                <section class='relative flex min-h-[420px] overflow-hidden sm:min-h-[460px] lg:min-h-[500px]' style=\"{$backgroundStyle}\">
+                <section class='relative flex min-h-[340px] overflow-hidden sm:min-h-[360px] lg:min-h-[400px]' data-cosmic-banner-size='compact' style=\"{$backgroundStyle}\">
                     <div class='absolute inset-0 {$overlayClass}' style='background-color:{$overlayHex};opacity:" . ($effectiveOverlayOpacity / 100) . ";'></div>
                     <div class='absolute inset-0 bg-gradient-to-r {$gradientClass}'></div>
-                    <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20'>
+                    <div class='relative z-10 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-12 text-center sm:px-10 sm:py-14'>
                         <div class='max-w-3xl'>
                             <span class='block text-xs font-semibold uppercase tracking-[0.3em] {$eyebrowClass}'>{$eyebrow}</span>
                             <h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$headingClass}'>{$heading}</h2>
@@ -4378,13 +4382,13 @@ HTML;
                     : 'text-slate-950';
 
                 $html .= "
-                <section class='relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']} transition-colors duration-500'>
+                <section class='relative flex items-center overflow-hidden px-7 py-0 sm:px-10 lg:px-12 {$theme['bg']} transition-colors duration-500' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
 
                     <div class='pointer-events-none absolute -left-40 top-10 h-96 w-96 rounded-full {$primaryTheme['bg']} opacity-[0.08] blur-[130px]'></div>
 
                     <div class='pointer-events-none absolute -right-44 bottom-0 h-96 w-96 rounded-full {$primaryTheme['bg']} opacity-[0.06] blur-[140px]'></div>
 
-                    <div class='relative mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20'>
+                    <div class='relative mx-auto grid w-full max-w-7xl items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20'>
 
                         <div class='max-w-2xl'>
 
@@ -4578,13 +4582,13 @@ HTML;
                     : 'text-slate-950';
 
                 $html .= "
-                <section class='relative overflow-hidden px-7 py-16 sm:px-10 sm:py-20 lg:px-12 lg:py-24 {$theme['bg']} transition-colors duration-500'>
+                <section class='relative flex items-center overflow-hidden px-7 py-0 sm:px-10 lg:px-12 {$theme['bg']} transition-colors duration-500' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
 
                     <div class='pointer-events-none absolute -left-36 top-10 h-96 w-96 rounded-full {$primaryTheme['bg']} opacity-[0.08] blur-[130px]'></div>
 
                     <div class='pointer-events-none absolute -right-36 bottom-0 h-96 w-96 rounded-full {$primaryTheme['bg']} opacity-[0.06] blur-[140px]'></div>
 
-                    <div class='relative mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20'>
+                    <div class='relative mx-auto grid w-full max-w-7xl items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20'>
 
                         <div class='max-w-2xl'>
 

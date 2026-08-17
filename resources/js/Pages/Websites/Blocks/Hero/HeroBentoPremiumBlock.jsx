@@ -47,9 +47,9 @@ export function HeroBentoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
     const familyGlow = primaryTheme.gradient?.glowSoft || "rgba(124,58,237,.16)";
 
     return (
-        <section className={`relative overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+        <section className={`relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
             <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at 80% 12%, ${familyGlow}, transparent 28%)`, opacity: heroState.isLight ? 0.45 : 1 }} />
-            <div className="relative mx-auto max-w-7xl">
+            <div className="relative mx-auto w-full max-w-7xl">
                 <div className="grid gap-4 lg:grid-cols-12 lg:grid-rows-[auto_auto]">
                     <div className={`rounded-[2rem] border p-7 sm:p-10 lg:col-span-7 lg:row-span-2 ${softCard}`}>
                         <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${softSub}`} onSave={(eyebrow)=>onUpdate({eyebrow})}/>

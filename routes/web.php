@@ -568,6 +568,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::get('/websites/{website}/inquiries', [ContactSubmissionController::class, 'index'])->name('websites.inquiries.index');
     Route::patch('/websites/{website}/inquiries/{submission}', [ContactSubmissionController::class, 'update'])->name('websites.inquiries.update');
     Route::post('/websites/{website}/pages', [PageController::class, 'store'])->name('pages.store');
+    Route::patch('/websites/{website}/pages/{page}/title', [PageController::class, 'updateTitle'])->name('pages.title.update');
+    Route::post('/websites/{website}/pages/{page}/clone', [PageController::class, 'clonePage'])->name('pages.clone');
     Route::delete('/websites/{website}/pages/{page}', [PageController::class, 'destroy'])->name('pages.destroy');
     Route::put('/websites/{website}/commerce/settings', [\App\Http\Controllers\CommerceProductController::class, 'updateSettings'])->name('commerce.settings.update');
     Route::post('/websites/{website}/commerce/pages/install', [\App\Http\Controllers\CommerceProductController::class, 'installPages'])->name('commerce.pages.install');

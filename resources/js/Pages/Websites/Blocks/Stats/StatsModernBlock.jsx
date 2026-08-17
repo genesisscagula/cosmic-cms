@@ -106,7 +106,7 @@ export function StatsModernBlock({ block, onUpdate, globalTheme }) {
                                     onSave={(description) => updateMetric(index, "description", description)}
                                 />
                             )}
-                            <RepeatableRemoveButton
+                            <RepeatableRemoveButton hoverScope="card"
                                 onRemove={() => onUpdate({ metrics: removeAt(data.metrics, index, 1) })}
                                 disabled={data.metrics.length <= 1}
                                 label="Remove metric"

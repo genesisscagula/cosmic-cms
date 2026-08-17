@@ -1,18 +1,15 @@
 import PageListRow from "./PageListRow";
 
-export default function PageList({ pages, onDelete, onAddChild }) {
-    const byParent = new Map();
-    pages.forEach((page) => {
-        const key = page.parent_id || 0;
-        byParent.set(key, [...(byParent.get(key) || []), page]);
-    });
-
+const flattenPages = (pages, parentId = null, depth = 0) => {
     const rows = [];
-    const appendRows = (page, depth = 0) => {
+    pages.filter((page) => (page.parent_id ?? null) === parentId).forEach((page) => {
         rows.push({ page, depth });
-        (byParent.get(page.id) || []).forEach((child) => appendRows(child, depth + 1));
-    };
-    (byParent.get(0) || []).forEach((page) => appendRows(page));
+        rows.push(...flattenPages(pages, page.id, depth + 1));
+    });
+    return rows;
+};
 
-    return <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">{rows.map(({ page, depth }, index) => <div key={page.id} className={index ? "border-t border-white/10" : ""}><PageListRow page={page} depth={depth} onDelete={onDelete} onAddChild={onAddChild} /></div>)}</div>;
+export default function PageList({ pages = [], onDelete, onAddChild, onEditTitle, onClone }) {
+    const rows = flattenPages(pages);
+    return <div id="cosmic-page-list" className="cosmic-page-list overflow-hidden rounded-2xl">{rows.map(({ page, depth }, index) => <div key={page.id} className={index ? "border-t border-white/10" : ""}><PageListRow page={page} depth={depth} onDelete={onDelete} onAddChild={onAddChild} onEditTitle={onEditTitle} onClone={onClone} /></div>)}</div>;
 }

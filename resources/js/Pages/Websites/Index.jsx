@@ -7,6 +7,7 @@ import WebsiteWorkspaceHeader from './Components/WebsiteWorkspaceHeader';
 import NewPagePanel from './Components/NewPagePanel';
 import PageList from './Components/PageList';
 import PageEmptyState from './Components/PageEmptyState';
+import EditPageTitleModal from './Components/EditPageTitleModal';
 import WebsiteLaunchGuide from './Components/WebsiteLaunchGuide';
 import CommerceProductsWorkspace from './Components/CommerceProductsWorkspace';
 import PostsUpdatesWorkspace from './Components/PostsUpdatesWorkspace';
@@ -55,7 +56,7 @@ const normalizeGlobalFooter = (footer, websiteName) => {
             ...defaultMegaFooter,
             ...mega,
             enabled: Boolean(source.mega_enabled ?? mega.enabled ?? false),
-            columns: Array.isArray(mega.columns) && mega.columns.length ? mega.columns : defaultMegaFooter.columns,
+            columns: Array.isArray(mega.columns) && mega.columns.length ? mega.columns.slice(0, 4) : defaultMegaFooter.columns,
         },
     };
 };
@@ -100,6 +101,9 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
     });
     const [visibleInquiryCount, setVisibleInquiryCount] = useState(inquiryCount);
     const [isFooterModalOpen, setIsFooterModalOpen] = useState(false);
+    const [editingPage, setEditingPage] = useState(null);
+    const [isUpdatingPageTitle, setIsUpdatingPageTitle] = useState(false);
+    const [cloningPageId, setCloningPageId] = useState(null);
     const [savedFooter, setSavedFooter] = useState(() => normalizeGlobalFooter(globalFooterBlock, website.name));
 
     const updateFooterContent = (updatedFields) => {
@@ -358,6 +362,43 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
         window.location.href = route('websites.deployment-connector.download', website.id);
     };
 
+    const editPageTitle = async (title) => {
+        if (!editingPage || isUpdatingPageTitle) return;
+        setIsUpdatingPageTitle(true);
+        try {
+            await axios.patch(route('pages.title.update', [website.id, editingPage.id]), { title });
+            showCosmicNotification({ title: 'Page title updated', message: `Renamed to “${title}”. The page URL was kept unchanged.`, tone: 'success' });
+            setEditingPage(null);
+            router.reload({ only: ['pages'] });
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to update title', message: error.response?.data?.message || error.response?.data?.errors?.title?.[0] || 'Please try again.', tone: 'error' });
+        } finally {
+            setIsUpdatingPageTitle(false);
+        }
+    };
+
+    const clonePage = async (page) => {
+        if (cloningPageId) return;
+        if (!await confirmCosmicAction({
+            title: `Clone ${page.title || 'this page'}?`,
+            message: `A draft copy will be created with the same layout and content for ${ACTION_PRICING.add_page} Cosmic Credits.`,
+            confirmLabel: 'Clone page',
+            tone: 'info',
+        })) return;
+
+        setCloningPageId(page.id);
+        try {
+            const response = await axios.post(route('pages.clone', [website.id, page.id]));
+            if (response.data.credit_balance !== undefined) setCreditBalance(response.data.credit_balance);
+            showCosmicNotification({ title: 'Page cloned', message: `${response.data.page?.title || 'The copy'} is ready as a draft.`, tone: 'success' });
+            router.reload({ only: ['pages'] });
+        } catch (error) {
+            showCosmicNotification({ title: 'Unable to clone page', message: error.response?.data?.message || 'Please check your Cosmic Credits and try again.', tone: 'error' });
+        } finally {
+            setCloningPageId(null);
+        }
+    };
+
     const deletePage = async (page) => {
         const typeDescription = page.page_type === 'blog'
             ? 'Its posts and updates will also be permanently deleted.'
@@ -403,9 +444,9 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
                     <WebsiteLaunchGuide pages={pages || []} onNewPage={() => openNewPage()} />
 
-                    <section className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
-                        <div><p className="text-sm font-semibold text-white">Website shell</p><p className="mt-1 text-sm text-slate-400">Configure the shared header and footer used across this website.</p></div>
-                        <div className="mt-4 flex gap-2 sm:mt-0"><button type="button" onClick={() => { setSavedHeader(replaceLegacyHeaderLogo(globalHeaderBlock, website.name)); setIsHeaderModalOpen(true); }} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Header</button><button type="button" onClick={() => setIsFooterModalOpen(true)} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Footer</button></div>
+                    <section id="cosmic-website-shell-card" className="cosmic-website-shell-card rounded-2xl p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
+                        <div className="flex items-start gap-3"><span className="cosmic-shell-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 5.5h16v13H4z"/><path d="M4 9h16"/><path d="M8 5.5v3.5"/></svg></span><div><p className="cosmic-shell-title text-sm font-semibold">Website shell</p><p className="cosmic-shell-copy mt-1 text-sm">Configure the shared header and footer used across this website.</p></div></div>
+                        <div className="mt-4 flex gap-2 sm:mt-0"><button type="button" onClick={() => { setSavedHeader(replaceLegacyHeaderLogo(globalHeaderBlock, website.name)); setIsHeaderModalOpen(true); }} className="cosmic-shell-action rounded-lg px-3 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Header</button><button type="button" onClick={() => setIsFooterModalOpen(true)} className="cosmic-shell-action rounded-lg px-3 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Footer</button></div>
                     </section>
 
                     <section className="space-y-4">
@@ -431,14 +472,15 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                             })}
                         </div>
 
-                        {workspaceContentTab === 'shop' ? <CommerceProductsWorkspace website={website} commerce={commerce} /> : workspaceContentTab === 'posts' ? <div className="space-y-5"><PostsUpdatesWorkspace website={website} initialWorkspace={contentWorkspace} />{(pages || []).some((page) => page.page_type === 'blog') ? <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4"><div className="mb-3"><p className="text-sm font-semibold text-white">Legacy Posts / Updates pages</p><p className="mt-1 text-xs text-slate-500">Existing blog-style Builder pages stay available while the structured content engine is introduced.</p></div><PageList pages={(pages || []).filter((page) => page.page_type === 'blog')} onDelete={deletePage} onAddChild={openNewPage} /></div> : null}</div> : (() => {
+                        {workspaceContentTab === 'shop' ? <CommerceProductsWorkspace website={website} commerce={commerce} /> : workspaceContentTab === 'posts' ? <div className="space-y-5"><PostsUpdatesWorkspace website={website} initialWorkspace={contentWorkspace} />{(pages || []).some((page) => page.page_type === 'blog') ? <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4"><div className="mb-3"><p className="text-sm font-semibold text-white">Legacy Posts / Updates pages</p><p className="mt-1 text-xs text-slate-500">Existing blog-style Builder pages stay available while the structured content engine is introduced.</p></div><PageList pages={(pages || []).filter((page) => page.page_type === 'blog')} onDelete={deletePage} onAddChild={openNewPage} onEditTitle={setEditingPage} onClone={clonePage} /></div> : null}</div> : (() => {
                             const visiblePages = (pages || []).filter((page) => page.page_type === 'standard');
-                            return <div><div className="mb-3 flex items-center justify-between"><div><p className="text-sm font-semibold text-white">Standard Pages</p><p className="mt-1 text-sm text-slate-400">Open a page in Builder to edit its blocks and layout.</p></div><span className="text-xs text-slate-500">{visiblePages.length} total</span></div>{visiblePages.length ? <PageList pages={visiblePages} onDelete={deletePage} onAddChild={openNewPage} /> : <PageEmptyState onNewPage={() => openNewPage()} />}</div>;
+                            return <div><div className="mb-3 flex items-center justify-between"><div><p className="cosmic-pages-section-title text-sm font-semibold">Standard Pages</p><p className="cosmic-pages-section-copy mt-1 text-sm">Open a page in Builder to edit its blocks and layout.</p></div><span className="text-xs text-slate-500">{visiblePages.length} total</span></div>{visiblePages.length ? <PageList pages={visiblePages} onDelete={deletePage} onAddChild={openNewPage} onEditTitle={setEditingPage} onClone={clonePage} /> : <PageEmptyState onNewPage={() => openNewPage()} />}</div>;
                         })()}
                     </section>
 
                     <NewPagePanel open={isNewPageOpen} onClose={closeNewPage} data={data} setData={setData} errors={errors} processing={processing} onSubmit={handleSubmit} parentPage={newPageParent} creditBalance={creditBalance} />
                     {isInquiryInboxOpen ? <InquiryInboxModal website={website} submissions={recentInquiries} onClose={() => setIsInquiryInboxOpen(false)} onCountChange={(difference) => setVisibleInquiryCount((count) => Math.max(0, count + difference))} /> : null}
+                    <EditPageTitleModal page={editingPage} saving={isUpdatingPageTitle} onClose={() => !isUpdatingPageTitle && setEditingPage(null)} onSave={editPageTitle} />
                     {isBusinessProfileOpen ? <BusinessProfileModal website={website} onClose={() => setIsBusinessProfileOpen(false)} onSaved={() => { showCosmicNotification({ title: 'Business profile saved', message: 'Future AI drafts will use these details as context.', tone: 'success' }); router.reload(); }} /> : null}
                     {isWebsiteSettingsOpen ? <WebsiteSettingsModal website={website} onClose={() => setIsWebsiteSettingsOpen(false)} onSaved={() => { showCosmicNotification({ title: 'Website settings saved', message: 'Download a new connector if you changed the live URL or inquiry recipient email.', tone: 'success' }); router.reload(); }} /> : null}
                     
@@ -800,62 +842,87 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
             {/* GLOBAL FOOTER MODAL POPUP SYSTEM */}
             {isFooterModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
+                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-md sm:p-5">
                     <button type="button" aria-label="Close footer dialog" onClick={() => !isSaving && setIsFooterModalOpen(false)} className="absolute inset-0 cursor-default" />
-                    <div role="dialog" aria-modal="true" aria-labelledby="edit-footer-title" className="cosmic-global-footer-modal relative max-h-[calc(100dvh-1.5rem)] w-[96vw] max-w-[1600px] overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6">
-                        <div className="mb-5 flex items-start justify-between gap-4">
+                    <div role="dialog" aria-modal="true" aria-labelledby="edit-footer-title" id="cosmic-shell-mega-footer-editor" className="cosmic-global-footer-premium-modal relative max-h-[calc(100dvh-1.5rem)] w-[97vw] max-w-[1540px] overflow-y-auto rounded-[1.75rem] border border-white/10 bg-[#111216] text-slate-100 shadow-[0_40px_120px_rgba(0,0,0,.6)]">
+                        <div className="sticky top-0 z-20 flex items-start justify-between gap-5 border-b border-white/10 bg-[#111216]/95 px-5 py-5 backdrop-blur-xl sm:px-7">
                             <div>
-                                <h2 id="edit-footer-title" className="text-xl font-semibold text-white">Edit global footer</h2>
-                                <p className="mt-1 text-sm text-slate-400">Configure the shared footer used across this website.</p>
+                                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">Website shell</p>
+                                <div className="mt-1 flex flex-wrap items-center gap-3">
+                                    <h2 id="edit-footer-title" className="text-xl font-semibold tracking-[-.02em] text-white sm:text-2xl">Edit global footer</h2>
+                                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">Shared across every page</span>
+                                </div>
+                                <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-400">Configure the same Mega Footer experience used in the Builder, with clean hover editing and one shared saved state.</p>
                             </div>
-                            <button type="button" disabled={isSaving} onClick={() => setIsFooterModalOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Close">×</button>
+                            <button type="button" disabled={isSaving} onClick={() => setIsFooterModalOpen(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-lg text-slate-400 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Close">×</button>
                         </div>
 
-                        <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.025] p-4">
-                            <div className="flex items-center justify-between gap-4">
-                                <div>
-                                    <h3 className="text-sm font-semibold text-white">Enable Mega Footer</h3>
-                                    <p className="mt-1 text-xs leading-5 text-slate-400">Adds one global multi-column footer above the default legal footer on every page.</p>
+                        <div className="space-y-5 p-5 sm:p-7">
+                            <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:p-5">
+                                    <div className="flex items-center justify-between gap-5">
+                                        <div>
+                                            <div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${savedFooter?.mega_enabled ? 'bg-emerald-400' : 'bg-slate-600'}`} /><h3 className="text-sm font-semibold text-white">Enable Mega Footer</h3></div>
+                                            <p className="mt-1.5 text-xs leading-5 text-slate-400">Adds the global multi-column footer above the legal footer on every page. Turning it off keeps all menu content saved.</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            role="switch"
+                                            aria-checked={Boolean(savedFooter?.mega_enabled)}
+                                            onClick={() => {
+                                                const enabled = !savedFooter?.mega_enabled;
+                                                updateFooterContent({
+                                                    type: 'minimal_footer',
+                                                    mega_enabled: enabled,
+                                                    mega_footer: {
+                                                        ...(savedFooter?.mega_footer || defaultMegaFooter),
+                                                        enabled,
+                                                    },
+                                                });
+                                            }}
+                                            className={`relative h-7 w-12 shrink-0 rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-400 ${savedFooter?.mega_enabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
+                                        >
+                                            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${savedFooter?.mega_enabled ? 'left-6' : 'left-1'}`} />
+                                        </button>
+                                    </div>
                                 </div>
-                                <button
-                                    type="button"
-                                    role="switch"
-                                    aria-checked={Boolean(savedFooter?.mega_enabled)}
-                                    onClick={() => {
-                                        const enabled = !savedFooter?.mega_enabled;
-                                        updateFooterContent({
-                                            type: 'minimal_footer',
-                                            mega_enabled: enabled,
-                                            mega_footer: {
-                                                ...(savedFooter?.mega_footer || defaultMegaFooter),
-                                                enabled,
-                                            },
-                                        });
-                                    }}
-                                    className={`relative h-7 w-12 shrink-0 rounded-full transition ${savedFooter?.mega_enabled ? 'bg-violet-500' : 'bg-slate-700'}`}
-                                >
-                                    <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${savedFooter?.mega_enabled ? 'left-6' : 'left-1'}`} />
+
+                                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:min-w-[360px]">
+                                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Mega Footer appearance</p>
+                                    <div className="mt-3 grid grid-cols-4 gap-2">
+                                        {[['auto','Auto'],['primary','Primary'],['white','White'],['surface','Surface']].map(([value,label]) => {
+                                            const active = (savedFooter?.mega_footer?.theme || 'auto') === value;
+                                            return <button key={value} type="button" onClick={() => updateFooterContent({ mega_footer: { ...(savedFooter?.mega_footer || defaultMegaFooter), theme: value, enabled: Boolean(savedFooter?.mega_enabled) } })} className={`cosmic-mega-appearance-option rounded-xl border px-3 py-2 text-xs font-semibold transition ${active ? 'is-active border-emerald-400/60 bg-emerald-400/10 text-emerald-200' : 'border-white/10 bg-black/10 text-slate-400 hover:border-white/20 hover:text-white'}`}>{label}</button>;
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="cosmic-footer-preview overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0b0c10] shadow-inner shadow-black/30">
+                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
+                                    <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Global footer preview</p><p className="mt-0.5 text-xs text-slate-400">Hover the brand, column, or menu item to edit it. Add controls appear only in context.</p></div>
+                                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">Maximum 4 columns</span>
+                                </div>
+                                <div className="w-full overflow-hidden bg-white">
+                                    <MinimalFooter
+                                            block={savedFooter}
+                                            onUpdate={updateFooterContent}
+                                            editorMode
+                                            resolvedTheme={(savedFooter?.mega_footer?.theme && savedFooter.mega_footer.theme !== 'auto') ? savedFooter.mega_footer.theme : 'primary'}
+                                        />
+                                </div>
+                            </div>
+
+                            <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3.5 sm:px-5">
+                                <p className="text-xs leading-5 text-slate-400"><span className="font-semibold text-slate-200">One global footer system.</span> When Mega Footer is enabled, the website logo moves into it and the legal footer below switches to Privacy Policy, Terms & Conditions, and copyright. Builder and Website Shell share the same content and theme state.</p>
+                            </div>
+
+                            <div className="sticky bottom-0 z-20 -mx-5 -mb-5 flex justify-end gap-2 border-t border-white/10 bg-[#111216]/95 px-5 py-4 backdrop-blur-xl sm:-mx-7 sm:-mb-7 sm:px-7">
+                                <button type="button" disabled={isSaving} onClick={() => setIsFooterModalOpen(false)} className="rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
+                                <button type="button" disabled={isSaving || !savedFooter} onClick={saveFooterToDatabase} className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50">
+                                    {isSaving ? 'Saving...' : 'Save footer'}
                                 </button>
                             </div>
-                        </div>
-
-                        <div className="cosmic-footer-preview mb-6 rounded-xl border border-white/10 bg-black/20 px-2 pb-2 pt-5 sm:px-3 sm:pb-3">
-                            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Global footer preview</h3>
-                            <div className="w-full overflow-hidden rounded-lg">
-                                <MinimalFooter block={savedFooter} onUpdate={updateFooterContent} editorMode />
-                            </div>
-                        </div>
-
-                        <div className="mb-6 rounded-xl border border-white/10 bg-white/[0.02] px-4 py-3">
-                            <p className="text-xs leading-5 text-slate-400"><span className="font-semibold text-slate-200">One global footer system.</span> When Mega Footer is enabled, the website logo moves into the Mega Footer and the legal footer below switches to Privacy Policy, Terms & Conditions, and copyright.</p>
-                        </div>
-
-                        {/* MASTER SUBMIT */}
-                        <div className="mt-6 flex justify-end gap-2 border-t border-white/10 pt-4">
-                            <button type="button" disabled={isSaving} onClick={() => setIsFooterModalOpen(false)} className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
-                            <button type="button" disabled={isSaving || !savedFooter} onClick={saveFooterToDatabase} className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50">
-                                {isSaving ? 'Saving...' : 'Save footer'}
-                            </button>
                         </div>
                     </div>
                 </div>

@@ -26,7 +26,7 @@ export function BlogMiniHeroBlock({ block, onUpdate, globalTheme }) {
     const split = variant === "mini-header-03";
 
     return (
-        <section className={`relative overflow-hidden border-b px-6 py-16 sm:px-8 sm:py-20 lg:px-12 lg:py-24 ${theme.bg} ${theme.border} transition-colors duration-500`}>
+        <section className={`relative overflow-hidden border-b px-6 py-12 sm:px-8 sm:py-14 lg:px-12 lg:py-16 ${theme.bg} ${theme.border} transition-colors duration-500`}>
             <div className={`pointer-events-none absolute -right-24 -top-28 h-72 w-72 rounded-full opacity-10 blur-3xl ${theme.card}`} />
             <div className="relative mx-auto max-w-7xl">
                 <div className={split ? "grid items-end gap-8 lg:grid-cols-[1.15fr_.85fr]" : centered ? "mx-auto max-w-4xl text-center" : "max-w-3xl"}>

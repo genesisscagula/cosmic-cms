@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Page;
 use App\Models\Website;
 use App\Services\AgencyInsightsService;
+use App\Services\AgencyAnalyticsService;
 use App\Services\AgencyWebsiteLimitService;
 use App\Services\BulkWebsiteActionService;
 use App\Services\CreditWalletService;
@@ -531,6 +532,7 @@ class WebsiteController extends Controller
                 'plan_capabilities' => $planCapabilities,
                 'websites_dashboard' => $websitesDashboard,
                 'agency_insights' => $agencyInsights,
+                'overview_analytics' => app(AgencyAnalyticsService::class)->aggregate($websites, 90),
                 'team_workspace' => $teamWorkspace,
                 'agency_branding' => $agencyBranding,
                 'subscription' => [

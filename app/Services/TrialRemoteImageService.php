@@ -63,7 +63,7 @@ class TrialRemoteImageService
             return [];
         }
 
-        $slotQueries = array_slice(array_values($slotQueries), 0, 10);
+        $slotQueries = array_slice(array_values($slotQueries), 0, 12);
         $used = [];
         $poolCache = [];
         $poolCursor = [];
@@ -272,12 +272,17 @@ class TrialRemoteImageService
         }
 
         if ($slotMap !== []) {
+            // Keep a small provider pool available for any image slot whose narrow
+            // Unsplash lookup failed. This avoids leaving generic SVG/empty placeholders
+            // in otherwise-complete AI pages while still preserving user-selected media.
+            $fallbackCursor = 0;
+
             foreach ($blocks as $blockIndex => $block) {
                 if (! is_array($block)) {
                     continue;
                 }
 
-                $assignPath = function (mixed $value, string $path = '', ?string $key = null) use (&$assignPath, $slotMap, $blockIndex): mixed {
+                $assignPath = function (mixed $value, string $path = '', ?string $key = null) use (&$assignPath, $slotMap, $blockIndex, $urls, &$fallbackCursor): mixed {
                     if (is_array($value)) {
                         foreach ($value as $childKey => $childValue) {
                             $childName = is_string($childKey) ? $childKey : null;
@@ -292,11 +297,6 @@ class TrialRemoteImageService
                         return $value;
                     }
 
-                    $replacement = $slotMap[$blockIndex.':'.$path] ?? null;
-                    if (! is_string($replacement) || $replacement === '') {
-                        return $value;
-                    }
-
                     if (str_contains(strtolower($path), 'logo')
                         || (is_string($value) && str_contains(strtolower($value), '/storage/branding/'))) {
                         return $value;
@@ -306,7 +306,19 @@ class TrialRemoteImageService
                         return $value;
                     }
 
-                    return $replacement;
+                    $replacement = $slotMap[$blockIndex.':'.$path] ?? null;
+                    if (is_string($replacement) && $replacement !== '') {
+                        return $replacement;
+                    }
+
+                    if ($this->isWeakGeneratedFallback($value) && $urls !== []) {
+                        $replacement = $urls[$fallbackCursor % count($urls)];
+                        $fallbackCursor++;
+
+                        return $replacement;
+                    }
+
+                    return $value;
                 };
 
                 $blocks[$blockIndex] = $assignPath($block);
@@ -349,6 +361,21 @@ class TrialRemoteImageService
         };
 
         return $assign($blocks);
+    }
+
+
+    private function isWeakGeneratedFallback(mixed $value): bool
+    {
+        if (! is_string($value)) {
+            return false;
+        }
+
+        $url = trim($value);
+
+        return $url === ''
+            || str_contains($url, '/cosmic-images/cosmic-fallback.svg')
+            || str_contains($url, '/storage/cms-images/default/')
+            || str_contains($url, '/storage/cms-images/background/');
     }
 
     private function previewUrl(string $url, array $parameters): string

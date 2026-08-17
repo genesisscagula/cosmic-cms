@@ -666,7 +666,32 @@ export default function PageTemplatesModal({
                         </header>
 
                         <div className="cosmic-template-preview-scroll min-h-0 flex-1 overflow-y-auto">
-                            <div className="w-full">
+                            <div
+                                className="cosmic-template-readonly-preview w-full"
+                                data-cosmic-readonly-preview="true"
+                                onClickCapture={(event) => {
+                                    const target = event.target;
+                                    if (!(target instanceof Element)) return;
+                                    // Keep the showroom read-only. Links/forms/Builder edit affordances are
+                                    // inert, while dedicated slider/accordion buttons can still demonstrate motion.
+                                    if (target.closest('a[href], form, input, textarea, select, [contenteditable="true"]')) {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        return;
+                                    }
+                                    if (target.closest('[data-cosmic-edit-control], [data-editable-media]')) {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                        return;
+                                    }
+                                    const editableShell = target.closest('.cursor-pointer');
+                                    if (editableShell && !target.closest('button, a, input, textarea, select, [role="button"]')) {
+                                        event.preventDefault();
+                                        event.stopPropagation();
+                                    }
+                                }}
+                                onDoubleClickCapture={(event) => { event.preventDefault(); event.stopPropagation(); }}
+                            >
                                 {buildBlocks(preview, true).map((block, index) => {
                                     const Component = BlockRegistry[block.type]?.component;
                                     return Component ? (

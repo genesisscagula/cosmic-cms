@@ -75,7 +75,8 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
     return (
         <section
             data-cosmic-media-banner="true"
-            className="relative flex min-h-[420px] cursor-pointer overflow-hidden sm:min-h-[460px] lg:min-h-[500px]"
+            data-cosmic-banner-size="compact"
+            className="relative flex min-h-[340px] cursor-pointer overflow-hidden sm:min-h-[360px] lg:min-h-[400px]"
             onClick={handleSectionImageEdit}
         >
             <EditableImage
@@ -96,7 +97,7 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
             <div className={`pointer-events-none absolute inset-0 z-10 bg-gradient-to-r ${mediaStyle.gradient}`} />
 
             <div
-                className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-16 text-center sm:px-10 sm:py-20"
+                className="relative z-20 mx-auto flex w-full max-w-7xl items-center justify-center px-7 py-12 text-center sm:px-10 sm:py-14"
             >
                 <div className="max-w-3xl">
                     <EditableText

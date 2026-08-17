@@ -42,9 +42,9 @@ export function HeroSplitEditorialBlock({ block, blockIndex, onUpdate, globalThe
         : `${primaryTheme.bg} ${primaryTheme.text}`;
 
     return (
-        <section className={`relative overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg} transition-colors duration-500`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+        <section className={`relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg} transition-colors duration-500`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-current to-transparent opacity-20" />
-            <div className="relative mx-auto max-w-7xl">
+            <div className="relative mx-auto w-full max-w-7xl">
                 <div className={`mb-10 flex items-center justify-between border-b pb-5 ${theme.border}`}>
                     <EditableText
                         value={data.eyebrow}

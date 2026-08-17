@@ -67,7 +67,7 @@ export function HeroFloatingCardsBlock({
 
     return (
         <section
-            className={`relative overflow-hidden px-7 py-0 sm:px-10 lg:px-12 ${theme.bg} transition-colors duration-500`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}
+            className={`relative flex items-center overflow-hidden px-7 py-0 sm:px-10 lg:px-12 ${theme.bg} transition-colors duration-500`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}
         >
             <div
                 className={`pointer-events-none absolute -left-40 top-10 h-96 w-96 rounded-full ${primaryTheme.bg} opacity-[0.08] blur-[130px]`}
@@ -77,7 +77,7 @@ export function HeroFloatingCardsBlock({
                 className={`pointer-events-none absolute -right-44 bottom-0 h-96 w-96 rounded-full ${primaryTheme.bg} opacity-[0.06] blur-[140px]`}
             />
 
-            <div className="relative mx-auto grid max-w-7xl items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
+            <div className="relative mx-auto grid w-full max-w-7xl items-center gap-14 lg:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)] lg:gap-20">
                 <div className="max-w-2xl">
                     <EditableText
                         value={data.tagline}

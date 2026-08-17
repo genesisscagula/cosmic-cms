@@ -76,7 +76,10 @@ export default function Dashboard({ websites, dashboard }) {
 
             <main id="cosmic-dashboard-main" className="cosmic-dashboard-main relative min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">
                 <div className="fixed right-4 top-4 z-50"><AppearanceSwitch compact /></div>
-                <div className={`mx-auto ${activeTab === "media" ? "max-w-[1600px]" : "max-w-7xl"}`}>
+                <div
+                    className={`cosmic-dashboard-tab-frame mx-auto ${activeTab === "media" ? "max-w-[1600px]" : "max-w-7xl"}`}
+                    data-dashboard-tab={activeTab}
+                >
                     <ActiveTab websites={websites} dashboard={dashboard} onTabChange={changeTab} />
                 </div>
             </main>

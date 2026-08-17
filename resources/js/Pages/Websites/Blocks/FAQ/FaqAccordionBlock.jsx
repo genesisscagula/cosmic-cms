@@ -59,7 +59,7 @@ export function FaqAccordionBlock({ block, onUpdate, globalTheme }) {
                                 <button type="button" aria-label={isOpen ? "Collapse answer" : "Expand answer"} aria-expanded={isOpen} onClick={() => setOpenIndex(isOpen ? -1 : index)} className={`mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border text-lg transition ${theme.border} ${theme.text}`}>{isOpen ? "−" : "+"}</button>
                             </div>
                             {isOpen && <div className="px-5 pb-5 sm:px-6 sm:pb-6"><EditableText value={faq.answer} isTextArea className={`block text-sm leading-6 ${theme.sub}`} onSave={(answer) => updateFaq(index, "answer", answer)} /></div>}
-                            <RepeatableRemoveButton
+                            <RepeatableRemoveButton hoverScope="card"
                                 overlay
                                 onRemove={() => onUpdate({ faqs: removeAt(data.faqs, index, 1) })}
                                 disabled={data.faqs.length <= 1}

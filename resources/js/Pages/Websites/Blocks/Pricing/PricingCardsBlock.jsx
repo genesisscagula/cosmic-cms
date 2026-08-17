@@ -512,7 +512,7 @@ export function PricingCardsBlock({
                                     >
 
                                         <svg
-										    className={`w-5 h-5 ${theme.text}`}
+										    className={`w-5 h-5 ${isPrimarySection ? "text-white" : theme.text}`} data-cosmic-state-icon
 										    fill="none"
 										    stroke="currentColor"
 										    strokeWidth="2.5"

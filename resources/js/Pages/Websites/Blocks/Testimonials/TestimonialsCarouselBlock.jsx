@@ -238,7 +238,7 @@ export function TestimonialsCarouselBlock({
                             `}
                         >
 
-                            <RepeatableRemoveButton
+                            <RepeatableRemoveButton hoverScope="card"
                                 overlay
                                 label="Remove testimonial"
                                 disabled={data.testimonials.length <= 1}

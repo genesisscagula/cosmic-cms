@@ -49,11 +49,24 @@ function LeadTable({ leads }) {
     const [search, setSearch] = useState('');
     const [source, setSource] = useState('all');
     const [status, setStatus] = useState('all');
+    const [copiedKey, setCopiedKey] = useState(null);
+
+    const copyTrialLink = async (lead) => {
+        if (!lead?.trial_url) return;
+
+        try {
+            await navigator.clipboard.writeText(lead.trial_url);
+            setCopiedKey(lead.key);
+            window.setTimeout(() => setCopiedKey((current) => current === lead.key ? null : current), 1600);
+        } catch (error) {
+            window.prompt('Copy trial link', lead.trial_url);
+        }
+    };
 
     const filtered = useMemo(() => {
         const needle = search.trim().toLowerCase();
         return leads.filter((lead) => {
-            const matchesSearch = !needle || [lead.name, lead.email, lead.business_name, lead.industry, lead.selected_plan]
+            const matchesSearch = !needle || [lead.name, lead.email, lead.business_name, lead.industry, lead.selected_plan, lead.trial_url]
                 .filter(Boolean)
                 .some((value) => String(value).toLowerCase().includes(needle));
             const matchesSource = source === 'all' || lead.source === source;
@@ -86,7 +99,7 @@ function LeadTable({ leads }) {
             <div className="mt-6 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025]">
                 <div className="overflow-x-auto">
                     <table className="min-w-full text-left text-sm">
-                        <thead className="bg-white/[0.035] text-xs uppercase tracking-[0.12em] text-slate-500"><tr><th className="px-4 py-3">Contact</th><th className="px-4 py-3">Business</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Plan</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">When</th><th className="px-4 py-3 text-right">Demo</th></tr></thead>
+                        <thead className="bg-white/[0.035] text-xs uppercase tracking-[0.12em] text-slate-500"><tr><th className="px-4 py-3">Contact</th><th className="px-4 py-3">Business</th><th className="px-4 py-3">Source</th><th className="px-4 py-3">Plan</th><th className="px-4 py-3">Status</th><th className="px-4 py-3">When</th><th className="min-w-[320px] px-4 py-3">Trial link</th></tr></thead>
                         <tbody>
                             {filtered.map((lead) => <tr key={lead.key} className="border-t border-white/[0.07] text-slate-300">
                                 <td className="px-4 py-4"><div className="font-semibold text-white">{lead.email}</div>{lead.name !== '—' && <div className="mt-0.5 text-xs text-slate-500">{lead.name}</div>}</td>
@@ -95,7 +108,38 @@ function LeadTable({ leads }) {
                                 <td className="px-4 py-4 text-sm capitalize text-slate-300">{lead.selected_plan ? lead.selected_plan.replaceAll('_', ' ') : '—'}</td>
                                 <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${lead.status === 'active' ? 'bg-emerald-400/10 text-emerald-300' : lead.status === 'failed' || lead.status === 'expired' ? 'bg-rose-400/10 text-rose-300' : 'bg-amber-400/10 text-amber-300'}`}>{STATUS_LABELS[lead.status] || String(lead.status || 'unknown').replaceAll('_', ' ')}</span></td>
                                 <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-500">{lead.created_at_label || '—'}</td>
-                                <td className="px-4 py-4 text-right">{lead.trial_url ? <a href={lead.trial_url} target="_blank" rel="noreferrer" className="inline-flex rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 transition hover:bg-white/5 hover:text-white">Open</a> : <span className="text-slate-700">—</span>}</td>
+                                <td className="px-4 py-4">
+                                    {lead.trial_url ? (
+                                        <div className="min-w-[300px]">
+                                            <a
+                                                href={lead.trial_url}
+                                                target="_blank"
+                                                rel="noreferrer"
+                                                title={lead.trial_url}
+                                                className="block max-w-[420px] truncate font-mono text-[11px] text-cyan-300 transition hover:text-cyan-200 hover:underline"
+                                            >
+                                                {lead.trial_url}
+                                            </a>
+                                            <div className="mt-2 flex items-center gap-2">
+                                                <a
+                                                    href={lead.trial_url}
+                                                    target="_blank"
+                                                    rel="noreferrer"
+                                                    className="inline-flex rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-xs font-bold text-cyan-200 transition hover:bg-cyan-300/15 hover:text-white"
+                                                >
+                                                    Open trial
+                                                </a>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => copyTrialLink(lead)}
+                                                    className="inline-flex rounded-lg border border-white/10 px-3 py-1.5 text-xs font-bold text-slate-300 transition hover:bg-white/5 hover:text-white"
+                                                >
+                                                    {copiedKey === lead.key ? 'Copied!' : 'Copy link'}
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : <span className="text-xs text-slate-700">No trial link</span>}
+                                </td>
                             </tr>)}
                         </tbody>
                     </table>

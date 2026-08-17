@@ -356,7 +356,7 @@ const templatePreviewDocument = (markup = '', type, mode, entry = null, interact
     const footerLogoUrl = footerConfig?.logo_image_url || logoUrl;
     const megaEnabled = Boolean(footerConfig?.mega_enabled ?? footerConfig?.mega_footer?.enabled ?? false);
     const megaFooter = footerConfig?.mega_footer || {};
-    const megaColumns = (Array.isArray(megaFooter?.columns) ? megaFooter.columns : []).slice(0, 4);
+    const megaColumns = (Array.isArray(megaFooter?.columns) ? megaFooter.columns : []).slice(0, 5);
     const previewMegaFooter = megaEnabled ? `<section class="cosmic-preview-mega-footer"><div class="cosmic-preview-mega-shell"><div class="cosmic-preview-mega-brand"><div class="cosmic-preview-brand">${footerLogoUrl ? `<img src="${escapeHtml(footerLogoUrl)}" alt="${escapeHtml(logoText)}">` : `<strong>${escapeHtml(logoText)}</strong>`}</div><p>${escapeHtml(megaFooter?.tagline || 'A premium information-rich footer.')}</p><a href="#">${escapeHtml(megaFooter?.primary_label || 'Get in touch')}</a></div><div class="cosmic-preview-mega-columns">${megaColumns.map((column)=>`<div><strong>${escapeHtml(column?.title || 'Menu')}</strong>${(Array.isArray(column?.items) ? column.items : []).slice(0,6).map((item)=>`<a href="#">${escapeHtml(item?.label || 'Menu item')}</a>`).join('')}</div>`).join('')}</div></div></section>` : '';
     const legalLeft = megaEnabled
         ? `<div class="cosmic-preview-legal-links"><a href="#">${escapeHtml(footerConfig?.privacy_label || 'Privacy Policy')}</a><a href="#">${escapeHtml(footerConfig?.terms_label || 'Terms & Conditions')}</a></div>`

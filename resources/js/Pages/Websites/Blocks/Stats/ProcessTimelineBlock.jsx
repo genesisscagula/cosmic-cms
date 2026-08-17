@@ -214,7 +214,7 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
                                 onSave={(val) => updateStep(index, "text", val)}
                             />
 
-                            <RepeatableRemoveButton
+                            <RepeatableRemoveButton hoverScope="card"
                                 onRemove={() => onUpdate({ steps: removeAt(steps, index, 1) })}
                                 disabled={steps.length <= 1}
                                 label="Remove step"

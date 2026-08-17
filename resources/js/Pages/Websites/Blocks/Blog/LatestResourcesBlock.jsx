@@ -38,7 +38,7 @@ export function LatestResourcesBlock({ block, onUpdate, globalTheme }) {
 
     const card = (resource, index, compact = false) => (
         <article key={index} className={`group relative border ${theme.border} ${theme.card} shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${compact ? "grid gap-4 rounded-2xl p-6 sm:grid-cols-[130px_1fr]" : "rounded-2xl p-7 sm:p-8"}`}>
-            <RepeatableRemoveButton
+            <RepeatableRemoveButton hoverScope="card"
                 overlay
                 onRemove={() => onUpdate({ resources: removeAt(data.resources, index, 1) })}
                 disabled={data.resources.length <= 1}

@@ -262,7 +262,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                             `}
                         >
 
-                            <RepeatableRemoveButton onRemove={() => onUpdate({ services: services.filter((_, idx) => idx !== index) })} disabled={services.length <= 1} label="Remove service" overlay />
+                            <RepeatableRemoveButton hoverScope="card" onRemove={() => onUpdate({ services: services.filter((_, idx) => idx !== index) })} disabled={services.length <= 1} label="Remove service" overlay />
 
                             {/* Icon */}
 

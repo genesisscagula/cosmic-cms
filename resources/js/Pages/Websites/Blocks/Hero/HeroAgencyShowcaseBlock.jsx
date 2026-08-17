@@ -51,9 +51,9 @@ export function HeroAgencyShowcaseBlock({ block, blockIndex, onUpdate, globalThe
     const metricSurface = isPrimary ? "border-white/20 bg-white/10 text-white" : `${theme.border} ${theme.surface} ${theme.text}`;
 
     return (
-        <section className={`relative overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+        <section className={`relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
             <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at 18% 15%, ${primaryTheme.gradient?.glowSoft || "rgba(124,58,237,.14)"}, transparent 30%)` }} />
-            <div className="relative mx-auto max-w-7xl">
+            <div className="relative mx-auto w-full max-w-7xl">
                 <div className="grid items-end gap-10 lg:grid-cols-[1fr_.72fr] lg:gap-16">
                     <div>
                         <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${theme.sub}`} onSave={(eyebrow)=>onUpdate({eyebrow})}/>

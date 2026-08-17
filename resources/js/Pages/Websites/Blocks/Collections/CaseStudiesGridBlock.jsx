@@ -1,7 +1,7 @@
 import { usePage } from "@inertiajs/react";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
-import { RepeatableRemoveButton } from "../Shared/RepeatableControls";
+import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 
 const STUDY_PRESETS = [
@@ -61,11 +61,11 @@ export function CaseStudiesGridBlock({ block, blockIndex, onUpdate, globalTheme 
                                 <EditableText value={study.result} className={`mt-6 block text-sm font-semibold ${theme.text}`} onSave={(result) => updateStudy(index, "result", result)} />
                                 <EditableText value={study.link_label} className={`mt-4 block text-sm font-semibold ${theme.text}`} onSave={(link_label) => updateStudy(index, "link_label", link_label)} />
                             </div>
-                            <RepeatableRemoveButton overlay label="Remove case study" disabled={data.studies.length <= 1} onRemove={() => removeStudy(index)} />
+                            <RepeatableRemoveButton hoverScope="card" overlay label="Remove case study" disabled={data.studies.length <= 1} onRemove={() => removeStudy(index)} />
                         </article>
                     ))}
                 </div>
-                <button type="button" onClick={addStudy} className="cosmic-spark-custom-add mt-6 inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2.5 text-sm font-bold !text-slate-900 shadow-sm transition hover:bg-slate-100">+ Add case study</button>
+                <RepeatableControls onAdd={addStudy} showRemove={false} addLabel="Add case study" hoverScope="section" />
             </div>
         </section>
     );

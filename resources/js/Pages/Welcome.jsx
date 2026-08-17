@@ -1,6 +1,7 @@
 import { Link } from '@inertiajs/react';
 import SeoHead from '@/Components/Seo/SeoHead';
 import PublicHeader from '@/Components/Public/PublicHeader';
+import { trackCosmicEvent } from '@/Analytics/tracking';
 
 const features = [
     {
@@ -115,7 +116,7 @@ export default function Welcome() {
                                 </p>
 
                                 <div className="mt-10 flex flex-col items-center justify-center gap-3 sm:flex-row">
-                                    <Link href="/start" className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-700 px-7 py-3.5 text-base font-black text-white shadow-lg shadow-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-800 sm:w-auto">
+                                    <Link href="/start" onClick={() => trackCosmicEvent('trial_cta_click', { source: 'home_hero' })} className="inline-flex w-full items-center justify-center rounded-xl bg-emerald-700 px-7 py-3.5 text-base font-black text-white shadow-lg shadow-emerald-200 transition hover:-translate-y-0.5 hover:bg-emerald-800 sm:w-auto">
                                         Generate a free concept
                                         <span className="ml-2">→</span>
                                     </Link>
@@ -285,7 +286,7 @@ export default function Welcome() {
                                     <span className="text-sm font-black uppercase tracking-[0.2em] text-emerald-700">How it works</span>
                                     <h2 className="mt-4 text-4xl font-black tracking-[-0.035em] text-slate-950 sm:text-5xl">A faster path from idea to live website.</h2>
                                     <p className="mt-5 text-lg leading-8 text-slate-600">AI handles the repetitive starting work. You stay in control of the content, design, and final result.</p>
-                                    <Link href="/start" className="mt-8 inline-flex items-center rounded-xl bg-slate-950 px-6 py-3.5 text-sm font-black text-white transition hover:bg-emerald-700">Try the workflow <span className="ml-2">→</span></Link>
+                                    <Link href="/start" onClick={() => trackCosmicEvent('trial_cta_click', { source: 'home_workflow' })} className="mt-8 inline-flex items-center rounded-xl bg-slate-950 px-6 py-3.5 text-sm font-black text-white transition hover:bg-emerald-700">Try the workflow <span className="ml-2">→</span></Link>
                                 </div>
 
                                 <div className="space-y-4">
@@ -368,7 +369,7 @@ export default function Welcome() {
                                 <h2 className="mt-4 text-4xl font-black tracking-[-0.035em] sm:text-5xl">Turn a short business description into an editable website concept.</h2>
                                 <p className="mx-auto mt-5 max-w-2xl text-lg leading-8 text-slate-600">Build the starting point with AI, refine it visually, and keep full control of what gets published.</p>
                                 <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
-                                    <Link href="/start" className="rounded-xl bg-emerald-700 px-7 py-3.5 text-base font-black text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-800">Generate a free concept</Link>
+                                    <Link href="/start" onClick={() => trackCosmicEvent('trial_cta_click', { source: 'home_final_cta' })} className="rounded-xl bg-emerald-700 px-7 py-3.5 text-base font-black text-white shadow-lg shadow-emerald-200 transition hover:bg-emerald-800">Generate a free concept</Link>
                                     <Link href="/pricing" className="cosmic-welcome-view-plans rounded-xl border border-emerald-300 bg-white px-7 py-3.5 text-base font-black text-emerald-800 transition hover:bg-emerald-50">View plans</Link>
                                 </div>
                             </div>

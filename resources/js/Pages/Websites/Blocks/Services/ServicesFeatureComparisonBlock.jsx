@@ -80,7 +80,7 @@ export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme })
 
                     {words.map((word, rowIndex) => <div key={word} className="group relative contents">
                         <div className={`group relative border-b p-5 pr-12 lg:p-6 lg:pr-12 ${border} ${baseCard}`}>
-                            <RepeatableRemoveButton overlay placement="row" label="Remove feature row" disabled={rowCount<=1} onRemove={()=>{const all=["one","two","three","four","five","six","seven","eight"];const patch={feature_row_count:rowCount-1};for(let x=rowIndex;x<rowCount-1;x++){const a=all[x],b=all[x+1];patch[`feature_${a}`]=data[`feature_${b}`]??"";options.forEach(({key})=>{patch[`${key}_${a}`]=data[`${key}_${b}`]??"";});}onUpdate(patch)}} />
+                            <RepeatableRemoveButton hoverScope="item" overlay placement="row" label="Remove feature row" disabled={rowCount<=1} onRemove={()=>{const all=["one","two","three","four","five","six","seven","eight"];const patch={feature_row_count:rowCount-1};for(let x=rowIndex;x<rowCount-1;x++){const a=all[x],b=all[x+1];patch[`feature_${a}`]=data[`feature_${b}`]??"";options.forEach(({key})=>{patch[`${key}_${a}`]=data[`${key}_${b}`]??"";});}onUpdate(patch)}} />
                             <EditableText value={data[`feature_${word}`]} className="text-sm font-semibold" onSave={save(`feature_${word}`)} />
                         </div>
                         {options.map((option) => <div key={`${word}-${option.key}`} className={`group relative border-b p-5 text-sm lg:p-6 ${border} ${option.featured ? featuredCard : baseCard}`}>

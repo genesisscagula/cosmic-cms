@@ -160,7 +160,7 @@ const normalizeGlobalFooterBlock = (footer = {}) => ({
         tagline: footer?.mega_footer?.tagline || 'A premium information-rich footer.',
         primary_label: footer?.mega_footer?.primary_label || 'Get in touch',
         primary_url: footer?.mega_footer?.primary_url || '#contact',
-        columns: Array.isArray(footer?.mega_footer?.columns) && footer.mega_footer.columns.length ? footer.mega_footer.columns : [
+        columns: Array.isArray(footer?.mega_footer?.columns) && footer.mega_footer.columns.length ? footer.mega_footer.columns.slice(0, 4) : [
             { title: 'Company', items: [{ label: 'About us', url: '#about' }, { label: 'Careers', url: '#careers' }, { label: 'Contact', url: '#contact' }] },
             { title: 'Services', items: [{ label: 'What we do', url: '#services' }, { label: 'Solutions', url: '#solutions' }, { label: 'Pricing', url: '#pricing' }] },
             { title: 'Resources', items: [{ label: 'Insights', url: '#insights' }, { label: 'Guides', url: '#guides' }, { label: 'Updates', url: '#updates' }] },
@@ -223,7 +223,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [isGeneratePageOpen, setIsGeneratePageOpen] = useState(false);
-    const [isMegaFooterQuickEdit, setIsMegaFooterQuickEdit] = useState(false);
     const [aiResult, setAiResult] = useState(null);
     const [aiLoading, setAiLoading] = useState(false);
 
@@ -3399,11 +3398,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                             )}
                                         </div>
                                         <button type="button" role="switch" title="Enable or disable Mega Footer" aria-label="Enable or disable Mega Footer" aria-checked={Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled)} onClick={() => { const enabled = !Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled); updateFooter({ mega_enabled: enabled, mega_footer: { ...(data.global_footer?.mega_footer || {}), enabled, theme: data.global_footer?.mega_footer?.theme || 'auto' } }); }} className={`relative h-7 w-12 shrink-0 rounded-full transition ${Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled) ? 'bg-emerald-500' : 'bg-slate-700'}`}><span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled) ? 'left-6' : 'left-1'}`} /></button>
-                                        {Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled) && <button type="button" onClick={() => setIsMegaFooterQuickEdit((value) => !value)} className="h-8 rounded-lg px-2 text-[11px] font-semibold text-slate-300 transition hover:bg-slate-800 hover:text-white">{isMegaFooterQuickEdit ? 'Done' : 'Edit'}</button>}
                                     </div>
                                 </div>
                             )}
-                            <MinimalFooter block={normalizeGlobalFooterBlock(data.global_footer)} onUpdate={updateFooter} editorMode={isMegaFooterQuickEdit} resolvedTheme={resolveBlockTheme({ theme: data.global_footer?.mega_footer?.theme || 'auto' }, data.blocks.length)} />
+                            <MinimalFooter block={normalizeGlobalFooterBlock(data.global_footer)} onUpdate={updateFooter} editorMode={Boolean(capabilities.canEditGlobalShell && (data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled))} resolvedTheme={resolveBlockTheme({ theme: data.global_footer?.mega_footer?.theme || 'auto' }, data.blocks.length)} />
                         </div>
                     )}
                 </div>

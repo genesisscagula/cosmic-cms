@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import axios from "axios";
 import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
-import { RepeatableRemoveButton } from "../Shared/RepeatableControls";
+import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
 import MediaPickerModal from "@/Components/Media/MediaPickerModal";
 
 export const BlogHubSchema = {
@@ -456,7 +456,7 @@ export function BlogHubBlock({
                 ) : (
                     <>
                 <article className={`group relative ${showIntro ? "mt-12" : ""} group relative grid overflow-hidden rounded-3xl border ${theme.border} ${theme.card} ${variant === "blog-cards-02" ? "md:grid-cols-[.8fr_1.2fr]" : variant === "blog-cards-03" ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
-                    {hasSavedPosts && isBuilder && <RepeatableRemoveButton overlay onRemove={() => requestDeletePost(featuredPost)} label="Delete featured post" />}
+                    {hasSavedPosts && isBuilder && <RepeatableRemoveButton hoverScope="card" overlay onRemove={() => requestDeletePost(featuredPost)} label="Delete featured post" />}
                     {hasSavedPosts ? (
                         <img src={featuredPost.image_url || "/storage/cms-images/background/background-1.avif"} alt={featuredPost.title || "Featured article"} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`} />
                     ) : (
@@ -484,7 +484,7 @@ export function BlogHubBlock({
                 <div className={`mt-7 grid gap-5 ${variant === "blog-cards-02" ? "lg:grid-cols-2" : variant === "blog-cards-03" ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
                     {visiblePosts.slice(0, 4).map((post, index) => (
                         <article key={post.id || index} className={`group relative overflow-hidden rounded-2xl border ${theme.border} ${theme.card}`}>
-                            {hasSavedPosts && isBuilder && <RepeatableRemoveButton overlay onRemove={() => requestDeletePost(post)} label="Delete post" />}
+                            {hasSavedPosts && isBuilder && <RepeatableRemoveButton hoverScope="card" overlay onRemove={() => requestDeletePost(post)} label="Delete post" />}
                             {hasSavedPosts ? (
                                 <img src={post.image_url || "/storage/cms-images/background/background-1.avif"} alt="" className="h-44 w-full object-cover" />
                             ) : (
@@ -515,7 +515,7 @@ export function BlogHubBlock({
 
                     </>
                 )}
-                {isBuilder && !viewingPost && <button type="button" onClick={() => openComposer()} className="cosmic-spark-custom-add mt-7 inline-flex min-h-10 items-center justify-center rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-bold !text-slate-900 shadow-sm transition hover:bg-slate-100">+ Add post</button>}
+                {isBuilder && !viewingPost && <RepeatableControls onAdd={() => openComposer()} showRemove={false} addLabel="Add post" hoverScope="section" />}
 
                 {actionNotice && (
                     <ModalPortal>

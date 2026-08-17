@@ -206,7 +206,7 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
                             className={`group ${theme.card} border ${theme.border} rounded-3xl p-8 h-full flex flex-col relative transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl`}
                         >
 
-                            <RepeatableRemoveButton onRemove={() => onUpdate({ cards: cardData.filter((_, idx) => idx !== i) })} disabled={cardData.length <= 1} label="Remove service card" overlay />
+                            <RepeatableRemoveButton hoverScope="card" onRemove={() => onUpdate({ cards: cardData.filter((_, idx) => idx !== i) })} disabled={cardData.length <= 1} label="Remove service card" overlay />
 
                             {/* Icon */}
 

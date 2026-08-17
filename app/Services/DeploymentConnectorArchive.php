@@ -47,10 +47,12 @@ class DeploymentConnectorArchive
             'website_id' => $website->id,
             'commerce_public_key' => $commerceSettings->public_key,
             'commerce_manifest_url' => rtrim(url('/'), '/') . '/api/v1/commerce/sites/' . $commerceSettings->public_key . '/manifest',
+            'analytics_url' => rtrim(url('/'), '/') . '/api/v1/websites/' . $website->id . '/analytics',
         ], true) . ";\n");
         $zip->addFromString('cosmic-cms/sync.php', $this->receiverScript());
         $zip->addFromString('cosmic-cms/contact.php', $this->contactReceiverScript());
         $zip->addFromString('cosmic-cms/commerce.php', $this->commerceReceiverScript());
+        $zip->addFromString('cosmic-cms/analytics.php', $this->analyticsReceiverScript());
         $zip->addFromString('cosmic-cms/.htaccess', "Options -Indexes\n\n<FilesMatch \"^(config\\.php|.*\\.(log|json))$\">\n    Require all denied\n</FilesMatch>\n");
         $zip->addFromString('cosmic-cms/submissions/.htaccess', "Require all denied\n");
         $zip->addFromString('.htaccess', $this->cleanUrlHtaccess());
@@ -68,7 +70,7 @@ class DeploymentConnectorArchive
 Cosmic CMS Deployment Connector
 
 1. Extract this ZIP directly into your website root. It creates:
-   - cosmic-cms/ (the protected deployment/contact connector plus commerce bridge)
+   - cosmic-cms/ (the protected deployment/contact connector, analytics relay, and commerce bridge)
    - .htaccess (clean URLs for compiled static pages)
 2. Do not rename config.php or sync.php.
 3. Your expected verification endpoint is:
@@ -83,6 +85,10 @@ Do not expose config.php or share the connector archive publicly.
 All plans receive the commerce-ready connector. cosmic-cms/commerce.php?action=manifest
 returns a safe storefront manifest; live store capabilities activate only when the
 website owner's Cosmic plan includes commerce and the store is enabled.
+
+Published pages send privacy-light, first-party traffic counters to cosmic-cms/analytics.php.
+The relay forwards only aggregate counters to Cosmic CMS; the deployment secret stays
+server-side and is never exposed in the generated HTML.
 
 Published contact forms submit to cosmic-cms/contact.php. Each valid inquiry is
 stored privately on the live site, forwarded to the Cosmic CMS Inquiry Inbox when
@@ -184,6 +190,35 @@ function forwardSubmissionToCosmic(array $config, array $submission): void
     curl_close($request);
 }
 
+function forwardAnalyticsConversion(array $config): void
+{
+    $analyticsUrl = trim((string) ($config['analytics_url'] ?? ''));
+    $secret = trim((string) ($config['sync_secret'] ?? ''));
+
+    if ($analyticsUrl === '' || $secret === '' || ! function_exists('curl_init')) {
+        return;
+    }
+
+    $request = curl_init($analyticsUrl);
+    if ($request === false) {
+        return;
+    }
+
+    curl_setopt_array($request, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => json_encode(['conversions' => 1], JSON_UNESCAPED_SLASHES),
+        CURLOPT_HTTPHEADER => [
+            'Content-Type: application/json',
+            'X-Cosmic-Sync-Secret: ' . $secret,
+        ],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_CONNECTTIMEOUT => 2,
+        CURLOPT_TIMEOUT => 4,
+    ]);
+    curl_exec($request);
+    curl_close($request);
+}
+
 if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
     contactResponse(['status' => 'error', 'message' => 'Method not allowed.'], 405);
 }
@@ -256,6 +291,7 @@ $recipient = (string) ($config['contact_email'] ?? '');
 // The local JSON copy remains the durable fallback if the CMS is temporarily
 // unreachable. Forwarding is best-effort and never makes the visitor retry.
 forwardSubmissionToCosmic($config, $submission);
+forwardAnalyticsConversion($config);
 
 if (filter_var($recipient, FILTER_VALIDATE_EMAIL) && function_exists('mail')) {
     $lines = [];
@@ -353,6 +389,85 @@ if (! is_array($payload)) {
 }
 
 commerceResponse(['status' => 'success', 'commerce' => $payload]);
+PHP;
+    }
+
+    private function analyticsReceiverScript(): string
+    {
+        return <<<'PHP'
+<?php
+
+declare(strict_types=1);
+
+function analyticsResponse(array $payload, int $status = 200): never
+{
+    http_response_code($status);
+    header('Content-Type: application/json');
+    header('Cache-Control: no-store');
+    header('X-Content-Type-Options: nosniff');
+    echo json_encode($payload, JSON_UNESCAPED_SLASHES);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    analyticsResponse(['status' => 'error', 'message' => 'Method not allowed.'], 405);
+}
+
+$configPath = __DIR__ . '/config.php';
+if (! is_file($configPath)) {
+    analyticsResponse(['status' => 'error', 'message' => 'Missing Cosmic connector configuration.'], 500);
+}
+
+$config = require $configPath;
+$analyticsUrl = trim((string) ($config['analytics_url'] ?? ''));
+$secret = trim((string) ($config['sync_secret'] ?? ''));
+
+if ($analyticsUrl === '' || $secret === '') {
+    analyticsResponse(['status' => 'error', 'message' => 'Analytics relay is not configured.'], 503);
+}
+
+$raw = (string) file_get_contents('php://input');
+$data = json_decode($raw, true);
+if (! is_array($data)) {
+    analyticsResponse(['status' => 'error', 'message' => 'Invalid analytics payload.'], 422);
+}
+
+$allowed = ['page_views', 'visitors', 'sessions', 'conversions', 'engaged_sessions', 'duration_seconds'];
+$payload = [];
+foreach ($allowed as $metric) {
+    $value = (int) ($data[$metric] ?? 0);
+    if ($value > 0) {
+        $payload[$metric] = min($value, $metric === 'duration_seconds' ? 864000 : 10000);
+    }
+}
+
+if ($payload === []) {
+    analyticsResponse(['status' => 'accepted'], 202);
+}
+
+// Same-origin browser traffic hits this relay. The connector secret remains
+// server-side and authenticates the aggregate counters with Cosmic CMS.
+if (function_exists('curl_init')) {
+    $request = curl_init($analyticsUrl);
+    if ($request !== false) {
+        curl_setopt_array($request, [
+            CURLOPT_POST => true,
+            CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_SLASHES),
+            CURLOPT_HTTPHEADER => [
+                'Content-Type: application/json',
+                'X-Cosmic-Sync-Secret: ' . $secret,
+            ],
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_CONNECTTIMEOUT => 2,
+            CURLOPT_TIMEOUT => 4,
+        ]);
+        curl_exec($request);
+        curl_close($request);
+    }
+}
+
+// Analytics is best-effort and must never slow or break the published site.
+analyticsResponse(['status' => 'accepted'], 202);
 PHP;
     }
 
@@ -493,7 +608,46 @@ body#cosmic-published-page[data-cosmic-page-style='clean'] main section[data-cos
 body#cosmic-published-page[data-cosmic-page-style='clean'] main section[data-cosmic-block-type^='hero_'] :is(a,button)[class*='bg-white'],body#cosmic-published-page[data-cosmic-page-style='clean'] main section[data-cosmic-block-type='image_cta_banner'] :is(a,button)[class*='bg-white']{background:var(--p)!important;border-color:var(--p)!important;color:#fff!important;-webkit-text-fill-color:#fff!important;opacity:1!important}body#cosmic-published-page[data-cosmic-page-style='clean'] main section[data-cosmic-block-type^='hero_'] :is(a,button)[class*='border-white'],body#cosmic-published-page[data-cosmic-page-style='clean'] main section[data-cosmic-block-type='image_cta_banner'] :is(a,button)[class*='border-white']{background:#fff!important;border-color:#cbd5e1!important;color:#0f172a!important;-webkit-text-fill-color:#0f172a!important;opacity:1!important}
 body#cosmic-published-page[data-cosmic-page-style='clean'] main section[data-cosmic-block-type^='hero_'] a[class*='bg-primary'],body#cosmic-published-page[data-cosmic-page-style='clean'] main section[data-cosmic-block-type^='hero_'] a[class*='bg-[var(--p)]'],body#cosmic-published-page[data-cosmic-page-style='clean'] main section[data-cosmic-block-type='image_cta_banner'] a[class*='bg-primary']{color:#fff!important;-webkit-text-fill-color:#fff!important}
 
-</style>\n</head>\n<body id='cosmic-published-page' data-cosmic-page-style='{$pageStyle}' class='{$bodyBaseClass} min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}\n</body>\n</html>";
+</style>\n</head>\n<body id='cosmic-published-page' data-cosmic-page-style='{$pageStyle}' class='{$bodyBaseClass} min-h-screen m-0 p-0 flex flex-col'>\n{$header}\n<main class='w-full flex-grow'>{$body}</main>\n{$footer}
+<script>
+(function(){
+  if (window.__cosmicAnalyticsLoaded) return;
+  window.__cosmicAnalyticsLoaded = true;
+  var endpoint = '/cosmic-cms/analytics.php';
+  var startedAt = Date.now();
+  var sentDuration = false;
+  function send(payload){
+    try {
+      var body = JSON.stringify(payload || {});
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(endpoint, new Blob([body], {type:'application/json'}));
+        return;
+      }
+      fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:body,keepalive:true,credentials:'same-origin'}).catch(function(){});
+    } catch(e) {}
+  }
+  var initial = {page_views:1};
+  try {
+    var visitorKey = 'cosmic_visitor_v1';
+    if (!localStorage.getItem(visitorKey)) { localStorage.setItem(visitorKey, String(Date.now())); initial.visitors = 1; }
+  } catch(e) {}
+  try {
+    var sessionKey = 'cosmic_session_v1';
+    if (!sessionStorage.getItem(sessionKey)) { sessionStorage.setItem(sessionKey, String(Date.now())); initial.sessions = 1; }
+  } catch(e) { initial.sessions = 1; }
+  send(initial);
+  function finish(){
+    if (sentDuration) return;
+    sentDuration = true;
+    var seconds = Math.max(1, Math.min(86400, Math.round((Date.now()-startedAt)/1000)));
+    send({duration_seconds:seconds, engaged_sessions:seconds>=10?1:0});
+  }
+  window.addEventListener('pagehide', finish, {once:true});
+  document.addEventListener('visibilitychange', function(){ if (document.visibilityState === 'hidden') finish(); });
+})();
+</script>
+</body>
+</html>";
 }
 
 function cosmicCleanUrlRules(): string
@@ -594,7 +748,7 @@ if (! cosmicAuthorized($config)) {
 $action = $_GET['action'] ?? null;
 
 if ($action === 'verify' && $_SERVER['REQUEST_METHOD'] === 'GET') {
-    cosmicResponse(['status' => 'success', 'message' => 'Cosmic deployment connector is ready.', 'version' => '2.9.0.4-nested-pages']);
+    cosmicResponse(['status' => 'success', 'message' => 'Cosmic deployment connector is ready.', 'version' => '2.10.0-analytics-relay']);
 }
 
 if ($action === 'receive_package' && $_SERVER['REQUEST_METHOD'] === 'POST') {

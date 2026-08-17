@@ -50,9 +50,9 @@ export function HeroAiConversationBlock({ block, onUpdate, globalTheme }) {
     const isLight = requestedTheme === "white" || requestedTheme === "surface" || requestedTheme === "stone";
 
     return (
-        <section className={`relative overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+        <section className={`relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
             <div className="pointer-events-none absolute inset-0" style={{ background: `radial-gradient(circle at 75% 25%, ${familyGlow}, transparent 34%)`, opacity: isLight ? 0.45 : 1 }} />
-            <div className="relative mx-auto grid max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-16">
+            <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-16">
                 <div>
                     <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${theme.sub}`} onSave={(eyebrow)=>onUpdate({eyebrow})}/>
                     <EditableText value={data.heading} className={`mt-5 block text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`} onSave={(heading)=>onUpdate({heading})}/>

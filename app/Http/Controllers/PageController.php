@@ -123,6 +123,132 @@ class PageController extends Controller
         return back()->with('success', 'Page created for ' . ActionPricing::ADD_PAGE . ' Cosmic Credits.');
     }
 
+    public function updateTitle(Request $request, Website $website, Page $page)
+    {
+        $this->authorize('update', $website);
+        abort_unless($page->website_id === $website->id, 404);
+
+        $validated = $request->validate([
+            'title' => 'required|string|max:255',
+        ]);
+
+        $page->update([
+            'title' => trim($validated['title']),
+        ]);
+
+        return response()->json([
+            'message' => 'Page title updated successfully.',
+            'page' => $page->fresh(['parent']),
+        ]);
+    }
+
+    public function clonePage(Request $request, Website $website, Page $page, CreditService $credits)
+    {
+        $this->authorize('update', $website);
+        abort_unless($page->website_id === $website->id, 404);
+
+        $baseTitle = trim((string) ($page->title ?: 'Untitled Page'));
+        $copyTitle = $this->uniquePageCopyTitle($website, $baseTitle);
+        $copySlug = $this->uniquePageSlug($website, Str::slug($copyTitle) ?: 'page-copy');
+        $reference = 'clone-page-' . Str::uuid();
+
+        $credits->consume(
+            $request->user(),
+            ActionPricing::ADD_PAGE,
+            'Clone page: ' . $baseTitle,
+            $website,
+            $reference,
+            ['source_page_id' => $page->id, 'page_type' => $page->page_type],
+        );
+
+        try {
+            $copy = DB::transaction(function () use ($website, $page, $copyTitle, $copySlug) {
+                $copy = $website->pages()->create([
+                    'title' => $copyTitle,
+                    'slug' => $copySlug,
+                    'parent_id' => $page->parent_id,
+                    'sort_order' => ((int) $website->pages()->where('parent_id', $page->parent_id)->max('sort_order')) + 1,
+                    'page_type' => $page->page_type,
+                    'page_style' => $page->page_style,
+                    'blocks' => $page->blocks ?? [],
+                    'status' => 'draft',
+                    'published_blocks' => null,
+                    'published_html' => null,
+                    'published_page_style' => null,
+                    'published_at' => null,
+                    'last_published_at' => null,
+                    'publish_error' => null,
+                ]);
+
+                if ($page->page_type === 'blog') {
+                    $website->blogPosts()->where('page_id', $page->id)->orderBy('id')->get()->each(function ($post) use ($website, $copy) {
+                        $baseSlug = Str::slug($post->slug ?: $post->title ?: 'post') ?: 'post';
+                        $candidate = $baseSlug;
+                        $suffix = 2;
+                        while ($website->blogPosts()->where('slug', $candidate)->exists()) {
+                            $candidate = $baseSlug . '-' . $suffix++;
+                        }
+
+                        $website->blogPosts()->create([
+                            'page_id' => $copy->id,
+                            'title' => $post->title,
+                            'slug' => $candidate,
+                            'excerpt' => $post->excerpt,
+                            'content' => $post->content,
+                            'category' => $post->category,
+                            'tags' => $post->tags,
+                            'image_url' => $post->image_url,
+                            'is_featured' => $post->is_featured,
+                            'status' => 'draft',
+                            'published_at' => null,
+                        ]);
+                    });
+                }
+
+                return $copy;
+            });
+        } catch (Throwable $exception) {
+            $credits->refund(
+                $request->user(),
+                ActionPricing::ADD_PAGE,
+                'Refund for failed page clone',
+                $website,
+                $reference . '-refund',
+            );
+            throw $exception;
+        }
+
+        return response()->json([
+            'message' => 'Page cloned successfully.',
+            'page' => $copy,
+            'credit_balance' => $credits->balance($request->user()),
+        ]);
+    }
+
+    private function uniquePageCopyTitle(Website $website, string $baseTitle): string
+    {
+        $candidate = $baseTitle . ' Copy';
+        $suffix = 2;
+
+        while ($website->pages()->whereRaw('LOWER(title) = ?', [mb_strtolower($candidate)])->exists()) {
+            $candidate = $baseTitle . ' Copy ' . $suffix++;
+        }
+
+        return $candidate;
+    }
+
+    private function uniquePageSlug(Website $website, string $baseSlug): string
+    {
+        $candidate = $baseSlug;
+        $suffix = 2;
+
+        while ($website->pages()->where('slug', $candidate)->exists()) {
+            $candidate = $baseSlug . '-' . $suffix++;
+        }
+
+        return $candidate;
+    }
+
     public function destroy(Website $website, Page $page)
     {
         $this->authorize('update', $website);

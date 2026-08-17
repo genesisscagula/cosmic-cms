@@ -125,7 +125,7 @@ class AiPageGenerationService
         // image values remain as a safe fallback if Unsplash is unavailable.
         $mediaQueries = $this->learningQueries($prompt, $blocks, $placeholderFolder);
         $mediaQueries = $this->prioritizeRemoteImageQueries($mediaQueries);
-        $targetImageCount = min(10, count($mediaQueries));
+        $targetImageCount = min(12, count($mediaQueries));
         $remoteImages = $this->trialRemoteImages->resolveForQueries($visualIntent, $mediaQueries, 'TrialRemoteImages');
         $blocks = $this->trialRemoteImages->assignToBlocks($blocks, $remoteImages);
         $mediaKeywords = collect($visualIntent['image_keywords'] ?? [])
@@ -204,7 +204,7 @@ class AiPageGenerationService
         // receives the same number/style of remote provider images.
         $mediaQueries = $this->learningQueries($prompt, $blocks, $resolvedImageFolder);
         $mediaQueries = $this->prioritizeRemoteImageQueries($mediaQueries);
-        $targetImageCount = min(10, count($mediaQueries));
+        $targetImageCount = min(12, count($mediaQueries));
 
         // Registered generation follows the same slot-aware provider strategy
         // as /start so nested/multiple image fields receive equivalent imagery.

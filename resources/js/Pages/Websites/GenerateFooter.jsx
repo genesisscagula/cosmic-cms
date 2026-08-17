@@ -86,7 +86,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
     const megaTheme = effectiveMegaTheme === 'white'
         ? { bg: 'bg-white', text: 'text-slate-900', sub: 'text-slate-500', border: 'border-slate-200' }
         : effectiveMegaTheme === 'surface'
-            ? { bg: familyTheme.card || 'bg-slate-100', text: familyTheme.text || 'text-slate-900', sub: familyTheme.sub || 'text-slate-500', border: familyTheme.border || 'border-slate-200' }
+            ? { bg: 'bg-[#F5F5F2]', text: 'text-slate-900', sub: 'text-slate-500', border: 'border-slate-200' }
             : familyTheme;
     const [editTarget, setEditTarget] = useState(null);
 
@@ -153,8 +153,8 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
     return (
         <div className="w-full">
             {megaEnabled && (
-                <section className={`w-full ${megaTheme?.bg || 'bg-slate-800'} ${megaTheme?.text || 'text-white'} border-b ${megaTheme?.border || 'border-slate-700'} px-6 py-10 sm:px-8 sm:py-12`}>
-                    <div className="mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(280px,.9fr)_minmax(0,1.65fr)] lg:items-start">
+                <section data-cosmic-mega-theme={effectiveMegaTheme} className={`cosmic-mega-footer-section w-full ${megaTheme?.bg || 'bg-slate-800'} ${megaTheme?.text || 'text-white'} border-b ${megaTheme?.border || 'border-slate-700'} px-6 py-10 sm:px-8 sm:py-12`}>
+                    <div className="mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:items-start lg:gap-16">
                         <div className="min-w-0">
                             <FooterLogo block={block} dark={effectiveMegaTheme === 'primary'} mega forceWhite={effectiveMegaTheme === 'primary'} />
                             {editorMode ? (
@@ -163,7 +163,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                         <p className={`text-sm leading-6 ${megaTheme?.sub || 'text-slate-300'}`}>{mega.tagline}</p>
                                         <button type="button" onClick={() => openEditor({ kind: 'tagline', title: 'Edit footer description' })} className="absolute right-1 top-1/2 -translate-y-1/2 rounded-md border border-white/15 bg-black/20 px-2 py-1 text-[10px] text-white/70 opacity-0 transition hover:bg-white/10 group-hover/footer-field:opacity-100 focus:opacity-100" aria-label="Edit footer description">✎</button>
                                     </div>
-                                    <div className="group/footer-field relative mt-4 inline-flex items-center pr-9">
+                                    <div className="group/footer-field cosmic-mega-cta relative mt-4 inline-flex items-center pr-9">
                                         <span className="text-sm font-semibold text-current">{mega.primary_label}</span>
                                         <button type="button" onClick={() => openEditor({ kind: 'cta', title: 'Edit footer call to action' })} className="absolute right-0 rounded-md border border-white/15 bg-black/20 px-2 py-1 text-[10px] text-white/70 opacity-0 transition hover:bg-white/10 group-hover/footer-field:opacity-100 focus:opacity-100" aria-label="Edit footer call to action">✎</button>
                                     </div>
@@ -177,7 +177,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                         </div>
 
                         <div className="group/columns ml-auto w-full lg:max-w-[860px]">
-                            <div className={`grid gap-x-8 gap-y-7 ${mega.columns.length >= 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : mega.columns.length === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : mega.columns.length === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
+                            <div className={`grid gap-x-8 gap-y-7 ${mega.columns.length === 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : mega.columns.length === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : mega.columns.length === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
                                 {mega.columns.map((column, columnIndex) => (
                                     <div key={`${column.title}-${columnIndex}`} className="group/column relative min-w-0">
                                         {editorMode ? (
@@ -185,8 +185,6 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                                 <button type="button" onClick={() => openEditor({ kind: 'column', columnIndex, title: 'Edit footer column' })} className={`min-w-0 flex-1 text-left text-[13px] font-bold uppercase tracking-[0.16em] transition ${megaTheme?.sub || 'text-slate-500'} hover:opacity-75`}>{column.title}</button>
                                                 <div className="flex opacity-0 transition group-hover/column:opacity-100 focus-within:opacity-100">
                                                     <IconButton title="Edit column" onClick={() => openEditor({ kind: 'column', columnIndex, title: 'Edit footer column' })}>✎</IconButton>
-                                                    <IconButton title="Move column left" disabled={columnIndex === 0} onClick={() => moveColumn(columnIndex, -1)}>←</IconButton>
-                                                    <IconButton title="Move column right" disabled={columnIndex === mega.columns.length - 1} onClick={() => moveColumn(columnIndex, 1)}>→</IconButton>
                                                     <IconButton title="Remove column" danger disabled={mega.columns.length <= 1} onClick={() => removeColumn(columnIndex)}>⌫</IconButton>
                                                 </div>
                                             </div>
@@ -198,12 +196,21 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                             {column.items.map((item, itemIndex) => (
                                                 <div key={`${item.label}-${itemIndex}`} className="group/item relative">
                                                     {editorMode ? (
-                                                        <div className="flex items-center justify-between gap-2 rounded-lg px-1 py-1 hover:bg-white/5">
-                                                            <button type="button" onClick={() => openEditor({ kind: 'menu', columnIndex, itemIndex, title: 'Edit footer link' })} className="min-w-0 flex-1 truncate text-left text-sm text-current transition hover:opacity-75">{item.label}</button>
+                                                        <div className="cosmic-mega-menu-row flex items-center justify-between gap-2 rounded-lg px-1 py-1 hover:bg-white/5">
+                                                            <span
+                                                                    role="button"
+                                                                    tabIndex={0}
+                                                                    onClick={() => openEditor({ kind: 'menu', columnIndex, itemIndex, title: 'Edit footer link' })}
+                                                                    onKeyDown={(event) => {
+                                                                        if (event.key === 'Enter' || event.key === ' ') {
+                                                                            event.preventDefault();
+                                                                            openEditor({ kind: 'menu', columnIndex, itemIndex, title: 'Edit footer link' });
+                                                                        }
+                                                                    }}
+                                                                    className="cosmic-mega-menu-link min-w-0 flex-1 cursor-pointer truncate text-left text-sm text-current transition hover:opacity-75"
+                                                                >{item.label}</span>
                                                             <div className="flex opacity-0 transition group-hover/item:opacity-100 focus-within:opacity-100">
                                                                 <IconButton title="Edit menu" onClick={() => openEditor({ kind: 'menu', columnIndex, itemIndex, title: 'Edit footer link' })}>✎</IconButton>
-                                                                <IconButton title="Move menu up" disabled={itemIndex === 0} onClick={() => moveMenu(columnIndex, itemIndex, -1)}>↑</IconButton>
-                                                                <IconButton title="Move menu down" disabled={itemIndex === column.items.length - 1} onClick={() => moveMenu(columnIndex, itemIndex, 1)}>↓</IconButton>
                                                                 <IconButton title="Remove menu" danger onClick={() => removeMenu(columnIndex, itemIndex)}>⌫</IconButton>
                                                             </div>
                                                         </div>
@@ -214,14 +221,14 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                             ))}
                                         </div>
                                         {editorMode && (
-                                            <button type="button" disabled={column.items.length >= 6} onClick={() => addMenu(columnIndex)} className="mt-3 rounded-md border border-dashed border-current/45 bg-transparent px-3 py-1.5 text-[11px] font-semibold opacity-0 transition hover:border-current hover:opacity-100 group-hover/column:opacity-80 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-35">+ Add menu</button>
+                                            <button type="button" disabled={column.items.length >= 6} onClick={() => addMenu(columnIndex)} className="cosmic-mega-add-control mt-3 rounded-md border border-dashed border-current/45 bg-transparent px-3 py-1.5 text-[11px] font-semibold opacity-0 transition hover:border-current hover:opacity-100 group-hover/column:opacity-80 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-35">+ Add menu</button>
                                         )}
                                     </div>
                                 ))}
                             </div>
                             {editorMode && (
                                 <div className="mt-7 flex justify-end">
-                                    <button type="button" disabled={mega.columns.length >= 4} onClick={addColumn} className="rounded-md border border-dashed border-current/45 bg-transparent px-4 py-2 text-xs font-semibold opacity-0 transition hover:border-current hover:opacity-100 group-hover/columns:opacity-80 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-35">+ Add Column</button>
+                                    <button type="button" disabled={mega.columns.length >= 4} onClick={addColumn} className="cosmic-mega-add-control rounded-md border border-dashed border-current/45 bg-transparent px-4 py-2 text-xs font-semibold opacity-0 transition hover:border-current hover:opacity-100 group-hover/columns:opacity-80 focus:opacity-100 disabled:cursor-not-allowed disabled:opacity-35">+ Add Column</button>
                                 </div>
                             )}
                         </div>
