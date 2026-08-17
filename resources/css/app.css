@@ -6887,3 +6887,11 @@ body .cosmic-start-quick-idea.rounded-full.border {
     border: 0 !important;
     box-shadow: none !important;
 }
+
+/* Pricing Sparks — primary-state icon contrast.
+   Keep checklist/state icons light on primary sections without changing white/surface states. */
+[data-cosmic-pricing-state="primary"] [data-cosmic-state-icon] {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    stroke: currentColor !important;
+}

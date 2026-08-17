@@ -367,6 +367,7 @@ export function PricingCardsBlock({
     return (
 
         <section
+            data-cosmic-pricing-state={isPrimarySection ? "primary" : (effectiveSectionTheme || "auto")}
             className={`group/repeatable-section group/pricing-section relative px-6 py-20 sm:px-8 lg:py-24 ${theme.bg} transition-colors duration-500`}
         >
 

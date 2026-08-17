@@ -405,6 +405,9 @@ Route::post('/trials/{trial:token}/branding/theme/match-logo', [TrialBrandingCon
 Route::post('/trials/{trial:token}/images/generate', [\App\Http\Controllers\AiImageController::class, 'generateTrial'])->middleware('throttle:4,1')
     ->middleware('throttle:4,1')
     ->name('trial-images.generate');
+Route::post('/trials/{trial:token}/images/upload', [TrialGenerationController::class, 'uploadImage'])
+    ->middleware(['throttle:20,1', \App\Http\Middleware\RejectOversizedRequest::class . ':9216'])
+    ->name('trial-images.upload');
 Route::post('/trials/{trial:token}/pages/{page}/style', [PageController::class, 'applyTrialPageStyle'])
     ->middleware(['throttle:20,1', \App\Http\Middleware\RejectOversizedRequest::class . ':1024'])
     ->name('trial-pages.style.apply');

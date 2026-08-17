@@ -1,4 +1,6 @@
 import { EditableText } from "../Shared/EditableText";
+import { EditableImage } from "../Shared/EditableImage";
+import { usePage } from "@inertiajs/react";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 
 const sharedDefaults = {
@@ -72,9 +74,11 @@ export function MiniHeroMinimalBlock({ block, onUpdate, globalTheme }) {
     );
 }
 
-export function MiniHeroSplitBlock({ block, onUpdate, globalTheme }) {
+export function MiniHeroSplitBlock({ block, blockIndex, onUpdate, globalTheme }) {
     const data = { ...MiniHeroSplitSchema.defaults, ...block };
     const theme = themeFor(data, globalTheme);
+    const { props } = usePage();
+    const websiteId = props.page?.website_id || props.website?.id;
 
     return (
         <section className={`border-b px-6 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14 ${theme.bg} ${theme.border}`}>
@@ -86,23 +90,25 @@ export function MiniHeroSplitBlock({ block, onUpdate, globalTheme }) {
                     <CTA data={data} theme={theme} />
                 </div>
                 <div className={`overflow-hidden rounded-[1.75rem] border p-2 shadow-xl ${theme.card} ${theme.border}`}>
-                    <img src={data.image_url} alt={data.image_alt || data.heading} className="h-56 w-full rounded-[1.35rem] object-cover sm:h-64 lg:h-72" />
+                    <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} className="h-56 w-full rounded-[1.35rem] object-cover sm:h-64 lg:h-72" imageQuery={data.image_alt || data.heading} blockType={block.type} onSave={(image_url) => onUpdate({ image_url })} />
                 </div>
             </div>
         </section>
     );
 }
 
-export function MiniHeroPromoBlock({ block, onUpdate, globalTheme }) {
+export function MiniHeroPromoBlock({ block, blockIndex, onUpdate, globalTheme }) {
     const data = { ...MiniHeroPromoSchema.defaults, ...block };
     const theme = themeFor(data, globalTheme);
+    const { props } = usePage();
+    const websiteId = props.page?.website_id || props.website?.id;
 
     return (
         <section className={`border-b px-6 py-10 sm:px-8 lg:px-12 lg:py-12 ${theme.bg} ${theme.border}`}>
             <div className="mx-auto max-w-7xl">
                 <div className={`relative overflow-hidden rounded-[2rem] border p-7 shadow-xl sm:p-9 lg:p-11 ${theme.card} ${theme.border}`}>
                     <div className="absolute inset-y-0 right-0 hidden w-[38%] lg:block">
-                        <img src={data.image_url} alt="" className="h-full w-full object-cover opacity-20" />
+                        <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} showOverlay={false} isBackground className="h-full w-full object-cover opacity-20" imageQuery={data.heading} blockType={block.type} onSave={(image_url) => onUpdate({ image_url })} />
                         <div className={`absolute inset-0 bg-gradient-to-r from-transparent to-transparent`} />
                     </div>
                     <div className="relative max-w-3xl">

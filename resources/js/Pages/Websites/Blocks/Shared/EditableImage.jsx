@@ -8,6 +8,7 @@ import {
 
 import { createPortal } from "react-dom";
 import axios from "axios";
+import { usePage } from "@inertiajs/react";
 import { showCosmicNotification } from "../../../../Components/CosmicNotification";
 import { useCreditBalance } from "@/Hooks/useCreditBalance";
 import MediaPickerModal from "@/Components/Media/MediaPickerModal";
@@ -24,6 +25,10 @@ export const EditableImage = forwardRef(({
     imageQuery = '',
     blockType = ''
 }, ref) => {
+
+    const { props: pageProps } = usePage();
+    const trialMode = Boolean(pageProps?.trialMode);
+    const trialToken = pageProps?.trialToken || null;
 
     const [isEditing, setIsEditing] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -97,8 +102,12 @@ export const EditableImage = forwardRef(({
 
         try {
 
+            const uploadEndpoint = trialMode && trialToken
+                ? `/trials/${encodeURIComponent(trialToken)}/images/upload`
+                : "/api/update-block-data";
+
             const response = await axios.post(
-                "/api/update-block-data",
+                uploadEndpoint,
                 formData,
                 {
                     headers: {
@@ -412,13 +421,15 @@ export const EditableImage = forwardRef(({
                                     {aiGeneratedUrl ? <p className="mt-2 text-xs font-semibold text-emerald-300">✓ AI image generated. Click Use Image below to apply it.</p> : null}
                                 </div>
 
-                                <button
-                                    type="button"
-                                    onClick={() => setMediaLibraryOpen(true)}
-                                    id={`cosmic-choose-media-library-${blockIndex}`} className="cosmic-choose-media-library-button w-full rounded-xl border border-violet-400/30 bg-violet-500/10 px-4 py-3 text-sm font-bold text-violet-100 transition hover:bg-violet-500/20"
-                                >
-                                    ▦ Choose from Media Library
-                                </button>
+                                {!trialMode && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setMediaLibraryOpen(true)}
+                                        id={`cosmic-choose-media-library-${blockIndex}`} className="cosmic-choose-media-library-button w-full rounded-xl border border-violet-400/30 bg-violet-500/10 px-4 py-3 text-sm font-bold text-violet-100 transition hover:bg-violet-500/20"
+                                    >
+                                        ▦ Choose from Media Library
+                                    </button>
+                                )}
 
                                 <label className="block">
 
@@ -485,7 +496,7 @@ export const EditableImage = forwardRef(({
                 document.body
 
             )}
-            <MediaPickerModal
+            {!trialMode && <MediaPickerModal
                 open={mediaLibraryOpen}
                 websiteId={websiteId}
                 title="Choose image for this section"
@@ -500,7 +511,7 @@ export const EditableImage = forwardRef(({
                     setIsEditing(false);
                     showCosmicNotification({ title:'Media image applied', message:'Save the page when you are ready.', tone:'success' });
                 }}
-            />
+            />}
         </>
     );
 

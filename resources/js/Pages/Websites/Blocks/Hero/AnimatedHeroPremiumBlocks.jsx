@@ -212,7 +212,11 @@ function AnimatedHeroPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) 
     const copySub = isLight ? theme.sub : "text-white/72";
 
     const media = (
-        <div className={`absolute inset-0 overflow-hidden ${split ? "lg:relative lg:min-h-[720px]" : ""}`}>
+        <div
+            data-cosmic-editable-hero-media="true"
+            title={usesGallery ? "Click to edit hero images" : "Click to edit hero image"}
+            className={`absolute inset-0 cursor-pointer overflow-hidden ${split ? "lg:relative lg:min-h-[640px]" : ""}`}
+        >
             {images.map((src, index) => (
                 <div
                     key={`${src}-${index}`}
@@ -246,9 +250,9 @@ function AnimatedHeroPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) 
     );
 
     return (
-        <section ref={rootRef} data-cosmic-media-banner="true" onClick={handleMediaEdit} data-cosmic-hero-theme={heroState.requestedTheme} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}} className={`relative isolate overflow-hidden ${isLight ? `${theme.bg} ${theme.text}` : "bg-slate-950 text-white"} ${split ? "lg:grid lg:grid-cols-[0.9fr_1.1fr]" : ""}`}>
+        <section ref={rootRef} data-cosmic-media-banner="true" onClick={handleMediaEdit} data-cosmic-hero-theme={heroState.requestedTheme} style={{minHeight: split ? "640px" : "var(--cosmic-hero-fold-height, calc(100svh - 80px))"}} className={`relative isolate overflow-hidden ${isLight ? `${theme.bg} ${theme.text}` : "bg-slate-950 text-white"} ${split ? "lg:grid lg:grid-cols-[0.9fr_1.1fr]" : ""}`}>
             {split ? null : media}
-            <div className={`relative z-20 mx-auto flex w-full max-w-7xl items-center px-6 py-0 sm:px-10 lg:px-14 ${split ? "lg:min-h-[720px]" : ""}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+            <div className={`relative z-20 mx-auto flex w-full max-w-7xl items-center px-6 py-0 sm:px-10 lg:px-14 ${split ? "lg:min-h-[640px]" : ""}`} style={{minHeight: split ? "640px" : "var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                 <div className="max-w-3xl">
                     <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[0.32em] ${isLight ? theme.sub : "text-white/70"}`} onSave={(value) => onUpdate({ eyebrow: value })} />
                     <EditableText value={data.heading} className={`mt-6 block text-4xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${copyText}`} onSave={(value) => onUpdate({ heading: value })} />

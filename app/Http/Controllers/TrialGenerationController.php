@@ -54,6 +54,21 @@ class TrialGenerationController extends Controller
         'Travel' => ['travel', 'tour', 'tourism', 'holiday'],
     ];
 
+    public function uploadImage(Request $request, TrialGeneration $trial)
+    {
+        $request->validate([
+            'image' => 'required|file|mimes:jpeg,jpg,png,gif,webp,avif,heic,heif|max:8192',
+        ]);
+
+        $file = $request->file('image');
+        $path = $file->store("trials/{$trial->id}/images", 'public');
+
+        return response()->json([
+            'success' => true,
+            'url' => rtrim($request->getSchemeAndHttpHost(), '/') . '/storage/' . $path,
+        ]);
+    }
+
     public function __construct(
         private readonly AiPageGenerationService $pageGenerationService,
         private readonly IndustryResolver $industryResolver,
