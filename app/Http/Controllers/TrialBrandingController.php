@@ -16,10 +16,11 @@ use App\Services\ThemeColorResolver;
 use App\Services\ThemeLogoPaletteService;
 use App\Services\SmartLogoPromptService;
 use App\Services\SvgLogoLightnessService;
+use App\Services\SvgUploadSanitizer;
 
 class TrialBrandingController extends Controller
 {
-    public function uploadLogo(Request $request, TrialGeneration $trial, SvgLogoLightnessService $svgLightness)
+    public function uploadLogo(Request $request, TrialGeneration $trial, SvgLogoLightnessService $svgLightness, SvgUploadSanitizer $svgSanitizer)
     {
         $this->assertTrialAvailable($trial);
 
@@ -29,12 +30,15 @@ class TrialBrandingController extends Controller
 
         $file = $validated['image'];
         $extension = strtolower($file->getClientOriginalExtension());
+        $svgAnalysis = ['is_majority_white' => false, 'light_ratio' => 0.0, 'sample_count' => 0];
 
         if ($extension === 'svg') {
-            $svg = file_get_contents($file->getRealPath());
-            if ($svg === false || preg_match('/<\s*(?:script|iframe|object|embed|foreignObject)\b|\son\w+\s*=|(?:href|xlink:href)\s*=\s*[\'\"]\s*(?:https?:|javascript:|data:)/i', $svg)) {
-                return response()->json(['message' => 'The SVG contains unsupported active or external content.'], 422);
+            try {
+                $svg = $svgSanitizer->sanitizePath($file->getRealPath());
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
             }
+            $svgAnalysis = $svgLightness->analyze($svg);
         }
 
         // Snapshot the brand that was active BEFORE this upload. The upload +

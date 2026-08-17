@@ -3,6 +3,9 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { confirmCosmicAction, showCosmicNotification } from "../../../Components/CosmicNotification";
 
 const SOURCE_LABELS = { upload: "Upload", ai: "AI Generated", unsplash: "Unsplash", import: "Imported" };
+const MEDIA_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/avif,image/heic,image/heif,image/svg+xml,.svg";
+const isSvgAsset = (asset) => asset?.mime_type === "image/svg+xml" || String(asset?.extension || "").toLowerCase() === "svg";
+const isSupportedMediaFile = (file) => file?.type === "image/svg+xml" || String(file?.name || "").toLowerCase().endsWith(".svg") || file?.type?.startsWith("image/");
 const SORT_OPTIONS = [
     ["newest", "Newest first"], ["oldest", "Oldest first"], ["name_asc", "Name A–Z"],
     ["name_desc", "Name Z–A"], ["size_desc", "Largest first"], ["size_asc", "Smallest first"],
@@ -87,14 +90,14 @@ function FolderRow({ folder, depth, activeId, expanded, setExpanded, onOpen, onC
 function AssetCard({ asset, selected, viewMode, onSelect, onOpen, onContext, onDragStart }) {
     if (viewMode === "list") return <div draggable onDragStart={(event) => onDragStart(event, asset)} onContextMenu={(event) => { event.preventDefault(); onContext(event, asset); }} onDoubleClick={() => onOpen(asset)} className={`group grid min-w-[620px] cursor-default grid-cols-[34px_52px_minmax(0,1fr)_110px_110px_36px] items-center gap-3 rounded-xl border px-3 py-2 transition ${selected ? "border-violet-400/40 bg-violet-400/[0.08]" : "border-transparent hover:border-white/10 hover:bg-white/[0.03]"}`}>
         <input type="checkbox" checked={selected} onChange={(event) => onSelect(asset.uuid, event.nativeEvent)} onClick={(e) => e.stopPropagation()} className="h-4 w-4 rounded border-white/20 bg-black/20 text-violet-500 focus:ring-violet-400/30" />
-        <div className="h-11 w-11 overflow-hidden rounded-lg bg-black/20"><img src={asset.url} alt="" draggable="false" className="h-full w-full object-cover" /></div>
+        <div className="h-11 w-11 overflow-hidden rounded-lg bg-black/20"><img src={asset.url} alt="" draggable="false" className={`h-full w-full ${isSvgAsset(asset) ? "object-contain p-1.5" : "object-cover"}`} /></div>
         <div className="min-w-0"><p className="truncate text-sm font-medium text-slate-200">{asset.original_name}</p><p className="mt-0.5 text-[11px] text-slate-600">{asset.width && asset.height ? `${asset.width} × ${asset.height}` : asset.extension?.toUpperCase()}</p></div>
         <span className="truncate text-xs text-slate-500">{SOURCE_LABELS[asset.source] || asset.source}</span><span className="text-xs text-slate-500">{formatBytes(asset.size_bytes)}</span>
         <button type="button" onClick={(event) => onContext(event, asset)} className="rounded-lg px-1.5 py-1 text-slate-600 opacity-0 hover:bg-white/5 hover:text-white group-hover:opacity-100">•••</button>
     </div>;
 
     return <div draggable onDragStart={(event) => onDragStart(event, asset)} onContextMenu={(event) => { event.preventDefault(); onContext(event, asset); }} onDoubleClick={() => onOpen(asset)} className={`group relative overflow-hidden rounded-2xl border transition ${selected ? "border-violet-400/60 bg-violet-400/[0.08] shadow-lg shadow-violet-950/20 ring-2 ring-violet-400/20" : "border-white/[0.07] bg-white/[0.025] hover:-translate-y-0.5 hover:border-white/15 hover:bg-white/[0.04] hover:shadow-xl hover:shadow-black/20"}`}>
-        <div className="relative aspect-[4/3] overflow-hidden bg-[radial-gradient(circle_at_center,rgba(255,255,255,.05),transparent_65%)]"><img src={asset.url} alt={asset.alt_text || ""} draggable="false" loading="lazy" className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.025]" />
+        <div className="relative aspect-[4/3] overflow-hidden bg-[radial-gradient(circle_at_center,rgba(255,255,255,.05),transparent_65%)]"><img src={asset.url} alt={asset.alt_text || ""} draggable="false" loading="lazy" className={`h-full w-full transition duration-300 ${isSvgAsset(asset) ? "object-contain p-4" : "object-cover group-hover:scale-[1.025]"}`} />
             <label className={`absolute left-2.5 top-2.5 flex h-7 w-7 cursor-pointer items-center justify-center rounded-lg border backdrop-blur-md transition ${selected ? "border-violet-300/50 bg-violet-500 text-white" : "border-white/15 bg-black/30 text-white opacity-0 group-hover:opacity-100"}`} onClick={(e) => e.stopPropagation()}><input type="checkbox" checked={selected} onChange={(event) => onSelect(asset.uuid, event.nativeEvent)} className="sr-only" /><span className="text-xs">{selected ? "✓" : ""}</span></label>
             <button type="button" onClick={(event) => onContext(event, asset)} className="absolute right-2.5 top-2.5 rounded-lg border border-white/15 bg-black/35 px-2 py-1 text-xs font-bold tracking-widest text-white opacity-0 backdrop-blur-md transition hover:bg-black/60 group-hover:opacity-100">•••</button>
             <span className="absolute bottom-2 left-2 rounded-md border border-white/10 bg-black/45 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.12em] text-white/80 backdrop-blur-md">{SOURCE_LABELS[asset.source] || asset.source}</span>
@@ -211,7 +214,7 @@ export default function Media({ websites = [] }) {
     };
 
     const uploadFiles = async (files) => {
-        const images = [...files].filter((file) => file.type.startsWith("image/"));
+        const images = [...files].filter(isSupportedMediaFile);
         if (!images.length || !websiteId) return;
         let completed = 0; let failed = 0; setUploading({ current: 0, total: images.length });
         for (const file of images) {
@@ -302,7 +305,7 @@ export default function Media({ websites = [] }) {
 
     return <section className="media-explorer min-w-0">
         <header className="flex flex-col gap-4 xl:flex-row xl:items-end xl:justify-between"><div><p className="text-sm font-medium text-violet-300">Cosmic Media Explorer</p><h1 className="mt-2 text-3xl font-semibold tracking-tight text-white sm:text-4xl">Media Library</h1><p className="mt-2 max-w-2xl text-sm text-slate-400">Keep every website asset organized in folders without changing its public file location.</p></div>
-            <div className="flex flex-wrap items-center gap-2"><select value={websiteId} onChange={(e) => { setWebsiteId(Number(e.target.value)); smartLocation("all"); }} className="min-w-44 rounded-xl border border-white/10 bg-[#151518] px-3 py-2.5 text-xs font-semibold text-slate-300">{availableWebsites.map((website) => <option key={website.id} value={website.id}>{website.name}</option>)}</select><button type="button" onClick={() => setFolderDialog({ mode: "create", parentId: location.type === "folder" ? location.id : null })} className="rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-xs font-semibold text-slate-200 hover:border-white/20 hover:bg-white/[0.07]">+ New folder</button><button type="button" onClick={() => fileInputRef.current?.click()} className="cosmic-solid-action rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-violet-950/30">↑ Upload media</button><input ref={fileInputRef} type="file" multiple accept="image/jpeg,image/png,image/gif,image/webp,image/avif,image/heic,image/heif" className="hidden" onChange={(e) => uploadFiles(e.target.files || [])} /></div>
+            <div className="flex flex-wrap items-center gap-2"><select value={websiteId} onChange={(e) => { setWebsiteId(Number(e.target.value)); smartLocation("all"); }} className="min-w-44 rounded-xl border border-white/10 bg-[#151518] px-3 py-2.5 text-xs font-semibold text-slate-300">{availableWebsites.map((website) => <option key={website.id} value={website.id}>{website.name}</option>)}</select><button type="button" onClick={() => setFolderDialog({ mode: "create", parentId: location.type === "folder" ? location.id : null })} className="rounded-xl border border-white/10 bg-white/[0.04] px-3.5 py-2.5 text-xs font-semibold text-slate-200 hover:border-white/20 hover:bg-white/[0.07]">+ New folder</button><button type="button" onClick={() => fileInputRef.current?.click()} className="cosmic-solid-action rounded-xl bg-violet-600 px-4 py-2.5 text-xs font-semibold text-white shadow-lg shadow-violet-950/30">↑ Upload media</button><input ref={fileInputRef} type="file" multiple accept={MEDIA_ACCEPT} className="hidden" onChange={(e) => uploadFiles(e.target.files || [])} /></div>
         </header>
 
         <div className="mt-7 grid min-h-[650px] overflow-hidden rounded-[28px] border border-white/[0.08] bg-[#111113] shadow-2xl shadow-black/20 lg:grid-cols-[250px_minmax(0,1fr)]">

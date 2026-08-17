@@ -214,6 +214,7 @@ export function BlogHubBlock({
     const { props: pageProps } = usePage();
     const trialMode = Boolean(pageProps?.trialMode);
     const trialToken = pageProps?.trialToken || null;
+    const resolvedBlogWebsiteId = Number(blogWebsiteId || pageProps?.website?.id || pageProps?.currentWebsite?.id || pageProps?.site?.id || 0) || null;
 
     // Blog reading surfaces stay neutral and readable across every website
     // theme. The surrounding page blocks still use the selected website theme.
@@ -468,7 +469,7 @@ export function BlogHubBlock({
                     {hasSavedPosts ? (
                         <img src={featuredPost.image_url || "/storage/cms-images/background/background-1.avif"} alt={featuredPost.title || "Featured article"} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`} />
                     ) : (
-                        <EditableImage websiteId={blogWebsiteId} blockIndex={blockIndex} src={data.featured.image_url} alt={data.featured.title} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`} onSave={(image_url) => updateFeatured("image_url", image_url)} />
+                        <EditableImage websiteId={resolvedBlogWebsiteId} blockIndex={blockIndex} src={data.featured.image_url} alt={data.featured.title} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`} onSave={(image_url) => updateFeatured("image_url", image_url)} />
                     )}
                     <div className="flex min-h-[260px] flex-col justify-center p-7 sm:p-10">
                         {hasSavedPosts ? (
@@ -496,7 +497,7 @@ export function BlogHubBlock({
                             {hasSavedPosts ? (
                                 <img src={post.image_url || "/storage/cms-images/background/background-1.avif"} alt="" className="h-44 w-full object-cover" />
                             ) : (
-                                <EditableImage websiteId={blogWebsiteId} blockIndex={blockIndex} src={post.image_url} alt={post.title} className="h-44 w-full object-cover" onSave={(image_url) => updateStarterPost(index, "image_url", image_url)} />
+                                <EditableImage websiteId={resolvedBlogWebsiteId} blockIndex={blockIndex} src={post.image_url} alt={post.title} className="h-44 w-full object-cover" onSave={(image_url) => updateStarterPost(index, "image_url", image_url)} />
                             )}
                             <div className="p-5">
                                 {hasSavedPosts ? (
@@ -562,7 +563,7 @@ export function BlogHubBlock({
 
                 {!trialMode && <MediaPickerModal
                     open={mediaLibraryOpen}
-                    websiteId={blogWebsiteId}
+                    websiteId={resolvedBlogWebsiteId}
                     title="Choose featured image"
                     kind="blog-featured"
                     onClose={() => setMediaLibraryOpen(false)}

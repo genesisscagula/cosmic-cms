@@ -10,15 +10,16 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Illuminate\Validation\ValidationException;
+use App\Services\SvgUploadSanitizer;
 
 class MediaLibraryController extends Controller
 {
     private const IMAGE_MIMES = [
         'image/jpeg', 'image/png', 'image/gif', 'image/webp',
-        'image/avif', 'image/heic', 'image/heif',
+        'image/avif', 'image/heic', 'image/heif', 'image/svg+xml',
     ];
 
-    private const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'heic', 'heif'];
+    private const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'heic', 'heif', 'svg'];
 
     public function index(Request $request, Website $website)
     {
@@ -158,7 +159,7 @@ class MediaLibraryController extends Controller
         return response()->json(['deleted' => true]);
     }
 
-    public function upload(Request $request, Website $website)
+    public function upload(Request $request, Website $website, SvgUploadSanitizer $svgSanitizer)
     {
         $this->authorize('editBuilder', $website);
         $data = $request->validate([
@@ -182,7 +183,15 @@ class MediaLibraryController extends Controller
 
         $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
         if (! in_array($extension, self::IMAGE_EXTENSIONS, true)) {
-            throw ValidationException::withMessages(['image' => 'Use JPG, PNG, WebP, GIF, AVIF, HEIC or HEIF images.']);
+            throw ValidationException::withMessages(['image' => 'Use JPG, PNG, WebP, GIF, AVIF, HEIC, HEIF or SVG images.']);
+        }
+
+        if ($extension === 'svg') {
+            try {
+                $svgSanitizer->sanitizePath($file->getPathname());
+            } catch (\RuntimeException $e) {
+                throw ValidationException::withMessages(['image' => $e->getMessage()]);
+            }
         }
 
         $uuid = (string) Str::uuid();
@@ -355,10 +364,21 @@ class MediaLibraryController extends Controller
     private function dimensions(string $absolutePath): array
     {
         try {
+            if (strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION)) === 'svg') {
+                $svg = @file_get_contents($absolutePath) ?: '';
+                $width = preg_match('/\bwidth\s*=\s*[\"\']\s*([0-9.]+)/i', $svg, $m) ? (int) round((float) $m[1]) : null;
+                $height = preg_match('/\bheight\s*=\s*[\"\']\s*([0-9.]+)/i', $svg, $m) ? (int) round((float) $m[1]) : null;
+                if ((! $width || ! $height) && preg_match('/\bviewBox\s*=\s*[\"\']\s*[-0-9.]+\s+[-0-9.]+\s+([0-9.]+)\s+([0-9.]+)/i', $svg, $m)) {
+                    $width = $width ?: (int) round((float) $m[1]);
+                    $height = $height ?: (int) round((float) $m[2]);
+                }
+                return [$width ?: null, $height ?: null];
+            }
             $size = @getimagesize($absolutePath);
             return is_array($size) ? [(int) ($size[0] ?? 0) ?: null, (int) ($size[1] ?? 0) ?: null] : [null, null];
         } catch (\Throwable) {
             return [null, null];
         }
     }
+
 }

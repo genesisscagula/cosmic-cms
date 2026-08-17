@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Intervention\Image\Facades\Image;
 use App\Services\SvgLogoLightnessService; // Import ni sa taas sa imong controller
+use App\Services\SvgUploadSanitizer;
 
 class ImageController extends Controller
 {
@@ -620,7 +621,7 @@ class ImageController extends Controller
         return response()->json(['status' => 'success', 'url' => $original]);
     }
 
-    public function uploadLogo(Request $request, SvgLogoLightnessService $svgLightness)
+    public function uploadLogo(Request $request, SvgLogoLightnessService $svgLightness, SvgUploadSanitizer $svgSanitizer)
     {
         $request->validate([
             'website_id' => ['required', 'integer', 'exists:websites,id'],
@@ -631,15 +632,16 @@ class ImageController extends Controller
         $this->authorize('update', $website);
 
         $file = $request->file('image');
+        $isSvg = strtolower($file->getClientOriginalExtension()) === 'svg' || $file->getMimeType() === 'image/svg+xml';
+        $svgAnalysis = ['is_majority_white' => false, 'light_ratio' => 0.0, 'sample_count' => 0];
 
         if ($isSvg) {
-            $svg = file_get_contents($file->getRealPath());
-
-            if ($svg === false || preg_match('/<\s*(?:script|iframe|object|embed|foreignObject)\b|\son\w+\s*=|(?:href|xlink:href)\s*=\s*[\'\"]\s*(?:https?:|javascript:|data:)/i', $svg)) {
-                return response()->json([
-                    'message' => 'The SVG contains unsupported active or external content.',
-                ], 422);
+            try {
+                $svg = $svgSanitizer->sanitizePath($file->getRealPath());
+            } catch (\RuntimeException $e) {
+                return response()->json(['message' => $e->getMessage()], 422);
             }
+            $svgAnalysis = $svgLightness->analyze($svg);
         }
 
         // Preserve the currently active brand until automatic theme analysis

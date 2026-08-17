@@ -112,6 +112,7 @@ export default function ThemeModal({
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="theme-modal-title"
+                id="cosmic-theme-modal"
                 className="cosmic-theme-modal relative flex h-[min(86dvh,760px)] max-h-[calc(100dvh-1.5rem)] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111113] text-white shadow-2xl shadow-black/50"
             >
                 <header className="flex shrink-0 items-center justify-between border-b border-white/10 bg-[#18181b] px-4 py-4 sm:px-6">

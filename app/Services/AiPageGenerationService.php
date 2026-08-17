@@ -459,7 +459,7 @@ class AiPageGenerationService
                 'prompt' => $this->cache->normalizePrompt($prompt),
                 'model' => config('openai.planner_model'),
                 'registry' => \App\AI\Registries\SparkPlannerRegistry::slugs(),
-                'version' => '16.5.0',
+                'version' => '16.8.0-whole-page-art-direction',
             ],
             (int) config('openai.planner_cache_ttl', 86400),
             function () use ($prompt, $imageFolder) {

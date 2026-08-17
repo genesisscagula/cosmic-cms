@@ -8,6 +8,10 @@ use RuntimeException;
 
 class LogoThemeAnalysisService
 {
+    public function __construct(private readonly SvgUploadSanitizer $svgSanitizer)
+    {
+    }
+
     public function analyze(string $logoUrl, ?array $allowedFamilyKeys = null): array
     {
         [$path, $extension] = $this->resolveLogo($logoUrl);
@@ -105,9 +109,10 @@ class LogoThemeAnalysisService
 
     private function analyzeSvg(string $svg): array
     {
-        if (preg_match('/<\s*(?:script|iframe|object|embed|foreignObject)\b|\son\w+\s*=|(?:href|xlink:href)\s*=\s*[\'\"]\s*(?:https?:|javascript:|data:)/i', $svg)) {
-            throw new RuntimeException('This SVG contains unsupported active or external content.');
-        }
+        // Use the same sanitizer as upload/storage so a logo accepted by the
+        // Media Library cannot later fail merely because this analyzer used a
+        // second, stricter SVG policy.
+        $svg = $this->svgSanitizer->sanitize($svg);
 
         preg_match_all('/#[0-9a-fA-F]{6}\b|#[0-9a-fA-F]{3}\b/', $svg, $matches);
         $colors = collect($matches[0] ?? [])

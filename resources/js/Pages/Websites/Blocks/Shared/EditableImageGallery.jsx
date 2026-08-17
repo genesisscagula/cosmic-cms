@@ -15,6 +15,7 @@ export const EditableImageGallery = forwardRef(function EditableImageGallery({
     const { props: pageProps } = usePage();
     const trialMode = Boolean(pageProps?.trialMode);
     const trialToken = pageProps?.trialToken || null;
+    const resolvedWebsiteId = Number(websiteId || pageProps?.website?.id || pageProps?.currentWebsite?.id || pageProps?.site?.id || 0) || null;
     const uploadRef = useRef(null);
     const [uploading, setUploading] = useState(false);
     const normalized = useMemo(() => (images || []).filter(Boolean), [images]);
@@ -63,7 +64,7 @@ export const EditableImageGallery = forwardRef(function EditableImageGallery({
             const urls = [];
             for (const file of list) {
                 const form = new FormData();
-                form.append('website_id', websiteId);
+                form.append('website_id', resolvedWebsiteId);
                 form.append('image', file);
                 const response = await axios.post(`/trials/${encodeURIComponent(trialToken)}/images/upload`, form, { headers: { Accept: 'application/json' } });
                 if (response.data?.url) urls.push(response.data.url);
@@ -111,6 +112,6 @@ export const EditableImageGallery = forwardRef(function EditableImageGallery({
                 </div>
             </div>, document.body
         ) : null}
-        {!trialMode && <MediaPickerModal open={pickerOpen} websiteId={websiteId} multiple title="Choose hero images" onClose={() => setPickerOpen(false)} onSelect={addAssets} />}
+        {!trialMode && <MediaPickerModal open={pickerOpen} websiteId={resolvedWebsiteId} multiple title="Choose hero images" onClose={() => setPickerOpen(false)} onSelect={addAssets} />}
     </>;
 });

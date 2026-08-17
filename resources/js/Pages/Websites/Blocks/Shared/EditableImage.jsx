@@ -29,6 +29,7 @@ export const EditableImage = forwardRef(({
     const { props: pageProps } = usePage();
     const trialMode = Boolean(pageProps?.trialMode);
     const trialToken = pageProps?.trialToken || null;
+    const resolvedWebsiteId = Number(websiteId || pageProps?.website?.id || pageProps?.currentWebsite?.id || pageProps?.site?.id || 0) || null;
 
     const [isEditing, setIsEditing] = useState(false);
     const [selectedFile, setSelectedFile] = useState(null);
@@ -95,7 +96,7 @@ export const EditableImage = forwardRef(({
 
         const formData = new FormData();
 
-        formData.append("website_id", websiteId);
+        formData.append("website_id", resolvedWebsiteId);
         formData.append("block_index", blockIndex);
         formData.append("image", selectedFile);
 
@@ -144,12 +145,12 @@ export const EditableImage = forwardRef(({
 
 
     const handleFindRemote = async () => {
-        if (!websiteId || findingRemote) return;
+        if (!resolvedWebsiteId || findingRemote) return;
 
         setFindingRemote(true);
 
         try {
-            const response = await axios.post(`/api/websites/${websiteId}/remote-image`, {
+            const response = await axios.post(`/api/websites/${resolvedWebsiteId}/remote-image`, {
                 query: imageQuery || '',
                 block_type: blockType || '',
             }, { headers: { Accept: 'application/json' } });
@@ -194,7 +195,7 @@ export const EditableImage = forwardRef(({
     const handleGenerateAi = async () => {
         const prompt = aiPrompt.trim();
         if (generatingAi || prompt.length < 3) return;
-        if (!websiteId) {
+        if (!resolvedWebsiteId) {
             showCosmicNotification({ title: 'Luna is unavailable here', message: 'This image is not connected to a website yet. Save/reload the page and try again.', tone: 'error' });
             return;
         }
@@ -213,7 +214,7 @@ export const EditableImage = forwardRef(({
             const token = new URLSearchParams(window.location.search).get('token');
             const endpoint = token
                 ? `/trials/${encodeURIComponent(token)}/images/generate`
-                : `/api/websites/${websiteId}/images/generate`;
+                : `/api/websites/${resolvedWebsiteId}/images/generate`;
             const target = resolveTargetDimensions();
             setImageDimensions(target);
             const response = await axios.post(endpoint, {
@@ -498,7 +499,7 @@ export const EditableImage = forwardRef(({
             )}
             {!trialMode && <MediaPickerModal
                 open={mediaLibraryOpen}
-                websiteId={websiteId}
+                websiteId={resolvedWebsiteId}
                 title="Choose image for this section"
                 kind={isBackground ? 'background' : 'builder'}
                 onClose={() => setMediaLibraryOpen(false)}

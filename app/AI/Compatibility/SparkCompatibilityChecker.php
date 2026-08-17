@@ -119,6 +119,10 @@ class SparkCompatibilityChecker
         // Minimum/intent repair may add a member of an already selected group.
         // Re-run exclusivity so repair can never produce two heroes or CTAs.
         $sections = $this->limitExclusiveGroups($sections, $changes);
+        $sections = $this->applyWholePageArtDirection($sections, $intent, $prompt, $changes);
+        // Art direction can introduce a visual substitute from a semantic group;
+        // keep the same exclusivity guarantees after the final composition pass.
+        $sections = $this->limitExclusiveGroups($sections, $changes);
         $sections = $this->order($sections, $changes);
 
         if (count($sections) > 10) {
@@ -223,16 +227,18 @@ class SparkCompatibilityChecker
 
     private function ensureIntentRequirements(array $sections, string $intent, array &$changes): array
     {
+        // Intent repair should not undo Luna's premium/visual selection by
+        // injecting old generic Sparks after the planner has made its choice.
         $required = match ($intent) {
-            'services' => ['services_cards', 'process_timeline'],
-            'pricing' => ['pricing_cards', 'faq_accordion'],
-            'team' => ['team_modern'],
-            'contact' => ['contact_details', 'contact_form_modern'],
-            'location' => ['location_map', 'contact_details'],
-            'portfolio', 'case-studies', 'work' => ['case_studies_grid'],
+            'services' => ['services_bento_premium', 'process_timeline'],
+            'pricing' => ['pricing_comparison_premium', 'faq_accordion_pro'],
+            'team' => ['team_leadership_premium'],
+            'contact' => ['contact_split_premium', 'contact_details'],
+            'location' => ['contact_map_premium', 'contact_details'],
+            'portfolio', 'case-studies', 'work' => ['portfolio_masonry'],
             'careers', 'jobs' => ['jobs_list'],
             'events' => ['events_grid'],
-            'about', 'story' => ['about_timeline_story', 'team_modern'],
+            'about', 'story' => ['about_founder_story', 'team_leadership_premium'],
             default => [],
         };
 
@@ -275,6 +281,226 @@ class SparkCompatibilityChecker
         }
 
         return $sections;
+    }
+
+
+    /**
+     * Final deterministic art-direction pass after Luna/fallback selection.
+     *
+     * Luna remains the creative planner. This pass only repairs obvious whole-page
+     * monotony: long runs of text/card Sparks and pages with almost no meaningful
+     * image-led content even though suitable visual Sparks are available.
+     */
+    private function applyWholePageArtDirection(array $sections, string $intent, string $prompt, array &$changes): array
+    {
+        if (count($sections) < 4 || $this->explicitlyAvoidsVisualMedia($prompt)) {
+            return $sections;
+        }
+
+        $catalog = collect(SparkPlannerRegistry::all())->keyBy('slug');
+        $isHero = static fn (string $slug): bool => in_array($slug, self::HEROES, true);
+        $isTerminal = static fn (string $slug): bool => in_array($slug, self::TERMINAL, true);
+        $isVisual = static function (string $slug) use ($catalog): bool {
+            $mode = (string) ($catalog->get($slug)['media_mode'] ?? 'mixed_content');
+
+            return in_array($mode, ['image_led', 'image_motion'], true);
+        };
+        $isTextDense = static function (string $slug) use ($catalog): bool {
+            $meta = $catalog->get($slug) ?? [];
+
+            return ($meta['text_density'] ?? 'medium') === 'high'
+                || (int) ($meta['visual_score'] ?? 2) <= 2;
+        };
+
+        // 1) First repair same-purpose choices. A text-heavy Spark is replaced
+        // only by a more visual Spark from the same registry category, preserving
+        // the semantic job Luna selected for the section.
+        foreach ($sections as $index => $slug) {
+            if ($isHero($slug) || $isTerminal($slug) || ! $isTextDense($slug)) {
+                continue;
+            }
+
+            if (! $this->hasTextHeavyRunAt($sections, $index, $catalog)) {
+                continue;
+            }
+
+            $replacement = $this->bestVisualReplacement($slug, $sections, $catalog, $prompt);
+            if ($replacement === null) {
+                continue;
+            }
+
+            $sections[$index] = $replacement;
+            $changes[] = "art_direction_replaced_{$slug}_with_{$replacement}";
+        }
+
+        // 2) If the body still has very little real imagery, add one carefully
+        // chosen visual storytelling beat rather than deleting useful content.
+        // This safety net is intentionally capped at two additions and total 10.
+        $body = array_values(array_filter($sections, static fn (string $slug): bool => ! $isHero($slug)));
+        $visualCount = count(array_filter($body, $isVisual));
+        $target = min(3, max(1, (int) ceil(count($body) * 0.35)));
+        $additions = 0;
+
+        while ($visualCount < $target && count($sections) < 10 && $additions < 2) {
+            $candidate = $this->bestVisualInterlude($sections, $intent, $prompt, $catalog);
+            if ($candidate === null) {
+                break;
+            }
+
+            $insertAt = $this->visualInterludeInsertionIndex($sections);
+            array_splice($sections, $insertAt, 0, [$candidate]);
+            $visualCount++;
+            $additions++;
+            $changes[] = "art_direction_added_visual_{$candidate}";
+        }
+
+        // 3) Alternate left/right generic editorial feature Sparks when both
+        // were selected, avoiding a visually repetitive same-side sequence.
+        $left = array_search('feature_image_left', $sections, true);
+        $right = array_search('feature_image_right', $sections, true);
+        if ($left !== false && $right !== false && abs($left - $right) === 1) {
+            // Their own components already mirror composition; keeping both is
+            // fine. This marker is useful in diagnostics and confirms the final
+            // art-direction pass evaluated the pair.
+            $changes[] = 'art_direction_preserved_alternating_editorial_features';
+        }
+
+        return array_values($sections);
+    }
+
+    private function explicitlyAvoidsVisualMedia(string $prompt): bool
+    {
+        return preg_match('/\b(text[ -]?only|no images?|without images?|typography[ -]?only|no photos?|without photos?)\b/i', $prompt) === 1;
+    }
+
+    private function hasTextHeavyRunAt(array $sections, int $index, $catalog): bool
+    {
+        $dense = static function (string $slug) use ($catalog): bool {
+            if (in_array($slug, self::HEROES, true) || in_array($slug, self::TERMINAL, true)) {
+                return false;
+            }
+
+            $meta = $catalog->get($slug) ?? [];
+
+            return ($meta['text_density'] ?? 'medium') === 'high'
+                || (int) ($meta['visual_score'] ?? 2) <= 2;
+        };
+
+        $run = 1;
+        for ($i = $index - 1; $i >= 0 && $dense($sections[$i]); $i--) {
+            $run++;
+        }
+        for ($i = $index + 1, $count = count($sections); $i < $count && $dense($sections[$i]); $i++) {
+            $run++;
+        }
+
+        return $run >= 3;
+    }
+
+    private function bestVisualReplacement(string $slug, array $sections, $catalog, string $prompt): ?string
+    {
+        $current = $catalog->get($slug) ?? [];
+        $category = (string) ($current['category'] ?? '');
+        if ($category === '') {
+            return null;
+        }
+
+        $candidates = $catalog
+            ->filter(function (array $meta, string $candidate) use ($slug, $sections, $category, $prompt): bool {
+                if ($candidate === $slug || in_array($candidate, $sections, true)) {
+                    return false;
+                }
+                if (($meta['category'] ?? '') !== $category) {
+                    return false;
+                }
+                if (! in_array(($meta['media_mode'] ?? ''), ['image_led', 'image_motion'], true)) {
+                    return false;
+                }
+                if ($this->candidateRequiresUnrequestedEffect($candidate, $prompt)) {
+                    return false;
+                }
+
+                return ! $this->conflictsWithExisting($candidate, $sections);
+            })
+            ->sortByDesc(static fn (array $meta): int => ((int) ($meta['planner_priority'] ?? 50) * 10) + (int) ($meta['visual_score'] ?? 0));
+
+        $candidate = $candidates->keys()->first();
+
+        return is_string($candidate) ? $candidate : null;
+    }
+
+    private function bestVisualInterlude(array $sections, string $intent, string $prompt, $catalog): ?string
+    {
+        // Cross-category additions are deliberately narrow: these Sparks are
+        // general-purpose visual storytelling beats, or strongly match an
+        // explicit page/business signal in the request.
+        $preferred = match (true) {
+            in_array($intent, ['portfolio', 'case-studies', 'work'], true) => [
+                'portfolio_masonry', 'case_studies_grid', 'feature_image_left', 'feature_image_right',
+            ],
+            preg_match('/\b(construction|builder|architecture|architect|real estate|property|interior|landscap|automotive|hotel|hospitality|travel)\b/i', $prompt) === 1 => [
+                'portfolio_masonry', 'case_studies_grid', 'feature_image_left', 'feature_image_right',
+            ],
+            preg_match('/\b(law|legal|lawyer|attorney|consulting|consultant|accounting|finance|clinic|medical|dentist|professional service)\b/i', $prompt) === 1 => [
+                'about_office_gallery', 'team_cards_premium', 'feature_image_left', 'feature_image_right',
+            ],
+            preg_match('/\b(agency|creative|design|marketing|branding|photograph|fashion)\b/i', $prompt) === 1 => [
+                'portfolio_masonry', 'case_studies_grid', 'feature_image_left', 'feature_image_right',
+            ],
+            in_array($intent, ['about', 'story', 'team'], true) => [
+                'about_office_gallery', 'team_cards_premium', 'feature_image_left', 'feature_image_right',
+            ],
+            default => ['feature_image_left', 'feature_image_right', 'image_cta_banner'],
+        };
+
+        foreach ($preferred as $candidate) {
+            if (in_array($candidate, $sections, true) || ! $catalog->has($candidate)) {
+                continue;
+            }
+            if ($this->candidateRequiresUnrequestedEffect($candidate, $prompt)) {
+                continue;
+            }
+            if ($this->conflictsWithExisting($candidate, $sections)) {
+                continue;
+            }
+
+            $meta = $catalog->get($candidate) ?? [];
+            if (! in_array(($meta['media_mode'] ?? ''), ['image_led', 'image_motion'], true)) {
+                continue;
+            }
+
+            return $candidate;
+        }
+
+        return null;
+    }
+
+    private function candidateRequiresUnrequestedEffect(string $candidate, string $prompt): bool
+    {
+        $wantsVideo = preg_match('/\b(video|cinematic|motion background)\b/i', $prompt) === 1;
+        $wantsParallax = preg_match('/\bparallax\b/i', $prompt) === 1;
+
+        if (str_contains($candidate, 'video') && ! $wantsVideo) {
+            return true;
+        }
+        if (str_contains($candidate, 'parallax') && ! $wantsParallax) {
+            return true;
+        }
+
+        return false;
+    }
+
+    private function visualInterludeInsertionIndex(array $sections): int
+    {
+        // Insert before the terminal conversion/contact cluster. If there is no
+        // terminal section, place the visual beat around the final third.
+        foreach ($sections as $index => $slug) {
+            if (in_array($slug, self::TERMINAL, true)) {
+                return max(1, $index);
+            }
+        }
+
+        return max(1, (int) floor(count($sections) * 0.67));
     }
 
 

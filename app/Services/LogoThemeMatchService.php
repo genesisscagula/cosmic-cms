@@ -10,6 +10,10 @@ use Illuminate\Support\Str;
 
 class LogoThemeMatchService
 {
+    public function __construct(private readonly SvgUploadSanitizer $svgSanitizer)
+    {
+    }
+
     public function match(
         string $logoUrl,
         array $palette,
@@ -184,13 +188,22 @@ class LogoThemeMatchService
         // instead of /storage. Resolve that route back to its Cosmic-owned
         // public-disk file so Match Logo to Theme works with the new single
         // Replace Logo -> Media Library flow.
-        if (preg_match('#^/websites/(\d+)/media-library/assets/([0-9a-fA-F-]{36})#', $path, $matches)) {
+        // Current Media Library delivery URLs use /media-library/files/{uuid}.
+        // Keep the older /assets/{uuid} shape as a compatibility fallback because
+        // saved theme/logo settings can outlive route refactors. Resolve either URL
+        // directly back to the website-owned MediaAsset instead of attempting an
+        // HTTP import (which correctly rejects localhost/private hosts).
+        if (preg_match('#^/websites/(\d+)/media-library/(?:files|assets)/([0-9a-fA-F-]{36})(?:/|$)#', $path, $matches)) {
             $asset = MediaAsset::query()
                 ->where('website_id', (int) $matches[1])
                 ->where('uuid', $matches[2])
                 ->first();
-            if ($asset && $asset->disk === 'public' && $asset->path && Storage::disk('public')->exists($asset->path)) {
-                return $asset->path;
+
+            if ($asset && $asset->disk === 'public' && $asset->path) {
+                $assetPath = ltrim((string) $asset->path, '/');
+                if ($assetPath !== '' && ! str_contains($assetPath, '..') && Storage::disk('public')->exists($assetPath)) {
+                    return $assetPath;
+                }
             }
         }
 
@@ -236,9 +249,10 @@ class LogoThemeMatchService
 
     private function recolorSvg(string $svg, string $primaryHex, string $secondaryHex, string $tertiaryHex): string
     {
-        if (preg_match('/<\s*(?:script|iframe|object|embed|foreignObject)\b|\son\w+\s*=|(?:href|xlink:href)\s*=\s*[\'\"]\s*(?:https?:|javascript:|data:)/i', $svg)) {
-            throw new RuntimeException('This SVG contains unsupported active or external content.');
-        }
+        // Keep logo matching in lockstep with Media Library/logo uploads.
+        // Valid static SVGs are sanitized once, while executable/external
+        // content remains blocked by the shared sanitizer.
+        $svg = $this->svgSanitizer->sanitize($svg);
 
         $index = 0;
         $replace = function (array $match) use ($primaryHex, $secondaryHex, $tertiaryHex, &$index): string {

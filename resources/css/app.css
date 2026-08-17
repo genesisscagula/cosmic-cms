@@ -7715,3 +7715,65 @@ body .cosmic-start-quick-idea.rounded-full.border {
     color: rgb(203 213 225) !important;
     opacity: 1 !important;
 }
+
+/* ================================================================
+   UI contrast hotfix — Theme modal + Change Layout actions
+   Parent-scoped to avoid generic Builder button/text overrides.
+   ================================================================ */
+
+/* Theme modal: Match Theme to Logo must remain readable in every
+   appearance state, including disabled/busy states. */
+.cosmic-theme-modal .cosmic-theme-card .cosmic-theme-match-brand-cta {
+    color: #d1fae5 !important;
+    -webkit-text-fill-color: #d1fae5 !important;
+}
+.cosmic-theme-modal .cosmic-theme-card .cosmic-theme-match-brand-cta * {
+    color: inherit !important;
+    -webkit-text-fill-color: inherit !important;
+}
+:root[data-theme="light"] .cosmic-theme-modal .cosmic-theme-card .cosmic-theme-match-brand-cta {
+    background-color: #ecfdf5 !important;
+    border-color: #86efac !important;
+    color: #047857 !important;
+    -webkit-text-fill-color: #047857 !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-theme-modal .cosmic-theme-card .cosmic-theme-match-brand-cta:hover:not(:disabled) {
+    background-color: #d1fae5 !important;
+    border-color: #4ade80 !important;
+    color: #065f46 !important;
+    -webkit-text-fill-color: #065f46 !important;
+}
+:root[data-theme="light"] .cosmic-theme-modal .cosmic-theme-card .cosmic-theme-match-brand-cta:disabled {
+    background-color: #f0fdf4 !important;
+    border-color: #bbf7d0 !important;
+    color: #15803d !important;
+    -webkit-text-fill-color: #15803d !important;
+    opacity: .72 !important;
+}
+
+/* Change Layout popup: owned/free "Use layout" action is deliberately
+   a light button, so force a dark label even when generic Builder rules
+   or text-fill inheritance try to turn it white. */
+.cosmic-layout-menu .cosmic-layout-use-button {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    opacity: 1 !important;
+}
+.cosmic-layout-menu .cosmic-layout-use-button * {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+.cosmic-layout-menu .cosmic-layout-use-button:hover,
+.cosmic-layout-menu .cosmic-layout-use-button:focus-visible {
+    background-color: #ede9fe !important;
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+}
+.cosmic-layout-menu .cosmic-layout-use-button:disabled {
+    background-color: #f1f5f9 !important;
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+    opacity: .7 !important;
+}

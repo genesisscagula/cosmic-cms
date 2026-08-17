@@ -200,13 +200,132 @@ class SparkPlannerRegistry
         $supported = array_keys(SchemaManager::map());
 
         return array_values(array_map(
-            static fn (string $slug): array => [
-                'slug' => $slug,
-                'category' => $metadata[$slug]['category'] ?? 'content',
-                'description' => $metadata[$slug]['description'] ?? 'Reusable website section.',
-            ],
+            static function (string $slug) use ($metadata): array {
+                $description = $metadata[$slug]['description'] ?? 'Reusable website section.';
+                $profile = self::plannerProfile($slug, $description);
+
+                return [
+                    'slug' => $slug,
+                    'category' => $metadata[$slug]['category'] ?? 'content',
+                    'description' => $description,
+                    'selection_tier' => $profile['selection_tier'],
+                    'media_mode' => $profile['media_mode'],
+                    'visual_score' => $profile['visual_score'],
+                    'text_density' => $profile['text_density'],
+                    'motion_level' => $profile['motion_level'],
+                    'planner_priority' => $profile['planner_priority'],
+                    'best_for' => $profile['best_for'],
+                ];
+            },
             $supported
         ));
+    }
+
+    /**
+     * Planner-only art-direction metadata. This is deliberately derived from
+     * stable Spark slugs so adding a new Spark never requires a DB migration.
+     * The planner can distinguish a real image-led section from a card-heavy
+     * section instead of guessing from marketing descriptions alone.
+     *
+     * @return array{selection_tier:string,media_mode:string,visual_score:int,text_density:string,motion_level:string,planner_priority:int,best_for:string}
+     */
+    private static function plannerProfile(string $slug, string $description): array
+    {
+        $classic = in_array($slug, [
+            'hero_headline', 'hero_floating_cards', 'hero_video_background',
+            'hero_video_style', 'hero_background_image', 'hero_slider_fade',
+            'hero_parallax', 'hero_editorial_overlay', 'hero_split_image',
+            'feature_image_left', 'feature_image_right', 'services_cards',
+            'services_bento', 'process_timeline', 'testimonials_carousel',
+            'hero_centered_cta', 'image_cta_banner', 'pricing_cards',
+            'stats_modern', 'team_modern', 'faq_accordion',
+            'contact_form_modern', 'contact_details', 'location_map',
+            'case_studies_grid', 'jobs_list', 'events_grid',
+        ], true);
+
+        $premium = str_contains($slug, 'premium')
+            || str_ends_with($slug, '_pro')
+            || str_starts_with($description, 'Pro-only');
+
+        $selectionTier = $classic ? 'classic' : ($premium ? 'premium_new' : 'modern');
+
+        $imageLedTokens = [
+            'image', 'gallery', 'masonry', 'pinterest', 'portfolio', 'office',
+            'founder', 'team_cards', 'leadership', 'culture', 'before_after',
+            'case_study', 'map', 'featured_article', 'magazine', 'editors_pick',
+            'agency_showcase', 'device_showcase', 'app_screens', 'cinematic',
+            'ken_burns', 'split_slider', 'vertical_story', 'curtain_reveal',
+            'mask_reveal', 'perspective_carousel', 'scroll_morph',
+        ];
+        $motionTokens = [
+            'motion', 'animated', 'hover', 'carousel', 'slider', 'parallax',
+            'scroll', 'marquee', 'typewriter', 'rotating', 'spotlight', '3d_tilt',
+            'particle', 'grid_pulse', 'light_trails', 'interactive', 'video',
+        ];
+        $dataTokens = [
+            'stats_', 'dashboard', 'charts', 'calculator', 'matrix', 'comparison',
+            'pricing_', 'credits_', 'pipeline', 'org_chart',
+        ];
+        $textHeavyTokens = [
+            'faq_', 'process_timeline', 'services_cards', 'services_mega_grid',
+            'about_mission_grid', 'about_timeline_story', 'about_awards_timeline',
+            'jobs_list', 'contact_details', 'documentation', 'support_portal',
+            'sales_guarantee', 'sales_trust', 'workflow', 'timeline_metrics',
+        ];
+
+        $containsAny = static fn (array $tokens): bool => collect($tokens)->contains(
+            static fn (string $token): bool => str_contains($slug, $token)
+        );
+
+        $imageLed = $containsAny($imageLedTokens)
+            || in_array($slug, ['feature_image_left', 'feature_image_right', 'image_cta_banner', 'hero_background_image', 'hero_editorial_overlay', 'hero_split_image', 'about_office_gallery'], true);
+        $motion = $containsAny($motionTokens);
+        $data = $containsAny($dataTokens);
+        $textHeavy = $containsAny($textHeavyTokens);
+
+        $mediaMode = match (true) {
+            $imageLed && $motion => 'image_motion',
+            $imageLed => 'image_led',
+            $motion => 'motion_visual',
+            $data => 'data_visual',
+            $textHeavy => 'text_structured',
+            default => 'mixed_content',
+        };
+
+        $visualScore = match ($mediaMode) {
+            'image_motion' => 5,
+            'image_led' => 5,
+            'motion_visual' => 4,
+            'data_visual' => 3,
+            'mixed_content' => 3,
+            default => 2,
+        };
+
+        // Keep functional sections available, but make truly visual premium
+        // Sparks easier for the model to notice and rank.
+        $plannerPriority = 50;
+        $plannerPriority += $selectionTier === 'premium_new' ? 24 : ($selectionTier === 'modern' ? 12 : 0);
+        $plannerPriority += ($visualScore - 2) * 7;
+        $plannerPriority -= $textHeavy ? 6 : 0;
+
+        $bestFor = match ($mediaMode) {
+            'image_motion' => 'hero moments, portfolios, visual storytelling, high-impact transitions',
+            'image_led' => 'photography, people, places, projects, products, editorial storytelling',
+            'motion_visual' => 'digital products, modern brands, interaction, visual pacing',
+            'data_visual' => 'verified metrics, comparisons, structured proof, product information',
+            'text_structured' => 'FAQ, process, detailed explanations, policies, structured information',
+            default => 'balanced supporting content',
+        };
+
+        return [
+            'selection_tier' => $selectionTier,
+            'media_mode' => $mediaMode,
+            'visual_score' => $visualScore,
+            'text_density' => $textHeavy ? 'high' : ($imageLed ? 'low' : 'medium'),
+            'motion_level' => $motion ? 'enhanced' : 'static',
+            'planner_priority' => max(1, min(100, $plannerPriority)),
+            'best_for' => $bestFor,
+        ];
     }
 
     public static function slugs(): array

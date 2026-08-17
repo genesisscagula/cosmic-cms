@@ -1,11 +1,18 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import axios from 'axios';
+import { usePage } from '@inertiajs/react';
 import { confirmCosmicAction, showCosmicNotification } from '../CosmicNotification';
 
 const sourceLabel = (source) => ({ upload:'Uploads', ai:'AI Generated', unsplash:'Unsplash', import:'Imported' }[source] || 'Media');
 
+const MEDIA_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/avif,image/heic,image/heif,image/svg+xml,.svg";
+const isSvgAsset = (asset) => asset?.mime_type === "image/svg+xml" || String(asset?.extension || "").toLowerCase() === "svg";
+const isSupportedMediaFile = (file) => file?.type === "image/svg+xml" || String(file?.name || "").toLowerCase().endsWith(".svg") || file?.type?.startsWith("image/");
+
 export default function MediaPickerModal({ open, websiteId, onClose, onSelect, title = 'Choose from Media Library', multiple = false, kind = 'image' }) {
+    const { props: pageProps } = usePage();
+    const resolvedWebsiteId = Number(websiteId || pageProps?.website?.id || pageProps?.currentWebsite?.id || pageProps?.site?.id || 0) || null;
     const [loading, setLoading] = useState(false);
     const [uploading, setUploading] = useState(false);
     const [folders, setFolders] = useState([]);
@@ -23,14 +30,14 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
     const uploadRef = useRef(null);
 
     const load = async () => {
-        if (!websiteId || !open) return;
+        if (!resolvedWebsiteId || !open) return;
         setLoading(true);
         try {
             const params = { per_page: 120, sort: 'newest' };
             if (folderId !== undefined) params.folder_id = folderId || '';
             if (source) params.source = source;
             if (search.trim()) params.search = search.trim();
-            const response = await axios.get(`/websites/${websiteId}/media-library`, { params, headers: { Accept: 'application/json' } });
+            const response = await axios.get(`/websites/${resolvedWebsiteId}/media-library`, { params, headers: { Accept: 'application/json' } });
             setFolders(response.data?.folders || []);
             setAssets(response.data?.assets?.data || []);
         } catch (error) {
@@ -38,7 +45,12 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
         } finally { setLoading(false); }
     };
 
-    useEffect(() => { if (open) { setSelected([]); load(); } }, [open, websiteId, folderId, source]);
+    useEffect(() => { if (open) { setSelected([]); load(); } }, [open, resolvedWebsiteId, folderId, source]);
+    useEffect(() => {
+        if (open && !resolvedWebsiteId) {
+            showCosmicNotification({ title:'Media Library unavailable', message:'This section is missing its website context. Close and reopen the Builder, then try again.', tone:'error' });
+        }
+    }, [open, resolvedWebsiteId]);
     useEffect(() => { if (!open) return; const id=setTimeout(load, 250); return ()=>clearTimeout(id); }, [search]);
     useEffect(() => { if (!open) return; const handler=(e)=>{ if(e.key==='Escape') { if (folderMenu || folderDialog) { setFolderMenu(null); setFolderDialog(null); } else onClose?.(); } }; document.addEventListener('keydown',handler); return()=>document.removeEventListener('keydown',handler); }, [open,onClose]);
 
@@ -78,7 +90,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
             // When a real folder is selected, create the new folder inside it.
             // Smart views (All Media / Uploads / AI / Unsplash / Uncategorized) create at root.
             if (folderId) payload.parent_id = Number(folderId);
-            const response = await axios.post(`/websites/${websiteId}/media-library/folders`, payload, { headers:{ Accept:'application/json' } });
+            const response = await axios.post(`/websites/${resolvedWebsiteId}/media-library/folders`, payload, { headers:{ Accept:'application/json' } });
             const created = response.data?.folder;
             setNewFolderName('');
             await load();
@@ -99,7 +111,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
         if (!folder || !name.trim()) return;
         setFolderPending(true);
         try {
-            await axios.patch(`/websites/${websiteId}/media-library/folders/${folder.id}`, { name: name.trim() }, { headers:{ Accept:'application/json' } });
+            await axios.patch(`/websites/${resolvedWebsiteId}/media-library/folders/${folder.id}`, { name: name.trim() }, { headers:{ Accept:'application/json' } });
             setFolderDialog(null);
             await load();
             showCosmicNotification({ title:'Folder renamed', message:'The folder name was updated.', tone:'success' });
@@ -113,7 +125,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
         const confirmed = await confirmCosmicAction({ title:`Delete ${folder.name}?`, message:'Only empty folders can be deleted. Media inside the folder is protected.', confirmLabel:'Delete folder', tone:'error' });
         if (!confirmed) return;
         try {
-            await axios.delete(`/websites/${websiteId}/media-library/folders/${folder.id}`, { headers:{ Accept:'application/json' } });
+            await axios.delete(`/websites/${resolvedWebsiteId}/media-library/folders/${folder.id}`, { headers:{ Accept:'application/json' } });
             const wasOpen = Number(folderId) === Number(folder.id);
             if (wasOpen) setFolderId(undefined);
             setFolderMenu(null);
@@ -132,7 +144,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
         setFolderPending(true);
         try {
             const payload = { name, parent_id: folderDialog.parentId };
-            const response = await axios.post(`/websites/${websiteId}/media-library/folders`, payload, { headers:{ Accept:'application/json' } });
+            const response = await axios.post(`/websites/${resolvedWebsiteId}/media-library/folders`, payload, { headers:{ Accept:'application/json' } });
             setFolderDialog(null);
             await load();
             if (response.data?.folder?.id) { setFolderId(response.data.folder.id); setSource(''); }
@@ -163,7 +175,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
         });
         if (!unique.length) return;
         try {
-            await Promise.all(unique.map((id) => axios.patch(`/websites/${websiteId}/media-library/assets/${id}`, { folder_id: target }, { headers:{ Accept:'application/json' } })));
+            await Promise.all(unique.map((id) => axios.patch(`/websites/${resolvedWebsiteId}/media-library/assets/${id}`, { folder_id: target }, { headers:{ Accept:'application/json' } })));
             setSelected([]);
             await load();
             const targetName = target ? folders.find((folder)=>Number(folder.id)===target)?.name : 'Uncategorized';
@@ -190,7 +202,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
     };
 
     const uploadFiles = async (files) => {
-        const list = Array.from(files || []).filter((file)=>file.type?.startsWith('image/'));
+        const list = Array.from(files || []).filter(isSupportedMediaFile);
         if (!list.length) return;
         setUploading(true);
         try {
@@ -201,7 +213,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
                 if (folderId) form.append('folder_id', String(folderId));
                 form.append('source', 'upload');
                 form.append('kind', kind);
-                const response = await axios.post(`/websites/${websiteId}/media-library/assets`, form, { headers:{ Accept:'application/json' } });
+                const response = await axios.post(`/websites/${resolvedWebsiteId}/media-library/assets`, form, { headers:{ Accept:'application/json' } });
                 last = response.data?.asset || last;
             }
             await load();
@@ -239,10 +251,10 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
             </aside>
             <section className="cosmic-media-picker-content flex min-w-0 flex-1 flex-col">
                 <header className="border-b border-white/10 p-4 sm:p-5"><div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-bold text-white">{title}</h2><p className="mt-1 text-xs text-slate-500">{source ? sourceLabel(source) : folderId ? (folders.find((f)=>Number(f.id)===Number(folderId))?.name || 'Folder') : 'Media Library'}</p></div><button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/10 hover:text-white">✕</button></div>
-                    <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Search media…" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400"/><input ref={uploadRef} type="file" multiple accept="image/*" className="hidden" onChange={(e)=>uploadFiles(e.target.files)}/><button type="button" disabled={uploading} onClick={()=>uploadRef.current?.click()} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{uploading?'Uploading…':'↑ Upload'}</button></div>
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Search media…" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400"/><input ref={uploadRef} type="file" multiple accept={MEDIA_ACCEPT} className="hidden" onChange={(e)=>uploadFiles(e.target.files)}/><button type="button" disabled={uploading} onClick={()=>uploadRef.current?.click()} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{uploading?'Uploading…':'↑ Upload'}</button></div>
                 </header>
                 <div className="flex-1 overflow-y-auto p-4 sm:p-5" onDragOver={(e)=>{ const types=[...e.dataTransfer.types]; if (types.includes('Files') && !types.includes('application/x-cosmic-media')) e.preventDefault(); }} onDrop={(e)=>{ const types=[...e.dataTransfer.types]; if (types.includes('application/x-cosmic-media')) { e.preventDefault(); return; } if (types.includes('Files')) { e.preventDefault(); uploadFiles(e.dataTransfer.files); } }}>
-                    {loading ? <div className="grid h-full place-items-center text-sm text-slate-500">Loading media…</div> : assets.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{assets.map((asset)=>{const active=selected.some((item)=>item.uuid===asset.uuid);return <button key={asset.uuid} type="button" draggable onDragStart={(event)=>dragStart(event, asset)} onClick={()=>toggle(asset)} onDoubleClick={()=>{onSelect?.(multiple?[asset]:asset);onClose?.();}} className={`group cursor-grab overflow-hidden rounded-2xl border text-left transition active:cursor-grabbing ${active?'border-violet-400 ring-2 ring-violet-500/20':'border-white/10 hover:border-white/25'}`}><div className="aspect-square overflow-hidden bg-black/25"><img src={asset.url} draggable={false} alt={asset.alt_text || asset.original_name || ''} className="h-full w-full object-cover transition duration-300 group-hover:scale-[1.02]"/></div><div className="p-2.5"><p className="truncate text-xs font-semibold text-white">{asset.original_name}</p><p className="mt-1 truncate text-[10px] uppercase tracking-wide text-slate-600">{sourceLabel(asset.source)}</p></div></button>;})}</div> : <div className="grid h-full min-h-64 place-items-center rounded-2xl border border-dashed border-white/10 text-center"><div><div className="text-4xl">🖼️</div><p className="mt-3 text-sm font-semibold text-white">No images here yet</p><p className="mt-1 text-xs text-slate-500">Upload or generate media and it will appear here.</p></div></div>}
+                    {loading ? <div className="grid h-full place-items-center text-sm text-slate-500">Loading media…</div> : assets.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{assets.map((asset)=>{const active=selected.some((item)=>item.uuid===asset.uuid);return <button key={asset.uuid} type="button" draggable onDragStart={(event)=>dragStart(event, asset)} onClick={()=>toggle(asset)} onDoubleClick={()=>{onSelect?.(multiple?[asset]:asset);onClose?.();}} className={`group cursor-grab overflow-hidden rounded-2xl border text-left transition active:cursor-grabbing ${active?'border-violet-400 ring-2 ring-violet-500/20':'border-white/10 hover:border-white/25'}`}><div className="aspect-square overflow-hidden bg-black/25"><img src={asset.url} draggable={false} alt={asset.alt_text || asset.original_name || ''} className={`h-full w-full transition duration-300 ${isSvgAsset(asset) ? "object-contain p-3" : "object-cover group-hover:scale-[1.02]"}`}/></div><div className="p-2.5"><p className="truncate text-xs font-semibold text-white">{asset.original_name}</p><p className="mt-1 truncate text-[10px] uppercase tracking-wide text-slate-600">{sourceLabel(asset.source)}</p></div></button>;})}</div> : <div className="grid h-full min-h-64 place-items-center rounded-2xl border border-dashed border-white/10 text-center"><div><div className="text-4xl">🖼️</div><p className="mt-3 text-sm font-semibold text-white">No images here yet</p><p className="mt-1 text-xs text-slate-500">Upload or generate media and it will appear here.</p></div></div>}
                 </div>
                 <footer className="flex items-center justify-between gap-3 border-t border-white/10 p-4"><p className="text-xs text-slate-500">{selected.length ? `${selected.length} selected` : 'Select an image to continue'}</p><div className="flex gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Cancel</button><button type="button" disabled={!selected.length} onClick={()=>{onSelect?.(multiple?selected:selected[0]);onClose?.();}} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40">Use {multiple?'Images':'Image'}</button></div></footer>
             </section>

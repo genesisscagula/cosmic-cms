@@ -12,39 +12,13 @@ class SparkPlanner
     {
         $available = SparkPlannerRegistry::all();
         $allowedSlugs = array_column($available, 'slug');
-        $plannerCatalog = array_map(static function (array $spark): array {
-            $slug = (string) ($spark['slug'] ?? '');
-            $description = (string) ($spark['description'] ?? '');
-            $legacy = in_array($slug, [
-                'hero_headline',
-                'hero_floating_cards',
-                'hero_video_background',
-                'hero_video_style',
-                'hero_background_image',
-                'hero_slider_fade',
-                'hero_parallax',
-                'hero_editorial_overlay',
-                'hero_split_image',
-                'feature_image_left',
-                'feature_image_right',
-                'services_cards',
-                'services_bento',
-                'process_timeline',
-                'testimonials_carousel',
-                'hero_centered_cta',
-                'image_cta_banner',
-                'pricing_cards',
-                'stats_modern',
-                'team_modern',
-                'faq_accordion',
-            ], true);
-
-            $spark['selection_tier'] = $legacy
-                ? 'classic'
-                : ((str_contains($slug, 'premium') || str_ends_with($slug, '_pro') || str_starts_with($description, 'Pro-only')) ? 'premium_new' : 'modern');
-
-            return $spark;
-        }, $available);
+        // SparkPlannerRegistry already supplies audited planner metadata.
+        // Sorting within the catalog gives high-value visual Sparks a fairer
+        // chance to be noticed without removing functional or classic options.
+        $plannerCatalog = collect($available)
+            ->sortByDesc(static fn (array $spark): int => (int) ($spark['planner_priority'] ?? 50))
+            ->values()
+            ->all();
 
         $system = <<<'PROMPT'
 You are the Cosmic Spark Planner.
@@ -59,10 +33,20 @@ Rules:
 - Preserve a logical storytelling order.
 - Use no more than one hero, and place it first when a hero is appropriate.
 - Avoid duplicate Sparks.
+- Use planner metadata as real ranking signals: planner_priority is an editorial preference score, visual_score rates visual richness, media_mode identifies the actual composition type, and text_density helps prevent card/text monotony.
 - Prefer Sparks marked selection_tier=premium_new when they are a strong fit for the business, page intent, and requested visual direction.
+- When two Sparks satisfy the same semantic purpose, prefer the one with the higher planner_priority and visual_score unless its best_for/media_mode conflicts with the request.
 - Treat selection_tier=classic Sparks as safe fallbacks, not the default creative choice. Do not repeatedly fall back to the same classic hero or classic body sections when suitable premium_new or modern options exist.
 - The preference for newer Sparks applies to the entire page, not only the hero. After the hero, deliberately use newer/specialized services, about, portfolio, stats, testimonials, team, pricing, FAQ, contact, sales, agency, AI, lead-generation, blog, and CTA Sparks when relevant.
 - Build visual variety across the page: avoid choosing a sequence dominated by generic legacy cards/image/text sections when richer compatible Sparks exist.
+- Do not infer visual richness from the word premium alone. A premium text/table Spark can still be text-heavy; use media_mode + visual_score to distinguish it from a genuinely image-led or motion-led Spark.
+- VISUAL-FIRST COMPOSITION: when the business/page naturally supports photography, product visuals, portfolio work, places, people, projects, interiors, food, property, or other meaningful media, intentionally choose image-led or mixed-media Sparks throughout the body instead of producing a mostly text-and-card page.
+- For an ordinary 6-10 section visual marketing page, target roughly 40-60% of applicable body sections as image-led, mixed-media, gallery/showcase, or strongly visual Sparks when suitable options exist. This is a composition target, not a quota: never add irrelevant imagery.
+- Do not place more than 2 primarily text/card/grid sections consecutively when a relevant visual alternative exists. Break long runs of text/cards with an editorial image, split image/content, showcase, gallery, image-backed CTA, location visual, portfolio, or other media-led Spark.
+- Prefer a premium visual or mixed-media Spark over a generic text/card Spark when both satisfy the same content purpose. Prefer meaningful business imagery over decorative filler.
+- Think about the WHOLE PAGE before finalizing. The result should have visual pacing: alternate dense information with visual breathing room and avoid repeated white card grids, repeated icon grids, or repeated heading-plus-cards compositions.
+- Industry-aware imagery matters. Examples: law/consulting can use professional consultation, team, office/architecture, city/location, or editorial imagery; construction can use projects/materials/sites; restaurants can use food/interiors/chefs; agencies can use portfolio/device/campaign visuals; real estate can use properties/interiors/neighborhoods; SaaS/AI can use product UI/dashboard/device/abstract product visuals.
+- Do not weaken page intent just to satisfy visual variety. FAQ, pricing, legal details, process, and other information-heavy sections may remain text-led when that is the clearest treatment.
 - For an ordinary 5-10 section marketing page, aim for a majority of the selected body sections to be premium_new or modern when suitable. Never force a premium Spark when its purpose or factual requirements do not fit the request.
 - Include contact or CTA near the end when appropriate.
 - Respect explicit page intent such as Home, About, Services, Pricing, Team, Contact, Blog, Careers, Events, or Location.
