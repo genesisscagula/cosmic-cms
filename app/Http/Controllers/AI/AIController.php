@@ -5,6 +5,7 @@ namespace App\Http\Controllers\AI;
 use App\Cosmic\Pricing\ActionPricing;
 use App\Cosmic\Pricing\BlockPricingRegistry;
 use App\Http\Controllers\Controller;
+use App\Models\CreditTransaction;
 use App\Models\Website;
 use App\Services\MediaPackImageService;
 use App\Services\MediaPackOwnershipService;
@@ -220,12 +221,46 @@ TEXT;
         $validated = $request->validate([
             'prompt' => ['required', 'string'],
             'header_overlay_enabled' => ['nullable', 'boolean'],
+            'website_id' => ['nullable', 'integer', 'exists:websites,id'],
         ]);
 
         $prompt = $this->withHeaderOverlayContext(
             $validated['prompt'],
             (bool) ($validated['header_overlay_enabled'] ?? false),
         );
+
+        // Registered Builder: the first successful full-page generation for a
+        // website gets Cosmic's media-led "wow" preference. After that Luna is
+        // fully unrestricted. We derive success from the existing credit ledger
+        // (failed generations are paired with a refund), avoiding browser-only
+        // state and avoiding any database migration.
+        if (! empty($validated['website_id']) && $request->user()) {
+            $website = Website::findOrFail($validated['website_id']);
+            $this->authorize('update', $website);
+
+            $pageDebits = CreditTransaction::query()
+                ->where('user_id', $request->user()->id)
+                ->where('website_id', $website->id)
+                ->where('type', 'debit')
+                ->where('description', 'Generate page with Cosmic AI')
+                ->count();
+
+            $failedRefunds = CreditTransaction::query()
+                ->where('user_id', $request->user()->id)
+                ->where('website_id', $website->id)
+                ->where('type', 'refund')
+                ->where('description', 'Refund for failed Cosmic AI generation')
+                ->count();
+
+            $isInitialRegisteredGeneration = $pageDebits <= $failedRefunds;
+
+            if ($isInitialRegisteredGeneration) {
+                $prompt .= "\n\nINITIAL REGISTERED GENERATION VISUAL DIRECTIVE:"
+                    ." Make the opening hero visually impressive and media-led where compatible with the business."
+                    ." Strongly prefer slider, video, parallax, cinematic gallery, image-sequence, Ken Burns, or another premium image-led hero over a plain solid-color opening hero."
+                    ." Keep industry, page intent, Spark registration, and compatibility rules authoritative.";
+            }
+        }
 
         return response()->json(
             $this->pageGenerationService->selectSections($prompt)

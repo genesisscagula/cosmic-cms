@@ -1,10 +1,11 @@
 import { router } from "@inertiajs/react";
 import axios from "axios";
-import { useMemo, useState } from "react";
-import useInfiniteReveal from "../../../Hooks/useInfiniteReveal";
+import { useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { ActualSparkPreview } from "../../Websites/Components/AddSectionModal";
 import { BlockRegistry } from "../../Websites/Components/SparkRegistry";
 import { showCosmicNotification } from "../../../Components/CosmicNotification";
+import useTimedReveal from "../../../Hooks/useTimedReveal";
 
 const viewCopy = {
     owned: {
@@ -125,12 +126,14 @@ export default function Sparks({ dashboard }) {
         : activeView === "marketplace"
             ? filteredMarketplace
             : filteredCollection;
-    const activeFilteredItems = aiResults ? [...activeFilteredItemsRaw].sort((a, b) => (aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : activeFilteredItemsRaw;
-    const infiniteResetKey = `${activeView}|${category}|${marketFilter}|${query}`;
-    const { visibleItems: visibleSparks, hasMore: hasMoreSparks, isRevealing: isRevealingSparks, sentinelRef: infiniteSentinelRef } = useInfiniteReveal(activeFilteredItems, {
-        batchSize: 12,
-        resetKey: infiniteResetKey,
+    const sortedActiveFilteredItems = aiResults ? [...activeFilteredItemsRaw].sort((a, b) => (aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : activeFilteredItemsRaw;
+    const libraryRevealKey = `${activeView}|${category}|${marketFilter}|${query}|${aiResults ? "ai" : "browse"}`;
+    const libraryVisibleCount = useTimedReveal(sortedActiveFilteredItems.length, libraryRevealKey, {
+        initial: 100,
+        step: 50,
+        intervalMs: 5000,
     });
+    const activeFilteredItems = useMemo(() => sortedActiveFilteredItems.slice(0, libraryVisibleCount), [sortedActiveFilteredItems, libraryVisibleCount]);
 
     const removeSpark = async (spark) => {
         if (!window.confirm(`Remove “${spark.name}” from Owned Sparks?`)) return;
@@ -275,7 +278,7 @@ export default function Sparks({ dashboard }) {
                 {activeView === "owned" ? (
                     filteredOwned.length ? (
                         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            {visibleSparks.map((spark) => (
+                            {activeFilteredItems.map((spark) => (
                                 <OwnedSparkCard key={spark.key} spark={spark} busy={busyKey === spark.key} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onRemove={() => removeSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
                             ))}
                         </div>
@@ -285,7 +288,7 @@ export default function Sparks({ dashboard }) {
                 ) : activeView === "marketplace" ? (
                     filteredMarketplace.length ? (
                         <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                            {visibleSparks.map((spark, sparkIndex) => (
+                            {activeFilteredItems.map((spark, sparkIndex) => (
                                 <MarketplaceSparkCard key={spark.key} spark={spark} previewComponent={registry.get(spark.key)?.preview} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} busy={busyKey === spark.key} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} favoriteBusy={busyKey === `favorite-${spark.key}`} />
                             ))}
                         </div>
@@ -294,7 +297,7 @@ export default function Sparks({ dashboard }) {
                     )
                 ) : filteredCollection.length ? (
                     <div className="mt-8 grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-                        {visibleSparks.map((spark, sparkIndex) => (
+                        {activeFilteredItems.map((spark, sparkIndex) => (
                             <MarketplaceSparkCard key={spark.key} spark={spark} previewComponent={registry.get(spark.key)?.preview} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} busy={busyKey === spark.key} favoriteBusy={busyKey === `favorite-${spark.key}`} onPreview={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark({ ...spark, registry: registry.get(spark.key) })} onUnlock={() => unlockSpark(spark)} onFavorite={() => toggleFavorite(spark)} />
                         ))}
                     </div>
@@ -302,11 +305,6 @@ export default function Sparks({ dashboard }) {
                     <EmptyState title={activeView === "favorites" ? "No Favorite Sparks yet" : "No purchased Sparks yet"} description={activeView === "favorites" ? "Use the heart button on any marketplace Spark to save it here." : "Premium Sparks purchased with Cosmic Credits will remain available here."} action={<button type="button" onClick={() => switchView("marketplace")} className="mt-5 inline-flex rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950">Browse Marketplace</button>} />
                 )}
 
-                {activeFilteredItems.length > 0 && (
-                    <div ref={infiniteSentinelRef} className="mt-6 flex min-h-10 items-center justify-center text-xs text-slate-500" aria-hidden="true">
-                        {hasMoreSparks ? (isRevealingSparks ? "Loading more Sparks…" : "Scroll for more Sparks") : `${activeFilteredItems.length} Sparks loaded`}
-                    </div>
-                )}
             </div>
 
             {previewSpark && (
@@ -318,7 +316,7 @@ export default function Sparks({ dashboard }) {
 
 function OwnedSparkCard({ spark, busy, onPreview, onRemove, onFavorite, favoriteBusy }) {
     return (
-        <article className="cosmic-owned-spark-card rounded-2xl border border-white/10 bg-black/20 p-5 transition hover:border-violet-300/25 hover:bg-white/[0.025]">
+        <article style={{ contentVisibility: "auto", containIntrinsicSize: "320px" }} className="cosmic-owned-spark-card rounded-2xl border border-white/10 bg-black/20 p-5 transition hover:border-violet-300/25 hover:bg-white/[0.025]">
             <div className="flex items-start justify-between gap-4">
                 <div className="flex h-11 w-11 items-center justify-center rounded-xl border border-violet-300/20 bg-violet-400/10 text-lg text-violet-200">✦</div>
                 <div className="flex items-center gap-2"><button type="button" disabled={favoriteBusy} onClick={onFavorite} className={`flex h-8 w-8 items-center justify-center rounded-full border text-sm transition ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button><span className="cosmic-owned-badge rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-emerald-200">✓ Owned</span></div>
@@ -339,7 +337,7 @@ function OwnedSparkCard({ spark, busy, onPreview, onRemove, onFavorite, favorite
 
 function MarketplaceSparkCard({ spark, previewComponent: PreviewComponent, previewVariant = "primary", busy, onPreview, onUnlock, onFavorite, favoriteBusy }) {
     return (
-        <article className="cosmic-marketplace-spark-card overflow-hidden rounded-2xl border border-white/10 bg-black/20 transition hover:-translate-y-0.5 hover:border-violet-300/30">
+        <article style={{ contentVisibility: "auto", containIntrinsicSize: "420px" }} className="cosmic-marketplace-spark-card overflow-hidden rounded-2xl border border-white/10 bg-black/20 transition hover:-translate-y-0.5 hover:border-violet-300/30">
             <div className="relative h-40 overflow-hidden bg-gradient-to-br from-violet-500/20 via-indigo-500/10 to-cyan-400/10 p-3">
                 <div className="cosmic-marketplace-preview h-full overflow-hidden rounded-xl border border-white/10 bg-[#0d0d10]/85">
                     {PreviewComponent ? <PreviewComponent previewVariant={previewVariant} websiteTheme="midnight" /> : <div className="h-full p-4"><div className="h-2 w-16 rounded bg-white/15" /><div className="mt-5 h-4 w-4/5 rounded bg-white/20" /><div className="mt-2 h-2.5 w-3/5 rounded bg-white/10" /><div className="mt-5 grid grid-cols-3 gap-2"><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /><div className="h-8 rounded bg-white/[0.06]" /></div></div>}
@@ -383,20 +381,49 @@ function EmptyState({ title, description, action = null }) {
 }
 
 function SparkPreviewModal({ spark, previewVariant, setPreviewVariant, onClose }) {
-    return (
-        <div className="fixed inset-0 z-[980] flex items-stretch justify-stretch">
+    useEffect(() => {
+        if (typeof document === "undefined") return undefined;
+
+        const body = document.body;
+        const html = document.documentElement;
+        const previousBodyOverflow = body.style.overflow;
+        const previousBodyPaddingRight = body.style.paddingRight;
+        const previousHtmlOverscroll = html.style.overscrollBehavior;
+        const scrollbarWidth = Math.max(0, window.innerWidth - html.clientWidth);
+
+        body.style.overflow = "hidden";
+        if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
+        html.style.overscrollBehavior = "none";
+
+        const handleKeyDown = (event) => {
+            if (event.key === "Escape") onClose();
+        };
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            body.style.overflow = previousBodyOverflow;
+            body.style.paddingRight = previousBodyPaddingRight;
+            html.style.overscrollBehavior = previousHtmlOverscroll;
+        };
+    }, [onClose]);
+
+    if (typeof document === "undefined") return null;
+
+    return createPortal(
+        <div id="cosmic-dashboard-spark-preview" className="fixed inset-0 z-[2147483000] flex items-stretch justify-stretch">
             <button type="button" onClick={onClose} className="absolute inset-0 bg-black/85 backdrop-blur-sm" aria-label="Close Spark preview" />
-            <section role="dialog" aria-modal="true" className="cosmic-spark-preview-modal relative z-10 flex h-screen w-screen max-w-none flex-col overflow-hidden rounded-none border border-white/10 bg-[#101014] text-white shadow-2xl">
-                <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7">
+            <section role="dialog" aria-modal="true" id="cosmic-dashboard-spark-preview-dialog" className="cosmic-spark-preview-modal relative z-10 flex h-screen w-screen max-w-none flex-col overflow-hidden rounded-none border border-white/10 bg-[#101014] text-white shadow-2xl">
+                <header className="shrink-0 flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7">
                     <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">Spark Preview · {spark.category}</p><h3 className="mt-1 text-xl font-semibold">{spark.name}</h3><p className="mt-1 max-w-3xl text-sm text-slate-400">{spark.description}</p></div>
                     <button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white">✕</button>
                 </header>
-                <div className="min-h-0 flex-1 overflow-auto bg-[#e5e7eb] p-0">
+                <div id="cosmic-dashboard-spark-preview-body" className="min-h-0 flex-1 overflow-auto overscroll-contain bg-[#e5e7eb] p-0">
                     <div className="cosmic-spark-preview-stage min-h-full w-full"><div className="cosmic-spark-preview-stage-inner">
                         <div className="pointer-events-none w-full min-w-0 origin-top-left"><ActualSparkPreview spark={spark} previewVariant={previewVariant} websiteTheme="midnight" /></div>
                     </div></div>
                 </div>
-                <footer className="flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                <footer className="shrink-0 flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
                     <p className="text-xs text-slate-500">Preview uses sample content and does not change your website.</p>
                     <div className="flex gap-2">
                         {["primary", "white", "surface"].map((variant) => (
@@ -414,6 +441,7 @@ function SparkPreviewModal({ spark, previewVariant, setPreviewVariant, onClose }
                     </div>
                 </footer>
             </section>
-        </div>
+        </div>,
+        document.body
     );
 }

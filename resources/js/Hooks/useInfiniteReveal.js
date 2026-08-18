@@ -21,6 +21,7 @@ export default function useInfiniteReveal(items, {
     resetKey = "",
     root = null,
     rootMargin = "320px 0px",
+    disabled = false,
 } = {}) {
     const [visibleCount, setVisibleCount] = useState(batchSize);
     const [isRevealing, setIsRevealing] = useState(false);
@@ -59,13 +60,14 @@ export default function useInfiniteReveal(items, {
 
     useEffect(() => {
         const sentinel = sentinelRef.current;
-        if (!sentinel || visibleCount >= items.length || typeof window === "undefined") return undefined;
+        if (disabled || !sentinel || visibleCount >= items.length || typeof window === "undefined") return undefined;
 
         // Modal libraries scroll inside their own overflow container. When callers
         // do not explicitly provide an IntersectionObserver root, resolve the
         // nearest scrollable ancestor instead of observing against the browser
         // viewport. This keeps Trial and registered Builder libraries identical.
-        const resolvedRoot = root || findScrollParent(sentinel);
+        const explicitRoot = root && typeof root === "object" && "current" in root ? root.current : root;
+        const resolvedRoot = explicitRoot || findScrollParent(sentinel);
 
         const observer = typeof IntersectionObserver !== "undefined"
             ? new IntersectionObserver((entries) => {
@@ -103,7 +105,7 @@ export default function useInfiniteReveal(items, {
             observer?.disconnect();
             scrollTarget.removeEventListener("scroll", checkNearBottom);
         };
-    }, [items.length, revealNext, root, rootMargin, visibleCount]);
+    }, [disabled, items.length, revealNext, root, rootMargin, visibleCount]);
 
     const visibleItems = useMemo(() => items.slice(0, visibleCount), [items, visibleCount]);
 

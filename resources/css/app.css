@@ -7777,3 +7777,78 @@ body .cosmic-start-quick-idea.rounded-full.border {
     -webkit-text-fill-color: #475569 !important;
     opacity: .7 !important;
 }
+
+
+/* Cosmic Dashboard Spark Preview: isolate fullscreen geometry from generic dashboard/modal CSS. */
+#cosmic-dashboard-spark-preview {
+    position: fixed !important;
+    inset: 0 !important;
+    width: 100vw !important;
+    height: 100dvh !important;
+    min-width: 100vw !important;
+    min-height: 100dvh !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: hidden !important;
+    align-items: stretch !important;
+    justify-content: stretch !important;
+    z-index: 2147483000 !important;
+}
+
+#cosmic-dashboard-spark-preview > #cosmic-dashboard-spark-preview-dialog {
+    position: relative !important;
+    inset: auto !important;
+    width: 100vw !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    height: 100dvh !important;
+    max-height: none !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    transform: none !important;
+    overflow: hidden !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+#cosmic-dashboard-spark-preview-dialog > header,
+#cosmic-dashboard-spark-preview-dialog > footer {
+    flex: 0 0 auto !important;
+    position: relative !important;
+    width: 100% !important;
+    z-index: 20 !important;
+}
+
+#cosmic-dashboard-spark-preview-body {
+    position: relative !important;
+    flex: 1 1 auto !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    min-height: 0 !important;
+    max-width: none !important;
+    max-height: none !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+}
+
+#cosmic-dashboard-spark-preview-body > .cosmic-spark-preview-stage,
+#cosmic-dashboard-spark-preview-body .cosmic-spark-preview-stage-inner {
+    width: 100% !important;
+    max-width: none !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+}
+
+#cosmic-dashboard-spark-preview-body [data-cosmic-add-spark-preview="true"] {
+    width: 100% !important;
+    max-width: none !important;
+    margin-inline: 0 !important;
+}
+
+#cosmic-dashboard-spark-preview,
+#cosmic-dashboard-spark-preview * { box-sizing: border-box; }
+
+body:has(#cosmic-dashboard-spark-preview) { overflow: hidden !important; }

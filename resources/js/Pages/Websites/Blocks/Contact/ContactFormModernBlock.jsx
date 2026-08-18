@@ -60,7 +60,7 @@ export const ContactFormModernSchema = {
     },
 };
 
-function FormField({ field, inputClass, theme, nativeColorScheme, accentColor }) {
+export function FormField({ field, inputClass, theme, nativeColorScheme, accentColor }) {
     const label = <span>{field.label}{field.required ? <span className="ml-1 text-rose-400">*</span> : null}</span>;
     const options = field.options.length ? field.options : ["Option one", "Option two"];
 
@@ -85,7 +85,7 @@ function FormField({ field, inputClass, theme, nativeColorScheme, accentColor })
     return <label className={`block text-sm font-semibold ${theme.text}`}>{label}<input type={field.type} style={field.type === "date" ? { colorScheme: nativeColorScheme, "--tw-ring-color": accentColor } : { "--tw-ring-color": accentColor }} className={`mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 ${inputClass}`} placeholder={field.placeholder} required={field.required} /></label>;
 }
 
-function FormFieldsEditor({ fields, onSave, onClose }) {
+export function FormFieldsEditor({ fields, onSave, onClose }) {
     const [draft, setDraft] = useState(() => normalizeContactFields(fields));
     const updateField = (index, patch) => setDraft((current) => current.map((field, fieldIndex) => fieldIndex === index ? { ...field, ...patch } : field));
     const move = (index, direction) => setDraft((current) => { const next = [...current]; const target = index + direction; if (target < 0 || target >= next.length) return current; [next[index], next[target]] = [next[target], next[index]]; return next; });

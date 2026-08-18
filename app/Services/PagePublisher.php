@@ -71,7 +71,7 @@ class PagePublisher
             ->whereIn('page_id', $pages->where('page_type', 'blog')->pluck('id'))
             ->orderByDesc('is_featured')
             ->latest('published_at')
-            ->get(['id', 'page_id', 'title', 'slug', 'excerpt', 'content', 'category', 'tags', 'image_url', 'is_featured', 'published_at'])
+            ->get(['id', 'page_id', 'title', 'slug', 'excerpt', 'content', 'category', 'tags', 'image_url', 'is_featured', 'published_at', 'updated_at'])
             ->groupBy('page_id');
 
         $pagePaths = $this->pagePaths($pages);
@@ -151,6 +151,12 @@ class PagePublisher
                             'slug' => $postDirectory . '/' . $post->slug,
                             'page_style' => $publishedShellStyle,
                             'output_path' => $postDirectory . '/' . $post->slug . '/index.html',
+                            'meta_description' => $post->excerpt,
+                            'structured_content' => true,
+                            'og_type' => 'article',
+                            'og_image' => $this->commerceAssetUrl($post->image_url),
+                            'published_at' => optional($post->published_at)->toISOString(),
+                            'updated_at' => optional($post->updated_at)->toISOString(),
                             // Compile the complete Blog page composition so the live
                             // article keeps the same Mini Header, Single Post body,
                             // Newsletter, and Latest Resources seen in Builder.
@@ -623,4 +629,5 @@ class PagePublisher
 
         return $paths;
     }
+
 }

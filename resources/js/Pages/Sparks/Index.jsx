@@ -1,7 +1,7 @@
 import axios from "axios";
 import { Head, Link } from "@inertiajs/react";
 import { useMemo, useState } from "react";
-import useInfiniteReveal from "../../Hooks/useInfiniteReveal";
+import useTimedReveal from "../../Hooks/useTimedReveal";
 import { BlockRegistry } from "../Websites/Components/SparkRegistry";
 import { ActualSparkPreview } from "../Websites/Components/AddSectionModal";
 import CreditBalanceBadge from "../../Components/CosmicCredits/CreditBalanceBadge";
@@ -60,6 +60,14 @@ export default function Index({ sparks = [], categories = [], ownedCount = 0, ow
         return `${spark.name} ${spark.description} ${spark.category}`.toLowerCase().includes(query.toLowerCase());
     }).sort((a, b) => aiResults ? ((aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : 0), [catalogItems, view, category, query, aiResults, aiResultMap]);
 
+    const standaloneRevealKey = `${view}|${category}|${query.trim().toLowerCase()}|${aiResults ? "ai" : "browse"}`;
+    const standaloneVisibleCount = useTimedReveal(filtered.length, standaloneRevealKey, {
+        initial: 100,
+        step: 50,
+        intervalMs: 5000,
+    });
+    const visibleSparks = useMemo(() => filtered.slice(0, standaloneVisibleCount), [filtered, standaloneVisibleCount]);
+
     const clearAiSearch = () => { setAiResults(null); setAiPrompt(""); };
     const runAiSearch = async () => {
         const prompt = query.trim();
@@ -75,11 +83,6 @@ export default function Index({ sparks = [], categories = [], ownedCount = 0, ow
             showCosmicNotification({ title: 'Luna search unavailable', message: error.response?.data?.message || 'Normal Spark search is still available.', tone: 'error' });
         } finally { setAiSearchBusy(false); }
     };
-
-    const { visibleItems: visibleSparks, hasMore: hasMoreSparks, isRevealing: isRevealingSparks, sentinelRef: infiniteSentinelRef } = useInfiniteReveal(filtered, {
-        batchSize: 12,
-        resetKey: `${view}|${category}|${query}`,
-    });
 
     const toggleShare = async (spark) => {
         setBusyKey(`share:${spark.key}`);
@@ -133,7 +136,7 @@ export default function Index({ sparks = [], categories = [], ownedCount = 0, ow
             {aiResults && <div className="mt-4 flex flex-wrap items-center gap-2 text-xs text-slate-400"><span><b className="text-violet-200">✦ Luna results</b> for “{aiPrompt}” · {filtered.length} match{filtered.length === 1 ? '' : 'es'}</span><button type="button" onClick={clearAiSearch} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white">Clear AI results</button></div>}
             <div className="mt-5 flex flex-wrap gap-2"><button onClick={() => setCategory("All")} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${category === "All" ? "bg-violet-400 text-slate-950" : "border border-white/10 text-slate-400"}`}>All</button>{categories.map((item) => <button key={item} onClick={() => setCategory(item)} className={`rounded-full px-3 py-1.5 text-xs font-semibold ${category === item ? "bg-violet-400 text-slate-950" : "border border-white/10 text-slate-400"}`}>{item}</button>)}</div>
 
-            {filtered.length ? <><div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{visibleSparks.map((spark, index) => <article key={spark.key} className="cosmic-marketplace-card group overflow-hidden rounded-xl border border-white/10 bg-[#111116] transition hover:border-violet-300/30">
+            {filtered.length ? <><div className="mt-7 grid gap-5 md:grid-cols-2 xl:grid-cols-3">{visibleSparks.map((spark, index) => <article key={spark.key} style={{ contentVisibility: "auto", containIntrinsicSize: "430px" }} className="cosmic-marketplace-card group overflow-hidden rounded-xl border border-white/10 bg-[#111116] transition hover:border-violet-300/30">
                 <div className={`relative h-52 overflow-hidden bg-gradient-to-br ${tones[index % tones.length]} p-3`}>
                     <div className="h-full overflow-hidden rounded-xl border border-white/10 bg-white shadow-xl">
                         <SparkCardPreview spark={spark} index={index} />
@@ -141,7 +144,7 @@ export default function Index({ sparks = [], categories = [], ownedCount = 0, ow
                     {spark.featured && <span className="absolute right-4 top-4 rounded-full bg-white px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-slate-950">Featured</span>}
                 </div>
                 <div className="p-5"><div className="flex items-start justify-between gap-3"><div><p className="text-xs font-semibold uppercase tracking-wider text-violet-300">{spark.category} · {spark.collection}</p><h3 className="mt-1 text-xl font-semibold">{spark.name}</h3></div><span className={`rounded-lg border px-2.5 py-1.5 text-xs font-bold ${["owned", "purchased"].includes(spark.usage_state?.key) ? "border-emerald-400/20 bg-emerald-400/10 text-emerald-200" : spark.usage_state?.key === "shared" ? "border-cyan-300/20 bg-cyan-300/10 text-cyan-100" : ["plan_locked", "slots_full", "credits_needed", "preview_locked"].includes(spark.usage_state?.key) ? "border-amber-300/20 bg-amber-300/[0.08] text-amber-100" : "border-white/10 bg-white/[0.04] text-slate-200"}`}>{spark.usage_state?.label || (spark.owned ? "Owned" : `⚡ ${spark.credits}`)}</span></div><p className="mt-3 min-h-12 text-sm leading-6 text-slate-400">{spark.description}</p>{aiResults && aiResultMap.get(spark.key)?.reason && <p className="mt-2 rounded-lg border border-violet-300/10 bg-violet-400/[0.06] px-2.5 py-2 text-xs leading-5 text-violet-100"><b>✦ Luna:</b> {aiResultMap.get(spark.key).reason}</p>}{spark.usage_state?.message && ["plan_locked", "slots_full", "credits_needed", "preview_locked", "removed", "shared"].includes(spark.usage_state.key) && <p className="mt-2 text-xs leading-5 text-slate-500">{spark.usage_state.message}</p>}<div className="mt-5 flex gap-2"><button type="button" onClick={() => { if (spark.can_preview === false) { showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }); return; } setPreviewSpark(spark); setPreviewVariant("white"); }} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-200 transition hover:border-violet-400/40 hover:bg-white/5">{spark.can_preview === false ? "Preview locked" : "Preview"}</button>{spark.owned ? <div className="flex flex-1 gap-2"><div className="flex-1 rounded-xl border border-emerald-400/20 bg-emerald-400/[0.06] px-4 py-2.5 text-center text-sm font-semibold text-emerald-200">✓ In My Sparks</div>{sharedSparkLibrary?.can_manage && <button type="button" disabled={busyKey === `share:${spark.key}`} onClick={() => toggleShare(spark)} className={`rounded-xl border px-3 py-2.5 text-xs font-semibold transition disabled:opacity-50 ${spark.shared ? "border-cyan-300/25 bg-cyan-300/10 text-cyan-100" : "border-white/10 text-slate-300 hover:border-cyan-300/30"}`}>{busyKey === `share:${spark.key}` ? "Saving..." : spark.shared ? "Shared ✓" : "Share"}</button>}</div> : spark.can_install === false && spark.usage_state?.upgrade_url ? <Link href={spark.usage_state.upgrade_url} className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-semibold text-slate-950">{spark.usage_state.actionLabel || "View upgrade"}</Link> : spark.can_install === false && spark.usage_state?.action === "buy_credits" ? <Link href="/credits" className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-semibold text-slate-950">Add Cosmic Credits</Link> : <button disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-semibold text-slate-950 disabled:opacity-50">{busyKey === spark.key ? "Adding..." : spark.usage_state?.actionLabel || `Add to My Sparks · ⚡${spark.credits}`}</button>}</div></div>
-            </article>)}</div><div ref={infiniteSentinelRef} className="mt-6 flex min-h-10 items-center justify-center text-xs text-slate-500" aria-hidden="true">{hasMoreSparks ? (isRevealingSparks ? "Loading more Sparks…" : "Scroll for more Sparks") : `${filtered.length} Sparks loaded`}</div></> : <div className="mt-8 rounded-2xl border border-dashed border-white/10 p-12 text-center text-slate-400">No Sparks match this view yet.</div>}
+            </article>)}</div></> : <div className="mt-8 rounded-2xl border border-dashed border-white/10 p-12 text-center text-slate-400">No Sparks match this view yet.</div>}
         </main>
 
         {previewSpark && <div className="fixed inset-0 z-[980] flex items-stretch justify-stretch">

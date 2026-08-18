@@ -1755,6 +1755,7 @@ PROMPT;
     - address
     - primary_label
     - primary_url{$extra}
+    - for contact_split_premium, contact_faq_premium, and contact_multistep_premium: fields (array of 3 to 7 structured contact fields using id, name, type, label, placeholder, required, options)
 
     Requirements:
     - Use factual, concise contact copy appropriate to the requested business.

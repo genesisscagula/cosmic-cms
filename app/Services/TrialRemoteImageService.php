@@ -63,7 +63,8 @@ class TrialRemoteImageService
             return [];
         }
 
-        $slotQueries = array_slice(array_values($slotQueries), 0, 12);
+        $slotLimit = max(12, (int) config('openai.remote_preview_image_slots', 24));
+        $slotQueries = array_slice(array_values($slotQueries), 0, $slotLimit);
         $used = [];
         $poolCache = [];
         $poolCursor = [];

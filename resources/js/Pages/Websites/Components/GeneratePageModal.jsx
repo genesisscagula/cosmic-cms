@@ -76,6 +76,7 @@ export default function GeneratePageModal({
             const { data: plan } = await axios.post("/ai/select-sections", {
                 prompt: contextualPrompt,
                 header_overlay_enabled: Boolean(headerOverlayEnabled),
+                website_id: websiteId,
             });
             const sections = plan.sections || [];
             if (!sections.length) throw new Error("Cosmic AI could not plan this page.");

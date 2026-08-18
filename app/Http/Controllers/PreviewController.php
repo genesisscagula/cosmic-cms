@@ -77,14 +77,48 @@ class PreviewController extends Controller
             return $contentResponse;
         }
 
-        $html = $previews->resolveFile($slug, $path);
-        abort_if($html === null, 404);
+        $contents = $previews->resolveFile($slug, $path);
+        abort_if($contents === null, 404);
 
-        return response($html, 200, [
-            'Content-Type' => 'text/html; charset=UTF-8',
-            'Cache-Control' => 'no-cache, no-store, must-revalidate',
+        // Preview deployments can contain static assets (currently the shared
+        // export Tailwind bundle) as well as HTML. Serving every resolved file as
+        // text/html makes browsers reject CSS when `nosniff` security headers are
+        // enabled, leaving the preview as unstyled raw markup. Keep HTML previews
+        // uncached, while allowing immutable-ish static assets to use their proper
+        // MIME type and a small browser cache.
+        $contentType = $this->previewContentType($path);
+        $isHtml = str_starts_with($contentType, 'text/html');
+
+        return response($contents, 200, [
+            'Content-Type' => $contentType,
+            'Cache-Control' => $isHtml
+                ? 'no-cache, no-store, must-revalidate'
+                : 'public, max-age=3600',
             'X-Robots-Tag' => 'noindex, nofollow',
         ]);
+    }
+
+    private function previewContentType(?string $path): string
+    {
+        $extension = strtolower(pathinfo((string) $path, PATHINFO_EXTENSION));
+
+        return match ($extension) {
+            'css' => 'text/css; charset=UTF-8',
+            'js', 'mjs' => 'application/javascript; charset=UTF-8',
+            'json' => 'application/json; charset=UTF-8',
+            'xml' => 'application/xml; charset=UTF-8',
+            'txt' => 'text/plain; charset=UTF-8',
+            'svg' => 'image/svg+xml',
+            'png' => 'image/png',
+            'jpg', 'jpeg' => 'image/jpeg',
+            'gif' => 'image/gif',
+            'webp' => 'image/webp',
+            'avif' => 'image/avif',
+            'ico' => 'image/x-icon',
+            'woff' => 'font/woff',
+            'woff2' => 'font/woff2',
+            default => 'text/html; charset=UTF-8',
+        };
     }
 
     private function cartAdd(Request $request, CommerceCartService $cart, string $previewSlug): RedirectResponse|JsonResponse

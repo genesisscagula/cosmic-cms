@@ -77,6 +77,19 @@ class AiPageGenerationService
             fn () => ['status' => 'remote-preview', 'trial_id' => $trialId],
             function () use ($prompt, $regenerationContext) {
                 $selectionPrompt = $prompt;
+
+                // Trial art direction: the first impression should showcase Cosmic's
+                // richer visual capabilities. Prefer media-led hero Sparks on the
+                // initial /start generation (slider, video, parallax and cinematic
+                // image heroes) while still letting compatibility/page intent win.
+                if (! is_array($regenerationContext)) {
+                    $selectionPrompt .= "\n\nINITIAL TRIAL VISUAL DIRECTIVE:"
+                        ." Make the opening hero visually impressive and media-led where compatible with the business."
+                        ." Strongly prefer a slider, video, parallax, cinematic gallery, image-sequence, Ken Burns, or other premium image-led hero over a plain solid-color hero."
+                        ." Suitable hero examples include hero_slider_fade, hero_cinematic_slider_premium, hero_crossfade_gallery_premium, hero_split_slider_premium, hero_video_background, hero_video_premium, hero_video_cinematic_premium, hero_video_split_premium, hero_parallax, hero_parallax_layers_premium, hero_reveal_parallax_premium, hero_mouse_parallax_premium, hero_ken_burns_premium, hero_editorial_image_sequence_premium, hero_background_image, and hero_luxury_fullscreen."
+                        ." Use only registered compatible Sparks and keep the rest of the page balanced; this preference applies especially to the opening hero.";
+                }
+
                 if (is_array($regenerationContext)) {
                     $previous = collect($regenerationContext['previous_sections'] ?? [])
                         ->filter(fn ($section) => is_string($section) && trim($section) !== '')
@@ -86,6 +99,9 @@ class AiPageGenerationService
 
                     $selectionPrompt .= "\n\nREGENERATION LAYOUT DIRECTIVE:"
                         ." Choose a materially different page composition and Spark/layout combination from the previous version."
+                        ." For the regenerated trial, deliberately move toward a cleaner solid-color/editorial/bento composition instead of another slider, video, parallax, cinematic gallery, or image-heavy opening hero unless the user's new prompt explicitly asks for one of those effects."
+                        ." Prefer solid or restrained opening heroes such as hero_headline, hero_centered_cta, hero_split_editorial, hero_bento_premium, hero_saas_dashboard, hero_ai_conversation, or another compatible non-media-heavy premium hero."
+                        ." Keep supporting imagery where it improves the page, but make this version feel like a visibly cleaner alternative to the initial trial."
                         ." Do not simply rewrite content inside the same structure."
                         .($previous ? " Previous Spark types to vary away from where compatible: ".implode(', ', $previous)."." : '')
                         ." Preserve the same business intent, but vary section ordering, compatible Spark variants, and visual rhythm."
@@ -125,7 +141,7 @@ class AiPageGenerationService
         // image values remain as a safe fallback if Unsplash is unavailable.
         $mediaQueries = $this->learningQueries($prompt, $blocks, $placeholderFolder);
         $mediaQueries = $this->prioritizeRemoteImageQueries($mediaQueries);
-        $targetImageCount = min(12, count($mediaQueries));
+        $targetImageCount = min((int) config('openai.remote_preview_image_slots', 24), count($mediaQueries));
         $remoteImages = $this->trialRemoteImages->resolveForQueries($visualIntent, $mediaQueries, 'TrialRemoteImages');
         $blocks = $this->trialRemoteImages->assignToBlocks($blocks, $remoteImages);
         $mediaKeywords = collect($visualIntent['image_keywords'] ?? [])
@@ -204,7 +220,7 @@ class AiPageGenerationService
         // receives the same number/style of remote provider images.
         $mediaQueries = $this->learningQueries($prompt, $blocks, $resolvedImageFolder);
         $mediaQueries = $this->prioritizeRemoteImageQueries($mediaQueries);
-        $targetImageCount = min(12, count($mediaQueries));
+        $targetImageCount = min((int) config('openai.remote_preview_image_slots', 24), count($mediaQueries));
 
         // Registered generation follows the same slot-aware provider strategy
         // as /start so nested/multiple image fields receive equivalent imagery.
@@ -459,7 +475,7 @@ class AiPageGenerationService
                 'prompt' => $this->cache->normalizePrompt($prompt),
                 'model' => config('openai.planner_model'),
                 'registry' => \App\AI\Registries\SparkPlannerRegistry::slugs(),
-                'version' => '16.8.0-whole-page-art-direction',
+                'version' => '16.8.1-trial-visual-contrast',
             ],
             (int) config('openai.planner_cache_ttl', 86400),
             function () use ($prompt, $imageFolder) {

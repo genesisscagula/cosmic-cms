@@ -238,6 +238,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [pageTemplateCatalog, setPageTemplateCatalog] = useState([]);
     const [pageTemplateCatalogLoading, setPageTemplateCatalogLoading] = useState(false);
     const [pageTemplateCatalogLoaded, setPageTemplateCatalogLoaded] = useState(false);
+    const [preparedSparkCount, setPreparedSparkCount] = useState(0);
+    const [preparedTemplateCount, setPreparedTemplateCount] = useState(0);
     const [sparkInsertTarget, setSparkInsertTarget] = useState(null);
     const [isSaving, setIsSaving] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
@@ -286,6 +288,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     // H23: only confirmed Regenerate Page may bypass the unsaved-changes
     // browser warning. All normal navigation/refresh/close protection remains.
     const intentionalRegenerateRef = useRef(false);
+    // Trial-only unload suppression closes the small React dirty-state race after
+    // a successful save/email capture before setDefaults() has propagated.
+    // Normal registered Builder protection stays unchanged.
+    const trialUnloadSuppressUntilRef = useRef(0);
     const lastSaveErrorRef = useRef('');
     const logoUploadRef = useRef(null);
     const logoCropFrameRef = useRef(null);
@@ -337,8 +343,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     useEffect(() => {
         const warnBeforeLeaving = (event) => {
+            const trialFlowOwnsNavigation = trialMode && (
+                showTrialEmailModal
+                || trialEmailSaving
+                || trialPurchasePending
+                || Date.now() < trialUnloadSuppressUntilRef.current
+            );
+
             if (
                 intentionalRegenerateRef.current
+                || trialFlowOwnsNavigation
                 || !hasUnsavedChanges
                 || isSaving
                 || isPublishing
@@ -353,7 +367,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         window.addEventListener('beforeunload', warnBeforeLeaving);
 
         return () => window.removeEventListener('beforeunload', warnBeforeLeaving);
-    }, [hasUnsavedChanges, isPublishing, isSaving]);
+    }, [hasUnsavedChanges, isPublishing, isSaving, showTrialEmailModal, trialEmailSaving, trialMode, trialPurchasePending]);
 
     useEffect(() => {
         // Preload the Spark Marketplace as soon as Builder lands so opening
@@ -369,7 +383,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         axios.get(endpoint)
             .then(({ data: responseData }) => {
                 if (cancelled) return;
-                setSparkCatalog(responseData.sparks || []);
+                const sparks = responseData.sparks || [];
+                setSparkCatalog(sparks);
+                setPreparedSparkCount(Math.min(50, sparks.length));
                 setSparkCatalogLoaded(true);
             })
             .catch(() => {
@@ -402,7 +418,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         axios.get(endpoint)
             .then(({ data: responseData }) => {
                 if (cancelled) return;
-                setPageTemplateCatalog(responseData.templates || []);
+                const templates = responseData.templates || [];
+                setPageTemplateCatalog(templates);
+                setPreparedTemplateCount(Math.min(50, templates.length));
                 setPageTemplateCatalogLoaded(true);
             })
             .catch(() => {
@@ -418,6 +436,28 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             cancelled = true;
         };
     }, [capabilities.canGenerateAi, trialMode, trialToken]);
+
+    useEffect(() => {
+        if (!sparkCatalogLoaded || preparedSparkCount >= sparkCatalog.length) return undefined;
+
+        const timer = window.setInterval(() => {
+            if (document.hidden) return;
+            setPreparedSparkCount((current) => Math.min(sparkCatalog.length, current + 50));
+        }, 5000);
+
+        return () => window.clearInterval(timer);
+    }, [sparkCatalogLoaded, sparkCatalog.length, preparedSparkCount]);
+
+    useEffect(() => {
+        if (!pageTemplateCatalogLoaded || preparedTemplateCount >= pageTemplateCatalog.length) return undefined;
+
+        const timer = window.setInterval(() => {
+            if (document.hidden) return;
+            setPreparedTemplateCount((current) => Math.min(pageTemplateCatalog.length, current + 50));
+        }, 5000);
+
+        return () => window.clearInterval(timer);
+    }, [pageTemplateCatalogLoaded, pageTemplateCatalog.length, preparedTemplateCount]);
 
     const trialActionCosts = {
         page_style: Number(cosmicPricing?.trial_actions?.page_style || 20),
@@ -1815,6 +1855,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             setPublishError('');
             setDefaults();
             setHasUnsavedTheme(false);
+            if (trialMode) {
+                // Give React one render cycle to clear isDirty before the browser
+                // is allowed to evaluate beforeunload again. This prevents the
+                // recurring native Reload/Leave dialog immediately after Save.
+                trialUnloadSuppressUntilRef.current = Date.now() + 1500;
+            }
             return true;
         } catch (error) {
             console.error(error);
@@ -1876,6 +1922,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
 
     const goToTrialPricing = () => {
+        trialUnloadSuppressUntilRef.current = Date.now() + 5000;
         window.location.assign(`${route('pricing')}?token=${encodeURIComponent(trialToken)}`);
     };
 
@@ -3592,6 +3639,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     preloadedCatalog={sparkCatalog}
                     preloadedCatalogLoading={sparkCatalogLoading}
                     preloadedCatalogLoaded={sparkCatalogLoaded}
+                    preparedVisibleCount={preparedSparkCount}
                     ownedOnly={Boolean(sparkInsertTarget)}
                     contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : null}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
@@ -3630,6 +3678,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     preloadedCatalog={pageTemplateCatalog}
                     preloadedCatalogLoading={pageTemplateCatalogLoading}
                     preloadedCatalogLoaded={pageTemplateCatalogLoaded}
+                    preparedVisibleCount={preparedTemplateCount}
                     hasLogo={hasRealBrandLogo}
                     brandMatchNeeded={brandMatchNeeded}
                     onMatchBrandToLogo={matchThemeToLogo}

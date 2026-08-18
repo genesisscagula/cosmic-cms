@@ -176,8 +176,8 @@ class TrialBrandingController extends Controller
             ->post(rtrim((string) (config('openai.base_uri') ?: 'https://api.openai.com/v1'), '/').'/images/generations', [
                 'model' => env('OPENAI_LOGO_MODEL', 'gpt-image-1'),
                 'prompt' => $prompt,
-                'size' => '1024x1024',
-                'quality' => env('OPENAI_LOGO_QUALITY', 'low'),
+                'size' => env('OPENAI_LOGO_SIZE', '1536x1024'),
+                'quality' => env('OPENAI_LOGO_QUALITY', 'medium'),
                 'background' => 'transparent',
                 'n' => 1,
             ]);
@@ -198,6 +198,9 @@ class TrialBrandingController extends Controller
         }
 
         $bytes = $canvas->trimTransparentPng($bytes, 6);
+        // Keep a high-DPI 3.25:1 master so the Builder cropper starts with a
+        // crisp horizontal logo and can downsample cleanly for the 650x200 header.
+        $bytes = $canvas->fitTransparentPngToCanvas($bytes, 1950, 600, 0.12);
         $logoDimensions = @getimagesizefromstring($bytes);
 
         $filename = 'luna-logo-'.Str::lower(Str::random(10)).'.png';

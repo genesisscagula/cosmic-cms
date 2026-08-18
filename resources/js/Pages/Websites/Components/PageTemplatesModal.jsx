@@ -1,6 +1,5 @@
 import axios from 'axios';
-import { memo, useDeferredValue, useEffect, useMemo, useState } from 'react';
-import useInfiniteReveal from '../../../Hooks/useInfiniteReveal';
+import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { showCosmicNotification } from '../../../Components/CosmicNotification';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { BlockRegistry } from '../BlockRegistry';
@@ -73,9 +72,11 @@ export default function PageTemplatesModal({
     preloadedCatalog = [],
     preloadedCatalogLoading = false,
     preloadedCatalogLoaded = false,
+    preparedVisibleCount = 0,
 }) {
     const { setBalance } = useCreditBalance();
     const [templates, setTemplates] = useState(() => preloadedCatalogLoaded ? preloadedCatalog : []);
+    const templatesScrollRef = useRef(null);
     const [tab, setTab] = useState('marketplace');
     const [query, setQuery] = useState('');
     const deferredQuery = useDeferredValue(query);
@@ -129,7 +130,7 @@ export default function PageTemplatesModal({
 
     const normalizedQuery = deferredQuery.trim().toLowerCase();
     const aiResultMap = useMemo(() => new Map((aiResults || []).map((result, index) => [result.id, { ...result, rank: index }])), [aiResults]);
-    const visible = useMemo(() => {
+    const filteredTemplates = useMemo(() => {
         const filtered = templates.filter((item) => {
             if (tab === 'marketplace' && item.saved) return false;
             if (tab === 'purchased' && !item.purchased) return false;
@@ -151,6 +152,12 @@ export default function PageTemplatesModal({
 
         return filtered;
     }, [templates, tab, tag, normalizedQuery, aiResults, aiResultMap]);
+
+    const effectivePreparedCount = Math.max(0, Number(preparedVisibleCount || 0));
+    const visible = useMemo(
+        () => filteredTemplates.slice(0, Math.max(Math.min(effectivePreparedCount, filteredTemplates.length), filteredTemplates.length > 0 && !preloadedCatalogLoading ? Math.min(50, filteredTemplates.length) : 0)),
+        [filteredTemplates, effectivePreparedCount, preloadedCatalogLoading]
+    );
 
     const runAiSearch = async () => {
         const prompt = query.trim();
@@ -189,12 +196,6 @@ export default function PageTemplatesModal({
         setAiResults(null);
         setAiPrompt('');
     };
-
-    const { visibleItems: revealedTemplates, hasMore, isRevealing, sentinelRef } = useInfiniteReveal(visible, {
-        batchSize: 12,
-        resetKey: `${tab}|${tag}|${normalizedQuery}|${aiPrompt}`,
-        rootMargin: '420px 0px',
-    });
 
     const isInstalling = Boolean(selected && busy === `install-${selected.key}`);
     const isPersonalizing = Boolean(isInstalling && mode === 'personalized');
@@ -514,10 +515,20 @@ export default function PageTemplatesModal({
                     </div>
                 </header>
 
-                <div className="overflow-y-auto p-5 sm:p-7">
+                <div ref={templatesScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 sm:p-7">
+                    {(preloadedCatalogLoading && templates.length === 0) ? (
+                        <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-dashed border-emerald-200 bg-emerald-50/40 px-6 text-center">
+                            <div className="h-10 w-10 animate-spin rounded-full border-4 border-emerald-200 border-t-emerald-600" />
+                            <h3 className="mt-4 text-base font-semibold text-slate-800">Loading Templates…</h3>
+                            <p className="mt-1 text-sm text-slate-500">Preparing Templates in the background.</p>
+                            <div className="mt-6 grid w-full max-w-3xl gap-3 sm:grid-cols-3">
+                                {Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-28 animate-pulse rounded-xl bg-slate-200/70" />)}
+                            </div>
+                        </div>
+                    ) : (
                     <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-                        {revealedTemplates.map((template) => (
-                            <article key={template.key} className="cosmic-template-card relative overflow-hidden rounded-2xl border">
+                        {visible.map((template) => (
+                            <article key={template.key} style={{ contentVisibility: 'auto', containIntrinsicSize: '520px' }} className="cosmic-template-card relative overflow-hidden rounded-2xl border">
                                 <div
                                     role="button"
                                     tabIndex={0}
@@ -610,14 +621,9 @@ export default function PageTemplatesModal({
                             </article>
                         ))}
                     </div>
-
-                    {hasMore && (
-                        <div ref={sentinelRef} className="flex justify-center py-5" aria-hidden="true">
-                            <span className="cosmic-template-muted text-[11px]">{isRevealing ? 'Loading more templates…' : 'Scroll for more templates'}</span>
-                        </div>
                     )}
 
-                    {!visible.length && (
+                    {!preloadedCatalogLoading && !visible.length && (
                         <div className="cosmic-template-muted py-16 text-center text-sm">{tab === 'saved' ? 'No saved templates yet. Save a page from the Builder and it will appear here.' : 'No templates match this view.'}</div>
                     )}
                 </div>

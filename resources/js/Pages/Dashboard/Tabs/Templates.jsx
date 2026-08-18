@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { usePage } from "@inertiajs/react";
 import usePlanEntitlements from "../../../Hooks/usePlanEntitlements";
+import useTimedReveal from "../../../Hooks/useTimedReveal";
 import NewWebsiteModal from "../Components/NewWebsiteModal";
 import TemplateCard, { FeaturedTemplateCard } from "../Components/TemplateCard";
 import TemplateEmptyState from "../Components/TemplateEmptyState";
@@ -73,6 +74,14 @@ export default function Templates() {
             .sort(sorters[sort]);
     }, [templates, query, category, theme, status, sort, isAgency, agencyCollection]);
 
+    const templateRevealKey = `${query.trim().toLowerCase()}|${category}|${theme}|${status}|${sort}|${agencyCollection}`;
+    const templateVisibleCount = useTimedReveal(filteredTemplates.length, templateRevealKey, {
+        initial: 100,
+        step: 50,
+        intervalMs: 5000,
+    });
+    const visibleTemplates = useMemo(() => filteredTemplates.slice(0, templateVisibleCount), [filteredTemplates, templateVisibleCount]);
+
     const featuredSlugs = ["buildcore", "aurora-agency", "haven-estates", "midnight-studio"];
     const featured = featuredSlugs
         .map((slug) => templates.find((template) => template.slug === slug))
@@ -92,7 +101,7 @@ export default function Templates() {
 
             {!hasActiveFilters && featured.length > 0 && <div><div className="mb-3 flex items-center justify-between"><div><h2 className="text-sm font-semibold text-white">Featured starter kits</h2><p className="mt-1 text-xs text-slate-500">Polished starting points selected by Cosmic</p></div><span className="rounded-full border border-violet-400/20 bg-violet-400/10 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-wide text-violet-200">Editor picks</span></div><div className="grid gap-4 xl:grid-cols-2">{featured.map((template) => <FeaturedTemplateCard key={template.id} template={template} onPreview={(item) => previewStarterKit(item)} onUse={useTemplate} />)}</div></div>}
 
-            <div><div className="mb-3 flex items-center justify-between"><div><h2 className="text-sm font-semibold text-white">Explore starter kits</h2><p className="mt-1 text-xs text-slate-500">Filter by industry, color family, or collection status.</p></div><span className="text-xs text-slate-500">{filteredTemplates.length} {filteredTemplates.length === 1 ? "starter kit" : "starter kits"}</span></div>{filteredTemplates.length ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{filteredTemplates.map((template) => <TemplateCard key={template.id} template={template} onPreview={(item) => previewStarterKit(item)} onUse={useTemplate} />)}</div> : <TemplateEmptyState />}</div>
+            <div><div className="mb-3 flex items-center justify-between"><div><h2 className="text-sm font-semibold text-white">Explore starter kits</h2><p className="mt-1 text-xs text-slate-500">Filter by industry, color family, or collection status.</p></div><span className="text-xs text-slate-500">{filteredTemplates.length} {filteredTemplates.length === 1 ? "starter kit" : "starter kits"}</span></div>{filteredTemplates.length ? <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">{visibleTemplates.map((template) => <TemplateCard key={template.id} template={template} onPreview={(item) => previewStarterKit(item)} onUse={useTemplate} />)}</div> : <TemplateEmptyState />}</div>
 <TemplatePreviewModal
                 template={previewTemplate}
                 currentPlanName={plan?.name}

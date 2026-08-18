@@ -69,19 +69,21 @@ final class ImageSlotResolver
             return false;
         }
 
+        // Sparks use several equivalent naming styles: image_url, image_url_2,
+        // image_one_url, before_image_url, poster_image_url, etc. Keep this
+        // resolver deliberately schema-based so every visual Spark participates
+        // in the same Unsplash hydration pass instead of requiring per-Spark fixes.
+        $imageLikeUrl = preg_match('/(^|_)(?:image|photo|poster|thumbnail)(?:_[a-z0-9]+)*_url$/', $normalized) === 1
+            || preg_match('/^(?:image|photo|poster|thumbnail)_url(?:_[a-z0-9]+)+$/', $normalized) === 1;
+
         return $normalized === 'avatar'
             || str_ends_with($normalized, '_avatar')
             || $normalized === 'image'
-            || $normalized === 'image_url'
-            || str_ends_with($normalized, '_image_url')
             || $normalized === 'photo'
-            || $normalized === 'photo_url'
-            || str_ends_with($normalized, '_photo_url')
             || $normalized === 'poster'
-            || $normalized === 'poster_url'
-            || str_contains($normalized, 'poster_image')
             || $normalized === 'thumbnail'
-            || $normalized === 'thumbnail_url';
+            || $imageLikeUrl
+            || str_contains($normalized, 'poster_image');
     }
 
     public function looksLikeImageReference(mixed $value): bool

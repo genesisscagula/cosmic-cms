@@ -74,6 +74,7 @@ return [
     // user commits the page (trial Save, purchase, or logged-in Publish). The
     // legacy trial env remains the fallback for backwards-compatible deploys.
     'trial_remote_images_enabled' => (bool) env('COSMIC_TRIAL_REMOTE_IMAGES', true),
+    'remote_preview_image_slots' => max(12, (int) env('COSMIC_REMOTE_PREVIEW_IMAGE_SLOTS', 24)),
     'remote_preview_images_enabled' => (bool) env('COSMIC_REMOTE_PREVIEW_IMAGES', env('COSMIC_TRIAL_REMOTE_IMAGES', true)),
     // Registered Builder generation uses the same remote Unsplash preview model
     // as /start. Provider results remain remote URLs; local industry media is
