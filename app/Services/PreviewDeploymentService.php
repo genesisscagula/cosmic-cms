@@ -95,59 +95,87 @@ class PreviewDeploymentService
         $disk = Storage::disk(config('cosmic_preview.disk', 'local'));
         $backupRoot = $root.'-previous-'.Str::lower(Str::random(8));
         $hadPreviousDeployment = $disk->exists($root);
+        $previousFiles = [];
+        $newFiles = [];
         $previousWasProtected = false;
 
         try {
-            // Production can run on Linux/Flysystem adapters where move() behaves
-            // differently from local Windows development, especially for nested
-            // paths. Protect the current preview by COPYING it first. Never remove
-            // the live preview until every backup file has been verified.
+            // Snapshot the current live preview first, but never delete the live
+            // root as part of activation. Production previews can contain deeply
+            // nested trees and a single undeletable/stale entry must not take the
+            // whole website offline during a publish.
             if ($hadPreviousDeployment) {
                 foreach ($disk->allFiles($root) as $file) {
                     $relative = Str::after($file, $root.'/');
-                    $destination = $backupRoot.'/'.$relative;
+                    $previousFiles[$relative] = true;
 
-                    if (! $this->copyFileEnsuringDirectory($disk, $file, $destination)) {
+                    if (! $this->copyFileEnsuringDirectory($disk, $file, $backupRoot.'/'.$relative)) {
                         throw new RuntimeException("Unable to protect previous preview page: {$relative}");
                     }
                 }
 
                 $previousWasProtected = true;
-
-                if (! $disk->deleteDirectory($root) && $disk->exists($root)) {
-                    throw new RuntimeException('Unable to replace previous preview deployment.');
-                }
             }
 
-            // COPY the freshly generated package into place as well. The temporary
-            // package was just written by this request, so keeping it intact until
-            // activation is complete gives rollback a second safe source of truth.
+            // Build the manifest before touching live files. Activation then
+            // overwrites files in place, so there is no delete-root/404 window.
             foreach ($disk->allFiles($temporaryRoot) as $file) {
                 $relative = Str::after($file, $temporaryRoot.'/');
-                $destination = $root.'/'.$relative;
+                $newFiles[$relative] = true;
+            }
 
-                if (! $this->copyFileEnsuringDirectory($disk, $file, $destination)) {
+            foreach (array_keys($newFiles) as $relative) {
+                if (! $this->replaceFileEnsuringDirectory(
+                    $disk,
+                    $temporaryRoot.'/'.$relative,
+                    $root.'/'.$relative,
+                )) {
                     throw new RuntimeException("Unable to activate preview page: {$relative}");
                 }
             }
 
+            // Only after every new file exists do we remove files that belonged to
+            // the previous deployment but are no longer present in the new build.
+            // Remove stale files individually instead of deleting the website root.
+            foreach (array_keys($previousFiles) as $relative) {
+                if (isset($newFiles[$relative])) {
+                    continue;
+                }
+
+                $stalePath = $root.'/'.$relative;
+                if ($disk->exists($stalePath) && ! $disk->delete($stalePath) && $disk->exists($stalePath)) {
+                    throw new RuntimeException("Unable to remove stale preview page: {$relative}");
+                }
+            }
+
+            // These are working copies only. Cleanup failure should never turn a
+            // successful live activation into a publishing failure.
             $disk->deleteDirectory($temporaryRoot);
             $disk->deleteDirectory($backupRoot);
         } catch (Throwable $exception) {
-            // IMPORTANT: if protection itself failed, the old deployment is still
-            // untouched. Do not delete it. Only clear/restore the root after a full
-            // backup was successfully created.
             if ($previousWasProtected) {
-                $disk->deleteDirectory($root);
+                // Remove files introduced only by the failed new deployment.
+                foreach ($disk->allFiles($root) as $file) {
+                    $relative = Str::after($file, $root.'/');
+                    if (! isset($previousFiles[$relative])) {
+                        $disk->delete($file);
+                    }
+                }
 
+                // Restore every previous file over anything that may have been
+                // partially overwritten before the failure occurred.
                 foreach ($disk->allFiles($backupRoot) as $file) {
                     $relative = Str::after($file, $backupRoot.'/');
-                    $this->copyFileEnsuringDirectory($disk, $file, $root.'/'.$relative);
+                    $this->replaceFileEnsuringDirectory($disk, $file, $root.'/'.$relative);
                 }
             } elseif (! $hadPreviousDeployment) {
-                // There was no old site, so a failed first activation may have left
-                // a partial root. Remove only that partial deployment.
-                $disk->deleteDirectory($root);
+                // First publish: remove only files copied during this failed attempt.
+                foreach (array_keys($newFiles) as $relative) {
+                    $path = $root.'/'.$relative;
+                    if ($disk->exists($path)) {
+                        $disk->delete($path);
+                    }
+                }
             }
 
             $disk->deleteDirectory($temporaryRoot);
@@ -172,6 +200,34 @@ class PreviewDeploymentService
         }
 
         if (! $disk->copy($source, $destination)) {
+            return false;
+        }
+
+        return $disk->exists($destination);
+    }
+
+    /**
+     * Replace/overwrite a file without relying on adapter-specific copy semantics.
+     * Reading then putting guarantees an existing destination can be replaced on
+     * Laravel's local/Flysystem disks while keeping nested directory creation safe.
+     */
+    private function replaceFileEnsuringDirectory($disk, string $source, string $destination): bool
+    {
+        $directory = trim(str_replace('\\', '/', dirname($destination)), '/');
+
+        if ($directory !== '' && $directory !== '.' && ! $disk->exists($directory)) {
+            if (! $disk->makeDirectory($directory) && ! $disk->exists($directory)) {
+                return false;
+            }
+        }
+
+        try {
+            $contents = $disk->get($source);
+        } catch (Throwable) {
+            return false;
+        }
+
+        if (! $disk->put($destination, $contents)) {
             return false;
         }
 
