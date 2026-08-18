@@ -95,21 +95,38 @@ class PreviewDeploymentService
         $disk = Storage::disk(config('cosmic_preview.disk', 'local'));
         $backupRoot = $root.'-previous-'.Str::lower(Str::random(8));
         $hadPreviousDeployment = $disk->exists($root);
+        $previousWasProtected = false;
 
         try {
+            // Production can run on Linux/Flysystem adapters where move() behaves
+            // differently from local Windows development, especially for nested
+            // paths. Protect the current preview by COPYING it first. Never remove
+            // the live preview until every backup file has been verified.
             if ($hadPreviousDeployment) {
                 foreach ($disk->allFiles($root) as $file) {
                     $relative = Str::after($file, $root.'/');
-                    if (! $this->moveFileEnsuringDirectory($disk, $file, $backupRoot.'/'.$relative)) {
+                    $destination = $backupRoot.'/'.$relative;
+
+                    if (! $this->copyFileEnsuringDirectory($disk, $file, $destination)) {
                         throw new RuntimeException("Unable to protect previous preview page: {$relative}");
                     }
                 }
-                $disk->deleteDirectory($root);
+
+                $previousWasProtected = true;
+
+                if (! $disk->deleteDirectory($root) && $disk->exists($root)) {
+                    throw new RuntimeException('Unable to replace previous preview deployment.');
+                }
             }
 
+            // COPY the freshly generated package into place as well. The temporary
+            // package was just written by this request, so keeping it intact until
+            // activation is complete gives rollback a second safe source of truth.
             foreach ($disk->allFiles($temporaryRoot) as $file) {
                 $relative = Str::after($file, $temporaryRoot.'/');
-                if (! $this->moveFileEnsuringDirectory($disk, $file, $root.'/'.$relative)) {
+                $destination = $root.'/'.$relative;
+
+                if (! $this->copyFileEnsuringDirectory($disk, $file, $destination)) {
                     throw new RuntimeException("Unable to activate preview page: {$relative}");
                 }
             }
@@ -117,36 +134,48 @@ class PreviewDeploymentService
             $disk->deleteDirectory($temporaryRoot);
             $disk->deleteDirectory($backupRoot);
         } catch (Throwable $exception) {
-            // Remove a partially activated deployment, then restore the complete
-            // previous preview package when one existed.
-            $disk->deleteDirectory($root);
+            // IMPORTANT: if protection itself failed, the old deployment is still
+            // untouched. Do not delete it. Only clear/restore the root after a full
+            // backup was successfully created.
+            if ($previousWasProtected) {
+                $disk->deleteDirectory($root);
 
-            if ($hadPreviousDeployment && $disk->exists($backupRoot)) {
                 foreach ($disk->allFiles($backupRoot) as $file) {
                     $relative = Str::after($file, $backupRoot.'/');
-                    $this->moveFileEnsuringDirectory($disk, $file, $root.'/'.$relative);
+                    $this->copyFileEnsuringDirectory($disk, $file, $root.'/'.$relative);
                 }
+            } elseif (! $hadPreviousDeployment) {
+                // There was no old site, so a failed first activation may have left
+                // a partial root. Remove only that partial deployment.
+                $disk->deleteDirectory($root);
             }
 
+            $disk->deleteDirectory($temporaryRoot);
             $disk->deleteDirectory($backupRoot);
             throw $exception;
         }
     }
 
     /**
-     * Flysystem's move() does not consistently create nested destination folders.
-     * Preview packages can contain paths such as about/team/index.html, so create
-     * the parent directory before moving during backup, activation, or rollback.
+     * Copy a preview file in a cross-platform way and verify the destination.
+     * This avoids rename/move edge cases seen on production Linux for nested
+     * paths such as about/about-cosmic-react/index.html.
      */
-    private function moveFileEnsuringDirectory($disk, string $source, string $destination): bool
+    private function copyFileEnsuringDirectory($disk, string $source, string $destination): bool
     {
         $directory = trim(str_replace('\\', '/', dirname($destination)), '/');
 
-        if ($directory !== '' && $directory !== '.') {
-            $disk->makeDirectory($directory);
+        if ($directory !== '' && $directory !== '.' && ! $disk->exists($directory)) {
+            if (! $disk->makeDirectory($directory) && ! $disk->exists($directory)) {
+                return false;
+            }
         }
 
-        return $disk->move($source, $destination);
+        if (! $disk->copy($source, $destination)) {
+            return false;
+        }
+
+        return $disk->exists($destination);
     }
 
     public function url(Website $website, string $path = ''): ?string
