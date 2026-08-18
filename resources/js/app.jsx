@@ -38,6 +38,7 @@ createInertiaApp({
 
         const initialBalance =
             props.initialPage?.props?.auth?.creditBalance ??
+            props.initialPage?.props?.dashboard?.credit_balance ??
             props.initialPage?.props?.auth?.user?.credits ??
             props.initialPage?.props?.cosmicPricing?.balance ??
             props.initialPage?.props?.trialExperience?.guest_credits ??

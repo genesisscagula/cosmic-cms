@@ -1683,7 +1683,8 @@ HTML;
                 $logo = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$logoText}' style='filter:{$logoFilter}' class='h-14 w-auto max-w-[300px] object-contain'>"
                     : $logoText;
-                $ctaLabel = e($block['cta_label'] ?? 'Get Started');
+                $rawCtaLabel = trim((string) ($block['cta_label'] ?? ''));
+                $ctaLabel = e($rawCtaLabel !== '' ? $rawCtaLabel : 'Get Started');
                 $ctaUrl = e($block['cta_url'] ?? '#');
                 $menuItems = $block['menu'] ?? [];
                 $overlayRequested = (bool) ($block['overlay_header_on_banner'] ?? false);
@@ -1840,11 +1841,18 @@ HTML;
                     /* Viewport-aware sizing for full Hero Sparks only. Keep mini heroes and
                        ordinary sections content-sized. A solid header consumes viewport space;
                        an overlay header lives inside the hero and therefore uses the full viewport. */
-                    section[data-cosmic-block-type^='hero_'] {
+                    :root {
+                        --cosmic-hero-fold-height: calc(100vh - var(--cosmic-header-flow-offset, 0px));
+                    }
+                    section[data-cosmic-block-type^='hero_'],
+                    section[data-type^='hero_']:not(.cosmic-motion4-tall) {
                         box-sizing: border-box;
-                        min-height: calc(100vh - var(--cosmic-header-flow-offset, 0px));
-                        padding-top: clamp(4.5rem, 9vh, 8rem) !important;
-                        padding-bottom: clamp(4.5rem, 9vh, 8rem) !important;
+                        min-height: var(--cosmic-hero-fold-height) !important;
+                        height: var(--cosmic-hero-fold-height) !important;
+                        max-height: var(--cosmic-hero-fold-height) !important;
+                        overflow: hidden;
+                        padding-top: clamp(3.5rem, 6.5vh, 6rem) !important;
+                        padding-bottom: clamp(3.5rem, 6.5vh, 6rem) !important;
                         display: flex;
                         align-items: center;
                     }
@@ -1856,15 +1864,18 @@ HTML;
                         padding-bottom: 0 !important;
                     }
                     @supports (height: 100svh) {
-                        section[data-cosmic-block-type^='hero_'] {
-                            min-height: calc(100svh - var(--cosmic-header-flow-offset, 0px));
+                        :root {
+                            --cosmic-hero-fold-height: calc(100svh - var(--cosmic-header-flow-offset, 0px));
                         }
                     }
                     @media (max-width: 767px) {
-                        section[data-cosmic-block-type^='hero_'] {
-                            min-height: calc(100svh - var(--cosmic-header-flow-offset, 0px));
-                            padding-top: clamp(3.5rem, 8vh, 5.5rem) !important;
-                            padding-bottom: clamp(3.5rem, 8vh, 5.5rem) !important;
+                        section[data-cosmic-block-type^='hero_'],
+                        section[data-type^='hero_']:not(.cosmic-motion4-tall) {
+                            min-height: calc(100svh - var(--cosmic-header-flow-offset, 0px)) !important;
+                            height: auto !important;
+                            max-height: none !important;
+                            padding-top: clamp(3.25rem, 7vh, 5rem) !important;
+                            padding-bottom: clamp(3.25rem, 7vh, 5rem) !important;
                         }
                     }
                     .cosmic-static-overlay-header {
@@ -1874,11 +1885,11 @@ HTML;
                         box-shadow: none !important;
                     }
                     .cosmic-static-overlay-first-spark {
-                        padding-top: calc(var(--cosmic-overlay-header-height, 80px) + clamp(4.25rem, 6vw, 6.5rem)) !important;
+                        padding-top: calc(var(--cosmic-overlay-header-height, 80px) + clamp(2rem, 3.5vw, 3.75rem)) !important;
                     }
                     @media (max-width: 639px) {
                         .cosmic-static-overlay-first-spark {
-                            padding-top: calc(var(--cosmic-overlay-header-height, 72px) + 3.5rem) !important;
+                            padding-top: calc(var(--cosmic-overlay-header-height, 72px) + 2.25rem) !important;
                         }
                     }
                     /* Contrast-aware overlay header. Runtime selects a light or dark
@@ -1906,6 +1917,7 @@ HTML;
                     header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-cta-surface > nav > a {
                         background: #fff !important;
                         color: #1e293b !important;
+                        -webkit-text-fill-color: #1e293b !important;
                         box-shadow: 0 10px 30px rgba(15,23,42,.14) !important;
                     }
                     .cosmic-static-overlay-header.cosmic-overlay-cta-primary > nav > a {

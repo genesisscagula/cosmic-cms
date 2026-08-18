@@ -7852,3 +7852,237 @@ body .cosmic-start-quick-idea.rounded-full.border {
 #cosmic-dashboard-spark-preview * { box-sizing: border-box; }
 
 body:has(#cosmic-dashboard-spark-preview) { overflow: hidden !important; }
+
+
+/* Builder Spark Preview spacing/isolation.
+   Keep every Spark inside a predictable padded preview canvas without
+   changing the Spark's own internal spacing or live/export rendering. */
+#cosmic-builder-spark-preview-body {
+    padding: clamp(16px, 2.25vw, 32px) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+}
+
+#cosmic-builder-spark-preview-body > .cosmic-spark-preview-stage {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 auto !important;
+}
+
+#cosmic-builder-spark-preview-body .cosmic-spark-preview-stage-inner {
+    width: 100% !important;
+    max-width: 1600px !important;
+    min-width: 0 !important;
+    margin-inline: auto !important;
+    overflow: hidden !important;
+    border-radius: 16px !important;
+    background: #fff !important;
+}
+
+#cosmic-builder-spark-preview-body [data-cosmic-add-spark-preview="true"] {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin: 0 !important;
+}
+
+/* Full-bleed Spark sections may use 100vw; constrain them to the preview canvas. */
+#cosmic-builder-spark-preview-body [data-cosmic-add-spark-preview="true"] > section,
+#cosmic-builder-spark-preview-body [data-cosmic-add-spark-preview="true"] > div > section {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+#cosmic-builder-spark-preview-body :is(img, video, iframe, canvas, svg) {
+    max-width: 100%;
+}
+
+
+/* Hero/banner height normalization.
+   Live/trial is the visual source of truth; Builder scales the same heroes
+   to its smaller preview canvas instead of using raw viewport height. */
+:is(
+  [data-cosmic-hero="true"],
+  [data-cosmic-banner="true"],
+  .cosmic-hero,
+  .cosmic-banner,
+  .hero-section,
+  .banner-section
+) {
+    min-height: clamp(500px, 72svh, 760px);
+    height: auto;
+}
+
+/* Preserve overlay headers while keeping the complete first composition near the fold. */
+:is(
+  [data-cosmic-hero="true"],
+  [data-cosmic-banner="true"],
+  .cosmic-hero,
+  .cosmic-banner,
+  .hero-section,
+  .banner-section
+) > :is(header, nav) {
+    position: relative;
+    z-index: 10;
+}
+
+/* Builder has toolbar/chrome above the site canvas: size heroes from the preview
+   wrapper rather than pretending the browser viewport is fully available. */
+:is(
+  [data-cosmic-builder-canvas="true"],
+  .cosmic-builder-preview,
+  .cosmic-builder-canvas
+) :is(
+  [data-cosmic-hero="true"],
+  [data-cosmic-banner="true"],
+  .cosmic-hero,
+  .cosmic-banner,
+  .hero-section,
+  .banner-section
+) {
+    min-height: clamp(420px, 62cqh, 660px);
+    height: auto;
+}
+
+@supports not (height: 1cqh) {
+  :is(
+    [data-cosmic-builder-canvas="true"],
+    .cosmic-builder-preview,
+    .cosmic-builder-canvas
+  ) :is(
+    [data-cosmic-hero="true"],
+    [data-cosmic-banner="true"],
+    .cosmic-hero,
+    .cosmic-banner,
+    .hero-section,
+    .banner-section
+  ) {
+      min-height: clamp(420px, 58vh, 660px);
+  }
+}
+
+@media (max-width: 767px) {
+  :is(
+    [data-cosmic-hero="true"],
+    [data-cosmic-banner="true"],
+    .cosmic-hero,
+    .cosmic-banner,
+    .hero-section,
+    .banner-section
+  ) {
+      min-height: clamp(460px, 68svh, 680px);
+  }
+}
+
+
+/* Builder hero fold: the Builder has chrome above the site canvas, so every
+   full Hero Spark follows the measured canvas budget rather than raw viewport height. */
+.cosmic-builder-canvas section[data-cosmic-hero-theme],
+.cosmic-builder-canvas section[data-cosmic-media-banner="true"] {
+    min-height: var(--cosmic-hero-fold-height, 620px) !important;
+}
+
+.cosmic-builder-canvas section[data-cosmic-hero-theme] > [class*="min-h-"],
+.cosmic-builder-canvas section[data-cosmic-media-banner="true"] > [class*="min-h-"] {
+    min-height: var(--cosmic-hero-fold-height, 620px) !important;
+}
+
+/* Avoid legacy 90vh/110svh hero classes making the Builder canvas taller than
+   the visible work area. Content can still scroll inside the page normally. */
+.cosmic-builder-canvas [data-cosmic-hero-theme][class*="min-h-"],
+.cosmic-builder-canvas [data-cosmic-media-banner="true"][class*="min-h-"] {
+    min-height: var(--cosmic-hero-fold-height, 620px) !important;
+}
+
+
+/* Unified Spark Preview Engine
+   One presentation shell is shared by Spark Preview and Change Layout Preview.
+   Individual Sparks keep their own design; this layer only owns viewport framing. */
+.cosmic-unified-preview-engine {
+    box-sizing: border-box;
+    width: 100%;
+    padding: clamp(12px, 2vw, 28px);
+    overflow-x: auto;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(255,255,255,.92), rgba(241,245,249,.94) 48%, rgba(226,232,240,.96));
+}
+
+.cosmic-unified-preview-frame {
+    box-sizing: border-box;
+    width: min(100%, 1440px);
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid rgba(15,23,42,.10);
+    border-radius: 18px;
+    background: #fff;
+    box-shadow: 0 18px 55px rgba(15,23,42,.12);
+    isolation: isolate;
+}
+
+/* Never shrink the real Spark into a tiny thumbnail in the large preview.
+   This is what made video/hero copy appear faint and unreadable. */
+.cosmic-unified-preview-frame .cosmic-spark-preview-content,
+.cosmic-unified-preview-frame .cosmic-preview-isolation {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    transform: none !important;
+    zoom: 1 !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+
+/* Preview chrome must not accidentally dim a Spark's own content. */
+.cosmic-unified-preview-frame [data-cosmic-site-preview="true"] {
+    opacity: 1 !important;
+}
+
+/* Consistent centered stage on smaller screens without changing Spark styling. */
+@media (max-width: 767px) {
+    .cosmic-unified-preview-engine {
+        padding: 10px;
+    }
+    .cosmic-unified-preview-frame {
+        border-radius: 14px;
+    }
+}
+
+
+/* Shared global preview: keep the Change Layout primary action crisp.
+   The preview is portaled to <body>, so it is intentionally not scoped by
+   the legacy .cosmic-layout-menu selector above. */
+#cosmic-global-spark-preview .cosmic-layout-use-button,
+#cosmic-global-spark-preview button.cosmic-layout-use-button {
+    appearance: none !important;
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    border-color: rgba(255,255,255,.18) !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    opacity: 1 !important;
+    filter: none !important;
+    text-shadow: none !important;
+    mix-blend-mode: normal !important;
+    box-shadow: none !important;
+}
+#cosmic-global-spark-preview .cosmic-layout-use-button:hover,
+#cosmic-global-spark-preview .cosmic-layout-use-button:focus-visible {
+    background: #ede9fe !important;
+    background-color: #ede9fe !important;
+    color: #111827 !important;
+    -webkit-text-fill-color: #111827 !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+#cosmic-global-spark-preview .cosmic-layout-use-button:disabled {
+    background: #f1f5f9 !important;
+    background-color: #f1f5f9 !important;
+    color: #475569 !important;
+    -webkit-text-fill-color: #475569 !important;
+    opacity: .72 !important;
+}

@@ -1,5 +1,6 @@
 import axios from "axios";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { Link } from "@inertiajs/react";
 import { showCosmicNotification } from "../../../Components/CosmicNotification";
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
@@ -162,6 +163,136 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
     );
 }
 
+
+export function UnifiedSparkPreviewEngine({
+    spark,
+    previewVariant = "white",
+    websiteTheme,
+    payloadOverride = null,
+    blockIndex = 0,
+    commerce = null,
+    contentWorkspace = { types: [] },
+    interactive = false,
+}) {
+    if (!spark) return null;
+
+    return (
+        <div className="cosmic-unified-preview-engine w-full" data-cosmic-unified-preview="true">
+            <div className="cosmic-unified-preview-frame mx-auto w-full">
+                <div className={interactive ? "w-full min-w-0" : "pointer-events-none w-full min-w-0"}>
+                    <ActualSparkPreview
+                        spark={spark}
+                        previewVariant={previewVariant}
+                        websiteTheme={websiteTheme}
+                        payloadOverride={payloadOverride}
+                        blockIndex={blockIndex}
+                        commerce={commerce}
+                        contentWorkspace={contentWorkspace}
+                    />
+                </div>
+            </div>
+        </div>
+    );
+}
+
+
+export function GlobalSparkPreviewModal({
+    spark,
+    previewVariant = "white",
+    websiteTheme,
+    commerce = null,
+    contentWorkspace = { types: [] },
+    eyebrow = null,
+    title = null,
+    description = null,
+    onClose,
+    footerLeft = null,
+    footerRight = null,
+}) {
+    useEffect(() => {
+        if (!spark || typeof document === "undefined") return undefined;
+
+        const body = document.body;
+        const html = document.documentElement;
+        const previousBodyOverflow = body.style.overflow;
+        const previousBodyPaddingRight = body.style.paddingRight;
+        const previousHtmlOverscroll = html.style.overscrollBehavior;
+        const scrollbarWidth = Math.max(0, window.innerWidth - html.clientWidth);
+
+        body.style.overflow = "hidden";
+        if (scrollbarWidth > 0) body.style.paddingRight = `${scrollbarWidth}px`;
+        html.style.overscrollBehavior = "none";
+
+        const handleKeyDown = (event) => {
+            if (event.key === "Escape") onClose?.();
+        };
+        window.addEventListener("keydown", handleKeyDown);
+
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            body.style.overflow = previousBodyOverflow;
+            body.style.paddingRight = previousBodyPaddingRight;
+            html.style.overscrollBehavior = previousHtmlOverscroll;
+        };
+    }, [spark, onClose]);
+
+    if (!spark || typeof document === "undefined") return null;
+
+    return createPortal(
+        <div id="cosmic-global-spark-preview" className="fixed inset-0 z-[2147483000] flex items-stretch justify-stretch">
+            <button
+                type="button"
+                onClick={onClose}
+                className="absolute inset-0 bg-black/85 backdrop-blur-sm"
+                aria-label="Close Spark preview"
+            />
+            <section
+                role="dialog"
+                aria-modal="true"
+                className="cosmic-spark-preview-modal relative z-10 flex h-[100dvh] w-screen max-w-none flex-col overflow-hidden rounded-none border-0 bg-[#101014] text-white shadow-2xl"
+            >
+                <header className="shrink-0 flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7">
+                    <div className="min-w-0">
+                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">
+                            {eyebrow || `Spark Preview · ${spark.category || "Spark"}`}
+                        </p>
+                        <h3 className="mt-1 truncate text-xl font-semibold">{title || spark.name}</h3>
+                        {(description || spark.description) && (
+                            <p className="mt-1 max-w-3xl text-sm text-slate-400">{description || spark.description}</p>
+                        )}
+                    </div>
+                    <button
+                        type="button"
+                        onClick={onClose}
+                        className="shrink-0 rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white"
+                        aria-label="Close preview"
+                    >
+                        ✕
+                    </button>
+                </header>
+
+                <div className="cosmic-global-spark-preview-body min-h-0 flex-1 overflow-auto overscroll-contain bg-[#e5e7eb]">
+                    <UnifiedSparkPreviewEngine
+                        spark={spark}
+                        previewVariant={previewVariant}
+                        websiteTheme={websiteTheme}
+                        commerce={commerce}
+                        contentWorkspace={contentWorkspace}
+                    />
+                </div>
+
+                {(footerLeft || footerRight) && (
+                    <footer className="shrink-0 flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
+                        <div className="min-w-0">{footerLeft}</div>
+                        <div className="shrink-0">{footerRight}</div>
+                    </footer>
+                )}
+            </section>
+        </div>,
+        document.body
+    );
+}
+
 export default function AddSectionModal({
     open,
     onClose,
@@ -184,7 +315,7 @@ export default function AddSectionModal({
     preparedVisibleCount = 0,
 }) {
     const { setBalance } = useCreditBalance();
-    const [tab, setTab] = useState(ownedOnly ? "owned" : "marketplace");
+    const [tab, setTab] = useState("marketplace");
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All");
     const [aiResults, setAiResults] = useState(null);
@@ -250,9 +381,9 @@ export default function AddSectionModal({
     useEffect(() => {
         if (!open) return;
 
-        // Every normal Add Spark open starts from Marketplace and the top.
-        // Insert-near-section mode intentionally remains Owned-only.
-        setTab(trialMode ? "marketplace" : (ownedOnly ? "owned" : "marketplace"));
+        // One global Spark picker serves Add, Insert Above, and Insert Below.
+        // Placement is handled by Builder; the library itself always stays complete.
+        setTab("marketplace");
         setPreviewSpark(null);
         setSelected(null);
         setMode("quick");
@@ -291,7 +422,7 @@ export default function AddSectionModal({
         return () => {
             cancelled = true;
         };
-    }, [open, ownedOnly, trialMode, trialToken, preloadedCatalogLoaded, preloadedCatalogLoading, catalog.length]);
+    }, [open, trialMode, trialToken, preloadedCatalogLoaded, preloadedCatalogLoading, catalog.length]);
 
     const registry = useMemo(() => new Map(BlockRegistry.map((item) => [item.type, item])), []);
     const items = useMemo(() => catalog.map((spark) => ({ ...spark, registry: registry.get(spark.key) })).filter((spark) => spark.registry), [catalog, registry]);
@@ -334,7 +465,7 @@ export default function AddSectionModal({
             setAiResults(Array.isArray(data.results) ? data.results : []);
             setAiPrompt(prompt);
             setCategory('All');
-            if (!ownedOnly) setTab('marketplace');
+            setTab('marketplace');
             window.requestAnimationFrame(() => marketplaceScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' }));
         } catch (error) {
             showCosmicNotification({ title: 'Luna search unavailable', message: error.response?.data?.message || 'Normal Spark search is still available.', tone: 'error' });
@@ -429,15 +560,15 @@ export default function AddSectionModal({
         <section role="dialog" aria-modal="true" className="cosmic-add-spark-modal relative z-10 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111116] text-white shadow-2xl shadow-black/70">
             <header className="cosmic-add-spark-header border-b border-white/10 px-5 py-5 sm:px-7">
                 <div className="flex items-start justify-between gap-4">
-                    <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-300">Cosmic Builder</p><h2 className="mt-1 text-2xl font-semibold">✨ {contextLabel || 'Add Spark'}</h2><p className="mt-1 text-sm text-slate-400">{trialMode ? '10 Sparks are ready to use in your trial. Keep scrolling to preview the full library; sign up to unlock the rest.' : ownedOnly ? 'Choose one of your owned Sparks to place beside this section.' : 'Reuse your owned layouts, or discover a new one in the Marketplace.'}</p></div>
+                    <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-300">Cosmic Builder</p><h2 className="mt-1 text-2xl font-semibold">✨ {contextLabel || 'Add Spark'}</h2><p className="mt-1 text-sm text-slate-400">{trialMode ? '10 Sparks are ready to use in your trial. Keep scrolling to preview the full library; sign up to unlock the rest.' : contextLabel?.startsWith('Insert Spark') ? 'Choose any Spark from the full library. Owned Sparks can be added now; marketplace Sparks can be purchased here.' : 'Reuse your owned layouts, or discover a new one in the Marketplace.'}</p></div>
                     <button onClick={onClose} className="rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white">✕</button>
                 </div>
                 <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
                     <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-1">
                         {trialMode ? <span className="whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950">Trial Sparks ({counts.marketplace})</span> : <>
-                            {!ownedOnly && <button onClick={() => setTab("marketplace")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "marketplace" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Marketplace ({counts.marketplace})</button>}
+                            <button onClick={() => setTab("marketplace")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "marketplace" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>All Sparks ({counts.marketplace})</button>
                             <button onClick={() => setTab("owned")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "owned" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Owned ({counts.owned})</button>
-                            {!ownedOnly && <button onClick={() => setTab("favorites")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "favorites" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Favorites ({counts.favorites})</button>}
+                            <button onClick={() => setTab("favorites")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "favorites" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Favorites ({counts.favorites})</button>
                         </>}
                     </div>
                     <div className="flex w-full items-center gap-2 lg:w-auto">
@@ -453,29 +584,65 @@ export default function AddSectionModal({
             <div ref={marketplaceScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 sm:p-7">
                 {loading && catalog.length === 0 ? <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 text-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-violet-400" /><h3 className="mt-4 text-base font-semibold text-white">Loading Sparks…</h3><p className="mt-1 text-sm text-slate-400">Preparing Sparks in the background.</p><div className="mt-6 grid w-full max-w-3xl gap-3 sm:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-28 animate-pulse rounded-xl bg-white/[0.04]" />)}</div></div> : visible.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((spark, sparkIndex) => <article key={spark.key} style={{ contentVisibility: "auto", containIntrinsicSize: "420px" }} className="cosmic-spark-card relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
                     <div className={`h-40 overflow-hidden p-3 ${spark.trial_locked ? "blur-[3px] saturate-50 opacity-55" : ""}`}><div className="pointer-events-none h-full w-full"><SparkVisual spark={spark} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} websiteTheme={websiteTheme || "midnight"} /></div></div>
-                    <div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-300">{spark.category}</p><h3 className="mt-1 text-base font-semibold">{spark.name}</h3></div><div className="flex items-center gap-2">{!trialMode && <button type="button" disabled={busyKey === `favorite-${spark.key}`} onClick={() => toggleFavorite(spark)} className={`cosmic-flat-icon flex h-8 w-8 items-center justify-center rounded-lg border text-sm ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button>}{spark.trial_locked ? <span className="rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[10px] font-bold text-slate-200">🔒 Locked</span> : spark.owned ? <span className="cosmic-owned-badge rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold text-emerald-200">{trialMode ? "Trial" : "✓ Owned"}</span> : Number(spark.credits || 0) === 0 ? <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] font-bold text-cyan-100">Built-in · Free</span> : <span className="rounded-full bg-amber-300/10 px-2.5 py-1 text-[10px] font-bold text-amber-100">⚡ {spark.credits}</span>}</div></div><p className={`mt-2 line-clamp-2 text-xs leading-5 text-slate-400 ${spark.trial_locked ? "blur-[2px] select-none opacity-55" : ""}`}>{spark.description}</p>{aiResults && aiResultMap.get(spark.key)?.reason && <p className="mt-2 rounded-lg border border-violet-300/10 bg-violet-400/[0.06] px-2.5 py-2 text-[11px] leading-4 text-violet-100"><b>✦ Luna:</b> {aiResultMap.get(spark.key).reason}</p>}<div className="mt-4 flex gap-2"><button type="button" onClick={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark(spark)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:border-violet-400/40 hover:bg-white/5">Preview</button>{spark.trial_locked ? <Link href={trialSignupUrl} className="flex-1 rounded-xl bg-violet-400 px-4 py-2.5 text-center text-sm font-bold text-slate-950">Sign up to unlock</Link> : spark.owned ? <button onClick={() => setSelected(spark)} className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-violet-100">Add to Page</button> : spark.can_install === false && spark.usage_state?.upgrade_url ? <Link href={spark.usage_state.upgrade_url} className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">{spark.usage_state.actionLabel || "Upgrade to add"}</Link> : spark.can_install === false && spark.usage_state?.action === "buy_credits" ? <Link href="/credits" className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">Add credits</Link> : <button disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold hover:bg-violet-500 disabled:opacity-50">{busyKey === spark.key ? "Adding..." : spark.usage_state?.actionLabel || (Number(spark.credits || 0) === 0 ? "Add Free Spark" : "Add to Owned")}</button>}</div></div>
-                </article>)}</div> : <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center"><div className="text-3xl">✨</div><h3 className="mt-3 font-semibold">{tab === "owned" ? "No owned Sparks found" : tab === "favorites" ? "No favorite Sparks yet" : "No Sparks match your search"}</h3><p className="mt-1 text-sm text-slate-500">{tab === "owned" ? "Open the Marketplace tab and add your first reusable Spark." : tab === "favorites" ? "Use the heart button to save Sparks here for quick access." : "Try another category or search phrase."}</p>{tab === "owned" && !ownedOnly && <button onClick={() => setTab("marketplace")} className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950">Browse Marketplace</button>}</div>}
+                    <div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-300">{spark.category}</p><h3 className="mt-1 text-base font-semibold">{spark.name}</h3></div><div className="flex items-center gap-2">{!trialMode && <button type="button" disabled={busyKey === `favorite-${spark.key}`} onClick={() => toggleFavorite(spark)} className={`cosmic-flat-icon flex h-8 w-8 items-center justify-center rounded-lg border text-sm ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button>}{spark.trial_locked ? <span className="rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[10px] font-bold text-slate-200">🔒 Locked</span> : spark.owned ? <span className="cosmic-owned-badge rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold text-emerald-200">{trialMode ? "Trial" : "✓ Owned"}</span> : Number(spark.credits || 0) === 0 ? <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] font-bold text-cyan-100">Built-in · Free</span> : <span className="rounded-full bg-amber-300/10 px-2.5 py-1 text-[10px] font-bold text-amber-100">⚡ {spark.credits}</span>}</div></div><p className={`mt-2 line-clamp-2 text-xs leading-5 text-slate-400 ${spark.trial_locked ? "blur-[2px] select-none opacity-55" : ""}`}>{spark.description}</p>{aiResults && aiResultMap.get(spark.key)?.reason && <p className="mt-2 rounded-lg border border-violet-300/10 bg-violet-400/[0.06] px-2.5 py-2 text-[11px] leading-4 text-violet-100"><b>✦ Luna:</b> {aiResultMap.get(spark.key).reason}</p>}<div className="mt-4 flex gap-2"><button type="button" onClick={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark(spark)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:border-violet-400/40 hover:bg-white/5">Preview</button>{spark.trial_locked ? <Link href={trialSignupUrl} className="flex-1 rounded-xl bg-violet-400 px-4 py-2.5 text-center text-sm font-bold text-slate-950">Sign up to unlock</Link> : spark.owned ? <button onClick={() => setSelected(spark)} className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-violet-100">Add to Page</button> : spark.can_install === false && spark.usage_state?.upgrade_url ? <Link href={spark.usage_state.upgrade_url} className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">{spark.usage_state.actionLabel || "Upgrade to add"}</Link> : spark.can_install === false && spark.usage_state?.action === "buy_credits" ? <Link href="/credits" className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">Add credits</Link> : <button disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold hover:bg-violet-500 disabled:opacity-50">{busyKey === spark.key ? "Buying..." : spark.usage_state?.actionLabel || (Number(spark.credits || 0) === 0 ? "Add Free Spark" : `Buy · ⚡ ${spark.credits}`)}</button>}</div></div>
+                </article>)}</div> : <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center"><div className="text-3xl">✨</div><h3 className="mt-3 font-semibold">{tab === "owned" ? "No owned Sparks found" : tab === "favorites" ? "No favorite Sparks yet" : "No Sparks match your search"}</h3><p className="mt-1 text-sm text-slate-500">{tab === "owned" ? "Open the Marketplace tab and add your first reusable Spark." : tab === "favorites" ? "Use the heart button to save Sparks here for quick access." : "Try another category or search phrase."}</p>{tab === "owned" && <button onClick={() => setTab("marketplace")} className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950">Browse Marketplace</button>}</div>}
             </div>
         </section>
 
-        {previewSpark && <div className="fixed inset-0 z-[940] flex items-stretch justify-stretch">
-            <button type="button" onClick={() => setPreviewSpark(null)} className="absolute inset-0 bg-black/85 backdrop-blur-sm" aria-label="Close Spark preview" />
-            <section role="dialog" aria-modal="true" className="cosmic-spark-preview-modal relative z-10 flex h-screen w-screen max-w-none flex-col overflow-hidden rounded-none border border-white/10 bg-[#101014] text-white shadow-2xl">
-                <header className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4 sm:px-7">
-                    <div><p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">Spark Preview · {previewSpark.category}</p><h3 className="mt-1 text-xl font-semibold">{previewSpark.name}</h3><p className="mt-1 max-w-3xl text-sm text-slate-400">{previewSpark.description}</p></div>
-                    <button type="button" onClick={() => setPreviewSpark(null)} className="rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white">✕</button>
-                </header>
-                <div className="min-h-0 flex-1 overflow-auto bg-[#e5e7eb] p-0">
-                    <div className="cosmic-spark-preview-stage min-h-full w-full"><div className="cosmic-spark-preview-stage-inner">
-                        <div className="pointer-events-none w-full min-w-0 origin-top-left"><ActualSparkPreview spark={previewSpark} previewVariant={previewVariant} websiteTheme={websiteTheme} commerce={commerce} contentWorkspace={contentWorkspace} /></div>
-                    </div></div>
-                </div>
-                <footer className="flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-7">
-                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400"><span className="rounded-full bg-violet-400/10 px-2.5 py-1 font-bold text-violet-200">AI Ready</span><span>Responsive Spark preview</span><div className="flex items-center gap-1.5">{previewVariants.map((variant, index) => <button key={variant} type="button" aria-pressed={previewVariantIndex === index} data-active={previewVariantIndex === index ? "true" : "false"} onClick={() => setPreviewVariantIndex(index)} className="cosmic-spark-variant-toggle rounded-full px-2.5 py-1 font-semibold capitalize transition">{variant}</button>)}</div></div>
-                    <div className="flex gap-2">{!trialMode && <button type="button" disabled={busyKey === `favorite-${previewSpark.key}`} onClick={() => toggleFavorite(previewSpark)} className={`rounded-xl border px-4 py-2.5 text-sm font-semibold ${previewSpark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-300"}`}>{previewSpark.favorited ? "♥ Favorite" : "♡ Favorite"}</button>}<button type="button" onClick={() => setPreviewSpark(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Close</button>{previewSpark.trial_locked ? <Link href={trialSignupUrl} className="rounded-xl bg-violet-400 px-5 py-2.5 text-sm font-bold text-slate-950">Sign up to unlock</Link> : previewSpark.owned ? <button type="button" onClick={() => { setSelected(previewSpark); setPreviewSpark(null); }} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-950">Add to Page</button> : <button type="button" disabled={busyKey === previewSpark.key || previewSpark.can_install === false} onClick={() => unlock(previewSpark)} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">{busyKey === previewSpark.key ? "Adding..." : previewSpark.slot_blocked ? "Owned Spark slots full" : previewSpark.can_install === false ? "Upgrade to add" : Number(previewSpark.credits || 0) === 0 ? "Add Free Spark" : `Add to Owned · ⚡${previewSpark.credits}`}</button>}</div>
-                </footer>
-            </section>
-        </div>}
+        {previewSpark && (
+            <GlobalSparkPreviewModal
+                spark={previewSpark}
+                previewVariant={previewVariant}
+                websiteTheme={websiteTheme}
+                commerce={commerce}
+                contentWorkspace={contentWorkspace}
+                onClose={() => setPreviewSpark(null)}
+                footerLeft={
+                    <div className="flex flex-wrap items-center gap-3 text-xs text-slate-400">
+                        <span className="rounded-full bg-violet-400/10 px-2.5 py-1 font-bold text-violet-200">AI Ready</span>
+                        <span>Responsive Spark preview</span>
+                        <div className="flex items-center gap-1.5">
+                            {previewVariants.map((variant, index) => (
+                                <button
+                                    key={variant}
+                                    type="button"
+                                    aria-pressed={previewVariantIndex === index}
+                                    data-active={previewVariantIndex === index ? "true" : "false"}
+                                    onClick={() => setPreviewVariantIndex(index)}
+                                    className="cosmic-spark-variant-toggle rounded-full px-2.5 py-1 font-semibold capitalize transition"
+                                >
+                                    {variant}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                }
+                footerRight={
+                    <div className="flex gap-2">
+                        {!trialMode && (
+                            <button
+                                type="button"
+                                disabled={busyKey === `favorite-${previewSpark.key}`}
+                                onClick={() => toggleFavorite(previewSpark)}
+                                className={`rounded-xl border px-4 py-2.5 text-sm font-semibold ${previewSpark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-300"}`}
+                            >
+                                {previewSpark.favorited ? "♥ Favorite" : "♡ Favorite"}
+                            </button>
+                        )}
+                        <button type="button" onClick={() => setPreviewSpark(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Close</button>
+                        {previewSpark.trial_locked ? (
+                            <Link href={trialSignupUrl} className="rounded-xl bg-violet-400 px-5 py-2.5 text-sm font-bold text-slate-950">Sign up to unlock</Link>
+                        ) : previewSpark.owned ? (
+                            <button type="button" onClick={() => { setSelected(previewSpark); setPreviewSpark(null); }} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-950">Add to Page</button>
+                        ) : (
+                            <button type="button" disabled={busyKey === previewSpark.key || previewSpark.can_install === false} onClick={() => unlock(previewSpark)} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
+                                {busyKey === previewSpark.key ? "Buying..." : previewSpark.slot_blocked ? "Owned Spark slots full" : previewSpark.can_install === false ? "Upgrade to add" : Number(previewSpark.credits || 0) === 0 ? "Add Free Spark" : `Buy Spark · ⚡ ${previewSpark.credits}`}
+                            </button>
+                        )}
+                    </div>
+                }
+            />
+        )}
 
         {personalizingSpark && <div className="cosmic-spark-progress-overlay fixed inset-0 z-[990] grid place-items-center bg-black/80 px-4 backdrop-blur-md" role="status" aria-live="polite">
             <section className="cosmic-spark-progress-modal w-full max-w-xl rounded-3xl border border-white/10 bg-[#151519]/98 px-5 py-7 text-center shadow-2xl shadow-black/70 sm:px-8 sm:py-8">

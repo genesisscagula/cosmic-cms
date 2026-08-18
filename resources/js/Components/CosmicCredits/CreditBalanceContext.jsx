@@ -58,7 +58,14 @@ export function CreditBalanceProvider({
             return undefined;
         }
 
-        setBalance(normalizeBalance(initialBalance, 0));
+        // Never manufacture a temporary authenticated zero. On a cold login the
+        // first Inertia payload can arrive before every account summary is hydrated;
+        // keep the badge in its loading state until either the shared canonical
+        // balance or /credits/balance returns a real value.
+        const sharedBalance = normalizeBalance(initialBalance, null);
+        if (sharedBalance !== null) {
+            setBalance(sharedBalance);
+        }
         refreshBalance();
 
         const removeSuccessListener = router.on('success', (event) => {

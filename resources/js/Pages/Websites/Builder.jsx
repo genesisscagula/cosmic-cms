@@ -6,7 +6,7 @@ import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadg
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { logoFilterFor } from '@/Branding/logoFilters';
 
-import AddSectionModal, { ActualSparkPreview } from "./Components/AddSectionModal";
+import AddSectionModal, { GlobalSparkPreviewModal } from "./Components/AddSectionModal";
 import { BlockRegistry as MarketplaceSparkRegistry } from "./Components/SparkRegistry";
 import PageTemplatesModal from "./Components/PageTemplatesModal";
 import SavePageTemplateModal from "./Components/SavePageTemplateModal";
@@ -241,6 +241,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [preparedSparkCount, setPreparedSparkCount] = useState(0);
     const [preparedTemplateCount, setPreparedTemplateCount] = useState(0);
     const [sparkInsertTarget, setSparkInsertTarget] = useState(null);
+    const builderCanvasRef = useRef(null);
+    const [builderViewportBudget, setBuilderViewportBudget] = useState(620);
     const [isSaving, setIsSaving] = useState(false);
     const [isPublishing, setIsPublishing] = useState(false);
     const [isCheckingHealth, setIsCheckingHealth] = useState(false);
@@ -458,6 +460,32 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
         return () => window.clearInterval(timer);
     }, [pageTemplateCatalogLoaded, pageTemplateCatalog.length, preparedTemplateCount]);
+
+    useEffect(() => {
+        if (typeof window === 'undefined') return undefined;
+
+        const measureBuilderViewport = () => {
+            const canvas = builderCanvasRef.current;
+            if (!canvas) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const available = Math.floor(window.innerHeight - Math.max(0, rect.top) - 16);
+            setBuilderViewportBudget(Math.max(420, Math.min(760, available)));
+        };
+
+        measureBuilderViewport();
+        window.addEventListener('resize', measureBuilderViewport);
+
+        const observer = typeof ResizeObserver !== 'undefined'
+            ? new ResizeObserver(measureBuilderViewport)
+            : null;
+        if (observer && builderCanvasRef.current) observer.observe(builderCanvasRef.current);
+
+        return () => {
+            window.removeEventListener('resize', measureBuilderViewport);
+            observer?.disconnect();
+        };
+    }, []);
 
     const trialActionCosts = {
         page_style: Number(cosmicPricing?.trial_actions?.page_style || 20),
@@ -3089,10 +3117,17 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                             opacity: 1 !important;
                         }
                     `}</style>
-                    <div data-cosmic-page-style={normalizedPageStyle} className={`cosmic-builder-canvas mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl lg:w-[min(86vw,1560px)] ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
+                    <div ref={builderCanvasRef} data-cosmic-page-style={normalizedPageStyle} className={`cosmic-builder-canvas mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl lg:w-[min(86vw,1560px)] ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
                         <div
                             className="relative flex w-full flex-col items-stretch overflow-hidden rounded-[11px]"
-                            style={{ '--cosmic-overlay-header-height': `${overlayHeaderHeight || 80}px`, '--cosmic-header-height': `${overlayHeaderHeight || 80}px`, '--cosmic-hero-fold-height': overlayHeaderActive ? '100svh' : `calc(100svh - ${overlayHeaderHeight || 80}px)` }}
+                            style={{
+                                '--cosmic-overlay-header-height': `${overlayHeaderHeight || 80}px`,
+                                '--cosmic-header-height': `${overlayHeaderHeight || 80}px`,
+                                '--cosmic-builder-viewport-budget': `${builderViewportBudget}px`,
+                                '--cosmic-hero-fold-height': overlayHeaderActive
+                                    ? `${builderViewportBudget}px`
+                                    : `${Math.max(360, builderViewportBudget - (overlayHeaderHeight || 80))}px`,
+                            }}
                         >
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}
@@ -3553,7 +3588,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                             {/* AI */}
                             <button
                                 type="button"
-                                onClick={() => setIsModalOpen(true)}
+                                onClick={() => { setSparkInsertTarget(null); setIsModalOpen(true); }}
                                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:scale-[1.02] hover:shadow-xl transition text-white font-bold"
                             >
                                 ✨ Add Spark
@@ -3593,31 +3628,43 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             </div>
             
             {layoutPreview?.catalogItem && (
-                <div className="fixed inset-0 z-[940] flex items-center justify-center bg-slate-950/80 p-2 sm:p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget) setLayoutPreview(null); }}>
-                    <section className="flex h-[92vh] w-[95vw] max-w-[1600px] flex-col overflow-hidden rounded-3xl border border-white/10 bg-[#111116] shadow-2xl">
-                        <div className="flex items-center justify-between gap-4 border-b border-white/10 px-5 py-4">
-                            <div>
-                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-300">Layout preview</p>
-                                <h3 className="mt-1 text-lg font-semibold text-white">{layoutPreview.title}</h3>
-                            </div>
-                            <button type="button" onClick={() => setLayoutPreview(null)} className="rounded-xl border border-white/10 px-3 py-2 text-sm font-semibold text-slate-300 hover:bg-white/5">Close</button>
-                        </div>
-                        <div className="min-h-0 flex-1 overflow-y-auto bg-slate-950 p-3 sm:p-5">
-                            <div className="overflow-hidden rounded-2xl border border-white/10 bg-white">
-                                <ActualSparkPreview spark={layoutPreview.catalogItem} previewVariant="primary" websiteTheme={globalSelections} commerce={commerce} contentWorkspace={contentWorkspace} />
-                            </div>
-                        </div>
-                        <div className="flex justify-end gap-2 border-t border-white/10 px-5 py-4">
+                <GlobalSparkPreviewModal
+                    spark={layoutPreview.catalogItem}
+                    previewVariant="primary"
+                    websiteTheme={globalSelections}
+                    commerce={commerce}
+                    contentWorkspace={contentWorkspace}
+                    eyebrow="Layout Preview"
+                    title={layoutPreview.title}
+                    onClose={() => setLayoutPreview(null)}
+                    footerRight={
+                        <div className="flex gap-2">
+                            <button type="button" onClick={() => setLayoutPreview(null)} className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300">Close</button>
                             {layoutPreview.owned ? (
-                                <button type="button" onClick={() => { changeBlockLayout(layoutPreview.blockIndex, layoutPreview); setLayoutPreview(null); }} className="cosmic-layout-use-button rounded-xl !bg-white px-4 py-2 text-sm font-bold !text-slate-950 hover:!bg-violet-100" style={{ color: '#0f172a' }}>Use layout</button>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        changeBlockLayout(layoutPreview.blockIndex, layoutPreview);
+                                        setLayoutPreview(null);
+                                    }}
+                                    className="cosmic-layout-use-button rounded-xl !bg-white px-4 py-2 text-sm font-bold !text-slate-950 hover:!bg-violet-100"
+                                    style={{ color: '#0f172a', WebkitTextFillColor: '#0f172a', opacity: 1, filter: 'none' }}
+                                >
+                                    Use layout
+                                </button>
                             ) : layoutPreview.canInstall ? (
-                                <button type="button" disabled={layoutBusyKey === layoutPreview.type} onClick={() => unlockLayoutSpark(layoutPreview)} className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-50">
+                                <button
+                                    type="button"
+                                    disabled={layoutBusyKey === layoutPreview.type}
+                                    onClick={() => unlockLayoutSpark(layoutPreview)}
+                                    className="rounded-xl bg-violet-600 px-4 py-2 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-50"
+                                >
                                     {layoutBusyKey === layoutPreview.type ? 'Buying…' : Number(layoutPreview.credits || 0) === 0 ? 'Add Free Spark' : `Buy Spark · ⚡ ${layoutPreview.credits}`}
                                 </button>
                             ) : null}
                         </div>
-                    </section>
-                </div>
+                    }
+                />
             )}
 
             {(capabilities.canGenerateAi || trialMode) && (
@@ -3640,8 +3687,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     preloadedCatalogLoading={sparkCatalogLoading}
                     preloadedCatalogLoaded={sparkCatalogLoaded}
                     preparedVisibleCount={preparedSparkCount}
-                    ownedOnly={Boolean(sparkInsertTarget)}
-                    contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : null}
+                    ownedOnly={false}
+                    contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : 'Add Spark'}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
                 />
             )}
