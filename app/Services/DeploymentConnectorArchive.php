@@ -56,11 +56,41 @@ class DeploymentConnectorArchive
         $zip->addFromString('cosmic-cms/.htaccess', "Options -Indexes\n\n<FilesMatch \"^(config\\.php|.*\\.(log|json))$\">\n    Require all denied\n</FilesMatch>\n");
         $zip->addFromString('cosmic-cms/submissions/.htaccess', "Require all denied\n");
         $zip->addFromString('.htaccess', $this->cleanUrlHtaccess());
+        $this->addSharedTailwindStylesheet($zip);
         $zip->addFromString('cosmic-cms/README.txt', $this->readme($website));
 
         $zip->close();
 
         return $archivePath;
+    }
+
+    private function addSharedTailwindStylesheet(ZipArchive $zip): void
+    {
+        $path = public_path('cosmic/cosmic-tailwind.css');
+
+        if (! is_file($path) || ! is_readable($path)) {
+            throw new RuntimeException(
+                'The shared Cosmic Tailwind stylesheet is missing. Run npm run build before downloading the deployment connector.'
+            );
+        }
+
+        $size = filesize($path);
+        if (! is_int($size) || $size < 10000) {
+            throw new RuntimeException(
+                'The shared Cosmic Tailwind stylesheet is incomplete. Run npm run build before downloading the deployment connector.'
+            );
+        }
+
+        $css = file_get_contents($path);
+        if (! is_string($css) || (! str_contains($css, '--tw-') && ! str_contains($css, '.flex'))) {
+            throw new RuntimeException(
+                'The shared Cosmic Tailwind stylesheet is invalid. Run npm run build before downloading the deployment connector.'
+            );
+        }
+
+        if (! $zip->addFromString('cosmic/cosmic-tailwind.css', $css)) {
+            throw new RuntimeException('The shared Cosmic Tailwind stylesheet could not be added to the deployment connector.');
+        }
     }
 
     private function readme(Website $website): string
@@ -72,8 +102,9 @@ Cosmic CMS Deployment Connector
 
 1. Extract this ZIP directly into your website root. It creates:
    - cosmic-cms/ (the protected deployment/contact connector, analytics relay, and commerce bridge)
+   - cosmic/cosmic-tailwind.css (the compiled Tailwind stylesheet used by published pages)
    - .htaccess (clean URLs for compiled static pages)
-2. Do not rename config.php or sync.php.
+2. Keep cosmic/cosmic-tailwind.css in that exact path. Do not rename config.php or sync.php.
 3. Your expected verification endpoint is:
    {$domain}/cosmic-cms/sync.php?action=verify
 4. Return to Cosmic CMS and choose Connect to live.
