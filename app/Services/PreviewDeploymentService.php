@@ -100,7 +100,7 @@ class PreviewDeploymentService
             if ($hadPreviousDeployment) {
                 foreach ($disk->allFiles($root) as $file) {
                     $relative = Str::after($file, $root.'/');
-                    if (! $disk->move($file, $backupRoot.'/'.$relative)) {
+                    if (! $this->moveFileEnsuringDirectory($disk, $file, $backupRoot.'/'.$relative)) {
                         throw new RuntimeException("Unable to protect previous preview page: {$relative}");
                     }
                 }
@@ -109,7 +109,7 @@ class PreviewDeploymentService
 
             foreach ($disk->allFiles($temporaryRoot) as $file) {
                 $relative = Str::after($file, $temporaryRoot.'/');
-                if (! $disk->move($file, $root.'/'.$relative)) {
+                if (! $this->moveFileEnsuringDirectory($disk, $file, $root.'/'.$relative)) {
                     throw new RuntimeException("Unable to activate preview page: {$relative}");
                 }
             }
@@ -124,13 +124,29 @@ class PreviewDeploymentService
             if ($hadPreviousDeployment && $disk->exists($backupRoot)) {
                 foreach ($disk->allFiles($backupRoot) as $file) {
                     $relative = Str::after($file, $backupRoot.'/');
-                    $disk->move($file, $root.'/'.$relative);
+                    $this->moveFileEnsuringDirectory($disk, $file, $root.'/'.$relative);
                 }
             }
 
             $disk->deleteDirectory($backupRoot);
             throw $exception;
         }
+    }
+
+    /**
+     * Flysystem's move() does not consistently create nested destination folders.
+     * Preview packages can contain paths such as about/team/index.html, so create
+     * the parent directory before moving during backup, activation, or rollback.
+     */
+    private function moveFileEnsuringDirectory($disk, string $source, string $destination): bool
+    {
+        $directory = trim(str_replace('\\', '/', dirname($destination)), '/');
+
+        if ($directory !== '' && $directory !== '.') {
+            $disk->makeDirectory($directory);
+        }
+
+        return $disk->move($source, $destination);
     }
 
     public function url(Website $website, string $path = ''): ?string
