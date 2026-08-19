@@ -4,6 +4,7 @@ import { createPortal } from "react-dom";
 import { Link } from "@inertiajs/react";
 import { showCosmicNotification } from "../../../Components/CosmicNotification";
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
+import useInfiniteReveal from '../../../Hooks/useInfiniteReveal';
 import BlockPreviewCard from "./BlockPreviewCard";
 import { BlockRegistry } from "./SparkRegistry";
 import { BlockRegistry as BuilderBlockRegistry } from "../BlockRegistry";
@@ -334,9 +335,7 @@ export default function AddSectionModal({
     const [personalizeProgress, setPersonalizeProgress] = useState(0);
     const [personalizeStage, setPersonalizeStage] = useState("Understanding your Spark...");
     const marketplaceScrollRef = useRef(null);
-    const [savedSparks, setSavedSparks] = useState([]);
-    const [savedSparksLoading, setSavedSparksLoading] = useState(false);
-    const [savedSparkBusyId, setSavedSparkBusyId] = useState(null);
+    const [popupActive, setPopupActive] = useState(false);
 
 
     const previewVariants = ["primary", "white", "surface"];
@@ -427,36 +426,14 @@ export default function AddSectionModal({
         };
     }, [open, trialMode, trialToken, preloadedCatalogLoaded, preloadedCatalogLoading, catalog.length]);
 
-    useEffect(() => {
-        if (!open || trialMode) return undefined;
-        let cancelled = false;
-        setSavedSparksLoading(true);
-        axios.get('/saved-sparks')
-            .then(({ data }) => { if (!cancelled) setSavedSparks(Array.isArray(data.saved_sparks) ? data.saved_sparks : []); })
-            .catch(() => { if (!cancelled) setSavedSparks([]); })
-            .finally(() => { if (!cancelled) setSavedSparksLoading(false); });
-        return () => { cancelled = true; };
-    }, [open, trialMode]);
-
     const registry = useMemo(() => new Map(BlockRegistry.map((item) => [item.type, item])), []);
     const items = useMemo(() => catalog.map((spark) => ({ ...spark, registry: registry.get(spark.key) })).filter((spark) => spark.registry), [catalog, registry]);
-    const savedItems = useMemo(() => savedSparks.map((saved) => ({
-        ...saved,
-        key: `saved-${saved.id}`,
-        category: categoryFor(saved.spark_type),
-        registry: registry.get(saved.spark_type),
-    })).filter((saved) => saved.registry), [savedSparks, registry]);
-    const savedFilteredItems = useMemo(() => savedItems.filter((item) => {
-        const haystack = `${item.name} ${item.spark_type} ${item.category}`.toLowerCase();
-        return haystack.includes(query.trim().toLowerCase());
-    }), [savedItems, query]);
     const categories = useMemo(() => ["All", ...new Set(items.map((item) => item.category || categoryFor(item.key)))], [items]);
     const counts = useMemo(() => ({
         owned: items.filter((item) => item.owned).length,
         favorites: items.filter((item) => item.favorited).length,
         marketplace: items.length,
-        saved: savedItems.length,
-    }), [items, savedItems]);
+    }), [items]);
 
     const aiResultMap = useMemo(() => new Map((aiResults || []).map((result, index) => [result.id, { ...result, rank: index + 1 }])), [aiResults]);
 
@@ -470,45 +447,19 @@ export default function AddSectionModal({
         return haystack.includes(query.trim().toLowerCase());
     }).sort((a, b) => aiResults ? ((aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : 0), [items, tab, category, query, aiResults, aiResultMap]);
 
-    const effectivePreparedCount = Math.max(0, Number(preparedVisibleCount || 0));
-    const visible = useMemo(
-        () => filteredItems.slice(0, Math.max(Math.min(effectivePreparedCount, filteredItems.length), filteredItems.length > 0 && !loading ? Math.min(50, filteredItems.length) : 0)),
-        [filteredItems, effectivePreparedCount, loading]
-    );
-
-    const useSavedSpark = (saved) => {
-        onAdd(structuredClone(saved.payload || {}));
-        onClose?.();
-    };
-
-    const renameSavedSpark = async (saved) => {
-        const name = window.prompt('Rename Saved Spark', saved.name);
-        if (!name?.trim() || name.trim() === saved.name) return;
-        setSavedSparkBusyId(saved.id);
-        try {
-            const { data } = await axios.patch(`/saved-sparks/${saved.id}`, { name: name.trim() });
-            setSavedSparks((current) => current.map((item) => item.id === saved.id ? data.saved_spark : item));
-            showCosmicNotification({ title: 'Saved Spark renamed', message: data.message, tone: 'success' });
-        } catch (error) {
-            showCosmicNotification({ title: 'Could not rename Saved Spark', message: error.response?.data?.message || 'Please try again.', tone: 'error' });
-        } finally {
-            setSavedSparkBusyId(null);
-        }
-    };
-
-    const deleteSavedSpark = async (saved) => {
-        if (!window.confirm(`Delete “${saved.name}” from Saved Sparks?`)) return;
-        setSavedSparkBusyId(saved.id);
-        try {
-            const { data } = await axios.delete(`/saved-sparks/${saved.id}`);
-            setSavedSparks((current) => current.filter((item) => item.id !== saved.id));
-            showCosmicNotification({ title: 'Saved Spark deleted', message: data.message, tone: 'success' });
-        } catch (error) {
-            showCosmicNotification({ title: 'Could not delete Saved Spark', message: error.response?.data?.message || 'Please try again.', tone: 'error' });
-        } finally {
-            setSavedSparkBusyId(null);
-        }
-    };
+    const sparkRevealKey = `${tab}|${category}|${query.trim().toLowerCase()}|${aiResults ? 'ai' : 'browse'}|${filteredItems.length}`;
+    const {
+        visibleItems: visible,
+        sentinelRef: sparkSentinelRef,
+        hasMore: hasMoreSparks,
+        isRevealing: isRevealingSparks,
+    } = useInfiniteReveal(filteredItems, {
+        batchSize: 50,
+        resetKey: sparkRevealKey,
+        root: marketplaceScrollRef,
+        rootMargin: '420px 0px',
+        disabled: !open || !popupActive || loading,
+    });
 
     const clearAiSearch = () => {
         setAiResults(null);
@@ -616,7 +567,13 @@ export default function AddSectionModal({
 
     return <div className="fixed inset-0 z-[900] flex items-center justify-center p-4 sm:p-6">
         <button type="button" onClick={onClose} className="absolute inset-0 bg-black/75 backdrop-blur-sm" aria-label="Close Add Spark" />
-        <section role="dialog" aria-modal="true" className="cosmic-add-spark-modal relative z-10 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111116] text-white shadow-2xl shadow-black/70">
+        <section
+            role="dialog"
+            aria-modal="true"
+            onPointerEnter={() => setPopupActive(true)}
+            onPointerLeave={() => setPopupActive(false)}
+            className={`cosmic-add-spark-modal relative z-10 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111116] text-white shadow-2xl shadow-black/70 ${popupActive ? 'is-active' : ''}`}
+        >
             <header className="cosmic-add-spark-header border-b border-white/10 px-5 py-5 sm:px-7">
                 <div className="flex items-start justify-between gap-4">
                     <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-300">Cosmic Builder</p><h2 className="mt-1 text-2xl font-semibold">✨ {contextLabel || 'Add Spark'}</h2><p className="mt-1 text-sm text-slate-400">{trialMode ? '10 Sparks are ready to use in your trial. Keep scrolling to preview the full library; sign up to unlock the rest.' : contextLabel?.startsWith('Insert Spark') ? 'Choose any Spark from the full library. Owned Sparks can be added now; marketplace Sparks can be purchased here.' : 'Reuse your owned layouts, or discover a new one in the Marketplace.'}</p></div>
@@ -628,7 +585,6 @@ export default function AddSectionModal({
                             <button onClick={() => setTab("marketplace")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "marketplace" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>All Sparks ({counts.marketplace})</button>
                             <button onClick={() => setTab("owned")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "owned" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Owned ({counts.owned})</button>
                             <button onClick={() => setTab("favorites")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "favorites" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Favorites ({counts.favorites})</button>
-                            {!trialMode && <button onClick={() => { setTab("saved"); setCategory("All"); clearAiSearch(); }} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "saved" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Saved Sparks ({counts.saved})</button>}
                         </>}
                     </div>
                     <div className="flex w-full items-center gap-2 lg:w-auto">
@@ -638,18 +594,17 @@ export default function AddSectionModal({
                 </div>
                 {trialMode && <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-violet-400/20 bg-violet-400/[0.07] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"><div><b className="text-violet-200">Trial access: 10 Sparks available</b><p className="mt-0.5 text-xs text-slate-400">Preview everything. Create a free account to unlock the full Spark library.</p></div><Link href={trialSignupUrl} className="shrink-0 rounded-xl bg-violet-400 px-4 py-2 text-center text-xs font-bold text-slate-950">Sign up to unlock</Link></div>}
                 {aiResults && <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400"><span><b className="text-violet-200">✦ Luna results</b> for “{aiPrompt}” · {visible.length} match{visible.length === 1 ? '' : 'es'}</span><button type="button" onClick={clearAiSearch} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white">Clear AI results</button></div>}
-                {tab !== "saved" && <div className="mt-4 flex gap-2 overflow-x-auto pb-1">{categories.map((item) => <button key={item} onClick={() => setCategory(item)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${category === item ? "bg-violet-400 text-slate-950" : "border border-white/10 text-slate-400 hover:text-white"}`}>{item}</button>)}</div>}
+                <div className="mt-4 flex gap-2 overflow-x-auto pb-1">{categories.map((item) => <button key={item} onClick={() => setCategory(item)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${category === item ? "bg-violet-400 text-slate-950" : "border border-white/10 text-slate-400 hover:text-white"}`}>{item}</button>)}</div>
             </header>
 
             <div ref={marketplaceScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 sm:p-7">
-                {tab === "saved" ? (savedSparksLoading ? <div className="flex min-h-[360px] items-center justify-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-violet-400" /></div> : savedFilteredItems.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{savedFilteredItems.map((saved, savedIndex) => <article key={saved.id} className="overflow-hidden rounded-xl border border-violet-400/20 bg-white/[0.025]">
-                    <div className="h-40 overflow-hidden p-3"><div className="pointer-events-none h-full w-full"><SparkVisual spark={{ ...saved, key: saved.spark_type }} payloadOverride={saved.payload} previewVariant={["primary", "white", "surface"][savedIndex % 3]} websiteTheme={websiteTheme || "midnight"} /></div></div>
-                    <div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-300">Saved Spark · {saved.category}</p><h3 className="mt-1 text-base font-semibold text-white">{saved.name}</h3><p className="mt-1 text-xs text-slate-500">{saved.spark_type.replaceAll('_', ' ')}</p></div><span className="rounded-full bg-violet-400/10 px-2.5 py-1 text-[10px] font-bold text-violet-200">Saved</span></div>
-                    <div className="mt-4 flex gap-2"><button type="button" disabled={savedSparkBusyId === saved.id} onClick={() => renameSavedSpark(saved)} className="rounded-xl border border-white/10 px-3 py-2.5 text-sm font-bold text-slate-300 hover:text-white">Rename</button><button type="button" disabled={savedSparkBusyId === saved.id} onClick={() => deleteSavedSpark(saved)} className="rounded-xl border border-red-400/20 px-3 py-2.5 text-sm font-bold text-red-300 hover:bg-red-400/10">Delete</button><button type="button" onClick={() => useSavedSpark(saved)} className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-violet-100">Use Spark</button></div></div>
-                </article>)}</div> : <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center"><div className="text-3xl">💾</div><h3 className="mt-3 font-semibold">No Saved Sparks yet</h3><p className="mt-1 text-sm text-slate-500">Use the save icon on any Builder section to keep a reusable copy here.</p></div>) : loading && catalog.length === 0 ? <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 text-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-violet-400" /><h3 className="mt-4 text-base font-semibold text-white">Loading Sparks…</h3><p className="mt-1 text-sm text-slate-400">Preparing Sparks in the background.</p><div className="mt-6 grid w-full max-w-3xl gap-3 sm:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-28 animate-pulse rounded-xl bg-white/[0.04]" />)}</div></div> : visible.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((spark, sparkIndex) => <article key={spark.key} style={{ contentVisibility: "auto", containIntrinsicSize: "420px" }} className="cosmic-spark-card relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
+                {loading && catalog.length === 0 ? <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 text-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-violet-400" /><h3 className="mt-4 text-base font-semibold text-white">Loading Sparks…</h3><p className="mt-1 text-sm text-slate-400">Preparing Sparks in the background.</p><div className="mt-6 grid w-full max-w-3xl gap-3 sm:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-28 animate-pulse rounded-xl bg-white/[0.04]" />)}</div></div> : visible.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((spark, sparkIndex) => <article key={spark.key} style={{ contentVisibility: "auto", containIntrinsicSize: "420px" }} className="cosmic-spark-card relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
                     <div className={`h-40 overflow-hidden p-3 ${spark.trial_locked ? "blur-[3px] saturate-50 opacity-55" : ""}`}><div className="pointer-events-none h-full w-full"><SparkVisual spark={spark} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} websiteTheme={websiteTheme || "midnight"} /></div></div>
                     <div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-300">{spark.category}</p><h3 className="mt-1 text-base font-semibold">{spark.name}</h3></div><div className="flex items-center gap-2">{!trialMode && <button type="button" disabled={busyKey === `favorite-${spark.key}`} onClick={() => toggleFavorite(spark)} className={`cosmic-flat-icon flex h-8 w-8 items-center justify-center rounded-lg border text-sm ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button>}{spark.trial_locked ? <span className="rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[10px] font-bold text-slate-200">🔒 Locked</span> : spark.owned ? <span className="cosmic-owned-badge rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold text-emerald-200">{trialMode ? "Trial" : "✓ Owned"}</span> : Number(spark.credits || 0) === 0 ? <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] font-bold text-cyan-100">Built-in · Free</span> : <span className="rounded-full bg-amber-300/10 px-2.5 py-1 text-[10px] font-bold text-amber-100">⚡ {spark.credits}</span>}</div></div><p className={`mt-2 line-clamp-2 text-xs leading-5 text-slate-400 ${spark.trial_locked ? "blur-[2px] select-none opacity-55" : ""}`}>{spark.description}</p>{aiResults && aiResultMap.get(spark.key)?.reason && <p className="mt-2 rounded-lg border border-violet-300/10 bg-violet-400/[0.06] px-2.5 py-2 text-[11px] leading-4 text-violet-100"><b>✦ Luna:</b> {aiResultMap.get(spark.key).reason}</p>}<div className="mt-4 flex gap-2"><button type="button" onClick={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark(spark)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:border-violet-400/40 hover:bg-white/5">Preview</button>{spark.trial_locked ? <Link href={trialSignupUrl} className="flex-1 rounded-xl bg-violet-400 px-4 py-2.5 text-center text-sm font-bold text-slate-950">Sign up to unlock</Link> : spark.owned ? <button onClick={() => setSelected(spark)} className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-violet-100">Add to Page</button> : spark.can_install === false && spark.usage_state?.upgrade_url ? <Link href={spark.usage_state.upgrade_url} className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">{spark.usage_state.actionLabel || "Upgrade to add"}</Link> : spark.can_install === false && spark.usage_state?.action === "buy_credits" ? <Link href="/credits" className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">Add credits</Link> : <button disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold hover:bg-violet-500 disabled:opacity-50">{busyKey === spark.key ? "Buying..." : spark.usage_state?.actionLabel || (Number(spark.credits || 0) === 0 ? "Add Free Spark" : `Buy · ⚡ ${spark.credits}`)}</button>}</div></div>
-                </article>)}</div> : <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center"><div className="text-3xl">✨</div><h3 className="mt-3 font-semibold">{tab === "owned" ? "No owned Sparks found" : tab === "favorites" ? "No favorite Sparks yet" : "No Sparks match your search"}</h3><p className="mt-1 text-sm text-slate-500">{tab === "owned" ? "Open the Marketplace tab and add your first reusable Spark." : tab === "favorites" ? "Use the heart button to save Sparks here for quick access." : "Try another category or search phrase."}</p>{tab === "owned" && <button onClick={() => setTab("marketplace")} className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950">Browse Marketplace</button>}</div>}
+                </article>)}
+                    {hasMoreSparks && <div ref={sparkSentinelRef} data-cosmic-infinite-sentinel="sparks" className="col-span-full h-px w-full" aria-hidden="true" />}
+                    {isRevealingSparks && <div className="col-span-full py-3 text-center text-xs text-slate-500">Loading more Sparks…</div>}
+                </div> : <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center"><div className="text-3xl">✨</div><h3 className="mt-3 font-semibold">{tab === "owned" ? "No owned Sparks found" : tab === "favorites" ? "No favorite Sparks yet" : "No Sparks match your search"}</h3><p className="mt-1 text-sm text-slate-500">{tab === "owned" ? "Open the Marketplace tab and add your first reusable Spark." : tab === "favorites" ? "Use the heart button to save Sparks here for quick access." : "Try another category or search phrase."}</p>{tab === "owned" && <button onClick={() => setTab("marketplace")} className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950">Browse Marketplace</button>}</div>}
             </div>
         </section>
 

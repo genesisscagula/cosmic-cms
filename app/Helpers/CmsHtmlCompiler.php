@@ -760,6 +760,9 @@ JS;
             $stoneTheme = self::getTheme('stone');
 
             switch ($type) {
+                case 'luna_custom_section':
+                    $html .= self::lunaCustomSectionHtml($block, $theme);
+                    break;
                 case 'commerce_product_grid':
                 case 'commerce_catalog_grid':
                 case 'commerce_catalog_editorial':
@@ -5304,6 +5307,75 @@ HTML;
         $html = preg_replace('/<section(?![^>]*data-cosmic-spark)/i', '<section data-cosmic-spark', $html) ?? $html;
 
         return self::normalizePublishedAssetUrls($html);
+    }
+
+
+    private static function lunaCustomSectionHtml(array $block, array $theme): string
+    {
+        $category = e((string) ($block['category'] ?? 'content'));
+        $layout = e((string) ($block['layout'] ?? 'editorial'));
+        $alignment = in_array(($block['alignment'] ?? 'left'), ['left','center','right'], true) ? $block['alignment'] : 'left';
+        $mediaPosition = in_array(($block['media_position'] ?? 'none'), ['left','right','background','top','none'], true) ? $block['media_position'] : 'none';
+        $density = in_array(($block['density'] ?? 'balanced'), ['airy','balanced','compact'], true) ? $block['density'] : 'balanced';
+        $accent = in_array(($block['accent_shape'] ?? 'none'), ['none','glow','orb','line','grid','frame'], true) ? $block['accent_shape'] : 'none';
+
+        $eyebrow = e((string) ($block['eyebrow'] ?? ''));
+        $heading = e((string) ($block['heading'] ?? 'Custom section'));
+        $text = nl2br(e((string) ($block['text'] ?? '')));
+        $primaryLabel = e((string) ($block['primary_label'] ?? ''));
+        $primaryUrl = e((string) ($block['primary_url'] ?? '#'));
+        $secondaryLabel = e((string) ($block['secondary_label'] ?? ''));
+        $secondaryUrl = e((string) ($block['secondary_url'] ?? '#'));
+        $image = e((string) ($block['image_url'] ?? ''));
+
+        $pad = match ($density) { 'airy' => 'py-28', 'compact' => 'py-14', default => 'py-20' };
+        $alignClass = match ($alignment) { 'center' => 'text-center items-center', 'right' => 'text-right items-end', default => 'text-left items-start' };
+        $copy = "<div class='relative z-10 flex flex-col {$alignClass}'>".
+            ($eyebrow !== '' ? "<p class='text-xs font-bold uppercase tracking-[0.2em] {$theme['sub']}'>{$eyebrow}</p>" : '').
+            "<h2 class='mt-3 max-w-4xl text-4xl font-black leading-tight {$theme['text']}'>{$heading}</h2>".
+            ($text !== '' ? "<p class='mt-5 max-w-2xl text-base leading-7 {$theme['sub']}'>{$text}</p>" : '');
+
+        if ($primaryLabel !== '' || $secondaryLabel !== '') {
+            $copy .= "<div class='mt-7 flex flex-wrap gap-3'>";
+            if ($primaryLabel !== '') $copy .= "<a href='{$primaryUrl}' class='rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white'>{$primaryLabel}</a>";
+            if ($secondaryLabel !== '') $copy .= "<a href='{$secondaryUrl}' class='rounded-xl border px-5 py-3 text-sm font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a>";
+            $copy .= '</div>';
+        }
+        $copy .= '</div>';
+
+        $imageHtml = ($image !== '' && $mediaPosition !== 'none')
+            ? "<div class='relative z-10 overflow-hidden rounded-[2rem] border {$theme['border']} shadow-2xl'><img src='{$image}' alt='' class='aspect-[4/3] h-full w-full object-cover' loading='lazy'></div>"
+            : '';
+
+        $itemsHtml = '';
+        $items = is_array($block['items'] ?? null) ? array_slice($block['items'], 0, 6) : [];
+        if ($items) {
+            $cols = in_array($layout, ['bento','mosaic'], true) ? 'lg:grid-cols-3' : ($layout === 'rail' ? 'lg:grid-cols-4' : 'md:grid-cols-2');
+            $itemsHtml .= "<div class='mt-10 grid grid-cols-1 {$cols} gap-4'>";
+            foreach ($items as $item) {
+                if (!is_array($item)) continue;
+                $label=e((string)($item['label']??'')); $value=e((string)($item['value']??''));
+                $title=e((string)($item['title']??'')); $body=nl2br(e((string)($item['text']??'')));
+                $itemsHtml .= "<article class='rounded-2xl border {$theme['border']} {$theme['card']} p-5 shadow-sm'>";
+                if ($label!=='' || $value!=='') $itemsHtml .= "<div class='mb-3 flex justify-between gap-3 text-xs font-bold uppercase tracking-[0.14em] {$theme['sub']}'><span>{$label}</span><span>{$value}</span></div>";
+                if ($title!=='') $itemsHtml .= "<h3 class='text-lg font-bold {$theme['text']}'>{$title}</h3>";
+                if ($body!=='') $itemsHtml .= "<p class='mt-2 text-sm leading-6 {$theme['sub']}'>{$body}</p>";
+                $itemsHtml .= '</article>';
+            }
+            $itemsHtml .= '</div>';
+        }
+
+        $background = ($mediaPosition === 'background' && $image !== '') ? "<div class='absolute inset-0 opacity-25'><img src='{$image}' alt='' class='h-full w-full object-cover'></div>" : '';
+        $accentHtml = $accent !== 'none' ? "<div class='pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl'></div>" : '';
+        $split = in_array($layout, ['split','showcase'], true) || in_array($mediaPosition, ['left','right'], true);
+        if ($split && $mediaPosition !== 'background') {
+            $inner = $mediaPosition === 'left' ? $imageHtml.$copy : $copy.$imageHtml;
+            $body = "<div class='grid items-center gap-10 lg:grid-cols-2'>{$inner}</div>";
+        } else {
+            $body = $copy.(($mediaPosition === 'top') ? "<div class='mt-10'>{$imageHtml}</div>" : '');
+        }
+
+        return "<section data-luna-custom-category='{$category}' data-luna-layout='{$layout}' class='relative isolate overflow-hidden px-6 {$pad} {$theme['bg']}'>{$background}{$accentHtml}<div class='relative mx-auto max-w-7xl'>{$body}{$itemsHtml}</div></section>";
     }
 
     private static function isDefaultLogoPlaceholder(string $url): bool

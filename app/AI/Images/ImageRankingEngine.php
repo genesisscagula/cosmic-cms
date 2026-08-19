@@ -33,6 +33,19 @@ final class ImageRankingEngine
                 $score = $matched * 4;
                 $reasons = ['keyword_matches' => $matched];
 
+                // Hard industry asset guard: reject obvious unrelated imagery.
+                $hardBlocked = [
+                    'construction', 'crane', 'hard hat', 'building site', 'excavator',
+                    'road work', 'real estate development'
+                ];
+                foreach ($hardBlocked as $term) {
+                    if (str_contains($metadata, $term) && ! str_contains($tokens->implode(' '), $term)) {
+                        $score -= 100;
+                        $reasons['hard_blocked_term'] = $term;
+                        break;
+                    }
+                }
+
                 if ($result->width > 0 && $result->height > 0) {
                     $ratio = $result->width / max(1, $result->height);
                     $orientationMatch = match ($orientation) {

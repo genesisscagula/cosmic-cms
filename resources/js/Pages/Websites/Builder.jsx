@@ -222,9 +222,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [isTemplatesOpen, setIsTemplatesOpen] = useState(false);
     const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
-    const [saveSparkIndex, setSaveSparkIndex] = useState(null);
-    const [saveSparkName, setSaveSparkName] = useState('');
-    const [isSavingSpark, setIsSavingSpark] = useState(false);
     const [isGeneratePageOpen, setIsGeneratePageOpen] = useState(false);
     const [aiResult, setAiResult] = useState(null);
     const [aiLoading, setAiLoading] = useState(false);
@@ -441,28 +438,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             cancelled = true;
         };
     }, [capabilities.canGenerateAi, trialMode, trialToken]);
-
-    useEffect(() => {
-        if (!sparkCatalogLoaded || preparedSparkCount >= sparkCatalog.length) return undefined;
-
-        const timer = window.setInterval(() => {
-            if (document.hidden) return;
-            setPreparedSparkCount((current) => Math.min(sparkCatalog.length, current + 50));
-        }, 5000);
-
-        return () => window.clearInterval(timer);
-    }, [sparkCatalogLoaded, sparkCatalog.length, preparedSparkCount]);
-
-    useEffect(() => {
-        if (!pageTemplateCatalogLoaded || preparedTemplateCount >= pageTemplateCatalog.length) return undefined;
-
-        const timer = window.setInterval(() => {
-            if (document.hidden) return;
-            setPreparedTemplateCount((current) => Math.min(pageTemplateCatalog.length, current + 50));
-        }, 5000);
-
-        return () => window.clearInterval(timer);
-    }, [pageTemplateCatalogLoaded, pageTemplateCatalog.length, preparedTemplateCount]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return undefined;
@@ -1839,41 +1814,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setSparkInsertTarget(null);
         setIsModalOpen(false);
     };
-    const openSaveSpark = (index) => {
-        const block = data.blocks?.[index];
-        if (!block || trialMode) return;
-        const defaultName = String(block.type || 'Saved Spark')
-            .replaceAll('_', ' ')
-            .replace(/\b\w/g, (letter) => letter.toUpperCase());
-        setThemeMenu(null);
-        setLayoutMenu(null);
-        setSaveSparkIndex(index);
-        setSaveSparkName(defaultName);
-    };
-
-    const saveSparkToLibrary = async () => {
-        const block = Number.isInteger(saveSparkIndex) ? data.blocks?.[saveSparkIndex] : null;
-        const name = saveSparkName.trim();
-        if (!block || !name || isSavingSpark) return;
-        setIsSavingSpark(true);
-        try {
-            const payload = structuredClone(block);
-            delete payload._renderKey;
-            const { data: response } = await axios.post('/saved-sparks', {
-                name,
-                spark_type: block.type,
-                payload,
-            });
-            showCosmicNotification({ title: 'Spark saved', message: response.message || `${name} is ready in Saved Sparks.`, tone: 'success' });
-            setSaveSparkIndex(null);
-            setSaveSparkName('');
-        } catch (error) {
-            showCosmicNotification({ title: 'Could not save Spark', message: error.response?.data?.message || 'Please try again.', tone: 'error' });
-        } finally {
-            setIsSavingSpark(false);
-        }
-    };
-
     const removeBlock = (index) => {
 
         const updatedBlocks = data.blocks.filter((_, i) => i !== index);
@@ -3263,19 +3203,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                         ⧉
                                     </button>
 
-                                    {/* Save Spark */}
-                                    {!trialMode && (
-                                        <button
-                                            type="button"
-                                            aria-label="Save Spark"
-                                            title="Save Spark for reuse"
-                                            onClick={() => openSaveSpark(index)}
-                                            className="w-8 h-8 rounded-lg hover:bg-cyan-500/15 text-cyan-300 transition focus:outline-none focus:ring-2 focus:ring-cyan-400"
-                                        >
-                                            <span aria-hidden="true">💾</span>
-                                        </button>
-                                    )}
-
                                     {/* Change Spark */}
 
                                     <button
@@ -3716,25 +3643,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                         </div>
                     }
                 />
-            )}
-
-            {!trialMode && Number.isInteger(saveSparkIndex) && (
-                <div className="fixed inset-0 z-[960] flex items-center justify-center p-4">
-                    <button type="button" onClick={() => !isSavingSpark && setSaveSparkIndex(null)} className="absolute inset-0 bg-black/75 backdrop-blur-sm" aria-label="Close Save Spark" />
-                    <section role="dialog" aria-modal="true" className="relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#18181b] p-6 text-white shadow-2xl">
-                        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-cyan-300">Reusable Spark</p>
-                        <h3 className="mt-1 text-xl font-semibold">Save Spark</h3>
-                        <p className="mt-2 text-sm leading-6 text-slate-400">Save this exact section as a reusable copy. You can insert it from the Saved Sparks tab on any page.</p>
-                        <label className="mt-5 block">
-                            <span className="text-xs font-bold uppercase tracking-[0.14em] text-slate-400">Spark name</span>
-                            <input autoFocus value={saveSparkName} onChange={(event) => setSaveSparkName(event.target.value.slice(0, 140))} onKeyDown={(event) => { if (event.key === 'Enter') { event.preventDefault(); saveSparkToLibrary(); } }} className="mt-2 h-11 w-full rounded-xl border border-white/10 bg-black/25 px-4 text-sm text-white placeholder:text-slate-600 focus:border-cyan-400 focus:outline-none" placeholder="e.g. Main Contact Form" />
-                        </label>
-                        <div className="mt-5 flex justify-end gap-2">
-                            <button type="button" disabled={isSavingSpark} onClick={() => setSaveSparkIndex(null)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300 disabled:opacity-50">Cancel</button>
-                            <button type="button" disabled={isSavingSpark || !saveSparkName.trim()} onClick={saveSparkToLibrary} className="rounded-xl bg-cyan-300 px-5 py-2.5 text-sm font-bold text-slate-950 disabled:opacity-50">{isSavingSpark ? 'Saving…' : 'Save Spark'}</button>
-                        </div>
-                    </section>
-                </div>
             )}
 
             {(capabilities.canGenerateAi || trialMode) && (

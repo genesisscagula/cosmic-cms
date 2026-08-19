@@ -33,11 +33,17 @@ Rules:
 - Preserve a logical storytelling order.
 - Use no more than one hero, and place it first when a hero is appropriate.
 - Avoid duplicate Sparks.
+- CUSTOM GENERATION MODE: treat AVAILABLE SPARKS as audited responsive/export-safe building primitives, not a fixed template recipe.
+- Every generation should feel art-directed for this specific business. Vary composition, visual pacing, media density, asymmetry, section sequencing, and transitions between dense and spacious sections.
+- If the request includes Previous generated Spark types, strongly prefer different compatible types and a different ordering. Reuse a previous type only when it is clearly the best semantic fit.
+- A design seed is a diversity signal: different seeds should not intentionally converge on the same Spark sequence when equally suitable alternatives exist.
 - Use planner metadata as real ranking signals: planner_priority is an editorial preference score, visual_score rates visual richness, media_mode identifies the actual composition type, and text_density helps prevent card/text monotony.
 - Prefer Sparks marked selection_tier=premium_new when they are a strong fit for the business, page intent, and requested visual direction.
 - When two Sparks satisfy the same semantic purpose, prefer the one with the higher planner_priority and visual_score unless its best_for/media_mode conflicts with the request.
 - Treat selection_tier=classic Sparks as safe fallbacks, not the default creative choice. Do not repeatedly fall back to the same classic hero or classic body sections when suitable premium_new or modern options exist.
 - The preference for newer Sparks applies to the entire page, not only the hero. After the hero, deliberately use newer/specialized services, about, portfolio, stats, testimonials, team, pricing, FAQ, contact, sales, agency, AI, lead-generation, blog, and CTA Sparks when relevant.
+- HERO ART DIRECTION: Decide the hero experience based on brand and industry. Use cinematic video, parallax, slider, or fullscreen treatments only when appropriate; do not default every site to the same hero style.
+- UNIFIED COLOR SYSTEM: Use one primary solid brand color family and derive secondary/tertiary lighter surfaces from it. Avoid unrelated color worlds across sections.
 - Build visual variety across the page: avoid choosing a sequence dominated by generic legacy cards/image/text sections when richer compatible Sparks exist.
 - Do not infer visual richness from the word premium alone. A premium text/table Spark can still be text-heavy; use media_mode + visual_score to distinguish it from a genuinely image-led or motion-led Spark.
 - VISUAL-FIRST COMPOSITION: when the business/page naturally supports photography, product visuals, portfolio work, places, people, projects, interiors, food, property, or other meaningful media, intentionally choose image-led or mixed-media Sparks throughout the body instead of producing a mostly text-and-card page.

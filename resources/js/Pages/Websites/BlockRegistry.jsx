@@ -237,7 +237,9 @@ import {
     ContentLatestBlock, ContentLatestSchema,
     ContentEventsBlock, ContentEventsSchema,
 } from "./Blocks/Content/StructuredContentBlocks";
+import { LunaCustomSectionBlock, LunaCustomSectionSchema } from "./Blocks/General/LunaCustomSectionBlock";
 export const BlockRegistry = {
+    luna_custom_section: { component: LunaCustomSectionBlock, schema: LunaCustomSectionSchema },
     commerce_product_grid: { component: CommerceProductGridBlock, schema: CommerceProductGridSchema },
     commerce_catalog_grid: { component: CommerceCatalogGridBlock, schema: CommerceCatalogGridSchema },
     commerce_catalog_editorial: { component: CommerceCatalogEditorialBlock, schema: CommerceCatalogEditorialSchema },

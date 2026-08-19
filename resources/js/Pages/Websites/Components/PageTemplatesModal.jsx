@@ -4,6 +4,7 @@ import { showCosmicNotification } from '../../../Components/CosmicNotification';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { BlockRegistry } from '../BlockRegistry';
 import ThemeSelector from '../Theme/ThemeSelector';
+import useInfiniteReveal from '../../../Hooks/useInfiniteReveal';
 
 const clone = (value) => typeof structuredClone === 'function' ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 
@@ -77,6 +78,7 @@ export default function PageTemplatesModal({
     const { setBalance } = useCreditBalance();
     const [templates, setTemplates] = useState(() => preloadedCatalogLoaded ? preloadedCatalog : []);
     const templatesScrollRef = useRef(null);
+    const [popupActive, setPopupActive] = useState(false);
     const [tab, setTab] = useState('marketplace');
     const [query, setQuery] = useState('');
     const deferredQuery = useDeferredValue(query);
@@ -153,11 +155,19 @@ export default function PageTemplatesModal({
         return filtered;
     }, [templates, tab, tag, normalizedQuery, aiResults, aiResultMap]);
 
-    const effectivePreparedCount = Math.max(0, Number(preparedVisibleCount || 0));
-    const visible = useMemo(
-        () => filteredTemplates.slice(0, Math.max(Math.min(effectivePreparedCount, filteredTemplates.length), filteredTemplates.length > 0 && !preloadedCatalogLoading ? Math.min(50, filteredTemplates.length) : 0)),
-        [filteredTemplates, effectivePreparedCount, preloadedCatalogLoading]
-    );
+    const templateRevealKey = `${tab}|${tag}|${normalizedQuery}|${aiResults ? 'ai' : 'browse'}|${filteredTemplates.length}`;
+    const {
+        visibleItems: visible,
+        sentinelRef: templateSentinelRef,
+        hasMore: hasMoreTemplates,
+        isRevealing: isRevealingTemplates,
+    } = useInfiniteReveal(filteredTemplates, {
+        batchSize: 50,
+        resetKey: templateRevealKey,
+        root: templatesScrollRef,
+        rootMargin: '420px 0px',
+        disabled: !open || !popupActive || preloadedCatalogLoading,
+    });
 
     const runAiSearch = async () => {
         const prompt = query.trim();
@@ -407,7 +417,11 @@ export default function PageTemplatesModal({
                 aria-label="Close Templates"
             />
 
-            <section className="cosmic-page-templates-panel relative z-10 flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border">
+            <section
+                onPointerEnter={() => setPopupActive(true)}
+                onPointerLeave={() => setPopupActive(false)}
+                className={`cosmic-page-templates-panel relative z-10 flex max-h-[94vh] w-full max-w-7xl flex-col overflow-hidden rounded-3xl border ${popupActive ? 'is-active' : ''}`}
+            >
                 <header className="cosmic-page-templates-header border-b px-5 py-5 sm:px-7">
                     <div className="flex flex-wrap items-center justify-between gap-4">
                         <div>
@@ -620,6 +634,8 @@ export default function PageTemplatesModal({
                                 </div>
                             </article>
                         ))}
+                        {hasMoreTemplates && <div ref={templateSentinelRef} data-cosmic-infinite-sentinel="templates" className="col-span-full h-px w-full" aria-hidden="true" />}
+                        {isRevealingTemplates && <div className="col-span-full py-3 text-center text-xs text-slate-500">Loading more Templates…</div>}
                     </div>
                     )}
 

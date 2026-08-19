@@ -6,7 +6,6 @@ use App\Helpers\CmsHtmlCompiler;
 use App\Models\Page;
 use App\Models\Website;
 use App\Support\PageStyleRegistry;
-use Illuminate\Support\Facades\Storage;
 
 class PagePublisher
 {
@@ -87,9 +86,6 @@ class PagePublisher
         return [
             'status' => 'success',
             'website_name' => $website->name,
-            // Package the favicon as a self-contained static asset. Preview and
-            // connector deployments must never hotlink the CMS /storage URL.
-            'favicon' => $this->publishedFavicon($website),
             'theme_palette' => $themePalette,
             'global_header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor, $publishedShellContext) : '',
             'global_footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor, $publishedShellContext) : '',
@@ -609,50 +605,6 @@ class PagePublisher
         }
 
         return $publishedTargets[$slug];
-    }
-
-    /**
-     * Return a deployment-safe favicon payload from Website Settings.
-     * Keeping the bytes in the package lets both preview and live connector
-     * deployments write /favicon.ext on the destination independently.
-     */
-    private function publishedFavicon(Website $website): ?array
-    {
-        $settings = (array) ($website->settings ?? []);
-        $path = trim((string) ($settings['favicon_path'] ?? ''));
-        if ($path === '') {
-            return null;
-        }
-
-        $disk = Storage::disk('public');
-        if (! $disk->exists($path)) {
-            return null;
-        }
-
-        $extension = strtolower(pathinfo($path, PATHINFO_EXTENSION));
-        $allowed = ['png', 'ico', 'jpg', 'jpeg', 'webp'];
-        if (! in_array($extension, $allowed, true)) {
-            return null;
-        }
-
-        try {
-            $contents = $disk->get($path);
-        } catch (\Throwable) {
-            return null;
-        }
-
-        $mime = match ($extension) {
-            'ico' => 'image/x-icon',
-            'jpg', 'jpeg' => 'image/jpeg',
-            'webp' => 'image/webp',
-            default => 'image/png',
-        };
-
-        return [
-            'filename' => 'favicon.'.$extension,
-            'mime_type' => $mime,
-            'contents_base64' => base64_encode($contents),
-        ];
     }
 
     /** Build safe clean-URL folders from the stored parent chain. */

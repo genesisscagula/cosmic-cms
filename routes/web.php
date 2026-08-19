@@ -22,7 +22,6 @@ use App\Http\Controllers\AccountDataController;
 use App\Http\Controllers\CosmicPricingController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SparkController;
-use App\Http\Controllers\SavedSparkController;
 use App\Http\Controllers\AgencyLeadController;
 use App\Http\Controllers\AgencySalesController;
 use App\Http\Controllers\WorkspaceMemberController;
@@ -522,11 +521,6 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::delete('/page-templates/saved/{template}', [PageTemplateController::class, 'destroySaved'])->name('page-templates.saved.destroy');
     Route::post('/page-templates/{key}/unlock', [PageTemplateController::class, 'unlock'])->name('page-templates.unlock');
     Route::post('/page-templates/{key}/favorite', [PageTemplateController::class, 'toggleFavorite'])->name('page-templates.favorite.toggle');
-
-    Route::get('/saved-sparks', [SavedSparkController::class, 'index'])->name('saved-sparks.index');
-    Route::post('/saved-sparks', [SavedSparkController::class, 'store'])->name('saved-sparks.store');
-    Route::patch('/saved-sparks/{savedSpark}', [SavedSparkController::class, 'update'])->name('saved-sparks.update');
-    Route::delete('/saved-sparks/{savedSpark}', [SavedSparkController::class, 'destroy'])->name('saved-sparks.destroy');
 
     Route::get('/sparks', [SparkController::class, 'index'])->name('sparks.index');
     Route::get('/sparks/catalog', [SparkController::class, 'catalog'])->name('sparks.catalog');

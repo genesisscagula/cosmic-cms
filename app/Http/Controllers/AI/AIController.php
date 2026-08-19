@@ -13,6 +13,7 @@ use App\Services\MediaAssetLifecycleService;
 use App\Services\TrialRemoteImageService;
 use App\Services\AiPageGenerationService;
 use App\Services\CreditService;
+use App\Services\LunaCategoryPageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -27,6 +28,7 @@ class AIController extends Controller
         private readonly MediaPackOwnershipService $mediaPackOwnership,
         private readonly MediaAssetLifecycleService $mediaAssets,
         private readonly TrialRemoteImageService $remoteImages,
+        private readonly LunaCategoryPageService $lunaCategoryPages,
     ) {
     }
 
@@ -42,6 +44,8 @@ class AIController extends Controller
             'generation_type' => ['nullable', 'string', 'in:page,section,template'],
             'website_id' => ['nullable', 'integer', 'exists:websites,id'],
             'header_overlay_enabled' => ['nullable', 'boolean'],
+            'design_seed' => ['nullable', 'string', 'max:100'],
+            'brand_mode' => ['nullable', 'string', 'in:keep,new'],
         ]);
 
         $website = null;
@@ -52,6 +56,11 @@ class AIController extends Controller
 
         $headerOverlayEnabled = (bool) ($validated['header_overlay_enabled'] ?? false);
         $generationPrompt = $this->withHeaderOverlayContext($validated['prompt'], $headerOverlayEnabled);
+        $generationPrompt = $this->withLunaCreativeContext(
+            $generationPrompt,
+            (string) ($validated['design_seed'] ?? ''),
+            (string) ($validated['brand_mode'] ?? 'keep'),
+        );
 
         $generationType = $validated['generation_type'] ?? (count($validated['sections']) > 1 ? 'page' : 'section');
         $cost = match ($generationType) {
@@ -83,6 +92,41 @@ class AIController extends Controller
             ?? $this->pageGenerationService->resolveLayoutFolder($validated['prompt']);
 
         try {
+            $usesLunaCategorySchema = $generationType === 'page'
+                && collect($validated['sections'])->every(fn ($section) => is_string($section) && str_starts_with($section, 'luna:'));
+
+            if ($usesLunaCategorySchema) {
+                $blocks = $this->lunaCategoryPages->generate($generationPrompt, $validated['sections']);
+
+                if ($website) {
+                    try {
+                        $remoteResult = $this->pageGenerationService->applyStartPageRemoteImages(
+                            $generationPrompt,
+                            $blocks,
+                            $imageFolder
+                        );
+                        $blocks = $remoteResult['blocks'];
+                    } catch (\Throwable $mediaException) {
+                        Log::warning('[LunaCustomSections] Remote image pass failed; keeping safe fallbacks.', [
+                            'website_id' => $website->id,
+                            'message' => $mediaException->getMessage(),
+                        ]);
+                    }
+                }
+
+                return response()->json([
+                    'blocks' => $blocks,
+                    'generation_meta' => ['mode' => 'luna_category_schema', 'custom_ui' => true],
+                    'credits_spent' => $cost,
+                    'credit_balance' => $this->credits->balance($request->user()),
+                    'builder_protection' => [
+                        'global_shell' => 'preserved',
+                        'navigation' => 'preserved',
+                        'uploaded_media' => 'client_merge_protected',
+                    ],
+                ]);
+            }
+
             // Generate the content/schema first. For authenticated Builder requests,
             // image_url values are subsequently replaced by the same remote Unsplash
             // search pipeline used by /start. website_id is authorization/context only;
@@ -196,6 +240,47 @@ TEXT;
         return trim($prompt)."\n\nCOSMIC BUILDER SHELL CONTEXT\n".$directive;
     }
 
+
+    /**
+     * Give every full-page Luna pass its own art-direction identity while keeping
+     * the audited Spark renderer/export contract intact. Existing library Sparks
+     * remain manual choices; generated pages are encouraged to compose a fresh
+     * combination and visual rhythm on every run.
+     */
+    private function withLunaCreativeContext(string $prompt, string $seed = '', string $brandMode = 'keep', array $avoidSections = []): string
+    {
+        $seed = trim($seed) !== '' ? trim($seed) : Str::uuid()->toString();
+        $brandRule = $brandMode === 'new'
+            ? 'Explore a fresh brand direction: a different color-family mood, typography character, spacing rhythm, image art direction, and composition personality. Keep factual business identity intact.'
+            : 'Preserve the current brand identity/color-family intent, but redesign the page composition, section pacing, image treatment, and layout rhythm so it does not feel like a duplicate generation.';
+
+        $avoid = collect($avoidSections)
+            ->filter(fn ($value) => is_string($value) && trim($value) !== '')
+            ->map(fn ($value) => trim($value))
+            ->unique()
+            ->take(30)
+            ->values()
+            ->all();
+
+        $avoidRule = $avoid === []
+            ? 'There is no previous generated Spark list to avoid.'
+            : 'Previous generated Spark types: '.implode(', ', $avoid).'. Prefer different compatible Spark types and ordering when good alternatives exist; reuse only when page intent genuinely requires it.';
+
+        return trim($prompt)."\n\nLUNA UNIQUE PAGE ART DIRECTION\n"
+            ."Design seed: {$seed}\n"
+            ."This generation must feel custom to this website rather than like a repeated template.\n"
+            ."\nCOLOR SYSTEM RULE: Choose one primary solid brand color family first. Generate only lighter secondary and tertiary variations from that same family. Do not create unrelated section colors. Use accent colors sparingly for highlights and calls to action. {$brandRule}\n"
+            ."{$avoidRule}\n"
+            ."HERO EXPERIENCE RULE: Select the most suitable hero presentation for the business: static editorial image, image slider, parallax, cinematic video, fullscreen, split hero, or showcase. Prefer video/parallax/slider only when it supports the brand and has a fallback.\n"
+            ."LUNA ART DIRECTOR RULE: Design the complete visitor experience, not a collection of sections. Do not turn every piece of information into cards. Decide whether content deserves editorial layouts, cinematic imagery, split compositions, galleries, timelines, interactive showcases, bento arrangements, or minimal content blocks. Use cards only when they improve usability.\n"
+            ."Avoid repetitive patterns such as heading followed by cards repeated throughout the page. Do not use the same layout pattern for consecutive sections. Create visual rhythm with changing compositions, whitespace, typography hierarchy, imagery, and storytelling flow.\n"
+            ."Content quantity does not determine layout. Ten services do not automatically become ten cards. Choose the most elegant presentation for the brand, audience, and industry. Think like a senior award-winning web designer and art director.\n"
+            ."LUNA INDUSTRY ASSET INTELLIGENCE RULE: Identify the business industry before selecting imagery or visual direction. All generated media must match the business context, audience, and brand story. Never reuse unrelated assets from previous generations. Build visual keywords and avoid keywords before choosing images. For hospitality use destinations, rooms, dining, guests, and atmosphere. For construction use architecture, developments, materials, and projects. For restaurants use food, chefs, interiors, and dining experiences. Avoid unrelated subjects such as construction imagery for hotels or food imagery for professional services.\n"
+            ."Use the registered Spark schemas as safe responsive/exportable building primitives, not as a reason to repeat the same page recipe. Vary hierarchy, visual pacing, media density, asymmetry, section transitions, and storytelling order. Existing manual Sparks remain available to the user separately.\n"
+            ."LUNA VIDEO EXPERIENCE RULE: Decide when the website benefits from cinematic video, testimonial video, product demo, project walkthrough, slider, or parallax experiences. Use video intentionally based on industry and conversion goals.\n"
+            ."LUNA BRAND SYSTEM: Act as the brand designer. Define a coherent color family using design tokens (primary, secondary, accent, background, surface, text, muted). Apply color theory based on industry and brand personality. Do not invent random colors per section; keep a unified brand system while allowing different section moods.";
+    }
+
     private function refundFailedGeneration(Request $request, int $cost, ?Website $website, string $reference, array $sections): void
     {
         try {
@@ -222,12 +307,31 @@ TEXT;
             'prompt' => ['required', 'string'],
             'header_overlay_enabled' => ['nullable', 'boolean'],
             'website_id' => ['nullable', 'integer', 'exists:websites,id'],
+            'design_seed' => ['nullable', 'string', 'max:100'],
+            'brand_mode' => ['nullable', 'string', 'in:keep,new'],
+            'avoid_sections' => ['nullable', 'array', 'max:30'],
+            'avoid_sections.*' => ['string', 'max:120'],
         ]);
 
         $prompt = $this->withHeaderOverlayContext(
             $validated['prompt'],
             (bool) ($validated['header_overlay_enabled'] ?? false),
         );
+
+        $prompt = $this->withLunaCreativeContext(
+            $prompt,
+            (string) ($validated['design_seed'] ?? ''),
+            (string) ($validated['brand_mode'] ?? 'keep'),
+            is_array($validated['avoid_sections'] ?? null) ? $validated['avoid_sections'] : [],
+        );
+
+        if (! empty($validated['design_seed'])) {
+            return response()->json([
+                'sections' => $this->lunaCategoryPages->plan($prompt),
+                'image_folder' => $this->pageGenerationService->resolveLayoutFolder($prompt),
+                'planner' => 'luna_category_schema',
+            ]);
+        }
 
         // Registered Builder: the first successful full-page generation for a
         // website gets Cosmic's media-led "wow" preference. After that Luna is
