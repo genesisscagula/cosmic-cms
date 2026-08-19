@@ -34,6 +34,16 @@ final class ImageSlotResolver
                 return;
             }
 
+            // Testimonials are intentionally hydrated from Cosmic's local avatar
+            // library after content generation. Never turn those avatar fields
+            // into provider/Unsplash slots; team/profile photography remains eligible.
+            $normalizedType = strtolower($type);
+            $normalizedKey = strtolower($key);
+            if (str_contains($normalizedType, 'testimonial')
+                && ($normalizedKey === 'avatar' || $normalizedKey === 'avatar_url' || str_ends_with($normalizedKey, '_avatar'))) {
+                return;
+            }
+
             $slots[] = [
                 'path' => $path,
                 'key' => $key,

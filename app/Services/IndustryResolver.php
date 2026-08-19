@@ -8,7 +8,7 @@ final class IndustryResolver
 {
     public function resolve(string $value, string $fallback = 'default'): string
     {
-        $candidate = $this->extractIndustryLabel($value);
+        $candidate = $this->extractIndustryLabel($this->stripNegativeDirectives($value));
         $normalized = $this->normalize($candidate);
         $catalog = $this->catalog();
 
@@ -78,12 +78,32 @@ final class IndustryResolver
         return trim($value);
     }
 
+    private function stripNegativeDirectives(string $value): string
+    {
+        // Industry detection must describe what the business IS, not what the
+        // prompt explicitly says to avoid. Drop negative instruction sentences
+        // before alias matching (e.g. "Avoid construction imagery").
+        $segments = preg_split('/(?<=[.!?])\s+|\R+/u', $value) ?: [$value];
+
+        $positive = array_filter($segments, function (string $segment): bool {
+            $segment = trim($segment);
+
+            if ($segment === '') {
+                return false;
+            }
+
+            return preg_match('/^(?:avoid|do\s+not|don[’\']t|never|exclude|without|no\s+(?:generic|construction|stock|corporate))\b/iu', $segment) !== 1;
+        });
+
+        return trim(implode(' ', $positive));
+    }
+
     private function normalize(string $value): string
     {
         return Str::of($value)
             ->lower()
-            ->replace(['&', '/', '_'], ' ')
-            ->replaceMatches('/[^\pL\pN\s-]+/u', ' ')
+            ->replace(['&', '/', '_', '-'], ' ')
+            ->replaceMatches('/[^\pL\pN\s]+/u', ' ')
             ->squish()
             ->toString();
     }

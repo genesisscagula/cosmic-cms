@@ -25,7 +25,6 @@ export default function GeneratePageModal({
     const [progress, setProgress] = useState(0);
     const [stage, setStage] = useState("Understanding your request...");
     const [confirmGenerate, setConfirmGenerate] = useState(false);
-    const [brandMode, setBrandMode] = useState("keep");
 
     useEffect(() => {
         if (!open) {
@@ -34,7 +33,6 @@ export default function GeneratePageModal({
             setProgress(0);
             setStage("Understanding your request...");
             setConfirmGenerate(false);
-            setBrandMode("keep");
         }
     }, [open]);
 
@@ -80,14 +78,9 @@ export default function GeneratePageModal({
                 previousSections = [];
             }
 
-            const brandDirective = brandMode === "new"
-                ? "BRAND DIRECTION: Create a fresh visual brand direction for this generation. Explore a new color-family mood, typography character, visual rhythm, and art direction while keeping the business identity and factual content intact."
-                : "BRAND DIRECTION: Keep the current website brand. Preserve its color-family identity and overall brand character, but create a fresh page composition and new visual pacing.";
-
             const contextualPrompt = [
                 websiteContext || "Generate professional website content for this business.",
                 `User instruction: ${prompt}`,
-                brandDirective,
                 `LUNA UNIQUE DESIGN SEED: ${generationSeed}. Treat this as a new art-direction pass. Do not intentionally reproduce a previous generated page composition.`,
             ].join("\n\n");
 
@@ -97,7 +90,6 @@ export default function GeneratePageModal({
                 website_id: websiteId,
                 design_seed: generationSeed,
                 avoid_sections: previousSections.slice(-16),
-                brand_mode: brandMode,
             });
             const sections = plan.sections || [];
             if (!sections.length) throw new Error("Cosmic AI could not plan this page.");
@@ -110,7 +102,6 @@ export default function GeneratePageModal({
                 website_id: websiteId,
                 header_overlay_enabled: Boolean(headerOverlayEnabled),
                 design_seed: generationSeed,
-                brand_mode: brandMode,
             });
 
             try {
@@ -171,19 +162,6 @@ export default function GeneratePageModal({
                                 placeholder="Example: modern fitness studio about us page with trainers, programs, testimonials, and a strong contact call to action"
                                 className="mt-3 w-full resize-none rounded-2xl border border-white/10 bg-black/25 px-4 py-4 text-sm leading-6 text-white placeholder:text-slate-600 focus:border-violet-400 focus:outline-none"
                             />
-                            <div className="mt-4 rounded-2xl border border-white/10 bg-white/[0.025] p-3">
-                                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Brand direction</p>
-                                <div className="mt-2 grid grid-cols-2 gap-2">
-                                    <button type="button" onClick={() => setBrandMode("keep")} className={`rounded-xl border px-3 py-2.5 text-left text-xs transition ${brandMode === "keep" ? "border-violet-400/60 bg-violet-400/10 text-white" : "border-white/10 text-slate-400 hover:bg-white/5"}`}>
-                                        <span className="block font-semibold">Keep brand</span>
-                                        <span className="mt-0.5 block text-[10px] opacity-70">New layout, same identity</span>
-                                    </button>
-                                    <button type="button" onClick={() => setBrandMode("new")} className={`rounded-xl border px-3 py-2.5 text-left text-xs transition ${brandMode === "new" ? "border-cyan-400/60 bg-cyan-400/10 text-white" : "border-white/10 text-slate-400 hover:bg-white/5"}`}>
-                                        <span className="block font-semibold">New brand direction</span>
-                                        <span className="mt-0.5 block text-[10px] opacity-70">Fresh art direction</span>
-                                    </button>
-                                </div>
-                            </div>
                             <div className="mt-5 flex items-center justify-between gap-4">
                                 <span className="text-xs text-slate-500">{pagePrompt.length}/800</span>
                                 <div className="flex gap-2">

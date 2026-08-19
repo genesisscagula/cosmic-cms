@@ -115,7 +115,7 @@ class AiPageGenerationService
                 $selection = [
                     'sections' => $categorySections,
                     'image_folder' => 'default',
-                    'planner' => 'luna_category_schema',
+                    'planner' => 'luna_template_metadata',
                 ];
                 $placeholderFolder = 'default';
                 $blocks = $this->images->withRemoteDownloadBudget(0, fn () => $this->lunaCategoryPages->generate(
@@ -305,7 +305,7 @@ class AiPageGenerationService
                 'prompt' => $this->cache->normalizePrompt($prompt),
                 'sections' => array_values($sections),
                 'model' => config('openai.content_model'),
-                'version' => '17.0.0-luna-unique-design',
+                'version' => '19.0.0-spark-content-contracts',
             ],
             (int) config('openai.content_cache_ttl', 3600),
             function () use ($prompt, $sections) {
@@ -440,6 +440,8 @@ class AiPageGenerationService
 
         unset($block);
 
+        $blocks = $this->enforceGeneratedMediaPolicies($blocks);
+
         $beforeProtection = count($blocks);
         $blocks = $this->protectBrandingShell($blocks);
         if (count($blocks) !== $beforeProtection) {
@@ -485,7 +487,10 @@ class AiPageGenerationService
         if (is_array($items)) {
             foreach ($items as $index => &$item) {
                 if (is_array($item)) {
-                    $item['avatar_url'] = $avatars[$index % count($avatars)];
+                    $avatar = $avatars[$index % count($avatars)];
+                    // Support both legacy and current testimonial schema names.
+                    $item['avatar'] = $avatar;
+                    $item['avatar_url'] = $avatar;
                 }
             }
             unset($item);
@@ -501,7 +506,43 @@ class AiPageGenerationService
         }
 
         // Legacy single testimonial schemas.
+        $block['avatar'] = $avatars[0];
         $block['avatar_url'] = $avatars[0];
+    }
+
+    /**
+     * Keep generated media predictable across Builder and export. User edits remain
+     * free to replace these values later through the shared video/image editors.
+     */
+    private function enforceGeneratedMediaPolicies(array $blocks): array
+    {
+        $videoPlaceholder = '/storage/cms-videos/hero-placeholder.mp4';
+
+        foreach ($blocks as &$block) {
+            if (! is_array($block)) {
+                continue;
+            }
+
+            $type = strtolower((string) ($block['type'] ?? ''));
+
+            if (str_contains($type, 'testimonial')) {
+                $this->applyLocalTestimonialAvatars($block);
+            }
+
+            // Generated hero/testimonial video experiences start from one stable
+            // local MP4. The Builder's EditableVideoSource can subsequently accept
+            // MP4, YouTube or Vimeo without changing the stored block contract.
+            if ((str_contains($type, 'hero_video') || $type === 'testimonials_video_premium')
+                && array_key_exists('video_url', $block)) {
+                $video = trim((string) ($block['video_url'] ?? ''));
+                if ($video === '' || $video === '#') {
+                    $block['video_url'] = $videoPlaceholder;
+                }
+            }
+        }
+        unset($block);
+
+        return $blocks;
     }
 
     private function protectBrandingShell(array $blocks): array
@@ -532,7 +573,7 @@ class AiPageGenerationService
                 'prompt' => $this->cache->normalizePrompt($prompt),
                 'model' => config('openai.planner_model'),
                 'registry' => \App\AI\Registries\SparkPlannerRegistry::slugs(),
-                'version' => '17.0.0-luna-unique-design',
+                'version' => '19.0.0-spark-content-contracts',
             ],
             (int) config('openai.planner_cache_ttl', 86400),
             function () use ($prompt, $imageFolder) {

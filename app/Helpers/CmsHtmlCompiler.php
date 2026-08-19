@@ -1314,7 +1314,7 @@ JS;
                 $serviceArea = e($block['service_area'] ?? 'Appointments and service visits available.');
                 $directionsLabel = e($block['directions_label'] ?? 'Get directions');
                 $directionsUrl = e($block['directions_url'] ?? 'https://www.google.com/maps/search/?api=1&query=Your+Business+Location');
-                $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16'><div><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='relative min-h-[22rem] overflow-hidden rounded-3xl border p-7 sm:p-9 {$theme['border']} {$theme['card']}'><div class='absolute inset-0 opacity-30 [background-image:linear-gradient(currentColor_1px,transparent_1px),linear-gradient(90deg,currentColor_1px,transparent_1px)] [background-size:2.5rem_2.5rem] {$theme['sub']}'></div><div class='relative flex min-h-[16rem] h-full flex-col justify-between'><div class='grid h-14 w-14 place-items-center rounded-full border-8 {$theme['border']} {$theme['bg']}'><span class='h-3 w-3 rounded-full bg-current {$theme['text']}'></span></div><div class='max-w-md rounded-2xl border p-5 backdrop-blur {$theme['border']} {$theme['card']}'><p class='text-lg font-semibold {$theme['text']}'>{$locationName}</p><p class='mt-2 text-sm leading-6 {$theme['sub']}'>{$address}</p><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$serviceArea}</p><a href='{$directionsUrl}' target='_blank' rel='noopener noreferrer' class='mt-5 inline-flex rounded-full border px-4 py-2 text-sm font-semibold {$theme['border']} {$theme['text']}'>{$directionsLabel}</a></div></div></div></div></section>";
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16'><div><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='relative min-h-[22rem] overflow-hidden rounded-3xl border p-7 sm:p-9 {$theme['border']} {$theme['card']}'><div class='absolute inset-0 opacity-30 [background-image: none;
                 break;
 
                 case 'portfolio_masonry':
@@ -1680,9 +1680,12 @@ HTML;
                 $logoText = e($block['logo_text'] ?? 'Your Website');
                 $rawLogoImageUrl = (string) ($block['logo_image_url'] ?? '');
                 $logoImageUrl = e(self::staticAssetUrl($rawLogoImageUrl));
-                $logoFilter = e(self::isDefaultLogoPlaceholder($rawLogoImageUrl)
-                    ? (string) ($block['logo_filter'] ?? self::logoFilter((string) ($block['logo_filter_key'] ?? 'midnight')))
-                    : 'none');
+                $explicitLogoFilter = trim((string) ($block['logo_filter'] ?? ''));
+                $logoFilter = e($explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
+                    ? $explicitLogoFilter
+                    : (self::isDefaultLogoPlaceholder($rawLogoImageUrl)
+                        ? self::logoFilter((string) ($block['logo_filter_key'] ?? 'midnight'))
+                        : 'none'));
                 $logo = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$logoText}' style='filter:{$logoFilter}' class='h-14 w-auto max-w-[300px] object-contain'>"
                     : $logoText;
@@ -1700,7 +1703,7 @@ HTML;
                 $overlayHeader = $overlayRequested && $overlayHeaderCompatible;
                 $premiumOverlayHeader = $overlayHeader;
                 $overlayToneClass = $premiumOverlayHeader
-                    ? 'cosmic-overlay-tone-light cosmic-overlay-cta-surface'
+                    ? 'cosmic-overlay-tone-light cosmic-overlay-cta-gradient'
                     : 'cosmic-overlay-tone-dark cosmic-overlay-cta-primary';
                 $overlayHeaderClass = $overlayHeader
                     ? "cosmic-static-overlay-header {$overlayToneClass} absolute inset-x-0 top-0 border-transparent bg-transparent shadow-none"
@@ -1713,9 +1716,21 @@ HTML;
                 $headerText = 'text-slate-900';
                 $menuText = 'text-slate-600';
 
-                // CTA button follows the primary theme.
+                // CTA button follows the primary theme. Overlay mode gets a
+                // richer theme gradient so the header does not read as all-white.
                 $buttonBg = $theme['bg'];
                 $buttonText = $theme['text'];
+                $primaryThemeForHeader = self::getTheme($primaryColor ?: 'midnight');
+                $headerGradient = is_array($primaryThemeForHeader['gradient'] ?? null) ? $primaryThemeForHeader['gradient'] : [];
+                $headerPrimary = e((string) ($primaryThemeForHeader['palette']['primary'] ?? $headerGradient['from'] ?? '#0f766e'));
+                $headerGradientFrom = e((string) ($headerGradient['from'] ?? '#0f766e'));
+                $headerGradientVia = e((string) ($headerGradient['via'] ?? $headerGradient['from'] ?? '#0f766e'));
+                $headerGradientTo = e((string) ($headerGradient['to'] ?? $headerGradient['via'] ?? '#115e59'));
+                $headerGradientGlow = e((string) ($headerGradient['glow'] ?? $headerGradient['via'] ?? '#14b8a6'));
+                $overlayLogoSurfaceStyle = '';
+                $overlayCtaInlineStyle = $overlayHeader
+                    ? "background:#fff;background-color:#fff;border:1px solid color-mix(in srgb,{$headerPrimary} 50%,transparent);color:{$headerPrimary};-webkit-text-fill-color:{$headerPrimary};box-shadow:none"
+                    : 'background:var(--p,var(--cosmic-primary,#243447));background-color:var(--p,var(--cosmic-primary,#243447));border-color:var(--p,var(--cosmic-primary,#243447));color:#fff;-webkit-text-fill-color:#fff';
 
                 $renderDesktopMenu = function (array $items, int $depth = 0) use (&$renderDesktopMenu, $menuText): string {
                     $itemsHtml = '';
@@ -1883,9 +1898,11 @@ HTML;
                     }
                     .cosmic-static-overlay-header {
                         position: absolute !important;
-                        background: transparent !important;
+                        background: linear-gradient(180deg,rgba(2,6,23,.34) 0%,rgba(2,6,23,.10) 58%,rgba(2,6,23,0) 100%) !important;
                         border-bottom-color: transparent !important;
                         box-shadow: none !important;
+                        -webkit-backdrop-filter: blur(3px);
+                        backdrop-filter: blur(3px);
                     }
                     .cosmic-static-overlay-first-spark {
                         padding-top: calc(var(--cosmic-overlay-header-height, 80px) + clamp(2rem, 3.5vw, 3.75rem)) !important;
@@ -1902,7 +1919,16 @@ HTML;
                     header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-tone-light > a {
                         color: #fff !important;
                     }
-                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-tone-light > a img {
+                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'] > a {
+                        color: #fff !important;
+                        background: transparent !important;
+                        border: 0 !important;
+                        padding: 0 !important;
+                        box-shadow: none !important;
+                        -webkit-backdrop-filter: none !important;
+                        backdrop-filter: none !important;
+                    }
+                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'] > a img {
                         filter: brightness(0) invert(1) !important;
                     }
                     header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-tone-light > nav > ul > li > a {
@@ -1917,19 +1943,24 @@ HTML;
                     .cosmic-static-overlay-header.cosmic-overlay-tone-dark > nav > ul > li > a:hover {
                         color: #020617 !important;
                     }
-                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-cta-surface > nav > a {
-                        background: #fff !important;
-                        color: #1e293b !important;
-                        -webkit-text-fill-color: #1e293b !important;
-                        box-shadow: 0 10px 30px rgba(15,23,42,.14) !important;
+                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-cta-gradient > nav > a.cosmic-primary-cta,
+                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-cta-gradient > nav > a.cosmic-primary-cta * {
+                        color:{$headerPrimary} !important;
+                        -webkit-text-fill-color:{$headerPrimary} !important;
+                    }
+                    header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-cta-gradient > nav > a.cosmic-primary-cta {
+                        background:#fff !important;
+                        background-color:#fff !important;
+                        border:1px solid color-mix(in srgb,{$headerPrimary} 50%,transparent) !important;
+                        box-shadow:none !important;
                     }
                     .cosmic-static-overlay-header.cosmic-overlay-cta-primary > nav > a {
-                        box-shadow: 0 10px 30px rgba(15,23,42,.18), 0 0 0 1px rgba(255,255,255,.18) !important;
+                        box-shadow:none !important;
                     }
                 </style>
 
                 <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-page-style='" . e(self::$currentPageStyle) . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' data-cosmic-premium-overlay-header='" . ($premiumOverlayHeader ? "true" : "false") . "' class='cosmic-static-header {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 border-b {$headerBorder} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
-                    <a href='/' class='relative z-[72] text-xl font-extrabold tracking-wide {$headerText}' aria-label='{$logoText} home'>
+                    <a href='/' style='{$overlayLogoSurfaceStyle}' class='relative z-[72] text-xl font-extrabold tracking-wide {$headerText}' aria-label='{$logoText} home'>
                         {$logo}
                     </a>
 
@@ -1940,7 +1971,7 @@ HTML;
 
                         <a
                             href='{$ctaUrl}'
-                            class='cosmic-primary-cta {$buttonBg} {$buttonText} shrink-0 rounded-full px-8 py-4 text-sm font-semibold transition hover:opacity-90 lg:px-10' style='background:var(--p,var(--cosmic-primary,#243447));background-color:var(--p,var(--cosmic-primary,#243447));border-color:var(--p,var(--cosmic-primary,#243447));color:#fff;-webkit-text-fill-color:#fff'
+                            class='cosmic-primary-cta {$buttonBg} {$buttonText} shrink-0 rounded-full px-8 py-4 text-sm font-semibold transition hover:opacity-90 lg:px-10' style='{$overlayCtaInlineStyle}'
                         >
                             {$ctaLabel}
                         </a>
@@ -2010,15 +2041,14 @@ HTML;
                             if (firstSection) {
                                 firstSection.classList.add('cosmic-static-overlay-first-spark');
 
-                                // Final Page Style contract. Do not inspect the first Spark's
-                                // luminance/media anymore: Premium/Balanced + overlay gets the
-                                // white header/CTA treatment unless the active primary family is
-                                // Warm Stone / Studio White. Every other case stays normal/dark.
+                                // Premium overlay keeps the nav/logo high-contrast while the CTA
+                                // carries the active brand gradient. Do not revert the exported
+                                // header back to the legacy all-white CTA treatment at runtime.
                                 const useLightHeader = staticHeader.dataset.cosmicPremiumOverlayHeader === 'true';
 
                                 staticHeader.classList.toggle('cosmic-overlay-tone-light', useLightHeader);
                                 staticHeader.classList.toggle('cosmic-overlay-tone-dark', !useLightHeader);
-                                staticHeader.classList.toggle('cosmic-overlay-cta-surface', useLightHeader);
+                                staticHeader.classList.toggle('cosmic-overlay-cta-gradient', useLightHeader);
                                 staticHeader.classList.toggle('cosmic-overlay-cta-primary', !useLightHeader);
 
                                 const syncOverlaySpacing = () => {
@@ -2113,9 +2143,12 @@ HTML;
                 $logoImageUrl = e(self::staticAssetUrl($rawLogoImageUrl));
                 $logoHeight = max(24, min(56, (int) ($block['logo_height'] ?? 36)));
                 $logoFilterKey = (string) ($block['logo_filter_key'] ?? $block['theme'] ?? 'midnight');
-                $logoFilter = e(self::isDefaultLogoPlaceholder($rawLogoImageUrl)
-                    ? (string) ($block['logo_filter'] ?? self::logoFilter($logoFilterKey))
-                    : 'none');
+                $explicitLogoFilter = trim((string) ($block['logo_filter'] ?? ''));
+                $logoFilter = e($explicitLogoFilter !== '' && strtolower($explicitLogoFilter) !== 'none'
+                    ? $explicitLogoFilter
+                    : (self::isDefaultLogoPlaceholder($rawLogoImageUrl)
+                        ? self::logoFilter($logoFilterKey)
+                        : 'none'));
                 $footerBrand = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
                     : "<div class='text-lg font-bold text-slate-900'>{$brand}</div>";
@@ -4967,7 +5000,7 @@ HTML;
                     $html .= "<section id='{$p5Id}' class='cosmic-p5{$stateClass}' data-type='{$p5Type}' style='{$heroStyle};{$gradientVars}'><div class='p5-grid'>{$copy}{$visual}</div></section><style>
 #{$p5Id}{min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));overflow:hidden}#{$p5Id} *{box-sizing:border-box}#{$p5Id} .p5-grid{display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;gap:4rem;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));max-width:80rem;margin:auto;padding:0 3.5rem}#{$p5Id} .p5-copy{max-width:44rem}#{$p5Id} .p5-copy>p{font-size:.75rem;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.65)}#{$p5Id} h1{font-size:clamp(2.25rem,4.6vw,4.5rem);line-height:.98;letter-spacing:-.045em;margin:1.25rem 0}#{$p5Id} .p5-body{max-width:38rem;line-height:1.8;color:rgba(255,255,255,.72)}#{$p5Id} .p5-actions{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:2rem}#{$p5Id} .p5-actions a{padding:.85rem 1.3rem;border-radius:999px;background:#fff;color:#0f172a;text-decoration:none;font-weight:800}#{$p5Id} .p5-actions a.secondary{background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.25)}#{$p5Id} img{width:100%;height:100%;object-fit:cover}#{$p5Id} .p5-device,#{$p5Id} .p5-screens,#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento,#{$p5Id} .p5-abstract{position:relative;height:30rem}
 #{$p5Id} .p5-device img:first-child{position:absolute;inset:8% 4%;height:76%;border:8px solid #1e293b;border-radius:1.8rem;animation:p5Float 5s ease-in-out infinite}#{$p5Id} .p5-device img:last-child{position:absolute;right:2%;bottom:2%;width:28%;height:58%;border:7px solid #1e293b;border-radius:1.7rem;animation:p5Float 4.4s .6s ease-in-out infinite}#{$p5Id} .p5-screens img{position:absolute;left:50%;top:50%;width:38%;height:88%;border-radius:1.6rem;transform:translate(-50%,-50%);box-shadow:0 2rem 5rem #0008;border:1px solid rgba(255,255,255,.15)}#{$p5Id} .p5-screens img:nth-child(2){transform:translate(-115%,-50%) scale(.82);opacity:.55}#{$p5Id} .p5-screens img:nth-child(3){transform:translate(15%,-50%) scale(.82);opacity:.55}#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}#{$p5Id} .p5-editorial img,#{$p5Id} .p5-bento img{border-radius:1.6rem;min-height:0}#{$p5Id} .p5-editorial img:first-child,#{$p5Id} .p5-bento img:first-child{grid-row:span 2}#{$p5Id} .p5-bento img{transition:transform .35s ease}#{$p5Id} .p5-bento img:hover{transform:scale(1.025)}
-#{$p5Id} .p5-abstract{border:1px solid rgba(255,255,255,.12);border-radius:2rem;background-image:radial-gradient(circle at 70% 25%,var(--p5-glow-soft),transparent 38%),linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:auto,42px 42px,42px 42px}#{$p5Id}[data-type='hero_light_trails_premium'] .p5-abstract{background-image:linear-gradient(var(--p5-angle),var(--p5-from),var(--p5-via),var(--p5-to))}#{$p5Id} .p5-abstract i{position:absolute;left:-20%;width:140%;height:1px;background:linear-gradient(90deg,transparent,var(--p5-glow),transparent);animation:p5Beam 4s ease-in-out infinite}#{$p5Id} .p5-abstract i:nth-child(1){top:20%}#{$p5Id} .p5-abstract i:nth-child(2){top:40%;animation-delay:.4s}#{$p5Id} .p5-abstract i:nth-child(3){top:60%;animation-delay:.8s}#{$p5Id} .p5-abstract i:nth-child(4){top:80%;animation-delay:1.2s}
+#{$p5Id} .p5-abstract{border:1px solid rgba(255,255,255,.12);border-radius:2rem;background-image:radial-gradient(circle at 70% 25%,var(--p5-glow-soft),transparent 38%),linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:auto,42px 42px,42px 42px}#{$p5Id}[data-type='hero_light_trails_premium'] .p5-abstract{background-image: none;left:-20%;width:140%;height:1px;background:linear-gradient(90deg,transparent,var(--p5-glow),transparent);animation:p5Beam 4s ease-in-out infinite}#{$p5Id} .p5-abstract i:nth-child(1){top:20%}#{$p5Id} .p5-abstract i:nth-child(2){top:40%;animation-delay:.4s}#{$p5Id} .p5-abstract i:nth-child(3){top:60%;animation-delay:.8s}#{$p5Id} .p5-abstract i:nth-child(4){top:80%;animation-delay:1.2s}
 #{$p5Id}.cosmic-p5-light{background:#fff!important;color:#0f172a!important}#{$p5Id}.cosmic-p5-light .p5-copy>p{color:#64748b}#{$p5Id}.cosmic-p5-light .p5-body{color:#475569}#{$p5Id}.cosmic-p5-light .p5-actions a{background:var(--p5-primary);color:#fff}#{$p5Id}.cosmic-p5-light .p5-actions a.secondary{background:rgba(255,255,255,.78);color:#0f172a;border-color:#cbd5e1}#{$p5Id}.cosmic-p5-light .p5-abstract{border-color:#e2e8f0;background-image:radial-gradient(circle at 70% 25%,var(--p5-glow-soft),transparent 38%),linear-gradient(rgba(100,116,139,.14) 1px,transparent 1px),linear-gradient(90deg,rgba(100,116,139,.14) 1px,transparent 1px);background-size:auto,42px 42px,42px 42px}#{$p5Id}.cosmic-p5-light[data-type='hero_light_trails_premium'] .p5-abstract{background:rgba(255,255,255,.65)}#{$p5Id}.cosmic-p5-light .p5-device img{border-color:#cbd5e1}#{$p5Id}.cosmic-p5-light .p5-screens img{border-color:#e2e8f0}
 @keyframes p5Float{50%{transform:translateY(-12px)}}@keyframes p5Beam{50%{transform:translateX(14%);opacity:.3}}@media(max-width:850px){#{$p5Id} .p5-grid{grid-template-columns:1fr;padding:0 1.5rem;gap:2rem}#{$p5Id} .p5-device,#{$p5Id} .p5-screens,#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento,#{$p5Id} .p5-abstract{height:24rem}}@media(prefers-reduced-motion:reduce){#{$p5Id} *{animation:none!important;scroll-behavior:auto!important}}
 </style>";
@@ -5197,7 +5230,7 @@ HTML;
 #{$motionId} .cosmic-motion2-scroll-media{position:absolute;inset:0;overflow:hidden;will-change:transform;transform:scale(1.04)}#{$motionId} .cosmic-motion2-scroll-media img{width:100%;height:100%;object-fit:cover}#{$motionId}.cosmic-motion2-reveal .cosmic-motion2-scroll-media{clip-path:inset(8% 4% 8% 4% round 28px)}
 #{$motionId} .cosmic-motion2-video{position:absolute;inset:0;overflow:hidden;background:#0f172a}#{$motionId} .cosmic-motion2-video video{width:100%;height:100%;object-fit:cover}#{$motionId}.cosmic-motion2-video-split{display:grid;grid-template-columns:.9fr 1.1fr;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-copy-wrap{grid-column:1;grid-row:1;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-video{position:relative;grid-column:2;grid-row:1;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-media-gradient{background:linear-gradient(90deg,rgba(2,6,23,.25),rgba(2,6,23,.02))}
 #{$motionId}.cosmic-motion2-pinned{position:relative;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));background:#020617;color:#fff}#{$motionId} .cosmic-motion2-sticky{position:relative;height:calc(100svh - var(--cosmic-header-flow-offset,0px));overflow:hidden;isolation:isolate}#{$motionId} .cosmic-motion2-story-media{position:absolute;inset:0;opacity:0;transform:scale(1.04);transition:opacity .7s ease,transform .7s ease}#{$motionId} .cosmic-motion2-story-media.is-active{opacity:1;transform:scale(1)}#{$motionId} .cosmic-motion2-story-media img{width:100%;height:100%;object-fit:cover}#{$motionId} .cosmic-motion2-dots{position:absolute;right:2rem;bottom:2rem;z-index:5;display:flex;gap:.5rem}#{$motionId} .cosmic-motion2-dots span{display:block;width:20px;height:4px;border-radius:999px;background:rgba(255,255,255,.3);transition:.35s ease}#{$motionId} .cosmic-motion2-dots span.is-active{width:48px;background:#fff}
-@keyframes cosmicAurora{$motionId}{0%,100%{transform:translate3d(-8%,-5%,0) rotate(-8deg) scale(1)}50%{transform:translate3d(10%,8%,0) rotate(8deg) scale(1.12)}}@keyframes cosmicMesh{$motionId}{0%,100%{transform:translate3d(-4%,-3%,0) scale(1)}33%{transform:translate3d(7%,-5%,0) scale(1.08)}66%{transform:translate3d(2%,8%,0) scale(1.13)}}#{$motionId}.cosmic-motion2-gradient{background:linear-gradient(var(--cg-angle),var(--cg-from),var(--cg-via),var(--cg-to))}#{$motionId} .cosmic-motion2-shade{position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(2,6,23,.06),rgba(2,6,23,.68))}#{$motionId} .cosmic-motion2-aurora{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform}#{$motionId} .cosmic-motion2-aurora-a{left:-15%;top:-35%;width:75%;height:90%;background:var(--cg-glow-strong);animation:cosmicAurora{$motionId} 14s ease-in-out infinite}#{$motionId} .cosmic-motion2-aurora-b{right:-15%;bottom:-30%;width:70%;height:85%;background:color-mix(in srgb,var(--cg-via) 72%,transparent);animation:cosmicAurora{$motionId} 18s ease-in-out infinite reverse}#{$motionId} .cosmic-motion2-aurora-c{left:40%;top:25%;width:45%;height:45%;background:var(--cg-glow-soft);filter:blur(100px)}#{$motionId} .cosmic-motion2-mesh{position:absolute;inset:-25%;opacity:.88;filter:blur(58px);background:radial-gradient(circle at 20% 25%,var(--cg-glow-strong),transparent 28%),radial-gradient(circle at 75% 20%,var(--cg-glow-soft),transparent 31%),radial-gradient(circle at 65% 78%,color-mix(in srgb,var(--cg-via) 75%,transparent),transparent 30%),radial-gradient(circle at 25% 80%,color-mix(in srgb,var(--cg-to) 72%,transparent),transparent 28%);animation:cosmicMesh{$motionId} 16s ease-in-out infinite}#{$motionId} .cosmic-motion2-grid{position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.035) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.035) 1px,transparent 1px);background-size:56px 56px}
+@keyframes cosmicAurora{$motionId}{0%,100%{transform:translate3d(-8%,-5%,0) rotate(-8deg) scale(1)}50%{transform:translate3d(10%,8%,0) rotate(8deg) scale(1.12)}}@keyframes cosmicMesh{$motionId}{0%,100%{transform:translate3d(-4%,-3%,0) scale(1)}33%{transform:translate3d(7%,-5%,0) scale(1.08)}66%{transform:translate3d(2%,8%,0) scale(1.13)}}#{$motionId}.cosmic-motion2-gradient{background:linear-gradient(var(--cg-angle),var(--cg-from),var(--cg-via),var(--cg-to))}#{$motionId} .cosmic-motion2-shade{position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(2,6,23,.06),rgba(2,6,23,.68))}#{$motionId} .cosmic-motion2-aurora{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform}#{$motionId} .cosmic-motion2-aurora-a{left:-15%;top:-35%;width:75%;height:90%;background:var(--cg-glow-strong);animation:cosmicAurora{$motionId} 14s ease-in-out infinite}#{$motionId} .cosmic-motion2-aurora-b{right:-15%;bottom:-30%;width:70%;height:85%;background:color-mix(in srgb,var(--cg-via) 72%,transparent);animation:cosmicAurora{$motionId} 18s ease-in-out infinite reverse}#{$motionId} .cosmic-motion2-aurora-c{left:40%;top:25%;width:45%;height:45%;background:var(--cg-glow-soft);filter:blur(100px)}#{$motionId} .cosmic-motion2-mesh{position:absolute;inset:-25%;opacity:.88;filter:blur(58px);background:radial-gradient(circle at 20% 25%,var(--cg-glow-strong),transparent 28%),radial-gradient(circle at 75% 20%,var(--cg-glow-soft),transparent 31%),radial-gradient(circle at 65% 78%,color-mix(in srgb,var(--cg-via) 75%,transparent),transparent 30%),radial-gradient(circle at 25% 80%,color-mix(in srgb,var(--cg-to) 72%,transparent),transparent 28%);animation:cosmicMesh{$motionId} 16s ease-in-out infinite}#{$motionId} .cosmic-motion2-grid{position:absolute;inset:0;background-image: none;background-size:56px 56px}
 #{$motionId}.cosmic-motion2-light,#{$motionId}.cosmic-motion2-pinned.cosmic-motion2-light{background:#fff;color:#0f172a}#{$motionId}.cosmic-motion2-light .cosmic-motion2-eyebrow{color:#64748b}#{$motionId}.cosmic-motion2-light .cosmic-motion2-body{color:#475569}#{$motionId}.cosmic-motion2-light .cosmic-motion2-primary{background:var(--cosmic-primary-bg,#0f766e);color:#fff}#{$motionId}.cosmic-motion2-light .cosmic-motion2-secondary{border-color:#cbd5e1;background:rgba(255,255,255,.72);color:#0f172a}#{$motionId}.cosmic-motion2-light .cosmic-motion2-media-gradient{background:linear-gradient(90deg,rgba(255,255,255,.78),rgba(255,255,255,.34),rgba(255,255,255,.12))}#{$motionId}.cosmic-motion2-light.cosmic-motion2-gradient{background:#fff!important}#{$motionId}.cosmic-motion2-light .cosmic-motion2-aurora,#{$motionId}.cosmic-motion2-light .cosmic-motion2-mesh,#{$motionId}.cosmic-motion2-light .cosmic-motion2-grid{opacity:.10!important}#{$motionId}.cosmic-motion2-light .cosmic-motion2-shade{background:rgba(255,255,255,.92)}#{$motionId}.cosmic-motion2-light .cosmic-motion2-dots span{background:rgba(100,116,139,.35)}#{$motionId}.cosmic-motion2-light .cosmic-motion2-dots span.is-active{background:#334155}
 @media(max-width:900px){#{$motionId} .cosmic-motion2-copy-wrap{padding:0 1.5rem}#{$motionId}.cosmic-motion2-video-split{display:block;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-video{position:absolute;inset:0;min-height:0}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-copy-wrap{min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$motionId}.cosmic-motion2-pinned{min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$motionId} .cosmic-motion2-sticky{height:calc(100svh - var(--cosmic-header-flow-offset,0px))}}
 @media(prefers-reduced-motion:reduce){#{$motionId} .cosmic-motion2-scroll-media,#{$motionId} .cosmic-motion2-story-media,#{$motionId} .cosmic-motion2-aurora,#{$motionId} .cosmic-motion2-mesh{animation:none!important;transition:none!important;transform:none!important}#{$motionId}.cosmic-motion2-reveal .cosmic-motion2-scroll-media{clip-path:none!important}}

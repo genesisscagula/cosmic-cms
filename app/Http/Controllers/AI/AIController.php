@@ -45,7 +45,6 @@ class AIController extends Controller
             'website_id' => ['nullable', 'integer', 'exists:websites,id'],
             'header_overlay_enabled' => ['nullable', 'boolean'],
             'design_seed' => ['nullable', 'string', 'max:100'],
-            'brand_mode' => ['nullable', 'string', 'in:keep,new'],
         ]);
 
         $website = null;
@@ -59,7 +58,6 @@ class AIController extends Controller
         $generationPrompt = $this->withLunaCreativeContext(
             $generationPrompt,
             (string) ($validated['design_seed'] ?? ''),
-            (string) ($validated['brand_mode'] ?? 'keep'),
         );
 
         $generationType = $validated['generation_type'] ?? (count($validated['sections']) > 1 ? 'page' : 'section');
@@ -247,12 +245,10 @@ TEXT;
      * remain manual choices; generated pages are encouraged to compose a fresh
      * combination and visual rhythm on every run.
      */
-    private function withLunaCreativeContext(string $prompt, string $seed = '', string $brandMode = 'keep', array $avoidSections = []): string
+    private function withLunaCreativeContext(string $prompt, string $seed = '', array $avoidSections = []): string
     {
         $seed = trim($seed) !== '' ? trim($seed) : Str::uuid()->toString();
-        $brandRule = $brandMode === 'new'
-            ? 'Explore a fresh brand direction: a different color-family mood, typography character, spacing rhythm, image art direction, and composition personality. Keep factual business identity intact.'
-            : 'Preserve the current brand identity/color-family intent, but redesign the page composition, section pacing, image treatment, and layout rhythm so it does not feel like a duplicate generation.';
+        $brandRule = 'Preserve the current brand identity/color-family intent, but redesign the page composition, section pacing, image treatment, and layout rhythm so it does not feel like a duplicate generation.';
 
         $avoid = collect($avoidSections)
             ->filter(fn ($value) => is_string($value) && trim($value) !== '')
@@ -308,7 +304,6 @@ TEXT;
             'header_overlay_enabled' => ['nullable', 'boolean'],
             'website_id' => ['nullable', 'integer', 'exists:websites,id'],
             'design_seed' => ['nullable', 'string', 'max:100'],
-            'brand_mode' => ['nullable', 'string', 'in:keep,new'],
             'avoid_sections' => ['nullable', 'array', 'max:30'],
             'avoid_sections.*' => ['string', 'max:120'],
         ]);
@@ -321,15 +316,19 @@ TEXT;
         $prompt = $this->withLunaCreativeContext(
             $prompt,
             (string) ($validated['design_seed'] ?? ''),
-            (string) ($validated['brand_mode'] ?? 'keep'),
             is_array($validated['avoid_sections'] ?? null) ? $validated['avoid_sections'] : [],
         );
 
         if (! empty($validated['design_seed'])) {
+            $plan = $this->lunaCategoryPages->planDetailed($prompt);
+
             return response()->json([
-                'sections' => $this->lunaCategoryPages->plan($prompt),
+                'sections' => $plan['sections'],
                 'image_folder' => $this->pageGenerationService->resolveLayoutFolder($prompt),
-                'planner' => 'luna_category_schema',
+                'planner' => $plan['planner'],
+                'template_key' => $plan['template_key'],
+                'template_name' => $plan['template_name'],
+                'metadata_candidates' => $plan['metadata_candidates'],
             ]);
         }
 
@@ -366,9 +365,16 @@ TEXT;
             }
         }
 
-        return response()->json(
-            $this->pageGenerationService->selectSections($prompt)
-        );
+        $plan = $this->lunaCategoryPages->planDetailed($prompt);
+
+        return response()->json([
+            'sections' => $plan['sections'],
+            'image_folder' => $this->pageGenerationService->resolveLayoutFolder($prompt),
+            'planner' => $plan['planner'],
+            'template_key' => $plan['template_key'],
+            'template_name' => $plan['template_name'],
+            'metadata_candidates' => $plan['metadata_candidates'],
+        ]);
     }
 
     public function selectSection(Request $request)

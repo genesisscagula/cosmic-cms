@@ -31,6 +31,23 @@ return [
         'query' => 'commercial construction contractor building site professional photography',
         'aliases' => ['contractor', 'builder', 'home builder', 'renovation', 'remodeling', 'remodelling'],
     ],
+    'deep-sea-exploration' => [
+        'label' => 'Deep-Sea & Ocean Exploration',
+        'query' => 'deep ocean submersible research vessel underwater expedition marine science shipwreck exploration professional photography',
+        'aliases' => [
+            'deep sea exploration',
+            'deep-sea exploration',
+            'ocean exploration',
+            'ocean expedition',
+            'submersible expedition',
+            'submersible expeditions',
+            'crewed submersible',
+            'research vessel',
+            'marine science expedition',
+            'underwater research',
+            'shipwreck exploration',
+        ],
+    ],
     'dentist' => [
         'label' => 'Dental Clinic',
         'query' => 'modern dental clinic dentist patient care professional photography',

@@ -28,7 +28,7 @@ final class SelectedSchemaLoader
             [
                 'sections' => array_values($sections),
                 'schema_map_hash' => hash('sha256', json_encode($schemaMap) ?: serialize($schemaMap)),
-                'version' => '16.4.0',
+                'version' => '17.0.0',
             ],
             (int) config('openai.schema_cache_ttl', 86400),
             fn () => $this->resolveUncached($sections, $schemaMap),

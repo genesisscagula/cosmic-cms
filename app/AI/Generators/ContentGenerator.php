@@ -11,6 +11,7 @@ class ContentGenerator
 
     private const IMAGE_FOLDERS = [
         'construction',
+        'deep-sea-exploration',
         'restaurant',
         'coffee',
         'bakery',
@@ -127,7 +128,7 @@ PROMPT;
                 throw new \LogicException("Schema method [{$method}] for Spark [{$section}] does not exist.");
             }
 
-            $system .= $this->{$method}();
+            $system .= $this->schemaForSpark($section, $method);
         }
 
         $system .= <<<'RULES'
@@ -149,6 +150,40 @@ GLOBAL CONTENT CONTRACT
 RULES;
 
         return $system;
+    }
+
+    /**
+     * Render a schema for the exact selected Spark.
+     *
+     * Some premium Sparks intentionally share a schema method. The method may
+     * describe a base Spark type, so normalize the declared type to the
+     * selected Spark ID before it reaches Luna. This prevents valid generated
+     * content from being discarded solely because a shared contract declared
+     * its base type.
+     */
+    private function schemaForSpark(string $spark, string $method): string
+    {
+        $schema = (string) $this->{$method}();
+
+        if ($schema === '') {
+            throw new \LogicException("Schema method [{$method}] for Spark [{$spark}] returned an empty contract.");
+        }
+
+        $schema = preg_replace(
+            '/(^|\n)(\s*-\s*type\s*=\s*)[a-zA-Z0-9_-]+/m',
+            '$1$2' . $spark,
+            $schema,
+            1
+        ) ?? $schema;
+
+        $schema = preg_replace(
+            '/(^|\n)(\s*type\s*=\s*)[a-zA-Z0-9_-]+/m',
+            '$1$2' . $spark,
+            $schema,
+            1
+        ) ?? $schema;
+
+        return $schema;
     }
 
     private function buildUserPrompt(string $prompt, array $selectedSections): string
@@ -606,34 +641,135 @@ PROMPT;
     {
         return <<<TXT
 
-    portfolio_before_after
-    - type = portfolio_before_after
-    - Generate a truthful transformation comparison using supplied project facts. Never invent measurable outcomes.
-
-    portfolio_filterable
-    - type = portfolio_filterable
-    - Generate six projects with concise categories. Use only project/client facts supported by the prompt.
-
-    portfolio_animated
-    - type = portfolio_animated
-    - Generate four image-led project cards. Motion is visual treatment; do not invent claims.
-
-    portfolio_project_timeline
-    - type = portfolio_project_timeline
-    - Generate four plausible project stages based on supplied process details. Do not present invented client facts as real.
-
     portfolio_case_study
     - type = portfolio_case_study
     - theme = auto
-    - eyebrow, heading, text, project_title, project_meta, image_url
-    - challenge_label, challenge_text, approach_label, approach_text, outcome_label, outcome_text
-    - metric_value, metric_label, primary_label, primary_url, footnote
+    - eyebrow
+    - heading
+    - text
+    - project_title
+    - project_meta
+    - image_url = ""
+    - challenge_label
+    - challenge_text
+    - approach_label
+    - approach_text
+    - outcome_label
+    - outcome_text
+    - metric_value
+    - metric_label
+    - primary_label
+    - primary_url
+    - footnote
 
     Requirements:
     - image_url must be an empty string; the application assigns an image.
     - Never invent a client name, revenue figure, percentage, award, testimonial, or performance result.
     - If no verified metric was supplied, metric_value must be "—" and metric_label should invite the user to add a verified result.
     - Keep challenge, approach, and outcome useful but conservative and grounded in supplied context.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function portfolioBeforeAfterSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_before_after
+    - type = portfolio_before_after
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - project_title
+    - project_meta
+    - before_label
+    - after_label
+    - before_image_url = ""
+    - after_image_url = ""
+    - outcome_label
+    - outcome_text
+    - primary_label
+    - primary_url
+
+    Requirements:
+    - Describe a transformation only from supplied facts. Never invent measurable outcomes.
+    - before_image_url and after_image_url must be empty strings; the application assigns images.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function portfolioFilterableSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_filterable
+    - type = portfolio_filterable
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - project_one_title, project_one_meta, project_one_category, project_one_image_url
+      through project_six_title, project_six_meta, project_six_category, project_six_image_url
+
+    Requirements:
+    - Generate exactly six concise project entries with useful category labels.
+    - All project image URL fields must be empty strings; the application assigns images.
+    - Never invent clients, awards, dates, locations, or performance results.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function portfolioAnimatedSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_animated
+    - type = portfolio_animated
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - primary_label
+    - primary_url
+    - project_one_title, project_one_meta, project_one_image_url
+      through project_four_title, project_four_meta, project_four_image_url
+
+    Requirements:
+    - Generate exactly four image-led project entries.
+    - All project image URL fields must be empty strings; the application assigns images.
+    - Motion is a visual treatment only; never invent outcomes or client claims.
+    - Keep primary_url as # when no destination was supplied.
+
+    TXT;
+    }
+
+    private function portfolioProjectTimelineSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_project_timeline
+    - type = portfolio_project_timeline
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - project_title
+    - project_meta
+    - primary_label
+    - primary_url
+    - step_one_number, step_one_title, step_one_text, step_one_image_url
+      through step_four_number, step_four_title, step_four_text, step_four_image_url
+
+    Requirements:
+    - Generate exactly four concise stages grounded in the supplied project/process context.
+    - All step image URL fields must be empty strings; the application assigns images.
+    - Do not present invented client facts, dates, awards, or results as real.
     - Keep primary_url as # when no destination was supplied.
 
     TXT;
@@ -2379,5 +2515,77 @@ PROMPT;
 
     TXT;
     }
+
+    private function dynamicBlogHubSchema(): string
+    {
+        return <<<TXT
+
+    blog_hub
+    - type = blog_hub
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+
+    Requirements:
+    - Write an editorial, business-relevant introduction.
+    - Do not invent article counts, authors, dates, or published resources.
+
+    TXT;
+    }
+
+    private function dynamicLatestResourcesSchema(): string
+    {
+        return <<<TXT
+
+    latest_resources
+    - type = latest_resources
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+
+    Requirements:
+    - Write a concise introduction to the resource area.
+    - Do not invent specific downloadable assets or publication claims.
+
+    TXT;
+    }
+
+    private function dynamicCommerceProductGridSchema(): string
+    {
+        return <<<TXT
+
+    commerce_product_grid
+    - type = commerce_product_grid
+    - theme = auto
+    - heading
+    - text
+    - limit = 8
+
+    Requirements:
+    - Introduce the product collection without inventing products, prices, stock, discounts, or guarantees.
+    - Keep limit at 8.
+
+    TXT;
+    }
+
+    private function dynamicCommerceBenefitsStripSchema(): string
+    {
+        return <<<TXT
+
+    commerce_benefits_strip
+    - type = commerce_benefits_strip
+    - theme = auto
+    - heading
+    - text
+
+    Requirements:
+    - Use neutral shopping reassurance.
+    - Never invent shipping times, returns policies, warranties, payment terms, or guarantees.
+
+    TXT;
+    }
+
 
 }

@@ -28,6 +28,7 @@ final class GeneratedContentValidator
         $validated = [];
         $created = [];
         $repairedFields = 0;
+        $specs = $this->specs();
 
         foreach ($selectedSparks as $spark) {
             $block = $byType[$spark] ?? [];
@@ -36,6 +37,8 @@ final class GeneratedContentValidator
             }
 
             [$normalized, $repairs] = $this->normalizeBlock($spark, $block);
+            $spec = $specs[$spark] ?? [];
+            $this->assertCriticalContent($spark, $normalized, $spec);
             $validated[] = $normalized;
             $repairedFields += $repairs;
         }
@@ -52,6 +55,67 @@ final class GeneratedContentValidator
                 'changed' => $created !== [] || $discarded !== [] || $repairedFields > 0,
             ],
         ];
+    }
+
+    /**
+     * Do not let an AI generation silently succeed with editor placeholders or
+     * an empty primary message. Throwing here sends the response through the
+     * existing repair attempt instead of persisting a visually broken Spark.
+     */
+    private function assertCriticalContent(string $spark, array $block, array $spec): void
+    {
+        $critical = ['heading', 'title', 'text', 'description', 'tagline', 'subtitle'];
+        $required = array_values(array_intersect($critical, array_keys($spec)));
+
+        // A heading/title is the minimum viable content contract when present.
+        $headlineKeys = array_values(array_intersect(['heading', 'title'], $required));
+        foreach ($headlineKeys as $key) {
+            if ($this->isMissingOrPlaceholder($block[$key] ?? null)) {
+                throw new \UnexpectedValueException(
+                    "Spark [{$spark}] returned missing or placeholder content for required field [{$key}]."
+                );
+            }
+        }
+
+        // Reject raw editor placeholder language anywhere in the generated tree.
+        if ($this->containsEditorPlaceholder($block)) {
+            throw new \UnexpectedValueException(
+                "Spark [{$spark}] returned editor placeholder copy instead of generated content."
+            );
+        }
+    }
+
+    private function containsEditorPlaceholder(mixed $value): bool
+    {
+        if (is_array($value)) {
+            foreach ($value as $item) {
+                if ($this->containsEditorPlaceholder($item)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        return is_string($value) && $this->isPlaceholderText($value);
+    }
+
+    private function isMissingOrPlaceholder(mixed $value): bool
+    {
+        return ! is_string($value) || trim($value) === '' || $this->isPlaceholderText($value);
+    }
+
+    private function isPlaceholderText(string $value): bool
+    {
+        $value = strtolower(trim($value));
+
+        if ($value === '') {
+            return false;
+        }
+
+        return preg_match(
+            '/^(click to add text|add text|your (heading|title|text) here|heading here|title here|lorem ipsum|feature \d+|faq \d+|sample (heading|title|text)|placeholder)$/i',
+            $value
+        ) === 1;
     }
 
     private function normalizeBlock(string $spark, array $block): array
@@ -155,6 +219,12 @@ final class GeneratedContentValidator
         }
 
         return [is_scalar($value) ? (string) $value : '', ! is_scalar($value)];
+    }
+
+    /** @return array<int,string> */
+    public function contractTypes(): array
+    {
+        return array_keys($this->specs());
     }
 
     private function specs(): array
@@ -338,6 +408,10 @@ final class GeneratedContentValidator
             'ai_generation_process_premium' => ['eyebrow'=>'string','heading'=>'string','text'=>'string','items'=>['count'=>3,'items'=>['title'=>'string','text'=>'string']],'note'=>'string'],
             'ai_statistics_premium' => ['eyebrow'=>'string','heading'=>'string','text'=>'string','items'=>['count'=>3,'items'=>['title'=>'string','text'=>'string']],'note'=>'string'],
             'ai_prompt_examples_premium' => ['eyebrow'=>'string','heading'=>'string','text'=>'string','items'=>['count'=>3,'items'=>['title'=>'string','text'=>'string']],'note'=>'string'],
+            'blog_hub' => ['eyebrow'=>'string','heading'=>'string','text'=>'string'],
+            'latest_resources' => ['eyebrow'=>'string','heading'=>'string','text'=>'string'],
+            'commerce_product_grid' => ['heading'=>'string','text'=>'string','limit'=>'int'],
+            'commerce_benefits_strip' => ['heading'=>'string','text'=>'string'],
             'contact_details' => ['eyebrow'=>'string','heading'=>'string','text'=>'string','email'=>'string','phone'=>'string','address'=>'string','hours'=>'string'],
             'location_map' => ['eyebrow'=>'string','heading'=>'string','text'=>'string','location_name'=>'string','address'=>'string','service_area'=>'string','directions_label'=>'string'],
             'case_studies_grid' => ['eyebrow'=>'string','heading'=>'string','text'=>'string','studies'=>['count'=>3,'items'=>['category'=>'string','title'=>'string','summary'=>'string','result'=>'string','image_url'=>'image','link_label'=>'string']]],

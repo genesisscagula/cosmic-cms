@@ -4,6 +4,7 @@ import { EditableText } from "../Shared/EditableText";
 import { EditableButton } from "../Shared/EditableButton";
 import { EditableImageGallery } from "../Shared/EditableImageGallery";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { getSectionBackgroundClass } from "../../../../theme/Theme";
 import { getHeroThemeState } from "../../../../theme/heroTheme";
 
 const base={eyebrow:"DESIGNED TO MOVE",heading:"Move the story forward.",text:"Lightweight animation adds depth while keeping the message and conversion path clear.",primary_label:"Get started",primary_url:"/start",secondary_label:"Explore more",secondary_url:"/features",image_url:"/storage/cms-images/background/background-1.avif",image_url_2:"/storage/cms-images/background/background-2.avif",image_url_3:"/storage/cms-images/background/background-3.avif"};
@@ -20,7 +21,7 @@ function heroVisualState(block, globalTheme){
   const primaryKey=typeof globalTheme==="string"?globalTheme:(globalTheme?.primary||"midnight");
   const primaryTheme=colorFamilies[primaryKey]||colorFamilies.midnight;
   const gradient=primaryTheme.gradient||colorFamilies.midnight.gradient;
-  const sectionClass=state.isLight?`${state.theme.bg} ${state.theme.text}`:(state.isPrimary?`${primaryTheme.bg} ${primaryTheme.text}`:"bg-slate-950 text-white");
+  const sectionClass=state.isLight?`${state.theme.bg} ${state.theme.text}`:(state.isPrimary?`${getSectionBackgroundClass(primaryKey, "deep")} ${primaryTheme.text}`:"bg-slate-950 text-white");
   return {...state,primaryTheme,gradient,sectionClass};
 }
 

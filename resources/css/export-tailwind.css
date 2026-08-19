@@ -1,3 +1,45 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Cosmic premium theme-gradient engine: section depth without tinting buttons/cards. */
+section.cosmic-theme-gradient{background-color:var(--cosmic-section-mid,#243447);background-image:linear-gradient(var(--cosmic-section-angle,120deg),var(--cosmic-section-from,#17283B) 0%,var(--cosmic-section-mid,#243447) 48%,var(--cosmic-section-to,#2B2447) 100%)!important;background-size:100% 100%;}
+section.cosmic-theme-gradient--subtle{background-image:linear-gradient(var(--cosmic-section-angle,120deg),color-mix(in srgb,var(--cosmic-section-from) 72%,var(--cosmic-section-mid)) 0%,var(--cosmic-section-mid) 48%,color-mix(in srgb,var(--cosmic-section-to) 70%,var(--cosmic-section-mid)) 100%)!important;}
+section.cosmic-theme-gradient--deep{background-image:linear-gradient(var(--cosmic-section-angle,120deg),var(--cosmic-section-from) 0%,var(--cosmic-section-mid) 48%,var(--cosmic-section-to) 100%)!important;}
+.cosmic-theme-gradient--emerald{--cosmic-section-from:#064B3D;--cosmic-section-mid:#0B5D4B;--cosmic-section-to:#0C4B55;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--coffee{--cosmic-section-from:#352014;--cosmic-section-mid:#4A2A14;--cosmic-section-to:#49301F;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--rose{--cosmic-section-from:#68233E;--cosmic-section-mid:#8C3156;--cosmic-section-to:#663148;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--dark{--cosmic-section-from:#18202A;--cosmic-section-mid:#1F2937;--cosmic-section-to:#2B2732;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--ocean{--cosmic-section-from:#173F68;--cosmic-section-mid:#24598F;--cosmic-section-to:#21436E;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--indigo{--cosmic-section-from:#38347D;--cosmic-section-mid:#4F46A5;--cosmic-section-to:#3A315E;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--amber{--cosmic-section-from:#7E4B05;--cosmic-section-mid:#A16207;--cosmic-section-to:#755A11;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--charcoal{--cosmic-section-from:#22262B;--cosmic-section-mid:#30343B;--cosmic-section-to:#38312F;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--violet{--cosmic-section-from:#403075;--cosmic-section-mid:#5B3FA3;--cosmic-section-to:#3D315F;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--teal{--cosmic-section-from:#10534F;--cosmic-section-mid:#186B66;--cosmic-section-to:#174C5A;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--ruby{--cosmic-section-from:#7C1F3D;--cosmic-section-mid:#A12649;--cosmic-section-to:#6E2B3E;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--forest{--cosmic-section-from:#21472F;--cosmic-section-mid:#2E5E3E;--cosmic-section-to:#294C42;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--midnight{--cosmic-section-from:#17283B;--cosmic-section-mid:#243447;--cosmic-section-to:#2B2447;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--obsidian{--cosmic-section-from:#111111;--cosmic-section-mid:#171717;--cosmic-section-to:#27211F;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--navy{--cosmic-section-from:#173555;--cosmic-section-mid:#214B7A;--cosmic-section-to:#25365F;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--void{--cosmic-section-from:#0C1018;--cosmic-section-mid:#111827;--cosmic-section-to:#1C1D36;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--espresso{--cosmic-section-from:#382218;--cosmic-section-mid:#4B2E1E;--cosmic-section-to:#473422;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--terracotta{--cosmic-section-from:#78351F;--cosmic-section-mid:#A04A2C;--cosmic-section-to:#6A4530;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--asphalt{--cosmic-section-from:#202020;--cosmic-section-mid:#2A2A2A;--cosmic-section-to:#34302E;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--sapphire{--cosmic-section-from:#0B3A64;--cosmic-section-mid:#0F4C81;--cosmic-section-to:#162E63;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--plum{--cosmic-section-from:#451938;--cosmic-section-mid:#5B214A;--cosmic-section-to:#46203D;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--olive{--cosmic-section-from:#3A4622;--cosmic-section-mid:#4D5D2D;--cosmic-section-to:#3D4D31;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--slate{--cosmic-section-from:#293542;--cosmic-section-mid:#374151;--cosmic-section-to:#3E3B4A;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--slate-light{--cosmic-section-from:#17283B;--cosmic-section-mid:#243447;--cosmic-section-to:#2B2447;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--slate-950{--cosmic-section-from:#17283B;--cosmic-section-mid:#243447;--cosmic-section-to:#2B2447;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--burgundy{--cosmic-section-from:#270E15;--cosmic-section-mid:#6B2035;--cosmic-section-to:#471C1C;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--sage{--cosmic-section-from:#243222;--cosmic-section-mid:#667A63;--cosmic-section-to:#344E38;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--sandstone{--cosmic-section-from:#40291C;--cosmic-section-mid:#B46F47;--cosmic-section-to:#5D4C2C;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--copper{--cosmic-section-from:#331D14;--cosmic-section-mid:#8B4A2F;--cosmic-section-to:#523D23;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--arctic{--cosmic-section-from:#16272D;--cosmic-section-mid:#37677A;--cosmic-section-to:#27374A;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--blush{--cosmic-section-from:#3A2228;--cosmic-section-mid:#A85F72;--cosmic-section-to:#563434;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--graphite{--cosmic-section-from:#111318;--cosmic-section-mid:#30343B;--cosmic-section-to:#232434;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--cobalt{--cosmic-section-from:#101C3D;--cosmic-section-mid:#2448A8;--cosmic-section-to:#1D1D5E;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--moss{--cosmic-section-from:#192217;--cosmic-section-mid:#405B3B;--cosmic-section-to:#293E2C;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--champagne{--cosmic-section-from:#392D20;--cosmic-section-mid:#9A7650;--cosmic-section-to:#554D32;--cosmic-section-angle:120deg;}
+.cosmic-theme-gradient--my-brand{--cosmic-section-from:var(--cosmic-gradient-from,#17283B);--cosmic-section-mid:var(--cosmic-brand-bg,#243447);--cosmic-section-to:var(--cosmic-gradient-to,#2B2447);--cosmic-section-angle:var(--cosmic-gradient-angle,120deg);}
+

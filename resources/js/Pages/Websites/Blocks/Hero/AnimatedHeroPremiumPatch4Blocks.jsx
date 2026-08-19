@@ -5,6 +5,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableImageGallery } from "../Shared/EditableImageGallery";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { getSectionBackgroundClass } from "../../../../theme/Theme";
 import { getHeroThemeState } from "../../../../theme/heroTheme";
 
 const base = {
@@ -43,7 +44,7 @@ function heroVisualState(block, globalTheme) {
   const state = getHeroThemeState(block, globalTheme);
   const primaryKey = typeof globalTheme === "string" ? globalTheme : (globalTheme?.primary || "midnight");
   const primaryTheme = colorFamilies[primaryKey] || colorFamilies.midnight;
-  return { ...state, primaryTheme, sectionClass: state.isLight ? `${state.theme.bg} ${state.theme.text}` : (state.isPrimary ? `${primaryTheme.bg} ${primaryTheme.text}` : "bg-slate-950 text-white") };
+  return { ...state, primaryTheme, sectionClass: state.isLight ? `${state.theme.bg} ${state.theme.text}` : (state.isPrimary ? `${getSectionBackgroundClass(primaryKey, "deep")} ${primaryTheme.text}` : "bg-slate-950 text-white") };
 }
 
 function heroGradient(globalTheme) {

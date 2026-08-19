@@ -518,13 +518,37 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 });
                 if (Number.isFinite(Number(response.data.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
             }
+            const cssLogoMatched = String(globalSelections?.logo_theme_sync_source || '') === 'css_logo_to_theme'
+                || String(data.global_header?.logo_theme_match_mode || '') === 'css';
+            const nextThemeFilter = cssLogoMatched ? logoFilterFor(theme) : null;
+
             setGlobalSelections((prev) => ({
                 ...prev,
                 primary: theme,
                 ...(hasRealLogo ? (brandThemeMatchesCurrentLogo
                     ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'theme_to_logo', logo_theme_synced_theme: theme }
-                    : { logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'manual_theme_change', logo_theme_synced_theme: null }) : {}),
+                    : (cssLogoMatched
+                        ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'css_logo_to_theme', logo_theme_synced_theme: theme }
+                        : { logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'manual_theme_change', logo_theme_synced_theme: null })) : {}),
             }));
+
+            if (hasRealLogo && cssLogoMatched && nextThemeFilter) {
+                setData((current) => ({
+                    ...current,
+                    global_header: {
+                        ...(current.global_header || {}),
+                        logo_filter: nextThemeFilter,
+                        logo_filter_key: theme,
+                        logo_theme_match_mode: 'css',
+                    },
+                    global_footer: {
+                        ...(current.global_footer || {}),
+                        logo_filter: nextThemeFilter,
+                        logo_filter_key: theme,
+                        logo_theme_match_mode: 'css',
+                    },
+                }));
+            }
             if (['stone', 'white'].includes(String(theme).toLowerCase()) && data.global_header?.overlay_header_on_banner) {
                 updateHeader({ overlay_header_on_banner: false });
                 showCosmicNotification({
@@ -534,8 +558,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 });
             }
             if (hasRealLogo) {
-                setLogoSyncState(brandThemeMatchesCurrentLogo ? 'synced' : 'theme_changed');
-                if (!brandThemeMatchesCurrentLogo) {
+                setLogoSyncState((brandThemeMatchesCurrentLogo || cssLogoMatched) ? 'synced' : 'theme_changed');
+                if (!brandThemeMatchesCurrentLogo && !cssLogoMatched) {
                     const selectedFamily = colorFamilies[theme] || colorFamilies.midnight;
                     const selectedPalette = theme === 'my-brand'
                         ? (globalSelections?.custom_brand_theme?.palette || selectedFamily?.palette || {})
@@ -1377,132 +1401,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
 
     const adaptLogoToSelectedTheme = async () => {
-        const pending = pendingThemeLogoAdapt;
-        if (!pending || themeLogoAdaptBusy) return;
-
-        const activePalette = pending.palette || {};
-        const payload = {
-            logo_url: pending.logoUrl,
-            theme_key: pending.theme,
-            theme_name: pending.themeName,
-            // Send the final website palette with stable semantics. The logo
-            // matcher treats background as the dominant anchor, accent as the
-            // intentional brand accent, and surface as the supporting neutral.
-            primary_hex: activePalette?.background || activePalette?.primary || '#243447',
-            secondary_hex: activePalette?.surface || activePalette?.secondary || activePalette?.background || '#475569',
-            tertiary_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.surface || '#60A5FA',
-            accent_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.surface || '#60A5FA',
-        };
-
+        if (!pendingThemeLogoAdapt || themeLogoAdaptBusy) return;
         setThemeLogoAdaptBusy(true);
-        startLogoAiAction('logo_to_theme');
-        setLogoBusy(true);
         try {
-            const response = trialMode
-                ? await axios.post(route('trial-branding.logo.match-theme', trialToken), payload)
-                : await axios.post(route('websites.logo.match-theme', website.id), payload);
-
-            if (trialMode) {
-                // Trial theme matching now follows the exact same confirmation
-                // path as initial Luna generation and computer uploads. The
-                // matched temp asset is NOT active until Save Logo is clicked.
-                await openLogoCrop(response.data.url, data.global_header?.logo_text, {
-                    sourceKind: 'theme_match',
-                    entryPrompt: false,
-                    autoAdaptTheme: false,
-                });
-                setLogoSyncState('theme_changed');
-                setGlobalSelections((prev) => ({
-                    ...prev,
-                    logo_theme_sync_state: 'theme_changed',
-                    logo_theme_sync_source: 'logo_to_theme_pending_crop',
-                    logo_theme_synced_theme: null,
-                }));
-            } else {
-                // IMPORTANT: use the AI-matched asset returned for the theme that
-                // was selected in this exact interaction. The old implementation
-                // discarded response.data.url and only applied a CSS filter to the
-                // previous logo, which made newly-added themes look like the prior
-                // palette (or plain black).
-                //
-                // `pending` is a synchronous snapshot captured by handleThemeChange
-                // before React state can lag, so its theme + palette are the source
-                // of truth for this adaptation request.
-                setPendingUploadedLogoThemeChoice(null);
-                if (String(response.data.url || '').toLowerCase().includes('.svg')) {
-                    applyTrialLogo(response.data.url);
-                    setLogoSyncState('synced');
-                    setGlobalSelections((prev) => ({
-                        ...prev,
-                        primary: pending.theme,
-                        brand_original_logo_url: prev.brand_original_logo_url || pending.logoUrl || data.global_header?.logo_image_url || response.data.url,
-                        brand_active_logo_url: response.data.url,
-                        brand_logo_variants: { ...(prev.brand_logo_variants || {}), [pending.theme]: response.data.url },
-                        logo_theme_sync_state: 'synced',
-                        logo_theme_sync_source: 'logo_to_theme',
-                        logo_theme_synced_theme: pending.theme,
-                    }));
-                } else {
-                    await openLogoCrop(response.data.url, data.global_header?.logo_text, {
-                        sourceKind: 'theme_match',
-                        entryPrompt: false,
-                        autoAdaptTheme: false,
-                    });
-                    // Keep the exact selected theme locked while the crop is open;
-                    // saveLogoCrop will persist the finished variant under it.
-                    setGlobalSelections((prev) => ({ ...prev, primary: pending.theme }));
-                    setLogoSyncState('theme_changed');
-                }
-            }
-            setHasUnsavedTheme(true);
-            if (trialMode) {
-                if (Number.isFinite(Number(response.data.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
-            } else if (Number.isFinite(Number(response.data.balance))) {
-                setCreditBalance(Number(response.data.balance));
-            }
-            setPendingThemeLogoAdapt(null);
-            setLogoAiStage(trialMode ? 'Matched logo ready for crop.' : 'Your logo now matches the new theme.');
-            finishLogoAiAction();
-            showCosmicNotification({
-                title: trialMode ? 'Matched logo ready' : 'Logo adapted',
-                message: trialMode ? `Adjust the ${pending.themeName} logo crop, then save it to apply.` : `Your header and footer logo now match ${pending.themeName}.`,
-                tone: 'success',
-            });
-        } catch (error) {
-            cancelLogoAiAction();
-            const rateLimited = Number(error.response?.status) === 429
-                || /too many attempts/i.test(String(error.response?.data?.message || error.message || ''));
-
-            if (rateLimited) {
-                // Do not leave the adaptation dialog stacked behind the Theme
-                // chooser. The already-persisted `theme_changed` state is the
-                // pending flag, and the active theme card exposes Match Logo.
-                setPendingThemeLogoAdapt(null);
-                setLogoSyncState('theme_changed');
-                setGlobalSelections((prev) => ({
-                    ...prev,
-                    logo_theme_sync_state: 'theme_changed',
-                    logo_theme_sync_source: 'manual_theme_change',
-                    logo_theme_synced_theme: null,
-                }));
-                showCosmicNotification({
-                    title: 'Theme applied · logo match pending',
-                    message: 'Cosmic AI is cooling down. Open Themes and use Match Logo on the active theme when you are ready to retry.',
-                    tone: 'warning',
-                });
-            } else {
-                showCosmicNotification({
-                    title: 'Theme applied · logo kept',
-                    message: error.response?.data?.message || 'Cosmic AI could not adapt the logo, so your current logo was kept.',
-                    tone: 'warning',
-                });
-            }
+            await matchLogoToTheme(true);
         } finally {
-            setLogoBusy(false);
             setThemeLogoAdaptBusy(false);
         }
     };
-
 
     const restoreOriginalLogo = async () => {
         if (logoBusy) return;
@@ -1532,113 +1438,52 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const matchLogoToTheme = async (skipConfirmation = false) => {
         const logoUrl = data.global_header?.logo_image_url || '/storage/branding/your-logo.png';
         if (!logoUrl) return;
-        // If a theme was just selected, pendingThemeLogoAdapt is the exact
-        // synchronous snapshot of that selection. Prefer it over React state so
-        // a fast Match Logo click can never reuse the previous theme palette.
+
         const themeKey = pendingThemeLogoAdapt?.theme || globalSelections?.primary || 'midnight';
         const family = colorFamilies[themeKey] || colorFamilies.midnight;
-        const activePalette = pendingThemeLogoAdapt?.theme === themeKey && pendingThemeLogoAdapt?.palette
-            ? pendingThemeLogoAdapt.palette
-            : (themeKey === 'my-brand'
-                ? (globalSelections?.custom_brand_theme?.palette || family?.palette || {})
-                : (family?.palette || {}));
-        const payload = {
-            logo_url: logoUrl,
-            theme_key: themeKey,
-            theme_name: family?.name || (themeKey === 'my-brand' ? 'My Brand Theme' : themeKey),
-            // Send the final website palette with stable semantics. The logo
-            // matcher treats background as the dominant anchor, accent as the
-            // intentional brand accent, and surface as the supporting neutral.
-            primary_hex: activePalette?.background || activePalette?.primary || '#243447',
-            secondary_hex: activePalette?.surface || activePalette?.secondary || activePalette?.background || '#475569',
-            tertiary_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.surface || '#60A5FA',
-            accent_hex: activePalette?.accent || activePalette?.tertiary || activePalette?.surface || '#60A5FA',
-        };
+        const themeFilter = logoFilterFor(themeKey);
 
-        const matchCost = trialMode ? trialActionCosts.match_logo_to_theme : 50;
         if (!skipConfirmation) {
             const matchConfirmed = await confirmCosmicAction({
                 title: `Match logo to ${family?.name || 'current theme'}?`,
-                message: `${creditMessage(matchCost)} Primary color: ${payload.primary_hex}.`,
-                confirmLabel: `Use ${matchCost} Credits`,
+                message: 'Apply an instant CSS theme treatment to your logo. No AI generation and no Cosmic Credits are required.',
+                confirmLabel: 'Match Logo · Free',
             });
             if (!matchConfirmed) return;
         }
 
         setPendingSvgLogoMatch(null);
-        startLogoAiAction('logo_to_theme');
-        setLogoBusy(true);
-        try {
-            const response = trialMode
-                ? await axios.post(route('trial-branding.logo.match-theme', trialToken), payload)
-                : await axios.post(route('websites.logo.match-theme', website.id), payload);
+        setPendingUploadedLogoThemeChoice(null);
+        setPendingThemeLogoAdapt(null);
 
-            if (trialMode) {
-                await openLogoCrop(response.data.url, data.global_header?.logo_text, {
-                    sourceKind: 'theme_match',
-                    entryPrompt: false,
-                    autoAdaptTheme: false,
-                });
-                setLogoSyncState('theme_changed');
-                setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'logo_to_theme_pending_crop', logo_theme_synced_theme: null }));
-            } else {
-                // A manual "Match Logo to Theme" operation is already the
-                // synchronization action. Never let its crop/save path be
-                // mistaken for a fresh user upload, otherwise Save Logo would
-                // immediately offer the inverse "Match Theme to Logo" flow.
-                setPendingUploadedLogoThemeChoice(null);
-                setPendingThemeLogoAdapt(null);
-                if (String(response.data.url || '').toLowerCase().includes('.svg')) {
-                    applyTrialLogo(response.data.url);
-                } else {
-                    await openLogoCrop(response.data.url, data.global_header?.logo_text, {
-                        sourceKind: 'theme_match',
-                        entryPrompt: false,
-                        autoAdaptTheme: false,
-                    });
-                }
-                setLogoSyncState('synced');
-                setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'synced', logo_theme_sync_source: 'logo_to_theme', logo_theme_synced_theme: prev.primary }));
-            }
-            setHasUnsavedTheme(true);
-            if (trialMode) {
-                setLogoRegenerationsUsed(Number(response.data.regenerations_used_today || logoRegenerationsUsed));
-                if (Number.isFinite(Number(response.data.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
-            } else if (Number.isFinite(Number(response.data.balance))) {
-                setCreditBalance(Number(response.data.balance));
-            }
-            setLogoAiStage(trialMode ? 'Matched logo ready for crop.' : 'Your logo now matches the theme.');
-            finishLogoAiAction();
-            showCosmicNotification({
-                title: trialMode ? 'Matched logo ready' : 'Logo matched to theme',
-                message: trialMode
-                    ? `Adjust the ${family?.name || 'current theme'} logo crop, then save it to apply.`
-                    : `Your logo now matches ${family?.name || 'the current theme'}. ${response.data.cost || 50} credits used.`,
-                tone: 'success',
-            });
-        } catch (error) {
-            cancelLogoAiAction();
-            const rateLimited = Number(error.response?.status) === 429
-                || /too many attempts/i.test(String(error.response?.data?.message || error.message || ''));
-            if (rateLimited) {
-                setLogoSyncState('theme_changed');
-                setGlobalSelections((prev) => ({
-                    ...prev,
-                    logo_theme_sync_state: 'theme_changed',
-                    logo_theme_sync_source: 'manual_theme_change',
-                    logo_theme_synced_theme: null,
-                }));
-                showCosmicNotification({
-                    title: 'Match Logo still pending',
-                    message: 'Too many attempts right now. Your theme and current logo were kept; the Match Logo button will stay available on the active theme.',
-                    tone: 'warning',
-                });
-            } else {
-                showCosmicNotification({ title: 'Unable to match logo', message: error.response?.data?.message || 'Cosmic AI could not match this logo to the current theme.', tone: 'error' });
-            }
-        } finally {
-            setLogoBusy(false);
-        }
+        setData((current) => ({
+            ...current,
+            global_header: {
+                ...(current.global_header || {}),
+                logo_filter: themeFilter,
+                logo_filter_key: themeKey,
+                logo_theme_match_mode: 'css',
+            },
+            global_footer: {
+                ...(current.global_footer || {}),
+                logo_filter: themeFilter,
+                logo_filter_key: themeKey,
+                logo_theme_match_mode: 'css',
+            },
+        }));
+        setLogoSyncState('synced');
+        setGlobalSelections((prev) => ({
+            ...prev,
+            logo_theme_sync_state: 'synced',
+            logo_theme_sync_source: 'css_logo_to_theme',
+            logo_theme_synced_theme: themeKey,
+        }));
+        setHasUnsavedTheme(true);
+        showCosmicNotification({
+            title: 'Logo matched instantly',
+            message: `Your logo now follows ${family?.name || 'the current theme'} using CSS. No credits used.`,
+            tone: 'success',
+        });
     };
 
     const matchThemeToLogo = async () => {
@@ -2594,10 +2439,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     // Premium/Balanced use a white header treatment when overlay is enabled,
     // except the intentionally light Warm Stone / Studio White theme families.
     // Clean (and every non-overlay state) keeps the normal dark/original header.
-    const overlayUsesPremiumLightHeader = Boolean(overlayHeaderActive && overlayHeaderCompatible);
+    const overlayUsesPremiumLightHeader = Boolean(overlayHeaderActive && overlayHeaderCompatible && (firstBlockHasHeroMedia || overlayHexLuminance(overlaySurfaceHex) < 0.46));
     const overlayHeaderTone = overlayUsesPremiumLightHeader ? 'light' : 'dark';
     const overlayLogoLight = overlayUsesPremiumLightHeader;
-    const overlayCtaTreatment = overlayUsesPremiumLightHeader ? 'surface' : 'primary';
+    // Premium overlay headers use the active theme's gradient for the CTA.
+    // This keeps the nav/logo high-contrast while preventing the whole header
+    // from becoming a flat white strip over cinematic hero media.
+    const overlayCtaTreatment = overlayHeaderActive ? 'gradient' : 'primary';
 
     const renderBlock = (block, index) => {
 
@@ -3112,7 +2960,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     {data.global_header && (
                         <div ref={overlayHeaderRef} className={`w-full z-40 ${overlayHeaderActive ? 'absolute inset-x-0 top-0 border-b-0 bg-transparent shadow-none' : 'relative bg-white'}`}>
                             {data.global_header.type === 'dark_cyan_header' && (
-                                <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayLogoLight={overlayLogoLight} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={() => setShowLogoModal(true)} />
+                                <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayLogoLight={overlayLogoLight} globalTheme={globalSelections} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={() => setShowLogoModal(true)} />
                             )}
                             {data.global_header.type === 'glassmorphism_header' && (
                                 <GlassmorphismHeader
@@ -3729,18 +3577,18 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 <div className="fixed inset-0 z-[245] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
                     <div className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-2xl">
                         <div className="border-b border-slate-200 px-6 py-5">
-                            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">AI Brand Adaptation</p>
+                            <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">Instant Brand Adaptation</p>
                             <h3 className="mt-1 text-xl font-bold text-slate-900">Adapt logo to {pendingThemeLogoAdapt.themeName}?</h3>
-                            <p className="mt-2 text-sm leading-6 text-slate-500">Your new theme is already selected. Cosmic can create a matching logo variant from your original brand asset and update both the header and footer automatically.</p>
+                            <p className="mt-2 text-sm leading-6 text-slate-500">Your new theme is already selected. Cosmic can instantly tint your existing logo to the active theme using CSS and update both the header and footer automatically.</p>
                         </div>
                         <div className="p-6">
                             <div className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-                                <p className="text-sm font-semibold text-slate-800">Keep the brand or let Cosmic adapt it</p>
-                                <p className="mt-1 text-xs leading-5 text-slate-500">Keeping the current logo is free. Adapting the logo uses {trialMode ? trialActionCosts.match_logo_to_theme : 50} Cosmic Credits. The original logo is preserved for future theme variants.</p>
+                                <p className="text-sm font-semibold text-slate-800">Keep the original or match it instantly</p>
+                                <p className="mt-1 text-xs leading-5 text-slate-500">Both options are free. Matching uses a reversible CSS treatment, so your original logo file is preserved.</p>
                             </div>
                             <div className="mt-6 flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                                 <button type="button" disabled={themeLogoAdaptBusy} onClick={keepCurrentLogoForSelectedTheme} className="rounded-xl border border-slate-300 px-4 py-2.5 text-sm font-semibold text-slate-700 hover:bg-slate-50 disabled:opacity-50">Keep Current Logo</button>
-                                <button type="button" disabled={themeLogoAdaptBusy} onClick={adaptLogoToSelectedTheme} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">{themeLogoAdaptBusy ? 'Adapting…' : `Adapt Logo · ${trialMode ? trialActionCosts.match_logo_to_theme : 50} Credits`}</button>
+                                <button type="button" disabled={themeLogoAdaptBusy} onClick={adaptLogoToSelectedTheme} className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:opacity-60">{themeLogoAdaptBusy ? 'Matching…' : 'Match Logo · Free'}</button>
                             </div>
                         </div>
                     </div>
@@ -3860,11 +3708,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     <div id="cosmic-svg-logo-match-modal" className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
                         <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-600">SVG logo uploaded</p>
                         <h3 className="mt-2 text-xl font-bold text-slate-950">Match this logo to the current theme?</h3>
-                        <p className="mt-2 text-sm leading-6 text-slate-600">Your original SVG is already saved for free. Keep it exactly as uploaded, or let Cosmic AI adapt its color treatment to the active website theme.</p>
-                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">Match Logo to Theme uses 50 Cosmic Credits. Uploading the SVG itself uses 0 credits.</div>
+                        <p className="mt-2 text-sm leading-6 text-slate-600">Your original SVG is already saved. Keep it exactly as uploaded, or apply an instant reversible CSS color treatment for the active website theme.</p>
+                        <div className="mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-xs font-semibold text-emerald-800">Match Logo to Theme is instant and free. Your original SVG remains unchanged.</div>
                         <div className="mt-6 grid gap-3 sm:grid-cols-2">
                             <button type="button" onClick={() => { setPendingSvgLogoMatch(null); setLogoSyncState('logo_changed'); }} className="rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm font-bold text-slate-700 hover:bg-slate-50">Keep Original · Free</button>
-                            <button type="button" onClick={() => matchLogoToTheme(true)} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700">✦ Match Logo · 50 Credits</button>
+                            <button type="button" onClick={() => matchLogoToTheme(true)} className="rounded-xl bg-emerald-600 px-4 py-3 text-sm font-bold text-white hover:bg-emerald-700">✦ Match Logo · Free</button>
                         </div>
                     </div>
                 </div>
@@ -4033,10 +3881,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                             className="cosmic-logo-match-pending sm:col-span-2 min-h-[84px] w-full rounded-xl border px-5 py-4 text-left transition disabled:cursor-not-allowed"
                                         >
                                             <span className="cosmic-logo-match-pending-title block text-sm font-extrabold">✨ Match Logo to Theme</span>
-                                            <span className="cosmic-logo-match-pending-help mt-1.5 block text-xs leading-5">Pending after keeping the original logo. Adapt its color treatment to the active theme without changing the saved crop or size.</span>
+                                            <span className="cosmic-logo-match-pending-help mt-1.5 block text-xs leading-5">Pending after keeping the original logo. Apply a free CSS color treatment to the active theme without changing the saved crop or size.</span>
                                         </button>
                                     )}
-                                    <p className="sm:col-span-2 text-xs text-slate-500">{trialMode ? `AI logo actions use Guest Cosmic Credits. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 500} credits. Upload/replace is free.` : `AI logo generation costs 50 credits. Theme adaptation is offered when you switch themes. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 0} credits. Upload/replace is free.`}</p>
+                                    <p className="sm:col-span-2 text-xs text-slate-500">{trialMode ? `AI logo actions use Guest Cosmic Credits. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 500} credits. Upload/replace is free.` : `AI logo generation costs 50 credits. Match Logo to Theme is free and instant. Current balance: ${Number.isFinite(Number(creditBalance)) ? Number(creditBalance) : 0} credits. Upload/replace is free.`}</p>
                                 </div>
                             ) : (
                                 <div className="space-y-4">
