@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Head, Link, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
+import html2canvas from 'html2canvas';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
 import CreditBalanceBadge from '../../Components/CosmicCredits/CreditBalanceBadge';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
@@ -223,6 +224,44 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [isSaveTemplateOpen, setIsSaveTemplateOpen] = useState(false);
     const [isSavingTemplate, setIsSavingTemplate] = useState(false);
     const [isGeneratePageOpen, setIsGeneratePageOpen] = useState(false);
+    const customWebsiteMode = false;
+    const aiOnlyBuilder = !trialMode;
+    const [customSparkOpen, setCustomSparkOpen] = useState(false);
+    const [customSparkFile, setCustomSparkFile] = useState(null);
+    const [customSparkBusy, setCustomSparkBusy] = useState(false);
+    const [customSparkError, setCustomSparkError] = useState('');
+    const [customSparkStage, setCustomSparkStage] = useState('');
+    const [customSparkProgress, setCustomSparkProgress] = useState(0);
+    const updateCustomBuildProgress = (next, completed = false) => {
+        const numeric = Number(next);
+        if (!Number.isFinite(numeric)) return;
+        setCustomSparkProgress((current) => {
+            const capped = completed ? 100 : Math.min(98, Math.max(1, numeric));
+            return Math.max(Number(current) || 0, capped);
+        });
+    };
+    const [customSparkInstructions, setCustomSparkInstructions] = useState('');
+    const [cosmicAiChat, setCosmicAiChat] = useState({ open:false, blockIndex:null, key:'', name:'', messages:[], qa:null, targetScope:'section', targetKey:'' });
+    const [cosmicAiPrompt, setCosmicAiPrompt] = useState('');
+    const [cosmicAiAsset, setCosmicAiAsset] = useState(null);
+    const [cosmicAiBusy, setCosmicAiBusy] = useState(false);
+    const [cosmicAiError, setCosmicAiError] = useState('');
+    const [pageAiOpen, setPageAiOpen] = useState(false);
+    const [pageAiPrompt, setPageAiPrompt] = useState('');
+    const [pageAiBusy, setPageAiBusy] = useState(false);
+    const [pageAiError, setPageAiError] = useState('');
+    const [lunaChatOpen, setLunaChatOpen] = useState(false);
+    const [lunaScope, setLunaScope] = useState({ type:'page', blockIndex:null, label:'Whole Page' });
+    const [lunaMessages, setLunaMessages] = useState([]);
+    const [lunaUndoStack, setLunaUndoStack] = useState([]);
+
+
+
+    const [savingCustomSparkKey, setSavingCustomSparkKey] = useState(null);
+    const [savedCustomSparkKeys, setSavedCustomSparkKeys] = useState(() => new Set());
+    const [customSparkLibrary, setCustomSparkLibrary] = useState([]);
+    const [customSparkLibraryOpen, setCustomSparkLibraryOpen] = useState(false);
+    const [customSparkLibraryBusy, setCustomSparkLibraryBusy] = useState(false);
     const [aiResult, setAiResult] = useState(null);
     const [aiLoading, setAiLoading] = useState(false);
 
@@ -374,6 +413,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     useEffect(() => {
         // Preload the Spark Marketplace as soon as Builder lands so opening
         // Add Spark is a UI-only action, not another network round trip.
+        if (customWebsiteMode) { setSparkCatalog([]); setSparkCatalogLoaded(true); return; }
         if (!(capabilities.canGenerateAi || capabilities.canManageBlocks || trialMode)) return;
 
         let cancelled = false;
@@ -402,13 +442,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         return () => {
             cancelled = true;
         };
-    }, [capabilities.canGenerateAi, capabilities.canManageBlocks, trialMode, trialToken]);
+    }, [capabilities.canGenerateAi, capabilities.canManageBlocks, trialMode, trialToken, customWebsiteMode]);
 
 
     useEffect(() => {
         // Templates follow the same fast-open contract as Sparks: fetch catalog
         // data once on Builder landing, keep it in memory, and never refetch just
         // because the modal was closed and reopened. Rendering remains lazy.
+        if (customWebsiteMode) { setPageTemplateCatalog([]); setPageTemplateCatalogLoaded(true); return; }
         if (!(capabilities.canGenerateAi || trialMode)) return;
 
         let cancelled = false;
@@ -437,7 +478,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         return () => {
             cancelled = true;
         };
-    }, [capabilities.canGenerateAi, trialMode, trialToken]);
+    }, [capabilities.canGenerateAi, trialMode, trialToken, customWebsiteMode]);
 
     useEffect(() => {
         if (typeof window === 'undefined') return undefined;
@@ -2342,14 +2383,17 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const firstBlockIsBanner = Boolean(firstBlock) && (
         firstBlockType === 'hero' ||
         firstBlockType.includes('hero') ||
-        firstBlockType.includes('banner')
+        firstBlockType.includes('banner') ||
+        (customWebsiteMode && firstBlockType === 'luna_custom_section' && String(firstBlock?.media_position || '').toLowerCase() === 'background')
     );
     const firstBlockResolvedTheme = firstBlock ? resolveBlockTheme(firstBlock, 0) : null;
     const activePrimaryThemeKey = String(globalSelections?.primary || 'midnight').toLowerCase();
     const normalizedPageStyle = ['balanced','clean','premium'].includes(String(currentPageStyle || '').toLowerCase()) ? String(currentPageStyle).toLowerCase() : 'balanced';
     const overlayThemeBlocked = ['stone', 'white'].includes(activePrimaryThemeKey);
     const overlayStyleBlocked = normalizedPageStyle === 'clean';
-    const overlayHeaderCompatible = ['premium', 'balanced'].includes(normalizedPageStyle) && !overlayThemeBlocked;
+    const overlayHeaderCompatible = customWebsiteMode
+        ? true
+        : (['premium', 'balanced'].includes(normalizedPageStyle) && !overlayThemeBlocked);
     const overlayCompatibilityMessage = overlayStyleBlocked
         ? 'Overlay Header is available with Balanced or Premium page styles.'
         : overlayThemeBlocked
@@ -2428,6 +2472,18 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             : (firstResolvedThemeKey || activePrimaryThemeKey);
     const overlaySurfacePalette = colorFamilies[overlaySurfaceThemeKey]?.palette || {};
     const overlaySurfaceHex = String(overlaySurfacePalette.background || '#243447');
+    useEffect(() => {
+        if (!customSparkBusy) return undefined;
+        const timer = window.setInterval(() => {
+            setCustomSparkProgress((current) => {
+                if (current >= 89) return current;
+                const increment = current < 35 ? 3 : current < 70 ? 2 : 1;
+                return Math.min(89, current + increment);
+            });
+        }, 190);
+        return () => window.clearInterval(timer);
+    }, [customSparkBusy]);
+
     const overlayHexLuminance = (hex) => {
         const normalized = String(hex || '').replace('#', '');
         if (!/^[0-9a-f]{6}$/i.test(normalized)) return 0.25;
@@ -2447,6 +2503,370 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     // from becoming a flat white strip over cinematic hero media.
     const overlayCtaTreatment = overlayHeaderActive ? 'gradient' : 'primary';
 
+    const generateCustomSparkFromScreenshot = async () => {
+        if (!website?.id) return;
+        const prompt = customSparkInstructions.trim();
+        if (!customSparkFile && prompt.length < 10) {
+            setCustomSparkError('Describe the website you want, or upload a full-page reference screenshot.');
+            return;
+        }
+
+        setCustomSparkBusy(true);
+        setCustomSparkError('');
+        setCustomSparkProgress(1);
+        setCustomSparkStage('Queueing Cosmic AI build…');
+
+        const applyBuildResult = (response) => {
+            const stamp = Date.now();
+            const rebuilt = (response.blocks || []).map((block,index)=>({
+                ...block,
+                _renderKey:`custom-fullpage-${stamp}-${index}`,
+            }));
+
+            // Successful Full Page Build replaces the current body.
+            setData('blocks', normalizeRenderKeys(rebuilt));
+
+            if (response?.shell?.header_detected && response?.shell?.header) {
+                const shellHeader = response.shell.header;
+                setData('global_header', {
+                    ...(data.global_header || {}),
+                    custom_shell_mode: true,
+                    overlay_header_on_banner: Boolean(shellHeader.overlay),
+                    custom_style: {
+                        ...((data.global_header || {}).custom_style || {}),
+                        background_color: shellHeader.background_color || (shellHeader.overlay ? 'transparent' : '#ffffff'),
+                        text_color: shellHeader.text_color || (shellHeader.overlay ? '#ffffff' : '#1f2937'),
+                        nav_color: shellHeader.nav_color || shellHeader.text_color || (shellHeader.overlay ? '#ffffff' : '#1f2937'),
+                        height: Number(shellHeader.height || 78),
+                        padding_x: Number(shellHeader.padding_x || 56),
+                        content_max_width: Number(shellHeader.content_max_width || 1528),
+                        logo_tone: shellHeader.logo_tone || (shellHeader.overlay ? 'light' : 'dark'),
+                        nav_size: Number(shellHeader.nav_size || 14),
+                        nav_gap: Number(shellHeader.nav_gap || 30),
+                        phone_color: shellHeader.phone_color || shellHeader.text_color || '#ffffff',
+                        cta_background: shellHeader.cta_background || '#2F80FF',
+                        cta_color: shellHeader.cta_color || '#ffffff',
+                        cta_radius: Number(shellHeader.cta_radius || 8),
+                    },
+                    ...(Number(shellHeader.logo_height || 0) > 0 ? { logo_height:Number(shellHeader.logo_height) } : {}),
+                    phone_enabled: Boolean(shellHeader.phone_enabled),
+                    phone_text: String(shellHeader.phone_text || ''),
+                    ...(String(shellHeader.cta_label || '').trim() ? { cta_label:String(shellHeader.cta_label).trim() } : {}),
+                    ...(String(shellHeader.cta_url || '').trim() ? { cta_url:String(shellHeader.cta_url).trim() } : {}),
+                    ...(Array.isArray(shellHeader.menu) && shellHeader.menu.length ? {
+                        menu:shellHeader.menu.slice(0,8).map(item=>({
+                            label:String(item.label||'').trim(),
+                            url:item.url||'#',
+                        })).filter(item=>item.label)
+                    } : {}),
+                });
+            }
+
+            if (response?.shell?.footer_detected && response?.shell?.footer) {
+                const shellFooter = response.shell.footer;
+                setData('global_footer', {
+                    ...(data.global_footer || {}),
+                    custom_shell_mode: true,
+                    mega_enabled: true,
+                    custom_style: {
+                        ...((data.global_footer || {}).custom_style || {}),
+                        background_color: shellFooter.background_color || '#071a33',
+                        text_color: shellFooter.text_color || '#ffffff',
+                        muted_color: shellFooter.muted_color || '#b8c4d6',
+                        logo_tone: shellFooter.logo_tone || 'light',
+                    },
+                    copyright: shellFooter.copyright || data.global_footer?.copyright,
+                    mega_footer: {
+                        ...(data.global_footer?.mega_footer || {}),
+                        enabled: true,
+                        tagline: shellFooter.tagline || data.global_footer?.mega_footer?.tagline || '',
+                        primary_label: shellFooter.cta_label || data.global_footer?.mega_footer?.primary_label || 'Get in touch',
+                        primary_url: shellFooter.cta_url || data.global_footer?.mega_footer?.primary_url || '#contact',
+                        columns: Array.isArray(shellFooter.columns)
+                            ? shellFooter.columns.slice(0,4)
+                            : (data.global_footer?.mega_footer?.columns || []),
+                    },
+                });
+            }
+
+            if (response.credits !== undefined) setCreditBalance(Number(response.credits));
+            return rebuilt;
+        };
+
+        try {
+            const form = new FormData();
+            form.append('instructions', prompt || 'Reconstruct this full-page website screenshot faithfully as an editable responsive landing page.');
+            if (customSparkFile) form.append('screenshot', customSparkFile);
+
+            const { data: queued } = await axios.post(
+                `/websites/${website.id}/custom-builds`,
+                form,
+                { headers: { 'Content-Type': 'multipart/form-data' } }
+            );
+
+            const buildId = queued?.build_id;
+            if (!buildId) throw new Error('Cosmic AI did not return a build session.');
+
+            updateCustomBuildProgress(queued.progress || 1);
+            setCustomSparkStage(queued.stage || 'Queued for Cosmic AI…');
+
+            const startedAt = Date.now();
+            const maxWaitMs = 12 * 60 * 1000;
+            let completed = null;
+
+            while (Date.now() - startedAt < maxWaitMs) {
+                await new Promise(resolve=>window.setTimeout(resolve, 1800));
+                const { data: state } = await axios.get(`/websites/${website.id}/custom-builds/${encodeURIComponent(buildId)}`);
+
+                updateCustomBuildProgress(state?.progress || 1);
+                setCustomSparkStage(state?.stage || 'Cosmic AI is working…');
+
+                if (state?.status === 'completed') {
+                    completed = state?.result || null;
+                    break;
+                }
+                if (state?.status === 'failed') {
+                    throw new Error(state?.message || 'Cosmic AI could not finish this page.');
+                }
+            }
+
+            if (!completed) {
+                throw new Error('This build is still taking longer than expected. The background worker can continue, but this Builder session stopped waiting.');
+            }
+
+            const rebuilt = applyBuildResult(completed);
+            updateCustomBuildProgress(100, true);
+            setCustomSparkStage('Your editable page is ready.');
+
+            showCosmicNotification({
+                title:`Cosmic AI rebuilt ${rebuilt.length} sections`,
+                message:completed?.visual_source === 'uploaded_screenshot'
+                    ? 'Your full-page reference was segmented into editable Custom Sparks.'
+                    : 'Cosmic AI privately designed a visual blueprint first, then reconstructed it into editable Custom Sparks.',
+                tone:'success',
+                mode:'toast',
+                duration:5200,
+            });
+
+            await new Promise(resolve=>window.setTimeout(resolve,350));
+            setCustomSparkOpen(false);
+            setCustomSparkFile(null);
+            setCustomSparkInstructions('');
+            setCustomSparkStage('');
+            setCustomSparkProgress(0);
+        } catch (error) {
+            const message =
+                error?.response?.data?.message ||
+                error?.response?.data?.errors?.instructions?.[0] ||
+                error?.response?.data?.errors?.screenshot?.[0] ||
+                error?.message ||
+                'Unable to rebuild this page with Cosmic AI.';
+            setCustomSparkError(message);
+            setCustomSparkStage('');
+            setCustomSparkProgress(0);
+        } finally {
+            setCustomSparkBusy(false);
+        }
+    };
+
+    const openCustomSparkLibrary = async () => {
+        if (!website?.id || customSparkLibraryBusy) return;
+        setCustomSparkLibraryBusy(true);
+        try {
+            const { data: response } = await axios.get(`/websites/${website.id}/custom-sparks/saved-library`);
+            setCustomSparkLibrary(response.sparks || []);
+            setCustomSparkLibraryOpen(true);
+        } catch (error) {
+            showCosmicNotification({title:'Unable to load saved Sparks',message:error?.response?.data?.message || 'Please try again.',tone:'error',mode:'toast',duration:4200});
+        } finally { setCustomSparkLibraryBusy(false); }
+    };
+
+    const duplicateSavedCustomSpark = async (spark) => {
+        if (!spark?.key || customSparkLibraryBusy) return;
+        setCustomSparkLibraryBusy(true);
+        try {
+            const { data: response } = await axios.post(`/websites/${website.id}/custom-sparks/by-key/${encodeURIComponent(spark.key)}/duplicate`);
+            if (response.block) {
+                setData('blocks', normalizeRenderKeys([...(data.blocks || []), response.block]));
+                setSavedCustomSparkKeys((current)=>{const next=new Set(current);next.add(response.block.custom_spark_key);return next;});
+            }
+            setCustomSparkLibraryOpen(false);
+            showCosmicNotification({title:'Saved Spark installed',message:'The saved Custom Spark was installed at the bottom of this page.',tone:'success',mode:'toast',duration:3600});
+        } catch (error) {
+            showCosmicNotification({title:'Unable to add Spark',message:error?.response?.data?.message || 'Please try again.',tone:'error',mode:'toast',duration:4200});
+        } finally { setCustomSparkLibraryBusy(false); }
+    };
+
+    const saveCustomSpark = async (block) => {
+        if (!block?.custom_spark_key || !website?.id || savingCustomSparkKey) return;
+        setSavingCustomSparkKey(block.custom_spark_key);
+        try {
+            const { data: response } = await axios.post(`/websites/${website.id}/custom-sparks/by-key/${encodeURIComponent(block.custom_spark_key)}/save`);
+            if (response.credits !== undefined) setCreditBalance(Number(response.credits));
+            setSavedCustomSparkKeys((current) => { const next = new Set(current); next.add(block.custom_spark_key); return next; });
+            setData('blocks', normalizeRenderKeys((data.blocks || []).map((candidate) => candidate.custom_spark_key === block.custom_spark_key ? { ...candidate, custom_spark_saved:true } : candidate)));
+            showCosmicNotification({
+                title: response.already_saved ? 'Spark already saved' : 'Custom Spark saved',
+                message: response.already_saved ? 'This Spark is already permanent and ready to publish.' : '50 credits used. This Spark is now permanent and ready for normal publishing/export.',
+                tone: 'success',
+                mode: 'toast',
+                duration: 4200,
+            });
+            setCosmicAiChat((current) => current.key === block.custom_spark_key ? {
+                ...current,
+                messages: response.spark?.metadata?.conversation || current.messages,
+                saved: true,
+            } : current);
+        } catch (error) {
+            showCosmicNotification({
+                title: 'Unable to save Spark',
+                message: error?.response?.data?.errors?.credits?.[0] || error?.response?.data?.message || 'Could not save this Custom Spark.',
+                tone: 'error',
+                mode: 'toast',
+                duration: 5200,
+            });
+        } finally {
+            setSavingCustomSparkKey(null);
+        }
+    };
+
+    const openCosmicAiForSpark = async (block, index, target = null) => {
+        if (!block?.custom_spark_key || !website?.id) return;
+        setCosmicAiError('');
+        setCosmicAiPrompt('');
+        setCosmicAiAsset(null);
+        const targetScope = target?.scope === 'element' ? 'element' : 'section';
+        const targetKey = targetScope === 'element' ? String(target?.key || '') : '';
+        setCosmicAiChat({ open:true, blockIndex:index, key:block.custom_spark_key, name:targetScope==='element' ? `${targetKey || 'Element'} · ${block.heading || 'Custom Spark'}` : (block.heading || 'Custom Spark'), messages:[], qa:null, saved:false, targetScope, targetKey });
+        try {
+            const { data: response } = await axios.get(`/websites/${website.id}/custom-sparks/by-key/${encodeURIComponent(block.custom_spark_key)}/chat`);
+            setCosmicAiChat((current) => ({ ...current, messages: response.messages || [], qa: response.qa || null, name: response.spark?.name || current.name, saved:Boolean(response.spark?.metadata?.saved), revisions:response.revisions || [] }));
+        } catch (error) {
+            setCosmicAiError(error?.response?.data?.message || 'Could not load this Spark conversation. You can still try a new message.');
+        }
+    };
+
+    const undoCosmicAiSpark = async () => {
+        const index = cosmicAiChat.blockIndex;
+        const currentBlock = data.blocks?.[index];
+        if (!currentBlock || cosmicAiBusy || !cosmicAiChat.key) return;
+        setCosmicAiBusy(true);
+        setCosmicAiError('');
+        try {
+            const { data: response } = await axios.post(`/websites/${website.id}/custom-sparks/by-key/${encodeURIComponent(cosmicAiChat.key)}/undo`);
+            if (response.block) {
+                setData('blocks', normalizeRenderKeys((data.blocks || []).map((candidate,candidateIndex)=>candidateIndex===index?{...response.block,_renderKey:currentBlock._renderKey}:candidate)));
+            }
+            setCosmicAiChat((current)=>({
+                ...current,
+                messages:response.messages || current.messages,
+                revisions:(current.revisions || []).slice(1),
+            }));
+            showCosmicNotification({title:'Previous Spark version restored',message:'Only this Custom Spark was rolled back.',tone:'success',mode:'toast',duration:3200});
+        } catch (error) {
+            setCosmicAiError(error?.response?.data?.errors?.revision?.[0] || error?.response?.data?.message || 'There is no earlier revision to restore.');
+        } finally {
+            setCosmicAiBusy(false);
+        }
+    };
+
+    const sendCosmicAiMessage = async () => {
+        const prompt = cosmicAiPrompt.trim();
+        const index = cosmicAiChat.blockIndex;
+        const currentBlock = data.blocks?.[index];
+        if (!prompt || !currentBlock || cosmicAiBusy || !cosmicAiChat.key) return;
+        setCosmicAiBusy(true);
+        setCosmicAiError('');
+        setCosmicAiChat((current) => ({ ...current, messages:[...(current.messages || []), { role:'user', text:prompt, pending:true }] }));
+        setCosmicAiPrompt('');
+        try {
+            const form = new FormData();
+            form.append('prompt', prompt);
+            form.append('block', JSON.stringify(stripClientBlockFields([currentBlock])[0]));
+            form.append('target_scope', cosmicAiChat.targetScope || 'section');
+            if (cosmicAiChat.targetKey) form.append('target_key', cosmicAiChat.targetKey);
+            if (cosmicAiAsset) form.append('asset', cosmicAiAsset);
+            const { data: response } = await axios.post(`/websites/${website.id}/custom-sparks/by-key/${encodeURIComponent(cosmicAiChat.key)}/chat`, form, { headers:{ 'Content-Type':'multipart/form-data' } });
+            if (response.action === 'update' && response.block) {
+                setData('blocks', normalizeRenderKeys((data.blocks || []).map((candidate, candidateIndex) => candidateIndex === index ? { ...response.block, _renderKey: currentBlock._renderKey } : candidate)));
+            }
+            setCosmicAiChat((current) => ({ ...current, messages: response.messages || current.messages, revisions: response.action === 'update' ? [{id:`local-${Date.now()}`,reason:'Before Cosmic AI chat edit',at:new Date().toISOString()}, ...(current.revisions||[])] : (current.revisions||[]) }));
+            setCosmicAiAsset(null);
+            showCosmicNotification({ title: response.action === 'update' ? 'Cosmic AI updated this Spark' : 'Cosmic AI replied', message: response.reply || 'Done.', tone:'success', mode:'toast', duration:3600 });
+        } catch (error) {
+            setCosmicAiError(error?.response?.data?.message || error?.response?.data?.errors?.prompt?.[0] || error?.message || 'Cosmic AI could not complete that request.');
+            setCosmicAiChat((current) => ({ ...current, messages:(current.messages || []).filter((message) => !message.pending) }));
+            setCosmicAiPrompt(prompt);
+        } finally {
+            setCosmicAiBusy(false);
+        }
+    };
+
+    const openLunaChat = (scope = { type:'page', blockIndex:null, label:'Whole Page' }) => {
+        setLunaScope(scope);
+        setPageAiError('');
+        setPageAiPrompt('');
+        setLunaChatOpen(true);
+    };
+
+    const undoLastLunaChange = () => {
+        const snapshot = lunaUndoStack[0];
+        if (!snapshot) return;
+        setData('blocks', normalizeRenderKeys(snapshot.blocks || []));
+        setData('global_header', snapshot.header || data.global_header);
+        setData('global_footer', snapshot.footer || data.global_footer);
+        if (snapshot.theme) {
+            setGlobalSelections(snapshot.theme);
+            setHasUnsavedTheme(true);
+        }
+        setLunaUndoStack((stack)=>stack.slice(1));
+        setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Undone — I restored the previous design.'}]);
+    };
+
+    const sendPageAiRequest = async () => {
+        const prompt = pageAiPrompt.trim();
+        if (!prompt || pageAiBusy || !website?.id) return;
+        setPageAiBusy(true);
+        setPageAiError('');
+        setLunaMessages((messages)=>[...messages,{role:'user',text:prompt,scope:lunaScope.label}]);
+        try {
+            const form = new FormData();
+            form.append('prompt', prompt);
+            form.append('blocks', JSON.stringify(stripClientBlockFields(data.blocks || [])));
+            form.append('header', JSON.stringify(data.global_header || {}));
+            form.append('footer', JSON.stringify(data.global_footer || {}));
+            form.append('theme', JSON.stringify(globalSelections || {}));
+            form.append('target_scope', lunaScope.type === 'section' ? 'section' : 'page');
+            if (lunaScope.type === 'section' && Number.isInteger(lunaScope.blockIndex)) {
+                form.append('target_index', String(lunaScope.blockIndex));
+            }
+            const { data: response } = await axios.post(`/websites/${website.id}/custom-page-ai`, form, { headers:{'Content-Type':'multipart/form-data'} });
+            setLunaUndoStack((stack)=>[{
+                blocks: stripClientBlockFields(data.blocks || []),
+                header: data.global_header || {},
+                footer: data.global_footer || {},
+                theme: globalSelections || {},
+            }, ...stack].slice(0,10));
+            if (Array.isArray(response.blocks)) setData('blocks', normalizeRenderKeys(response.blocks.map((block,index)=>({...block,_renderKey:data.blocks?.[index]?._renderKey || createRenderKey()}))));
+            if (response.header) setData('global_header', response.header);
+            if (response.footer) setData('global_footer', response.footer);
+            if (response.theme_key) {
+                setGlobalSelections((current)=>({...current,primary:response.theme_key}));
+                setHasUnsavedTheme(true);
+            }
+            setPageAiPrompt('');
+            setPageAiOpen(false);
+            setLunaMessages((messages)=>[...messages,{role:'assistant',text:response.reply || 'Done.'}]);
+            showCosmicNotification({title:'Luna updated the design',message:response.reply || 'Done.',tone:'success',mode:'toast',duration:3200});
+        } catch (error) {
+            const message = error?.response?.data?.message || error?.response?.data?.errors?.prompt?.[0] || error?.message || 'Luna could not update the page.';
+            setPageAiError(message);
+            setLunaMessages((messages)=>[...messages,{role:'assistant',text:`I couldn't complete that change: ${message}`}]);
+        } finally {
+            setPageAiBusy(false);
+        }
+    };
+
     const renderBlock = (block, index) => {
 
         const resolvedTheme = resolveBlockTheme(block, index);
@@ -2461,6 +2881,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             globalTheme: { ...(globalSelections || {}), pageStyle: currentPageStyle },
 
             onUpdate: (fields) => updateBlockContent(index, fields),
+            onOpenCosmicAI: undefined,
+            onSaveCustomSpark: customWebsiteMode && block?.custom_spark_key && block?.custom_spark_saved !== true && !savedCustomSparkKeys.has(block.custom_spark_key) ? () => saveCustomSpark(block) : undefined,
+            savingCustomSpark: savingCustomSparkKey === block?.custom_spark_key,
             commerce,
             contentWorkspace,
             builderMode: true,
@@ -2544,6 +2967,136 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     
     return (
         <>
+            {customSparkOpen && <div className="fixed inset-0 z-[980] flex items-center justify-center p-4 sm:p-6">
+  <button type="button" className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={()=>!customSparkBusy&&setCustomSparkOpen(false)} aria-label="Close Cosmic AI builder"/>
+  <section role="dialog" aria-modal="true" className="relative z-10 w-full max-w-2xl overflow-hidden rounded-3xl border border-white/10 bg-[#111116] text-white shadow-2xl shadow-black/70">
+    {!customSparkBusy?<><header className="border-b border-white/10 px-6 py-5">
+      <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">Custom Website · Cosmic AI</p>
+      <h3 className="mt-1 text-2xl font-semibold">✨ Build or Rebuild Full Page</h3>
+      <p className="mt-2 text-sm leading-6 text-slate-400">Describe the page you want, or upload a complete landing-page screenshot. Cosmic AI will rebuild the whole current page as separate editable sections.</p>
+    </header>
+
+    <div className="p-6">
+      <label className="block">
+        <span className="text-xs font-semibold text-slate-300">Website brief <span className="text-slate-500">· optional when a screenshot is supplied</span></span>
+        <textarea
+          value={customSparkInstructions}
+          onChange={e=>setCustomSparkInstructions(e.target.value)}
+          rows={5}
+          placeholder="e.g. Build a premium residential and commercial glass company website for Summit Line Glass. Use deep navy, architectural photography, project showcases, testimonials, a quote estimator and a strong enquiry CTA."
+          className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-3 text-sm leading-5"
+        />
+      </label>
+
+      <label className="mt-4 flex min-h-28 cursor-pointer items-center justify-center rounded-2xl border border-dashed border-white/15 bg-white/[0.025] p-4 text-center text-sm text-slate-400 transition hover:border-emerald-300/40">
+        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e=>setCustomSparkFile(e.target.files?.[0]||null)}/>
+        {customSparkFile
+          ? <span className="text-emerald-200"><b>Full-page reference:</b> {customSparkFile.name}</span>
+          : <span><b className="text-slate-300">Full-page screenshot</b> · optional<br/><small>Without one, Cosmic AI privately designs a visual blueprint first, then reconstructs it.</small></span>}
+      </label>
+
+      <div className="mt-4 rounded-xl border border-violet-400/15 bg-violet-400/[0.06] p-4 text-xs leading-5 text-slate-400">
+        <b className="text-violet-200">This replaces the current page body.</b> Header and footer are reconstructed as global shell elements when detected. Existing Templates and registered Sparks are not used as design references.
+      </div>
+
+      {customSparkError&&<p className="mt-3 text-sm text-rose-300">{customSparkError}</p>}
+
+      <div className="mt-5 flex justify-end gap-2">
+        <button type="button" onClick={()=>setCustomSparkOpen(false)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button>
+        <button
+          type="button"
+          disabled={!customSparkFile&&customSparkInstructions.trim().length<10}
+          onClick={generateCustomSparkFromScreenshot}
+          className="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-bold text-white hover:bg-emerald-500 disabled:opacity-40"
+        >
+          ✨ Build Full Page · Free
+        </button>
+      </div>
+    </div></>:<div className="cosmic-generate-page-progress px-8 py-12 text-center" role="status" aria-live="polite">
+      <div className="relative mx-auto h-20 w-20" aria-hidden="true"><div className="cosmic-loading-spinner absolute inset-0 rounded-full"/><div className="absolute inset-[4px] grid place-items-center rounded-full bg-[#17171d] text-2xl text-cyan-300 shadow-lg shadow-violet-950/50">✦</div></div>
+      <p className="mt-6 text-xs font-semibold uppercase tracking-[0.22em] text-emerald-300">Cosmic AI</p>
+      <h3 className="mt-2 text-2xl font-semibold tracking-tight text-white">Designing & rebuilding your page</h3>
+      <p className="mt-3 min-h-6 text-sm text-slate-300">{customSparkStage || 'Understanding your brief…'}</p>
+      <div className="mx-auto mt-7 grid max-w-xl grid-cols-2 gap-2 sm:grid-cols-4">
+        {(customSparkFile
+          ? [{label:'Read visual',threshold:18},{label:'Map regions',threshold:42},{label:'Build Sparks',threshold:72},{label:'Finish page',threshold:94}]
+          : [{label:'Design mockup',threshold:18},{label:'Map regions',threshold:42},{label:'Build Sparks',threshold:72},{label:'Finish page',threshold:94}]
+        ).map(step=>{const complete=customSparkProgress>=step.threshold;return <div key={step.label} className={`rounded-lg border px-2.5 py-2 text-[10px] font-medium sm:text-xs ${complete?'border-emerald-400/30 bg-emerald-400/10 text-emerald-200':'border-white/10 bg-white/[0.02] text-slate-500'}`}><span>{complete?'✓ ':''}{step.label}</span></div>})}
+      </div>
+      <div className="mx-auto mt-6 h-2 max-w-xl overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-violet-500 via-cyan-400 to-emerald-400 transition-[width] duration-700 ease-out" style={{width:`${customSparkProgress}%`}}/></div>
+      <div className="mx-auto mt-3 flex max-w-xl items-center justify-between text-xs text-slate-500"><span>Visual-first Custom Build · Free</span><span>{Math.round(customSparkProgress)}%</span></div>
+    </div>}
+  </section>
+</div>}
+
+{customSparkLibraryOpen && <div className="fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onClick={()=>setCustomSparkLibraryOpen(false)}><div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-white p-5 shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><div><h3 className="text-lg font-black text-slate-900">Saved Custom Sparks</h3><p className="text-xs text-slate-500">Reusable only inside this Custom Website.</p></div><button type="button" onClick={()=>setCustomSparkLibraryOpen(false)} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-slate-100">×</button></div><div className="mt-4 grid max-h-[55vh] gap-3 overflow-auto sm:grid-cols-2">{customSparkLibrary.length?customSparkLibrary.map(spark=><button key={spark.key} type="button" onClick={()=>duplicateSavedCustomSpark(spark)} disabled={customSparkLibraryBusy} className="rounded-xl border border-slate-200 p-4 text-left hover:border-emerald-300 hover:bg-emerald-50/40 disabled:opacity-50"><div className="text-sm font-bold text-slate-900">{spark.name || 'Saved Custom Spark'}</div><div className="mt-1 text-[10px] text-slate-500">Install on this page</div></button>):<div className="col-span-2 rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">No saved Custom Sparks yet.</div>}</div></div></div>}
+            {aiOnlyBuilder && !lunaChatOpen && <button
+  type="button"
+  onClick={()=>openLunaChat({type:'page',blockIndex:null,label:'Whole Page'})}
+  className="fixed bottom-6 right-6 z-[960] inline-flex h-14 items-center gap-2 rounded-full border border-violet-300/30 bg-gradient-to-r from-violet-600 to-indigo-600 px-5 text-sm font-black text-white shadow-2xl shadow-violet-950/40 transition hover:-translate-y-0.5 hover:shadow-violet-950/60"
+  title="Ask Luna about this website"
+><span className="text-lg" aria-hidden="true">✦</span> Ask Luna</button>}
+
+{aiOnlyBuilder && lunaChatOpen && <div className="fixed bottom-6 right-6 z-[970] flex max-h-[72vh] w-[420px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-violet-300/20 bg-[#111318]/95 text-white shadow-2xl backdrop-blur-xl">
+  <div className="flex items-start justify-between border-b border-white/10 px-4 py-3">
+    <div>
+      <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-300">✦ Luna · {lunaScope.type==='section'?'Selected Section':'Whole Page'}</p>
+      <h3 className="mt-1 max-w-[300px] truncate text-sm font-bold">{lunaScope.label}</h3>
+    </div>
+    <div className="flex items-center gap-1">
+      <button type="button" onClick={undoLastLunaChange} disabled={!lunaUndoStack.length||pageAiBusy} className="rounded-lg border border-white/10 px-2 py-1.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30">↶ Undo</button>
+      <button type="button" onClick={()=>setLunaChatOpen(false)} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white">×</button>
+    </div>
+  </div>
+  <div className="px-4 pt-4">
+    <div className="rounded-xl border border-violet-300/10 bg-violet-400/[0.06] px-3 py-2 text-xs leading-5 text-slate-400">
+      {lunaScope.type==='section'
+        ? 'Luna is focused on this section. Ask for a new layout, video, different style, content, or another section below it.'
+        : 'Luna is looking at the whole page. Ask for site-wide design, theme, structure, or content changes.'}
+    </div>
+  </div>
+  <div className="max-h-64 space-y-2 overflow-y-auto px-4 pt-3">
+    {lunaMessages.length ? lunaMessages.slice(-12).map((message,i)=><div key={`${i}-${message.text}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}><div className={`max-w-[86%] rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'?'bg-violet-500 text-white':'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
+    {pageAiBusy?<div className="text-xs font-semibold text-violet-300">Luna is working…</div>:null}
+  </div>
+  <div className="p-4">
+    <textarea
+      value={pageAiPrompt}
+      onChange={e=>setPageAiPrompt(e.target.value)}
+      onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendPageAiRequest();}}}
+      rows={4}
+      placeholder={lunaScope.type==='section'?'e.g. Change this section into a video hero':'e.g. Make the whole website feel more premium'}
+      className="w-full resize-none rounded-xl border border-white/10 bg-black/25 px-3 py-3 text-sm leading-6 outline-none focus:border-violet-300/40"
+    />
+    {pageAiError?<div className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{pageAiError}</div>:null}
+    <div className="mt-3 flex items-center justify-between">
+      {lunaScope.type==='section'
+        ? <button type="button" onClick={()=>setLunaScope({type:'page',blockIndex:null,label:'Whole Page'})} className="text-[11px] font-semibold text-slate-500 hover:text-violet-200">Switch to Whole Page</button>
+        : <span className="text-[11px] text-slate-600">AI-only Builder</span>}
+      <button type="button" onClick={sendPageAiRequest} disabled={pageAiBusy||!pageAiPrompt.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Luna is working…':'Send'}</button>
+    </div>
+  </div>
+</div>}
+
+{!aiOnlyBuilder && pageAiOpen && <div className="fixed inset-0 z-[969] flex items-center justify-center bg-black/55 p-4 backdrop-blur-sm">
+  <div className="w-full max-w-xl rounded-2xl border border-violet-300/20 bg-[#111318]/95 p-5 text-white shadow-2xl">
+    <div className="flex items-start justify-between gap-4">
+      <div>
+        <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-300">✨ Cosmic AI · Whole Page</p>
+        <h3 className="mt-1 text-lg font-bold">Ask Cosmic Page</h3>
+        <p className="mt-2 text-xs leading-5 text-slate-400">Applies a coordinated change across this Custom Website page. Header/footer are only changed when your request needs them.</p>
+      </div>
+      <button type="button" onClick={()=>!pageAiBusy&&setPageAiOpen(false)} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white">×</button>
+    </div>
+    <textarea value={pageAiPrompt} onChange={e=>setPageAiPrompt(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendPageAiRequest();}}} rows={5} placeholder="e.g. Make all headings 32px, color #333333, reduce vertical spacing, and keep the current layouts." className="mt-4 w-full resize-none rounded-xl border border-white/10 bg-black/25 px-3 py-3 text-sm leading-6 outline-none focus:border-violet-300/40"/>
+    {pageAiError?<div className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{pageAiError}</div>:null}
+    <div className="mt-4 flex justify-end gap-2">
+      <button type="button" onClick={()=>setPageAiOpen(false)} disabled={pageAiBusy} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 disabled:opacity-40">Cancel</button>
+      <button type="button" onClick={sendPageAiRequest} disabled={pageAiBusy||!pageAiPrompt.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Updating page…':'Apply with Cosmic AI'}</button>
+    </div>
+  </div>
+</div>}
+            {cosmicAiChat.open && <div className="fixed right-6 top-24 z-[970] flex max-h-[72vh] w-[420px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-emerald-300/20 bg-[#111318]/95 text-white shadow-2xl backdrop-blur-xl"><div className="flex items-start justify-between border-b border-white/10 px-4 py-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-emerald-300">✨ Cosmic AI · {cosmicAiChat.targetScope==='element' ? `Element: ${cosmicAiChat.targetKey || 'selected'}` : 'This Spark only'}</p><h3 className="mt-1 max-w-[300px] truncate text-sm font-bold">{cosmicAiChat.name}</h3>{cosmicAiChat.qa?.score?<><p className="mt-0.5 text-[10px] text-slate-500">Last visual QA: {cosmicAiChat.qa.score}%</p>{cosmicAiChat.qa?.breakdown?<div className="mt-2 grid grid-cols-3 gap-1.5">{Object.entries(cosmicAiChat.qa.breakdown).map(([label,score])=><div key={label} className="rounded-md border border-white/10 bg-white/5 px-2 py-1"><div className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-500">{label}</div><div className="text-[10px] font-black text-emerald-300">{Number(score)||0}%</div></div>)}</div>:null}</>:null}</div><div className="flex items-center gap-1"><button type="button" onClick={undoCosmicAiSpark} disabled={cosmicAiBusy||!(cosmicAiChat.revisions||[]).length} className="rounded-lg border border-white/10 px-2 py-1.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30" title="Restore previous Cosmic AI version">↶ Undo AI</button><button type="button" onClick={()=>setCosmicAiChat((current)=>({...current,open:false}))} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white">×</button></div></div><div className="min-h-28 flex-1 space-y-3 overflow-y-auto px-4 py-4">{!(cosmicAiChat.messages||[]).length?<div className="rounded-xl border border-dashed border-white/10 p-4 text-xs leading-5 text-slate-400">Ask Cosmic AI to adjust this selected Spark, compare it with the stored reference, or use a new source asset. Other sections will not be changed.</div>:(cosmicAiChat.messages||[]).map((message,i)=><div key={`${message.at||i}-${i}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}><div className={`max-w-[88%] rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'?'bg-emerald-500 text-white':'border border-white/10 bg-white/[0.05] text-slate-200'} ${message.pending?'opacity-60':''}`}>{message.text}</div></div>)}{cosmicAiBusy?<div className="text-xs text-emerald-300">Cosmic AI is working on this Spark…</div>:null}</div>{cosmicAiError?<div className="mx-4 mb-2 rounded-lg bg-rose-500/10 px-3 py-2 text-[11px] text-rose-300">{cosmicAiError}</div>:null}<div className="border-t border-white/10 p-3"><textarea value={cosmicAiPrompt} onChange={e=>setCosmicAiPrompt(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendCosmicAiMessage();}}} rows={3} placeholder="e.g. Move the background image right and reduce the hero height…" className="w-full resize-none rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs leading-5 outline-none focus:border-emerald-300/40"/><div className="mt-2 flex items-center justify-between gap-2"><label className="min-w-0 cursor-pointer rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-300 hover:bg-white/5"><span className="block max-w-[190px] truncate">📎 {cosmicAiAsset?.name || 'Attach source image'}</span><input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e=>setCosmicAiAsset(e.target.files?.[0]||null)}/></label><button type="button" onClick={sendCosmicAiMessage} disabled={cosmicAiBusy||!cosmicAiPrompt.trim()} className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-40">{cosmicAiBusy?'Working…':'Send'}</button></div></div></div>}
             {trialMode && (
                 <div className="border-b border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 px-4 py-3 text-center">
                     <p className="text-sm font-semibold text-slate-900">Love what you created?</p>
@@ -2598,7 +3151,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 </div>
                             </div>
 
-                            {(trialMode || capabilities.canGenerateAi) && (
+                            {!customWebsiteMode && (trialMode || capabilities.canGenerateAi) && (
                                 <PageStyleSelector
                                     pageId={page.id}
                                     currentStyle={currentPageStyle}
@@ -2633,7 +3186,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 />
                             )}
 
-                            {!trialMode && capabilities.canGenerateAi && (
+                            {!aiOnlyBuilder && !customWebsiteMode && !trialMode && capabilities.canGenerateAi && (
                                 <button
                                     type="button"
                                     onClick={() => setIsGeneratePageOpen(true)}
@@ -2644,7 +3197,21 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 </button>
                             )}
 
-                            {(capabilities.canGenerateAi || trialMode) && (
+                            {customWebsiteMode && (
+                                <div className="flex items-center gap-2">
+                                    <button type="button" onClick={() => setCustomSparkOpen(true)} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-300/30 bg-emerald-400/10 px-3 text-xs font-bold text-emerald-100 transition hover:bg-emerald-400/15">
+                                        ✨ Build Full Page <span className="rounded bg-black/20 px-1.5 py-0.5 text-[10px]">FREE</span>
+                                    </button>
+                                    <button type="button" onClick={()=>{setPageAiError('');setPageAiOpen(true)}} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-violet-300/25 bg-violet-400/10 px-3 text-xs font-bold text-violet-100 transition hover:bg-violet-400/15">
+                                        ✨ Ask Cosmic Page
+                                    </button>
+                                    <button type="button" onClick={openCustomSparkLibrary} disabled={customSparkLibraryBusy} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-3 text-xs font-bold text-cyan-100 transition hover:bg-cyan-400/15 disabled:opacity-40">
+                                        ✦ Saved Sparks
+                                    </button>
+                                </div>
+                            )}
+
+                            {!aiOnlyBuilder && !customWebsiteMode && (capabilities.canGenerateAi || trialMode) && (
                                 <button
                                     type="button"
                                     onClick={() => setIsTemplatesOpen(true)}
@@ -2681,6 +3248,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 />
                             )}
 
+                            {!customWebsiteMode && (
                             <button
                                 type="button"
                                 onClick={() => {
@@ -2705,7 +3273,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 <span className="2xl:hidden">Overlay Header</span>
                             </button>
 
-                            {capabilities.canChangeTheme && (
+                            )}
+
+                            {!aiOnlyBuilder && !customWebsiteMode && capabilities.canChangeTheme && (
                                 <ThemeSelector
                                     compact
                                     value={globalSelections.primary}
@@ -2720,7 +3290,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 />
                             )}
 
-                            {(capabilities.canGenerateAi || trialMode) && (
+                            {!aiOnlyBuilder && !customWebsiteMode && (capabilities.canGenerateAi || trialMode) && (
                                 <button
                                     type="button"
                                     onClick={() => setIsModalOpen(true)}
@@ -2958,7 +3528,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}
                     {data.global_header && (
-                        <div ref={overlayHeaderRef} className={`w-full z-40 ${overlayHeaderActive ? 'absolute inset-x-0 top-0 border-b-0 bg-transparent shadow-none' : 'relative bg-white'}`}>
+                        <div ref={overlayHeaderRef} className={`group/header-ai w-full z-40 ${overlayHeaderActive ? 'absolute inset-x-0 top-0 border-b-0 bg-transparent shadow-none' : 'relative bg-white'}`}>
+                            {aiOnlyBuilder && <button type="button" onClick={()=>{openLunaChat({type:'page',blockIndex:null,label:'Global Header'});setPageAiPrompt('Update the global header only: ')}} className="absolute right-4 top-3 z-[90] hidden rounded-full border border-violet-300/25 bg-slate-950/85 px-3 py-1.5 text-[10px] font-bold text-violet-200 shadow-xl backdrop-blur group-hover/header-ai:block">✦ Ask Luna</button>}
+                            {customWebsiteMode && <button type="button" onClick={()=>{setPageAiPrompt('Update the global header only: ');setPageAiError('');setPageAiOpen(true)}} className="absolute right-4 top-3 z-[90] hidden rounded-full border border-violet-300/25 bg-slate-950/85 px-3 py-1.5 text-[10px] font-bold text-violet-200 shadow-xl backdrop-blur group-hover/header-ai:block">✨ Ask Cosmic Header</button>}
                             {data.global_header.type === 'dark_cyan_header' && (
                                 <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayLogoLight={overlayLogoLight} globalTheme={globalSelections} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={() => setShowLogoModal(true)} />
                             )}
@@ -2985,286 +3557,28 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                             className={`relative group w-full transition-all duration-300 ${overlayHeaderActive && index === 0 ? 'cosmic-overlay-first-spark' : ''}`}
                         >
 
-                            {/* Hover Toolbar */}
-
+                            {/* AI-only Hover Toolbar */}
                             {capabilities.canManageBlocks && (
-                            <div className="cosmic-block-toolbar absolute top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all duration-300 z-[70]">
-
-                                <div className="flex items-center gap-2 rounded-full bg-slate-900/90 backdrop-blur-xl border border-slate-700 shadow-2xl px-3 py-2">
-
-                                    {/* Block Label */}
-
-                                    <div className="flex flex-col leading-none px-2">
-
-                                        <span className="text-[10px] uppercase tracking-[0.2em] text-slate-400 font-bold">
-
-                                            {block.type.replaceAll("_"," ")}
-
+                                <div className="cosmic-block-toolbar absolute top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-all duration-300 z-[70]">
+                                    <div className="flex items-center gap-2 rounded-full border border-violet-300/20 bg-slate-950/90 px-2.5 py-2 shadow-2xl backdrop-blur-xl">
+                                        <span className="max-w-[180px] truncate px-2 text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                                            {BlockRegistry[block.type]?.schema?.title || block.type.replaceAll("_"," ")}
                                         </span>
-
-                                        <span className="mt-1 text-[9px] uppercase tracking-[0.2em] font-bold text-amber-300">
-
-                                            {block.theme === "auto" && "✨ Auto"}
-                                            {block.theme === "primary" && "🟦 Primary"}
-                                            {block.theme === "white" && "⬜ White"}
-                                            {block.theme === "surface" && "🩶 Surface"}
-                                            {block.theme === "accent" && "🟪 Accent"}
-
-                                        </span>
-
+                                        <button
+                                            type="button"
+                                            onClick={()=>openLunaChat({type:'section',blockIndex:index,label:BlockRegistry[block.type]?.schema?.title || block.heading || 'Selected Section'})}
+                                            className="inline-flex h-8 items-center gap-1.5 rounded-full bg-gradient-to-r from-violet-500 to-indigo-500 px-3 text-[11px] font-black text-white shadow-lg shadow-violet-950/30 transition hover:scale-[1.03]"
+                                            title="Ask Luna about this section"
+                                        >
+                                            <span aria-hidden="true">✦</span> Ask Luna
+                                        </button>
                                     </div>
-
-                                    <div className="w-px h-5 bg-slate-700" />
-
-                                    {/* Move Up */}
-
-                                    <button
-                                        type="button"
-                                        aria-label="Move block up"
-                                        onClick={() => moveBlock(index,"up")}
-                                        disabled={index===0}
-                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 disabled:opacity-30 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
-                                    >
-                                        ↑
-                                    </button>
-
-                                    {/* Move Down */}
-
-                                    <button
-                                        type="button"
-                                        aria-label="Move block down"
-                                        onClick={() => moveBlock(index,"down")}
-                                        disabled={index===data.blocks.length-1}
-                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 disabled:opacity-30 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
-                                    >
-                                        ↓
-                                    </button>
-
-                                    {/* Duplicate */}
-
-                                    <button
-                                        type="button"
-                                        aria-label="Duplicate block"
-                                        onClick={() => duplicateBlock(index)}
-                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
-                                    >
-                                        ⧉
-                                    </button>
-
-                                    {/* Change Spark */}
-
-                                    <button
-                                        type="button"
-                                        aria-label={`Change ${BlockRegistry[block.type]?.schema?.category || 'section'} layout`}
-                                        title={getCompatibleLayouts(block.type).length > 1
-                                            ? `Change ${BlockRegistry[block.type]?.schema?.category || 'section'} layout`
-                                            : 'No alternate layouts are available in this category'}
-                                        disabled={getCompatibleLayouts(block.type).length < 2}
-                                        onClick={() => {
-                                            setThemeMenu(null);
-                                            setLayoutMenu(layoutMenu === index ? null : index);
-                                        }}
-                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 transition focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-30"
-                                    >
-                                        <span aria-hidden="true">&#8644;</span>
-                                    </button>
-
-                                    {layoutMenu === index && (
-                                        <div id={`cosmic-layout-menu-${index}`} className="cosmic-layout-menu absolute top-12 right-10 z-50 w-64 overflow-hidden rounded-xl border border-slate-700 bg-slate-900 shadow-2xl">
-                                            <div className="border-b border-slate-700 px-4 py-3">
-                                                <p className="text-[10px] font-bold uppercase tracking-[0.16em] text-slate-400">Change Layout</p>
-                                                <p className="mt-1 text-xs font-semibold text-white">{BLOG_SPARK_GROUPS[block.type] ? 'Choose from 3 free Blog layouts' : `Preview, buy, or use ${BlockRegistry[block.type]?.schema?.category || 'Section'} Sparks`}</p>
-                                            </div>
-
-                                            <div className="max-h-64 overflow-y-auto py-1 [scrollbar-color:rgb(100_116_139)_transparent] [scrollbar-width:thin] [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
-                                                {getCompatibleLayouts(block.type).map((layout) => {
-                                                    const current = isCurrentLayout(block, layout);
-
-                                                    return (
-                                                        <div
-                                                            key={layout.id}
-                                                            aria-current={current ? "true" : undefined}
-                                                            className={`group/layout border-l-2 px-3 py-3 transition-all duration-200 ${current
-                                                                ? 'border-violet-400 bg-violet-500/10'
-                                                                : 'border-transparent hover:border-violet-400/60 hover:bg-slate-800'}`}
-                                                        >
-                                                            <div className="flex items-center gap-3">
-                                                                {layout.kind === 'blog-variant' && (
-                                                                    <span className={`grid h-10 w-12 shrink-0 gap-1 rounded-lg border p-1.5 transition ${current ? 'border-violet-400/40 bg-violet-400/10' : 'border-slate-700 bg-slate-950 group-hover/layout:border-slate-500'}`} aria-hidden="true">
-                                                                        <span className={`rounded-sm ${layout.preview === 'center' || layout.preview === 'compact' ? 'mx-auto w-7' : 'w-full'} bg-slate-500/70`} />
-                                                                        <span className={`rounded-sm bg-slate-700 ${layout.preview === 'split' || layout.preview === 'stacked' ? 'w-2/3' : 'w-full'}`} />
-                                                                        <span className={`rounded-sm bg-slate-700 ${layout.preview === 'magazine' || layout.preview === 'cards' ? 'grid grid-cols-2 gap-0.5' : ''}`} />
-                                                                    </span>
-                                                                )}
-                                                                <span className="min-w-0 flex-1">
-                                                                    <span className="block truncate text-sm font-semibold text-slate-100">{layout.title}</span>
-                                                                    {layout.description && <span className="mt-0.5 block line-clamp-1 text-[10px] leading-4 text-slate-500">{layout.description}</span>}
-                                                                </span>
-                                                                {current ? (
-                                                                    <span className="rounded-full bg-violet-400/15 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-violet-300">Current</span>
-                                                                ) : layout.kind !== 'blog-variant' && layout.owned ? (
-                                                                    <span className="rounded-full bg-emerald-400/10 px-2 py-1 text-[9px] font-bold uppercase tracking-wide text-emerald-300">Owned</span>
-                                                                ) : null}
-                                                            </div>
-                                                            {!current && (
-                                                                <div className="mt-2 flex gap-2 pl-0">
-                                                                    {layout.kind !== 'blog-variant' && (
-                                                                        <button
-                                                                            type="button"
-                                                                            disabled={!layout.canPreview || !layout.catalogItem}
-                                                                            onClick={() => layout.catalogItem && setLayoutPreview({ ...layout, blockIndex: index })}
-                                                                            className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 transition hover:border-violet-400/40 hover:text-white disabled:cursor-not-allowed disabled:opacity-35"
-                                                                        >
-                                                                            Preview
-                                                                        </button>
-                                                                    )}
-                                                                    {layout.kind === 'blog-variant' || layout.owned ? (
-                                                                        <button
-                                                                            type="button"
-                                                                            onClick={() => changeBlockLayout(index, layout)}
-                                                                            className="cosmic-layout-use-button rounded-lg !bg-white px-3 py-1.5 text-[10px] font-bold !text-slate-950 hover:!bg-violet-100"
-                                                                            style={{ color: '#0f172a' }}
-                                                                        >
-                                                                            Use layout
-                                                                        </button>
-                                                                    ) : layout.canInstall ? (
-                                                                        <button
-                                                                            type="button"
-                                                                            disabled={layoutBusyKey === layout.type}
-                                                                            onClick={() => unlockLayoutSpark(layout)}
-                                                                            className="rounded-lg bg-violet-600 px-3 py-1.5 text-[10px] font-bold text-white hover:bg-violet-500 disabled:opacity-50"
-                                                                        >
-                                                                            {layoutBusyKey === layout.type ? 'Buying…' : Number(layout.credits || 0) === 0 ? 'Add Free' : `Buy · ⚡ ${layout.credits}`}
-                                                                        </button>
-                                                                    ) : layout.usageState?.action === 'buy_credits' ? (
-                                                                        <Link href="/credits" className="rounded-lg bg-amber-200 px-3 py-1.5 text-[10px] font-bold text-slate-950">Add credits</Link>
-                                                                    ) : layout.usageState?.upgrade_url ? (
-                                                                        <Link href={layout.usageState.upgrade_url} className="rounded-lg bg-amber-200 px-3 py-1.5 text-[10px] font-bold text-slate-950">Upgrade</Link>
-                                                                    ) : (
-                                                                        <span className="rounded-lg border border-white/10 px-3 py-1.5 text-[10px] font-bold text-slate-500">Unavailable</span>
-                                                                    )}
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                    );
-                                                })}
-                                            </div>
-                                        </div>
-                                    )}
-
-                                    {/* Insert owned Spark above */}
-                                    <button
-                                        type="button"
-                                        aria-label="Insert Spark above"
-                                        title="Insert owned Spark above"
-                                        onClick={() => {
-                                            setThemeMenu(null);
-                                            setLayoutMenu(null);
-                                            setSparkInsertTarget({ index, position: 'above' });
-                                            setIsModalOpen(true);
-                                        }}
-                                        className="w-8 h-8 rounded-lg hover:bg-emerald-500/15 text-emerald-300 transition focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                                    >
-                                        <span aria-hidden="true">↥</span>
-                                    </button>
-
-                                    {/* Insert owned Spark below */}
-                                    <button
-                                        type="button"
-                                        aria-label="Insert Spark below"
-                                        title="Insert owned Spark below"
-                                        onClick={() => {
-                                            setThemeMenu(null);
-                                            setLayoutMenu(null);
-                                            setSparkInsertTarget({ index, position: 'below' });
-                                            setIsModalOpen(true);
-                                        }}
-                                        className="w-8 h-8 rounded-lg hover:bg-violet-500/15 text-violet-300 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
-                                    >
-                                        <span aria-hidden="true">↧</span>
-                                    </button>
-
-                                    {/* Theme */}
-
-                                    <button
-                                        type="button"
-                                        aria-label="Change block theme"
-                                        onClick={() => {
-                                            setLayoutMenu(null);
-                                            setThemeMenu(themeMenu === index ? null : index);
-                                        }}
-                                        className="w-8 h-8 rounded-lg hover:bg-slate-800 text-slate-300 transition focus:outline-none focus:ring-2 focus:ring-violet-400"
-                                    >
-                                        🎨
-                                    </button>
-
-                                    {
-                                    themeMenu === index && (
-
-                                        <div className="absolute top-12 right-0 w-48 rounded-xl bg-slate-900 border border-slate-700 shadow-2xl overflow-hidden">
-
-                                            {[
-                                                ["auto","✨ Auto"],
-                                                ["primary","🟦 Primary"],
-                                                ["white","⬜ White"],
-                                                ["surface","🩶 Surface"],
-                                                ["accent","🟪 Accent"]
-                                            ].map(([value,label]) => (
-
-                                                <button
-
-                                                    key={value}
-                                                    type="button"
-
-                                                    onClick={() => {
-
-                                                        const blocks=[...data.blocks];
-
-                                                        blocks[index]={
-                                                            ...blocks[index],
-                                                            theme:value
-                                                        };
-
-                                                        setData("blocks",blocks);
-
-                                                        setThemeMenu(null);
-
-                                                    }}
-
-                                                    className="w-full text-left px-4 py-3 hover:bg-slate-800 text-sm text-slate-200 transition focus:outline-none focus:bg-slate-800"
-
-                                                >
-
-                                                    {label}
-
-                                                </button>
-
-                                            ))}
-
-                                        </div>
-
-                                    )
-                                }
-
-                                    {/* Delete */}
-
-                                    <button
-                                        type="button"
-                                        aria-label="Delete block"
-                                        onClick={() => removeBlock(index)}
-                                        className="w-8 h-8 rounded-lg hover:bg-red-500/20 text-red-400 transition focus:outline-none focus:ring-2 focus:ring-red-400"
-                                    >
-                                        🗑
-                                    </button>
-
                                 </div>
-
-                            </div>
                             )}
 
                             {/* Selected Outline */}
 
-                            <div className={`cosmic-builder-spark group-hover:ring-2 group-hover:ring-violet-500/40 transition-all duration-500 ${layoutApplying === index ? "scale-[0.997] opacity-80 ring-2 ring-violet-400/40" : "opacity-100"}`}>
+                            <div data-custom-spark-key={block.custom_spark_key || undefined} className={`cosmic-builder-spark group-hover:ring-2 group-hover:ring-violet-500/40 transition-all duration-500 ${layoutApplying === index ? "scale-[0.997] opacity-80 ring-2 ring-violet-400/40" : "opacity-100"}`}>
 
                                 {renderBlock(block,index)}
 
@@ -3282,17 +3596,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-slate-500">Your page, navigation, global header and footer are already connected. Choose how you want to create the content.</p>
 
                                 {!trialMode && (
-                                    <div className="mt-6 flex flex-wrap items-center justify-center gap-2.5">
-                                        {capabilities.canGenerateAi && (
-                                            <button type="button" onClick={() => setIsGeneratePageOpen(true)} className="inline-flex h-10 items-center justify-center rounded-lg bg-slate-900 px-4 text-sm font-semibold text-white transition hover:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-violet-400">
-                                                Generate with AI
-                                            </button>
-                                        )}
-                                        <button type="button" onClick={() => setIsModalOpen(true)} className="inline-flex h-10 items-center justify-center rounded-lg border border-slate-300 bg-white px-4 text-sm font-semibold text-slate-800 transition hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-violet-400">
-                                            Start Blank
-                                        </button>
-                                        <button type="button" onClick={() => setIsTemplatesOpen(true)} className="inline-flex h-10 items-center justify-center rounded-lg border border-violet-200 bg-violet-50 px-4 text-sm font-semibold text-violet-800 transition hover:bg-violet-100 focus:outline-none focus:ring-2 focus:ring-violet-400">
-                                            Choose Template
+                                    <div className="mt-6 flex items-center justify-center">
+                                        <button type="button" onClick={()=>openLunaChat({type:'page',blockIndex:null,label:'Whole Page'})} className="inline-flex h-10 items-center justify-center gap-2 rounded-full bg-gradient-to-r from-violet-600 to-indigo-600 px-5 text-sm font-bold text-white shadow-lg transition hover:-translate-y-0.5">
+                                            <span aria-hidden="true">✦</span> Ask Luna to build this page
                                         </button>
                                     </div>
                                 )}
@@ -3309,7 +3615,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     {/* FOOTER RENDERER */}
                     {data.global_footer && (
                         <div className="relative group/footer w-full mt-auto">
-                            {capabilities.canEditGlobalShell && (
+                            {aiOnlyBuilder && <button type="button" onClick={()=>{openLunaChat({type:'page',blockIndex:null,label:'Global Footer'});setPageAiPrompt('Update the global footer only: ')}} className="absolute right-4 top-4 z-[90] hidden rounded-full border border-violet-300/25 bg-slate-950/85 px-3 py-1.5 text-[10px] font-bold text-violet-200 shadow-xl backdrop-blur group-hover/footer:block">✦ Ask Luna</button>}
+                            {customWebsiteMode && <button type="button" onClick={()=>{setPageAiPrompt('Update the global footer only: ');setPageAiError('');setPageAiOpen(true)}} className="absolute right-4 top-4 z-[90] hidden rounded-full border border-violet-300/25 bg-slate-950/85 px-3 py-1.5 text-[10px] font-bold text-violet-200 shadow-xl backdrop-blur group-hover/footer:block">✨ Ask Cosmic Footer</button>}
+                            {!aiOnlyBuilder && capabilities.canEditGlobalShell && (
                                 <div className="cosmic-block-toolbar pointer-events-none absolute left-1/2 top-5 z-[70] -translate-x-1/2 opacity-0 transition-all duration-300 group-hover/footer:opacity-100 focus-within:opacity-100">
                                     <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/90 px-3 py-2 shadow-2xl backdrop-blur-xl">
                                         <div className="flex flex-col px-2 leading-none">
@@ -3391,7 +3699,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                 </select>
                             </div>*/}
 
-                            <ThemeSelector
+                            {!customWebsiteMode && <ThemeSelector
                                 value={globalSelections.primary}
                                 themeAccess={themeAccess}
                                 customTheme={globalSelections?.custom_brand_theme}
@@ -3409,16 +3717,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                                     setHasUnsavedTheme(true);
 
                                 }}
-                            />
+                            />}
 
                             {/* AI */}
-                            <button
+                            {!customWebsiteMode && <button
                                 type="button"
                                 onClick={() => { setSparkInsertTarget(null); setIsModalOpen(true); }}
                                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:scale-[1.02] hover:shadow-xl transition text-white font-bold"
                             >
                                 ✨ Add Spark
-                            </button>
+                            </button>}
 
                             {/* Builder */}
                             <div className="text-sm">
@@ -3493,7 +3801,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 />
             )}
 
-            {(capabilities.canGenerateAi || trialMode) && (
+            {!aiOnlyBuilder && (capabilities.canGenerateAi || trialMode) && (
                 <AddSectionModal
                     open={isModalOpen}
                     onClose={() => { setIsModalOpen(false); setSparkInsertTarget(null); }}

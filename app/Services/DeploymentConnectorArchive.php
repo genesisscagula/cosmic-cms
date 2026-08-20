@@ -265,9 +265,11 @@ $email = contactValue('email', 254);
 $phone = contactValue('phone', 80);
 $message = contactValue('message', 4000);
 $fields = [];
+$requiredNames = array_values(array_filter(array_map('trim', explode(',', contactValue('_cosmic_required', 700))), static fn($name) => preg_match('/^[a-z][a-z0-9_]{0,63}$/', $name)));
+$isCustomSparkForm = contactValue('_cosmic_form_name', 120) !== '' || $requiredNames !== [];
 
 foreach ($_POST as $key => $value) {
-    if ($key === 'company' || ! is_string($key) || ! preg_match('/^[a-z][a-z0-9_]{0,63}$/', $key)) {
+    if ($key === 'company' || str_starts_with((string) $key, '_cosmic_') || ! is_string($key) || ! preg_match('/^[a-z][a-z0-9_]{0,63}$/', $key)) {
         continue;
     }
 
@@ -282,7 +284,43 @@ foreach ($_POST as $key => $value) {
     $fields[$key] = contactValue($key, $key === 'message' ? 4000 : 1000);
 }
 
-if ($name === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL) || $message === '') {
+foreach ($requiredNames as $requiredName) {
+    $raw = $_POST[$requiredName] ?? null;
+    $hasValue = is_array($raw)
+        ? count(array_filter(array_map(static fn($value) => trim((string) $value), $raw))) > 0
+        : trim((string) ($raw ?? '')) !== '';
+    if (! $hasValue) {
+        contactResponse(['status' => 'error', 'message' => 'Please complete all required fields.'], 422);
+    }
+}
+
+if ($name === '') {
+    $name = trim((string) ($fields['name'] ?? $fields['full_name'] ?? $fields['first_name'] ?? 'Website visitor'));
+}
+if ($email === '') {
+    $email = trim((string) ($fields['email'] ?? ''));
+}
+if ($phone === '') {
+    $phone = trim((string) ($fields['phone'] ?? $fields['mobile'] ?? ''));
+}
+if ($message === '') {
+    $parts = [];
+    foreach ($fields as $fieldKey => $fieldValue) {
+        if (str_starts_with((string) $fieldKey, '_cosmic_')) continue;
+        $label = ucwords(str_replace('_', ' ', (string) $fieldKey));
+        $display = is_array($fieldValue) ? implode(', ', $fieldValue) : (string) $fieldValue;
+        if (trim($display) !== '') $parts[] = $label . ': ' . $display;
+    }
+    $message = implode("\n", $parts);
+}
+if ($message === '') {
+    $message = 'Website form submission';
+}
+if ($isCustomSparkForm) {
+    if ($email !== '' && ! filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        contactResponse(['status' => 'error', 'message' => 'Please enter a valid email address.'], 422);
+    }
+} elseif ($name === '' || ! filter_var($email, FILTER_VALIDATE_EMAIL) || trim((string) ($_POST['message'] ?? '')) === '') {
     contactResponse(['status' => 'error', 'message' => 'Please provide your name, a valid email address, and a message.'], 422);
 }
 
@@ -333,7 +371,11 @@ if (filter_var($recipient, FILTER_VALIDATE_EMAIL) && function_exists('mail')) {
         $lines[] = "{$label}: {$displayValue}";
     }
     $body = implode("\n", $lines) . "\n";
-    @mail($recipient, 'New website inquiry', $body, "Reply-To: {$email}\r\nContent-Type: text/plain; charset=UTF-8");
+    $headers = "Content-Type: text/plain; charset=UTF-8";
+    if (filter_var($email, FILTER_VALIDATE_EMAIL)) {
+        $headers = "Reply-To: {$email}\r\n" . $headers;
+    }
+    @mail($recipient, 'New website inquiry', $body, $headers);
 }
 
 contactResponse(['status' => 'success', 'message' => 'Thanks — your inquiry has been received. We will be in touch soon.']);

@@ -23,7 +23,8 @@ export const EditableImage = forwardRef(({
     overlayVariant = "default",
     isBackground = false,
     imageQuery = '',
-    blockType = ''
+    blockType = '',
+    style = undefined
 }, ref) => {
 
     const { props: pageProps } = usePage();
@@ -83,7 +84,7 @@ export const EditableImage = forwardRef(({
             setSelectedFile(null);
             setIsEditing(false);
             showCosmicNotification({
-                title: "Luna image applied",
+                title: "Cosmic AI image applied",
                 message: "Save the page when you are ready to publish this image.",
                 tone: "success",
             });
@@ -277,6 +278,7 @@ export const EditableImage = forwardRef(({
                         group-hover:brightness-90
                     "
                     alt="Editable"
+                    style={style}
                 />
 
                 {showOverlay && (

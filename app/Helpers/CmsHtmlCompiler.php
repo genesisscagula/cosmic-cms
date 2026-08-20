@@ -684,7 +684,7 @@ JS;
             $script = '<script>'.$runtimeJs.'</script>';
         }
 
-        $outerHead = in_array($type, ['commerce_promo_split', 'commerce_benefits_strip', 'commerce_mini_cart'], true) ? '' : "<div class='mb-8 max-w-2xl'><h2 class='text-3xl font-semibold tracking-[-0.035em] md:text-4xl'>{$heading}</h2>".($text!==''?"<p class='mt-3 max-w-xl text-[15px] leading-7' style='color:var(--commerce-muted)'>{$text}</p>":'')."</div>";
+        $outerHead = in_array($type, ['commerce_promo_split', 'commerce_benefits_strip', 'commerce_mini_cart'], true) ? '' : "<div class='mb-8 max-w-2xl'><h2 class='text-3xl font-semibold tracking-[-0.035em] md:text-4xl'>{$headingHtml}</h2>".($text!==''?"<p class='mt-3 max-w-xl text-[15px] leading-7' style='color:var(--commerce-muted)'>{$text}</p>":'')."</div>";
         return "<section id='{$rootId}' data-cosmic-commerce-spark='".e($type)."' data-commerce-config='{$config}' class='w-full px-6 py-16 md:px-12 lg:py-20' style='{$vars};font-family:Manrope,ui-sans-serif,system-ui,sans-serif'><style>#{$rootId} h1,#{$rootId} h2,#{$rootId} h3,#{$rootId} h4{font-family:Manrope,ui-sans-serif,system-ui,sans-serif;font-weight:700}</style><div class='mx-auto max-w-7xl'>{$outerHead}{$body}</div></section>{$script}";
     }
 
@@ -1693,18 +1693,34 @@ HTML;
                 $ctaLabel = e($rawCtaLabel !== '' ? $rawCtaLabel : 'Get Started');
                 $ctaUrl = e($block['cta_url'] ?? '#');
                 $menuItems = $block['menu'] ?? [];
+                $customShell = (bool) ($block['custom_shell_mode'] ?? false);
+                $customStyle = $customShell && is_array($block['custom_style'] ?? null) ? $block['custom_style'] : [];
+                $customHeaderBg = e((string) ($customStyle['background_color'] ?? 'transparent'));
+                $customHeaderText = e((string) ($customStyle['text_color'] ?? '#ffffff'));
+                $customNavColor = e((string) ($customStyle['nav_color'] ?? $customStyle['text_color'] ?? '#ffffff'));
+                $customHeaderHeight = max(48, min(180, (int) ($customStyle['height'] ?? 78)));
+                $customHeaderPaddingX = max(16, min(160, (int) ($customStyle['padding_x'] ?? 56)));
+                $customNavSize = max(10, min(24, (int) ($customStyle['nav_size'] ?? 14)));
+                $customCtaBg = e((string) ($customStyle['cta_background'] ?? '#2F80FF'));
+                $customCtaColor = e((string) ($customStyle['cta_color'] ?? '#ffffff'));
+                $customCtaRadius = max(0, min(999, (int) ($customStyle['cta_radius'] ?? 8)));
+                $customPhone = trim((string) ($block['phone_text'] ?? ''));
+                $customPhoneEnabled = $customShell && (bool) ($block['phone_enabled'] ?? false) && $customPhone !== '';
                 $overlayRequested = (bool) ($block['overlay_header_on_banner'] ?? false);
                 $overlayPrimaryAllowed = ! in_array(strtolower((string) ($primaryColor ?: 'midnight')), ['stone', 'white'], true);
-                $overlayHeaderCompatible = in_array(self::$currentPageStyle, ['premium', 'balanced'], true)
-                    && $overlayPrimaryAllowed;
+                $overlayHeaderCompatible = $customShell
+                    ? true
+                    : (in_array(self::$currentPageStyle, ['premium', 'balanced'], true) && $overlayPrimaryAllowed);
                 // Overlay Header is intentionally limited to Premium/Balanced on
                 // compatible theme families. Clean, Warm Stone and Studio White
                 // always render the normal header even if stale saved data says on.
                 $overlayHeader = $overlayRequested && $overlayHeaderCompatible;
-                $premiumOverlayHeader = $overlayHeader;
-                $overlayToneClass = $premiumOverlayHeader
-                    ? 'cosmic-overlay-tone-light cosmic-overlay-cta-gradient'
-                    : 'cosmic-overlay-tone-dark cosmic-overlay-cta-primary';
+                $premiumOverlayHeader = $overlayHeader && ! $customShell;
+                $overlayToneClass = $customShell
+                    ? 'cosmic-custom-shell-header'
+                    : ($premiumOverlayHeader
+                        ? 'cosmic-overlay-tone-light cosmic-overlay-cta-gradient'
+                        : 'cosmic-overlay-tone-dark cosmic-overlay-cta-primary');
                 $overlayHeaderClass = $overlayHeader
                     ? "cosmic-static-overlay-header {$overlayToneClass} absolute inset-x-0 top-0 border-transparent bg-transparent shadow-none"
                     : 'sticky top-0 bg-white shadow-sm';
@@ -1712,9 +1728,13 @@ HTML;
                 // Header always white in standard mode. Overlay mode preserves
                 // the same component while letting the first Spark sit behind it.
                 $headerBg = 'bg-white';
-                $headerBorder = 'border-slate-200';
-                $headerText = 'text-slate-900';
-                $menuText = 'text-slate-600';
+                $headerBorder = $customShell ? 'border-transparent' : 'border-slate-200';
+                $headerText = $customShell ? '' : 'text-slate-900';
+                $menuText = $customShell ? '' : 'text-slate-600';
+                $customHeaderInlineStyle = $customShell
+                    ? "min-height:{$customHeaderHeight}px;padding-left:{$customHeaderPaddingX}px;padding-right:{$customHeaderPaddingX}px;background:".($overlayHeader ? 'transparent' : $customHeaderBg).";color:{$customHeaderText};"
+                    : '';
+                $customMenuInlineStyle = $customShell ? "color:{$customNavColor};font-size:{$customNavSize}px;" : '';
 
                 // CTA button follows the primary theme. Overlay mode gets a
                 // richer theme gradient so the header does not read as all-white.
@@ -1728,11 +1748,13 @@ HTML;
                 $headerGradientTo = e((string) ($headerGradient['to'] ?? $headerGradient['via'] ?? '#115e59'));
                 $headerGradientGlow = e((string) ($headerGradient['glow'] ?? $headerGradient['via'] ?? '#14b8a6'));
                 $overlayLogoSurfaceStyle = '';
-                $overlayCtaInlineStyle = $overlayHeader
-                    ? "background:#fff;background-color:#fff;border:1px solid color-mix(in srgb,{$headerPrimary} 50%,transparent);color:{$headerPrimary};-webkit-text-fill-color:{$headerPrimary};box-shadow:none"
-                    : 'background:var(--p,var(--cosmic-primary,#243447));background-color:var(--p,var(--cosmic-primary,#243447));border-color:var(--p,var(--cosmic-primary,#243447));color:#fff;-webkit-text-fill-color:#fff';
+                $overlayCtaInlineStyle = $customShell
+                    ? "background:{$customCtaBg};background-color:{$customCtaBg};border:0;color:{$customCtaColor};-webkit-text-fill-color:{$customCtaColor};border-radius:{$customCtaRadius}px;box-shadow:none"
+                    : ($overlayHeader
+                        ? "background:#fff;background-color:#fff;border:1px solid color-mix(in srgb,{$headerPrimary} 50%,transparent);color:{$headerPrimary};-webkit-text-fill-color:{$headerPrimary};box-shadow:none"
+                        : 'background:var(--p,var(--cosmic-primary,#243447));background-color:var(--p,var(--cosmic-primary,#243447));border-color:var(--p,var(--cosmic-primary,#243447));color:#fff;-webkit-text-fill-color:#fff');
 
-                $renderDesktopMenu = function (array $items, int $depth = 0) use (&$renderDesktopMenu, $menuText): string {
+                $renderDesktopMenu = function (array $items, int $depth = 0) use (&$renderDesktopMenu, $menuText, $customMenuInlineStyle): string {
                     $itemsHtml = '';
 
                     foreach ($items as $item) {
@@ -1759,7 +1781,7 @@ HTML;
 
                         $menuClass = $hasChildren ? "menu-node menu-depth-{$depth} relative" : 'menu-leaf';
                         $itemsHtml .= "<li class='{$menuClass}'>"
-                            . "<a href='{$url}' class='{$menuText} flex items-center gap-1 whitespace-nowrap transition hover:text-slate-900'>{$label}" . ($hasChildren ? "<span aria-hidden='true' class='text-xs'>⌄</span>" : '') . "</a>"
+                            . "<a href='{$url}' style='{$customMenuInlineStyle}' class='{$menuText} flex items-center gap-1 whitespace-nowrap transition hover:opacity-80'>{$label}" . ($hasChildren ? "<span aria-hidden='true' class='text-xs'>⌄</span>" : '') . "</a>"
                             . $dropdown
                             . "</li>";
                     }
@@ -1959,7 +1981,7 @@ HTML;
                     }
                 </style>
 
-                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-page-style='" . e(self::$currentPageStyle) . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' data-cosmic-premium-overlay-header='" . ($premiumOverlayHeader ? "true" : "false") . "' class='cosmic-static-header {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 border-b {$headerBorder} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
+                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-page-style='" . e(self::$currentPageStyle) . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' data-cosmic-premium-overlay-header='" . ($premiumOverlayHeader ? "true" : "false") . "' style='{$customHeaderInlineStyle}' class='cosmic-static-header {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 border-b {$headerBorder} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
                     <a href='/' style='{$overlayLogoSurfaceStyle}' class='relative z-[72] text-xl font-extrabold tracking-wide {$headerText}' aria-label='{$logoText} home'>
                         {$logo}
                     </a>
@@ -1969,6 +1991,7 @@ HTML;
                             {$desktopNavHtml}
                         </ul>
 
+                        " . ($customPhoneEnabled ? "<span style='color:{$customNavColor};font-size:{$customNavSize}px' class='hidden shrink-0 items-center gap-2 font-semibold lg:inline-flex'><span aria-hidden='true'>☎</span>".e($customPhone)."</span>" : "") . "
                         <a
                             href='{$ctaUrl}'
                             class='cosmic-primary-cta {$buttonBg} {$buttonText} shrink-0 rounded-full px-8 py-4 text-sm font-semibold transition hover:opacity-90 lg:px-10' style='{$overlayCtaInlineStyle}'
@@ -2153,6 +2176,11 @@ HTML;
                     ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$logoHeight}px;max-height:56px;filter:{$logoFilter}' class='w-auto max-w-[250px] object-contain'>"
                     : "<div class='text-lg font-bold text-slate-900'>{$brand}</div>";
                 $mega = is_array($block['mega_footer'] ?? null) ? $block['mega_footer'] : [];
+                $customFooterShell = (bool) ($block['custom_shell_mode'] ?? false);
+                $customFooterStyle = $customFooterShell && is_array($block['custom_style'] ?? null) ? $block['custom_style'] : [];
+                $customFooterBg = e((string) ($customFooterStyle['background_color'] ?? '#071a33'));
+                $customFooterText = e((string) ($customFooterStyle['text_color'] ?? '#ffffff'));
+                $customFooterMuted = e((string) ($customFooterStyle['muted_color'] ?? '#b8c4d6'));
                 $megaEnabled = (bool) ($block['mega_enabled'] ?? $mega['enabled'] ?? false);
                 $megaThemeMode = in_array(($mega['theme'] ?? 'auto'), ['auto', 'primary', 'white', 'surface'], true) ? ($mega['theme'] ?? 'auto') : 'auto';
                 $megaResolvedTheme = $megaThemeMode === 'auto' ? $blockTheme : $megaThemeMode;
@@ -2167,7 +2195,9 @@ HTML;
                     ];
                 }
                 $megaLogoHeight = max(44, min(64, $logoHeight + 10));
-                $megaLogoFilter = $megaResolvedTheme === 'primary' ? 'brightness(0) invert(1)' : $logoFilter;
+                $megaLogoFilter = $customFooterShell && ($customFooterStyle['logo_tone'] ?? '') === 'light'
+                    ? 'brightness(0) invert(1)'
+                    : ($megaResolvedTheme === 'primary' ? 'brightness(0) invert(1)' : $logoFilter);
                 $megaBrand = $logoImageUrl !== ''
                     ? "<img src='{$logoImageUrl}' alt='{$brand}' style='height:{$megaLogoHeight}px;max-height:64px;filter:{$megaLogoFilter}' class='w-auto max-w-[300px] object-contain'>"
                     : "<div class='text-xl font-bold " . ($megaResolvedTheme === 'primary' ? 'text-white' : $primaryTheme['text']) . "'>{$brand}</div>";
@@ -2193,18 +2223,23 @@ HTML;
                             $url = e($item['url'] ?? '#');
                             $itemsHtml .= "<a href='{$url}' class='block py-1 text-sm transition hover:opacity-70'>{$label}</a>";
                         }
-                        $columnHtml .= "<div class='min-w-0'><p class='text-xs font-bold uppercase tracking-[.16em] {$primaryTheme['sub']}'>{$title}</p><div class='mt-3 space-y-1.5'>{$itemsHtml}</div></div>";
+                        $columnTitleStyle = $customFooterShell ? "style='color:{$customFooterMuted}'" : '';
+                        $columnHtml .= "<div class='min-w-0'><p {$columnTitleStyle} class='text-xs font-bold uppercase tracking-[.16em] {$primaryTheme['sub']}'>{$title}</p><div class='mt-3 space-y-1.5'>{$itemsHtml}</div></div>";
                     }
                     $columnCount = max(1, count($columns));
                     $gridClass = $columnCount === 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : ($columnCount === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : ($columnCount === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'));
-                    $html .= "<section class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 {$primaryTheme['bg']} {$primaryTheme['text']} {$primaryTheme['border']}'><div class='mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:gap-16'><div class='min-w-0'>{$megaBrand}<p class='mt-4 max-w-sm text-sm leading-6 {$primaryTheme['sub']}'>{$tagline}</p><a href='{$primaryUrl}' class='mt-5 inline-flex text-sm font-semibold hover:opacity-75'>{$primaryLabel}</a></div><div class='grid gap-7 lg:ml-auto lg:w-full lg:max-w-[820px] {$gridClass}'>{$columnHtml}</div></div></section>";
+                    $footerSectionStyle = $customFooterShell ? "style='background:{$customFooterBg};color:{$customFooterText}'" : '';
+                    $footerMutedStyle = $customFooterShell ? "style='color:{$customFooterMuted}'" : '';
+                    $html .= "<section {$footerSectionStyle} class='w-full border-b px-6 py-10 sm:px-8 sm:py-12 {$primaryTheme['bg']} {$primaryTheme['text']} {$primaryTheme['border']}'><div class='mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:gap-16'><div class='min-w-0'>{$megaBrand}<p {$footerMutedStyle} class='mt-4 max-w-sm text-sm leading-6 {$primaryTheme['sub']}'>{$tagline}</p><a href='{$primaryUrl}' class='mt-5 inline-flex text-sm font-semibold hover:opacity-75'>{$primaryLabel}</a></div><div class='grid gap-7 lg:ml-auto lg:w-full lg:max-w-[820px] {$gridClass}'>{$columnHtml}</div></div></section>";
                 }
 
                 $legalLeft = $megaEnabled
                     ? "<div class='flex flex-wrap items-center gap-x-5 gap-y-2 text-sm'><a href='{$privacyUrl}' class='transition hover:text-slate-900'>{$privacyLabel}</a><a href='{$termsUrl}' class='transition hover:text-slate-900'>{$termsLabel}</a></div>"
                     : $footerBrand;
+                $legalFooterStyle = $customFooterShell ? "style='background:{$customFooterBg};color:{$customFooterMuted};border-color:rgba(255,255,255,.12)'" : '';
+                $legalFooterClass = $customFooterShell ? '' : 'border-slate-200 bg-white text-slate-500';
                 $html .= "
-                <footer class='flex w-full flex-col items-start gap-4 border-t border-slate-200 bg-white px-6 py-8 text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10'>
+                <footer {$legalFooterStyle} class='flex w-full flex-col items-start gap-4 border-t {$legalFooterClass} px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10'>
                     {$legalLeft}
                     <div class='text-sm sm:whitespace-nowrap'>{$copy}</div>
                 </footer>";
@@ -5345,70 +5380,345 @@ HTML;
 
     private static function lunaCustomSectionHtml(array $block, array $theme): string
     {
-        $category = e((string) ($block['category'] ?? 'content'));
-        $layout = e((string) ($block['layout'] ?? 'editorial'));
+        $v = is_array($block['visual_style'] ?? null) ? $block['visual_style'] : [];
+        $o = is_array($block['style_overrides'] ?? null) ? $block['style_overrides'] : [];
+        $num = static fn($value, $fallback) => is_numeric($value) ? (float) $value : $fallback;
+        $hex = static function ($value, $fallback) {
+            $value = (string) $value;
+            return preg_match('/^#[0-9a-f]{6}([0-9a-f]{2})?$/i', $value) ? $value : $fallback;
+        };
+        $esc = static fn($value) => e((string) $value);
+
         $alignment = in_array(($block['alignment'] ?? 'left'), ['left','center','right'], true) ? $block['alignment'] : 'left';
         $mediaPosition = in_array(($block['media_position'] ?? 'none'), ['left','right','background','top','none'], true) ? $block['media_position'] : 'none';
-        $density = in_array(($block['density'] ?? 'balanced'), ['airy','balanced','compact'], true) ? $block['density'] : 'balanced';
-        $accent = in_array(($block['accent_shape'] ?? 'none'), ['none','glow','orb','line','grid','frame'], true) ? $block['accent_shape'] : 'none';
+        $layout = (string) ($block['layout'] ?? 'editorial');
+        $key = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($block['custom_spark_key'] ?? 'custom'));
 
-        $eyebrow = e((string) ($block['eyebrow'] ?? ''));
-        $heading = e((string) ($block['heading'] ?? 'Custom section'));
-        $text = nl2br(e((string) ($block['text'] ?? '')));
-        $primaryLabel = e((string) ($block['primary_label'] ?? ''));
-        $primaryUrl = e((string) ($block['primary_url'] ?? '#'));
-        $secondaryLabel = e((string) ($block['secondary_label'] ?? ''));
-        $secondaryUrl = e((string) ($block['secondary_url'] ?? '#'));
-        $image = e((string) ($block['image_url'] ?? ''));
+        $heading = $esc($block['heading'] ?? 'Custom section');
+        $eyebrow = $esc($block['eyebrow'] ?? '');
+        $text = nl2br($esc($block['text'] ?? ''));
+        $image = $esc($block['image_url'] ?? '');
+        $primaryLabel = $esc($block['primary_label'] ?? '');
+        $primaryUrl = $esc($block['primary_url'] ?? '#');
+        $secondaryLabel = $esc($block['secondary_label'] ?? '');
+        $secondaryUrl = $esc($block['secondary_url'] ?? '#');
 
-        $pad = match ($density) { 'airy' => 'py-28', 'compact' => 'py-14', default => 'py-20' };
-        $alignClass = match ($alignment) { 'center' => 'text-center items-center', 'right' => 'text-right items-end', default => 'text-left items-start' };
-        $copy = "<div class='relative z-10 flex flex-col {$alignClass}'>".
-            ($eyebrow !== '' ? "<p class='text-xs font-bold uppercase tracking-[0.2em] {$theme['sub']}'>{$eyebrow}</p>" : '').
-            "<h2 class='mt-3 max-w-4xl text-4xl font-black leading-tight {$theme['text']}'>{$heading}</h2>".
-            ($text !== '' ? "<p class='mt-5 max-w-2xl text-base leading-7 {$theme['sub']}'>{$text}</p>" : '');
+        $headingSize = $num($o['heading_size'] ?? ($v['heading_size'] ?? null), 52);
+        $bodySize = $num($o['body_size'] ?? ($v['body_size'] ?? null), 16);
+        $padY = $num($o['section_padding_y'] ?? ($v['section_padding_y'] ?? null), 64);
+        $padX = $num($v['section_padding_x'] ?? null, 48);
+        $gap = $num($o['content_gap'] ?? ($v['content_gap'] ?? null), 20);
+        $cardPadding = $num($o['card_padding'] ?? ($v['card_padding'] ?? null), 28);
+        $cardRadius = $num($v['card_radius'] ?? null, 18);
+        $buttonRadius = $num($v['button_radius'] ?? null, 999);
+        $minHeight = $num($v['section_min_height'] ?? null, 560);
+        $aspectRatio = max(0, min(6, $num($v['reference_aspect_ratio'] ?? null, 0)));
+        $maxWidth = $num($v['content_max_width'] ?? ($v['content_width'] ?? null), 1280);
+        $copyWidth = max(30, min(100, $num($v['copy_width_percent'] ?? null, 52)));
+        $headingLine = $num($v['heading_line_height'] ?? null, 1.02);
+        $bodyLine = $num($v['body_line_height'] ?? null, 1.45);
 
-        if ($primaryLabel !== '' || $secondaryLabel !== '') {
-            $copy .= "<div class='mt-7 flex flex-wrap gap-3'>";
-            if ($primaryLabel !== '') $copy .= "<a href='{$primaryUrl}' class='rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white'>{$primaryLabel}</a>";
-            if ($secondaryLabel !== '') $copy .= "<a href='{$secondaryUrl}' class='rounded-xl border px-5 py-3 text-sm font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a>";
-            $copy .= '</div>';
+        $headingTablet = $num($o['heading_size_tablet'] ?? ($v['heading_size_tablet'] ?? null), round($headingSize * .82));
+        $headingMobile = $num($o['heading_size_mobile'] ?? ($v['heading_size_mobile'] ?? null), round($headingSize * .64));
+        $bodyTablet = $num($o['body_size_tablet'] ?? ($v['body_size_tablet'] ?? null), $bodySize);
+        $bodyMobile = $num($o['body_size_mobile'] ?? ($v['body_size_mobile'] ?? null), max(14, $bodySize - 1));
+        $padTablet = $num($o['section_padding_y_tablet'] ?? ($v['section_padding_y_tablet'] ?? null), round($padY * .75));
+        $padMobile = $num($o['section_padding_y_mobile'] ?? ($v['section_padding_y_mobile'] ?? null), max(36, round($padY * .52)));
+
+        $bg = $hex($v['background_color'] ?? null, '#f3f7f4');
+        $headingColor = $hex($v['heading_color'] ?? null, '#27272a');
+        $bodyColor = $hex($v['body_color'] ?? null, '#3f3f46');
+        $accent = $hex($v['accent_color'] ?? null, '#f5b68c');
+        $cardBg = $hex($v['card_background'] ?? null, '#ffffff');
+        $backgroundPosition = $esc($v['background_position'] ?? 'center center');
+        $backgroundSize = (($v['background_size'] ?? 'cover') === 'contain') ? 'contain' : 'cover';
+
+        $headingAccentRaw = trim((string)($block['heading_accent_text'] ?? ''));
+        $headingAccentColor = $hex($v['heading_accent_color'] ?? null, $accent);
+        $headingHtml = $heading;
+        if ($headingAccentRaw !== '') {
+            $escapedAccent = $esc($headingAccentRaw);
+            $headingHtml = str_replace($escapedAccent, "<span style='color:{$headingAccentColor}'>".$escapedAccent."</span>", $headingHtml);
         }
-        $copy .= '</div>';
+        $iconPaths = [
+            'shield-check'=>'M12 3 5 6v5c0 4.6 2.9 7.5 7 10 4.1-2.5 7-5.4 7-10V6l-7-3zm-3 8 2 2 4-4',
+            'settings'=>'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0-5v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4',
+            'truck'=>'M3 6h11v10H3V6zm11 4h4l3 3v3h-7v-6zM7 19a2 2 0 1 0 0-4 2 2 0 0 0 0 4zm11 0a2 2 0 1 0 0-4 2 2 0 0 0 0 4z',
+            'headset'=>'M4 13v-1a8 8 0 0 1 16 0v1m-16 0h3v6H5a1 1 0 0 1-1-1v-5zm16 0h-3v6h2a1 1 0 0 0 1-1v-5zm-3 6c0 2-2 2-4 2',
+            'check-circle'=>'M21 12a9 9 0 1 1-4-7.5M9 12l2 2 6-7','star'=>'M12 3l2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3z',
+            'building'=>'M5 21V4h10v17M9 8h2m-2 4h2m-2 4h2m6-7h3v12','home'=>'M3 11 12 4l9 7v10h-6v-6H9v6H3V11z','ruler'=>'M4 17 17 4l3 3L7 20l-3-3zm9-9 3 3m-6 0 2 2m-5 1 2 2','layers'=>'M12 3 3 8l9 5 9-5-9-5zm-9 10 9 5 9-5m-18 5 9 5 9-5',
+            'sparkles'=>'M12 3l1.3 3.7L17 8l-3.7 1.3L12 13l-1.3-3.7L7 8l3.7-1.3L12 3z','phone'=>'M6 3h3l1.5 4-2 1.5a16 16 0 0 0 7 7l1.5-2 4 1.5v3c0 1.7-1.3 3-3 3C9.7 21 3 14.3 3 6c0-1.7 1.3-3 3-3z','mail'=>'M3 6h18v12H3V6zm0 1 9 6 9-6','map-pin'=>'M12 21s7-6.1 7-12a7 7 0 1 0-14 0c0 5.9 7 12 7 12zm0-9a3 3 0 1 0 0-6 3 3 0 0 0 0 6z','clock'=>'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zm0-13v5l3 2','users'=>'M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8zm6-1a3 3 0 1 0 0-6m-12 17v-2a6 6 0 0 1 12 0v2m2-7a5 5 0 0 1 5 5v2'
+        ];
+        $iconSvg = static function ($name, $stroke) use ($iconPaths, $esc) {
+            $path = $iconPaths[strtolower((string)$name)] ?? '';
+            if ($path === '') return '';
+            return "<svg aria-hidden='true' viewBox='0 0 24 24' width='32' height='32' fill='none' stroke='{$stroke}' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><path d='".$esc($path)."'></path></svg>";
+        };
 
-        $imageHtml = ($image !== '' && $mediaPosition !== 'none')
-            ? "<div class='relative z-10 overflow-hidden rounded-[2rem] border {$theme['border']} shadow-2xl'><img src='{$image}' alt='' class='aspect-[4/3] h-full w-full object-cover' loading='lazy'></div>"
-            : '';
+        $alignCss = $alignment === 'center' ? 'text-align:center;align-items:center;' : ($alignment === 'right' ? 'text-align:right;align-items:flex-end;' : 'text-align:left;align-items:flex-start;');
+        $copy = "<div class='cc-copy' style='position:relative;z-index:2;display:flex;flex-direction:column;gap:{$gap}px;max-width:{$copyWidth}%;{$alignCss}'>".
+            ($eyebrow !== '' ? "<div style='font-size:".$num($v['eyebrow_size'] ?? null,14)."px;font-weight:700;color:{$headingColor}'>{$eyebrow}</div>" : '').
+            "<h2 class='cc-heading' style='margin:0;font-size:{$headingSize}px;line-height:{$headingLine};font-weight:900;color:{$headingColor};white-space:pre-line'>{$heading}</h2>".
+            ($text !== '' ? "<div class='cc-body' style='font-size:{$bodySize}px;line-height:{$bodyLine};color:{$bodyColor}'>{$text}</div>" : '');
+
+        $review = is_array($block['review'] ?? null) ? $block['review'] : [];
+        if (($review['text'] ?? '') !== '' || ($review['stars'] ?? '') !== '') {
+            $stars = str_repeat('★', max(0, min(5, (int) ($review['stars'] ?? 5))));
+            $reviewBg = $hex($v['review_background'] ?? null, '#ffffffcc');
+            $reviewText = $hex($v['review_text_color'] ?? null, $bodyColor);
+            $reviewStars = $hex($v['review_star_color'] ?? null, $accent);
+            $reviewRadius = $num($v['review_radius'] ?? null, 999);
+            $reviewSize = $num($v['review_text_size'] ?? null, 14);
+            $copy .= "<div style='display:inline-flex;flex-wrap:wrap;align-items:center;gap:12px;padding:8px 16px;background:{$reviewBg};border-radius:{$reviewRadius}px;box-shadow:0 1px 3px rgba(0,0,0,.12)'><span style='color:{$reviewStars}'>{$stars}</span><span style='color:{$reviewText};font-size:{$reviewSize}px'>".$esc($review['text'] ?? '')."</span></div>";
+        }
+
+
+        $runtimeScript = '';
+        $runtime = is_array($block['runtime'] ?? null) ? $block['runtime'] : null;
+        if ($runtime) {
+            $runtimePayload = json_encode($runtime, JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT);
+            $runtimeId = 'cc-runtime-'.$key;
+            $copy .= "<div id='{$runtimeId}' data-cosmic-runtime style='width:100%;background:{$cardBg};border:1px solid rgba(0,0,0,.1);border-radius:{$cardRadius}px;padding:{$cardPadding}px;box-sizing:border-box'></div>";
+            $runtimeScript = "<script type='application/json' data-cosmic-runtime-config='{$runtimeId}'>".$runtimePayload."</script>".<<<'HTML'
+<script>
+(function(){
+ document.querySelectorAll('script[data-cosmic-runtime-config]').forEach(function(configEl){
+  if(configEl.dataset.bound==='1')return;configEl.dataset.bound='1';
+  var root=document.getElementById(configEl.getAttribute('data-cosmic-runtime-config'));if(!root)return;
+  var c={};try{c=JSON.parse(configEl.textContent||'{}')}catch(e){return}
+  var inputs=(c.inputs||[]).slice(0,16),computed=(c.computed||[]).slice(0,16),conditions=(c.conditions||[]).slice(0,16),actions=(c.actions||[]).slice(0,12),views=(c.views||[]).slice(0,10),steps=(c.steps||[]).slice(0,10),modals=(c.modals||[]).slice(0,8),collections=(c.collections||[]).slice(0,4),outputs=(c.outputs||[]).slice(0,12),state=(c.state||[]).slice(0,16);
+  var values={},openModal=null,currentStep=0,query={},filters={};
+  state.forEach(function(x){values[x.key]=x.default??0});inputs.forEach(function(x){values[x.key]=x.default??''});if(views.length&&values.active_tab==null)values.active_tab=views[0].key;
+  var fns={min:Math.min,max:Math.max,round:Math.round,floor:Math.floor,ceil:Math.ceil,abs:Math.abs,pow:Math.pow,if:function(q,a,b){return q?a:b}};
+  function n(v){var x=Number(v);return Number.isFinite(x)?x:0}
+  function fmt(v,type,currency){if(type==='text')return String(v??'');v=n(v);if(type==='currency')return new Intl.NumberFormat(undefined,{style:'currency',currency:currency||'USD',maximumFractionDigits:0}).format(v);if(type==='percent')return(Math.round(v*100)/100)+'%';if(type==='integer')return new Intl.NumberFormat(undefined,{maximumFractionDigits:0}).format(v);return new Intl.NumberFormat(undefined,{maximumFractionDigits:2}).format(v)}
+  function calc(raw){raw=String(raw||'').trim();if(!raw||raw.length>500||!/^[0-9A-Za-z_+\-*\/%().,<>=!&|\s]+$/.test(raw))return 0;var ids=raw.match(/[A-Za-z_][A-Za-z0-9_]*/g)||[];for(var i=0;i<ids.length;i++){if(!(ids[i] in values)&&!(ids[i] in fns))return 0}try{var names=Object.keys(values).concat(Object.keys(fns)),args=Object.values(values).map(n).concat(Object.values(fns));return n(Function.apply(null,names.concat(['"use strict";return ('+raw+');'])).apply(null,args))}catch(e){return 0}}
+  function test(x){var a=values[x.source],b=x.value;switch(x.operator){case'neq':return a!=b;case'gt':return n(a)>n(b);case'gte':return n(a)>=n(b);case'lt':return n(a)<n(b);case'lte':return n(a)<=n(b);case'contains':return String(a??'').includes(String(b??''));case'truthy':return!!a;case'falsy':return!a;default:return a==b}}
+  function visible(key){return !conditions.some(function(x){return x.target===key&&((x.effect==='show'&&!test(x))||(x.effect==='hide'&&test(x)))})}
+  function disabled(key){return conditions.some(function(x){return x.target===key&&((x.effect==='enable'&&!test(x))||(x.effect==='disable'&&test(x)))})}
+  function esc(s){var d=document.createElement('div');d.textContent=String(s??'');return d.innerHTML}
+  function action(a){var t=a.type,k=a.target;if(t==='set_value'||t==='select_tab'||t==='select_item'||t==='filter'||t==='search'||t==='sort')values[k]=a.value;else if(t==='toggle')values[k]=!values[k];else if(t==='increment')values[k]=n(values[k])+n(a.value||1);else if(t==='decrement')values[k]=n(values[k])-n(a.value||1);else if(t==='open_modal')openModal=k;else if(t==='close_modal')openModal=null;else if(t==='next_step')currentStep=Math.min(steps.length-1,currentStep+1);else if(t==='previous_step')currentStep=Math.max(0,currentStep-1);else if(t==='go_to_step')currentStep=Math.max(0,Math.min(steps.length-1,n(a.value)));else if(t==='reset'){values={};state.forEach(function(x){values[x.key]=x.default??0});inputs.forEach(function(x){values[x.key]=x.default??''});currentStep=0;openModal=null}render()}
+  function bind(){
+    root.querySelectorAll('[data-ri]').forEach(function(el){el.addEventListener('input',function(){values[el.dataset.ri]=el.type==='checkbox'?(el.checked?1:0):(['number','range'].includes(el.type)?n(el.value):el.value);render()});el.addEventListener('change',function(){values[el.dataset.ri]=el.type==='checkbox'?(el.checked?1:0):el.value;render()})});
+    root.querySelectorAll('[data-ra]').forEach(function(el){el.addEventListener('click',function(){var a=actions[Number(el.dataset.ra)];if(a)action(a)})});
+    root.querySelectorAll('[data-tab]').forEach(function(el){el.addEventListener('click',function(){values.active_tab=el.dataset.tab;render()})});
+    root.querySelectorAll('[data-close-modal]').forEach(function(el){el.addEventListener('click',function(){openModal=null;render()})});
+    root.querySelectorAll('[data-cq]').forEach(function(el){el.addEventListener('input',function(){query[el.dataset.cq]=el.value;render()})});
+    root.querySelectorAll('[data-cf]').forEach(function(el){el.addEventListener('change',function(){filters[el.dataset.cf]=el.value;render()})});
+  }
+  function render(){
+    computed.forEach(function(x){values[x.key]=calc(x.formula)});
+    var h='';
+    if(views.length){h+="<div style='display:flex;flex-wrap:wrap;gap:8px;margin-bottom:16px'>";views.forEach(function(v){h+="<button type='button' data-tab='"+esc(v.key)+"' style='border:1px solid rgba(0,0,0,.15);border-radius:999px;padding:8px 16px;font-weight:700;cursor:pointer'>"+esc(v.label||v.title||v.key)+"</button>"});h+='</div>';views.forEach(function(v){if(values.active_tab===v.key&&visible(v.key))h+="<div style='border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:16px;margin-bottom:16px'><strong>"+esc(v.title||'')+"</strong><p>"+esc(v.text||'')+"</p></div>"})}
+    if(steps.length){h+="<div style='display:flex;gap:4px;margin-bottom:12px'>";steps.forEach(function(_,i){h+="<span style='height:6px;flex:1;border-radius:999px;background:"+(i<=currentStep?'#10b981':'rgba(0,0,0,.1)')+"'></span>"});h+="</div><div style='margin-bottom:16px'><strong>"+esc(steps[currentStep]?.title||steps[currentStep]?.label||'')+"</strong><p>"+esc(steps[currentStep]?.text||'')+"</p></div>"}
+    h+="<div style='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px'>";
+    inputs.forEach(function(x){if(!visible(x.key))return;var type=['text','email','tel','number','range','select','radio','checkbox','toggle','date','time','search'].includes(x.control)?x.control:'number',val=values[x.key]??'',dis=disabled(x.key)?' disabled':'',span=x.width==='full'?"grid-column:1/-1;":'';h+="<label data-target='"+esc(x.key)+"' style='"+span+"display:block'><span style='display:flex;justify-content:space-between;margin-bottom:8px;font-size:14px;font-weight:700'><span>"+esc(x.label||x.key)+"</span>"+(type==='range'?'<span>'+esc(fmt(val,x.format,x.currency))+'</span>':'')+"</span>";
+      if(type==='select'){h+="<select data-ri='"+esc(x.key)+"'"+dis+" style='height:48px;width:100%;border:1px solid #ddd;border-radius:12px;padding:0 12px'>";(x.options||[]).slice(0,20).forEach(function(o){var ov=typeof o==='object'?o.value:o,ol=typeof o==='object'?o.label:o;h+="<option value='"+esc(ov)+"' "+(String(ov)===String(val)?'selected':'')+">"+esc(ol)+"</option>"});h+='</select>'}
+      else if(type==='radio'){(x.options||[]).slice(0,12).forEach(function(o){var ov=typeof o==='object'?o.value:o,ol=typeof o==='object'?o.label:o;h+="<label style='margin-right:12px'><input data-ri='"+esc(x.key)+"' type='radio' value='"+esc(ov)+"' "+(String(ov)===String(val)?'checked':'')+"> "+esc(ol)+"</label>"})}
+      else if(type==='checkbox'||type==='toggle')h+="<input data-ri='"+esc(x.key)+"' type='checkbox' "+(val?'checked':'')+dis+">";
+      else h+="<input data-ri='"+esc(x.key)+"' type='"+esc(type==='range'?'range':type)+"' value='"+esc(val)+"' "+(x.min!=null?"min='"+esc(x.min)+"' ":'')+(x.max!=null?"max='"+esc(x.max)+"' ":'')+"step='"+esc(x.step||1)+"'"+dis+" style='"+(type==='range'?'width:100%':'height:48px;width:100%;border:1px solid #ddd;border-radius:12px;padding:0 12px')+"'>";
+      h+='</label>'});h+='</div>';
+    var display=outputs.length?outputs:computed;if(display.length){h+="<div style='display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:24px'>";display.forEach(function(x){var k=x.source||x.key;if(!visible(x.key||k))return;h+="<div style='border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:16px;"+(x.display==='hero_result'?'grid-column:1/-1;text-align:center;':'')+"'><div style='font-size:12px;font-weight:700;text-transform:uppercase'>"+esc(x.label||k)+"</div><div style='font-size:"+(x.display==='hero_result'?'36':'24')+"px;font-weight:900'>"+esc(x.prefix||'')+esc(fmt(values[k],x.format,x.currency))+esc(x.suffix||'')+"</div></div>"});h+='</div>'}
+    collections.forEach(function(col){var items=Array.isArray(col.items)?col.items:[],q=String(query[col.key]||'').toLowerCase(),fk=(col.filterable||[])[0],filter=filters[col.key]||'all',cats=fk?Array.from(new Set(items.map(function(x){return x?.[fk]}).filter(Boolean))):[],shown=items.filter(function(x){return(!q||JSON.stringify(x).toLowerCase().includes(q))&&(filter==='all'||x?.[fk]===filter)});h+="<div style='margin-top:24px'><div style='display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px'><input data-cq='"+esc(col.key)+"' value='"+esc(query[col.key]||'')+"' placeholder='Search' style='height:40px;border:1px solid #ddd;border-radius:8px;padding:0 12px'>";if(cats.length){h+="<select data-cf='"+esc(col.key)+"' style='height:40px;border:1px solid #ddd;border-radius:8px;padding:0 12px'><option value='all'>All</option>";cats.forEach(function(cat){h+="<option value='"+esc(cat)+"' "+(cat===filter?'selected':'')+">"+esc(cat)+"</option>"});h+='</select>'}h+="</div><div style='display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px'>";shown.slice(0,24).forEach(function(item,i){h+="<article style='border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:16px'><strong>"+esc(item.title||item.name||('Item '+(i+1)))+"</strong><p>"+esc(item.text||item.description||'')+"</p></article>"});h+='</div></div>'});
+    if(actions.length){h+="<div style='display:flex;flex-wrap:wrap;gap:8px;margin-top:20px'>";actions.forEach(function(a,i){if(a.type==='submit_form')return;h+="<button type='button' data-ra='"+i+"' style='border:1px solid rgba(0,0,0,.15);border-radius:999px;padding:10px 16px;font-weight:700;cursor:pointer'>"+esc(a.label||a.type.replaceAll('_',' '))+"</button>"});h+='</div>'}
+    if(openModal){modals.filter(function(m){return m.key===openModal}).forEach(function(m){h+="<div style='position:fixed;inset:0;z-index:10050;display:grid;place-items:center;background:rgba(0,0,0,.6);padding:16px'><div style='width:min(100%,520px);background:#fff;border-radius:20px;padding:24px;color:#111'><h3>"+esc(m.title||'')+"</h3><p>"+esc(m.text||'')+"</p><button type='button' data-close-modal style='margin-top:16px;padding:8px 14px'>"+esc(m.button_label||'Close')+"</button></div></div>"})}
+    root.innerHTML=h;bind();
+    var form=root.parentElement&&root.parentElement.querySelector('[data-custom-spark-form]');if(form){Object.keys(values).forEach(function(k){var name='_runtime_'+k,hidden=form.querySelector('input[name="'+name+'"]');if(!hidden){hidden=document.createElement('input');hidden.type='hidden';hidden.name=name;form.appendChild(hidden)}hidden.value=values[k]})}
+  }
+  render();
+ });
+})();
+</script>
+HTML;
+        }
+
+        $formScript = '';
+        $form = is_array($block['form'] ?? null) ? $block['form'] : null;
+        if ($form) {
+            $formTitle = $esc($form['title'] ?? '');
+            $formName = $esc($form['title'] ?? 'Website inquiry');
+            $successMessage = $esc($form['success_message'] ?? 'Thank you! Your inquiry has been sent successfully.');
+            $columns = ((int) ($form['columns'] ?? 2)) === 1 ? 1 : 2;
+            $copy .= "<form action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form data-custom-spark-form style='width:100%;background:{$cardBg};border-radius:{$cardRadius}px;padding:{$cardPadding}px'>";
+            $copy .= "<input type='hidden' name='_cosmic_form_name' value='{$formName}'><input type='hidden' name='_cosmic_success_message' value='{$successMessage}'>";
+            $copy .= "<label aria-hidden='true' style='position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden'>Company<input name='company' tabindex='-1' autocomplete='off'></label>";
+            if ($formTitle !== '') $copy .= "<div style='font-weight:700;color:{$headingColor}'>{$formTitle}</div>";
+            $fields = is_array($form['fields'] ?? null) ? array_slice($form['fields'],0,8) : [];
+            $requiredNames = [];
+            if ($fields) {
+                $copy .= "<div class='cc-form-grid' style='margin-top:20px;display:grid;grid-template-columns:repeat({$columns},minmax(0,1fr));gap:12px'>";
+                foreach ($fields as $field) {
+                    if (!is_array($field)) continue;
+                    $rawName = strtolower(trim((string) ($field['name'] ?? 'field')));
+                    $safeName = preg_replace('/[^a-z0-9_]/', '_', $rawName);
+                    $safeName = trim((string) preg_replace('/_+/', '_', $safeName), '_');
+                    if ($safeName === '' || !preg_match('/^[a-z]/', $safeName)) $safeName = 'field_'.$safeName;
+                    $safeName = substr($safeName, 0, 64);
+
+                    $type = in_array(($field['type'] ?? 'text'), ['text','email','tel','textarea','select','checkbox','hidden'], true) ? $field['type'] : 'text';
+                    $placeholder = $esc($field['placeholder'] ?? ($field['label'] ?? $safeName));
+                    $label = $esc($field['label'] ?? $field['placeholder'] ?? $safeName);
+                    $required = !empty($field['required']) ? ' required' : '';
+                    if (!empty($field['required']) && $type !== 'hidden') $requiredNames[] = $safeName;
+                    $span = (($field['width'] ?? '') === 'full' && $columns === 2) ? 'grid-column:1/-1;' : '';
+                    $baseStyle = "{$span}width:100%;border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:0 16px;font-size:14px;background:rgba(0,0,0,.025);box-sizing:border-box;color:{$bodyColor}";
+
+                    if ($type === 'hidden') {
+                        $copy .= "<input type='hidden' name='{$safeName}' value='{$placeholder}'>";
+                    } elseif ($type === 'textarea') {
+                        $copy .= "<textarea name='{$safeName}' placeholder='{$placeholder}'{$required} rows='4' style='{$baseStyle};min-height:112px;padding-top:14px;padding-bottom:14px;resize:vertical'></textarea>";
+                    } elseif ($type === 'select') {
+                        $copy .= "<select name='{$safeName}'{$required} style='{$baseStyle};height:56px'><option value=''>{$placeholder}</option>";
+                        foreach (array_slice(is_array($field['options'] ?? null) ? $field['options'] : [],0,20) as $option) {
+                            $optionEsc = $esc($option);
+                            $copy .= "<option value='{$optionEsc}'>{$optionEsc}</option>";
+                        }
+                        $copy .= "</select>";
+                    } elseif ($type === 'checkbox') {
+                        $options = array_slice(is_array($field['options'] ?? null) ? $field['options'] : [],0,20);
+                        if ($options) {
+                            $copy .= "<fieldset style='{$span}border:0;padding:0;margin:0'><legend style='font-size:13px;font-weight:600;color:{$bodyColor};margin-bottom:8px'>{$label}</legend>";
+                            foreach ($options as $option) {
+                                $optionEsc = $esc($option);
+                                $copy .= "<label style='display:flex;align-items:flex-start;gap:8px;margin-top:6px;font-size:14px;color:{$bodyColor}'><input type='checkbox' name='{$safeName}[]' value='{$optionEsc}'><span>{$optionEsc}</span></label>";
+                            }
+                            $copy .= "</fieldset>";
+                        } else {
+                            $copy .= "<label style='{$span}display:flex;align-items:flex-start;gap:8px;font-size:14px;color:{$bodyColor}'><input type='checkbox' name='{$safeName}' value='1'{$required}><span>{$label}</span></label>";
+                        }
+                    } else {
+                        $copy .= "<input type='{$type}' name='{$safeName}' placeholder='{$placeholder}'{$required} style='{$baseStyle};height:56px'>";
+                    }
+                }
+                $copy .= "</div>";
+            }
+            if ($requiredNames) {
+                $requiredList = $esc(implode(',', array_values(array_unique($requiredNames))));
+                $copy .= "<input type='hidden' name='_cosmic_required' value='{$requiredList}'>";
+            }
+            $button = $esc($form['button_label'] ?? $primaryLabel ?: 'Submit');
+            $justify = ($form['button_alignment'] ?? '') === 'center' ? 'center' : (($form['button_alignment'] ?? '') === 'right' ? 'flex-end' : 'flex-start');
+            $noteBelow = ($form['note_position'] ?? '') === 'below';
+            $copy .= "<div style='margin-top:16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:{$justify};gap:16px'><button type='submit' style='border:0;cursor:pointer;padding:12px 24px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-size:14px;font-weight:700'>{$button}</button>";
+            if (($form['note'] ?? '') !== '' && !$noteBelow) $copy .= "<span style='font-size:14px;color:{$bodyColor}'>".$esc($form['note'])."</span>";
+            $copy .= "</div>";
+            if (($form['note'] ?? '') !== '' && $noteBelow) $copy .= "<div style='margin-top:12px;font-size:14px;color:{$bodyColor}'>".$esc($form['note'])."</div>";
+            $copy .= "<p data-cosmic-contact-status aria-live='polite' style='margin:10px 0 0;font-size:12px;color:{$bodyColor}'></p>";
+            $copy .= "</form>";
+
+            $formScript = <<<'HTML'
+<script>
+(function(){
+  document.querySelectorAll('[data-custom-spark-form]').forEach(function(form){
+    if(form.dataset.cosmicBound==='1') return;
+    form.dataset.cosmicBound='1';
+    form.addEventListener('submit', async function(event){
+      event.preventDefault();
+      if(!form.reportValidity()) return;
+      var button=form.querySelector('button[type="submit"]');
+      var status=form.querySelector('[data-cosmic-contact-status]');
+      var original=button ? button.textContent : '';
+      if(button){button.disabled=true;button.textContent='Sending…';button.style.opacity='.7';}
+      if(status) status.textContent='Sending your inquiry…';
+      try{
+        var previewSlug=null;
+        var pathMatch=window.location.pathname.match(/^\/preview\/([a-z0-9][a-z0-9-]{0,59})(?:\/|$)/i);
+        if(pathMatch) previewSlug=pathMatch[1];
+        else if(/\.cosmiccms\.com$/i.test(window.location.hostname)) previewSlug=window.location.hostname.split('.')[0];
+        var submitUrl=previewSlug?'/api/v1/preview/'+encodeURIComponent(previewSlug)+'/contact':form.action;
+        var response=await fetch(submitUrl,{method:'POST',body:new FormData(form),headers:{Accept:'application/json'}});
+        var text=await response.text(),result;
+        try{result=JSON.parse(text);}catch(e){throw new Error('The contact connector did not return a valid response.');}
+        if(!response.ok||result.status!=='success') throw new Error(result.message||'Your inquiry could not be sent.');
+        form.reset();
+        if(status) status.textContent=result.message||'Thank you! Your inquiry has been sent.';
+      }catch(error){
+        if(status) status.textContent=error.message||'Your inquiry could not be sent. Please try again.';
+      }finally{
+        if(button){button.disabled=false;button.textContent=original;button.style.opacity='';}
+      }
+    });
+  });
+})();
+</script>
+HTML;
+        } elseif ($primaryLabel !== '' || $secondaryLabel !== '') {
+            $copy .= "<div style='display:flex;flex-wrap:wrap;gap:12px'>";
+            if ($primaryLabel !== '') $copy .= "<a href='{$primaryUrl}' style='padding:12px 24px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-size:14px;font-weight:700;text-decoration:none'>{$primaryLabel}</a>";
+            if ($secondaryLabel !== '') $copy .= "<a href='{$secondaryUrl}' style='padding:12px 24px;border-radius:{$buttonRadius}px;border:1px solid rgba(0,0,0,.15);color:{$headingColor};font-size:14px;font-weight:700;text-decoration:none'>{$secondaryLabel}</a>";
+            $copy .= "</div>";
+        }
+        $copy .= "</div>";
+
+        $media = '';
+        if ($image !== '' && !in_array($mediaPosition, ['none','background'], true)) {
+            $media = "<div style='position:relative;z-index:2;min-height:280px;overflow:hidden;border-radius:{$cardRadius}px'><img src='{$image}' alt='' style='width:100%;height:100%;min-height:280px;object-fit:cover;object-position:{$backgroundPosition}' loading='lazy'></div>";
+        }
+
+        $split = in_array($mediaPosition, ['left','right'], true) || in_array($layout, ['split','showcase'], true);
+        if ($split && $media !== '') {
+            $body = $mediaPosition === 'left' ? $media.$copy : $copy.$media;
+            $body = "<div class='cc-main cc-split' style='position:relative;margin:0 auto;max-width:{$maxWidth}px;min-height:inherit;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;gap:40px'>{$body}</div>";
+        } else {
+            $top = ($mediaPosition === 'top' && $media !== '') ? "<div style='margin-bottom:40px'>{$media}</div>" : '';
+            $body = "<div class='cc-main' style='position:relative;margin:0 auto;max-width:{$maxWidth}px;min-height:inherit;display:flex;flex-direction:column;justify-content:center'>{$top}{$copy}</div>";
+        }
 
         $itemsHtml = '';
-        $items = is_array($block['items'] ?? null) ? array_slice($block['items'], 0, 6) : [];
+        $items = is_array($block['items'] ?? null) ? array_slice($block['items'],0,8) : [];
         if ($items) {
-            $cols = in_array($layout, ['bento','mosaic'], true) ? 'lg:grid-cols-3' : ($layout === 'rail' ? 'lg:grid-cols-4' : 'md:grid-cols-2');
-            $itemsHtml .= "<div class='mt-10 grid grid-cols-1 {$cols} gap-4'>";
-            foreach ($items as $item) {
+            $trustStrip = $layout === 'trust_strip';
+            $gridCols = $trustStrip ? 4 : 3;
+            $gridGap = $trustStrip ? 0 : 16;
+            $itemsHtml = "<div class='cc-items ".($trustStrip?'cc-trust-strip':'')."' style='position:relative;z-index:2;margin:40px auto 0;max-width:{$maxWidth}px;display:grid;grid-template-columns:repeat({$gridCols},minmax(0,1fr));gap:{$gridGap}px'>";
+            foreach ($items as $itemIndex => $item) {
                 if (!is_array($item)) continue;
-                $label=e((string)($item['label']??'')); $value=e((string)($item['value']??''));
-                $title=e((string)($item['title']??'')); $body=nl2br(e((string)($item['text']??'')));
-                $itemsHtml .= "<article class='rounded-2xl border {$theme['border']} {$theme['card']} p-5 shadow-sm'>";
-                if ($label!=='' || $value!=='') $itemsHtml .= "<div class='mb-3 flex justify-between gap-3 text-xs font-bold uppercase tracking-[0.14em] {$theme['sub']}'><span>{$label}</span><span>{$value}</span></div>";
-                if ($title!=='') $itemsHtml .= "<h3 class='text-lg font-bold {$theme['text']}'>{$title}</h3>";
-                if ($body!=='') $itemsHtml .= "<p class='mt-2 text-sm leading-6 {$theme['sub']}'>{$body}</p>";
-                $itemsHtml .= '</article>';
+                $itemStyle = $trustStrip ? "display:flex;align-items:flex-start;gap:16px;padding:".min($cardPadding,22)."px;border-right:".($itemIndex < count($items)-1?'1px solid rgba(255,255,255,.25)':'0')."" : "border:1px solid rgba(0,0,0,.1);background:{$cardBg};border-radius:{$cardRadius}px;padding:{$cardPadding}px";
+                $itemsHtml .= "<article style='{$itemStyle}'>";
+                if (($item['icon'] ?? '') !== '') $itemsHtml .= "<div style='flex:0 0 auto'>".$iconSvg($item['icon'],$accent)."</div><div style='min-width:0;flex:1'>";
+                if (($item['image_url'] ?? '') !== '') $itemsHtml .= "<img src='".$esc($item['image_url'])."' alt='' style='width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:".max(8,$cardRadius-4)."px;margin-bottom:16px'>";
+                if (($item['label'] ?? '') !== '' || ($item['value'] ?? '') !== '') $itemsHtml .= "<div style='display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;color:{$bodyColor}'><span>".$esc($item['label'] ?? '')."</span><span>".$esc($item['value'] ?? '')."</span></div>";
+                if (($item['title'] ?? '') !== '') $itemsHtml .= "<h3 style='margin:0;font-size:".$num($v['card_title_size'] ?? null,20)."px;color:{$headingColor}'>".$esc($item['title'])."</h3>";
+                if (($item['text'] ?? '') !== '') $itemsHtml .= "<p style='margin:8px 0 0;font-size:{$bodySize}px;line-height:{$bodyLine};color:{$bodyColor}'>".$esc($item['text'])."</p>";
+                if (($item['icon'] ?? '') !== '') $itemsHtml .= "</div>";
+                $itemsHtml .= "</article>";
             }
-            $itemsHtml .= '</div>';
+            $itemsHtml .= "</div>";
         }
 
-        $background = ($mediaPosition === 'background' && $image !== '') ? "<div class='absolute inset-0 opacity-25'><img src='{$image}' alt='' class='h-full w-full object-cover'></div>" : '';
-        $accentHtml = $accent !== 'none' ? "<div class='pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10 blur-3xl'></div>" : '';
-        $split = in_array($layout, ['split','showcase'], true) || in_array($mediaPosition, ['left','right'], true);
-        if ($split && $mediaPosition !== 'background') {
-            $inner = $mediaPosition === 'left' ? $imageHtml.$copy : $copy.$imageHtml;
-            $body = "<div class='grid items-center gap-10 lg:grid-cols-2'>{$inner}</div>";
-        } else {
-            $body = $copy.(($mediaPosition === 'top') ? "<div class='mt-10'>{$imageHtml}</div>" : '');
+        $background = '';
+        if ($mediaPosition === 'background' && $image !== '') {
+            $background = "<div style='position:absolute;inset:0'><img src='{$image}' alt='' style='width:100%;height:100%;object-fit:{$backgroundSize};object-position:{$backgroundPosition}'>";
+            $opacity = max(0,min(1,$num($v['overlay_opacity'] ?? null,0)));
+            if (!empty($v['overlay_gradient_enabled'])) {
+                $angle = $num($v['overlay_gradient_angle'] ?? null,90);
+                $from = $hex($v['overlay_gradient_from'] ?? null,$hex($v['overlay_color'] ?? null,'#ffffff'));
+                $to = $hex($v['overlay_gradient_to'] ?? null,'#ffffff00');
+                $fromStop = $num($v['overlay_gradient_from_stop'] ?? null,0);
+                $toStop = $num($v['overlay_gradient_to_stop'] ?? null,72);
+                $background .= "<div style='position:absolute;inset:0;background:linear-gradient({$angle}deg,{$from} {$fromStop}%,{$to} {$toStop}%);opacity:{$opacity}'></div>";
+            } else {
+                $overlay = $hex($v['overlay_color'] ?? null,'#ffffff');
+                $background .= "<div style='position:absolute;inset:0;background:{$overlay};opacity:{$opacity}'></div>";
+            }
+            $background .= "</div>";
         }
 
-        return "<section data-luna-custom-category='{$category}' data-luna-layout='{$layout}' class='relative isolate overflow-hidden px-6 {$pad} {$theme['bg']}'>{$background}{$accentHtml}<div class='relative mx-auto max-w-7xl'>{$body}{$itemsHtml}</div></section>";
+        $css = "<style>
+#cc-{$key} .cc-heading{font-size:{$headingSize}px!important}
+#cc-{$key} .cc-body{font-size:{$bodySize}px!important}
+@media(max-width:900px){#cc-{$key}{padding-top:{$padTablet}px!important;padding-bottom:{$padTablet}px!important;padding-left:clamp(24px,5vw,56px)!important;padding-right:clamp(24px,5vw,56px)!important}#cc-{$key} .cc-copy{max-width:min(78%,720px)!important}#cc-{$key} .cc-heading{font-size:{$headingTablet}px!important}#cc-{$key} .cc-body{font-size:{$bodyTablet}px!important}#cc-{$key} .cc-items{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:640px){#cc-{$key}{min-height:auto!important;padding:{$padMobile}px 22px!important}#cc-{$key} .cc-copy{max-width:100%!important}#cc-{$key} .cc-heading{font-size:{$headingMobile}px!important}#cc-{$key} .cc-body{font-size:{$bodyMobile}px!important}#cc-{$key} .cc-split{grid-template-columns:1fr!important}#cc-{$key} .cc-items{grid-template-columns:1fr!important}#cc-{$key} .cc-form-grid{grid-template-columns:1fr!important}#cc-{$key} input{grid-column:1/-1}}
+</style>";
+
+        $ratioStyle = $aspectRatio > 0
+            ? "aspect-ratio:{$aspectRatio}/1;min-height:0;"
+            : "min-height:{$minHeight}px;";
+        if ($aspectRatio > 0) {
+            $css .= "<style>@media(max-width:900px){#cc-{$key}{aspect-ratio:auto!important;min-height:auto!important}}</style>";
+        }
+
+        return "<section id='cc-{$key}' data-custom-spark-key='{$key}' style='position:relative;isolation:isolate;overflow:hidden;{$ratioStyle}background:{$bg};padding:{$padY}px {$padX}px;box-sizing:border-box'>{$background}{$body}{$itemsHtml}{$css}</section>".$formScript;
     }
 
     private static function isDefaultLogoPlaceholder(string $url): bool

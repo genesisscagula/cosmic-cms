@@ -22,6 +22,7 @@ use App\Http\Controllers\AccountDataController;
 use App\Http\Controllers\CosmicPricingController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SparkController;
+use App\Http\Controllers\CustomSparkController;
 use App\Http\Controllers\AgencyLeadController;
 use App\Http\Controllers\AgencySalesController;
 use App\Http\Controllers\WorkspaceMemberController;
@@ -524,6 +525,20 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
 
     Route::get('/sparks', [SparkController::class, 'index'])->name('sparks.index');
     Route::get('/sparks/catalog', [SparkController::class, 'catalog'])->name('sparks.catalog');
+    Route::get('/websites/{website}/custom-sparks', [CustomSparkController::class, 'catalog'])->name('custom-sparks.catalog');
+    Route::post('/websites/{website}/custom-sparks/generate', [CustomSparkController::class, 'generate'])->middleware('throttle:cosmic-ai')->name('custom-sparks.generate');
+    Route::post('/websites/{website}/custom-sparks/design', [CustomSparkController::class, 'design'])->middleware('throttle:cosmic-ai')->name('custom-sparks.design');
+    Route::post('/websites/{website}/custom-sparks/plan-website', [CustomSparkController::class, 'planWebsite'])->middleware('throttle:cosmic-ai')->name('custom-sparks.plan-website');
+    Route::post('/websites/{website}/custom-builds', [CustomSparkController::class, 'startFullPageBuild'])->middleware('throttle:cosmic-ai')->name('custom-builds.start');
+    Route::get('/websites/{website}/custom-builds/{buildId}', [CustomSparkController::class, 'fullPageBuildStatus'])->name('custom-builds.status');
+    Route::post('/websites/{website}/custom-sparks/{customSpark}/qa', [CustomSparkController::class, 'qa'])->middleware('throttle:cosmic-ai')->name('custom-sparks.qa');
+    Route::get('/websites/{website}/custom-sparks/saved-library', [CustomSparkController::class, 'savedLibrary'])->name('custom-sparks.library');
+    Route::post('/websites/{website}/custom-sparks/by-key/{key}/duplicate', [CustomSparkController::class, 'duplicateSaved'])->name('custom-sparks.duplicate');
+    Route::post('/websites/{website}/custom-sparks/by-key/{key}/save', [CustomSparkController::class, 'saveSpark'])->name('custom-sparks.save');
+    Route::post('/websites/{website}/custom-sparks/by-key/{key}/undo', [CustomSparkController::class, 'undo'])->name('custom-sparks.undo');
+    Route::get('/websites/{website}/custom-sparks/by-key/{key}/chat', [CustomSparkController::class, 'chatHistory'])->name('custom-sparks.chat-history');
+    Route::post('/websites/{website}/custom-sparks/by-key/{key}/chat', [CustomSparkController::class, 'chat'])->middleware('throttle:cosmic-ai')->name('custom-sparks.chat');
+    Route::post('/websites/{website}/custom-page-ai', [CustomSparkController::class, 'pageChat'])->middleware('throttle:cosmic-ai')->name('custom-page-ai.chat');
     Route::post('/sparks/{key}/unlock', [SparkController::class, 'unlockKey'])->name('sparks.unlock');
     Route::delete('/sparks/{key}/owned', [SparkController::class, 'removeOwned'])->name('sparks.owned.destroy');
     Route::post('/sparks/{key}/favorite', [SparkController::class, 'toggleFavorite'])->name('sparks.favorite.toggle');

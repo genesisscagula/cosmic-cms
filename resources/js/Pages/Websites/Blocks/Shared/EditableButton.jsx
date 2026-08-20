@@ -4,7 +4,7 @@ import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
 
-export function EditableButton({ label, url, onSave, className }) {
+export function EditableButton({ label, url, onSave, className, style = undefined }) {
     const [isEditing, setIsEditing] = useState(false);
     const [currentLabel, setCurrentLabel] = useState(label || 'Get Started');
     const [currentUrl, setCurrentUrl] = useState(url || '#');
@@ -16,6 +16,7 @@ export function EditableButton({ label, url, onSave, className }) {
                     type="button"
                     onClick={() => setIsEditing(true)} 
                     className={className}
+                    style={style}
                 >
                     {label || 'Get Started'}
                 </button>

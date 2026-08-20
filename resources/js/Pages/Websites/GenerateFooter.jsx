@@ -88,6 +88,13 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
         : effectiveMegaTheme === 'surface'
             ? { bg: 'bg-[#F5F5F2]', text: 'text-slate-900', sub: 'text-slate-500', border: 'border-slate-200' }
             : familyTheme;
+    const customShell = Boolean(block.custom_shell_mode);
+    const customStyle = customShell && block.custom_style ? block.custom_style : {};
+    const customFooterStyle = customShell ? {
+        backgroundColor: customStyle.background_color || undefined,
+        color: customStyle.text_color || undefined,
+        '--cosmic-footer-muted': customStyle.muted_color || customStyle.text_color || undefined,
+    } : undefined;
     const [editTarget, setEditTarget] = useState(null);
 
     const openEditor = (target) => editorMode && setEditTarget(target);
@@ -153,10 +160,10 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
     return (
         <div className="w-full">
             {megaEnabled && (
-                <section data-cosmic-mega-theme={effectiveMegaTheme} className={`cosmic-mega-footer-section w-full ${megaTheme?.bg || 'bg-slate-800'} ${megaTheme?.text || 'text-white'} border-b ${megaTheme?.border || 'border-slate-700'} px-6 py-10 sm:px-8 sm:py-12`}>
+                <section data-cosmic-mega-theme={effectiveMegaTheme} style={customFooterStyle} className={`cosmic-mega-footer-section w-full ${customShell ? '' : (megaTheme?.bg || 'bg-slate-800')} ${customShell ? '' : (megaTheme?.text || 'text-white')} border-b ${megaTheme?.border || 'border-slate-700'} px-6 py-10 sm:px-8 sm:py-12`}>
                     <div className="mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(300px,.92fr)_minmax(560px,1.08fr)] lg:items-start lg:gap-16">
                         <div className="min-w-0">
-                            <FooterLogo block={block} dark={effectiveMegaTheme === 'primary'} mega forceWhite={effectiveMegaTheme === 'primary'} />
+                            <FooterLogo block={block} dark={effectiveMegaTheme === 'primary'} mega forceWhite={customShell ? customStyle.logo_tone === 'light' : effectiveMegaTheme === 'primary'} />
                             {editorMode ? (
                                 <>
                                     <div className="group/footer-field relative mt-4 max-w-sm rounded-lg py-1 pr-9">
@@ -236,7 +243,7 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                 </section>
             )}
 
-            <footer className="flex w-full flex-col items-start gap-4 border-t border-slate-200 bg-white px-6 py-8 text-slate-500 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10">
+            <footer style={customShell ? {backgroundColor:customStyle.background_color || undefined,color:customStyle.muted_color || customStyle.text_color || undefined,borderColor:'rgba(255,255,255,.12)'} : undefined} className={`flex w-full flex-col items-start gap-4 border-t px-6 py-8 sm:flex-row sm:items-center sm:justify-between sm:px-8 sm:py-10 ${customShell ? '' : 'border-slate-200 bg-white text-slate-500'}`}>
                 {megaEnabled ? (
                     <div className="flex flex-wrap items-center gap-x-5 gap-y-2 text-sm">
                         {editorMode ? (

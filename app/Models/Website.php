@@ -16,6 +16,8 @@ class Website extends Model
         'industry',
         'location',
         'business_description',
+        'website_type',
+        'design_system',
         'contact_email',
         'contact_phone',
         'timezone',
@@ -41,6 +43,7 @@ class Website extends Model
     // Gi-automatic cast nato ang JSON string ngadto sa PHP/React Array packet
     protected $casts = [
         'theme_settings' => 'array',
+        'design_system' => 'array',
         'settings' => 'array',
         'global_header' => 'array', 
         'global_footer' => 'array',
@@ -69,6 +72,10 @@ class Website extends Model
     {
         return $this->belongsTo(User::class);
     }
+
+    public function isCustom(): bool { return ($this->website_type ?: 'builder') === 'custom'; }
+
+    public function customSparks() { return $this->hasMany(CustomSpark::class); }
 
     public function pages()
     {

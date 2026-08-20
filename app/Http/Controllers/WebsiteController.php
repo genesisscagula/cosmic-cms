@@ -589,9 +589,12 @@ class WebsiteController extends Controller
 	        'business_description' => 'required|string|max:2000',
 	        'theme_settings' => 'nullable|array', // I-validate ang array input
 	        'template' => 'nullable|string',
+        'website_type' => 'nullable|string|in:builder,custom',
+        'design_system' => 'nullable|array',
 	    ]);
 
-	    $template = $request->input('template');
+	    $websiteType = $request->input('website_type', 'builder');
+	    $template = $websiteType === 'custom' ? null : $request->input('template');
 
 	    if ($template && ! $templates->supports($template)) {
 	        return back()->withErrors(['template' => 'The selected website template is not available.']);
@@ -613,6 +616,8 @@ class WebsiteController extends Controller
 	        'industry' => $request->input('industry'),
 	        'location' => $request->input('location'),
 	        'business_description' => $request->input('business_description'),
+            'website_type' => $websiteType,
+            'design_system' => $websiteType === 'custom' ? (array) $request->input('design_system', []) : null,
 	        // Until a dedicated website settings screen is added, new live-form
 	        // inquiries go to the account that created the website.
 	        'contact_email' => $request->user()->email,
@@ -709,7 +714,11 @@ class WebsiteController extends Controller
 	            foreach ($templates->pages($template) as $page) {
 	                $website->pages()->create($page);
 	            }
-	        }
+	        } elseif ($website->isCustom()) {
+                $website->pages()->create([
+                    'title' => 'Home', 'slug' => 'home', 'blocks' => [], 'status' => 'draft', 'sort_order' => 1,
+                ]);
+            }
 
 	        return $website;
 	    });

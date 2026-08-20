@@ -23,7 +23,7 @@ function inferFieldRole(className = '', isTextArea = false) {
     return 'website text';
 }
 
-export function EditableText({ value, onSave, className, isTextArea = false }) {
+export function EditableText({ value, onSave, className, isTextArea = false, style = undefined }) {
     const [isEditing, setIsEditing] = useState(false);
     const [currentValue, setCurrentValue] = useState(value || '');
     const [aiInstruction, setAiInstruction] = useState('');
@@ -110,7 +110,7 @@ export function EditableText({ value, onSave, className, isTextArea = false }) {
     return (
         <>
             <div data-cosmic-edit-control="text" className="relative group/text cursor-pointer max-w-full block w-full" onClick={() => setIsEditing(true)}>
-                <span className={className}>{value || 'Click to add text'}</span>
+                <span className={className} style={style}>{value || 'Click to add text'}</span>
                 <span className="absolute -top-2 right-2 hidden group-hover/text:inline-block bg-indigo-600 text-white text-[10px] px-1.5 py-0.5 rounded shadow-md font-sans z-30">
                     ✏️ Edit
                 </span>

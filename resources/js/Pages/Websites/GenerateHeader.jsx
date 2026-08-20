@@ -85,13 +85,41 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
 
     const primaryTheme = getEffectiveTheme('primary', globalTheme);
     const overlayVisuals = overlayThemeVisuals(globalTheme);
+    const customShell = Boolean(block.custom_shell_mode);
+    const customStyle = customShell && block.custom_style ? block.custom_style : {};
     const overlayStyle = overlay ? {
         backgroundImage: 'none',
-        backgroundColor: 'transparent',
-        backdropFilter: 'blur(3px)',
-        WebkitBackdropFilter: 'blur(3px)',
-    } : undefined;
-    const overlayCtaStyle = overlay && overlayCtaTreatment === 'gradient' ? {
+        backgroundColor: customShell ? (customStyle.background_color || 'transparent') : 'transparent',
+        backdropFilter: customShell ? 'none' : 'blur(3px)',
+        WebkitBackdropFilter: customShell ? 'none' : 'blur(3px)',
+        minHeight: customShell ? `${Number(customStyle.height || 78)}px` : undefined,
+        paddingLeft: customShell ? `${Number(customStyle.padding_x || 56)}px` : undefined,
+        paddingRight: customShell ? `${Number(customStyle.padding_x || 56)}px` : undefined,
+        '--cosmic-custom-nav': customStyle.nav_color || customStyle.text_color || '#ffffff',
+        '--cosmic-custom-text': customStyle.text_color || '#ffffff',
+        '--cosmic-custom-cta-bg': customStyle.cta_background || '#2F80FF',
+        '--cosmic-custom-cta-color': customStyle.cta_color || '#ffffff',
+        '--cosmic-custom-cta-radius': `${Number(customStyle.cta_radius || 8)}px`,
+    } : (customShell ? {
+        backgroundColor: customStyle.background_color || '#ffffff',
+        minHeight: `${Number(customStyle.height || 78)}px`,
+        paddingLeft: `${Number(customStyle.padding_x || 56)}px`,
+        paddingRight: `${Number(customStyle.padding_x || 56)}px`,
+        '--cosmic-custom-nav': customStyle.nav_color || customStyle.text_color || '#1f2937',
+        '--cosmic-custom-text': customStyle.text_color || '#1f2937',
+        '--cosmic-custom-cta-bg': customStyle.cta_background || '#2F80FF',
+        '--cosmic-custom-cta-color': customStyle.cta_color || '#ffffff',
+        '--cosmic-custom-cta-radius': `${Number(customStyle.cta_radius || 8)}px`,
+    } : undefined);
+    const overlayCtaStyle = customShell ? {
+        background: customStyle.cta_background || '#2F80FF',
+        backgroundColor: customStyle.cta_background || '#2F80FF',
+        color: customStyle.cta_color || '#ffffff',
+        WebkitTextFillColor: customStyle.cta_color || '#ffffff',
+        borderRadius: `${Number(customStyle.cta_radius || 8)}px`,
+        border: '0',
+        boxShadow: 'none',
+    } : (overlay && overlayCtaTreatment === 'gradient' ? {
         background: '#fff',
         color: overlayVisuals.primary,
         WebkitTextFillColor: overlayVisuals.primary,
@@ -99,16 +127,16 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
         boxShadow: 'none',
         '--cosmic-overlay-cta-primary': overlayVisuals.primary,
         '--cosmic-overlay-cta-border': overlayVisuals.border,
-    } : undefined;
+    } : undefined);
 
     const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
     const logoHeight = Math.min(64, Math.max(24, Number(block.logo_height || 40)));
     const logoMaxWidth = Math.min(320, Math.max(220, Number(block.logo_max_width || 300)));
 
     return (
-        <header id={overlay ? 'cosmic-overlay-header' : undefined} style={overlayStyle} className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${overlay ? 'border-transparent px-[3.5rem] pt-[3.25rem] pb-[2.5rem]' : 'border-slate-200 px-5 py-5 sm:px-6 sm:py-6'} lg:flex-nowrap`}>
+        <header id={overlay ? 'cosmic-overlay-header' : undefined} style={overlayStyle} className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${customShell ? 'border-transparent py-3' : (overlay ? 'border-transparent px-[3.5rem] pt-[3.25rem] pb-[2.5rem]' : 'border-slate-200 px-5 py-5 sm:px-6 sm:py-6')} lg:flex-nowrap`}>
             {logoImageUrl ? (
-                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: overlay ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto object-contain" /></button>
+                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: customShell && customStyle.logo_tone === 'light' ? 'brightness(0) invert(1)' : (overlay ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter)) }} className="w-auto object-contain" /></button>
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
@@ -120,11 +148,17 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
                 <ul className="flex flex-wrap list-none gap-x-3 gap-y-2 whitespace-nowrap sm:gap-x-5 lg:flex-nowrap">
                     <HeaderNavigation
                         items={menuItems}
-                        textClass={`${subColor} text-[15px] font-medium ${overlay ? (overlayDarkText ? 'hover:text-slate-950' : 'hover:text-white') : 'hover:text-slate-900'}`}
+                        textClass={`${customShell ? 'text-[color:var(--cosmic-custom-nav)]' : subColor} font-medium ${overlay ? (overlayDarkText ? 'hover:text-slate-950' : 'hover:text-white') : 'hover:text-slate-900'}`}
+                        textStyle={customShell ? {fontSize:`${Number(customStyle.nav_size || 14)}px`} : undefined}
                         onUpdate={(menu) => onUpdate({ menu })}
                         pageTargets={pageTargets}
                     />
                 </ul>
+                {block.phone_enabled && String(block.phone_text || '').trim() ? (
+                    <span className={`hidden shrink-0 items-center gap-2 text-sm font-semibold lg:inline-flex ${customShell ? 'text-[color:var(--cosmic-custom-nav)]' : subColor}`}>
+                        <span aria-hidden="true">☎</span>{block.phone_text}
+                    </span>
+                ) : null}
                 <div
                     id={overlay ? 'cosmic-overlay-header-cta' : undefined}
                     data-cosmic-overlay-cta={overlay ? 'true' : undefined}
@@ -153,7 +187,7 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
     );
 }
 
-function HeaderNavigation({ items, textClass, onUpdate, pageTargets = [] }) {
+function HeaderNavigation({ items, textClass, textStyle, onUpdate, pageTargets = [] }) {
     const updateAtPath = (path, changes) => {
         const next = JSON.parse(JSON.stringify(items || []));
         let collection = next;
@@ -211,6 +245,7 @@ function HeaderNavigation({ items, textClass, onUpdate, pageTargets = [] }) {
             <HeaderMenuItemEditor
                 item={item}
                 textClass={textClass}
+                textStyle={textStyle}
                 targetListId={targetListId}
                 pageTargets={pageTargets}
                 hasChildren={children.length > 0}
@@ -230,7 +265,7 @@ function HeaderNavigation({ items, textClass, onUpdate, pageTargets = [] }) {
     return <>{renderItems(items || [])}</>;
 }
 
-function HeaderMenuItemEditor({ item, textClass, targetListId, pageTargets, hasChildren, linkedPage, onSave }) {
+function HeaderMenuItemEditor({ item, textClass, textStyle, targetListId, pageTargets, hasChildren, linkedPage, onSave }) {
     const [isEditing, setIsEditing] = useState(false);
     const [label, setLabel] = useState(item.label || 'Menu item');
     const [url, setUrl] = useState(item.url || '#');
@@ -247,6 +282,7 @@ function HeaderMenuItemEditor({ item, textClass, targetListId, pageTargets, hasC
                 <button
                     type="button"
                     onClick={openEditor}
+                    style={textStyle}
                     className={`${textClass} flex max-w-full items-center gap-1 whitespace-nowrap rounded-md px-2 py-1.5 text-left transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500`}
                     aria-label={`Edit ${item.label || 'menu item'}`}
                 >

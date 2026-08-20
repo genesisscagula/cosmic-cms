@@ -1391,11 +1391,55 @@ class PageController extends Controller
         return $trial;
     }
 
+    private function hydrateSavedCustomSparksForPublish(Website $website, array $blocks): array
+    {
+        if (!$website->isCustom()) return $blocks;
+
+        $keys = collect($blocks)
+            ->filter(fn($block) => is_array($block) && ($block['type'] ?? '') === 'luna_custom_section' && !empty($block['custom_spark_key']))
+            ->pluck('custom_spark_key')
+            ->unique()
+            ->values();
+
+        if ($keys->isEmpty()) return $blocks;
+
+        $saved = $website->customSparks()
+            ->whereIn('key', $keys)
+            ->get()
+            ->filter(function ($spark) {
+                $metadata = is_array($spark->metadata) ? $spark->metadata : [];
+                return (bool) ($metadata['saved'] ?? false);
+            })
+            ->keyBy('key');
+
+        return array_map(function ($block) use ($saved) {
+            if (!is_array($block)) return $block;
+            $key = $block['custom_spark_key'] ?? null;
+            if (!$key || !$saved->has($key)) return $block;
+
+            $source = $saved->get($key);
+            $savedBlock = is_array($source->block) ? $source->block : [];
+            return array_merge($block, $savedBlock, [
+                'type' => 'luna_custom_section',
+                'custom_spark_key' => $key,
+                'custom_spark_saved' => true,
+            ]);
+        }, $blocks);
+    }
+
     public function publish(Request $request, Page $page, PagePublisher $publisher, CreditService $credits, WebsiteHealthService $health)
     {
         $this->authorize('editBuilder', $page->website);
 
         $website = $page->website;
+
+        // Resolve saved Custom Sparks from their canonical website library before
+        // preview/live compilation. This keeps export dynamic even if the page
+        // snapshot still contains the earlier free/draft version of the block.
+        if ($website->isCustom()) {
+            $page->blocks = $this->hydrateSavedCustomSparksForPublish($website, is_array($page->blocks) ? $page->blocks : []);
+            $page->save();
+        }
 
         $localizationQueued = app(MediaAssetLifecycleService::class)->queueWebsitePublish($website);
         if ($localizationQueued) {

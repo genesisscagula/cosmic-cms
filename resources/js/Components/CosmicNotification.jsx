@@ -3,9 +3,9 @@ import { useEffect, useRef, useState } from "react";
 const notificationEvent = "cosmic:notification";
 const confirmationEvent = "cosmic:confirmation";
 
-export function showCosmicNotification({ title, message, tone = "info" }) {
+export function showCosmicNotification({ title, message, tone = "info", mode = "modal", duration = 3600 }) {
     window.dispatchEvent(new CustomEvent(notificationEvent, {
-        detail: { title, message, tone },
+        detail: { title, message, tone, mode, duration },
     }));
 }
 
@@ -64,18 +64,43 @@ export default function CosmicNotification() {
     useEffect(() => {
         if (!notification) return undefined;
 
-        closeButtonRef.current?.focus();
+        if (notification.mode !== "toast") closeButtonRef.current?.focus();
         const handleKeyDown = (event) => {
             if (event.key === "Escape") dismiss();
         };
+        const timer = notification.mode === "toast"
+            ? window.setTimeout(() => setNotification(null), Number(notification.duration || 3600))
+            : null;
 
         window.addEventListener("keydown", handleKeyDown);
-        return () => window.removeEventListener("keydown", handleKeyDown);
+        return () => {
+            window.removeEventListener("keydown", handleKeyDown);
+            if (timer) window.clearTimeout(timer);
+        };
     }, [notification]);
 
     if (!notification) return null;
 
     const styles = toneStyles[notification.tone] || toneStyles.info;
+
+    if (notification.mode === "toast" && !notification.confirmation) {
+        return (
+            <div className="pointer-events-none fixed right-5 top-5 z-[10050] w-[min(390px,calc(100vw-2.5rem))]">
+                <section role="status" className="pointer-events-auto rounded-2xl border border-white/10 bg-[#17171b]/95 p-4 shadow-2xl shadow-black/50 backdrop-blur-xl">
+                    <div className="flex items-start gap-3">
+                        <span className={`mt-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-full ring-1 ${styles.badge}`} aria-hidden="true">
+                            <span className={`h-2 w-2 rounded-full ${styles.dot}`} />
+                        </span>
+                        <div className="min-w-0 flex-1">
+                            <h2 className="text-sm font-semibold text-white">{notification.title}</h2>
+                            <p className="mt-1 text-xs leading-5 text-slate-400">{notification.message}</p>
+                        </div>
+                        <button type="button" onClick={dismiss} className="rounded-lg p-1 text-slate-500 transition hover:bg-white/10 hover:text-white" aria-label="Close">×</button>
+                    </div>
+                </section>
+            </div>
+        );
+    }
 
     return (
         <div className="cosmic-alert-overlay fixed inset-0 z-[10050] flex items-center justify-center bg-black/65 p-4 backdrop-blur-sm">
