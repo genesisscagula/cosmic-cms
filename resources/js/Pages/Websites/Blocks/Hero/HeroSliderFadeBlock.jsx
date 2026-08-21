@@ -263,7 +263,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                             {activeSlide.eyebrow}
                         </p>
                     )}
-                    <h2 className="max-w-3xl text-4xl font-bold leading-[1] tracking-[-0.04em] sm:text-5xl lg:text-6xl xl:text-7xl">
+                    <h2 className="max-w-3xl text-[3rem] font-bold leading-[0.98] tracking-[-0.04em] sm:text-[4rem] lg:text-[5rem]">
                         {activeSlide.heading}
                     </h2>
                     <p className={`mt-7 max-w-2xl text-base leading-8 sm:text-lg ${sliderMediaStyle.body}`}>

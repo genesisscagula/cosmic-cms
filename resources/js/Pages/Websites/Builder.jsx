@@ -407,9 +407,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [logoMediaLibraryOpen, setLogoMediaLibraryOpen] = useState(false);
     const [lunaMediaLibraryOpen, setLunaMediaLibraryOpen] = useState(false);
     const [lunaMediaLibraryKind, setLunaMediaLibraryKind] = useState('image');
+    const [lunaMediaLibraryPurpose, setLunaMediaLibraryPurpose] = useState('element');
+    const [lunaUniversalVideoUrl, setLunaUniversalVideoUrl] = useState('');
     const [lunaDirectVideoUrl, setLunaDirectVideoUrl] = useState('');
     const [lunaDirectText, setLunaDirectText] = useState('');
     const [lunaDirectLink, setLunaDirectLink] = useState('');
+    const [lunaManualOpen, setLunaManualOpen] = useState(false);
     const [lunaSmartSectionBusy, setLunaSmartSectionBusy] = useState('');
 
     const [showLogoGenerateForm, setShowLogoGenerateForm] = useState(false);
@@ -3124,34 +3127,68 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const openLunaChat = (scope = { type:'page', blockIndex:null, label:'Whole Page' }) => {
         setLunaScope(scope);
         setLunaElementTarget(null);
+        setLunaManualOpen(false);
         setPageAiError('');
         setPageAiPrompt('');
         setLunaChatOpen(true);
     };
 
+
+    const detectLunaRepeaterCard = (root, target) => {
+        if (!(root instanceof Element) || !(target instanceof Element)) return null;
+        let node=target;
+        while(node && node!==root){
+            const parent=node.parentElement;
+            if(!parent || parent===root){ node=parent; continue; }
+            const siblings=[...parent.children].filter((child)=>child instanceof Element);
+            if(siblings.length>=2 && siblings.length<=16){
+                const rect=node.getBoundingClientRect();
+                const classes=String(node.className||'');
+                const looksCard=rect.width>=150 && rect.height>=90
+                    && (/(border|rounded|shadow|card|group)/i.test(classes)
+                        || siblings.filter((sibling)=>sibling.tagName===node.tagName).length>=2);
+                if(looksCard){
+                    return {
+                        node,
+                        index:siblings.indexOf(node),
+                        text:String(node.textContent||'').replace(/\s+/g,' ').trim().slice(0,220),
+                        count:siblings.length,
+                    };
+                }
+            }
+            node=parent;
+        }
+        return null;
+    };
+
     const openLunaHoverTarget = (hoverTarget) => {
         if (!hoverTarget) return;
-        const { blockIndex, type='section', currentValue='', url='' } = hoverTarget;
+        const { blockIndex, type='section', currentValue='', url='', itemIndex=null, itemCount=null } = hoverTarget;
         const isSection = type === 'section';
-        const label = isSection ? (BlockRegistry[data.blocks?.[blockIndex]?.type]?.schema?.title || data.blocks?.[blockIndex]?.heading || 'Selected Section') : `${type.charAt(0).toUpperCase()+type.slice(1)} · Section ${blockIndex+1}`;
+        const isCard = type === 'card';
+        const sectionTitle=BlockRegistry[data.blocks?.[blockIndex]?.type]?.schema?.title || data.blocks?.[blockIndex]?.heading || 'Selected Section';
+        const label = isSection ? sectionTitle : (isCard ? `Card ${Number(itemIndex)+1} · ${sectionTitle}` : `${type.charAt(0).toUpperCase()+type.slice(1)} · Section ${blockIndex+1}`);
         setLunaScope({ type:'section', blockIndex, label });
-        setLunaElementTarget(isSection ? null : { type, currentValue, url });
-        setLunaDirectText(isSection ? '' : String(currentValue||''));
-        setLunaDirectLink(isSection ? '' : String(url||''));
+        setLunaElementTarget(isSection ? null : { type, currentValue, url, itemIndex, itemCount });
+        setLunaManualOpen(false);
+        setLunaDirectText((isSection||isCard) ? '' : String(currentValue||''));
+        setLunaDirectLink((isSection||isCard) ? '' : String(url||''));
         setPageAiError('');
         setPageAiPrompt('');
         setLunaDirectVideoUrl('');
         const selectedIsVideo=isSection && blockHasVideoSlot(data.blocks?.[blockIndex]);
         if (type === 'image') {
-            setLunaMessages((messages)=>[...messages,{role:'context',text:'Image selected. Replace it directly below, or tell Luna what image you want.'}]);
+            setLunaMessages((messages)=>[...messages,{role:'context',text:'Image selected. Tell me what you want to change, or choose Edit manually for upload / Media Library controls.'}]);
         } else if (selectedIsVideo) {
             setLunaMessages((messages)=>[...messages,{role:'context',text:trialMode
-                ? 'Video section selected. Paste a video URL below, or ask Luna for another video.'
-                : 'Video section selected. Choose from Media Library, paste a video URL, or ask Luna for another video.'}]);
+                ? 'Video section selected. Tell me what video change you want, or choose Edit manually for a direct video URL.'
+                : 'Video section selected. Tell me what video change you want, or choose Edit manually for Media Library / video URL controls.'}]);
         } else if (isSection) {
-            setLunaMessages((messages)=>[...messages,{role:'context',text:'Section selected. I can update it, or suggest useful sections to add above or below based on this page.'}]);
+            setLunaMessages((messages)=>[...messages,{role:'context',text:'Section selected. Tell me what you want to change or add here, or choose Edit manually for section tools.'}]);
+        } else if (isCard) {
+            setLunaMessages((messages)=>[...messages,{role:'context',text:`Selected card ${Number(itemIndex)+1}${currentValue ? ` · ${String(currentValue).slice(0,80)}` : ''}. Tell me what you want to change, duplicate, add, or remove — or choose Edit manually for card controls.`}]);
         } else {
-            setLunaMessages((messages)=>[...messages,{role:'context',text:`${type.charAt(0).toUpperCase()+type.slice(1)} selected. Edit it directly below, or ask Luna to rewrite/change it.`}]);
+            setLunaMessages((messages)=>[...messages,{role:'context',text:`${type.charAt(0).toUpperCase()+type.slice(1)} selected. Tell me what you want changed, or choose Edit manually.`}]);
         }
         setLunaChatOpen(true);
         window.requestAnimationFrame(()=>{ lunaPromptRef.current?.focus?.(); if(type!=='image') lunaPromptRef.current?.select?.(); });
@@ -3165,6 +3202,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             const sectionNode = source?.closest?.('[data-luna-section-index]');
             const blockIndex = Number(sectionNode?.getAttribute?.('data-luna-section-index'));
             if (!Number.isInteger(blockIndex) || blockIndex < 0) return;
+            const card=sectionNode && source ? detectLunaRepeaterCard(sectionNode,source) : null;
+            const repeaterForTarget=findPrimaryRepeater(data.blocks?.[blockIndex]);
+            const cardMatchesRepeater=Boolean(card && repeaterForTarget && Number(card.count)===Number(repeaterForTarget.items?.length));
+            const itemIndex=cardMatchesRepeater?Number(card.index):null;
+            const itemCount=cardMatchesRepeater?Number(card.count):null;
 
             const type = String(detail.type || 'element');
             const currentValue = String(detail.currentValue || '').slice(0, 1200);
@@ -3181,16 +3223,19 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 url: String(detail.url || ''),
                 imageQuery: String(detail.imageQuery || ''),
                 blockType: String(detail.blockType || ''),
+                itemIndex,
+                itemCount,
             });
+            setLunaManualOpen(false);
             setLunaDirectText(currentValue);
             setLunaDirectLink(String(detail.url || ''));
             setPageAiError('');
             if(type==='image' || type==='background image'){
                 setPageAiPrompt('');
-                setLunaMessages((messages)=>[...messages,{role:'context',text:'Image selected. Replace it directly below, or tell Luna what image you want.'}]);
+                setLunaMessages((messages)=>[...messages,{role:'context',text:'Image selected. Tell me what you want to change, or choose Edit manually for upload / Media Library controls.'}]);
             }else{
                 setPageAiPrompt('');
-                setLunaMessages((messages)=>[...messages,{role:'context',text:`${label} selected. Edit it directly below, or ask Luna what to change.`}]);
+                setLunaMessages((messages)=>[...messages,{role:'context',text:`${label} selected. Tell me what you want changed, or choose Edit manually.`}]);
             }
             setLunaChatOpen(true);
             window.requestAnimationFrame(() => {
@@ -3250,37 +3295,55 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         const index=lunaScope?.blockIndex;
         if(!Number.isInteger(index) || !data.blocks?.[index] || !assetUrl)return false;
         const wanted=normalizeMediaComparable(lunaElementTarget?.currentValue||'');
-        let replaced=false;
+        const itemIndex=Number(lunaElementTarget?.itemIndex);
+        const hasItemTarget=Number.isInteger(itemIndex) && itemIndex>=0;
         const mediaKey=/(image|photo|avatar|poster|thumbnail|background).*?(url)?$/i;
-        const walk=(value,key='')=>{
-            if(Array.isArray(value))return value.map((item)=>walk(item,key));
-            if(value && typeof value==='object'){
-                const out={...value};
-                for(const [childKey,childValue] of Object.entries(value)){
-                    if(!replaced && typeof childValue==='string' && mediaKey.test(childKey)){
-                        const existing=normalizeMediaComparable(childValue);
-                        const equivalent=wanted && (existing===wanted || existing.endsWith(wanted) || wanted.endsWith(existing));
-                        if(equivalent){
-                            out[childKey]=assetUrl;
-                            replaced=true;
-                            continue;
+
+        const replaceInside=(source)=>{
+            let replaced=false;
+            const walk=(value)=>{
+                if(Array.isArray(value))return value.map(walk);
+                if(value && typeof value==='object'){
+                    const out={...value};
+                    for(const [childKey,childValue] of Object.entries(value)){
+                        if(!replaced && typeof childValue==='string' && mediaKey.test(childKey)){
+                            const existing=normalizeMediaComparable(childValue);
+                            const equivalent=wanted && (existing===wanted || existing.endsWith(wanted) || wanted.endsWith(existing));
+                            if(equivalent){ out[childKey]=assetUrl; replaced=true; continue; }
                         }
+                        out[childKey]=walk(childValue);
                     }
-                    out[childKey]=walk(childValue,childKey);
+                    return out;
                 }
-                return out;
-            }
-            return value;
+                return value;
+            };
+            return {value:walk(source),replaced};
         };
-        const next=walk(data.blocks[index]);
+
+        const block=data.blocks[index];
+        let next=block;
+        let replaced=false;
+
+        if(hasItemTarget){
+            const repeater=findPrimaryRepeater(block);
+            if(repeater && itemIndex<repeater.items.length){
+                const result=replaceInside(repeater.items[itemIndex]);
+                if(result.replaced){
+                    next=updateAtPath(block,repeater.path,(items)=>items.map((item,i)=>i===itemIndex?result.value:item));
+                    replaced=true;
+                }
+            }
+        }
+
+        if(!replaced && !hasItemTarget){
+            const result=replaceInside(block);
+            next=result.value;
+            replaced=result.replaced;
+        }
+
         if(!replaced)return false;
-        setLunaUndoStack((stack)=>[{
-            blocks:stripClientBlockFields(data.blocks||[]),
-            header:data.global_header||{},
-            footer:data.global_footer||{},
-            theme:globalSelections||{},
-        },...stack].slice(0,10));
-        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((block,i)=>i===index?{...next,_renderKey:block._renderKey}:block)));
+        pushLunaUndoSnapshot();
+        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((candidate,i)=>i===index?{...next,_renderKey:candidate._renderKey}:candidate)));
         setLunaElementTarget((current)=>current?{...current,currentValue:assetUrl}:current);
         return true;
     };
@@ -3312,6 +3375,28 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             setPageAiPrompt('Use this Media Library image for the selected image.');
             setLunaElementTarget((current)=>current?{...current,attachedMediaUrl:asset.url,attachedMediaId:asset.id||null}:current);
         }
+    };
+
+    const openLunaForSiteHeader = () => {
+        setLunaScope({type:'header',blockIndex:null,label:'Site Header'});
+        setLunaElementTarget(null);
+        setLunaManualOpen(false);
+        setPageAiError('');
+        setPageAiPrompt('');
+        setLunaMessages((messages)=>[...messages,{role:'context',text:'Site header selected.'},{role:'assistant',text:'What would you like me to do with your site? I can update the header, overlay it on the banner, change the brand theme, create or update the logo, manage navigation, or redesign this whole page. Tell me what you want changed.'}]);
+        setLunaChatOpen(true);
+        window.requestAnimationFrame(()=>{lunaPromptRef.current?.focus?.();});
+    };
+
+    const openLunaForSiteFooter = () => {
+        setLunaScope({type:'footer',blockIndex:null,label:'Site Footer'});
+        setLunaElementTarget(null);
+        setLunaManualOpen(false);
+        setPageAiError('');
+        setPageAiPrompt('');
+        setLunaMessages((messages)=>[...messages,{role:'context',text:'Site footer selected.'},{role:'assistant',text:'What would you like me to do with your footer? I can turn it into a mega footer, simplify the layout, update footer navigation, contact details, social links, calls to action, branding, copyright, or match it more closely to the rest of your site.'}]);
+        setLunaChatOpen(true);
+        window.requestAnimationFrame(()=>{lunaPromptRef.current?.focus?.();});
     };
 
     const openLunaForLogo = () => {
@@ -3402,33 +3487,63 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         const index=lunaScope?.blockIndex;
         if(!Number.isInteger(index) || !data.blocks?.[index] || !lunaElementTarget) return false;
         const wanted=String(lunaElementTarget.currentValue||'');
-        let changed=false;
+        const itemIndex=Number(lunaElementTarget?.itemIndex);
+        const hasItemTarget=Number.isInteger(itemIndex) && itemIndex>=0;
         const urlKey=/(^|_)(url|href|link)$/i;
         const buttonUrlKey=/(button|btn|cta|action).*?(url|href|link)$/i;
-        const walk=(node)=>{
-            if(Array.isArray(node)) return node.map(walk);
-            if(node && typeof node==='object'){
-                const out={...node};
-                const entries=Object.entries(node);
-                const matchingKey=entries.find(([key,value])=>typeof value==='string' && String(value)===wanted && !urlKey.test(key))?.[0];
-                if(!changed && matchingKey){
-                    out[matchingKey]=nextValue;
-                    if(nextUrl!==null){
-                        const siblingUrl=entries.find(([key,value])=>typeof value==='string' && (buttonUrlKey.test(key)||urlKey.test(key)))?.[0];
-                        if(siblingUrl) out[siblingUrl]=nextUrl;
+
+        const replaceInsideObject=(source)=>{
+            let changed=false;
+            const walk=(node)=>{
+                if(Array.isArray(node)) return node.map(walk);
+                if(node && typeof node==='object'){
+                    const out={...node};
+                    const entries=Object.entries(node);
+                    const matchingKey=entries.find(([key,value])=>typeof value==='string' && String(value)===wanted && !urlKey.test(key))?.[0];
+                    if(!changed && matchingKey){
+                        out[matchingKey]=nextValue;
+                        if(nextUrl!==null){
+                            const siblingUrl=entries.find(([key,value])=>typeof value==='string' && (buttonUrlKey.test(key)||urlKey.test(key)))?.[0];
+                            if(siblingUrl) out[siblingUrl]=nextUrl;
+                        }
+                        changed=true;
+                        return out;
                     }
-                    changed=true;
+                    for(const [key,value] of entries) out[key]=walk(value);
                     return out;
                 }
-                for(const [key,value] of entries) out[key]=walk(value);
-                return out;
-            }
-            return node;
+                return node;
+            };
+            return {value:walk(source),changed};
         };
-        const next=walk(data.blocks[index]);
+
+        const block=data.blocks[index];
+        let next=block;
+        let changed=false;
+
+        // Repeater item targeting is authoritative. Never search sibling cards
+        // when Luna knows which rendered card the user selected.
+        if(hasItemTarget){
+            const repeater=findPrimaryRepeater(block);
+            if(repeater && itemIndex<repeater.items.length){
+                const result=replaceInsideObject(repeater.items[itemIndex]);
+                if(result.changed){
+                    next=updateAtPath(block,repeater.path,(items)=>items.map((item,i)=>i===itemIndex?result.value:item));
+                    changed=true;
+                }
+            }
+        }
+
+        // Non-repeater elements retain the legacy value-matching fallback.
+        if(!changed && !hasItemTarget){
+            const result=replaceInsideObject(block);
+            next=result.value;
+            changed=result.changed;
+        }
+
         if(!changed) return false;
         pushLunaUndoSnapshot();
-        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((block,i)=>i===index?{...next,_renderKey:block._renderKey||createRenderKey()}:block)));
+        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((candidate,i)=>i===index?{...next,_renderKey:candidate._renderKey||createRenderKey()}:candidate)));
         setLunaElementTarget((current)=>current?{...current,currentValue:String(nextValue),url:nextUrl!==null?String(nextUrl):current.url}:current);
         return true;
     };
@@ -3494,6 +3609,115 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setLunaMessages((messages)=>[...messages,{role:'assistant',text:`${action==='add'?'Item added':'Last item removed'} while preserving this layout. · 0 credits`}]);
         return true;
     };
+
+    const mutateSelectedCard = (action) => {
+        const index=lunaScope?.blockIndex;
+        const itemIndex=Number(lunaElementTarget?.itemIndex);
+        const block=data.blocks?.[index];
+        const repeater=findPrimaryRepeater(block);
+        if(!Number.isInteger(index)||!block||!repeater||!Number.isInteger(itemIndex)||itemIndex<0||itemIndex>=repeater.items.length) return false;
+        let nextItems=[...repeater.items];
+        if(action==='delete'){
+            if(nextItems.length<=1){ setPageAiError('Keep at least one card in this section.'); return false; }
+            nextItems.splice(itemIndex,1);
+        }else if(action==='duplicate'){
+            nextItems.splice(itemIndex+1,0,JSON.parse(JSON.stringify(nextItems[itemIndex])));
+        }else if(action==='add'){
+            const template=nextItems[nextItems.length-1] || nextItems[itemIndex] || {};
+            const clone=JSON.parse(JSON.stringify(template));
+            for(const key of Object.keys(clone)){
+                if(typeof clone[key]==='string' && /(title|heading|name|label)$/i.test(key)) clone[key]='New item';
+                if(typeof clone[key]==='string' && /(description|text|body|content)$/i.test(key)) clone[key]='Add your content here.';
+            }
+            nextItems.push(clone);
+        }else return false;
+        pushLunaUndoSnapshot();
+        const nextBlock=updateAtPath(block,repeater.path,()=>nextItems);
+        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((item,i)=>i===index?{...nextBlock,_renderKey:item._renderKey||createRenderKey()}:item)));
+        setPageAiError('');
+        setLunaMessages((messages)=>[...messages,{role:'assistant',text:action==='delete'?'Card deleted. · 0 credits':action==='duplicate'?'Card duplicated directly after the selected card. · 0 credits':'New card added using the existing card structure. · 0 credits'}]);
+        if(action==='delete') setLunaElementTarget(null);
+        else {
+            const nextIndex=action==='duplicate'?itemIndex+1:nextItems.length-1;
+            setLunaElementTarget((current)=>current?{...current,itemIndex:nextIndex,itemCount:nextItems.length,currentValue:''}:current);
+        }
+        return true;
+    };
+
+const lunaResolvedBackgroundState = (index=lunaScope?.blockIndex) => {
+        if(!Number.isInteger(index) || !data.blocks?.[index]) return 'light';
+        const resolved=String(resolveBlockTheme(data.blocks[index],index)||'').toLowerCase();
+        return ['primary','dark','midnight','obsidian','charcoal','navy'].includes(resolved) ? 'primary' : 'light';
+    };
+    const lunaUniversalOverlayForState = (state) => state==='primary'
+        ? 'linear-gradient(135deg, color-mix(in srgb, var(--cosmic-primary, #0f766e) 88%, #020617 12%), color-mix(in srgb, var(--cosmic-primary, #0f766e) 58%, transparent))'
+        : 'linear-gradient(135deg, rgba(255,255,255,.88), rgba(255,255,255,.62))';
+
+    const updateLunaUniversalBackground = (fields={}, message='Section background updated. · 0 credits') => {
+        const index=lunaScope?.blockIndex;
+        if(!Number.isInteger(index) || !data.blocks?.[index]) return false;
+        pushLunaUndoSnapshot();
+        const state=lunaResolvedBackgroundState(index);
+        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((block,i)=>i===index?{
+            ...block,
+            universal_background_state:state,
+            universal_background_overlay:lunaUniversalOverlayForState(state),
+            ...fields,
+            _renderKey:block._renderKey||createRenderKey(),
+        }:block)));
+        setPageAiError('');
+        setLunaMessages((messages)=>[...messages,{role:'assistant',text:message}]);
+        return true;
+    };
+
+    const applyLunaUniversalImage = (url) => {
+        if(!url) return false;
+        return updateLunaUniversalBackground({
+            universal_background_enabled:true,
+            universal_background_type:'image',
+            universal_background_image_url:url,
+            universal_background_video_url:'',
+        },'Background image applied. The overlay follows this section’s current theme state. · 0 credits');
+    };
+
+    const applyLunaUniversalVideo = (url) => {
+        if(!url) return false;
+        return updateLunaUniversalBackground({
+            universal_background_enabled:true,
+            universal_background_type:'video',
+            universal_background_video_url:url,
+            universal_background_image_url:'',
+        },'Background video applied. The overlay follows this section’s current theme state. · 0 credits');
+    };
+
+    const removeLunaUniversalBackground = () => updateLunaUniversalBackground({
+        universal_background_enabled:false,
+        universal_background_type:'',
+        universal_background_image_url:'',
+        universal_background_video_url:'',
+        universal_background_overlay:'',
+    },'Background media removed. The Spark is back to its normal theme background. · 0 credits');
+
+    const removeLunaSelectedSection = () => {
+        const index=lunaScope?.blockIndex;
+        if(!Number.isInteger(index)||!data.blocks?.[index]) return;
+        pushLunaUndoSnapshot();
+        setData('blocks',normalizeRenderKeys((data.blocks||[]).filter((_,i)=>i!==index)));
+        setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Section removed. · 0 credits'}]);
+        setLunaManualOpen(false);
+        setLunaElementTarget(null);
+        setLunaScope({type:'page',blockIndex:null,label:'Whole Page'});
+    };
+
+    const submitLunaUniversalVideoUrl = () => {
+        const value=String(lunaUniversalVideoUrl||'').trim();
+        if(!isValidDirectVideoUrl(value)){
+            setPageAiError('Use a YouTube, Vimeo, MP4, WebM, OGG, or uploaded video URL.');
+            return;
+        }
+        if(applyLunaUniversalVideo(value)) setLunaUniversalVideoUrl('');
+    };
+
 const blockHasVideoSlot = (value) => {
         if (Array.isArray(value)) return value.some(blockHasVideoSlot);
         if (value && typeof value === 'object') {
@@ -3575,7 +3799,11 @@ const blockHasVideoSlot = (value) => {
             const response = await axios.post(`/trials/${encodeURIComponent(trialToken)}/images/upload`, form, { headers:{ Accept:'application/json' } });
             const url = response.data?.url;
             if (!url) throw new Error('No image URL was returned.');
-            if (replaceFirstSelectedMedia(url)) {
+            if (lunaMediaLibraryPurpose==='section-background-image' && applyLunaUniversalImage(url)) {
+                setLunaMediaLibraryPurpose('element');
+                setPageAiPrompt('');
+                setLunaStatus('Done');
+            } else if (replaceFirstSelectedMedia(url)) {
                 setPageAiPrompt('');
                 setLunaMessages((messages)=>[...messages,{role:'assistant',text:'I used your uploaded image here.'}]);
                 setLunaStatus('Done');
@@ -3722,7 +3950,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             form.append('footer', JSON.stringify(data.global_footer || {}));
             form.append('theme', JSON.stringify(globalSelections || {}));
             form.append('site_memory', JSON.stringify(lunaSiteMemory || {}));
-            form.append('target_scope', lunaScope.type === 'section' ? 'section' : 'page');
+            form.append('target_scope', lunaScope.type === 'section' ? 'section' : lunaScope.type === 'header' ? 'header' : lunaScope.type === 'footer' ? 'footer' : 'page');
+            if(lunaScope.type==='header'){
+                form.append('shell_context', 'global_header_brand_theme_logo_navigation_page_redesign');
+                form.append('page_redesign_mode', 'registered_templates_only');
+            }
+            if(lunaScope.type==='footer'){
+                form.append('shell_context', 'global_footer_mega_footer_navigation_contact_social_cta_branding_copyright');
+            }
             if (lunaScope.type === 'section' && Number.isInteger(lunaScope.blockIndex)) {
                 form.append('target_index', String(lunaScope.blockIndex));
                 const targetBlock=data.blocks?.[lunaScope.blockIndex];
@@ -3732,6 +3967,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             }
             if (lunaElementTarget && !(videoIntent && lunaScope.type==='section')) {
                 form.append('element_context', JSON.stringify(lunaElementTarget));
+                if(Number.isInteger(Number(lunaElementTarget.itemIndex)) && Number(lunaElementTarget.itemIndex)>=0){
+                    form.append('target_item_index', String(Number(lunaElementTarget.itemIndex)));
+                    form.append('target_item_mode', 'repeater_item');
+                }
             }
             if (confirmed) form.append('confirmed', '1');
             const lunaEndpoint = trialMode
@@ -3834,9 +4073,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
         if (registryItem) {
             const Component = registryItem.component;
             const universalBackgroundUrl = String(block?.universal_background_image_url || '').trim();
-            const universalOverlay = String(block?.universal_background_overlay || '').trim();
+            const universalVideoUrl = String(block?.universal_background_video_url || '').trim();
+            const universalType = String(block?.universal_background_type || (universalVideoUrl?'video':'image')).trim();
+            const universalState = String(block?.universal_background_state || resolvedTheme || 'light').toLowerCase();
+            const universalOverlay = universalState==='primary'
+                ? 'linear-gradient(135deg, color-mix(in srgb, var(--cosmic-primary, #0f766e) 88%, #020617 12%), color-mix(in srgb, var(--cosmic-primary, #0f766e) 58%, transparent))'
+                : 'linear-gradient(135deg, rgba(255,255,255,.88), rgba(255,255,255,.62))';
             const universalPosition = String(block?.universal_background_position || 'center center').trim() || 'center center';
-            const universalEnabled = Boolean(block?.universal_background_enabled && universalBackgroundUrl);
+            const universalEnabled = Boolean(block?.universal_background_enabled && ((universalType==='video'&&universalVideoUrl)||(universalType!=='video'&&universalBackgroundUrl)));
             const design = block?.luna_design_overrides || {};
             const blockType=String(block?.type||'').toLowerCase();
             const heroNeedsDefaultPadding=(index===0 || /hero|banner/.test(blockType))
@@ -3847,12 +4091,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 return Number.isFinite(number)?Math.max(min,Math.min(max,number)):fallback;
             };
             const designVars = {
-                ...(universalEnabled ? {
-                    backgroundImage: `${universalOverlay || 'linear-gradient(rgba(15,23,42,.55),rgba(15,23,42,.55))'}, url("${universalBackgroundUrl.replace(/"/g,'&quot;')}")`,
+                ...(universalEnabled && universalType!=='video' ? {
+                    backgroundImage: `${universalOverlay}, url("${universalBackgroundUrl.replace(/"/g,'&quot;')}")`,
                     backgroundSize: 'cover',
                     backgroundPosition: universalPosition,
                     backgroundRepeat: 'no-repeat',
                 } : {}),
+                ...(universalEnabled && universalType==='video' ? {position:'relative',overflow:'hidden'} : {}),
                 ...(design.heading_size!=null?{'--luna-heading-size':`${clampNumber(design.heading_size,20,112,52)}px`}:{}),
                 ...(design.body_size!=null?{'--luna-body-size':`${clampNumber(design.body_size,12,26,16)}px`}:{}),
                 ...(design.heading_line_height!=null?{'--luna-heading-line':clampNumber(design.heading_line_height,.88,1.6,1.05)}:{}),
@@ -3876,12 +4121,19 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 <div
                     key={block._renderKey || index}
                     data-cosmic-universal-background={universalEnabled ? '1' : undefined}
-                    data-cosmic-background-state={block?.universal_background_state || resolvedTheme || undefined}
+                    data-cosmic-background-type={universalEnabled ? universalType : undefined}
+                    data-cosmic-background-state={universalState}
                     data-luna-design={(Object.keys(design).length || heroNeedsDefaultPadding) ? '1' : undefined}
                     className={`${universalEnabled ? 'cosmic-universal-background-host ' : ''}${(Object.keys(design).length || heroNeedsDefaultPadding) ? 'cosmic-luna-design-host' : ''}`}
                     style={designVars}
                 >
-                    <Component {...blockProps} />
+                    {universalEnabled && universalType==='video' ? <>
+                        <video aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata">
+                            <source src={universalVideoUrl}/>
+                        </video>
+                        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{background:universalOverlay}}/>
+                    </> : null}
+                    <div className={universalEnabled && universalType==='video' ? 'relative z-[1]' : undefined}><Component {...blockProps} /></div>
                 </div>
             );
         }
@@ -4014,7 +4266,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
 {aiOnlyBuilder && lunaChatOpen && <div className="fixed bottom-4 right-4 z-[970] flex h-[calc(100dvh-2rem)] max-h-[940px] min-h-[620px] w-[440px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border border-violet-300/20 bg-[#111318]/95 text-white shadow-2xl backdrop-blur-xl">
   <div className="flex items-start justify-between border-b border-white/10 px-4 py-3">
     <div>
-      <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-300">✦ Luna · {lunaScope.type==='section'?'Selected Section':'Whole Page'}</p>
+      <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-300">✦ Luna · {lunaScope.type==='section'?'Selected Section':lunaScope.type==='header'?'Site Header':lunaScope.type==='footer'?'Site Footer':'Whole Page'}</p>
       <h3 className="mt-1 max-w-[300px] truncate text-sm font-bold">{lunaScope.label}</h3>
     </div>
     <div className="flex items-center gap-1">
@@ -4025,10 +4277,12 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
   <div className="px-4 pt-4">
     <div className="rounded-xl border border-violet-300/10 bg-violet-400/[0.06] px-3 py-2 text-xs leading-5 text-slate-400">
       {lunaScope.type==='section'
-        ? (isLunaVideoSection
-            ? 'Video section selected. Replace the video directly below, or ask Luna for a supported content/layout change.'
-            : 'Luna is focused on this section. Ask for content, media, layout, or another supported design change.')
-        : 'Luna is looking at the whole page. Ask for site-wide design, theme, structure, or content changes.'}
+        ? 'What would you like me to do with this section? I can update its content or layout, add/remove a background image or video, or help add a relevant section above or below. You can also edit it manually.'
+        : lunaScope.type==='header'
+            ? 'What would you like me to do with your site? I can update the header, overlay it on the banner, change the brand theme, create or update the logo, manage navigation, or redesign this whole page.'
+            : lunaScope.type==='footer'
+                ? 'What would you like me to do with your footer? I can add a mega footer, simplify the layout, update navigation, contact details, social links, calls to action, branding, copyright, or match it to the rest of your site.'
+                : 'Luna is looking at the whole page. Ask for site-wide design, theme, structure, or content changes.'}
     </div>
   </div>
   <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pt-3 pb-2">
@@ -4043,9 +4297,27 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
   <div className="shrink-0 border-t border-white/10 p-4">
     {lunaElementTarget ? <div className="mb-2 flex items-center justify-between rounded-lg border border-violet-400/20 bg-violet-500/10 px-3 py-2 text-[11px]">
       <span className="font-semibold text-violet-200">Selected {lunaElementTarget.type}{lunaElementTarget.currentValue ? ` · ${lunaElementTarget.currentValue.slice(0,54)}${lunaElementTarget.currentValue.length>54?'…':''}` : ''}</span>
-      <button type="button" onClick={()=>{setLunaElementTarget(null);setPageAiPrompt('');}} className="text-slate-500 hover:text-white">×</button>
+      <button type="button" onClick={()=>{setLunaElementTarget(null);setLunaManualOpen(false);setPageAiPrompt('');}} className="text-slate-500 hover:text-white">×</button>
     </div> : null}
-    {lunaElementTarget && ['heading','text','label','button'].includes(String(lunaElementTarget.type||'').toLowerCase()) ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
+    {lunaScope.type==='section' ? <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-emerald-300/10 bg-emerald-500/[0.04] px-3 py-2">
+      <span className="text-[11px] leading-4 text-slate-400">Prefer direct controls?</span>
+      <button type="button" onClick={()=>setLunaManualOpen((open)=>!open)}
+        className="shrink-0 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-bold text-emerald-200 hover:bg-emerald-500/20">
+        {lunaManualOpen ? 'Hide manual editor' : 'Edit manually'}
+      </button>
+    </div> : null}
+    {lunaManualOpen && String(lunaElementTarget?.type||'').toLowerCase()==='card' ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Card controls · 0 credits</p>
+      <p className="mt-1 text-[11px] leading-4 text-slate-400">Card {Number(lunaElementTarget.itemIndex)+1} of {Number(lunaElementTarget.itemCount)||selectedRepeater?.items?.length||0}. Current grid/layout is preserved.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button type="button" onClick={()=>mutateSelectedCard('duplicate')} className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-200 hover:border-emerald-300/30 hover:text-white">Duplicate</button>
+        <button type="button" onClick={()=>mutateSelectedCard('add')} className="rounded-full bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-400">+ Add card</button>
+        <button type="button" onClick={()=>mutateSelectedCard('delete')} className="rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-[11px] font-bold text-rose-200 hover:bg-rose-500/20">Delete card</button>
+      </div>
+      <p className="mt-2 text-[10px] leading-4 text-slate-500">Or ask Luna to rewrite this card or add more relevant items.</p>
+    </div> : null}
+
+    {lunaManualOpen && lunaElementTarget && ['heading','text','label','button'].includes(String(lunaElementTarget.type||'').toLowerCase()) ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
       <p className="mb-2 text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Direct edit · 0 credits</p>
       {String(lunaElementTarget.type||'').toLowerCase()==='text' && String(lunaDirectText||'').length>90
         ? <textarea value={lunaDirectText} onChange={e=>setLunaDirectText(e.target.value)} rows={4}
@@ -4059,14 +4331,39 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
         className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-400">Save</button></div>
     </div> : null}
 
-    {lunaScope.type==='section' && !lunaElementTarget && lunaSmartSectionSuggestions.length ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
+    {lunaManualOpen && lunaScope.type==='section' && !lunaElementTarget ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Section background · 0 credits</p>
+      <p className="mt-1 text-[11px] leading-4 text-slate-400">Image/video overlays automatically follow this section’s light or primary theme state.</p>
+      <div className="mt-3 flex flex-wrap gap-2">
+        {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-background-image');setLunaMediaLibraryKind('image');setLunaMediaLibraryOpen(true);}}
+          className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-200 hover:border-emerald-300/30">Background image</button>
+          : <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-background-image');lunaImageUploadRef.current?.click?.();}}
+          className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-200">Upload background image</button>}
+        {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-background-video');setLunaMediaLibraryKind('video');setLunaMediaLibraryOpen(true);}}
+          className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-200 hover:border-violet-300/30">Background video</button> : null}
+        <button type="button" onClick={removeLunaUniversalBackground}
+          className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-300 hover:bg-white/5">Remove background</button>
+      </div>
+      <div className="mt-2 flex gap-2">
+        <input value={lunaUniversalVideoUrl} onChange={e=>setLunaUniversalVideoUrl(e.target.value)}
+          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();submitLunaUniversalVideoUrl();}}}
+          placeholder="Or paste video URL"
+          className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/25 px-3 py-2 text-xs text-white outline-none focus:border-violet-300/40"/>
+        <button type="button" onClick={submitLunaUniversalVideoUrl} disabled={!lunaUniversalVideoUrl.trim()}
+          className="rounded-full bg-violet-500 px-4 py-2 text-xs font-bold text-white disabled:opacity-40">Go</button>
+      </div>
+      <div className="mt-3 border-t border-white/10 pt-3">
+        <button type="button" onClick={removeLunaSelectedSection}
+          className="rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-[11px] font-bold text-rose-200 hover:bg-rose-500/20">Remove section</button>
+      </div>
+    </div> : null}
+
+    {lunaManualOpen && lunaScope.type==='section' && !lunaElementTarget && lunaSmartSectionSuggestions.length ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">✦ Luna suggests</p>
           <p className="mt-1 text-[11px] leading-4 text-slate-400">These fit the current page flow. Choose where to add one.</p>
         </div>
-        <button type="button" onClick={lunaSurpriseSection} disabled={Boolean(lunaSmartSectionBusy)}
-          className="shrink-0 rounded-full border border-violet-300/20 bg-violet-500/10 px-3 py-1.5 text-[10px] font-bold text-violet-200 hover:bg-violet-500/20 disabled:opacity-40">✦ Surprise me</button>
       </div>
       <div className="mt-3 space-y-2">
         {lunaSmartSectionSuggestions.map((suggestion)=><div key={suggestion.category} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/15 px-3 py-2">
@@ -4088,7 +4385,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
       <p className="mt-2 text-[10px] leading-4 text-slate-500">Suggestions avoid obvious duplicates and use registered export-safe Sparks.</p>
     </div> : null}
 
-    {lunaScope.type==='section' && !lunaElementTarget && selectedRepeater ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
+    {lunaManualOpen && lunaScope.type==='section' && !lunaElementTarget && selectedRepeater ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
       <div className="flex items-center justify-between gap-3">
         <div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Listing controls · 0 credits</p>
         <p className="mt-1 text-[11px] text-slate-400">{selectedRepeater.items.length} items · current layout preserved</p></div>
@@ -4102,10 +4399,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
       <p className="mt-2 text-[10px] leading-4 text-slate-500">For relevant/generated items, ask Luna e.g. “add 3 more relevant services.”</p>
     </div> : null}
 
-    {isLunaVideoSection ? <div className="mb-3 rounded-xl border border-violet-300/15 bg-violet-500/[0.06] p-3">
+    {lunaManualOpen && isLunaVideoSection ? <div className="mb-3 rounded-xl border border-violet-300/15 bg-violet-500/[0.06] p-3">
       <div className="flex flex-wrap items-center gap-2">
         {!trialMode ? <button type="button" disabled={!website?.id || pageAiBusy}
-          onClick={()=>{setLunaMediaLibraryKind('video');setLunaMediaLibraryOpen(true);}}
+          onClick={()=>{setLunaMediaLibraryPurpose('element');setLunaMediaLibraryKind('video');setLunaMediaLibraryOpen(true);}}
           className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-[11px] font-semibold text-slate-200 hover:border-violet-300/35 hover:text-white disabled:opacity-40">
           <span aria-hidden="true">▣</span> Media Library
         </button> : null}
@@ -4121,7 +4418,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
       </div>
       <p className="mt-2 text-[10px] leading-4 text-slate-500">Direct replacement updates immediately · 0 credits</p>
     </div> : null}
-    {(String(lunaElementTarget?.type||'').includes('image') || lunaElementTarget?.type==='logo') ? (
+    {lunaManualOpen && (String(lunaElementTarget?.type||'').includes('image') || lunaElementTarget?.type==='logo') ? (
       trialMode
         ? <button
             type="button"
@@ -4134,7 +4431,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
         : <button
             type="button"
             disabled={!website?.id}
-            onClick={()=>{ if(website?.id) { setLunaMediaLibraryKind('image'); setLunaMediaLibraryOpen(true); } else showCosmicNotification({title:'Media Library unavailable',message:'Website context is missing. Reload the Builder and try again.',tone:'error'}); }}
+            onClick={()=>{ if(website?.id) { setLunaMediaLibraryPurpose('element'); setLunaMediaLibraryKind('image'); setLunaMediaLibraryOpen(true); } else showCosmicNotification({title:'Media Library unavailable',message:'Website context is missing. Reload the Builder and try again.',tone:'error'}); }}
             className="mb-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 hover:border-violet-300/30 hover:text-white disabled:opacity-40"
           >
             <span aria-hidden="true">▣</span> Choose from Media Library
@@ -4154,7 +4451,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
     {pageAiError?<div className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{pageAiError}</div>:null}
     <div className="mt-3 flex items-center justify-between">
       {lunaScope.type==='section'
-        ? <button type="button" onClick={()=>{setLunaElementTarget(null);setLunaDirectText('');setLunaDirectLink('');setLunaDirectVideoUrl('');setLunaScope({type:'page',blockIndex:null,label:'Whole Page'});}} className="text-[11px] font-semibold text-slate-500 hover:text-violet-200">Switch to Whole Page</button>
+        ? <button type="button" onClick={()=>{setLunaElementTarget(null);setLunaManualOpen(false);setLunaDirectText('');setLunaDirectLink('');setLunaDirectVideoUrl('');setLunaScope({type:'page',blockIndex:null,label:'Whole Page'});}} className="text-[11px] font-semibold text-slate-500 hover:text-violet-200">Switch to Whole Page</button>
         : <span className="text-[11px] text-slate-600">AI-only Builder</span>}
       <button type="button" onClick={()=>sendPageAiRequest()} disabled={pageAiBusy||!pageAiPrompt.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Working…':'Send'}</button>
     </div>
@@ -4564,7 +4861,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}
                     {data.global_header && (
                         <div ref={overlayHeaderRef} className={`group/header-ai w-full z-40 ${overlayHeaderActive ? 'absolute inset-x-0 top-0 border-b-0 bg-transparent shadow-none' : 'relative bg-white'}`}>
-                            {customWebsiteMode && <button type="button" onClick={()=>{setPageAiPrompt('Update the global header only: ');setPageAiError('');setPageAiOpen(true)}} className="absolute right-4 top-3 z-[90] hidden rounded-full border border-violet-300/25 bg-slate-950/85 px-3 py-1.5 text-[10px] font-bold text-violet-200 shadow-xl backdrop-blur group-hover/header-ai:block">✨ Ask Cosmic Header</button>}
+                            <button type="button" onClick={openLunaForSiteHeader}
+                                aria-label="Ask Luna about the site header"
+                                title="Ask Luna about the site header"
+                                className="absolute right-4 top-3 z-[90] hidden h-9 w-9 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-base font-black text-white shadow-xl shadow-violet-950/30 backdrop-blur transition hover:scale-105 hover:bg-violet-500 group-hover/header-ai:inline-flex">✦</button>
                             {data.global_header.type === 'dark_cyan_header' && (
                                 <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayLogoLight={overlayLogoLight} globalTheme={globalSelections} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={openLunaForLogo} />
                             )}
@@ -4602,17 +4902,26 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                                     if(!target || target.closest('input,textarea,select,[contenteditable="true"]')) return;
                                     const explicit=target.closest('[data-luna-target]');
                                     const semantic=explicit || target.closest('h1,h2,h3,h4,h5,h6,p,button,a,img,[role="button"]');
-                                    const node=semantic && root.contains(semantic) ? semantic : root;
+                                    const card=detectLunaRepeaterCard(root,target);
+                                    const repeaterForHover=findPrimaryRepeater(data.blocks?.[index]);
+                                    const cardMatchesRepeater=Boolean(card && repeaterForHover && Number(card.count)===Number(repeaterForHover.items?.length));
+                                    const preferCard=Boolean(cardMatchesRepeater && (!semantic || semantic===card.node || target===card.node));
+                                    const node=preferCard ? card.node : (semantic && root.contains(semantic) ? semantic : root);
                                     const tag=node===root ? '' : (node.tagName?.toLowerCase?.()||'');
                                     const explicitType=node===root ? '' : String(node.getAttribute?.('data-luna-target')||'');
-                                    const type=node===root ? 'section' : (explicitType || (/^h[1-6]$/.test(tag)?'heading':tag==='img'?'image':(tag==='button'||tag==='a'||node.getAttribute('role')==='button')?'button':'text'));
+                                    const type=preferCard ? 'card' : (node===root ? 'section' : (explicitType || (/^h[1-6]$/.test(tag)?'heading':tag==='img'?'image':(tag==='button'||tag==='a'||node.getAttribute('role')==='button')?'button':'text')));
                                     const imageNode=type.includes('image') ? (tag==='img'?node:node.querySelector?.('img')) : null;
-                                    const currentValue=type.includes('image') ? String(imageNode?.getAttribute?.('src')||'') : (type==='section' ? '' : String(node.textContent||'').trim().slice(0,1200));
+                                    const currentValue=type.includes('image') ? String(imageNode?.getAttribute?.('src')||'') : (type==='section' ? '' : type==='card' ? String(card?.text||'') : String(node.textContent||'').trim().slice(0,1200));
                                     const url=tag==='a'?String(node.getAttribute('href')||''):'';
+                                    // Even when the user targets text/button/image inside a card,
+                                    // retain the parent repeater item index so direct edits cannot
+                                    // accidentally mutate an earlier cloned sibling with the same copy.
+                                    const itemIndex=cardMatchesRepeater?Number(card?.index):null;
+                                    const itemCount=cardMatchesRepeater?Number(card?.count):null;
                                     const rr=root.getBoundingClientRect(); const nr=node.getBoundingClientRect();
                                     const top=Math.max(8,Math.min(root.clientHeight-42,(node===root?12:nr.top-rr.top+8)));
                                     const left=Math.max(8,Math.min(root.clientWidth-42,(node===root?root.clientWidth-46:nr.right-rr.left-26)));
-                                    setLunaHoverTarget((current)=> current && current.blockIndex===index && current.type===type && current.currentValue===currentValue && Math.abs(current.top-top)<2 && Math.abs(current.left-left)<2 ? current : {blockIndex:index,type,currentValue,url,top,left});
+                                    setLunaHoverTarget((current)=> current && current.blockIndex===index && current.type===type && current.currentValue===currentValue && current.itemIndex===itemIndex && Math.abs(current.top-top)<2 && Math.abs(current.left-left)<2 ? current : {blockIndex:index,type,currentValue,url,itemIndex,itemCount,top,left});
                                 }}
                                 onMouseLeave={()=>setLunaHoverTarget((current)=>current?.blockIndex===index?null:current)}
                                 onClick={(event)=>{
@@ -4669,7 +4978,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                     {/* FOOTER RENDERER */}
                     {data.global_footer && (
                         <div className="relative group/footer w-full mt-auto">
-                            {customWebsiteMode && <button type="button" onClick={()=>{setPageAiPrompt('Update the global footer only: ');setPageAiError('');setPageAiOpen(true)}} className="absolute right-4 top-4 z-[90] hidden rounded-full border border-violet-300/25 bg-slate-950/85 px-3 py-1.5 text-[10px] font-bold text-violet-200 shadow-xl backdrop-blur group-hover/footer:block">✨ Ask Cosmic Footer</button>}
+                            <button type="button" onClick={openLunaForSiteFooter}
+                                aria-label="Ask Luna about the site footer"
+                                title="Ask Luna about the site footer"
+                                className="absolute right-4 top-4 z-[90] hidden h-9 w-9 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-base font-black text-white shadow-xl shadow-violet-950/30 backdrop-blur transition hover:scale-105 hover:bg-violet-500 group-hover/footer:inline-flex">✦</button>
                             {!aiOnlyBuilder && capabilities.canEditGlobalShell && (
                                 <div className="cosmic-block-toolbar pointer-events-none absolute left-1/2 top-5 z-[70] -translate-x-1/2 opacity-0 transition-all duration-300 group-hover/footer:opacity-100 focus-within:opacity-100">
                                     <div className="pointer-events-auto flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900/90 px-3 py-2 shadow-2xl backdrop-blur-xl">
@@ -5215,6 +5527,16 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 onSelect={(asset) => {
                     if (!asset?.url) return;
                     setLunaMediaLibraryOpen(false);
+                    if(lunaMediaLibraryPurpose==='section-background-image'){
+                        applyLunaUniversalImage(asset.url);
+                        setLunaMediaLibraryPurpose('element');
+                        return;
+                    }
+                    if(lunaMediaLibraryPurpose==='section-background-video'){
+                        applyLunaUniversalVideo(asset.url);
+                        setLunaMediaLibraryPurpose('element');
+                        return;
+                    }
                     if(lunaMediaLibraryKind==='video'){
                         if(applyDirectLunaVideoUrl(asset.url)){
                             setPageAiError('');
