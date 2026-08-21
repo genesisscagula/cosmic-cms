@@ -1,6 +1,4 @@
 import CreditBalanceBadge from '../../../Components/CosmicCredits/CreditBalanceBadge';
-import CreditPrice from '../../../Components/CosmicCredits/CreditPrice';
-import { ACTION_PRICING } from '../../../cosmic/pricing';
 
 export default function NewPagePanel({ open, onClose, data, setData, errors, processing, onSubmit, parentPage = null, creditBalance = null }) {
     if (!open) return null;
@@ -27,7 +25,7 @@ export default function NewPagePanel({ open, onClose, data, setData, errors, pro
                 </div>
                 <form onSubmit={onSubmit} className="mt-5 space-y-4">
                     <div><label htmlFor="page-title" className="text-sm font-medium text-slate-200">Page title</label><input id="page-title" autoFocus required value={data.title} onChange={(event) => setData("title", event.target.value)} placeholder="e.g. About Us or Services" className="mt-2 h-10 w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-violet-400/70 focus:ring-2 focus:ring-violet-400/15" />{errors.title && <p className="mt-2 text-xs text-red-300">{errors.title}</p>}</div>
-                    <div className="flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-medium text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Cancel</button><button type="submit" disabled={processing} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-violet-400">{processing ? "Creating..." : <CreditPrice label="Create Page ·" amount={ACTION_PRICING.add_page} />}</button></div>
+                    <div className="flex justify-end gap-2"><button type="button" onClick={onClose} className="rounded-lg px-3 py-2 text-sm font-medium text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Cancel</button><button type="submit" disabled={processing} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 transition hover:bg-slate-200 disabled:opacity-50 focus:outline-none focus:ring-2 focus:ring-violet-400">{processing ? "Creating..." : "Create Page"}</button></div>
                 </form>
             </div>
         </div>

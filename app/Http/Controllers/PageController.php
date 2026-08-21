@@ -84,14 +84,17 @@ class PageController extends Controller
         }
 
         $reference = 'add-page-' . Str::uuid();
-        $credits->consume(
-            $request->user(),
-            ActionPricing::ADD_PAGE,
-            'Add page: ' . $request->title,
-            $website,
-            $reference,
-            ['page_type' => $pageType],
-        );
+        $pageCost = ActionPricing::ADD_PAGE;
+        if ($pageCost > 0) {
+            $credits->consume(
+                $request->user(),
+                $pageCost,
+                'Add page: ' . $request->title,
+                $website,
+                $reference,
+                ['page_type' => $pageType],
+            );
+        }
 
         try {
             DB::transaction(function () use ($website, $request, $slug, $pageType, $parent) {
@@ -110,17 +113,21 @@ class PageController extends Controller
                 }
             });
         } catch (Throwable $exception) {
-            $credits->refund(
-                $request->user(),
-                ActionPricing::ADD_PAGE,
-                'Refund for failed page creation',
-                $website,
-                $reference . '-refund',
-            );
+            if ($pageCost > 0) {
+                $credits->refund(
+                    $request->user(),
+                    $pageCost,
+                    'Refund for failed page creation',
+                    $website,
+                    $reference . '-refund',
+                );
+            }
             throw $exception;
         }
 
-        return back()->with('success', 'Page created for ' . ActionPricing::ADD_PAGE . ' Cosmic Credits.');
+        return back()->with('success', $pageCost > 0
+            ? 'Page created for ' . $pageCost . ' Cosmic Credits.'
+            : 'Page created successfully.');
     }
 
     public function updateTitle(Request $request, Website $website, Page $page)
@@ -151,15 +158,18 @@ class PageController extends Controller
         $copyTitle = $this->uniquePageCopyTitle($website, $baseTitle);
         $copySlug = $this->uniquePageSlug($website, Str::slug($copyTitle) ?: 'page-copy');
         $reference = 'clone-page-' . Str::uuid();
+        $pageCost = ActionPricing::ADD_PAGE;
 
-        $credits->consume(
-            $request->user(),
-            ActionPricing::ADD_PAGE,
-            'Clone page: ' . $baseTitle,
-            $website,
-            $reference,
-            ['source_page_id' => $page->id, 'page_type' => $page->page_type],
-        );
+        if ($pageCost > 0) {
+            $credits->consume(
+                $request->user(),
+                $pageCost,
+                'Clone page: ' . $baseTitle,
+                $website,
+                $reference,
+                ['source_page_id' => $page->id, 'page_type' => $page->page_type],
+            );
+        }
 
         try {
             $copy = DB::transaction(function () use ($website, $page, $copyTitle, $copySlug) {
@@ -208,13 +218,15 @@ class PageController extends Controller
                 return $copy;
             });
         } catch (Throwable $exception) {
-            $credits->refund(
-                $request->user(),
-                ActionPricing::ADD_PAGE,
-                'Refund for failed page clone',
-                $website,
-                $reference . '-refund',
-            );
+            if ($pageCost > 0) {
+                $credits->refund(
+                    $request->user(),
+                    $pageCost,
+                    'Refund for failed page clone',
+                    $website,
+                    $reference . '-refund',
+                );
+            }
             throw $exception;
         }
 
@@ -1465,26 +1477,10 @@ class PageController extends Controller
 
         $themeKey = (string) data_get($website->theme_settings, 'primary', '');
         $publishedThemeKey = (string) data_get($website->published_theme_settings, 'primary', '');
+        // Publishing and manual theme selection are ordinary CMS actions.
+        // Credits are reserved for real AI/API work only.
         $themeCost = 0;
         $themeReference = null;
-
-        $alreadyUnlocked = $themeKey !== '' && $request->user()->cosmicUnlocks()
-            ->where('unlock_type', 'theme')
-            ->where('unlock_key', $themeKey)
-            ->exists();
-
-        if ($themeKey !== '' && $themeKey !== $publishedThemeKey && ! $alreadyUnlocked) {
-            $themeCost = ThemePricingRegistry::cost($themeKey);
-            $themeReference = 'theme-publish-' . Str::uuid();
-            $credits->consume(
-                $request->user(),
-                $themeCost,
-                'Unlock theme on publish: ' . ThemePricingRegistry::get($themeKey)['label'],
-                $website,
-                $themeReference,
-                ['theme' => $themeKey],
-            );
-        }
 
         try {
             $html = $publisher->publish($page, $website);
@@ -1517,11 +1513,17 @@ class PageController extends Controller
                     ->where('page_type', 'standard')
                     ->get()
                     ->each(function (Page $publishedPage) use ($publishedStyle, $primaryColor) {
-                        $snapshot = $publishedPage->published_blocks ?? $publishedPage->blocks ?? [];
-                        $publishedPage->forceFill([
-                            'published_page_style' => $publishedStyle,
-                            'published_html' => CmsHtmlCompiler::compile($snapshot, $primaryColor, ['page_style' => $publishedStyle]),
-                        ])->save();
+                        try {
+                            $snapshot = $publishedPage->published_blocks ?? $publishedPage->blocks ?? [];
+                            $publishedPage->forceFill([
+                                'published_page_style' => $publishedStyle,
+                                'published_html' => CmsHtmlCompiler::compile($snapshot, $primaryColor, ['page_style' => $publishedStyle]),
+                            ])->save();
+                        } catch (Throwable $siblingCompileException) {
+                            // A stale sibling page must never turn the current page publish
+                            // into a 502. Keep its previous published HTML and report it.
+                            report($siblingCompileException);
+                        }
                     });
 
                 if ($themeKey !== '' && $themeCost > 0) {

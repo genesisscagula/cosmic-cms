@@ -37,9 +37,6 @@ const baseNavigationItems = [
     { id: 'websites', label: 'Websites', icon: 'websites', tone: 'blue' },
     { id: 'health', label: 'Health', icon: 'health', tone: 'rose' },
     { id: 'media', label: 'Media', icon: 'media', tone: 'indigo' },
-    { id: 'templates', label: 'Starter Kits', icon: 'templates', tone: 'amber' },
-    { id: 'sparks', label: 'Sparks', icon: 'sparks', tone: 'violet' },
-    { id: 'aiStudio', label: 'AI Studio', icon: 'aiStudio', tone: 'emerald' },
 ];
 
 const secondaryItems = [

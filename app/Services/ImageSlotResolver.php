@@ -140,6 +140,11 @@ final class ImageSlotResolver
             return 'people';
         }
 
+        if ($normalizedKey === 'universal_background_image_url'
+            || str_contains($normalizedPath, 'universal_background_image_url')) {
+            return 'background';
+        }
+
         if (str_contains($normalizedPath, 'slide') || str_starts_with($type, 'hero_')) {
             return 'hero';
         }

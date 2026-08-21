@@ -6,6 +6,7 @@ use App\Helpers\CmsHtmlCompiler;
 use App\Support\PageStyleRegistry;
 use App\Models\CustomSpark;
 use App\Models\Website;
+use App\Models\TrialGeneration;
 use App\Jobs\BuildVisualFirstCustomPageJob;
 use App\Services\CreditService;
 use App\Services\SparkCatalog;
@@ -13,6 +14,9 @@ use App\Services\PlanEntitlementService;
 use App\Services\AiPageGenerationService;
 use App\Services\LunaTemplatePlannerService;
 use App\Services\LunaCategoryPageService;
+use App\Services\LunaCreditPricingService;
+use App\Services\LunaNaturalReplyService;
+use App\Services\TrialCreditService;
 use App\Services\SmartImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
@@ -753,7 +757,7 @@ PROMPT;
         abort_if($apiKey==='',503,'Cosmic AI is not configured.');
         $dataUri='data:'.$visual['mime'].';base64,'.base64_encode($visual['bytes']);
 
-        $response=Http::withToken($apiKey)->timeout(150)->post(
+        $response=Http::withToken($apiKey)->connectTimeout(30)->timeout(150)->post(
             rtrim((string)(config('openai.base_uri')?:'https://api.openai.com/v1'),'/').'/chat/completions',
             [
                 'model'=>env('OPENAI_VISION_MODEL',env('OPENAI_MODEL','gpt-5-mini')),
@@ -1175,11 +1179,452 @@ PROMPT;
     }
 
 
+    private function universalBackgroundState(?string $resolvedTheme, array $block, int $index): string
+    {
+        $resolved=Str::lower(trim((string)$resolvedTheme));
+        $declared=Str::lower(trim((string)($block['theme']??'')));
+        $value=$resolved!=='' && $resolved!=='auto' ? $resolved : $declared;
+
+        if(Str::contains($value,['primary','dark','midnight','navy','obsidian','charcoal'])) return 'primary';
+        if(Str::contains($value,['surface','stone','soft','muted'])) return 'surface';
+        if(Str::contains($value,['white','light','clean'])) return 'white';
+
+        $type=Str::lower((string)($block['type']??''));
+        return ($index===0 || Str::contains($type,['hero','banner'])) ? 'primary' : 'white';
+    }
+
+    private function universalBackgroundOverlay(string $state, string $strength='balanced'): string
+    {
+        $strength=Str::lower($strength);
+        return match($state){
+            'primary'=>match($strength){
+                'lighter'=>'linear-gradient(135deg, rgba(8,15,28,.58), rgba(8,15,28,.28))',
+                'darker'=>'linear-gradient(135deg, rgba(8,15,28,.88), rgba(8,15,28,.62))',
+                default=>'linear-gradient(135deg, rgba(8,15,28,.76), rgba(8,15,28,.46))',
+            },
+            'surface'=>match($strength){
+                'lighter'=>'linear-gradient(135deg, rgba(248,250,252,.72), rgba(241,245,249,.42))',
+                'darker'=>'linear-gradient(135deg, rgba(241,245,249,.94), rgba(226,232,240,.78))',
+                default=>'linear-gradient(135deg, rgba(248,250,252,.88), rgba(241,245,249,.62))',
+            },
+            default=>match($strength){
+                'lighter'=>'linear-gradient(135deg, rgba(255,255,255,.72), rgba(255,255,255,.42))',
+                'darker'=>'linear-gradient(135deg, rgba(255,255,255,.96), rgba(248,250,252,.82))',
+                default=>'linear-gradient(135deg, rgba(255,255,255,.90), rgba(255,255,255,.66))',
+            },
+        };
+    }
+
+    private function applyUniversalBackgroundIntent(
+        AiPageGenerationService $pageGeneration,
+        string $prompt,
+        array $block,
+        string $state,
+        bool $remove=false,
+        ?string $strength=null
+    ): array {
+        if($remove){
+            unset(
+                $block['universal_background_image_url'],
+                $block['universal_background_overlay'],
+                $block['universal_background_state'],
+                $block['universal_background_position']
+            );
+            $block['universal_background_enabled']=false;
+            return ['block'=>$block,'success'=>true,'removed'=>true,'error'=>null];
+        }
+
+        $block['universal_background_enabled']=true;
+        $block['universal_background_state']=$state;
+        $block['universal_background_overlay']=$this->universalBackgroundOverlay($state,$strength?:'balanced');
+        $block['universal_background_position']=$block['universal_background_position']??'center center';
+
+        // Overlay-only requests should preserve the existing image.
+        if(($strength==='darker'||$strength==='lighter') && trim((string)($block['universal_background_image_url']??''))!==''){
+            return ['block'=>$block,'success'=>true,'removed'=>false,'error'=>null];
+        }
+
+        // Create one isolated provider slot so adding a section background never
+        // replaces cards, thumbnails, avatars or other existing Spark imagery.
+        $probe=[
+            'type'=>$block['type']??'website_section',
+            'universal_background_image_url'=>'',
+        ];
+        try{
+            $remote=$pageGeneration->applyStartPageRemoteImages(
+                trim($prompt)."\nUNIVERSAL SECTION BACKGROUND: Find one relevant wide editorial background photograph for this exact section. Do not alter any other imagery.",
+                [$probe]
+            );
+            $url=trim((string)data_get($remote,'blocks.0.universal_background_image_url',''));
+            if($url!==''){
+                $block['universal_background_image_url']=$url;
+                return ['block'=>$block,'success'=>true,'removed'=>false,'error'=>null];
+            }
+        }catch(\Throwable $e){
+            report($e);
+        }
+
+        // Never enable a blank background or claim success when the provider failed.
+        $block['universal_background_enabled']=false;
+        return ['block'=>$block,'success'=>false,'removed'=>false,'error'=>'No matching background image was returned by the image provider.'];
+    }
+
+    public function trialPageChat(
+        Request $request,
+        TrialGeneration $trial,
+        LunaCategoryPageService $lunaPages,
+        AiPageGenerationService $pageGeneration,
+        LunaCreditPricingService $lunaPricing,
+        TrialCreditService $trialCredits,
+        LunaNaturalReplyService $natural
+    ) {
+        abort_if($trial->claimed_at, 410, 'This trial has already been claimed.');
+
+        $validated=$request->validate([
+            'prompt'=>['required','string','max:6000'],
+            'blocks'=>['required','string','max:350000'],
+            'header'=>['nullable','string','max:80000'],
+            'footer'=>['nullable','string','max:120000'],
+            'theme'=>['nullable','string','max:12000'],
+            'target_scope'=>['nullable','in:page,section'],
+            'target_index'=>['nullable','integer','min:0','max:100'],
+            'element_context'=>['nullable','string','max:6000'],
+            'target_resolved_theme'=>['nullable','string','max:40'],
+            'confirmed'=>['nullable','boolean'],
+        ]);
+        $blocks=json_decode($validated['blocks'],true);
+        $header=json_decode((string)($validated['header']??'{}'),true);
+        $footer=json_decode((string)($validated['footer']??'{}'),true);
+        if(!is_array($blocks)) throw ValidationException::withMessages(['blocks'=>'The page could not be prepared for Luna.']);
+
+        $scope=(string)($validated['target_scope']??'page');
+        $targetIndex=$scope==='section'?(int)($validated['target_index']??-1):-1;
+        $prompt=trim((string)$validated['prompt']);
+        $lower=Str::lower($prompt);
+        $backgroundRemove=Str::contains($lower,['remove background image','remove the background image','remove background photo','no background image','clear background image']);
+        $backgroundDarker=Str::contains($lower,['make background darker','darken the background','darker overlay','stronger overlay']);
+        $backgroundLighter=Str::contains($lower,['make background lighter','lighten the background','lighter overlay','softer overlay']);
+        $backgroundAdd=!$backgroundRemove && (
+            (Str::contains($lower,'background image') && Str::contains($lower,['add','use','set','change','give','put','apply']))
+            || (Str::contains($lower,'background photo') && Str::contains($lower,['add','use','set','change','give','put','apply']))
+        );
+        $universalBackgroundIntent=$backgroundAdd||$backgroundRemove||$backgroundDarker||$backgroundLighter;
+
+        // If the user explicitly names a different section, that name overrides
+        // the currently selected section. This keeps "change the hero..." reliable
+        // even when the chat was opened from FAQ, Contact, Services, etc.
+        $namedTargetOverrodeSelection=false;
+        if($scope==='section'){
+            $originalSelectedIndex=$targetIndex;
+            $namedTargets=[
+                'hero'=>['hero','banner','masthead'],
+                'services'=>['services','service'],
+                'testimonials'=>['testimonial','reviews','review'],
+                'pricing'=>['pricing','price','plans'],
+                'faq'=>['faq','questions'],
+                'contact'=>['contact','enquiry','inquiry'],
+                'cta'=>['cta','call to action'],
+                'gallery'=>['gallery','portfolio','projects','work'],
+                'process'=>['process','steps','timeline'],
+                'team'=>['team','people','staff'],
+                'about'=>['about','story'],
+            ];
+            $requestedNamedTarget=null;
+            foreach($namedTargets as $name=>$aliases){
+                foreach($aliases as $alias){
+                    if(preg_match('/\b'.preg_quote($alias,'/').'\b/i',$prompt)){
+                        $requestedNamedTarget=$name;
+                        break 2;
+                    }
+                }
+            }
+            if($requestedNamedTarget!==null){
+                foreach(array_values($blocks) as $candidateIndex=>$candidateBlock){
+                    $candidateType=Str::lower((string)($candidateBlock['type']??''));
+                    $candidateHeading=Str::lower((string)($candidateBlock['heading']??$candidateBlock['title']??$candidateBlock['eyebrow']??''));
+                    $candidateMeta=SparkCatalog::find((string)($candidateBlock['type']??''))??[];
+                    $candidateCategory=Str::lower((string)($candidateMeta['category']??''));
+                    $haystack=$candidateType.' '.$candidateHeading.' '.$candidateCategory;
+                    $matches=match($requestedNamedTarget){
+                        'hero'=>Str::contains($haystack,['hero','banner','mini heroes']),
+                        'services'=>Str::contains($haystack,['services','service']),
+                        'testimonials'=>Str::contains($haystack,['testimonial','review']),
+                        'pricing'=>Str::contains($haystack,['pricing','price']),
+                        'faq'=>Str::contains($haystack,'faq'),
+                        'contact'=>Str::contains($haystack,['contact','location']),
+                        'cta'=>Str::contains($haystack,'cta'),
+                        'gallery'=>Str::contains($haystack,['gallery','portfolio','case studies','projects']),
+                        'process'=>Str::contains($haystack,['process','proof','timeline']),
+                        'team'=>Str::contains($haystack,'team'),
+                        'about'=>Str::contains($haystack,'about'),
+                        default=>false,
+                    };
+                    if($matches){
+                        $targetIndex=$candidateIndex;
+                        $namedTargetOverrodeSelection=($candidateIndex!==$originalSelectedIndex);
+                        break;
+                    }
+                }
+            }
+        }
+
+        $overlayOn=Str::contains($lower,['float header','floating header','overlay header','header over hero','header over banner','transparent header']);
+        $overlayOff=Str::contains($lower,['disable overlay','turn off overlay','remove overlay','solid header','header above banner','header outside banner']);
+        if($overlayOn||$overlayOff){
+            $cost=10; $trialCredits->ensureCanSpend($trial,$cost,'This Luna change');
+            $header=is_array($header)?$header:[];
+            $header['overlay_header_on_banner']=$overlayOn&&!$overlayOff;
+            $balance=$trialCredits->consume($trial,$cost,'luna_header',['scope'=>'trial']);
+            $reply=$natural->compose($prompt,[
+                'authenticated'=>false,
+                'trial'=>true,
+                'scope'=>$scope,
+            ],[
+                'action'=>'header overlay change',
+                'action_completed'=>true,
+                'overlay_enabled'=>$header['overlay_header_on_banner'],
+                'credits_used'=>$cost,
+            ]);
+            return response()->json(['reply'=>$reply,'blocks'=>$blocks,'header'=>$header,'footer'=>$footer?:[],'page_style'=>$header['overlay_header_on_banner']?'balanced':null,'credit_cost'=>$cost,'credit_balance'=>$balance]);
+        }
+
+        if($scope==='page' && count($blocks)===0){
+            $sections=$lunaPages->plan($prompt);
+            $generated=$lunaPages->generate($prompt,$sections);
+            try{$remote=$pageGeneration->applyStartPageRemoteImages($prompt,$generated);if(is_array($remote['blocks']??null))$generated=$remote['blocks'];}catch(\Throwable $e){report($e);}
+            $cost=40; $trialCredits->ensureCanSpend($trial,$cost,'Building this page');
+            $balance=$trialCredits->consume($trial,$cost,'luna_build_page',['scope'=>'trial']);
+            $reply=$natural->compose($prompt,[
+                'authenticated'=>false,
+                'trial'=>true,
+                'scope'=>'page',
+            ],[
+                'action'=>'build page',
+                'action_completed'=>true,
+                'generated_sections'=>count($generated),
+                'credits_used'=>$cost,
+            ]);
+            return response()->json(['reply'=>$reply,'blocks'=>array_values($generated),'header'=>$header?:[],'footer'=>$footer?:[],'credit_cost'=>$cost,'credit_balance'=>$balance]);
+        }
+
+        $usable=collect(SparkCatalog::all())->map(fn($s)=>[
+            'key'=>$s['key'],
+            'name'=>$s['name'],
+            'category'=>$s['category'],
+            'description'=>$s['description'],
+            'aliases'=>$s['aliases']??[],
+            'media'=>$s['media']??'mixed',
+            'layout'=>$s['layout']??[],
+            'style'=>$s['style']??[],
+            'intent'=>$s['intent']??[],
+            'industry_fit'=>$s['industry_fit']??[],
+            'position_fit'=>$s['position_fit']??[],
+            'capabilities'=>$s['capabilities']??[],
+        ])->values()->all();
+        $summary=collect($blocks)->values()->map(fn($b,$i)=>['index'=>$i,'type'=>$b['type']??'','heading'=>$b['heading']??$b['title']??''])->all();
+        $selected=$scope==='section'&&isset($blocks[$targetIndex])?$blocks[$targetIndex]:[];
+        $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
+        if(!is_array($elementContext))$elementContext=[];
+        if($namedTargetOverrodeSelection)$elementContext=[];
+        if($elementContext && $selected){
+            $needles=array_values(array_filter([
+                trim((string)($elementContext['currentValue']??'')),
+                trim((string)($elementContext['url']??'')),
+            ]));
+            $paths=[];
+            $walk=function($value,$path='') use (&$walk,&$paths,$needles){
+                if(!is_array($value))return;
+                foreach($value as $key=>$item){
+                    $next=$path===''?(string)$key:$path.'.'.$key;
+                    if(is_scalar($item)){
+                        foreach($needles as $needle){
+                            if($needle!=='' && trim((string)$item)===$needle){$paths[]=$next;break;}
+                        }
+                    } elseif(is_array($item)){$walk($item,$next);}
+                }
+            };
+            $walk($selected);
+            $elementContext['matched_paths']=array_values(array_unique($paths));
+        }
+
+        $system='You are Luna, the invisible website editor. Return JSON only: {"reply":"short reply","operations":[{"action":"edit|replace|insert_before|insert_after|delete|move|theme","index":0,"to_index":0,"spark_key":"registered key when needed","theme_key":"","changes":{},"instruction":""}],"header_changes":{},"footer_changes":{},"page_style":null}. Use ONLY Spark keys from the supplied catalog. Rank candidates by requested aliases/media/capabilities FIRST, selected-section semantic intent/category SECOND, then layout/style/industry/position fit. Never default to Hero merely because Hero also supports the requested media; preserve the selected section role unless the user explicitly asks to change it. For simple edits use edit and only existing schema keys. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs.';
+        $apiKey=(string)config('openai.api_key'); abort_if($apiKey==='',503,'Luna is temporarily unavailable.');
+        $response=Http::withToken($apiKey)->connectTimeout(30)->timeout(150)->post(rtrim((string)(config('openai.base_uri')?:'https://api.openai.com/v1'),'/').'/chat/completions',[
+            'model'=>env('OPENAI_MODEL','gpt-5-mini'),'response_format'=>['type'=>'json_object'],
+            'messages'=>[['role'=>'system','content'=>$system],['role'=>'user','content'=>"SCOPE: {$scope}\nTARGET: {$targetIndex}\nREQUEST: {$prompt}\nPAGE: ".json_encode($summary)."\nSELECTED: ".json_encode($selected)."\nELEMENT TARGET: ".json_encode($elementContext)."\nCATALOG: ".json_encode($usable)]],
+        ])->throw()->json();
+        $plan=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+        $ops=array_values(array_slice(is_array($plan['operations']??null)?$plan['operations']:[],0,8));
+
+        // Deterministic structural correction: natural-language positioning commands
+        // must become real move operations even if the planner under-specifies them.
+        if($scope==='section' && isset($blocks[$targetIndex])){
+            $moveTo=null;
+            if(Str::contains($lower,['top of the page','top of page','first section','move it to the top','move this to the top','move to top'])) $moveTo=0;
+            elseif(Str::contains($lower,['bottom of the page','bottom of page','last section','move it to the bottom','move this to the bottom','move to bottom'])) $moveTo=max(0,count($blocks)-1);
+            elseif(Str::contains($lower,['move up','one section up','move it up'])) $moveTo=max(0,$targetIndex-1);
+            elseif(Str::contains($lower,['move down','one section down','move it down'])) $moveTo=min(max(0,count($blocks)-1),$targetIndex+1);
+            if($moveTo!==null){
+                $ops=array_values(array_filter($ops,fn($op)=>!(is_array($op)&&($op['action']??'')==='move')));
+                $ops[]=['action'=>'move','index'=>$targetIndex,'to_index'=>$moveTo];
+            }
+
+            $transformRequested=Str::contains($lower,['change this','turn this','convert this','replace this','make this','change the banner','change banner','change the hero','change hero']);
+            $desiredKind=null;
+            foreach(['slider','video','testimonial','gallery','pricing','faq','services','contact'] as $kind){
+                if(Str::contains($lower,$kind)){$desiredKind=$kind;break;}
+            }
+            $hasReplace=collect($ops)->contains(fn($op)=>is_array($op)&&($op['action']??'')==='replace'&&(int)($op['index']??-1)===$targetIndex);
+            if($transformRequested && $desiredKind && !$hasReplace){
+                $currentType=Str::lower((string)($blocks[$targetIndex]['type']??''));
+                $currentMeta=SparkCatalog::find((string)($blocks[$targetIndex]['type']??''))??[];
+                $currentCategory=Str::lower((string)($currentMeta['category']??''));
+                $currentIntent=collect($currentMeta['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                $isOpening=$targetIndex===0 || Str::contains($currentType,['hero','banner']);
+                $candidate=collect($usable)
+                    ->map(function($spark) use($desiredKind,$currentCategory,$currentIntent,$isOpening){
+                        $aliases=collect($spark['aliases']??[])->map(fn($v)=>Str::lower((string)$v))->implode(' ');
+                        $caps=collect($spark['capabilities']??[])->map(fn($v)=>Str::lower((string)$v))->implode(' ');
+                        $haystack=Str::lower(($spark['key']??'').' '.($spark['name']??'').' '.($spark['description']??'').' '.$aliases.' '.($spark['media']??'').' '.$caps);
+                        $matches=Str::contains($haystack,$desiredKind)
+                            || ($desiredKind==='slider' && (($spark['media']??'')==='slider' || Str::contains($caps,'supports-slider')));
+                        if(!$matches) return null;
+                        $score=0;
+                        if(Str::lower((string)($spark['media']??''))===$desiredKind) $score+=120;
+                        if(Str::contains($aliases,$desiredKind)) $score+=100;
+                        if(Str::contains($caps,'supports-'.$desiredKind)) $score+=90;
+                        if($currentCategory!=='' && Str::lower((string)($spark['category']??''))===$currentCategory) $score+=70;
+                        $sparkIntent=collect($spark['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                        $score+=count(array_intersect($currentIntent,$sparkIntent))*35;
+                        $positions=collect($spark['position_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                        if($isOpening && (in_array('top',$positions,true)||in_array('opening-section-safe',$spark['capabilities']??[],true))) $score+=35;
+                        if(!$isOpening && Str::lower((string)($spark['category']??''))==='hero') $score-=80;
+                        if(Str::contains(Str::lower((string)($spark['name']??'')),'premium')) $score+=5;
+                        $spark['_luna_score']=$score;
+                        return $spark;
+                    })->filter()->sortByDesc('_luna_score')->first();
+                if(is_array($candidate) && !empty($candidate['key'])){
+                    $ops[]=[
+                        'action'=>'replace',
+                        'index'=>$targetIndex,
+                        'spark_key'=>$candidate['key'],
+                        'instruction'=>"Transform the selected section into a {$desiredKind} while preserving relevant existing content and brand direction.",
+                    ];
+                }
+            }
+        }
+        $pricing=$lunaPricing->estimate($prompt,$ops,$scope);
+        $cost=(int)($pricing['credits']??0);
+        if(($pricing['requires_confirmation']??false) && !($validated['confirmed']??false)){
+            $planningCost=2;
+            $trialCredits->ensureCanSpend($trial,$planningCost,'Luna planning');
+            $balance=$trialCredits->consume($trial,$planningCost,'luna_plan_confirmation',['scope'=>$scope]);
+            $reply=$natural->compose($prompt,[
+                'authenticated'=>false,
+                'trial'=>true,
+                'scope'=>$scope,
+            ],[
+                'action_completed'=>false,
+                'confirmation_required'=>true,
+                'estimated_execution_cost'=>$cost,
+                'planning_credits_used'=>$planningCost,
+            ]);
+            return response()->json([
+                'reply'=>$reply,
+                'mode'=>'confirm',
+                'confirmation_cost'=>$cost,
+                'credit_cost'=>$planningCost,
+                'credit_balance'=>$balance,
+            ]);
+        }
+        if($cost>0)$trialCredits->ensureCanSpend($trial,$cost,'This Luna change');
+
+        $keys=collect($usable)->pluck('key')->flip(); $next=array_values($blocks); $applied=[];
+        foreach($ops as $op){
+            if(!is_array($op))continue;$action=(string)($op['action']??'');$i=(int)($op['index']??-1);
+            if($scope==='section'&&!in_array($action,['insert_before','insert_after'],true)&&$i!==$targetIndex)continue;
+            if($action==='edit'&&isset($next[$i])&&is_array($op['changes']??null)){
+                $changes=$op['changes'];unset($changes['type'],$changes['_renderKey']);$changes=array_intersect_key($changes,$next[$i]);$next[$i]=array_merge($next[$i],$changes);$applied[]=['action'=>'edit','index'=>$i];continue;
+            }
+            if(in_array($action,['replace','insert_before','insert_after'],true)){
+                $key=(string)($op['spark_key']??'');if(!$keys->has($key))continue;
+                $gen=$lunaPages->generate($prompt."\n".(string)($op['instruction']??''),[$key]);$block=$gen[0]??null;if(!is_array($block))continue;
+                try{$remote=$pageGeneration->applyStartPageRemoteImages($prompt,[$block]);if(is_array($remote['blocks'][0]??null))$block=$remote['blocks'][0];}catch(\Throwable $e){report($e);}
+                $block['type']=$key;$block['_renderKey']='luna-'.Str::lower(Str::random(10));
+                if($action==='replace'&&isset($next[$i]))$next[$i]=$block;elseif($action==='insert_before')array_splice($next,max(0,$i),0,[$block]);else array_splice($next,max(0,$i+1),0,[$block]);
+                $applied[]=['action'=>$action,'index'=>$i];continue;
+            }
+            if($action==='delete'&&isset($next[$i])){array_splice($next,$i,1);$applied[]=['action'=>'delete','index'=>$i];}
+            if($action==='move'&&isset($next[$i])){$to=max(0,min(count($next)-1,(int)($op['to_index']??$i)));$moving=$next[$i];array_splice($next,$i,1);array_splice($next,$to,0,[$moving]);$applied[]=['action'=>'move','index'=>$i,'to_index'=>$to];continue;}
+            if($action==='theme'){
+                $allowedThemes=['midnight','emerald','coffee','rose','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
+                $key=(string)($op['theme_key']??'');
+                if(in_array($key,$allowedThemes,true)){$applied[]=['action'=>'theme','theme_key'=>$key];}
+            }
+        }
+        $backgroundApplied=false;
+        $backgroundError=null;
+        if($scope==='section' && $universalBackgroundIntent && isset($next[$targetIndex])){
+            $resolvedState=$this->universalBackgroundState(
+                $namedTargetOverrodeSelection ? '' : (string)($validated['target_resolved_theme']??''),
+                $next[$targetIndex],
+                $targetIndex
+            );
+            $strength=$backgroundDarker?'darker':($backgroundLighter?'lighter':null);
+            $result=$this->applyUniversalBackgroundIntent(
+                $pageGeneration,
+                $prompt,
+                $next[$targetIndex],
+                $resolvedState,
+                $backgroundRemove,
+                $strength
+            );
+            $next[$targetIndex]=$result['block'];
+            $backgroundApplied=(bool)$result['success'];
+            $backgroundError=$result['error']??null;
+            if($backgroundApplied){
+                $applied[]=[
+                    'action'=>$backgroundRemove?'remove_universal_background':'universal_background',
+                    'index'=>$targetIndex,
+                    'state'=>$resolvedState,
+                    'strength'=>$strength?:'balanced',
+                ];
+            }
+        }
+
+        $trialThemeKey=collect($applied)->first(fn($item)=>($item['action']??'')==='theme')['theme_key']??null;
+        $trialPageStyle=in_array(Str::lower((string)($plan['page_style']??'')),['balanced','clean','premium'],true)
+            ? Str::lower((string)$plan['page_style']) : null;
+        $shellChanged=!empty($plan['header_changes']??[])||!empty($plan['footer_changes']??[])||$trialPageStyle!==null||$trialThemeKey!==null;
+        $balance=$cost>0?$trialCredits->consume($trial,$cost,'luna_change',['scope'=>$scope,'operations'=>$applied]):$trialCredits->balance($trial);
+        $verifiedSomething=!empty($applied)||$shellChanged;
+        $reply=($universalBackgroundIntent && !$backgroundApplied)
+            ? ('I could not apply the background image change yet. '.($backgroundError?:'The image provider did not return a usable background.'))
+            : ($verifiedSomething
+                ? (trim((string)($plan['reply']??''))?:'The requested change was applied.')
+                : 'I could not apply that structural change to the current section yet.');
+        return response()->json([
+            'reply'=>$reply,
+            'blocks'=>$next,
+            'header'=>array_merge(is_array($header)?$header:[],is_array($plan['header_changes']??null)?$plan['header_changes']:[]),
+            'footer'=>array_merge(is_array($footer)?$footer:[],is_array($plan['footer_changes']??null)?$plan['footer_changes']:[]),
+            'theme_key'=>$trialThemeKey,
+            'page_style'=>$trialPageStyle,
+            'credit_cost'=>$cost,
+            'credit_balance'=>$balance,
+            'applied_operations'=>$applied
+        ]);
+    }
+
     public function pageChat(
         Request $request,
         Website $website,
         LunaCategoryPageService $lunaPages,
-        PlanEntitlementService $entitlements
+        PlanEntitlementService $entitlements,
+        AiPageGenerationService $pageGeneration,
+        LunaCreditPricingService $lunaPricing,
+        CreditService $credits,
+        LunaNaturalReplyService $natural
     ) {
         $this->authorize('update', $website);
 
@@ -1191,6 +1636,9 @@ PROMPT;
             'theme'=>['nullable','string','max:12000'],
             'target_scope'=>['nullable','in:page,section'],
             'target_index'=>['nullable','integer','min:0','max:100'],
+            'element_context'=>['nullable','string','max:6000'],
+            'target_resolved_theme'=>['nullable','string','max:40'],
+            'confirmed'=>['nullable','boolean'],
         ]);
 
         $blocks=json_decode($validated['blocks'],true);
@@ -1207,27 +1655,214 @@ PROMPT;
             throw ValidationException::withMessages(['target_index'=>'That section is no longer available.']);
         }
 
+        $normalizedPrompt=Str::lower(trim((string)$validated['prompt']));
+        $user=$request->user();
+        $backgroundRemove=Str::contains($normalizedPrompt,['remove background image','remove the background image','remove background photo','no background image','clear background image']);
+        $backgroundDarker=Str::contains($normalizedPrompt,['make background darker','darken the background','darker overlay','stronger overlay']);
+        $backgroundLighter=Str::contains($normalizedPrompt,['make background lighter','lighten the background','lighter overlay','softer overlay']);
+        $backgroundAdd=!$backgroundRemove && (
+            (Str::contains($normalizedPrompt,'background image') && Str::contains($normalizedPrompt,['add','use','set','change','give','put','apply']))
+            || (Str::contains($normalizedPrompt,'background photo') && Str::contains($normalizedPrompt,['add','use','set','change','give','put','apply']))
+        );
+        $universalBackgroundIntent=$backgroundAdd||$backgroundRemove||$backgroundDarker||$backgroundLighter;
+
+        $promptForTarget=trim((string)$validated['prompt']);
+
+        // If the user explicitly names a different section, that name overrides
+        // the currently selected section. This keeps "change the hero..." reliable
+        // even when the chat was opened from FAQ, Contact, Services, etc.
+        $namedTargetOverrodeSelection=false;
+        if($scope==='section'){
+            $originalSelectedIndex=$targetIndex;
+            $namedTargets=[
+                'hero'=>['hero','banner','masthead'],
+                'services'=>['services','service'],
+                'testimonials'=>['testimonial','reviews','review'],
+                'pricing'=>['pricing','price','plans'],
+                'faq'=>['faq','questions'],
+                'contact'=>['contact','enquiry','inquiry'],
+                'cta'=>['cta','call to action'],
+                'gallery'=>['gallery','portfolio','projects','work'],
+                'process'=>['process','steps','timeline'],
+                'team'=>['team','people','staff'],
+                'about'=>['about','story'],
+            ];
+            $requestedNamedTarget=null;
+            foreach($namedTargets as $name=>$aliases){
+                foreach($aliases as $alias){
+                    if(preg_match('/\b'.preg_quote($alias,'/').'\b/i',$promptForTarget)){
+                        $requestedNamedTarget=$name;
+                        break 2;
+                    }
+                }
+            }
+            if($requestedNamedTarget!==null){
+                foreach(array_values($blocks) as $candidateIndex=>$candidateBlock){
+                    $candidateType=Str::lower((string)($candidateBlock['type']??''));
+                    $candidateHeading=Str::lower((string)($candidateBlock['heading']??$candidateBlock['title']??$candidateBlock['eyebrow']??''));
+                    $candidateMeta=SparkCatalog::find((string)($candidateBlock['type']??''))??[];
+                    $candidateCategory=Str::lower((string)($candidateMeta['category']??''));
+                    $haystack=$candidateType.' '.$candidateHeading.' '.$candidateCategory;
+                    $matches=match($requestedNamedTarget){
+                        'hero'=>Str::contains($haystack,['hero','banner','mini heroes']),
+                        'services'=>Str::contains($haystack,['services','service']),
+                        'testimonials'=>Str::contains($haystack,['testimonial','review']),
+                        'pricing'=>Str::contains($haystack,['pricing','price']),
+                        'faq'=>Str::contains($haystack,'faq'),
+                        'contact'=>Str::contains($haystack,['contact','location']),
+                        'cta'=>Str::contains($haystack,'cta'),
+                        'gallery'=>Str::contains($haystack,['gallery','portfolio','case studies','projects']),
+                        'process'=>Str::contains($haystack,['process','proof','timeline']),
+                        'team'=>Str::contains($haystack,'team'),
+                        'about'=>Str::contains($haystack,'about'),
+                        default=>false,
+                    };
+                    if($matches){
+                        $targetIndex=$candidateIndex;
+                        $namedTargetOverrodeSelection=($candidateIndex!==$originalSelectedIndex);
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Deterministic shell commands: no model call required, so these are instant and reliable.
+        $overlayOn=Str::contains($normalizedPrompt,[
+            'float header','floating header','overlay header','header over hero','header over banner',
+            'header on banner','transparent header','place header over','move header over'
+        ]);
+        $overlayOff=Str::contains($normalizedPrompt,[
+            'disable overlay','turn off overlay','remove overlay','solid header','header above banner',
+            'header outside banner','header above hero','move header above'
+        ]);
+
+        if($overlayOn || $overlayOff){
+            $creditCost=10;
+            if($user && !$credits->canAfford($user,$creditCost)){
+                return response()->json(['message'=>"This Luna change needs {$creditCost} credits.",'credit_cost'=>$creditCost,'requires_credits'=>true],422);
+            }
+            $nextHeader=is_array($header)?$header:[];
+            $nextHeader['overlay_header_on_banner']=$overlayOn && !$overlayOff;
+
+            if($user) $credits->consume($user,$creditCost,'Luna header change',$website,'luna-header-'.Str::uuid(),['category'=>'ai']);
+            $reply=$natural->compose((string)$validated['prompt'],[
+                'authenticated'=>true,
+                'scope'=>$scope,
+                'website'=>$website->name,
+            ],[
+                'action'=>'header overlay change',
+                'action_completed'=>true,
+                'overlay_enabled'=>$nextHeader['overlay_header_on_banner'],
+                'credits_used'=>$creditCost,
+            ]);
+            return response()->json([
+                'reply'=>$reply,
+                'blocks'=>$blocks,
+                'header'=>$nextHeader,
+                'footer'=>is_array($footer)?$footer:[],
+                'theme_key'=>null,
+                'credit_cost'=>$creditCost,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+                'page_style'=>$nextHeader['overlay_header_on_banner'] ? 'balanced' : null,
+                'applied_operations'=>[['action'=>'header_overlay','enabled'=>$nextHeader['overlay_header_on_banner']]],
+            ]);
+        }
+
+        // Empty page: Luna silently uses the existing hidden template/Spark planner,
+        // then returns a complete starter page. No Add Spark/Template UI is required.
+        if($scope==='page' && count($blocks)===0){
+            try {
+                $sections=$lunaPages->plan((string)$validated['prompt']);
+                $generated=$lunaPages->generate((string)$validated['prompt'],$sections);
+                if(is_array($generated) && count($generated)>0){
+                    $creditCost=40;
+                    if($user && !$credits->canAfford($user,$creditCost)){
+                        return response()->json(['message'=>"Building this page needs {$creditCost} credits.",'credit_cost'=>$creditCost,'requires_credits'=>true],422);
+                    }
+                    try {
+                        $remote=$pageGeneration->applyStartPageRemoteImages((string)$validated['prompt'],$generated);
+                        if(is_array($remote['blocks']??null) && count($remote['blocks'])>0){
+                            $generated=$remote['blocks'];
+                        }
+                    } catch(\Throwable $e) {
+                        report($e);
+                    }
+
+                    if($user) $credits->consume($user,$creditCost,'Luna page build',$website,'luna-build-'.Str::uuid(),['category'=>'ai']);
+                    $reply=$natural->compose((string)$validated['prompt'],[
+                        'authenticated'=>true,
+                        'scope'=>'page',
+                        'website'=>$website->name,
+                    ],[
+                        'action'=>'build page',
+                        'action_completed'=>true,
+                        'generated_sections'=>count($generated),
+                        'credits_used'=>$creditCost,
+                    ]);
+                    return response()->json([
+                        'reply'=>$reply,
+                        'blocks'=>array_values($generated),
+                        'header'=>is_array($header)?$header:[],
+                        'footer'=>is_array($footer)?$footer:[],
+                        'theme_key'=>null,
+                        'credit_cost'=>$creditCost,
+                        'credit_balance'=>$user ? $credits->balance($user) : null,
+                        'applied_operations'=>[['action'=>'build_page','count'=>count($generated)]],
+                    ]);
+                }
+            } catch(\Throwable $e) {
+                report($e);
+            }
+        }
+
         // Luna sees the whole hidden Spark vocabulary, but may only auto-use free
         // Sparks or Sparks already installed by this account. Paid locked Sparks
         // remain invisible to orchestration so chat never bypasses entitlements.
-        $user=$request->user();
-        $currentTypes=collect($blocks)->pluck('type')->filter()->all();
+        // AI-only product: Luna may reason over the complete registered design vocabulary.
+        // Plans gate product capabilities (standard pages / Posts & Updates / Commerce),
+        // not visual Spark or template quality.
         $usable=collect(SparkCatalog::all())
-            ->filter(function(array $spark) use ($user,$currentTypes,$entitlements){
-                if(in_array($spark['key'],$currentTypes,true)) return true;
-                if(!$user) return (int)($spark['credits']??0)===0;
-                return (bool)($entitlements->sparkAccess($user,(string)($spark['access_level']??'free'))['allowed']??false);
-            })
             ->map(fn(array $spark)=>[
                 'key'=>$spark['key'],
                 'name'=>$spark['name'],
                 'category'=>$spark['category'],
                 'description'=>$spark['description'],
+                'aliases'=>$spark['aliases']??[],
+                'media'=>$spark['media']??'mixed',
+                'layout'=>$spark['layout']??[],
+                'style'=>$spark['style']??[],
+                'intent'=>$spark['intent']??[],
+                'industry_fit'=>$spark['industry_fit']??[],
+                'position_fit'=>$spark['position_fit']??[],
+                'capabilities'=>$spark['capabilities']??[],
             ])
             ->values()
             ->all();
 
         $catalogJson=json_encode($usable,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
+        $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
+        if(!is_array($elementContext))$elementContext=[];
+        if($namedTargetOverrodeSelection)$elementContext=[];
+        if($elementContext && $scope==='section' && isset($blocks[$targetIndex])){
+            $needles=array_values(array_filter([
+                trim((string)($elementContext['currentValue']??'')),
+                trim((string)($elementContext['url']??'')),
+            ]));
+            $paths=[];
+            $walk=function($value,$path='') use (&$walk,&$paths,$needles){
+                if(!is_array($value))return;
+                foreach($value as $key=>$item){
+                    $next=$path===''?(string)$key:$path.'.'.$key;
+                    if(is_scalar($item)){
+                        foreach($needles as $needle){
+                            if($needle!=='' && trim((string)$item)===$needle){$paths[]=$next;break;}
+                        }
+                    } elseif(is_array($item)){$walk($item,$next);}
+                }
+            };
+            $walk($blocks[$targetIndex]);
+            $elementContext['matched_paths']=array_values(array_unique($paths));
+        }
         $targetContext=$scope==='section' && isset($blocks[$targetIndex])
             ? json_encode($blocks[$targetIndex],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)
             : '{}';
@@ -1254,23 +1889,36 @@ Return JSON only:
    {"action":"theme","theme_key":"midnight|emerald|coffee|rose|ocean|indigo|amber|charcoal|violet|teal|ruby|forest|obsidian|navy|espresso|terracotta|asphalt"}
  ],
  "header_changes":{},
- "footer_changes":{}
+ "footer_changes":{},
+ "page_style":"balanced|clean|premium|null"
 }
 
 RULES:
 - Use ONLY spark_key values present in USABLE SPARK CATALOG.
+- SPARK SELECTION RANKING: requested media/capability/aliases are the strongest signal; current selected section intent/category is second; layout/style/industry/position fit are third. Do NOT prefer Hero merely because a candidate is a Hero.
+- A request for "slider" means consider EVERY catalog item whose media=slider, aliases mention slider/carousel/slideshow, or capabilities include supports-slider. Then choose the one whose intent best matches the selected section. Example: testimonials -> testimonial carousel; portfolio/work -> gallery/project slider; opening banner -> hero slider.
+- Preserve semantic role when transforming media unless the user explicitly asks to change the role. A mid-page services/work/testimonial section should not become a Hero just because Hero has the requested media.
+- Use position_fit=top/opening-section-safe as a bonus only when the target is actually the first/opening section.
 - Never reveal implementation details such as Spark IDs, templates, schemas or hidden selection.
 - For a simple copy/color/image/repeater adjustment, prefer edit. In section scope, use keys exactly from SELECTED BLOCK FULL JSON; do not invent schema keys.
-- For a structural request ("make this a video", "use a slider", "make this testimonials"), replace with the closest registered Spark.
+- STRUCTURAL COMMANDS MUST EMIT STRUCTURAL OPERATIONS. For "change/turn this banner/section into a video", "use a slider", "make this testimonials", etc., use replace on the exact target index with the closest registered Spark. Never answer a structural request with only edit/copy changes.
 - For "add X below/above", use insert_after/insert_before relative to the target.
+- For "move this section to the top/first", emit move with to_index=0. For "move to the bottom/last", emit move with to_index equal to the last page index. For "move up/down", emit move to the adjacent index.
+- In SELECTED SECTION scope, "this", "it", "the slider", "this banner", and similar references mean the selected index unless the user explicitly names another section.
+- When ELEMENT TARGET is non-empty, it identifies the exact clicked heading/text/label/button/image. For ordinary edits, change only the matching field(s) indicated by matched_paths/currentValue/url and preserve unrelated fields. For button targets, update label and URL together when the user supplies both. Explicit structural section requests override element-only targeting.
 - Preserve useful current content when replacing; instruction should explicitly say what to migrate.
 - Do not replace a section when its current Spark can safely satisfy the request.
 - Section scope: operate on the selected index only, except an explicit add-before/add-after request.
+- Page scope may target sections by natural language. Resolve names like hero, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about from CURRENT PAGE SUMMARY headings/types and use the matching index.
+- Requests like "change the hero to video", "add testimonials below services", "move FAQ above contact", or "make pricing darker" should work without the user manually selecting a section.
 - Page scope: you may coordinate multiple operations and theme changes, max 8 operations.
+- page_style may be balanced, clean, or premium only when explicitly requested. Use it for requests like "make the page premium/clean/balanced".
 - Header/footer changes only if explicitly requested or essential to a page-wide theme request.
-- Do not invent raw HTML/CSS/JS/PHP/SQL.
+- Header language mapping: "float header", "overlay header", "header over hero/banner", "transparent header" means header_changes.overlay_header_on_banner=true. "put header above/outside the banner", "solid header", or "disable overlay" means false.
+- Do not invent raw HTML/CSS/JS/PHP/SQL or image URLs. Cosmic resolves requested photography through its image provider after your plan.
 - Never change ecommerce/dynamic data bindings unless explicitly requested.
 - Never delete content unless the user asks.
+- Never claim success in reply unless the JSON contains the operation/state change that performs the request.
 PROMPT;
 
         $apiKey=(string)config('openai.api_key');
@@ -1283,7 +1931,7 @@ PROMPT;
                 'response_format'=>['type'=>'json_object'],
                 'messages'=>[
                     ['role'=>'system','content'=>$system],
-                    ['role'=>'user','content'=>"SCOPE: {$scope}".($scope==='section'?"\nSELECTED INDEX: {$targetIndex}":"")."\n\nUSER REQUEST:\n".$validated['prompt']."\n\nCURRENT PAGE SUMMARY:\n".json_encode($blockSummary,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSELECTED BLOCK FULL JSON:\n".$targetContext."\n\nCURRENT THEME:\n".json_encode(is_array($theme)?$theme:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUSABLE SPARK CATALOG:\n{$catalogJson}"],
+                    ['role'=>'user','content'=>"SCOPE: {$scope}".($scope==='section'?"\nSELECTED INDEX: {$targetIndex}":"")."\n\nUSER REQUEST:\n".$validated['prompt']."\n\nCURRENT PAGE SUMMARY:\n".json_encode($blockSummary,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSELECTED BLOCK FULL JSON:\n".$targetContext."\n\nELEMENT TARGET:\n".json_encode($elementContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT THEME:\n".json_encode(is_array($theme)?$theme:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUSABLE SPARK CATALOG:\n{$catalogJson}"],
                 ],
             ]
         )->throw()->json();
@@ -1294,6 +1942,97 @@ PROMPT;
         }
 
         $operations=array_values(array_slice(is_array($plan['operations']??null)?$plan['operations']:[],0,8));
+
+        $requestLower=Str::lower((string)$validated['prompt']);
+        if($scope==='section' && isset($blocks[$targetIndex])){
+            $moveTo=null;
+            if(Str::contains($requestLower,['top of the page','top of page','first section','move it to the top','move this to the top','move to top'])) $moveTo=0;
+            elseif(Str::contains($requestLower,['bottom of the page','bottom of page','last section','move it to the bottom','move this to the bottom','move to bottom'])) $moveTo=max(0,count($blocks)-1);
+            elseif(Str::contains($requestLower,['move up','one section up','move it up'])) $moveTo=max(0,$targetIndex-1);
+            elseif(Str::contains($requestLower,['move down','one section down','move it down'])) $moveTo=min(max(0,count($blocks)-1),$targetIndex+1);
+            if($moveTo!==null){
+                $operations=array_values(array_filter($operations,fn($op)=>!(is_array($op)&&($op['action']??'')==='move')));
+                $operations[]=['action'=>'move','index'=>$targetIndex,'to_index'=>$moveTo];
+            }
+
+            $transformRequested=Str::contains($requestLower,['change this','turn this','convert this','replace this','make this','change the banner','change banner','change the hero','change hero']);
+            $desiredKind=null;
+            foreach(['slider','video','testimonial','gallery','pricing','faq','services','contact'] as $kind){
+                if(Str::contains($requestLower,$kind)){$desiredKind=$kind;break;}
+            }
+            $hasReplace=collect($operations)->contains(fn($op)=>is_array($op)&&($op['action']??'')==='replace'&&(int)($op['index']??-1)===$targetIndex);
+            if($transformRequested && $desiredKind && !$hasReplace){
+                $currentType=Str::lower((string)($blocks[$targetIndex]['type']??''));
+                $currentMeta=SparkCatalog::find((string)($blocks[$targetIndex]['type']??''))??[];
+                $currentCategory=Str::lower((string)($currentMeta['category']??''));
+                $currentIntent=collect($currentMeta['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                $isOpening=$targetIndex===0 || Str::contains($currentType,['hero','banner']);
+                $candidate=collect($usable)
+                    ->map(function($spark) use($desiredKind,$currentCategory,$currentIntent,$isOpening){
+                        $aliases=collect($spark['aliases']??[])->map(fn($v)=>Str::lower((string)$v))->implode(' ');
+                        $caps=collect($spark['capabilities']??[])->map(fn($v)=>Str::lower((string)$v))->implode(' ');
+                        $haystack=Str::lower(($spark['key']??'').' '.($spark['name']??'').' '.($spark['description']??'').' '.$aliases.' '.($spark['media']??'').' '.$caps);
+                        $matches=Str::contains($haystack,$desiredKind)
+                            || ($desiredKind==='slider' && (($spark['media']??'')==='slider' || Str::contains($caps,'supports-slider')));
+                        if(!$matches) return null;
+                        $score=0;
+                        if(Str::lower((string)($spark['media']??''))===$desiredKind) $score+=120;
+                        if(Str::contains($aliases,$desiredKind)) $score+=100;
+                        if(Str::contains($caps,'supports-'.$desiredKind)) $score+=90;
+                        if($currentCategory!=='' && Str::lower((string)($spark['category']??''))===$currentCategory) $score+=70;
+                        $sparkIntent=collect($spark['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                        $score+=count(array_intersect($currentIntent,$sparkIntent))*35;
+                        $positions=collect($spark['position_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                        if($isOpening && (in_array('top',$positions,true)||in_array('opening-section-safe',$spark['capabilities']??[],true))) $score+=35;
+                        if(!$isOpening && Str::lower((string)($spark['category']??''))==='hero') $score-=80;
+                        if(Str::contains(Str::lower((string)($spark['name']??'')),'premium')) $score+=5;
+                        $spark['_luna_score']=$score;
+                        return $spark;
+                    })->filter()->sortByDesc('_luna_score')->first();
+                if(is_array($candidate) && !empty($candidate['key'])){
+                    $operations[]=[
+                        'action'=>'replace',
+                        'index'=>$targetIndex,
+                        'spark_key'=>$candidate['key'],
+                        'instruction'=>"Transform the selected section into a {$desiredKind} while preserving relevant existing content and brand direction.",
+                    ];
+                }
+            }
+        }
+
+        $pricing=$lunaPricing->estimate((string)$validated['prompt'],$operations,$scope);
+        $creditCost=(int)($pricing['credits']??0);
+        if(($pricing['requires_confirmation']??false) && !($validated['confirmed']??false)){
+            $planningCost=2;
+            if($user){
+                abort_unless($credits->canAfford($user,$planningCost),422,"Luna planning needs {$planningCost} credits.");
+                $credits->consume($user,$planningCost,'Luna planning',$website,'luna-plan-'.Str::uuid(),['category'=>'ai','scope'=>$scope]);
+            }
+            $reply=$natural->compose((string)$validated['prompt'],[
+                'authenticated'=>true,
+                'scope'=>$scope,
+                'website'=>$website->name,
+            ],[
+                'action_completed'=>false,
+                'confirmation_required'=>true,
+                'estimated_execution_cost'=>$creditCost,
+                'planning_credits_used'=>$planningCost,
+            ]);
+            return response()->json([
+                'reply'=>$reply,
+                'mode'=>'confirm',
+                'confirmation_cost'=>$creditCost,
+                'credit_cost'=>$planningCost,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+            ]);
+        }
+        if($creditCost>0 && $user && !$credits->canAfford($user,$creditCost)){
+            return response()->json([
+                'message'=>"This Luna change needs {$creditCost} credits, but your balance is too low.",
+                'credit_cost'=>$creditCost,
+                'requires_credits'=>true,
+            ],422);
+        }
         $catalogKeys=collect($usable)->pluck('key')->flip();
         $nextBlocks=array_values($blocks);
         $applied=[];
@@ -1338,6 +2077,14 @@ PROMPT;
                     $newBlock=null;
                 }
                 if(!$newBlock) continue;
+                try {
+                    $remote=$pageGeneration->applyStartPageRemoteImages($generationPrompt,[$newBlock]);
+                    if(is_array($remote['blocks'][0]??null)) {
+                        $newBlock=$remote['blocks'][0];
+                    }
+                } catch(\Throwable $e) {
+                    report($e); // preserve generated Spark if Unsplash/remote imagery is temporarily unavailable.
+                }
                 $newBlock['type']=$sparkKey;
                 $newBlock['_renderKey']='luna-'.Str::lower(Str::random(10));
 
@@ -1371,6 +2118,129 @@ PROMPT;
             }
         }
 
+        $backgroundApplied=false;
+        $backgroundError=null;
+        if($scope==='section' && $universalBackgroundIntent && isset($nextBlocks[$targetIndex])){
+            $resolvedState=$this->universalBackgroundState(
+                $namedTargetOverrodeSelection ? '' : (string)($validated['target_resolved_theme']??''),
+                $nextBlocks[$targetIndex],
+                $targetIndex
+            );
+            $strength=$backgroundDarker?'darker':($backgroundLighter?'lighter':null);
+            $result=$this->applyUniversalBackgroundIntent(
+                $pageGeneration,
+                (string)$validated['prompt'],
+                $nextBlocks[$targetIndex],
+                $resolvedState,
+                $backgroundRemove,
+                $strength
+            );
+            $nextBlocks[$targetIndex]=$result['block'];
+            $backgroundApplied=(bool)$result['success'];
+            $backgroundError=$result['error']??null;
+            if($backgroundApplied){
+                $applied[]=[
+                    'action'=>$backgroundRemove?'remove_universal_background':'universal_background',
+                    'index'=>$targetIndex,
+                    'state'=>$resolvedState,
+                    'strength'=>$strength?:'balanced',
+                ];
+            }
+        }
+
+        // A universal background request owns only its isolated background slot.
+        // Do not also refresh every existing image in the selected Spark.
+        $imageRequest=!$universalBackgroundIntent && Str::contains(Str::lower((string)$validated['prompt']),[
+            'image','images','photo','photos','photography','unsplash','picture','pictures',
+            'replace the image','change the image','change image','new image'
+        ]);
+        $imageRefreshSucceeded=null;
+        $imageRefreshError=null;
+        if($imageRequest){
+            $imageSnapshot=function($value) use (&$imageSnapshot){
+                if(!is_array($value)) return [];
+                $found=[];
+                foreach($value as $key=>$item){
+                    if(is_string($key) && preg_match('/(image|photo|picture|avatar|thumbnail|background).*?(url)?$/i',$key) && is_string($item) && trim($item)!==''){
+                        $found[$key]=$item;
+                    } elseif(is_array($item)){
+                        foreach($imageSnapshot($item) as $childKey=>$childValue){
+                            $found[$key.'.'.$childKey]=$childValue;
+                        }
+                    }
+                }
+                return $found;
+            };
+            try {
+                if($scope==='section' && isset($nextBlocks[$targetIndex])){
+                    $elementType=Str::lower((string)($elementContext['type']??''));
+                    $matchedPaths=array_values(array_filter((array)($elementContext['matched_paths']??[]),fn($path)=>is_string($path)&&trim($path)!==''));
+                    if(Str::contains($elementType,'image') && !empty($matchedPaths)){
+                        $probe=[
+                            'type'=>$nextBlocks[$targetIndex]['type']??'website_section',
+                            'image_url'=>'',
+                        ];
+                        $remote=$pageGeneration->applyStartPageRemoteImages(
+                            trim((string)$validated['prompt'])."\nSELECTED IMAGE ONLY: Find one image matching this request for the exact clicked image slot. Do not change any other section imagery.",
+                            [$probe]
+                        );
+                        $url=trim((string)data_get($remote,'blocks.0.image_url',''));
+                        if($url!==''){
+                            data_set($nextBlocks[$targetIndex],$matchedPaths[0],$url);
+                            $imageRefreshSucceeded=true;
+                            $applied[]=['action'=>'refresh_selected_image','index'=>$targetIndex,'path'=>$matchedPaths[0],'verified'=>true];
+                        }else{
+                            $imageRefreshSucceeded=false;
+                            $imageRefreshError='The image provider returned no matching image for the selected slot.';
+                        }
+                    } else {
+                    $beforeImages=$imageSnapshot($nextBlocks[$targetIndex]);
+                    $remote=$pageGeneration->applyStartPageRemoteImages(
+                        trim((string)$validated['prompt'])."\nIMAGE REFRESH DIRECTIVE: Replace the current section photography with imagery that directly matches this request. Do not preserve unrelated industry photos.",
+                        [$nextBlocks[$targetIndex]]
+                    );
+                    if(is_array($remote['blocks'][0]??null)){
+                        $candidate=array_merge($nextBlocks[$targetIndex],$remote['blocks'][0]);
+                        $candidate['type']=$blocks[$targetIndex]['type']??$candidate['type'];
+                        $afterImages=$imageSnapshot($candidate);
+                        if($afterImages!==[] && $afterImages!==$beforeImages){
+                            $nextBlocks[$targetIndex]=$candidate;
+                            $imageRefreshSucceeded=true;
+                            $applied[]=['action'=>'refresh_images','index'=>$targetIndex,'verified'=>true];
+                        } else {
+                            $imageRefreshSucceeded=false;
+                            $imageRefreshError='The image provider returned no new matching image URLs for the selected section.';
+                        }
+                    } else {
+                        $imageRefreshSucceeded=false;
+                        $imageRefreshError='The image provider returned no usable section images.';
+                    }
+                    }
+                } elseif($scope==='page'){
+                    $beforeImages=$imageSnapshot($nextBlocks);
+                    $remote=$pageGeneration->applyStartPageRemoteImages(
+                        trim((string)$validated['prompt'])."\nIMAGE REFRESH DIRECTIVE: Replace unrelated photography across the page with imagery that directly matches this request.",
+                        $nextBlocks
+                    );
+                    if(is_array($remote['blocks']??null) && count($remote['blocks'])===count($nextBlocks)){
+                        $afterImages=$imageSnapshot($remote['blocks']);
+                        if($afterImages!==[] && $afterImages!==$beforeImages){
+                            $nextBlocks=$remote['blocks'];
+                            $imageRefreshSucceeded=true;
+                            $applied[]=['action'=>'refresh_images','scope'=>'page','verified'=>true];
+                        } else {
+                            $imageRefreshSucceeded=false;
+                            $imageRefreshError='The image provider returned no new matching image URLs for the page.';
+                        }
+                    }
+                }
+            } catch(\Throwable $e) {
+                report($e);
+                $imageRefreshSucceeded=false;
+                $imageRefreshError='The remote image provider could not complete the refresh.';
+            }
+        }
+
         $allowedThemes=['midnight','emerald','coffee','rose','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
         $themeKey=null;
         foreach($operations as $operation){
@@ -1384,13 +2254,37 @@ PROMPT;
         $footerChanges=is_array($plan['footer_changes']??null)?$plan['footer_changes']:[];
         $safeHeader=is_array($header)?array_merge($header,$headerChanges):$headerChanges;
         $safeFooter=is_array($footer)?array_merge($footer,$footerChanges):$footerChanges;
+        $pageStyle=in_array(Str::lower((string)($plan['page_style']??'')),['balanced','clean','premium'],true)
+            ? Str::lower((string)$plan['page_style']) : null;
+
+        if($creditCost>0 && $user){
+            $credits->consume($user,$creditCost,'Luna website change',$website,'luna-page-chat-'.Str::uuid(),[
+                'category'=>'ai','scope'=>$scope,'operations'=>$applied,
+            ]);
+        }
+
+        $shellChanged=!empty($headerChanges)||!empty($footerChanges)||$themeKey!==null||$pageStyle!==null;
+        $verifiedSomething=!empty($applied)||$shellChanged;
+        $reply=trim((string)($plan['reply']??''));
+        if($universalBackgroundIntent && !$backgroundApplied){
+            $reply='I could not apply the background image change yet. '.($backgroundError?:'The image provider did not return a usable background.');
+        } elseif($imageRequest && $imageRefreshSucceeded===false){
+            $reply='I could not replace the requested images yet. '.($imageRefreshError?:'No new matching images were returned.');
+        } elseif(!$verifiedSomething){
+            $reply='I could not apply that structural change to the current section yet.';
+        } elseif($reply===''){
+            $reply='The requested change was applied.';
+        }
 
         return response()->json([
-            'reply'=>trim((string)($plan['reply']??'Done.'))?:'Done.',
+            'reply'=>$reply,
+            'credit_cost'=>$creditCost,
+            'credit_balance'=>$user ? $credits->balance($user) : null,
             'blocks'=>$nextBlocks,
             'header'=>$safeHeader,
             'footer'=>$safeFooter,
             'theme_key'=>$themeKey,
+            'page_style'=>$pageStyle,
             'applied_operations'=>$applied,
         ]);
     }

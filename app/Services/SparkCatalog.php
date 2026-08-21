@@ -24,6 +24,14 @@ class SparkCatalog
                     'name' => self::displayName($type, $item['label'] ?? null),
                     'description' => self::description($type),
                     'category' => self::category($type),
+                    'aliases' => self::metadata($type, $override)['aliases'],
+                    'media' => self::metadata($type, $override)['media'],
+                    'layout' => self::metadata($type, $override)['layout'],
+                    'style' => self::metadata($type, $override)['style'],
+                    'intent' => self::metadata($type, $override)['intent'],
+                    'industry_fit' => self::metadata($type, $override)['industry_fit'],
+                    'position_fit' => self::metadata($type, $override)['position_fit'],
+                    'capabilities' => self::metadata($type, $override)['capabilities'],
                     'collection' => $collection,
                     'collection_label' => self::collectionLabel($collection),
                     'access_level' => (string) ($override['access_level'] ?? self::collectionAccessLevel($collection)),
@@ -142,6 +150,123 @@ class SparkCatalog
             str_contains($type, 'process') => 'Proof',
             default => 'Other',
         };
+    }
+
+    private static function metadata(string $type, array $override = []): array
+    {
+        $words = collect(preg_split('/[_\-]+/', strtolower($type)) ?: [])
+            ->filter()->values()->all();
+        $text = ' '.implode(' ', $words).' ';
+
+        $aliases = $words;
+        $aliasGroups = [
+            'slider' => ['slider','carousel','slideshow','rotating banner','rotating images','image rotator'],
+            'carousel' => ['carousel','slider','slideshow','rotating content'],
+            'video' => ['video','motion','background video','video banner','video section'],
+            'gallery' => ['gallery','portfolio','showcase','image grid','project gallery'],
+            'testimonial' => ['testimonial','reviews','customer stories','social proof','client quotes'],
+            'pricing' => ['pricing','plans','packages','price comparison'],
+            'faq' => ['faq','questions','accordion','frequently asked questions'],
+            'services' => ['services','offerings','solutions','what we do'],
+            'case' => ['case studies','portfolio','work','projects','selected work'],
+            'team' => ['team','people','staff','leadership'],
+            'process' => ['process','steps','workflow','how it works'],
+            'stats' => ['stats','metrics','numbers','proof','results'],
+            'contact' => ['contact','enquiry','inquiry','lead form','get in touch'],
+            'hero' => ['hero','banner','masthead','opening section','page intro'],
+            'bento' => ['bento','masonry','editorial grid'],
+            'split' => ['split','two column','side by side'],
+        ];
+        foreach ($aliasGroups as $needle => $values) {
+            if (str_contains($text, " {$needle} ")) $aliases = array_merge($aliases, $values);
+        }
+
+        $media = match (true) {
+            str_contains($text, ' video ') => 'video',
+            str_contains($text, ' slider '), str_contains($text, ' carousel ') => 'slider',
+            str_contains($text, ' gallery '), str_contains($text, ' portfolio ') => 'gallery',
+            str_contains($text, ' image '), str_contains($text, ' photo ') => 'image',
+            str_contains($text, ' map ') => 'map',
+            default => 'mixed',
+        };
+
+        $layout = array_values(array_filter([
+            str_contains($text, ' split ') ? 'split' : null,
+            str_contains($text, ' bento ') ? 'bento' : null,
+            str_contains($text, ' grid ') ? 'grid' : null,
+            str_contains($text, ' fullscreen ') ? 'fullscreen' : null,
+            str_contains($text, ' centered ') ? 'centered' : null,
+            str_contains($text, ' editorial ') ? 'editorial' : null,
+            str_contains($text, ' horizontal ') ? 'horizontal' : null,
+            str_contains($text, ' timeline ') ? 'timeline' : null,
+            str_contains($text, ' comparison ') ? 'comparison' : null,
+        ]));
+        if (!$layout) $layout = ['standard'];
+
+        $style = array_values(array_filter([
+            str_contains($text, ' premium ') ? 'premium' : null,
+            str_contains($text, ' luxury ') ? 'luxury' : null,
+            str_contains($text, ' minimal ') ? 'minimal' : null,
+            str_contains($text, ' bold ') ? 'bold' : null,
+            str_contains($text, ' editorial ') ? 'editorial' : null,
+            str_contains($text, ' glass ') ? 'glass' : null,
+            str_contains($text, ' modern ') ? 'modern' : null,
+        ]));
+        if (!$style) $style = ['balanced'];
+
+        $category = strtolower(self::category($type));
+        $intent = array_values(array_unique(array_filter([
+            in_array($category, ['cta','lead generation','contact','pricing','sales'], true) ? 'conversion' : null,
+            in_array($category, ['testimonials','case studies','statistics','proof'], true) ? 'proof' : null,
+            in_array($category, ['about','team','blog','posts / updates'], true) ? 'storytelling' : null,
+            in_array($category, ['services','features','commerce'], true) ? 'showcase' : null,
+            str_contains($text, ' portfolio ') || str_contains($text, ' gallery ') ? 'showcase' : null,
+            str_contains($text, ' slider ') || str_contains($text, ' carousel ') ? 'visual storytelling' : null,
+        ])));
+        if (!$intent) $intent = ['general'];
+
+        $industry = array_values(array_filter([
+            preg_match('/hotel|travel|resort|hospitality/', $text) ? 'hospitality' : null,
+            preg_match('/real estate|property|apartment/', $text) ? 'real-estate' : null,
+            preg_match('/construction|builder|architect/', $text) ? 'construction' : null,
+            preg_match('/agency|studio|creative/', $text) ? 'agency' : null,
+            preg_match('/saas|software|technology|ai/', $text) ? 'technology' : null,
+            preg_match('/shop|product|commerce|store/', $text) ? 'ecommerce' : null,
+            preg_match('/restaurant|food|dining|cafe/', $text) ? 'restaurant' : null,
+        ]));
+        if (!$industry) $industry = ['universal'];
+
+        $position = [];
+        if (str_starts_with($type, 'hero_') || str_starts_with($type, 'mini_hero_')) $position[] = 'top';
+        if (str_starts_with($type, 'footer_')) $position[] = 'bottom';
+        if (!$position) $position = ['mid-page','flexible'];
+
+        $capabilities = array_values(array_unique(array_filter([
+            $media === 'slider' ? 'supports-slider' : null,
+            $media === 'video' ? 'supports-video' : null,
+            in_array($media, ['image','gallery','slider','mixed'], true) ? 'supports-images' : null,
+            str_contains($text, ' parallax ') ? 'supports-parallax' : null,
+            str_contains($text, ' form ') || in_array($category, ['contact','lead generation'], true) ? 'supports-form' : null,
+            str_contains($text, ' carousel ') || str_contains($text, ' slider ') ? 'supports-multiple-items' : null,
+            (str_starts_with($type, 'hero_') || str_starts_with($type, 'mini_hero_')) ? 'opening-section-safe' : null,
+            'supports-universal-background-image',
+            'supports-smart-background-overlay',
+        ])));
+
+        $derived = compact('aliases','media','layout','style','intent','industry','position','capabilities');
+        $derived['industry_fit'] = $derived['industry']; unset($derived['industry']);
+        $derived['position_fit'] = $derived['position']; unset($derived['position']);
+
+        foreach (['aliases','layout','style','intent','industry_fit','position_fit','capabilities'] as $key) {
+            if (isset($override[$key]) && is_array($override[$key])) {
+                $derived[$key] = array_values(array_unique(array_merge($derived[$key], $override[$key])));
+            }
+        }
+        if (isset($override['media']) && is_string($override['media']) && $override['media'] !== '') {
+            $derived['media'] = $override['media'];
+        }
+
+        return $derived;
     }
 
     private static function description(string $type): string

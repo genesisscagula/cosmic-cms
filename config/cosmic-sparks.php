@@ -44,6 +44,23 @@ return [
     ],
 
     'overrides' => [
+        // Metadata is derived automatically from every Spark key. Add only special
+        // semantic aliases here when a Spark's name cannot fully describe its use.
+        'hero_slider_premium' => [
+            'aliases' => ['hero slider','banner slider','homepage carousel','rotating hero'],
+            'media' => 'slider',
+            'position_fit' => ['top'],
+            'capabilities' => ['supports-slider','supports-multiple-images','overlay-header-safe'],
+        ],
+        'testimonials_carousel' => [
+            'aliases' => ['review slider','testimonial slider','client carousel','customer stories'],
+            'media' => 'slider',
+            'intent' => ['proof'],
+        ],
+        'case_studies_grid' => [
+            'aliases' => ['portfolio','selected work','projects','work showcase'],
+            'intent' => ['showcase','proof'],
+        ],
         // 'spark_key' => ['access_level' => 'pro'],
     ],
 ];

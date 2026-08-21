@@ -2,6 +2,7 @@
 
 use App\Helpers\CmsHtmlCompiler;
 use App\Http\Controllers\AI\AIController;
+use App\Http\Controllers\GlobalLunaController;
 use App\Http\Controllers\AI\AiLibrarySearchController;
 use App\Http\Controllers\PageTemplateController;
 use App\Http\Controllers\TrialAssetLibraryController;
@@ -66,6 +67,9 @@ Route::post('/support/chat/history', [CosmicPublicChatController::class, 'histor
 Route::post('/support/chat/lead', [CosmicPublicChatController::class, 'captureLead'])
     ->middleware(['throttle:10,1', \App\Http\Middleware\RejectOversizedRequest::class . ':16'])
     ->name('support.chat.lead');
+Route::post('/luna/public-chat', [GlobalLunaController::class, 'publicChat'])
+    ->middleware(['throttle:30,1', \App\Http\Middleware\RejectOversizedRequest::class . ':32'])
+    ->name('luna.public.chat');
 
 // Public media delivery for structured Posts / Updates. This avoids depending on public/storage symlinks.
 Route::get('/websites/{website}/content/media/{filename}', [ContentWorkspaceController::class, 'showMedia'])
@@ -365,7 +369,7 @@ foreach ($seoLandingPages as $path => $page) {
     ]));
 }
 
-Route::get('/start', [TrialGenerationController::class, 'create'])->name('start');
+Route::get('/start', fn () => redirect('/'))->name('start');
 Route::post('/start', [TrialGenerationController::class, 'store'])->middleware('throttle:6,1')->name('trial-generations.store');
 Route::post('/start/{trial:token}/plan', [TrialGenerationController::class, 'selectPlan'])
     ->middleware('throttle:12,1')
@@ -415,6 +419,9 @@ Route::post('/trials/{trial:token}/pages/{page}/style', [PageController::class, 
 Route::post('/trials/{trial:token}/pages/{page}/theme', [PageController::class, 'applyTrialTheme'])
     ->middleware(['throttle:30,1', \App\Http\Middleware\RejectOversizedRequest::class . ':64'])
     ->name('trial-pages.theme.apply');
+Route::post('/trials/{trial:token}/luna', [CustomSparkController::class, 'trialPageChat'])
+    ->middleware(['throttle:cosmic-ai', \App\Http\Middleware\RejectOversizedRequest::class . ':512'])
+    ->name('trial-luna.chat');
 
 Route::get('/workspace-invitations/{token}', [WorkspaceInvitationAcceptanceController::class, 'show'])
     ->middleware(['throttle:30,1', \App\Http\Middleware\AddSecurityHeaders::class])
@@ -493,6 +500,8 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
         ->middleware(\App\Http\Middleware\EnsurePlatformOwner::class)
         ->name('sales.index');
     Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
+    Route::post('/luna/chat', [GlobalLunaController::class, 'chat'])->middleware('throttle:cosmic-ai')->name('luna.global.chat');
+    Route::post('/luna/explain-error', [GlobalLunaController::class, 'explainError'])->middleware('throttle:cosmic-ai')->name('luna.global.explain-error');
     Route::get('/credits/balance', [CreditController::class, 'balance'])->name('credits.balance');
     Route::get('/account-data/{section}', [AccountDataController::class, 'show'])
         ->whereIn('section', ['credits', 'subscription', 'workspace', 'profile', 'settings'])

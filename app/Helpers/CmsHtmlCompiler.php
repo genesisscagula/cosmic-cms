@@ -5357,6 +5357,26 @@ HTML;
             }
 
             $fragment = substr($html, $fragmentStart);
+
+            $universalBackgroundUrl = trim((string) ($block['universal_background_image_url'] ?? ''));
+            $universalBackgroundEnabled = (bool) ($block['universal_background_enabled'] ?? false) && $universalBackgroundUrl !== '';
+            if ($fragment !== '' && $universalBackgroundEnabled) {
+                $overlay = trim((string) ($block['universal_background_overlay'] ?? ''));
+                if (! preg_match('/^linear-gradient\([^<>;{}]+\)$/i', $overlay)) {
+                    $overlay = 'linear-gradient(rgba(15,23,42,.55),rgba(15,23,42,.55))';
+                }
+                $position = trim((string) ($block['universal_background_position'] ?? 'center center'));
+                if (! preg_match('/^(?:left|center|right|top|bottom|\d{1,3}%)(?:\s+(?:left|center|right|top|bottom|\d{1,3}%))?$/i', $position)) {
+                    $position = 'center center';
+                }
+                $backgroundUrl = e(self::staticAssetUrl($universalBackgroundUrl));
+                $backgroundState = e((string) ($block['universal_background_state'] ?? $blockTheme));
+                $overlayEscaped = e($overlay);
+                $positionEscaped = e($position);
+                $fragment = "<div data-cosmic-universal-background='1' data-cosmic-background-state='{$backgroundState}' class='cosmic-universal-background-host' style=\"position:relative;overflow:hidden;background-image:{$overlayEscaped},url('{$backgroundUrl}');background-size:cover;background-position:{$positionEscaped};background-repeat:no-repeat\"><style>.cosmic-universal-background-host>section,.cosmic-universal-background-host>div,.cosmic-universal-background-host>div>section:first-child{background-color:transparent!important;background-image:none!important}</style>{$fragment}</div>";
+                $html = substr($html, 0, $fragmentStart) . $fragment;
+            }
+
             if ($fragment !== '' && preg_match('/<section\b/i', $fragment)) {
                 $semanticTheme = e((string) $blockTheme);
                 $semanticType = e((string) ($block['type'] ?? ''));

@@ -9,7 +9,7 @@ import CookieConsent from './Components/CookieConsent';
 import { CreditBalanceProvider } from './Components/CosmicCredits/CreditBalanceContext';
 import { AppearanceProvider } from './Appearance/AppearanceContext';
 import CosmicTracking from './Analytics/CosmicTracking';
-import CosmicPublicChat from './Components/CosmicPublicChat';
+import GlobalLuna from './Components/GlobalLuna';
 
 const appName = 'Cosmic CMS';
 
@@ -35,7 +35,6 @@ createInertiaApp({
         const root = createRoot(el);
 
         const authenticated = Boolean(props.initialPage?.props?.auth?.user);
-
         const initialBalance =
             props.initialPage?.props?.auth?.creditBalance ??
             props.initialPage?.props?.dashboard?.credit_balance ??
@@ -55,7 +54,7 @@ createInertiaApp({
                 <CosmicTracking tracking={props.initialPage?.props?.tracking ?? {}} />
                 <CosmicNotification />
                 <CookieConsent />
-                <CosmicPublicChat />
+                <GlobalLuna initialPage={props.initialPage} authenticated={authenticated} />
             </CreditBalanceProvider>
             </AppearanceProvider>,
         );

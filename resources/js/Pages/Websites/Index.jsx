@@ -381,7 +381,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
         if (cloningPageId) return;
         if (!await confirmCosmicAction({
             title: `Clone ${page.title || 'this page'}?`,
-            message: `A draft copy will be created with the same layout and content for ${ACTION_PRICING.add_page} Cosmic Credits.`,
+            message: 'A draft copy will be created with the same layout and content.',
             confirmLabel: 'Clone page',
             tone: 'info',
         })) return;

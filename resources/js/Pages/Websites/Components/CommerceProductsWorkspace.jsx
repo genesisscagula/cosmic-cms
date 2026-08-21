@@ -43,7 +43,11 @@ export default function CommerceProductsWorkspace({ website, commerce }) {
     const [storeCurrency, setStoreCurrency] = useState(commerce?.currency || 'USD');
     const [paypalReceiverEmail, setPaypalReceiverEmail] = useState(commerce?.paypal_receiver_email || '');
     const [savingStore, setSavingStore] = useState(false);
-    const [workspaceTab, setWorkspaceTab] = useState('products');
+    const [workspaceTab, setWorkspaceTab] = useState(() => {
+        if (typeof window === 'undefined') return 'products';
+        const requested = new URLSearchParams(window.location.search).get('commerce_tab');
+        return ['products','orders','inventory','coupons','shipping','tax','templates','settings'].includes(requested) ? requested : 'products';
+    });
     const [slugManuallyEdited, setSlugManuallyEdited] = useState(false);
     const [uploadingMedia, setUploadingMedia] = useState(false);
     const [categoryEditor, setCategoryEditor] = useState(null);
