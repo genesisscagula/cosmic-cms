@@ -251,6 +251,16 @@ class SparkCatalog
             (str_starts_with($type, 'hero_') || str_starts_with($type, 'mini_hero_')) ? 'opening-section-safe' : null,
             'supports-universal-background-image',
             'supports-smart-background-overlay',
+            'supports-luna-design-overrides',
+            'supports-luna-responsive-guardrails',
+            'supports-luna-relative-editing',
+            'supports-luna-reference-editing',
+            'supports-luna-self-qa',
+            'supports-luna-verified-execution',
+            'supports-luna-site-memory',
+            'supports-luna-multi-operation-planning',
+            'supports-luna-page-art-direction',
+            'supports-luna-cross-page-reference',
         ])));
 
         $derived = compact('aliases','media','layout','style','intent','industry','position','capabilities');

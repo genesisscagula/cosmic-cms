@@ -8161,3 +8161,21 @@ header.cosmic-header-overlay,
     background-color: transparent !important;
     background-image: none !important;
 }
+
+
+/* Cosmic website CTA parity: EditableButton is a span in Builder previews.
+   Website content only; dashboard/admin controls are intentionally excluded. */
+.cosmic-builder-canvas [data-cosmic-luna-display="button"],
+.cosmic-spark-preview-stage [data-cosmic-luna-display="button"],
+.cosmic-website-preview [data-cosmic-luna-display="button"] {
+    border-radius: 100px !important;
+}
+
+
+/* Spark authored pill contract. Tailwind's rounded-full may be absent/overridden
+   in isolated Builder/preview surfaces; website content must render identically. */
+.cosmic-builder-canvas .cosmic-builder-spark [class~="rounded-full"],
+.cosmic-spark-preview-stage [class~="rounded-full"],
+.cosmic-website-preview [data-cosmic-spark] [class~="rounded-full"] {
+    border-radius: 9999px !important;
+}

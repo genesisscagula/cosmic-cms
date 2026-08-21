@@ -20,6 +20,8 @@ class MediaLibraryController extends Controller
     ];
 
     private const IMAGE_EXTENSIONS = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'avif', 'heic', 'heif', 'svg'];
+    private const VIDEO_MIMES = ['video/mp4', 'video/webm', 'video/ogg'];
+    private const VIDEO_EXTENSIONS = ['mp4', 'webm', 'ogg'];
 
     public function index(Request $request, Website $website)
     {
@@ -32,6 +34,7 @@ class MediaLibraryController extends Controller
             'sort' => ['nullable', Rule::in(['newest', 'oldest', 'name_asc', 'name_desc', 'size_asc', 'size_desc'])],
             'per_page' => ['nullable', 'integer', 'min:12', 'max:120'],
             'recent' => ['nullable', 'boolean'],
+            'kind' => ['nullable', Rule::in(['image', 'logo', 'video'])],
         ]);
 
         if (! empty($filters['folder_id'])) {
@@ -45,6 +48,17 @@ class MediaLibraryController extends Controller
         }
         if (! empty($filters['source'])) {
             $query->where('source', $filters['source']);
+        }
+        if (! empty($filters['kind'])) {
+            if ($filters['kind'] === 'video') {
+                $query->where(function ($q) {
+                    $q->where('kind', 'video')->orWhere('mime_type', 'like', 'video/%');
+                });
+            } else {
+                $query->where(function ($q) {
+                    $q->whereNull('mime_type')->orWhere('mime_type', 'not like', 'video/%');
+                });
+            }
         }
         if (! empty($filters['recent'])) {
             $query->where('created_at', '>=', now()->subDays(30));
@@ -163,7 +177,7 @@ class MediaLibraryController extends Controller
     {
         $this->authorize('editBuilder', $website);
         $data = $request->validate([
-            'image' => ['required', 'file', 'max:12288', 'mimetypes:'.implode(',', self::IMAGE_MIMES)],
+            'image' => ['required', 'file', 'max:51200', 'mimetypes:'.implode(',', array_merge(self::IMAGE_MIMES, self::VIDEO_MIMES))],
             'folder_id' => ['nullable', 'integer'],
             'source' => ['nullable', Rule::in(['upload', 'ai', 'unsplash', 'import'])],
             'kind' => ['nullable', 'string', 'max:64'],
@@ -182,8 +196,10 @@ class MediaLibraryController extends Controller
         }
 
         $extension = strtolower($file->guessExtension() ?: $file->getClientOriginalExtension() ?: 'jpg');
-        if (! in_array($extension, self::IMAGE_EXTENSIONS, true)) {
-            throw ValidationException::withMessages(['image' => 'Use JPG, PNG, WebP, GIF, AVIF, HEIC, HEIF or SVG images.']);
+        $isVideo = in_array($extension, self::VIDEO_EXTENSIONS, true)
+            || in_array((string) $file->getMimeType(), self::VIDEO_MIMES, true);
+        if (! in_array($extension, array_merge(self::IMAGE_EXTENSIONS, self::VIDEO_EXTENSIONS), true)) {
+            throw ValidationException::withMessages(['image' => 'Use a supported image, MP4, WebM, or OGG file.']);
         }
 
         if ($extension === 'svg') {
@@ -201,7 +217,7 @@ class MediaLibraryController extends Controller
             throw ValidationException::withMessages(['image' => 'The image could not be saved. Please try again.']);
         }
 
-        [$width, $height] = $this->dimensions(Storage::disk('public')->path($path));
+        [$width, $height] = $isVideo ? [null, null] : $this->dimensions(Storage::disk('public')->path($path));
         $asset = $website->mediaAssets()->create([
             'uuid' => $uuid,
             'folder_id' => $folderId,

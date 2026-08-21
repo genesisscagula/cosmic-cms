@@ -266,6 +266,51 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     background-color: transparent !important;
                     background-image: none !important;
                 }
+                .cosmic-luna-design-host > section,
+                .cosmic-luna-design-host > div > section:first-child {
+                    padding-top: var(--luna-section-py, revert) !important;
+                    padding-bottom: var(--luna-section-py, revert) !important;
+                    padding-left: var(--luna-section-px, revert) !important;
+                    padding-right: var(--luna-section-px, revert) !important;
+                    min-height: var(--luna-section-min-height, revert) !important;
+                }
+                .cosmic-luna-design-host h1,
+                .cosmic-luna-design-host h2,
+                .cosmic-luna-design-host h3 {
+                    font-size: var(--luna-heading-size, revert) !important;
+                    line-height: var(--luna-heading-line, revert) !important;
+                    letter-spacing: var(--luna-letter-spacing, revert) !important;
+                    text-align: var(--luna-text-align, revert) !important;
+                    overflow-wrap: anywhere;
+                }
+                .cosmic-luna-design-host p,
+                .cosmic-luna-design-host li {
+                    font-size: var(--luna-body-size, revert) !important;
+                    line-height: var(--luna-body-line, revert) !important;
+                }
+                .cosmic-luna-design-host img { border-radius: var(--luna-image-radius, revert) !important; }
+                .cosmic-luna-design-host [class*="rounded"] { border-radius: var(--luna-card-radius, revert); }
+                @media (max-width: 1024px) {
+                    .cosmic-luna-design-host > section,
+                    .cosmic-luna-design-host > div > section:first-child {
+                        padding-top: var(--luna-section-py-tablet, min(var(--luna-section-py, 72px), 112px)) !important;
+                        padding-bottom: var(--luna-section-py-tablet, min(var(--luna-section-py, 72px), 112px)) !important;
+                    }
+                }
+                @media (max-width: 767px) {
+                    .cosmic-luna-design-host > section,
+                    .cosmic-luna-design-host > div > section:first-child {
+                        padding-top: var(--luna-section-py-mobile, min(var(--luna-section-py, 72px), 112px)) !important;
+                        padding-bottom: var(--luna-section-py-mobile, min(var(--luna-section-py, 72px), 112px)) !important;
+                        padding-left: min(var(--luna-section-px, 24px), 40px) !important;
+                        padding-right: min(var(--luna-section-px, 24px), 40px) !important;
+                    }
+                    .cosmic-luna-design-host h1,
+                    .cosmic-luna-design-host h2,
+                    .cosmic-luna-design-host h3 {
+                        font-size: min(var(--luna-heading-size, 52px), 64px) !important;
+                    }
+                }
             `;
             document.head.appendChild(style);
         }
@@ -300,11 +345,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [lunaChatOpen, setLunaChatOpen] = useState(false);
     const [lunaScope, setLunaScope] = useState({ type:'page', blockIndex:null, label:'Whole Page' });
     const [lunaElementTarget, setLunaElementTarget] = useState(null);
+    const [lunaHoverTarget, setLunaHoverTarget] = useState(null);
     const [lunaMessages, setLunaMessages] = useState([]);
     const [lunaUndoStack, setLunaUndoStack] = useState([]);
     const lunaMessagesEndRef = useRef(null);
     const lunaPromptRef = useRef(null);
     const [lunaStatus, setLunaStatus] = useState('Ready');
+    const lunaMemoryKey = `cosmic:luna-site-memory:${website?.id || trialToken || 'trial'}`;
+    const [lunaSiteMemory, setLunaSiteMemory] = useState(() => {
+        try { return JSON.parse(window.localStorage.getItem(lunaMemoryKey) || '{}') || {}; } catch (_) { return {}; }
+    });
 
 
 
@@ -356,6 +406,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [showLogoModal, setShowLogoModal] = useState(false);
     const [logoMediaLibraryOpen, setLogoMediaLibraryOpen] = useState(false);
     const [lunaMediaLibraryOpen, setLunaMediaLibraryOpen] = useState(false);
+    const [lunaMediaLibraryKind, setLunaMediaLibraryKind] = useState('image');
+    const [lunaDirectVideoUrl, setLunaDirectVideoUrl] = useState('');
+    const [lunaDirectText, setLunaDirectText] = useState('');
+    const [lunaDirectLink, setLunaDirectLink] = useState('');
+    const [lunaSmartSectionBusy, setLunaSmartSectionBusy] = useState('');
+
     const [showLogoGenerateForm, setShowLogoGenerateForm] = useState(false);
     const [logoCompanyName, setLogoCompanyName] = useState(trialExperience?.logo_company_name || website?.name || '');
     const [logoBusy, setLogoBusy] = useState(false);
@@ -387,6 +443,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const trialUnloadSuppressUntilRef = useRef(0);
     const lastSaveErrorRef = useRef('');
     const logoUploadRef = useRef(null);
+    const lunaImageUploadRef = useRef(null);
     const logoCropFrameRef = useRef(null);
     const logoCropSafeFrameRef = useRef(null);
     const logoCropDragRef = useRef(null);
@@ -1214,58 +1271,6 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
         setLogoBusy(true);
         try {
-            const targetType=String(lunaElementTarget?.type||'').toLowerCase();
-            const lowerPrompt=prompt.toLowerCase();
-            const asksMediaLibrary=/media library|my uploads|uploaded image|uploaded photo|our photo|our image|my image|my photo/.test(lowerPrompt);
-            const generativeImageIntent=targetType.includes('image') && (
-                /\b(create|generate|illustrate|design|render|compose)\b/.test(lowerPrompt)
-                || /\b(unique|custom|imaginary|surreal|illustration|3d render|concept art)\b/.test(lowerPrompt)
-            );
-            const ambiguousImageIntent=targetType.includes('image')
-                && /^(change|replace|update|edit|different|new)\s+(this\s+)?(image|photo|picture)\s*[.!?]*$/i.test(prompt);
-
-            if(asksMediaLibrary && (targetType.includes('image') || targetType==='logo')){
-                setLunaMediaLibraryOpen(true);
-                setLunaMessages((messages)=>[...messages,{role:'assistant',text:`Choose ${targetType==='logo'?'a logo':'an image'} from your Media Library and I’ll use it here.`}]);
-                setLunaStatus('Waiting for Media Library selection');
-                return;
-            }
-
-            if(ambiguousImageIntent){
-                setLunaMessages((messages)=>[...messages,{role:'assistant',text:'What kind of image would you like? Describe the subject, or choose one from your Media Library.'}]);
-                setLunaStatus('Ready');
-                return;
-            }
-
-            if(generativeImageIntent){
-                setLunaStatus('Generating a custom image…');
-                const result=await runLunaGeneratedImage(prompt);
-                setLunaMessages((messages)=>[...messages,{role:'assistant',text:`I generated a custom image and used it here${result.cost>0?` · ${result.cost} credits`:''}.`}]);
-                setLunaStatus('Done');
-                return;
-            }
-
-            if(targetType==='logo'){
-                if(/\b(match|adapt|fit|sync)\b.*\b(theme|colors?|brand)\b|\b(theme|colors?|brand)\b.*\b(match|adapt|sync)\b/.test(lowerPrompt)){
-                    await matchLogoToTheme(true);
-                    setLunaMessages((messages)=>[...messages,{role:'assistant',text:'I matched the logo to the current theme.'}]);
-                    setLunaStatus('Done');
-                    return;
-                }
-                if(/\b(create|generate|regenerate|make|design)\b.*\blogo\b|\blogo\b.*\b(create|generate|regenerate|make|design)\b/.test(lowerPrompt)){
-                    setLunaStatus('Generating your logo…');
-                    const result=await runLunaGeneratedLogo(prompt);
-                    setLunaMessages((messages)=>[...messages,{role:'assistant',text:`I generated and applied the new logo${result.cost>0?` · ${result.cost} credits`:''}.`}]);
-                    setLunaStatus('Done');
-                    return;
-                }
-                if(/^(change|replace|update|edit)\s+(this\s+)?logo\s*[.!?]*$/i.test(prompt)){
-                    setLunaMessages((messages)=>[...messages,{role:'assistant',text:'What would you like to change about the logo? You can describe the change, generate a new one, or choose one from your Media Library.'}]);
-                    setLunaStatus('Ready');
-                    return;
-                }
-            }
-
             const form = new FormData();
             form.append('image', file);
             let response;
@@ -1804,6 +1809,194 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setSparkInsertTarget(null);
         setIsModalOpen(false);
     };
+
+    const lunaSectionCategory = (type='') => {
+        const key=String(type||'').toLowerCase();
+        if(key.startsWith('hero_') || key.startsWith('mini_hero_') || key==='image_cta_banner') return 'hero';
+        if(key.startsWith('services_') || key.includes('service')) return 'services';
+        if(key.startsWith('feature_') || key.includes('benefit')) return 'feature';
+        if(key.includes('pricing') || key.includes('comparison')) return 'pricing';
+        if(key.includes('testimonial') || key.includes('review')) return 'testimonials';
+        if(key.includes('process') || key.includes('timeline') || key.includes('steps')) return 'process';
+        if(key.includes('stats') || key.includes('metric') || key.includes('achievement')) return 'stats';
+        if(key.includes('team') || key.includes('leadership')) return 'team';
+        if(key.includes('faq') || key.includes('accordion')) return 'faq';
+        if(key.includes('contact') || key.includes('location') || key.includes('map') || key.includes('hours')) return 'contact';
+        if(key.includes('cta') || key.includes('newsletter') || key.includes('book_demo') || key.includes('calendly')) return 'cta';
+        return 'other';
+    };
+
+    const lunaSectionLabel = (category) => ({
+        hero:'Hero',
+        services:'Services',
+        feature:'Features',
+        pricing:'Pricing',
+        testimonials:'Testimonials',
+        process:'Process',
+        stats:'Stats / Proof',
+        team:'Team',
+        faq:'FAQ',
+        contact:'Contact Form',
+        cta:'Call to Action',
+    }[category] || 'Section');
+
+    const lunaPageIntent = (() => {
+        const source=`${page?.title||''} ${page?.slug||''} ${websiteContext||''}`.toLowerCase();
+        if(/\b(contact|location|visit|enquir|inquiry)\b/.test(source)) return 'contact';
+        if(/\b(pricing|plans|packages|membership)\b/.test(source)) return 'pricing';
+        if(/\b(about|story|company|who we are)\b/.test(source)) return 'about';
+        if(/\b(service|solutions|capabilities|what we do)\b/.test(source)) return 'services';
+        if(/\b(team|people|leadership)\b/.test(source)) return 'team';
+        return 'home';
+    })();
+
+    const lunaSmartSectionSuggestions = (() => {
+        if(lunaScope?.type!=='section' || !Number.isInteger(lunaScope?.blockIndex)) return [];
+        const current=lunaSectionCategory(data.blocks?.[lunaScope.blockIndex]?.type);
+        const existing=new Set((data.blocks||[]).map((block)=>lunaSectionCategory(block?.type)));
+        const pagePlans={
+            home:['services','feature','process','testimonials','stats','pricing','cta','contact'],
+            services:['feature','process','testimonials','stats','pricing','faq','cta','contact'],
+            pricing:['testimonials','faq','stats','cta','contact','feature'],
+            about:['stats','team','process','testimonials','cta','contact'],
+            team:['testimonials','stats','cta','contact','faq'],
+            contact:['contact','faq','testimonials','cta'],
+        };
+        const afterCurrent={
+            hero:['services','feature','stats'],
+            services:['process','testimonials','pricing'],
+            feature:['testimonials','stats','cta'],
+            process:['testimonials','stats','cta'],
+            pricing:['testimonials','faq','cta'],
+            testimonials:['cta','contact','pricing'],
+            stats:['testimonials','cta','contact'],
+            team:['testimonials','cta','contact'],
+            faq:['cta','contact','testimonials'],
+            contact:['testimonials','faq','cta'],
+            cta:['testimonials','contact','faq'],
+        };
+        const ordered=[...(afterCurrent[current]||[]),...(pagePlans[lunaPageIntent]||pagePlans.home)];
+        const unique=[];
+        for(const category of ordered){
+            if(category===current) continue;
+            if(existing.has(category) && !['cta','contact'].includes(category)) continue;
+            if(!unique.includes(category)) unique.push(category);
+            if(unique.length>=3) break;
+        }
+        if(unique.length<3){
+            for(const category of (pagePlans[lunaPageIntent]||pagePlans.home)){
+                if(category!==current && !unique.includes(category)){
+                    unique.push(category);
+                    if(unique.length>=3) break;
+                }
+            }
+        }
+        return unique.map((category)=>({category,label:lunaSectionLabel(category)}));
+    })();
+
+    const lunaAccessibleCatalogForCategory = (category) => {
+        const normalized=String(category||'').toLowerCase();
+        return (sparkCatalog||[]).filter((spark)=>{
+            if(spark?.trial_locked || spark?.can_install===false) return false;
+            const sparkCategory=lunaSectionCategory(spark?.key);
+            if(sparkCategory!==normalized) return false;
+            return Boolean(spark?.owned) || Number(spark?.credits||0)===0;
+        });
+    };
+
+    const lunaLocalSparkForCategory = (category) => {
+        const options=lunaAccessibleCatalogForCategory(category);
+        if(!options.length) return null;
+        const context=`${page?.title||''} ${websiteContext||''} ${data.blocks?.[lunaScope?.blockIndex]?.heading||''}`.toLowerCase();
+        const words=new Set(context.split(/[^a-z0-9]+/).filter((word)=>word.length>3));
+        return [...options].sort((a,b)=>{
+            const score=(item)=>String(`${item?.name||''} ${item?.description||''} ${item?.collection||''}`).toLowerCase()
+                .split(/[^a-z0-9]+/).reduce((sum,word)=>sum+(words.has(word)?1:0),0);
+            return score(b)-score(a);
+        })[0];
+    };
+
+    const lunaBuildBlockFromType = (type) => {
+        const market=MarketplaceSparkRegistry.find((item)=>item.type===type);
+        const defaults=BlockRegistry[type]?.schema?.defaults || {};
+        const payload=market?.payload || {};
+        if(!market && !BlockRegistry[type]) return null;
+        return bindDefaultCommerceProduct({
+            ...structuredClone(defaults),
+            ...structuredClone(payload),
+            type,
+            theme:'auto',
+        }, commerce);
+    };
+
+    const lunaInsertSuggestedSection = async (suggestion, position='below') => {
+        const targetIndex=lunaScope?.blockIndex;
+        if(!suggestion?.category || !Number.isInteger(targetIndex) || lunaSmartSectionBusy) return;
+        const busyKey=`${suggestion.category}:${position}`;
+        setLunaSmartSectionBusy(busyKey);
+        setPageAiError('');
+        try{
+            let chosen=null;
+            // Registered Builder can ask the existing layout selector for the best
+            // exact Spark. This is selection only: content generation is not invoked.
+            if(!trialMode && suggestion.category!=='faq'){
+                try{
+                    const prompt=[
+                        websiteContext || `${website?.name||'Website'} ${page?.title||'page'}`,
+                        `Add a ${suggestion.label} section ${position} the currently selected ${lunaScope.label}.`,
+                        `Existing page sections: ${(data.blocks||[]).map((block)=>block.type).join(', ')}.`,
+                        'Choose a polished registered Spark that fits the page flow. Avoid duplicating the current section.',
+                    ].join('\n');
+                    const {data:selection}=await axios.post('/ai/select-section',{category:suggestion.category,prompt});
+                    const selectedType=String(selection?.section||'');
+                    const accessible=(sparkCatalog||[]).find((spark)=>spark.key===selectedType && !spark.trial_locked && spark.can_install!==false && (spark.owned || Number(spark.credits||0)===0));
+                    if(accessible) chosen=accessible;
+                }catch(_){}
+            }
+            if(!chosen) chosen=lunaLocalSparkForCategory(suggestion.category);
+            if(!chosen) throw new Error(`No available ${suggestion.label} Spark is currently accessible.`);
+
+            // Free built-ins may still need the normal unlock bookkeeping before use.
+            if(!chosen.owned && Number(chosen.credits||0)===0){
+                try{
+                    const endpoint=trialMode && trialToken
+                        ? `/trial-assets/${trialToken}/sparks/${chosen.key}/unlock`
+                        : `/sparks/${chosen.key}/unlock`;
+                    const {data:unlockData}=await axios.post(endpoint);
+                    if(Number.isFinite(Number(unlockData?.credit_balance))) setCreditBalance(Number(unlockData.credit_balance));
+                    setSparkCatalog((current)=>current.map((item)=>item.key===chosen.key?{...item,owned:true}:item));
+                }catch(_){}
+            }
+
+            const block=lunaBuildBlockFromType(chosen.key);
+            if(!block) throw new Error('The selected Spark is not registered in this Builder.');
+
+            pushLunaUndoSnapshot();
+            const next=[...(data.blocks||[])];
+            const insertAt=position==='above' ? targetIndex : targetIndex+1;
+            next.splice(insertAt,0,{...block,_renderKey:createRenderKey()});
+            setData('blocks',normalizeRenderKeys(next));
+            setLunaMessages((messages)=>[...messages,{
+                role:'assistant',
+                text:`Added ${chosen.name || suggestion.label} ${position} this section while preserving the current page design. · 0 AI generation credits`
+            }]);
+            showCosmicNotification({title:`${suggestion.label} added`,message:`Inserted ${position} the selected section.`,tone:'success',mode:'toast',duration:2600});
+        }catch(error){
+            const message=error?.response?.data?.message || error?.message || 'Could not add that section.';
+            setPageAiError(message);
+        }finally{
+            setLunaSmartSectionBusy('');
+        }
+    };
+
+    const lunaSurpriseSection = () => {
+        const suggestion=lunaSmartSectionSuggestions[0];
+        if(!suggestion) return;
+        const index=Number(lunaScope?.blockIndex||0);
+        const position=index >= Math.max(1,(data.blocks?.length||1)-1) ? 'above' : 'below';
+        lunaInsertSuggestedSection(suggestion,position);
+    };
+
     const removeBlock = (index) => {
 
         const updatedBlocks = data.blocks.filter((_, i) => i !== index);
@@ -2935,6 +3128,34 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setPageAiPrompt('');
         setLunaChatOpen(true);
     };
+
+    const openLunaHoverTarget = (hoverTarget) => {
+        if (!hoverTarget) return;
+        const { blockIndex, type='section', currentValue='', url='' } = hoverTarget;
+        const isSection = type === 'section';
+        const label = isSection ? (BlockRegistry[data.blocks?.[blockIndex]?.type]?.schema?.title || data.blocks?.[blockIndex]?.heading || 'Selected Section') : `${type.charAt(0).toUpperCase()+type.slice(1)} · Section ${blockIndex+1}`;
+        setLunaScope({ type:'section', blockIndex, label });
+        setLunaElementTarget(isSection ? null : { type, currentValue, url });
+        setLunaDirectText(isSection ? '' : String(currentValue||''));
+        setLunaDirectLink(isSection ? '' : String(url||''));
+        setPageAiError('');
+        setPageAiPrompt('');
+        setLunaDirectVideoUrl('');
+        const selectedIsVideo=isSection && blockHasVideoSlot(data.blocks?.[blockIndex]);
+        if (type === 'image') {
+            setLunaMessages((messages)=>[...messages,{role:'context',text:'Image selected. Replace it directly below, or tell Luna what image you want.'}]);
+        } else if (selectedIsVideo) {
+            setLunaMessages((messages)=>[...messages,{role:'context',text:trialMode
+                ? 'Video section selected. Paste a video URL below, or ask Luna for another video.'
+                : 'Video section selected. Choose from Media Library, paste a video URL, or ask Luna for another video.'}]);
+        } else if (isSection) {
+            setLunaMessages((messages)=>[...messages,{role:'context',text:'Section selected. I can update it, or suggest useful sections to add above or below based on this page.'}]);
+        } else {
+            setLunaMessages((messages)=>[...messages,{role:'context',text:`${type.charAt(0).toUpperCase()+type.slice(1)} selected. Edit it directly below, or ask Luna to rewrite/change it.`}]);
+        }
+        setLunaChatOpen(true);
+        window.requestAnimationFrame(()=>{ lunaPromptRef.current?.focus?.(); if(type!=='image') lunaPromptRef.current?.select?.(); });
+    };
     useEffect(() => {
         const handleLunaTarget = (event) => {
             const detail = event?.detail || {};
@@ -2961,12 +3182,15 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 imageQuery: String(detail.imageQuery || ''),
                 blockType: String(detail.blockType || ''),
             });
+            setLunaDirectText(currentValue);
+            setLunaDirectLink(String(detail.url || ''));
             setPageAiError('');
             if(type==='image' || type==='background image'){
                 setPageAiPrompt('');
-                setLunaMessages((messages)=>[...messages,{role:'assistant',text:'What would you like to do with this image? Describe a replacement, generate a custom image, or choose one from your Media Library.'}]);
+                setLunaMessages((messages)=>[...messages,{role:'context',text:'Image selected. Replace it directly below, or tell Luna what image you want.'}]);
             }else{
-                setPageAiPrompt(`What would you like to change about this ${type}?`);
+                setPageAiPrompt('');
+                setLunaMessages((messages)=>[...messages,{role:'context',text:`${label} selected. Edit it directly below, or ask Luna what to change.`}]);
             }
             setLunaChatOpen(true);
             window.requestAnimationFrame(() => {
@@ -3096,7 +3320,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setLunaElementTarget({type:'logo',currentValue:current});
         setPageAiError('');
         setPageAiPrompt('');
-        setLunaMessages((messages)=>[...messages,{role:'assistant',text:'What would you like to do with the logo? Describe the change, generate a new logo, or choose one from your Media Library.'}]);
+        setLunaMessages((messages)=>[...messages,{role:'assistant',text:trialMode
+            ? 'What would you like to do with the logo? You can describe the change, generate a new logo, or upload your own logo.'
+            : 'What would you like to do with the logo? Describe the change, generate a new logo, or choose one from your Media Library.'}]);
         setLunaChatOpen(true);
         window.requestAnimationFrame(()=>{lunaPromptRef.current?.focus?.();});
     };
@@ -3150,9 +3376,329 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         return {url,cost:Number(response.data?.cost||50)};
     };
 
+    const extractLunaVideoUrl = (text) => {
+        const urls = String(text || '').match(/https?:\/\/[^\s<>"']+/gi) || [];
+        const clean = (value) => String(value || '').replace(/[),.;!?]+$/g, '');
+        return clean(urls.find((value) => {
+            const candidate = clean(value).toLowerCase();
+            return candidate.includes('youtube.com/')
+                || candidate.includes('youtu.be/')
+                || candidate.includes('vimeo.com/')
+                || /\.(mp4|webm|m4v)(?:[?#].*)?$/i.test(candidate);
+        }) || '');
+    };
+
+    
+    const pushLunaUndoSnapshot = () => {
+        setLunaUndoStack((stack)=>[{
+            blocks:stripClientBlockFields(data.blocks||[]),
+            header:data.global_header||{},
+            footer:data.global_footer||{},
+            theme:globalSelections||{},
+        },...stack].slice(0,10));
+    };
+
+    const replaceSelectedScalar = (nextValue, nextUrl = null) => {
+        const index=lunaScope?.blockIndex;
+        if(!Number.isInteger(index) || !data.blocks?.[index] || !lunaElementTarget) return false;
+        const wanted=String(lunaElementTarget.currentValue||'');
+        let changed=false;
+        const urlKey=/(^|_)(url|href|link)$/i;
+        const buttonUrlKey=/(button|btn|cta|action).*?(url|href|link)$/i;
+        const walk=(node)=>{
+            if(Array.isArray(node)) return node.map(walk);
+            if(node && typeof node==='object'){
+                const out={...node};
+                const entries=Object.entries(node);
+                const matchingKey=entries.find(([key,value])=>typeof value==='string' && String(value)===wanted && !urlKey.test(key))?.[0];
+                if(!changed && matchingKey){
+                    out[matchingKey]=nextValue;
+                    if(nextUrl!==null){
+                        const siblingUrl=entries.find(([key,value])=>typeof value==='string' && (buttonUrlKey.test(key)||urlKey.test(key)))?.[0];
+                        if(siblingUrl) out[siblingUrl]=nextUrl;
+                    }
+                    changed=true;
+                    return out;
+                }
+                for(const [key,value] of entries) out[key]=walk(value);
+                return out;
+            }
+            return node;
+        };
+        const next=walk(data.blocks[index]);
+        if(!changed) return false;
+        pushLunaUndoSnapshot();
+        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((block,i)=>i===index?{...next,_renderKey:block._renderKey||createRenderKey()}:block)));
+        setLunaElementTarget((current)=>current?{...current,currentValue:String(nextValue),url:nextUrl!==null?String(nextUrl):current.url}:current);
+        return true;
+    };
+
+    const saveLunaDirectElement = () => {
+        const type=String(lunaElementTarget?.type||'').toLowerCase();
+        if(!lunaElementTarget || !['heading','text','label','button'].includes(type)) return;
+        const next=String(lunaDirectText||'').trim();
+        if(!next){ setPageAiError('Enter a value before saving.'); return; }
+        if(!replaceSelectedScalar(next,type==='button'?String(lunaDirectLink||'#').trim()||'#':null)){
+            setPageAiError('I could not map this rendered element back to its content field.');
+            return;
+        }
+        setPageAiError('');
+        setLunaMessages((messages)=>[...messages,{role:'assistant',text:`${type==='button'?'Button':'Content'} updated directly. · 0 credits`}]);
+        showCosmicNotification({title:'Saved',message:'The selected content was updated.',tone:'success',mode:'toast',duration:2200});
+    };
+
+    const findPrimaryRepeater = (value, path=[]) => {
+        if(Array.isArray(value) && value.length && value.every((item)=>item && typeof item==='object' && !Array.isArray(item))){
+            return {path,items:value};
+        }
+        if(value && typeof value==='object'){
+            for(const [key,child] of Object.entries(value)){
+                if(['images','media','gallery_images'].includes(String(key).toLowerCase())) continue;
+                const found=findPrimaryRepeater(child,[...path,key]);
+                if(found) return found;
+            }
+        }
+        return null;
+    };
+    const selectedRepeater = lunaScope?.type==='section' && Number.isInteger(lunaScope?.blockIndex)
+        ? findPrimaryRepeater(data.blocks?.[lunaScope.blockIndex])
+        : null;
+
+    const updateAtPath = (source,path,updater) => {
+        if(!path.length) return updater(source);
+        const [head,...rest]=path;
+        return {...source,[head]:updateAtPath(source?.[head],rest,updater)};
+    };
+
+    const mutateSelectedRepeater = (action) => {
+        const index=lunaScope?.blockIndex;
+        const block=data.blocks?.[index];
+        const repeater=findPrimaryRepeater(block);
+        if(!Number.isInteger(index)||!block||!repeater) return false;
+        let nextItems=[...repeater.items];
+        if(action==='add'){
+            const template=nextItems[nextItems.length-1] || {};
+            const clone=JSON.parse(JSON.stringify(template));
+            // Keep the design/schema intact while making the new item clearly editable.
+            for(const key of Object.keys(clone)){
+                if(typeof clone[key]==='string' && /(title|heading|name|label)$/i.test(key)) clone[key]='New item';
+            }
+            nextItems.push(clone);
+        }else if(action==='remove'){
+            if(nextItems.length<=1) return false;
+            nextItems.pop();
+        }else return false;
+        pushLunaUndoSnapshot();
+        const nextBlock=updateAtPath(block,repeater.path,()=>nextItems);
+        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((item,i)=>i===index?{...nextBlock,_renderKey:item._renderKey||createRenderKey()}:item)));
+        setLunaMessages((messages)=>[...messages,{role:'assistant',text:`${action==='add'?'Item added':'Last item removed'} while preserving this layout. · 0 credits`}]);
+        return true;
+    };
+const blockHasVideoSlot = (value) => {
+        if (Array.isArray(value)) return value.some(blockHasVideoSlot);
+        if (value && typeof value === 'object') {
+            return Object.entries(value).some(([key, child]) => key === 'video_url' || blockHasVideoSlot(child));
+        }
+        return false;
+    };
+    const isLunaVideoSection = lunaScope?.type === 'section'
+        && Number.isInteger(lunaScope?.blockIndex)
+        && blockHasVideoSlot(data.blocks?.[lunaScope.blockIndex]);
+    const isValidDirectVideoUrl = (value='') => {
+        const raw=String(value||'').trim();
+        if(!/^https?:\/\//i.test(raw) && !raw.startsWith('/')) return false;
+        return /(?:youtube\.com|youtu\.be|vimeo\.com|\.mp4(?:$|\?)|\.webm(?:$|\?)|\.ogg(?:$|\?))/i.test(raw) || raw.startsWith('/storage/');
+    };
+    const replaceFirstVideoUrl = (value, videoUrl) => {
+        let replaced = false;
+        const walk = (node) => {
+            if (Array.isArray(node)) return node.map(walk);
+            if (node && typeof node === 'object') {
+                const out = { ...node };
+                for (const [key, child] of Object.entries(out)) {
+                    if (!replaced && key === 'video_url') {
+                        out[key] = videoUrl;
+                        replaced = true;
+                    } else {
+                        out[key] = walk(child);
+                    }
+                }
+                return out;
+            }
+            return node;
+        };
+        return { value: walk(value), replaced };
+    };
+
+    const applyDirectLunaVideoUrl = (videoUrl, index = lunaScope.blockIndex) => {
+        if (!videoUrl || !Number.isInteger(index) || !data.blocks?.[index]) return false;
+        const result = replaceFirstVideoUrl(data.blocks[index], videoUrl);
+        if (!result.replaced) return false;
+        setLunaUndoStack((stack)=>[{
+            blocks:stripClientBlockFields(data.blocks||[]),
+            header:data.global_header||{},
+            footer:data.global_footer||{},
+            theme:globalSelections||{},
+        },...stack].slice(0,10));
+        setData('blocks', normalizeRenderKeys((data.blocks || []).map((block, i) => i === index ? { ...result.value, _renderKey:block._renderKey || createRenderKey() } : block)));
+        setLunaElementTarget((current)=>current ? { ...current, currentValue:videoUrl } : current);
+        return true;
+    };
+    const submitDirectLunaVideoUrl = () => {
+        const value=String(lunaDirectVideoUrl||'').trim();
+        if(!isValidDirectVideoUrl(value)){
+            setPageAiError('Use a YouTube, Vimeo, MP4, WebM, OGG, or uploaded /storage/ video URL.');
+            return;
+        }
+        if(!applyDirectLunaVideoUrl(value)){
+            setPageAiError('This section does not expose a background video slot.');
+            return;
+        }
+        setPageAiError('');
+        setLunaDirectVideoUrl('');
+        setPageAiPrompt('');
+        setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Video updated directly. · 0 credits'}]);
+        setLunaStatus('Done');
+        showCosmicNotification({title:'Video updated',message:'The section now uses the selected video.',tone:'success',mode:'toast',duration:2600});
+    };
+
+
+    const uploadTrialLunaImage = async (event) => {
+        const file = event.target.files?.[0];
+        event.target.value = '';
+        if (!file || !trialMode || !trialToken) return;
+        const form = new FormData();
+        form.append('image', file);
+        setPageAiBusy(true);
+        setLunaStatus('Uploading image…');
+        try {
+            const response = await axios.post(`/trials/${encodeURIComponent(trialToken)}/images/upload`, form, { headers:{ Accept:'application/json' } });
+            const url = response.data?.url;
+            if (!url) throw new Error('No image URL was returned.');
+            if (replaceFirstSelectedMedia(url)) {
+                setPageAiPrompt('');
+                setLunaMessages((messages)=>[...messages,{role:'assistant',text:'I used your uploaded image here.'}]);
+                setLunaStatus('Done');
+            } else {
+                setLunaElementTarget((current)=>current?{...current,attachedMediaUrl:url}:current);
+                setPageAiPrompt('Use this uploaded image for the selected image.');
+                setLunaMessages((messages)=>[...messages,{role:'assistant',text:'The image is uploaded. Send the request and I’ll apply it to this element.'}]);
+                setLunaStatus('Ready');
+            }
+        } catch (error) {
+            setPageAiError(error.response?.data?.message || error.message || 'Unable to upload this image.');
+            setLunaStatus('Ready');
+        } finally {
+            setPageAiBusy(false);
+        }
+    };
+
 const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
+        // React passes the click event when a handler is used as onClick={fn}.
+        // Only an explicit string is a real direct prompt; everything else must
+        // behave like the normal composer Send action.
+        directPrompt = typeof directPrompt === 'string' ? directPrompt : null;
         const prompt = String(directPrompt ?? pageAiPrompt).trim();
         if (!prompt || pageAiBusy || (!trialMode && !website?.id)) return;
+        const targetType=String(lunaElementTarget?.type||'').toLowerCase();
+        const lowerPrompt=prompt.toLowerCase();
+        const pastedVideoUrl=extractLunaVideoUrl(prompt);
+        const videoIntent=Boolean(pastedVideoUrl) && /\b(video|background|hero|youtube|vimeo|mp4|webm)\b/i.test(prompt);
+        const asksMediaLibrary=/media library|my uploads|uploaded image|uploaded photo|our photo|our image|my image|my photo/.test(lowerPrompt);
+        const generativeImageIntent=targetType.includes('image') && (
+            /\b(create|generate|illustrate|design|render|compose)\b/.test(lowerPrompt)
+            || /\b(unique|custom|imaginary|surreal|illustration|3d render|concept art)\b/.test(lowerPrompt)
+        );
+        const ambiguousImageIntent=targetType.includes('image')
+            && /^(change|replace|update|edit|different|new)\s+(this\s+)?(image|photo|picture)\s*[.!?]*$/i.test(prompt);
+
+        // Pasting a real YouTube/Vimeo/MP4 URL into an existing video-capable
+        // section is a direct CMS edit, not an AI generation request.
+        if (videoIntent && lunaScope.type==='section' && applyDirectLunaVideoUrl(pastedVideoUrl)) {
+            if (directPrompt === null) setPageAiPrompt('');
+            setLunaMessages((messages)=>[...messages,
+                ...(directPrompt===null?[{role:'user',text:prompt,scope:lunaScope.label}]:[]),
+                {role:'assistant',text:'Done — I used that video link for this section. · 0 credits'}
+            ]);
+            setLunaStatus('Done');
+            showCosmicNotification({title:'Video updated',message:'The pasted video URL is now used by this section.',tone:'success',mode:'toast',duration:2800});
+            return;
+        }
+
+        if(asksMediaLibrary && (targetType.includes('image') || targetType==='logo')){
+            if (directPrompt === null) setPageAiPrompt('');
+            if(trialMode){
+                if(targetType==='logo') logoUploadRef.current?.click?.();
+                else lunaImageUploadRef.current?.click?.();
+                setLunaMessages((messages)=>[...messages,
+                    ...(directPrompt===null?[{role:'user',text:prompt,scope:lunaScope.label}]:[]),
+                    {role:'assistant',text:`Upload ${targetType==='logo'?'your logo':'an image'} and I’ll use it here.`}
+                ]);
+                setLunaStatus('Waiting for upload');
+            }else if(website?.id){
+                setLunaMediaLibraryOpen(true);
+                setLunaMessages((messages)=>[...messages,
+                    ...(directPrompt===null?[{role:'user',text:prompt,scope:lunaScope.label}]:[]),
+                    {role:'assistant',text:`Choose ${targetType==='logo'?'a logo':'an image'} from your Media Library and I’ll use it here.`}
+                ]);
+                setLunaStatus('Waiting for Media Library selection');
+            }
+            return;
+        }
+
+        if(ambiguousImageIntent){
+            if (directPrompt === null) setPageAiPrompt('');
+            const choiceText=trialMode
+                ? 'What kind of image would you like? Describe it for Luna, or upload your own image.'
+                : 'What kind of image would you like? Describe it for Luna, or choose one from your Media Library.';
+            setLunaMessages((messages)=>[...messages,
+                ...(directPrompt===null?[{role:'user',text:prompt,scope:lunaScope.label}]:[]),
+                {role:'assistant',text:choiceText}
+            ]);
+            setLunaStatus('Ready');
+            return;
+        }
+
+        if(generativeImageIntent){
+            if (directPrompt === null) setPageAiPrompt('');
+            setPageAiBusy(true);
+            setLunaStatus('Generating a custom image…');
+            if (directPrompt === null) setLunaMessages((messages)=>[...messages,{role:'user',text:prompt,scope:lunaScope.label}]);
+            try {
+                const result=await runLunaGeneratedImage(prompt);
+                setLunaMessages((messages)=>[...messages,{role:'assistant',text:`I generated a custom image and used it here${result.cost>0?` · ${result.cost} credits`:''}.`}]);
+                setLunaStatus('Done');
+            } catch (error) {
+                setPageAiError(error.response?.data?.message || error.message || 'Luna could not generate that image.');
+                setLunaStatus('Ready');
+            } finally {
+                setPageAiBusy(false);
+            }
+            return;
+        }
+
+        if(targetType==='logo'){
+            if(/\b(match|adapt|fit|sync)\b.*\b(theme|colors?|brand)\b|\b(theme|colors?|brand)\b.*\b(match|adapt|sync)\b/.test(lowerPrompt)){
+                if (directPrompt === null) setPageAiPrompt('');
+                setPageAiBusy(true);
+                if (directPrompt === null) setLunaMessages((messages)=>[...messages,{role:'user',text:prompt,scope:lunaScope.label}]);
+                try { await matchLogoToTheme(true); setLunaMessages((messages)=>[...messages,{role:'assistant',text:'I matched the logo to the current theme.'}]); setLunaStatus('Done'); }
+                catch(error){ setPageAiError(error.response?.data?.message || error.message || 'Unable to match the logo.'); setLunaStatus('Ready'); }
+                finally { setPageAiBusy(false); }
+                return;
+            }
+            if(/\b(create|generate|regenerate|make|design)\b.*\blogo\b|\blogo\b.*\b(create|generate|regenerate|make|design)\b/.test(lowerPrompt)){
+                if (directPrompt === null) setPageAiPrompt('');
+                setPageAiBusy(true);
+                if (directPrompt === null) setLunaMessages((messages)=>[...messages,{role:'user',text:prompt,scope:lunaScope.label}]);
+                setLunaStatus('Generating your logo…');
+                try { const result=await runLunaGeneratedLogo(prompt); setLunaMessages((messages)=>[...messages,{role:'assistant',text:`I generated and applied the new logo${result.cost>0?` · ${result.cost} credits`:''}.`}]); setLunaStatus('Done'); }
+                catch(error){ setPageAiError(error.response?.data?.message || error.message || 'Unable to generate the logo.'); setLunaStatus('Ready'); }
+                finally { setPageAiBusy(false); }
+                return;
+            }
+        }
+
         if (directPrompt === null) setPageAiPrompt('');
         setPageAiBusy(true);
         setPageAiError('');
@@ -3175,6 +3721,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             form.append('header', JSON.stringify(data.global_header || {}));
             form.append('footer', JSON.stringify(data.global_footer || {}));
             form.append('theme', JSON.stringify(globalSelections || {}));
+            form.append('site_memory', JSON.stringify(lunaSiteMemory || {}));
             form.append('target_scope', lunaScope.type === 'section' ? 'section' : 'page');
             if (lunaScope.type === 'section' && Number.isInteger(lunaScope.blockIndex)) {
                 form.append('target_index', String(lunaScope.blockIndex));
@@ -3183,7 +3730,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                     form.append('target_resolved_theme', String(resolveBlockTheme(targetBlock,lunaScope.blockIndex) || 'auto'));
                 }
             }
-            if (lunaElementTarget) {
+            if (lunaElementTarget && !(videoIntent && lunaScope.type==='section')) {
                 form.append('element_context', JSON.stringify(lunaElementTarget));
             }
             if (confirmed) form.append('confirmed', '1');
@@ -3208,7 +3755,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 footer: data.global_footer || {},
                 theme: globalSelections || {},
             }, ...stack].slice(0,10));
-            if (Array.isArray(response.blocks)) setData('blocks', normalizeRenderKeys(response.blocks.map((block,index)=>({...block,_renderKey:data.blocks?.[index]?._renderKey || createRenderKey()}))));
+            if (Array.isArray(response.blocks)) {
+                let responseBlocks=response.blocks;
+                if (videoIntent && pastedVideoUrl && lunaScope.type==='section' && Number.isInteger(lunaScope.blockIndex) && responseBlocks[lunaScope.blockIndex]) {
+                    const patched=replaceFirstVideoUrl(responseBlocks[lunaScope.blockIndex], pastedVideoUrl);
+                    if (patched.replaced) responseBlocks=responseBlocks.map((block,index)=>index===lunaScope.blockIndex?patched.value:block);
+                }
+                setData('blocks', normalizeRenderKeys(responseBlocks.map((block,index)=>({...block,_renderKey:data.blocks?.[index]?._renderKey || createRenderKey()}))));
+            }
             if (response.header) setData('global_header', response.header);
             if (response.footer) setData('global_footer', response.footer);
             if (response.theme_key) {
@@ -3217,6 +3771,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             }
             if (response.page_style && ['balanced','clean','premium'].includes(String(response.page_style).toLowerCase())) {
                 setCurrentPageStyle(String(response.page_style).toLowerCase());
+            }
+            if (response.site_memory && typeof response.site_memory === 'object') {
+                setLunaSiteMemory(response.site_memory);
+                try { window.localStorage.setItem(lunaMemoryKey, JSON.stringify(response.site_memory)); } catch (_) {}
             }
             setPageAiOpen(false);
             setLunaStatus('Done');
@@ -3279,20 +3837,49 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             const universalOverlay = String(block?.universal_background_overlay || '').trim();
             const universalPosition = String(block?.universal_background_position || 'center center').trim() || 'center center';
             const universalEnabled = Boolean(block?.universal_background_enabled && universalBackgroundUrl);
-            const universalStyle = universalEnabled ? {
-                backgroundImage: `${universalOverlay || 'linear-gradient(rgba(15,23,42,.55),rgba(15,23,42,.55))'}, url("${universalBackgroundUrl.replace(/"/g,'&quot;')}")`,
-                backgroundSize: 'cover',
-                backgroundPosition: universalPosition,
-                backgroundRepeat: 'no-repeat',
-            } : undefined;
+            const design = block?.luna_design_overrides || {};
+            const blockType=String(block?.type||'').toLowerCase();
+            const heroNeedsDefaultPadding=(index===0 || /hero|banner/.test(blockType))
+                && !/fullscreen|cinematic/.test(blockType)
+                && design.section_padding_y==null;
+            const clampNumber=(value,min,max,fallback)=>{
+                const number=Number(value);
+                return Number.isFinite(number)?Math.max(min,Math.min(max,number)):fallback;
+            };
+            const designVars = {
+                ...(universalEnabled ? {
+                    backgroundImage: `${universalOverlay || 'linear-gradient(rgba(15,23,42,.55),rgba(15,23,42,.55))'}, url("${universalBackgroundUrl.replace(/"/g,'&quot;')}")`,
+                    backgroundSize: 'cover',
+                    backgroundPosition: universalPosition,
+                    backgroundRepeat: 'no-repeat',
+                } : {}),
+                ...(design.heading_size!=null?{'--luna-heading-size':`${clampNumber(design.heading_size,20,112,52)}px`}:{}),
+                ...(design.body_size!=null?{'--luna-body-size':`${clampNumber(design.body_size,12,26,16)}px`}:{}),
+                ...(design.heading_line_height!=null?{'--luna-heading-line':clampNumber(design.heading_line_height,.88,1.6,1.05)}:{}),
+                ...(design.body_line_height!=null?{'--luna-body-line':clampNumber(design.body_line_height,1.15,2,1.55)}:{}),
+                ...(design.letter_spacing!=null?{'--luna-letter-spacing':`${clampNumber(design.letter_spacing,-2,8,0)}px`}:{}),
+                ...(design.section_padding_y!=null
+                    ? {'--luna-section-py':`${clampNumber(design.section_padding_y,0,200,72)}px`}
+                    : heroNeedsDefaultPadding
+                        ? {'--luna-section-py':'100px','--luna-section-py-tablet':'76px','--luna-section-py-mobile':'56px'}
+                        : {}),
+                ...(design.section_padding_x!=null?{'--luna-section-px':`${clampNumber(design.section_padding_x,0,120,24)}px`}:{}),
+                ...(design.content_gap!=null?{'--luna-content-gap':`${clampNumber(design.content_gap,0,96,24)}px`}:{}),
+                ...(design.card_radius!=null?{'--luna-card-radius':`${clampNumber(design.card_radius,0,64,16)}px`}:{}),
+                ...(design.image_radius!=null?{'--luna-image-radius':`${clampNumber(design.image_radius,0,64,16)}px`}:{}),
+                ...(design.content_max_width!=null?{'--luna-content-max':`${clampNumber(design.content_max_width,560,1800,1280)}px`}:{}),
+                ...(design.section_min_height!=null?{'--luna-section-min-height':`${clampNumber(design.section_min_height,0,1200,0)}px`}:{}),
+                ...(['left','center','right'].includes(design.text_align)?{'--luna-text-align':design.text_align}:{}),
+            };
 
             return (
                 <div
                     key={block._renderKey || index}
                     data-cosmic-universal-background={universalEnabled ? '1' : undefined}
                     data-cosmic-background-state={block?.universal_background_state || resolvedTheme || undefined}
-                    className={universalEnabled ? 'cosmic-universal-background-host' : undefined}
-                    style={universalStyle}
+                    data-luna-design={(Object.keys(design).length || heroNeedsDefaultPadding) ? '1' : undefined}
+                    className={`${universalEnabled ? 'cosmic-universal-background-host ' : ''}${(Object.keys(design).length || heroNeedsDefaultPadding) ? 'cosmic-luna-design-host' : ''}`}
+                    style={designVars}
                 >
                     <Component {...blockProps} />
                 </div>
@@ -3424,7 +4011,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
   title="Ask Luna about this website"
 ><span className="text-lg" aria-hidden="true">✦</span> Ask Luna</button>}
 
-{aiOnlyBuilder && lunaChatOpen && <div className="fixed bottom-6 right-6 z-[970] flex max-h-[72vh] w-[420px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-violet-300/20 bg-[#111318]/95 text-white shadow-2xl backdrop-blur-xl">
+{aiOnlyBuilder && lunaChatOpen && <div className="fixed bottom-4 right-4 z-[970] flex h-[calc(100dvh-2rem)] max-h-[940px] min-h-[620px] w-[440px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border border-violet-300/20 bg-[#111318]/95 text-white shadow-2xl backdrop-blur-xl">
   <div className="flex items-start justify-between border-b border-white/10 px-4 py-3">
     <div>
       <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-300">✦ Luna · {lunaScope.type==='section'?'Selected Section':'Whole Page'}</p>
@@ -3438,27 +4025,121 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
   <div className="px-4 pt-4">
     <div className="rounded-xl border border-violet-300/10 bg-violet-400/[0.06] px-3 py-2 text-xs leading-5 text-slate-400">
       {lunaScope.type==='section'
-        ? 'Luna is focused on this section. Ask for a new layout, video, different style, content, or another section below it.'
+        ? (isLunaVideoSection
+            ? 'Video section selected. Replace the video directly below, or ask Luna for a supported content/layout change.'
+            : 'Luna is focused on this section. Ask for content, media, layout, or another supported design change.')
         : 'Luna is looking at the whole page. Ask for site-wide design, theme, structure, or content changes.'}
     </div>
   </div>
-  <div className="max-h-64 space-y-2 overflow-y-auto px-4 pt-3">
-    {lunaMessages.length ? lunaMessages.slice(-12).map((message,i)=><div key={`${i}-${message.text}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}><div className="max-w-[86%]"><div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'?'bg-violet-500 text-white':'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div>{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Continue · {message.confirmation.cost} credits</button><button type="button" onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5">Cancel</button></div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
+  <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pt-3 pb-2">
+    {lunaMessages.length ? lunaMessages.slice(-12).map((message,i)=><div key={`${i}-${message.text}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}><div className="max-w-[86%]"><div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'
+    ?'bg-violet-500 text-white'
+    :message.role==='context'
+        ?'border border-emerald-300/20 bg-emerald-500/70 text-white'
+        :'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div>{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Continue · {message.confirmation.cost} credits</button><button type="button" onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5">Cancel</button></div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
     {pageAiBusy?<div className="flex items-center gap-2 text-xs font-semibold text-violet-300"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-300"/>{lunaStatus}</div>:null}
     <div ref={lunaMessagesEndRef} aria-hidden="true" className="h-px" />
   </div>
-  <div className="p-4">
+  <div className="shrink-0 border-t border-white/10 p-4">
     {lunaElementTarget ? <div className="mb-2 flex items-center justify-between rounded-lg border border-violet-400/20 bg-violet-500/10 px-3 py-2 text-[11px]">
       <span className="font-semibold text-violet-200">Selected {lunaElementTarget.type}{lunaElementTarget.currentValue ? ` · ${lunaElementTarget.currentValue.slice(0,54)}${lunaElementTarget.currentValue.length>54?'…':''}` : ''}</span>
       <button type="button" onClick={()=>{setLunaElementTarget(null);setPageAiPrompt('');}} className="text-slate-500 hover:text-white">×</button>
     </div> : null}
-    {(String(lunaElementTarget?.type||'').includes('image') || lunaElementTarget?.type==='logo') ? <button
-      type="button"
-      onClick={()=>setLunaMediaLibraryOpen(true)}
-      className="mb-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 hover:border-violet-300/30 hover:text-white"
-    >
-      <span aria-hidden="true">▣</span> Choose from Media Library
-    </button> : null}
+    {lunaElementTarget && ['heading','text','label','button'].includes(String(lunaElementTarget.type||'').toLowerCase()) ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Direct edit · 0 credits</p>
+      {String(lunaElementTarget.type||'').toLowerCase()==='text' && String(lunaDirectText||'').length>90
+        ? <textarea value={lunaDirectText} onChange={e=>setLunaDirectText(e.target.value)} rows={4}
+            className="w-full resize-y rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs leading-5 text-white outline-none focus:border-emerald-300/40"/>
+        : <input value={lunaDirectText} onChange={e=>setLunaDirectText(e.target.value)}
+            className="w-full rounded-full border border-white/10 bg-black/25 px-3 py-2 text-xs text-white outline-none focus:border-emerald-300/40"/>}
+      {String(lunaElementTarget.type||'').toLowerCase()==='button' ? <input value={lunaDirectLink} onChange={e=>setLunaDirectLink(e.target.value)}
+          placeholder="Button URL"
+          className="mt-2 w-full rounded-full border border-white/10 bg-black/25 px-3 py-2 text-xs text-white outline-none focus:border-emerald-300/40"/> : null}
+      <div className="mt-2 flex justify-end"><button type="button" onClick={saveLunaDirectElement}
+        className="rounded-full bg-emerald-500 px-4 py-2 text-xs font-bold text-white hover:bg-emerald-400">Save</button></div>
+    </div> : null}
+
+    {lunaScope.type==='section' && !lunaElementTarget && lunaSmartSectionSuggestions.length ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">✦ Luna suggests</p>
+          <p className="mt-1 text-[11px] leading-4 text-slate-400">These fit the current page flow. Choose where to add one.</p>
+        </div>
+        <button type="button" onClick={lunaSurpriseSection} disabled={Boolean(lunaSmartSectionBusy)}
+          className="shrink-0 rounded-full border border-violet-300/20 bg-violet-500/10 px-3 py-1.5 text-[10px] font-bold text-violet-200 hover:bg-violet-500/20 disabled:opacity-40">✦ Surprise me</button>
+      </div>
+      <div className="mt-3 space-y-2">
+        {lunaSmartSectionSuggestions.map((suggestion)=><div key={suggestion.category} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/15 px-3 py-2">
+          <span className="min-w-0 truncate text-[11px] font-semibold text-slate-200">Add {suggestion.label}</span>
+          <div className="flex shrink-0 gap-1.5">
+            <button type="button" disabled={Boolean(lunaSmartSectionBusy)}
+              onClick={()=>lunaInsertSuggestedSection(suggestion,'above')}
+              className="rounded-full border border-white/10 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 hover:border-emerald-300/30 hover:text-white disabled:opacity-35">
+              {lunaSmartSectionBusy===`${suggestion.category}:above`?'Adding…':'↑ Above'}
+            </button>
+            <button type="button" disabled={Boolean(lunaSmartSectionBusy)}
+              onClick={()=>lunaInsertSuggestedSection(suggestion,'below')}
+              className="rounded-full bg-emerald-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-emerald-400 disabled:opacity-35">
+              {lunaSmartSectionBusy===`${suggestion.category}:below`?'Adding…':'↓ Below'}
+            </button>
+          </div>
+        </div>)}
+      </div>
+      <p className="mt-2 text-[10px] leading-4 text-slate-500">Suggestions avoid obvious duplicates and use registered export-safe Sparks.</p>
+    </div> : null}
+
+    {lunaScope.type==='section' && !lunaElementTarget && selectedRepeater ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
+      <div className="flex items-center justify-between gap-3">
+        <div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Listing controls · 0 credits</p>
+        <p className="mt-1 text-[11px] text-slate-400">{selectedRepeater.items.length} items · current layout preserved</p></div>
+        <div className="flex gap-2">
+          <button type="button" onClick={()=>mutateSelectedRepeater('remove')} disabled={selectedRepeater.items.length<=1}
+            className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-30">− Remove last</button>
+          <button type="button" onClick={()=>mutateSelectedRepeater('add')}
+            className="rounded-full bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-400">+ Add item</button>
+        </div>
+      </div>
+      <p className="mt-2 text-[10px] leading-4 text-slate-500">For relevant/generated items, ask Luna e.g. “add 3 more relevant services.”</p>
+    </div> : null}
+
+    {isLunaVideoSection ? <div className="mb-3 rounded-xl border border-violet-300/15 bg-violet-500/[0.06] p-3">
+      <div className="flex flex-wrap items-center gap-2">
+        {!trialMode ? <button type="button" disabled={!website?.id || pageAiBusy}
+          onClick={()=>{setLunaMediaLibraryKind('video');setLunaMediaLibraryOpen(true);}}
+          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-[11px] font-semibold text-slate-200 hover:border-violet-300/35 hover:text-white disabled:opacity-40">
+          <span aria-hidden="true">▣</span> Media Library
+        </button> : null}
+        <span className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">or video URL</span>
+      </div>
+      <div className="mt-2 flex gap-2">
+        <input value={lunaDirectVideoUrl} onChange={e=>setLunaDirectVideoUrl(e.target.value)}
+          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();submitDirectLunaVideoUrl();}}}
+          placeholder="YouTube, Vimeo, MP4 or WebM URL"
+          className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/25 px-3 py-2 text-xs text-white outline-none focus:border-violet-300/40" />
+        <button type="button" onClick={submitDirectLunaVideoUrl} disabled={pageAiBusy||!lunaDirectVideoUrl.trim()}
+          className="rounded-full bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">Go</button>
+      </div>
+      <p className="mt-2 text-[10px] leading-4 text-slate-500">Direct replacement updates immediately · 0 credits</p>
+    </div> : null}
+    {(String(lunaElementTarget?.type||'').includes('image') || lunaElementTarget?.type==='logo') ? (
+      trialMode
+        ? <button
+            type="button"
+            disabled={pageAiBusy}
+            onClick={()=>lunaElementTarget?.type==='logo' ? logoUploadRef.current?.click?.() : lunaImageUploadRef.current?.click?.()}
+            className="mb-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 hover:border-violet-300/30 hover:text-white disabled:opacity-40"
+          >
+            <span aria-hidden="true">↑</span> {lunaElementTarget?.type==='logo' ? 'Upload Logo' : 'Upload Image'}
+          </button>
+        : <button
+            type="button"
+            disabled={!website?.id}
+            onClick={()=>{ if(website?.id) { setLunaMediaLibraryKind('image'); setLunaMediaLibraryOpen(true); } else showCosmicNotification({title:'Media Library unavailable',message:'Website context is missing. Reload the Builder and try again.',tone:'error'}); }}
+            className="mb-2 inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 hover:border-violet-300/30 hover:text-white disabled:opacity-40"
+          >
+            <span aria-hidden="true">▣</span> Choose from Media Library
+          </button>
+    ) : null}
     <textarea
       ref={lunaPromptRef}
       value={pageAiPrompt}
@@ -3473,9 +4154,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
     {pageAiError?<div className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{pageAiError}</div>:null}
     <div className="mt-3 flex items-center justify-between">
       {lunaScope.type==='section'
-        ? <button type="button" onClick={()=>{setLunaElementTarget(null);setLunaScope({type:'page',blockIndex:null,label:'Whole Page'});}} className="text-[11px] font-semibold text-slate-500 hover:text-violet-200">Switch to Whole Page</button>
+        ? <button type="button" onClick={()=>{setLunaElementTarget(null);setLunaDirectText('');setLunaDirectLink('');setLunaDirectVideoUrl('');setLunaScope({type:'page',blockIndex:null,label:'Whole Page'});}} className="text-[11px] font-semibold text-slate-500 hover:text-violet-200">Switch to Whole Page</button>
         : <span className="text-[11px] text-slate-600">AI-only Builder</span>}
-      <button type="button" onClick={sendPageAiRequest} disabled={pageAiBusy||!pageAiPrompt.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Working…':'Send'}</button>
+      <button type="button" onClick={()=>sendPageAiRequest()} disabled={pageAiBusy||!pageAiPrompt.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Working…':'Send'}</button>
     </div>
   </div>
 </div>}
@@ -3494,7 +4175,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
     {pageAiError?<div className="mt-3 rounded-lg bg-rose-500/10 px-3 py-2 text-xs text-rose-300">{pageAiError}</div>:null}
     <div className="mt-4 flex justify-end gap-2">
       <button type="button" onClick={()=>setPageAiOpen(false)} disabled={pageAiBusy} className="rounded-lg border border-white/10 px-3 py-2 text-xs font-bold text-slate-300 disabled:opacity-40">Cancel</button>
-      <button type="button" onClick={sendPageAiRequest} disabled={pageAiBusy||!pageAiPrompt.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Updating page…':'Apply with Cosmic AI'}</button>
+      <button type="button" onClick={()=>sendPageAiRequest()} disabled={pageAiBusy||!pageAiPrompt.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Updating page…':'Apply with Cosmic AI'}</button>
     </div>
   </div>
 </div>}
@@ -3827,6 +4508,16 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                         }
                         .cosmic-builder-spark .grid > * { min-width: 0; }
                         .cosmic-builder-spark :is(input,select,textarea,button) { max-width: 100%; }
+                        /* Cosmic default CTA contract: rounded by default in trial + registered builders. */
+                        .cosmic-builder-spark :is(button,a,[role="button"],[data-cosmic-luna-display="button"]) { border-radius: 100px !important; }
+                        .cosmic-builder-spark [data-cosmic-luna-display="button"] { border-radius: 100px !important; overflow: hidden; }
+                        .cosmic-luna-hover-trigger {
+                            position:absolute; z-index:85; display:grid; place-items:center; width:34px; height:34px;
+                            border:1px solid rgba(255,255,255,.28); border-radius:9999px !important;
+                            background:linear-gradient(135deg,#7c3aed,#6d28d9); color:#fff; box-shadow:0 10px 28px rgba(76,29,149,.32);
+                            opacity:0; transform:scale(.92); pointer-events:none; transition:opacity .15s ease,transform .15s ease;
+                        }
+                        .cosmic-builder-spark:hover > .cosmic-luna-hover-trigger { opacity:1; transform:scale(1); pointer-events:auto; }
                         @media (min-width: 640px) {
                             .cosmic-builder-spark > section {
                                 padding-top: 80px !important;
@@ -3905,49 +4596,45 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                             <div
                                 data-custom-spark-key={block.custom_spark_key || undefined}
                                 data-luna-section-index={index}
+                                onMouseMove={(event)=>{
+                                    const root=event.currentTarget;
+                                    const target=event.target instanceof Element ? event.target : null;
+                                    if(!target || target.closest('input,textarea,select,[contenteditable="true"]')) return;
+                                    const explicit=target.closest('[data-luna-target]');
+                                    const semantic=explicit || target.closest('h1,h2,h3,h4,h5,h6,p,button,a,img,[role="button"]');
+                                    const node=semantic && root.contains(semantic) ? semantic : root;
+                                    const tag=node===root ? '' : (node.tagName?.toLowerCase?.()||'');
+                                    const explicitType=node===root ? '' : String(node.getAttribute?.('data-luna-target')||'');
+                                    const type=node===root ? 'section' : (explicitType || (/^h[1-6]$/.test(tag)?'heading':tag==='img'?'image':(tag==='button'||tag==='a'||node.getAttribute('role')==='button')?'button':'text'));
+                                    const imageNode=type.includes('image') ? (tag==='img'?node:node.querySelector?.('img')) : null;
+                                    const currentValue=type.includes('image') ? String(imageNode?.getAttribute?.('src')||'') : (type==='section' ? '' : String(node.textContent||'').trim().slice(0,1200));
+                                    const url=tag==='a'?String(node.getAttribute('href')||''):'';
+                                    const rr=root.getBoundingClientRect(); const nr=node.getBoundingClientRect();
+                                    const top=Math.max(8,Math.min(root.clientHeight-42,(node===root?12:nr.top-rr.top+8)));
+                                    const left=Math.max(8,Math.min(root.clientWidth-42,(node===root?root.clientWidth-46:nr.right-rr.left-26)));
+                                    setLunaHoverTarget((current)=> current && current.blockIndex===index && current.type===type && current.currentValue===currentValue && Math.abs(current.top-top)<2 && Math.abs(current.left-left)<2 ? current : {blockIndex:index,type,currentValue,url,top,left});
+                                }}
+                                onMouseLeave={()=>setLunaHoverTarget((current)=>current?.blockIndex===index?null:current)}
                                 onClick={(event)=>{
                                     const target=event.target instanceof Element ? event.target : null;
-                                    if(!target)return;
-                                    if(target.closest('[data-luna-target]'))return;
-
-                                    const semantic=target.closest('h1,h2,h3,h4,h5,h6,p,button,a,img,[role="button"]');
-                                    if(semantic){
-                                        const tag=semantic.tagName?.toLowerCase?.()||'';
-                                        const type=/^h[1-6]$/.test(tag)?'heading'
-                                            : tag==='img'?'image'
-                                            : (tag==='button'||tag==='a'||semantic.getAttribute('role')==='button')?'button'
-                                            :'text';
-                                        const currentValue=type==='image'
-                                            ? String(semantic.getAttribute('src')||'')
-                                            : String(semantic.textContent||'').trim().slice(0,1200);
-                                        const url=(tag==='a')?String(semantic.getAttribute('href')||''):'';
-                                        setLunaScope({type:'section',blockIndex:index,label:`${type.charAt(0).toUpperCase()+type.slice(1)} · Section ${index+1}`});
-                                        setLunaElementTarget({type,currentValue,url});
-                                        setPageAiError('');
-                                        if(type==='image'){
-                                            setPageAiPrompt('');
-                                            setLunaMessages((messages)=>[...messages,{role:'assistant',text:'What would you like to do with this image? Describe a replacement, generate a custom image, or choose one from your Media Library.'}]);
-                                        }else{
-                                            setPageAiPrompt(`What would you like to change about this ${type}?`);
-                                        }
-                                        setLunaChatOpen(true);
-                                        window.requestAnimationFrame(()=>{lunaPromptRef.current?.focus?.();if(type!=='image')lunaPromptRef.current?.select?.();});
-                                        event.preventDefault();
-                                        return;
-                                    }
-
-                                    if(target.closest('input,textarea,select,[contenteditable="true"]'))return;
-                                    setLunaElementTarget(null);
-                                    setLunaScope({type:'section',blockIndex:index,label:BlockRegistry[block.type]?.schema?.title || block.heading || 'Selected Section'});
-                                    setPageAiError('');
-                                    setPageAiPrompt('What would you like to change about this section?');
-                                    setLunaChatOpen(true);
-                                    window.requestAnimationFrame(()=>{lunaPromptRef.current?.focus?.();lunaPromptRef.current?.select?.();});
+                                    if(target?.closest('a')) event.preventDefault();
+                                    // Normal clicks no longer open Luna. Use the violet hover icon instead.
                                 }}
-                                className={`cosmic-builder-spark cursor-pointer group-hover:ring-2 group-hover:ring-violet-500/40 transition-all duration-500 ${lunaScope.type==='section' && lunaScope.blockIndex===index ? 'ring-2 ring-violet-500/70' : ''} ${layoutApplying === index ? "scale-[0.997] opacity-80 ring-2 ring-violet-400/40" : "opacity-100"}`}
+                                className={`cosmic-builder-spark cursor-default group-hover:ring-2 group-hover:ring-violet-500/20 transition-all duration-500 ${lunaScope.type==='section' && lunaScope.blockIndex===index ? 'ring-2 ring-violet-500/70' : ''} ${layoutApplying === index ? "scale-[0.997] opacity-80 ring-2 ring-violet-400/40" : "opacity-100"}`}
                             >
 
                                 {renderBlock(block,index)}
+                                {lunaHoverTarget?.blockIndex===index && (
+                                    <button
+                                        type="button"
+                                        className="cosmic-luna-hover-trigger"
+                                        style={{ top:`${lunaHoverTarget.top}px`, left:`${lunaHoverTarget.left}px` }}
+                                        title={`Ask Luna about this ${lunaHoverTarget.type}`}
+                                        aria-label={`Ask Luna about this ${lunaHoverTarget.type}`}
+                                        onMouseMove={(event)=>event.stopPropagation()}
+                                        onClick={(event)=>{ event.preventDefault(); event.stopPropagation(); openLunaHoverTarget(lunaHoverTarget); }}
+                                    >✦</button>
+                                )}
 
                             </div>
 
@@ -4502,20 +5189,47 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 </div>
             )}
 
-            <MediaPickerModal
+            {aiOnlyBuilder && trialMode ? (<>
+                <input
+                    ref={logoUploadRef}
+                    type="file"
+                    accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp"
+                    onChange={uploadTrialLogo}
+                    className="hidden"
+                />
+                <input
+                    ref={lunaImageUploadRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/gif,image/webp,image/avif,image/heic,image/heif"
+                    onChange={uploadTrialLunaImage}
+                    className="hidden"
+                />
+            </>) : null}
+
+            {!trialMode ? <MediaPickerModal
                 open={lunaMediaLibraryOpen}
                 websiteId={website?.id}
-                title={lunaElementTarget?.type==='logo' ? 'Choose a logo for Luna' : 'Choose an image for Luna'}
-                kind={lunaElementTarget?.type==='logo' ? 'logo' : 'image'}
+                title={lunaMediaLibraryKind==='video' ? 'Choose a video for this section' : (lunaElementTarget?.type==='logo' ? 'Choose a logo for Luna' : 'Choose an image for Luna')}
+                kind={lunaMediaLibraryKind==='video' ? 'video' : (lunaElementTarget?.type==='logo' ? 'logo' : 'image')}
                 onClose={() => setLunaMediaLibraryOpen(false)}
                 onSelect={(asset) => {
                     if (!asset?.url) return;
                     setLunaMediaLibraryOpen(false);
+                    if(lunaMediaLibraryKind==='video'){
+                        if(applyDirectLunaVideoUrl(asset.url)){
+                            setPageAiError('');
+                            setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Video selected from your Media Library. · 0 credits'}]);
+                            showCosmicNotification({title:'Video updated',message:'Media Library video applied to this section.',tone:'success',mode:'toast',duration:2600});
+                        }else{
+                            setPageAiError('This section does not expose a background video slot.');
+                        }
+                        return;
+                    }
                     applyLunaMediaAsset(asset);
                 }}
-            />
+            /> : null}
 
-            <MediaPickerModal
+            {!trialMode ? <MediaPickerModal
                 open={logoMediaLibraryOpen}
                 websiteId={website?.id}
                 title="Choose a logo from Media Library"
@@ -4526,7 +5240,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                     setLogoMediaLibraryOpen(false);
                     openLogoCrop(asset.url, logoCompanyName || data.global_header?.logo_text || website?.name, { sourceKind:'upload' });
                 }}
-            />
+            /> : null}
 
             {!aiOnlyBuilder && showLogoModal && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm">

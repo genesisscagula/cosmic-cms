@@ -14,6 +14,7 @@ use App\Services\IndustryResolver;
 use App\Services\MyBrandThemeService;
 use App\Services\TrialBrandContextService;
 use App\Services\InitialTrialLogoService;
+use App\Services\LunaPexelsVideoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -74,7 +75,8 @@ class TrialGenerationController extends Controller
         private readonly IndustryResolver $industryResolver,
         private readonly MyBrandThemeService $myBrandThemes,
         private readonly TrialBrandContextService $trialBrandContext,
-        private readonly InitialTrialLogoService $initialTrialLogo
+        private readonly InitialTrialLogoService $initialTrialLogo,
+        private readonly LunaPexelsVideoService $lunaVideos
     ) {
     }
 
@@ -185,6 +187,7 @@ class TrialGenerationController extends Controller
             Log::info('[TrialGeneration] Starting synchronous trial generation.', ['trial' => $trial->id]);
 
             $generated = $this->pageGenerationService->generateTrialPage($generationPrompt, $trial->id);
+            $generated['blocks'] = $this->lunaVideos->apply($generationPrompt, $generated['blocks'] ?? []);
 
             Log::info('[TrialGeneration] AI generation completed.', [
                 'trial' => $trial->id,
@@ -476,13 +479,17 @@ class TrialGenerationController extends Controller
         // from (for example) a cruise company to an AI SaaS without stale brand data.
         $profile = $this->profileFromPrompt($validated['prompt']);
         $profile['prompt'] = $validated['prompt'];
-        $freshThemeSettings = $this->myBrandThemes->ensureInSettings(
-            $this->regenerationThemeForPrompt(
-                $profile['industry'],
-                $validated['prompt'],
-                (string) data_get($trial->preview_theme, 'primary', '')
+        // Theme is a website-level decision. Full regeneration keeps the established
+        // family unless the visitor explicitly asks for a new color/theme direction.
+        $freshThemeSettings = $this->promptRequestsThemeChange($validated['prompt'])
+            ? $this->myBrandThemes->ensureInSettings(
+                $this->regenerationThemeForPrompt(
+                    $profile['industry'],
+                    $validated['prompt'],
+                    (string) data_get($trial->preview_theme, 'primary', '')
+                )
             )
-        );
+            : (array) $trial->preview_theme;
         $freshMenuStructure = IndustryMenuRegistry::for($profile['industry']);
         $freshBrandContext = $this->trialBrandContext->build($profile, $validated['prompt']);
 
@@ -518,6 +525,7 @@ class TrialGenerationController extends Controller
                     'nonce' => (string) Str::uuid(),
                 ]
             );
+            $generated['blocks'] = $this->lunaVideos->apply($this->buildPrompt($profile), $generated['blocks'] ?? []);
             // A full trial regeneration also returns to the safe, clean default.
             // Luna's visual-intent overlay suggestion is intentionally ignored
             // for trial generations; the visitor can opt in again from Builder.
@@ -810,4 +818,18 @@ class TrialGenerationController extends Controller
             'auto' => true,
         ];
     }
+    private function promptRequestsThemeChange(string $prompt): bool
+    {
+        $p = Str::lower($prompt);
+
+        return Str::contains($p, [
+            'change the theme', 'change theme', 'new theme', 'different theme',
+            'change the color', 'change color', 'colour palette', 'color palette',
+            'new palette', 'different palette', 'make it green', 'make it blue',
+            'make it purple', 'make it violet', 'make it terracotta', 'make it dark',
+            'emerald theme', 'navy theme', 'indigo theme', 'midnight theme',
+            'terracotta theme', 'violet theme', 'ocean theme', 'forest theme',
+        ]);
+    }
+
 }

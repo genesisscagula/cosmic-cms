@@ -14,6 +14,7 @@ use App\Services\TrialRemoteImageService;
 use App\Services\AiPageGenerationService;
 use App\Services\CreditService;
 use App\Services\LunaCategoryPageService;
+use App\Services\LunaPexelsVideoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -29,6 +30,7 @@ class AIController extends Controller
         private readonly MediaAssetLifecycleService $mediaAssets,
         private readonly TrialRemoteImageService $remoteImages,
         private readonly LunaCategoryPageService $lunaCategoryPages,
+        private readonly LunaPexelsVideoService $lunaVideos,
     ) {
     }
 
@@ -61,6 +63,25 @@ class AIController extends Controller
         );
 
         $generationType = $validated['generation_type'] ?? (count($validated['sections']) > 1 ? 'page' : 'section');
+        // Luna chooses the website color family once: on the first real page build.
+        // Existing websites keep their saved theme unless the user explicitly asks
+        // for a color/theme change through the dedicated theme controls/Luna flow.
+        $firstBuildTheme = null;
+        if ($website && $generationType === 'page' && $this->isFirstWebsiteBuild($website)) {
+            $firstBuildTheme = $this->themeForFirstBuildPrompt($validated['prompt']);
+            $settings = (array) ($website->theme_settings ?? []);
+            $settings['primary'] = $firstBuildTheme;
+            $settings['secondary'] = $settings['secondary'] ?? 'white';
+            $settings['tertiary'] = $settings['tertiary'] ?? 'stone';
+            $settings['auto'] = true;
+            $website->forceFill(['theme_settings' => $settings])->save();
+            $website->setAttribute('theme_settings', $settings);
+
+            Log::info('[LunaTheme] First-build website theme selected.', [
+                'website_id' => $website->id,
+                'theme' => $firstBuildTheme,
+            ]);
+        }
         $cost = match ($generationType) {
             'page' => ActionPricing::GENERATE_PAGE,
             'template' => ActionPricing::TEMPLATE_AI_PERSONALIZE,
@@ -112,11 +133,15 @@ class AIController extends Controller
                     }
                 }
 
+                $blocks = $this->lunaVideos->apply($generationPrompt, $blocks);
+
                 return response()->json([
                     'blocks' => $blocks,
                     'generation_meta' => ['mode' => 'luna_category_schema', 'custom_ui' => true],
                     'credits_spent' => $cost,
                     'credit_balance' => $this->credits->balance($request->user()),
+                    'website_theme' => $firstBuildTheme,
+                    'theme_selected_on_first_build' => $firstBuildTheme !== null,
                     'builder_protection' => [
                         'global_shell' => 'preserved',
                         'navigation' => 'preserved',
@@ -173,11 +198,15 @@ class AIController extends Controller
                 }
             }
 
+            $blocks = $this->lunaVideos->apply($generationPrompt, $blocks);
+
             return response()->json([
                 'blocks' => $blocks,
                 'generation_meta' => $generation['diagnostics'],
                 'credits_spent' => $cost,
                 'credit_balance' => $this->credits->balance($request->user()),
+                'website_theme' => $firstBuildTheme,
+                'theme_selected_on_first_build' => $firstBuildTheme !== null,
                 'builder_protection' => [
                     'global_shell' => 'preserved',
                     'navigation' => 'preserved',
@@ -273,7 +302,7 @@ TEXT;
             ."Content quantity does not determine layout. Ten services do not automatically become ten cards. Choose the most elegant presentation for the brand, audience, and industry. Think like a senior award-winning web designer and art director.\n"
             ."LUNA INDUSTRY ASSET INTELLIGENCE RULE: Identify the business industry before selecting imagery or visual direction. All generated media must match the business context, audience, and brand story. Never reuse unrelated assets from previous generations. Build visual keywords and avoid keywords before choosing images. For hospitality use destinations, rooms, dining, guests, and atmosphere. For construction use architecture, developments, materials, and projects. For restaurants use food, chefs, interiors, and dining experiences. Avoid unrelated subjects such as construction imagery for hotels or food imagery for professional services.\n"
             ."Use the registered Spark schemas as safe responsive/exportable building primitives, not as a reason to repeat the same page recipe. Vary hierarchy, visual pacing, media density, asymmetry, section transitions, and storytelling order. Existing manual Sparks remain available to the user separately.\n"
-            ."LUNA VIDEO EXPERIENCE RULE: Decide when the website benefits from cinematic video, testimonial video, product demo, project walkthrough, slider, or parallax experiences. Use video intentionally based on industry and conversion goals.\n"
+            ."LUNA VIDEO EXPERIENCE RULE: Decide when the website benefits from cinematic video, testimonial video, product demo, project walkthrough, slider, or parallax experiences. Use video intentionally based on industry and conversion goals. For video-capable Sparks, Cosmic will retrieve relevant landscape stock footage from Pexels after your content pass. Choose video Sparks only when motion materially improves the page; imagery continues through the Unsplash pipeline. Never invent remote video URLs.\n"
             ."LUNA BRAND SYSTEM: Act as the brand designer. Define a coherent color family using design tokens (primary, secondary, accent, background, surface, text, muted). Apply color theory based on industry and brand personality. Do not invent random colors per section; keep a unified brand system while allowing different section moods.";
     }
 
@@ -391,4 +420,38 @@ TEXT;
             )
         );
     }
+    /**
+     * A newly-created website may already contain a blank Home page. Treat it as
+     * "first build" until any standard page has actual Spark blocks.
+     */
+    private function isFirstWebsiteBuild(Website $website): bool
+    {
+        return ! $website->pages()
+            ->get(['blocks'])
+            ->contains(fn ($page) => is_array($page->blocks) && count($page->blocks) > 0);
+    }
+
+    /**
+     * Deterministic prompt-aware first-build palette. Luna selects from Cosmic's
+     * export-safe theme families; she does not invent arbitrary colors here.
+     */
+    private function themeForFirstBuildPrompt(string $prompt): string
+    {
+        $p = Str::lower($prompt);
+
+        return match (true) {
+            Str::contains($p, ['terracotta', 'earthy', 'warm clay', 'mediterranean', 'artisan']) => 'terracotta',
+            Str::contains($p, ['violet', 'purple', 'creative', 'futuristic', 'experimental']) => 'violet',
+            Str::contains($p, ['emerald', 'green', 'eco', 'sustainable', 'wellness', 'organic', 'farm', 'nature']) => 'emerald',
+            Str::contains($p, ['forest', 'outdoor', 'landscape', 'garden']) => 'forest',
+            Str::contains($p, ['ocean', 'coastal', 'beach', 'marine', 'travel', 'resort']) => 'ocean',
+            Str::contains($p, ['coffee', 'cafe', 'bakery', 'chocolate']) => 'coffee',
+            Str::contains($p, ['rose', 'beauty', 'salon', 'wedding', 'floral']) => 'rose',
+            Str::contains($p, ['finance', 'law', 'legal', 'corporate', 'investment']) => 'navy',
+            Str::contains($p, ['technology', 'saas', 'software', 'cyber', 'ai ', 'startup']) => 'indigo',
+            Str::contains($p, ['luxury', 'premium', 'cinematic', 'exclusive']) => 'obsidian',
+            default => ['midnight', 'emerald', 'navy', 'indigo', 'terracotta', 'violet', 'ocean'][abs(crc32($p)) % 7],
+        };
+    }
+
 }

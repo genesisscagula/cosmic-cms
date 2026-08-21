@@ -16,10 +16,10 @@ export const EditableImage = forwardRef(({
     useImperativeHandle(ref, () => ({ openEditor() {} }), []);
     const detail={type:isBackground?'background image':'image',currentValue:String(src||''),imageQuery:String(imageQuery||''),blockType:String(blockType||'')};
     if (!src) {
-        return <div data-cosmic-luna-display="image" data-luna-target="image" onClick={(event)=>selectLunaTarget(event,detail)} className={`${className || ''} cursor-pointer bg-slate-200/60`} style={style} />;
+        return <div data-cosmic-luna-display="image" data-luna-target="image" className={`${className || ''} bg-slate-200/60`} style={style} />;
     }
     return (
-        <div data-cosmic-luna-display="image" data-luna-target="image" onClick={(event)=>selectLunaTarget(event,detail)} className={`${isBackground ? '' : 'relative'} ${className || ''} cursor-pointer`} style={style}>
+        <div data-cosmic-luna-display="image" data-luna-target="image" className={`${isBackground ? '' : 'relative'} ${className || ''}`} style={style}>
             <img src={src} alt="" className="h-full w-full object-cover pointer-events-none" />
         </div>
     );

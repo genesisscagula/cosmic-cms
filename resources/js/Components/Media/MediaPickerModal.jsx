@@ -6,9 +6,13 @@ import { confirmCosmicAction, showCosmicNotification } from '../CosmicNotificati
 
 const sourceLabel = (source) => ({ upload:'Uploads', ai:'AI Generated', unsplash:'Unsplash', import:'Imported' }[source] || 'Media');
 
-const MEDIA_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/avif,image/heic,image/heif,image/svg+xml,.svg";
+const IMAGE_MEDIA_ACCEPT = "image/jpeg,image/png,image/gif,image/webp,image/avif,image/heic,image/heif,image/svg+xml,.svg";
+const VIDEO_MEDIA_ACCEPT = "video/mp4,video/webm,video/ogg,.mp4,.webm,.ogg";
 const isSvgAsset = (asset) => asset?.mime_type === "image/svg+xml" || String(asset?.extension || "").toLowerCase() === "svg";
-const isSupportedMediaFile = (file) => file?.type === "image/svg+xml" || String(file?.name || "").toLowerCase().endsWith(".svg") || file?.type?.startsWith("image/");
+const isSupportedMediaFile = (file, kind="image") => kind === "video"
+    ? Boolean(file?.type?.startsWith("video/") || /\.(mp4|webm|ogg)$/i.test(String(file?.name || "")))
+    : Boolean(file?.type === "image/svg+xml" || String(file?.name || "").toLowerCase().endsWith(".svg") || file?.type?.startsWith("image/"));
+const isVideoAsset = (asset) => String(asset?.mime_type || "").startsWith("video/") || /^(mp4|webm|ogg)$/i.test(String(asset?.extension || ""));
 
 export default function MediaPickerModal({ open, websiteId, onClose, onSelect, title = 'Choose from Media Library', multiple = false, kind = 'image' }) {
     const { props: pageProps } = usePage();
@@ -33,19 +37,20 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
         if (!resolvedWebsiteId || !open) return;
         setLoading(true);
         try {
-            const params = { per_page: 120, sort: 'newest' };
+            const params = { per_page: 120, sort: 'newest', kind };
             if (folderId !== undefined) params.folder_id = folderId || '';
             if (source) params.source = source;
             if (search.trim()) params.search = search.trim();
             const response = await axios.get(`/websites/${resolvedWebsiteId}/media-library`, { params, headers: { Accept: 'application/json' } });
             setFolders(response.data?.folders || []);
-            setAssets(response.data?.assets?.data || []);
+            const incoming=response.data?.assets?.data || [];
+            setAssets(kind==='video' ? incoming.filter(isVideoAsset) : incoming.filter((asset)=>!isVideoAsset(asset)));
         } catch (error) {
             showCosmicNotification({ title:'Media Library unavailable', message:error.response?.data?.message || 'Could not load media.', tone:'error' });
         } finally { setLoading(false); }
     };
 
-    useEffect(() => { if (open) { setSelected([]); load(); } }, [open, resolvedWebsiteId, folderId, source]);
+    useEffect(() => { if (open) { setSelected([]); load(); } }, [open, resolvedWebsiteId, folderId, source, kind]);
     useEffect(() => {
         if (open && !resolvedWebsiteId) {
             showCosmicNotification({ title:'Media Library unavailable', message:'This section is missing its website context. Close and reopen the Builder, then try again.', tone:'error' });
@@ -192,17 +197,21 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
         event.dataTransfer.setData('text/plain', `${selectedIds.length} Cosmic media item(s)`);
         const ghost = document.createElement('div');
         ghost.style.cssText = 'position:fixed;left:-9999px;top:-9999px;width:48px;height:40px;border-radius:10px;overflow:hidden;background:#17171b;border:1px solid rgba(255,255,255,.18);box-shadow:0 10px 24px rgba(0,0,0,.45);pointer-events:none;';
-        const image = document.createElement('img');
-        image.src = asset.url; image.alt = ''; image.draggable = false;
-        image.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
-        ghost.appendChild(image);
+        if (isVideoAsset(asset)) {
+            ghost.innerHTML = '<div style="display:grid;place-items:center;width:100%;height:100%;font:700 12px system-ui;color:white;background:#17171b">VIDEO</div>';
+        } else {
+            const image = document.createElement('img');
+            image.src = asset.url; image.alt = ''; image.draggable = false;
+            image.style.cssText = 'width:100%;height:100%;object-fit:cover;display:block;';
+            ghost.appendChild(image);
+        }
         document.body.appendChild(ghost);
         event.dataTransfer.setDragImage(ghost, 24, 20);
         requestAnimationFrame(()=>setTimeout(()=>ghost.remove(), 0));
     };
 
     const uploadFiles = async (files) => {
-        const list = Array.from(files || []).filter(isSupportedMediaFile);
+        const list = Array.from(files || []).filter((file)=>isSupportedMediaFile(file, kind));
         if (!list.length) return;
         setUploading(true);
         try {
@@ -218,9 +227,9 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
             }
             await load();
             if (last && !multiple) setSelected([last]);
-            showCosmicNotification({ title:'Media uploaded', message:list.length === 1 ? 'Image added to the Media Library.' : `${list.length} images added to the Media Library.`, tone:'success' });
+            showCosmicNotification({ title:'Media uploaded', message:list.length === 1 ? `${kind==='video'?'Video':'Image'} added to the Media Library.` : `${list.length} ${kind==='video'?'videos':'images'} added to the Media Library.`, tone:'success' });
         } catch (error) {
-            showCosmicNotification({ title:'Upload failed', message:error.response?.data?.message || 'The image could not be uploaded.', tone:'error' });
+            showCosmicNotification({ title:'Upload failed', message:error.response?.data?.message || `The ${kind==='video'?'video':'image'} could not be uploaded.`, tone:'error' });
         } finally { setUploading(false); if(uploadRef.current) uploadRef.current.value=''; }
     };
 
@@ -228,7 +237,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
     return createPortal(<div className="cosmic-media-picker-overlay fixed inset-0 z-[1000200] flex items-center justify-center bg-slate-950/85 p-3 backdrop-blur-xl" onMouseDown={(e)=>{setFolderMenu(null);if(e.target===e.currentTarget)onClose?.();}}>
         <div className="cosmic-media-picker-modal flex h-[88vh] w-full max-w-6xl overflow-hidden rounded-3xl border border-white/10 bg-[#0b0b0f] shadow-2xl">
             <aside className="cosmic-media-picker-sidebar hidden w-64 shrink-0 border-r border-white/10 bg-white/[0.02] p-4 md:block">
-                <div className="mb-4"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-300">Cosmic Media</p><p className="mt-1 text-sm text-slate-500">Choose an existing image or upload a new one.</p></div>
+                <div className="mb-4"><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-violet-300">Cosmic Media</p><p className="mt-1 text-sm text-slate-500">{kind==='video' ? 'Choose an existing video or upload a new one.' : 'Choose an existing image or upload a new one.'}</p></div>
                 <div className="space-y-1">
                     <button type="button" onClick={()=>{setFolderId(undefined);setSource('');}} className={`w-full rounded-xl px-3 py-2 text-left text-sm ${folderId===undefined && !source?'bg-violet-500/15 text-violet-200':'text-slate-400 hover:bg-white/5'}`}>▦ All Media</button>
                     {[['upload','↑ Uploads'],['ai','✦ AI Generated'],['unsplash','◉ Unsplash']].map(([value,label])=><button key={value} type="button" onClick={()=>{setSource(value);setFolderId(undefined);}} className={`w-full rounded-xl px-3 py-2 text-left text-sm ${source===value?'bg-violet-500/15 text-violet-200':'text-slate-400 hover:bg-white/5'}`}>{label}</button>)}
@@ -251,12 +260,12 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
             </aside>
             <section className="cosmic-media-picker-content flex min-w-0 flex-1 flex-col">
                 <header className="border-b border-white/10 p-4 sm:p-5"><div className="flex items-start justify-between gap-4"><div><h2 className="text-lg font-bold text-white">{title}</h2><p className="mt-1 text-xs text-slate-500">{source ? sourceLabel(source) : folderId ? (folders.find((f)=>Number(f.id)===Number(folderId))?.name || 'Folder') : 'Media Library'}</p></div><button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/10 hover:text-white">✕</button></div>
-                    <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Search media…" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400"/><input ref={uploadRef} type="file" multiple accept={MEDIA_ACCEPT} className="hidden" onChange={(e)=>uploadFiles(e.target.files)}/><button type="button" disabled={uploading} onClick={()=>uploadRef.current?.click()} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{uploading?'Uploading…':'↑ Upload'}</button></div>
+                    <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Search media…" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400"/><input ref={uploadRef} type="file" multiple accept={kind==='video' ? VIDEO_MEDIA_ACCEPT : IMAGE_MEDIA_ACCEPT} className="hidden" onChange={(e)=>uploadFiles(e.target.files)}/><button type="button" disabled={uploading} onClick={()=>uploadRef.current?.click()} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{uploading?'Uploading…':'↑ Upload'}</button></div>
                 </header>
                 <div className="flex-1 overflow-y-auto p-4 sm:p-5" onDragOver={(e)=>{ const types=[...e.dataTransfer.types]; if (types.includes('Files') && !types.includes('application/x-cosmic-media')) e.preventDefault(); }} onDrop={(e)=>{ const types=[...e.dataTransfer.types]; if (types.includes('application/x-cosmic-media')) { e.preventDefault(); return; } if (types.includes('Files')) { e.preventDefault(); uploadFiles(e.dataTransfer.files); } }}>
-                    {loading ? <div className="grid h-full place-items-center text-sm text-slate-500">Loading media…</div> : assets.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{assets.map((asset)=>{const active=selected.some((item)=>item.uuid===asset.uuid);return <button key={asset.uuid} type="button" draggable onDragStart={(event)=>dragStart(event, asset)} onClick={()=>toggle(asset)} onDoubleClick={()=>{onSelect?.(multiple?[asset]:asset);onClose?.();}} className={`group cursor-grab overflow-hidden rounded-2xl border text-left transition active:cursor-grabbing ${active?'border-violet-400 ring-2 ring-violet-500/20':'border-white/10 hover:border-white/25'}`}><div className="aspect-square overflow-hidden bg-black/25"><img src={asset.url} draggable={false} alt={asset.alt_text || asset.original_name || ''} className={`h-full w-full transition duration-300 ${isSvgAsset(asset) ? "object-contain p-3" : "object-cover group-hover:scale-[1.02]"}`}/></div><div className="p-2.5"><p className="truncate text-xs font-semibold text-white">{asset.original_name}</p><p className="mt-1 truncate text-[10px] uppercase tracking-wide text-slate-600">{sourceLabel(asset.source)}</p></div></button>;})}</div> : <div className="grid h-full min-h-64 place-items-center rounded-2xl border border-dashed border-white/10 text-center"><div><div className="text-4xl">🖼️</div><p className="mt-3 text-sm font-semibold text-white">No images here yet</p><p className="mt-1 text-xs text-slate-500">Upload or generate media and it will appear here.</p></div></div>}
+                    {loading ? <div className="grid h-full place-items-center text-sm text-slate-500">Loading media…</div> : assets.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{assets.map((asset)=>{const active=selected.some((item)=>item.uuid===asset.uuid);return <button key={asset.uuid} type="button" draggable onDragStart={(event)=>dragStart(event, asset)} onClick={()=>toggle(asset)} onDoubleClick={()=>{onSelect?.(multiple?[asset]:asset);onClose?.();}} className={`group cursor-grab overflow-hidden rounded-2xl border text-left transition active:cursor-grabbing ${active?'border-violet-400 ring-2 ring-violet-500/20':'border-white/10 hover:border-white/25'}`}><div className="aspect-square overflow-hidden bg-black/25">{isVideoAsset(asset) ? <video src={asset.url} muted playsInline preload="metadata" className="h-full w-full object-cover"/> : <img src={asset.url} draggable={false} alt={asset.alt_text || asset.original_name || ''} className={`h-full w-full transition duration-300 ${isSvgAsset(asset) ? "object-contain p-3" : "object-cover group-hover:scale-[1.02]"}`}/>}</div><div className="p-2.5"><p className="truncate text-xs font-semibold text-white">{asset.original_name}</p><p className="mt-1 truncate text-[10px] uppercase tracking-wide text-slate-600">{sourceLabel(asset.source)}</p></div></button>;})}</div> : <div className="grid h-full min-h-64 place-items-center rounded-2xl border border-dashed border-white/10 text-center"><div><div className="text-4xl">🖼️</div><p className="mt-3 text-sm font-semibold text-white">{kind==='video' ? 'No videos here yet' : 'No images here yet'}</p><p className="mt-1 text-xs text-slate-500">Upload or generate media and it will appear here.</p></div></div>}
                 </div>
-                <footer className="flex items-center justify-between gap-3 border-t border-white/10 p-4"><p className="text-xs text-slate-500">{selected.length ? `${selected.length} selected` : 'Select an image to continue'}</p><div className="flex gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Cancel</button><button type="button" disabled={!selected.length} onClick={()=>{onSelect?.(multiple?selected:selected[0]);onClose?.();}} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40">Use {multiple?'Images':'Image'}</button></div></footer>
+                <footer className="flex items-center justify-between gap-3 border-t border-white/10 p-4"><p className="text-xs text-slate-500">{selected.length ? `${selected.length} selected` : (kind==='video' ? 'Select a video to continue' : 'Select an image to continue')}</p><div className="flex gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Cancel</button><button type="button" disabled={!selected.length} onClick={()=>{onSelect?.(multiple?selected:selected[0]);onClose?.();}} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40">Use {multiple ? (kind==='video' ? 'Videos' : 'Images') : (kind==='video' ? 'Video' : 'Image')}</button></div></footer>
             </section>
         </div>
 

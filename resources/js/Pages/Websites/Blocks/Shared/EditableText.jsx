@@ -15,8 +15,7 @@ export function EditableText({ value, className, style = undefined }) {
     return <span
         data-cosmic-luna-display="text"
         data-luna-target={kind}
-        className={`${className || ''} cursor-pointer`}
+        className={`${className || ''}`}
         style={style}
-        onClick={(event)=>selectLunaTarget(event,{type:kind,currentValue:String(value||'')})}
     >{value || 'Click to add text'}</span>;
 }
