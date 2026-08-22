@@ -383,14 +383,21 @@ PROMPT;
     - service_five_number
     - service_five_title
     - service_five_text
+    - service_six_number
+    - service_six_title
+    - service_six_text
+    - service_seven_number
+    - service_seven_title
+    - service_seven_text
+    - service_count
     - proof_value
     - proof_label
 
     Requirements:
 
-    - Write concise premium service copy with five distinct but complementary offers.
+    - Write seven distinct but complementary service options so the section can expand later. The application controls how many are visible with service_count; fresh builds default to 5.
     - Make the featured service the most strategic or commercially important offer.
-    - Keep service numbers short and sequential.
+    - Keep service numbers short and sequential from 01 through 07. service_count must be an integer from 1 to 7.
     - Keep featured_meta as three short capability labels separated by middle dots.
     - Treat proof_value and proof_label as editable starter content, not verified claims.
     - Do not invent awards, clients, guarantees, or performance results.

@@ -2703,7 +2703,11 @@ HTML;
                     [e($block['service_three_number'] ?? '03'), e($block['service_three_title'] ?? 'Web platforms'), e($block['service_three_text'] ?? 'Build fast, scalable digital foundations designed to evolve with your team.')],
                     [e($block['service_four_number'] ?? '04'), e($block['service_four_title'] ?? 'Growth systems'), e($block['service_four_text'] ?? 'Connect content, campaigns, and measurement into a repeatable growth engine.')],
                     [e($block['service_five_number'] ?? '05'), e($block['service_five_title'] ?? 'Ongoing optimisation'), e($block['service_five_text'] ?? 'Improve performance continuously through testing, insight, and focused iteration.')],
+                    [e($block['service_six_number'] ?? '06'), e($block['service_six_title'] ?? 'Specialist support'), e($block['service_six_text'] ?? 'Add another relevant service when the offer needs more depth.')],
+                    [e($block['service_seven_number'] ?? '07'), e($block['service_seven_title'] ?? 'Extended care'), e($block['service_seven_text'] ?? 'Add a seventh service when it genuinely improves the customer journey.')],
                 ];
+                $serviceCount = max(1, min(7, (int)($block['service_count'] ?? 5)));
+                $serviceCards = array_slice($serviceCards, 0, max(0, $serviceCount - 1));
                 $proofValue = e($block['proof_value'] ?? '5 disciplines');
                 $proofLabel = e($block['proof_label'] ?? 'One integrated senior team');
                 $primaryTheme = self::getTheme($primaryColor);

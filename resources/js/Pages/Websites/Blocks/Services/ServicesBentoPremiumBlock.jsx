@@ -32,6 +32,13 @@ export const ServicesBentoPremiumSchema = {
         service_five_number: "05",
         service_five_title: "Ongoing optimisation",
         service_five_text: "Improve performance continuously through testing, insight, and focused iteration.",
+        service_six_number: "06",
+        service_six_title: "Specialist support",
+        service_six_text: "Add another relevant service when the offer needs more depth.",
+        service_seven_number: "07",
+        service_seven_title: "Extended care",
+        service_seven_text: "Add a seventh service when it genuinely improves the customer journey.",
+        service_count: 5,
         proof_value: "5 disciplines",
         proof_label: "One integrated senior team",
     },
@@ -54,7 +61,11 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
         ["service_three_number", "service_three_title", "service_three_text"],
         ["service_four_number", "service_four_title", "service_four_text"],
         ["service_five_number", "service_five_title", "service_five_text"],
+        ["service_six_number", "service_six_title", "service_six_text"],
+        ["service_seven_number", "service_seven_title", "service_seven_text"],
     ];
+    const serviceCount = Math.max(1, Math.min(7, Number(data.service_count) || 5));
+    const visibleSmallCards = smallCards.slice(0, Math.max(0, serviceCount - 1));
 
     return (
         <section data-cosmic-services-bento-premium="true" className={`relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
@@ -84,7 +95,7 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
                         </div>
                     </article>
 
-                    {smallCards.slice(0,2).map(([number,title,text]) => (
+                    {visibleSmallCards.slice(0,2).map(([number,title,text]) => (
                         <article key={title} className={`rounded-[2rem] border p-6 lg:col-span-5 ${card}`}>
                             <EditableText value={data[number]} className={`text-[11px] font-black tracking-[.2em] ${muted}`} onSave={(v)=>onUpdate({[number]:v})}/>
                             <EditableText value={data[title]} className="mt-8 block text-xl font-semibold tracking-[-.02em]" onSave={(v)=>onUpdate({[title]:v})}/>
@@ -92,7 +103,7 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
                         </article>
                     ))}
 
-                    {smallCards.slice(2).map(([number,title,text]) => (
+                    {visibleSmallCards.slice(2).map(([number,title,text]) => (
                         <article key={title} className={`rounded-[2rem] border p-6 lg:col-span-4 ${card}`}>
                             <EditableText value={data[number]} className={`text-[11px] font-black tracking-[.2em] ${muted}`} onSave={(v)=>onUpdate({[number]:v})}/>
                             <EditableText value={data[title]} className="mt-8 block text-lg font-semibold tracking-[-.02em]" onSave={(v)=>onUpdate({[title]:v})}/>
@@ -101,7 +112,7 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
                     ))}
 
                     <article data-cosmic-services-bento-proof="true" className={`rounded-[2rem] border p-6 lg:col-span-4 ${soft}`}>
-                        <EditableText value={data.proof_value} className="cosmic-services-bento-proof-value block text-3xl font-semibold tracking-[-.035em]" onSave={(proof_value)=>onUpdate({proof_value})}/>
+                        <EditableText value={data.proof_value || `${serviceCount} services`} className="cosmic-services-bento-proof-value block text-3xl font-semibold tracking-[-.035em]" onSave={(proof_value)=>onUpdate({proof_value})}/>
                         <EditableText value={data.proof_label} className="cosmic-services-bento-proof-label mt-3 block text-sm leading-6" onSave={(proof_label)=>onUpdate({proof_label})}/>
                     </article>
                 </div>

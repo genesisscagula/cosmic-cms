@@ -28,7 +28,7 @@ final class SelectedSchemaLoader
             [
                 'sections' => array_values($sections),
                 'schema_map_hash' => hash('sha256', json_encode($schemaMap) ?: serialize($schemaMap)),
-                'version' => '17.0.0',
+                'version' => '18.0.0',
             ],
             (int) config('openai.schema_cache_ttl', 86400),
             fn () => $this->resolveUncached($sections, $schemaMap),
@@ -36,7 +36,21 @@ final class SelectedSchemaLoader
         );
 
         $result = is_array($cached['value']) ? $cached['value'] : [];
-        $result['cache'] = $cached['cache'];
+
+        // Self-heal stale/invalid cache entries. If the caller requested at least
+        // one Spark that exists in the current schema map but the cached selection
+        // resolves to nothing, recompute directly from the live map.
+        $requestedSupported = array_values(array_filter(
+            $sections,
+            fn($section) => is_string($section) && isset($schemaMap[trim($section)])
+        ));
+        if($requestedSupported !== [] && empty($result['selected'])){
+            $result = $this->resolveUncached($sections, $schemaMap);
+            $result['cache'] = 'recovered';
+        } else {
+            $result['cache'] = $cached['cache'];
+        }
+
         $result['cache_key'] = $cache->shortKey($cached['key']);
 
         return $result;
