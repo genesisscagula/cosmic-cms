@@ -1827,6 +1827,9 @@ HTML;
                 // Contrast is handled below; do not silently disable overlay because of
                 // page-style or theme-family defaults.
                 $overlayHeaderCompatible = true;
+                // Export attribute used by the static header shell. This was previously
+                // referenced without being initialized, which broke preview deployment.
+                $overlayPrimaryAllowed = $overlayHeaderCompatible;
                 $overlayHeader = $overlayRequested && $overlayHeaderCompatible;
                 $premiumOverlayHeader = $overlayHeader && ! $customShell;
                 $overlayToneClass = $customShell

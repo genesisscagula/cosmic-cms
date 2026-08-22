@@ -9,7 +9,7 @@ use RuntimeException;
 
 final class LunaTemplatePlannerService
 {
-    /** @return array{template_key:string,template_name:string,sections:array,planner:string,metadata_candidates:int} */
+    /** @return array{template_key:string,template_name:string,sections:array,theme:string,industry:string,design_direction:string,media_direction:string,planner:string,metadata_candidates:int} */
     public function plan(string $prompt): array
     {
         $candidates = $this->shortlist($prompt, PageTemplateCatalog::plannerIndex());
@@ -24,7 +24,18 @@ You are Luna, the Cosmic CMS template art director.
 Your job is ONLY to choose the best existing human-designed Cosmic page template for the website request. You receive compact TEMPLATE METADATA only. You do not receive content schemas and you must not invent sections, layouts, Spark IDs, or template IDs.
 
 Return JSON only:
-{"template_key":"exact-key","reason":"short internal rationale"}
+{"template_key":"exact-key","theme":"exact-theme","industry":"short industry","design_direction":"short visual direction","media_direction":"short media direction","reason":"short internal rationale"}
+
+ALLOWED THEMES
+midnight, emerald, coffee, rose, dark, ocean, indigo, amber, charcoal, violet, teal, ruby, forest, obsidian, navy, espresso, terracotta, asphalt
+
+THEME RULES
+- Choose the theme yourself from the allowed list using industry + requested mood + audience + selected template.
+- Do not treat midnight, navy, dark, charcoal, asphalt, or obsidian as generic premium defaults.
+- Choose midnight only when the request genuinely benefits from a night/midnight direction or explicitly asks for it.
+- Automotive does not imply dark. Consider teal, emerald, indigo, ocean, amber and other compatible directions when they better fit the brief.
+- The theme decision is authoritative for a fresh build and will be locked before content generation.
+- If WEBSITE REQUEST includes an EXISTING WEBSITE BRAND CONSTRAINT, that constraint is authoritative: return exactly that current theme while still choosing the best compatible template/Spark composition. Do not reinterpret a different industry or design mood as permission to rebrand.
 
 SELECTION RULES
 - Match industry and page intent first, then audience and style.
@@ -52,6 +63,11 @@ TXT;
 
         $data = $this->decode((string) ($response->choices[0]->message->content ?? ''));
         $key = trim((string) ($data['template_key'] ?? ''));
+        $allowedThemes = ['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
+        $theme = Str::lower(trim((string) ($data['theme'] ?? '')));
+        if (! in_array($theme, $allowedThemes, true)) {
+            $theme = 'emerald';
+        }
         $allowed = collect($candidates)->keyBy('key');
         if ($key === '' || ! $allowed->has($key)) {
             $key = (string) $candidates[0]['key'];
@@ -79,6 +95,11 @@ TXT;
             'template_key' => $key,
             'template_name' => (string) ($template['name'] ?? $key),
             'sections' => $sections,
+            'theme' => $theme,
+            'industry' => trim((string) ($data['industry'] ?? 'general')),
+            'design_direction' => trim((string) ($data['design_direction'] ?? 'premium, coherent and practical')),
+            'media_direction' => trim((string) ($data['media_direction'] ?? 'industry-relevant imagery only')),
+            'reason' => trim((string) ($data['reason'] ?? '')),
             'hero_media_mode' => (string) ($metadata['hero_media_mode'] ?? 'none'),
             'overlay_header_recommended' => (bool) ($metadata['overlay_header_recommended'] ?? false),
             'overlay_header_default' => (bool) ($metadata['overlay_header_default'] ?? false),

@@ -47,6 +47,13 @@ class AIController extends Controller
             'website_id' => ['nullable', 'integer', 'exists:websites,id'],
             'header_overlay_enabled' => ['nullable', 'boolean'],
             'design_seed' => ['nullable', 'string', 'max:100'],
+            'design_plan' => ['nullable', 'array'],
+            'design_plan.theme' => ['nullable', 'string', 'max:40'],
+            'design_plan.template_key' => ['nullable', 'string', 'max:160'],
+            'design_plan.template_name' => ['nullable', 'string', 'max:200'],
+            'design_plan.industry' => ['nullable', 'string', 'max:120'],
+            'design_plan.design_direction' => ['nullable', 'string', 'max:500'],
+            'design_plan.media_direction' => ['nullable', 'string', 'max:500'],
         ]);
 
         $website = null;
@@ -62,13 +69,24 @@ class AIController extends Controller
             (string) ($validated['design_seed'] ?? ''),
         );
 
+        $designPlan = is_array($validated['design_plan'] ?? null) ? $validated['design_plan'] : [];
+        if ($designPlan !== []) {
+            $generationPrompt .= "\n\nLOCKED LUNA DESIGN PLAN (API 1 — authoritative; do not change theme/template):\n"
+                .json_encode($designPlan, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)
+                ."\nAPI 2 ROLE: Generate schema content for the already-selected Sparks only. Preserve the locked theme, template, design direction and media direction.";
+        }
+
         $generationType = $validated['generation_type'] ?? (count($validated['sections']) > 1 ? 'page' : 'section');
         // Luna chooses the website color family once: on the first real page build.
         // Existing websites keep their saved theme unless the user explicitly asks
         // for a color/theme change through the dedicated theme controls/Luna flow.
         $firstBuildTheme = null;
         if ($website && $generationType === 'page' && $this->isFirstWebsiteBuild($website)) {
-            $firstBuildTheme = $this->themeForFirstBuildPrompt($validated['prompt']);
+            $plannedTheme = Str::lower(trim((string) ($designPlan['theme'] ?? '')));
+            $allowedThemes = ['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
+            $firstBuildTheme = in_array($plannedTheme, $allowedThemes, true)
+                ? $plannedTheme
+                : $this->themeForFirstBuildPrompt($validated['prompt']);
             $settings = (array) ($website->theme_settings ?? []);
             $settings['primary'] = $firstBuildTheme;
             $settings['secondary'] = $settings['secondary'] ?? 'white';
@@ -358,6 +376,14 @@ TEXT;
                 'template_key' => $plan['template_key'],
                 'template_name' => $plan['template_name'],
                 'metadata_candidates' => $plan['metadata_candidates'],
+                'design_plan' => [
+                    'theme' => $plan['theme'] ?? null,
+                    'template_key' => $plan['template_key'],
+                    'template_name' => $plan['template_name'],
+                    'industry' => $plan['industry'] ?? 'general',
+                    'design_direction' => $plan['design_direction'] ?? '',
+                    'media_direction' => $plan['media_direction'] ?? '',
+                ],
             ]);
         }
 
@@ -403,6 +429,14 @@ TEXT;
             'template_key' => $plan['template_key'],
             'template_name' => $plan['template_name'],
             'metadata_candidates' => $plan['metadata_candidates'],
+            'design_plan' => [
+                'theme' => $plan['theme'] ?? null,
+                'template_key' => $plan['template_key'],
+                'template_name' => $plan['template_name'],
+                'industry' => $plan['industry'] ?? 'general',
+                'design_direction' => $plan['design_direction'] ?? '',
+                'media_direction' => $plan['media_direction'] ?? '',
+            ],
         ]);
     }
 

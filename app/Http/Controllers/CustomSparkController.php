@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Helpers\CmsHtmlCompiler;
+use App\AI\Schemas\SchemaManager;
 use App\Support\PageStyleRegistry;
 use App\Models\CustomSpark;
 use App\Models\Website;
@@ -1777,22 +1778,20 @@ PROMPT;
             }
         }
 
-        // Generic redesign fallback: "redesign this section", "make this section better",
-        // "make it more premium/modern/polished", etc. must produce a real structural
-        // alternative even when the planner returns no effective mutation.
+        // Generic section redesign must result in a materially different Spark.
+        // Do not trust a model-proposed same-Spark replace/edit as a redesign:
+        // deterministically pick a compatible registered alternative, exclude the
+        // current Spark, prefer a different layout family, and preserve site theme.
         if($scope==='section' && isset($blocks[$targetIndex])){
-            $genericRedesign=Str::contains($lower,[
+            $genericRedesign=Str::contains($requestLower,[
                 'redesign this section','redesign the section','redesign this','another layout','different layout',
                 'new layout','make this section better','make this better','improve this section',
                 'make this section more premium','make this more premium','make this section modern',
                 'make this more modern','make this section polished','make this more polished',
                 'refresh this section','rework this section','restyle this section'
             ]);
-            $hasStructural=collect($ops)->contains(fn($op)=>is_array($op)
-                && in_array(($op['action']??''),['replace','delete','move','insert_before','insert_after'],true)
-                && (int)($op['index']??-1)===$targetIndex);
 
-            if($genericRedesign && !$hasStructural){
+            if($genericRedesign){
                 $current=(array)$blocks[$targetIndex];
                 $currentKey=(string)($current['type']??'');
                 $currentMeta=SparkCatalog::find($currentKey)??[];
@@ -1800,36 +1799,73 @@ PROMPT;
                 $intent=collect($currentMeta['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
                 $industry=collect($currentMeta['industry_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
                 $position=collect($currentMeta['position_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                $currentLayouts=collect($currentMeta['layout']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                $schemaKeys=collect(array_keys(SchemaManager::map()))->flip();
 
-                $ranked=collect($usable)->filter(fn($spark)=>is_array($spark) && !empty($spark['key']) && ($spark['key']??'')!==$currentKey)
-                    ->map(function($spark) use($category,$intent,$industry,$position,$lower){
+                $ranked=collect($usable)
+                    ->filter(fn($spark)=>is_array($spark)
+                        && !empty($spark['key'])
+                        && ($spark['key']??'')!==$currentKey
+                        && $schemaKeys->has((string)($spark['key']??'')))
+                    ->map(function($spark) use($category,$intent,$industry,$position,$currentLayouts,$requestLower){
                         $score=0;
                         $sparkCategory=Str::lower((string)($spark['category']??''));
-                        if($category!=='' && $sparkCategory===$category) $score+=180;
-                        elseif($category!=='' && in_array($sparkCategory,['hero','header'],true)) $score-=140;
+
+                        // Semantic role is the strongest redesign constraint.
+                        if($category!=='' && $sparkCategory===$category) $score+=260;
+                        elseif($category!=='' && in_array($sparkCategory,['hero','header','footer'],true)) $score-=300;
+                        else $score-=80;
+
                         $sparkIntent=collect($spark['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
                         $sparkIndustry=collect($spark['industry_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
                         $sparkPosition=collect($spark['position_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
-                        $score+=count(array_intersect($intent,$sparkIntent))*32;
-                        $score+=count(array_intersect($industry,$sparkIndustry))*14;
-                        $score+=count(array_intersect($position,$sparkPosition))*9;
+                        $sparkLayouts=collect($spark['layout']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+
+                        $score+=count(array_intersect($intent,$sparkIntent))*45;
+                        $score+=count(array_intersect($industry,$sparkIndustry))*12;
+                        $score+=count(array_intersect($position,$sparkPosition))*8;
+
+                        // A redesign should be visually/materially different.
+                        $layoutOverlap=count(array_intersect($currentLayouts,$sparkLayouts));
+                        if($currentLayouts!==[] && $sparkLayouts!==[] && $layoutOverlap===0) $score+=120;
+                        elseif($layoutOverlap>0) $score-=45;
+
                         $style=collect($spark['style']??[])->map(fn($v)=>Str::lower((string)$v))->implode(' ');
-                        if(Str::contains($lower,'premium') && Str::contains($style,['premium','editorial','cinematic','luxury'])) $score+=35;
-                        if(Str::contains($lower,'modern') && Str::contains($style,['modern','clean','editorial','minimal'])) $score+=28;
-                        if(Str::contains($lower,'polished') && Str::contains($style,['premium','clean','editorial'])) $score+=24;
-                        // Stable tie-break keeps repeated prompts predictable without biasing one Spark forever.
-                        $score+=(abs(crc32(($spark['key']??'').'|'.$lower))%17);
+                        if(Str::contains($requestLower,'premium') && Str::contains($style,['premium','editorial','cinematic','luxury'])) $score+=55;
+                        if(Str::contains($requestLower,'modern') && Str::contains($style,['modern','clean','editorial','minimal'])) $score+=38;
+                        if(Str::contains($requestLower,'visually interesting') && Str::contains($style,['premium','editorial','bold','modern'])) $score+=30;
+                        if(Str::contains($requestLower,'polished') && Str::contains($style,['premium','clean','editorial'])) $score+=28;
+
+                        // Stable tie-break, while category/layout remain dominant.
+                        $score+=(abs(crc32(($spark['key']??'').'|'.$requestLower))%19);
                         $spark['_luna_redesign_score']=$score;
                         return $spark;
-                    })->sortByDesc('_luna_redesign_score')->values();
+                    })
+                    ->sortByDesc('_luna_redesign_score')
+                    ->values();
 
-                $candidate=$ranked->first(fn($spark)=>($spark['_luna_redesign_score']??0)>0);
+                // Prefer the same semantic category. Only fall back to another category
+                // when the catalog truly has no registered alternative for this role.
+                $candidate=$ranked->first(fn($spark)=>
+                    Str::lower((string)($spark['category']??''))===$category
+                    && ($spark['_luna_redesign_score']??0)>0
+                ) ?? $ranked->first(fn($spark)=>($spark['_luna_redesign_score']??0)>0);
+
                 if(is_array($candidate) && !empty($candidate['key'])){
-                    $ops[]=[
+                    // Override target redesign operations from the model. This prevents
+                    // same-Spark replacements or no-op edits from blocking the fallback.
+                    $operations=array_values(array_filter($operations,function($op) use($targetIndex){
+                        if(!is_array($op)) return true;
+                        if((int)($op['index']??-1)!==$targetIndex) return true;
+                        return !in_array(($op['action']??''),['edit','replace'],true);
+                    }));
+
+                    $operations[]=[
                         'action'=>'replace',
                         'index'=>$targetIndex,
-                        'spark_key'=>$candidate['key'],
-                        'instruction'=>'Redesign the selected section into a clearly different, higher-quality layout while preserving its semantic purpose, useful copy, CTA intent, and current site theme. Do not return the same layout.',
+                        'spark_key'=>(string)$candidate['key'],
+                        'instruction'=>'This is a verified redesign. Preserve the selected section purpose, useful copy, service/item meaning, CTA intent, and current website theme, but migrate them into this materially different layout. Do not reuse the old Spark/layout.',
+                        'redesign_from'=>$currentKey,
                     ];
                 }
             }
@@ -1973,6 +2009,33 @@ PROMPT;
         ]);
     }
 
+    /**
+     * Theme is sticky after a website has an established visual identity.
+     * Luna may replace it only when the user clearly asks for a theme/brand/color change.
+     */
+    private function lunaExplicitThemeChangeIntent(string $prompt): bool
+    {
+        $q=Str::lower(trim($prompt));
+        if($q==='') return false;
+
+        if(Str::contains($q,[
+            'change the theme','change theme','switch the theme','switch theme','new theme',
+            'replace the theme','different theme','change the color scheme','change color scheme',
+            'change the colour scheme','change colour scheme','new color scheme','new colour scheme',
+            'change the palette','new palette','rebrand','re-brand','change the brand colors',
+            'change brand colors','change the brand colours','change brand colours',
+        ])) return true;
+
+        $themeNames=['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
+        foreach($themeNames as $theme){
+            if(preg_match('/\b(?:use|switch\s+to|change\s+to|make\s+(?:the\s+)?(?:theme|colors?|colours?|palette)\s+)'.preg_quote($theme,'/').'\b/i',$q)){
+                return true;
+            }
+        }
+
+        return false;
+    }
+
     public function pageChat(
         Request $request,
         Website $website,
@@ -2024,6 +2087,15 @@ PROMPT;
 
         $normalizedPrompt=Str::lower(trim((string)$validated['prompt']));
         $user=$request->user();
+
+        $allowedSiteThemes=['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
+        $websiteThemeSettings=(array)($website->theme_settings??[]);
+        $currentSiteTheme=Str::lower(trim((string)($websiteThemeSettings['primary']??'')));
+        if(!in_array($currentSiteTheme,$allowedSiteThemes,true)) $currentSiteTheme='midnight';
+        $explicitThemeChange=$this->lunaExplicitThemeChangeIntent((string)$validated['prompt']);
+        $hasExistingSiteContent=(bool)($websiteThemeSettings['luna_theme_locked']??false)
+            || $website->pages()->get(['blocks'])->contains(fn($candidate)=>is_array($candidate->blocks??null) && count($candidate->blocks)>0);
+        $preserveSiteTheme=$hasExistingSiteContent && !$explicitThemeChange;
 
         // Typography commands are deterministic and cost 0 credits because they
         // update existing design tokens without making an AI/API request.
@@ -2273,15 +2345,49 @@ PROMPT;
         // then returns a complete starter page. No Add Spark/Template UI is required.
         if($scope==='page' && count($blocks)===0){
             try {
-                $sections=$lunaPages->plan((string)$validated['prompt']);
-                $generated=$lunaPages->generate((string)$validated['prompt'],$sections);
+                // API 1 — DESIGN PLANNER ONLY. It sees compact template metadata,
+                // chooses the template/Sparks + theme + art/media direction, and does
+                // not receive the selected Spark content schemas.
+                $plannerPrompt=(string)$validated['prompt'];
+                if($preserveSiteTheme){
+                    $plannerPrompt.="
+
+EXISTING WEBSITE BRAND CONSTRAINT: Preserve the current website theme '{$currentSiteTheme}'. You may choose a different template/Spark composition, but do not rebrand or choose a different theme unless the user explicitly requested a theme/color/rebrand change.";
+                }
+                $designPlan=$lunaPages->planDetailed($plannerPrompt);
+                if($preserveSiteTheme){
+                    $designPlan['theme']=$currentSiteTheme;
+                    $designPlan['theme_action']='preserve';
+                } else {
+                    $designPlan['theme_action']='replace';
+                }
+                $sections=is_array($designPlan['sections']??null)?$designPlan['sections']:[];
+                if(count($sections)===0) throw new \RuntimeException('Luna did not select any registered sections.');
+
+                // API 2 — CONTENT COMPOSER ONLY. The selected template/theme are now
+                // locked. Content generation receives schemas only for those selected
+                // Sparks and is not allowed to silently redesign the page.
+                $lockedPlan=[
+                    'theme'=>(string)($designPlan['theme']??''),
+                    'template_key'=>(string)($designPlan['template_key']??''),
+                    'template_name'=>(string)($designPlan['template_name']??''),
+                    'industry'=>(string)($designPlan['industry']??'general'),
+                    'design_direction'=>(string)($designPlan['design_direction']??''),
+                    'media_direction'=>(string)($designPlan['media_direction']??''),
+                    'theme_action'=>(string)($designPlan['theme_action']??($preserveSiteTheme?'preserve':'replace')),
+                ];
+                $contentPrompt=(string)$validated['prompt']
+                    ."\n\nLOCKED LUNA DESIGN PLAN (API 1 — authoritative; do not change theme/template):\n"
+                    .json_encode($lockedPlan,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)
+                    ."\nAPI 2 ROLE: Generate content only for the selected registered Sparks. Preserve the locked design and use only industry-relevant media intent.";
+                $generated=$lunaPages->generate($contentPrompt,$sections);
                 if(is_array($generated) && count($generated)>0){
                     $creditCost=40;
                     if($user && !$credits->canAfford($user,$creditCost)){
                         return response()->json(['message'=>"Building this page needs {$creditCost} credits.",'credit_cost'=>$creditCost,'requires_credits'=>true],422);
                     }
                     try {
-                        $remote=$pageGeneration->applyStartPageRemoteImages((string)$validated['prompt'],$generated);
+                        $remote=$pageGeneration->applyStartPageRemoteImages($contentPrompt,$generated);
                         if(is_array($remote['blocks']??null) && count($remote['blocks'])>0){
                             $generated=$remote['blocks'];
                         }
@@ -2289,7 +2395,20 @@ PROMPT;
                         report($e);
                     }
 
-                    if($user) $credits->consume($user,$creditCost,'Luna page build',$website,'luna-build-'.Str::uuid(),['category'=>'ai']);
+                    $allowedThemes=['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
+                    $plannedTheme=Str::lower(trim((string)($designPlan['theme']??'')));
+                    $appliedTheme=in_array($plannedTheme,$allowedThemes,true)?$plannedTheme:null;
+                    if($appliedTheme!==null){
+                        $settings=(array)($website->theme_settings??[]);
+                        $settings['primary']=$appliedTheme;
+                        $settings['secondary']=$settings['secondary']??'white';
+                        $settings['tertiary']=$settings['tertiary']??'stone';
+                        $settings['auto']=true;
+                        $settings['luna_theme_locked']=true;
+                        $website->forceFill(['theme_settings'=>$settings])->save();
+                    }
+
+                    if($user) $credits->consume($user,$creditCost,'Luna page build',$website,'luna-build-'.Str::uuid(),['category'=>'ai','template_key'=>$designPlan['template_key']??null,'theme'=>$appliedTheme]);
                     $reply=$natural->compose((string)$validated['prompt'],[
                         'authenticated'=>true,
                         'scope'=>'page',
@@ -2305,7 +2424,8 @@ PROMPT;
                         'blocks'=>array_values($generated),
                         'header'=>is_array($header)?$header:[],
                         'footer'=>is_array($footer)?$footer:[],
-                        'theme_key'=>null,
+                        'theme_key'=>$appliedTheme,
+                        'design_plan'=>$lockedPlan,
                         'credit_cost'=>$creditCost,
                         'credit_balance'=>$user ? $credits->balance($user) : null,
                         'applied_operations'=>[['action'=>'build_page','count'=>count($generated)]],
@@ -2417,6 +2537,7 @@ RULES:
 - A request for "slider" means consider EVERY catalog item whose media=slider, aliases mention slider/carousel/slideshow, or capabilities include supports-slider. Then choose the one whose intent best matches the selected section. Example: testimonials -> testimonial carousel; portfolio/work -> gallery/project slider; opening banner -> hero slider.
 - Preserve semantic role when transforming media unless the user explicitly asks to change the role. A mid-page services/work/testimonial section should not become a Hero just because Hero has the requested media.
 - Use position_fit=top/opening-section-safe as a bonus only when the target is actually the first/opening section.
+- THEME STICKINESS: Existing website theme/brand colors are persistent. Do NOT emit a theme operation for redesigns, new sections, different industries, "make it premium", or other normal design requests. Emit action=theme ONLY when the user explicitly asks to change/switch the theme, color scheme/palette, named theme, or rebrand.
 - Never reveal implementation details such as Spark IDs, templates, schemas or hidden selection.
 - For a simple copy/color/image/repeater adjustment, prefer edit. In section scope, use keys exactly from SELECTED BLOCK FULL JSON; do not invent schema keys.
 - REPEATER/LIST CRUD MUST PRESERVE LAYOUT: add/remove/update/rename/expand/reduce/reorder services, cards, items, testimonials, FAQs, team members, pricing entries, features, logos, gallery items, steps/process entries, or similar collections by editing the existing array key in SELECTED BLOCK FULL JSON. Return the complete resulting array under that same key. Never use replace for these requests unless the user explicitly asks to change the layout/design/section type.
@@ -2648,7 +2769,12 @@ PROMPT;
 
                 $reference=$nextBlocks[$index]??null;
                 $migration=is_array($reference)
-                    ? json_encode(array_intersect_key($reference,array_flip(['heading','title','eyebrow','text','subheading','primary_label','secondary_label','items','cards','slides','images','image_url','video_url','theme'])),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)
+                    ? json_encode(array_intersect_key($reference,array_flip([
+                        'heading','title','eyebrow','text','description','body','subheading',
+                        'primary_label','primary_url','secondary_label','secondary_url',
+                        'cta_label','cta_url','items','cards','services','features','steps',
+                        'slides','images','image_url','video_url','theme'
+                    ])),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)
                     : '{}';
                 $instruction=trim((string)($operation['instruction']??''));
                 $generationPrompt=trim($validated['prompt'])."\n\nLUNA ORCHESTRATION:\nBuild exactly one {$sparkKey} Spark."
@@ -2683,8 +2809,15 @@ PROMPT;
                 $newBlock['_renderKey']='luna-'.Str::lower(Str::random(10));
 
                 if($action==='replace' && isset($nextBlocks[$index])){
+                    $oldType=(string)($nextBlocks[$index]['type']??'');
                     $nextBlocks[$index]=$newBlock;
-                    $applied[]=['action'=>'replace','index'=>$index,'type'=>$sparkKey];
+                    $applied[]=[
+                        'action'=>'replace',
+                        'index'=>$index,
+                        'type'=>$sparkKey,
+                        'from_type'=>$oldType,
+                        'verified_type_change'=>$oldType!==$sparkKey,
+                    ];
                 } elseif($action==='insert_before'){
                     $at=max(0,min(count($nextBlocks),$index));
                     array_splice($nextBlocks,$at,0,[$newBlock]);
@@ -2856,13 +2989,19 @@ PROMPT;
             }
         }
 
-        $allowedThemes=['midnight','emerald','coffee','rose','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
+        $allowedThemes=['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
         $themeKey=null;
-        foreach($operations as $operation){
-            if(($operation['action']??'')==='theme' && in_array(($operation['theme_key']??''),$allowedThemes,true)){
-                $themeKey=(string)$operation['theme_key'];
-                break;
+        if($explicitThemeChange){
+            foreach($operations as $operation){
+                if(($operation['action']??'')==='theme' && in_array(($operation['theme_key']??''),$allowedThemes,true)){
+                    $themeKey=(string)$operation['theme_key'];
+                    break;
+                }
             }
+        } else {
+            // Hard server guard: model creativity may redesign layout/content, but
+            // cannot silently rebrand an established website.
+            $operations=array_values(array_filter($operations,fn($operation)=>(($operation['action']??'')!=='theme')));
         }
 
         $headerChanges=is_array($plan['header_changes']??null)?$plan['header_changes']:[];

@@ -102,6 +102,7 @@ export default function GeneratePageModal({
                 website_id: websiteId,
                 header_overlay_enabled: Boolean(headerOverlayEnabled),
                 design_seed: generationSeed,
+                design_plan: plan.design_plan || null,
             });
 
             try {
