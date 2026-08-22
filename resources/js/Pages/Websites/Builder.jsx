@@ -5780,7 +5780,19 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                         return;
                     }
                     if(lunaMediaLibraryPurpose==='section-background-video'){
-                        applyLunaUniversalVideo(asset.url);
+                        // Video sections already own a real `video_url` field. Updating the
+                        // universal background only adds a second layer behind the Spark, so
+                        // the original hero video stays visible and makes Media Library Apply
+                        // look like it did nothing. Replace the Spark's native video slot first.
+                        const applied = applyDirectLunaVideoUrl(asset.url);
+                        if(applied){
+                            setPageAiError('');
+                            setLunaDirectVideoUrl('');
+                            setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Video selected from your Media Library. · 0 credits'}]);
+                            showCosmicNotification({title:'Video updated',message:'Media Library video applied to this section.',tone:'success',mode:'toast',duration:2600});
+                        }else{
+                            setPageAiError('This section does not expose a background video slot.');
+                        }
                         setLunaMediaLibraryPurpose('element');
                         return;
                     }

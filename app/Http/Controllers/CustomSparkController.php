@@ -1201,6 +1201,44 @@ PROMPT;
         return "I can’t apply that exact low-level styling safely. I can make the requested visual change using Cosmic’s responsive design system so the Builder and live export stay consistent.";
     }
 
+    /**
+     * Ground vague Luna redesign/media requests in the website's existing business context.
+     * This prevents a generic request such as "make this section better" from drifting
+     * into an unrelated industry when a replacement Spark needs fresh photography.
+     */
+    private function lunaGroundedMediaPrompt(string $prompt, array $blocks, array $siteMemory=[], array $selected=[]): string
+    {
+        $prompt=trim($prompt);
+        $resolver=app(\App\Services\IndustryResolver::class);
+
+        // Explicit industry language in the current request always wins.
+        $explicit=$resolver->resolve($prompt,'default');
+        $contextParts=[];
+        foreach(['industry','business_type','business','site_industry','website_industry'] as $key){
+            if(!empty($siteMemory[$key]) && is_scalar($siteMemory[$key])) $contextParts[]=(string)$siteMemory[$key];
+        }
+        if($selected) $contextParts[]=json_encode($selected,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'';
+        foreach(array_slice($blocks,0,12) as $block){
+            if(!is_array($block)) continue;
+            $contextParts[]=implode(' ',array_filter([
+                (string)($block['type']??''),(string)($block['eyebrow']??''),(string)($block['heading']??''),
+                (string)($block['title']??''),(string)($block['text']??''),(string)($block['description']??'')
+            ]));
+        }
+        $context=trim(implode("\n",$contextParts));
+        $industry=$explicit!=='default'?$explicit:$resolver->resolve($context,'default');
+        if($industry==='default') return $prompt;
+
+        $label=$resolver->displayName($industry,Str::headline($industry));
+        $query=$resolver->searchQuery($industry);
+        return $prompt
+            ."\n\nWEBSITE INDUSTRY CONTEXT: {$label}."
+            ."\nMEDIA SEMANTIC LOCK: Any new/replaced photography must clearly belong to {$label} and the selected section's existing purpose/content."
+            ." Do not introduce people, locations, equipment, products, or activities from an unrelated industry."
+            ." Preserve existing relevant media unless replacement improves the request."
+            ."\nPreferred stock-photo subject vocabulary: {$query}.";
+    }
+
     private function lunaUpdatedSiteMemory(string $prompt, array $memory, array $theme=[]): array
     {
         $p=Str::lower($prompt);
@@ -1932,8 +1970,10 @@ For services_bento_premium specifically, treat featured_* as item 1 and service_
             }
             if(in_array($action,['replace','insert_before','insert_after'],true)){
                 $key=(string)($op['spark_key']??'');if(!$keys->has($key))continue;
-                $gen=$lunaPages->generate($prompt."\n".(string)($op['instruction']??''),[$key]);$block=$gen[0]??null;if(!is_array($block))continue;
-                try{$remote=$pageGeneration->applyStartPageRemoteImages($prompt,[$block]);if(is_array($remote['blocks'][0]??null))$block=$remote['blocks'][0];}catch(\Throwable $e){report($e);}
+                $reference=$next[$i]??[];
+                $groundedMediaPrompt=$this->lunaGroundedMediaPrompt($prompt,$next,$siteMemory,is_array($reference)?$reference:[]);
+                $gen=$lunaPages->generate($groundedMediaPrompt."\n".(string)($op['instruction']??''),[$key]);$block=$gen[0]??null;if(!is_array($block))continue;
+                try{$remote=$pageGeneration->applyStartPageRemoteImages($groundedMediaPrompt,[$block]);if(is_array($remote['blocks'][0]??null))$block=$remote['blocks'][0];}catch(\Throwable $e){report($e);}
                 $block['type']=$key;
                 try{
                     $videoBlocks=$lunaVideos->apply($prompt,[$block]);
@@ -2033,6 +2073,145 @@ For services_bento_premium specifically, treat featured_* as item 1 and service_
             'site_memory'=>$siteMemory,
             'applied_operations'=>$applied
         ]);
+    }
+
+    /**
+     * Deterministic selected-section reordering.
+     * Handles absolute, adjacent, and named relative moves without an AI/API call.
+     */
+    private function lunaSectionReorderAction(
+        string $prompt,
+        string $scope,
+        int $targetIndex,
+        array $blocks
+    ): ?array {
+        if($scope!=='section' || !isset($blocks[$targetIndex]) || count($blocks)<2) return null;
+
+        $lower=Str::lower(trim($prompt));
+        $moveIntent=Str::contains($lower,['move this section','move this','move it','move section']);
+        if(!$moveIntent) return null;
+
+        $count=count($blocks);
+        $toIndex=null;
+        $relativeTarget=null;
+        $relation=null;
+
+        if(Str::contains($lower,['top of the page','top of page','first section','move it to the top','move this to the top','move to top'])){
+            $toIndex=0;
+        }elseif(Str::contains($lower,['bottom of the page','bottom of page','last section','move it to the bottom','move this to the bottom','move to bottom'])){
+            $toIndex=$count-1;
+        }elseif(Str::contains($lower,['one section up','move it up','move this section up','move this up'])){
+            $toIndex=max(0,$targetIndex-1);
+        }elseif(Str::contains($lower,['one section down','move it down','move this section down','move this down'])){
+            $toIndex=min($count-1,$targetIndex+1);
+        }else{
+            if(Str::contains($lower,[' above ',' before '])) $relation='before';
+            elseif(Str::contains($lower,[' below ',' after '])) $relation='after';
+            if(!$relation) return null;
+
+            $aliases=[
+                'hero'=>['hero','banner','masthead'],
+                'services'=>['services','service section','our services'],
+                'testimonials'=>['testimonials','testimonial','reviews','customer feedback','feedback'],
+                'pricing'=>['pricing','price','plans'],
+                'faq'=>['faq','faqs','questions'],
+                'contact'=>['contact','contact us','enquiry','inquiry'],
+                'cta'=>['cta','call to action'],
+                'gallery'=>['gallery','portfolio','projects','work'],
+                'process'=>['process','steps','timeline'],
+                'team'=>['team','our team','people','staff'],
+                'about'=>['about','our story','story'],
+                'stats'=>['stats','statistics','numbers','at a glance','why choose us','practical difference'],
+            ];
+
+            $requestedCategory=null;
+            foreach($aliases as $category=>$names){
+                foreach($names as $name){
+                    if(preg_match('/\b'.preg_quote($name,'/').'\b/i',$lower)){
+                        $requestedCategory=$category;
+                        break 2;
+                    }
+                }
+            }
+            if(!$requestedCategory) return null;
+
+            foreach($blocks as $index=>$block){
+                if($index===$targetIndex || !is_array($block)) continue;
+                $type=(string)($block['type']??'');
+                $meta=SparkCatalog::find($type)??[];
+                $category=Str::lower((string)($meta['category']??''));
+                $haystack=Str::lower(implode(' ',array_filter([
+                    $type,
+                    $category,
+                    (string)($meta['name']??''),
+                    (string)($block['heading']??''),
+                    (string)($block['title']??''),
+                    (string)($block['eyebrow']??''),
+                ])));
+
+                $matches=$category===$requestedCategory;
+                if(!$matches){
+                    foreach($aliases[$requestedCategory] as $name){
+                        if(Str::contains($haystack,Str::lower($name))){
+                            $matches=true;
+                            break;
+                        }
+                    }
+                }
+                if($matches){
+                    $relativeTarget=$index;
+                    break;
+                }
+            }
+            if($relativeTarget===null) return [
+                'reply'=>"I couldn't find the requested {$requestedCategory} section on this page.",
+                'blocks'=>$blocks,
+                'changed'=>false,
+                'applied_operations'=>[],
+            ];
+
+            // Existing move executor removes the selected item first, then inserts at
+            // to_index. Convert original indexes to that post-removal coordinate space.
+            if($relation==='before'){
+                $toIndex=$targetIndex<$relativeTarget ? $relativeTarget-1 : $relativeTarget;
+            }else{
+                $toIndex=$targetIndex<$relativeTarget ? $relativeTarget : $relativeTarget+1;
+            }
+            $toIndex=max(0,min($count-1,$toIndex));
+        }
+
+        if($toIndex===null || $toIndex===$targetIndex){
+            return [
+                'reply'=>'This section is already in that position.',
+                'blocks'=>$blocks,
+                'changed'=>false,
+                'applied_operations'=>[],
+            ];
+        }
+
+        $next=array_values($blocks);
+        $moving=$next[$targetIndex];
+        array_splice($next,$targetIndex,1);
+        $insertAt=max(0,min(count($next),$toIndex));
+        array_splice($next,$insertAt,0,[$moving]);
+
+        $reply=$relativeTarget!==null
+            ? 'Moved this section '.($relation==='before'?'above':'below').' the requested section.'
+            : 'Moved this section to the requested position.';
+
+        return [
+            'reply'=>$reply,
+            'blocks'=>array_values($next),
+            'changed'=>true,
+            'applied_operations'=>[[
+                'action'=>'move',
+                'index'=>$targetIndex,
+                'to_index'=>$insertAt,
+                'relative_to'=>$relativeTarget,
+                'relation'=>$relation,
+                'verified'=>true,
+            ]],
+        ];
     }
 
     /**
@@ -2476,6 +2655,30 @@ For services_bento_premium specifically, treat featured_* as item 1 and service_
                 'site_memory'=>$siteMemory,
                 'applied_operations'=>$sectionLayoutAction['applied_operations'],
             ]);
+        }
+
+        if($scope==='section'){
+            $reorderAction=$this->lunaSectionReorderAction(
+                (string)$validated['prompt'],
+                $scope,
+                $targetIndex,
+                $blocks
+            );
+            if(is_array($reorderAction)){
+                return response()->json([
+                    'reply'=>$reorderAction['reply'],
+                    'mode'=>'reply',
+                    'credit_cost'=>0,
+                    'credit_balance'=>$user ? $credits->balance($user) : null,
+                    'blocks'=>$reorderAction['blocks'],
+                    'header'=>is_array($header)?$header:[],
+                    'footer'=>is_array($footer)?$footer:[],
+                    'theme_key'=>null,
+                    'page_style'=>null,
+                    'site_memory'=>$siteMemory,
+                    'applied_operations'=>$reorderAction['applied_operations']??[],
+                ]);
+            }
         }
 
         if($scope==='section'){
@@ -2984,7 +3187,7 @@ PROMPT;
                         $spark['_luna_score']=$score;
                         return $spark;
                     })->filter()->sortByDesc('_luna_score')->first();
-                if($desiredKind==='video' && Str::contains($lower,['video background','background video'])){
+                if($desiredKind==='video' && Str::contains($normalizedPrompt,['video background','background video'])){
                     $backgroundVideoCandidate=collect($usable)->first(fn($spark)=>is_array($spark) && ($spark['key']??'')==='hero_video_background');
                     if(is_array($backgroundVideoCandidate)) $candidate=$backgroundVideoCandidate;
                 }
@@ -3181,7 +3384,8 @@ PROMPT;
                     ])),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)
                     : '{}';
                 $instruction=trim((string)($operation['instruction']??''));
-                $generationPrompt=trim($validated['prompt'])."\n\nLUNA ORCHESTRATION:\nBuild exactly one {$sparkKey} Spark."
+                $groundedMediaPrompt=$this->lunaGroundedMediaPrompt((string)$validated['prompt'],$nextBlocks,$siteMemory,is_array($reference)?$reference:[]);
+                $generationPrompt=$groundedMediaPrompt."\n\nLUNA ORCHESTRATION:\nBuild exactly one {$sparkKey} Spark."
                     .($instruction!==''?"\nInstruction: {$instruction}":'')
                     ."\nPreserve/adapt useful content from this source block when relevant:\n{$migration}";
 
