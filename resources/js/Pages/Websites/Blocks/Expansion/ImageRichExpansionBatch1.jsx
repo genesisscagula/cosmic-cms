@@ -12,7 +12,7 @@ const themeVars=(resolved)=>{
         "--x-accent":"var(--cosmic-accent,#60A5FA)",
     };
 };
-const CardImage=({item,className=""})=><div data-cosmic-luna-display="image" data-luna-target="image" className={`x-img ${className}`}><img src={escUrl(item?.image_url)} alt="" className="h-full w-full object-cover pointer-events-none"/></div>;
+const CardImage=({item,className=""})=>{const src=escUrl(item?.image_url);return <div data-cosmic-luna-display="image" data-luna-target="image" className={`x-img ${className}`}>{src?<img src={src} alt="" className="h-full w-full object-cover pointer-events-none"/>:<div className="h-full min-h-[15rem] w-full bg-[var(--x-surface)]"/>}</div>};
 const Copy=({item,index})=><div className="x-card-copy"><span className="x-index">{String(index+1).padStart(2,"0")}</span><span data-cosmic-luna-display="text" data-cosmic-type="card-title" data-luna-target="heading" className="x-title">{item?.title}</span><span data-cosmic-luna-display="text" data-cosmic-type="card-body" data-luna-target="text" className="x-text">{item?.text}</span></div>;
 
 const ExpansionSection=({block,variant})=>{

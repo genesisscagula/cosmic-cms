@@ -32,6 +32,7 @@ import {
     ServicesBentoPremiumBlock,
     ServicesBentoPremiumSchema
 } from "./Blocks/Services/ServicesBentoPremiumBlock";
+import { ServicesEditorialPremiumBlock, ServicesEditorialPremiumSchema, ServicesShowcasePremiumBlock, ServicesShowcasePremiumSchema, ServicesMinimalLuxuryBlock, ServicesMinimalLuxurySchema, ServicesContrastPremiumBlock, ServicesContrastPremiumSchema, ServicesSplitPremiumBlock, ServicesSplitPremiumSchema, ServicesGridPremiumBlock, ServicesGridPremiumSchema, ServicesFeaturePremiumBlock, ServicesFeaturePremiumSchema } from "./Blocks/Services/ServicesPremiumVariantBlocks";
 import { ServicesPricingComparisonBlock, ServicesPricingComparisonSchema } from "./Blocks/Services/ServicesPricingComparisonBlock";
 import { ServicesFeatureComparisonBlock, ServicesFeatureComparisonSchema } from "./Blocks/Services/ServicesFeatureComparisonBlock";
 import { ServicesHoverCardsBlock, ServicesHoverCardsSchema } from "./Blocks/Services/ServicesHoverCardsBlock";
@@ -476,6 +477,14 @@ export const BlockRegistry = {
         component: ServicesBentoPremiumBlock,
         schema: ServicesBentoPremiumSchema
     },
+
+    services_editorial_premium: { component: ServicesEditorialPremiumBlock, schema: ServicesEditorialPremiumSchema },
+    services_showcase_premium: { component: ServicesShowcasePremiumBlock, schema: ServicesShowcasePremiumSchema },
+    services_minimal_luxury: { component: ServicesMinimalLuxuryBlock, schema: ServicesMinimalLuxurySchema },
+    services_contrast_premium: { component: ServicesContrastPremiumBlock, schema: ServicesContrastPremiumSchema },
+    services_split_premium: { component: ServicesSplitPremiumBlock, schema: ServicesSplitPremiumSchema },
+    services_grid_premium: { component: ServicesGridPremiumBlock, schema: ServicesGridPremiumSchema },
+    services_feature_premium: { component: ServicesFeaturePremiumBlock, schema: ServicesFeaturePremiumSchema },
 
     services_pricing_comparison: {
         component: ServicesPricingComparisonBlock,

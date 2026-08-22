@@ -1297,6 +1297,43 @@ PROMPT;
     {
         $changes=$this->lunaDesignIntent($prompt,$current);
         $p=Str::lower($prompt);
+
+        // Selected-section vague design intent: apply a restrained, deterministic
+        // visual polish instead of falling through to "no verified change".
+        $vagueSectionDesign=Str::contains($p,[
+            'this section feel more premium',
+            'make this section more premium',
+            'make this section feel premium',
+            'make this section more modern',
+            'make this section feel more modern',
+            'make this section visually interesting',
+            'make it more visually interesting',
+            'polish this section',
+            'improve this section design',
+            'improve the design of this section',
+            'make this section better',
+        ]);
+        if($vagueSectionDesign && empty($changes)){
+            $currentGap=(float)($current['content_gap']??24);
+            $currentRadius=(float)($current['card_radius']??16);
+            $currentImageRadius=(float)($current['image_radius']??12);
+            $currentPadding=(float)($current['section_padding_y']??80);
+
+            $changes=[
+                'content_gap'=>min(40,max(28,$currentGap+4)),
+                'card_radius'=>min(28,max(18,$currentRadius+4)),
+                'image_radius'=>min(24,max(14,$currentImageRadius+2)),
+                'section_padding_y'=>min(112,max(88,$currentPadding+8)),
+            ];
+
+            if(Str::contains($p,['not too busy','without making it too busy','keep it clean','subtle'])){
+                $changes['content_gap']=min($changes['content_gap'],32);
+                $changes['card_radius']=min($changes['card_radius'],22);
+                $changes['image_radius']=min($changes['image_radius'],18);
+                $changes['section_padding_y']=min($changes['section_padding_y'],96);
+            }
+        }
+
         // Page-level art direction must preserve the established typography/spacing
         // contract. Luna may change content, media, registered layout, theme, and
         // repeaters, but it no longer invents arbitrary font/spacing overrides merely
@@ -1600,11 +1637,34 @@ PROMPT;
             || (Str::contains($lower,'background photo') && Str::contains($lower,['add','use','set','change','give','put','apply']))
         );
         $universalBackgroundIntent=$backgroundAdd||$backgroundRemove||$backgroundDarker||$backgroundLighter;
+
+        // Mutation-scope lock: a copy/content rewrite must not accidentally mutate
+        // media or design just because the prompt mentions those fields in a
+        // preservation clause (e.g. "keep images/layout unchanged").
+        $mutationPrompt=Str::lower((string)$validated['prompt']);
+        $explicitMediaMutation=Str::contains($mutationPrompt,[
+            'replace image','replace the image','change image','change the image','new image',
+            'replace photo','change photo','new photo','replace photography','change photography',
+            'replace video','change video','new video','use a different image','use different image',
+            'use a different photo','use different photo','refresh image','refresh photo',
+        ]);
+        $contentRewriteIntent=Str::contains($mutationPrompt,[
+            'rewrite','reword','rewrite the content','rewrite content','rewrite the copy','rewrite copy',
+            'make the copy','shorten the copy','shorter copy','improve the copy','update the content',
+            'update content','change the wording','tone of voice','make the text','make this copy',
+        ]);
+        $contentOnlyIntent=$contentRewriteIntent && !$explicitMediaMutation && !$universalBackgroundIntent
+            && !Str::contains($mutationPrompt,[
+                'redesign','change the layout','different layout','change layout','replace section',
+                'change the design','different design','turn this section','transform this section',
+            ]);
+
         $designGlobalIntent=Str::contains(Str::lower((string)$validated['prompt']),[
             'all sections','every section','all headings','every heading','whole page','entire page','everywhere','sitewide','site-wide'
         ]);
         $artDirectionIntent=$this->lunaArtDirectionIntent((string)$validated['prompt']);
-        if($artDirectionIntent)$designGlobalIntent=true;
+        // Relative art direction on a selected section stays local.
+        if($artDirectionIntent && $scope!=='section')$designGlobalIntent=true;
         $siteMemory=$this->lunaUpdatedSiteMemory((string)$validated['prompt'],$siteMemory,is_array($theme??null)?$theme:[]);
 
 
@@ -1725,7 +1785,7 @@ PROMPT;
         // Normalize counted repeaters for Luna. Older saved Bento blocks only contain
         // the original five service fields; expose the extension slots without
         // changing the persisted block until the user actually requests CRUD.
-        if(is_array($selected) && ($selected['type']??'')==='services_bento_premium'){
+        if(is_array($selected) && in_array(($selected['type']??''),['services_bento_premium','services_editorial_premium','services_showcase_premium','services_minimal_luxury','services_contrast_premium','services_split_premium','services_grid_premium','services_feature_premium'],true)){
             $selected=array_merge([
                 'service_count'=>(int)($selected['service_count']??5),
                 'service_six_number'=>'06','service_six_title'=>'','service_six_text'=>'',
@@ -1758,7 +1818,7 @@ PROMPT;
         }
 
         $system='You are Luna, the invisible website editor. Return JSON only: {"reply":"short reply","operations":[{"action":"edit|replace|insert_before|insert_after|delete|move|theme","index":0,"to_index":0,"spark_key":"registered key when needed","theme_key":"","changes":{},"instruction":""}],"header_changes":{},"footer_changes":{},"page_style":null}. Use ONLY Spark keys from the supplied catalog. Rank candidates by requested aliases/media/capabilities FIRST, selected-section semantic intent/category SECOND, then layout/style/industry/position fit. Never default to Hero merely because Hero also supports the requested media; preserve the selected section role unless the user explicitly asks to change it. For simple edits use edit and only existing schema keys. REPEATER/LIST CRUD IS NON-STRUCTURAL:
-For services_bento_premium specifically, treat featured_* as item 1 and service_two_* through service_seven_* as items 2–7. service_count controls visible services. "Add N services" MUST use edit, increase service_count by N up to 7, and fill the newly exposed sequential service_*_title/text/number fields with relevant content. "Remove the least important service" MUST use edit, compact the remaining service fields in order, decrement service_count, and preserve the layout. requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs. THEME INTELLIGENCE: choose a theme only when the user explicitly asks for a theme/color-family change or when a first-build planner specifically requests one. Never choose midnight as a generic/default theme; use midnight only when the user explicitly asks for midnight/night styling. For vague style directions, preserve the current site theme and redesign within that family. REQUEST INTELLIGENCE: distinguish content edits from structural redesigns. Text/image/link/name/label changes edit the existing Spark. Add/remove/reorder list or card items edits the repeater. Requests for another layout, redesign, slider, video hero, split, grid, mosaic, testimonial style, or different section type are structural and may replace with the closest registered Spark. Global typography/spacing/background requests are handled by the design-token router; section-specific requests should remain local. Header overlay/logo/nav requests belong to the global header, not the body Spark. If a request contains multiple compatible actions, complete all applicable actions in order. ';
+For the compatible premium Services family (services_bento_premium, services_editorial_premium, services_showcase_premium, services_minimal_luxury, services_contrast_premium, services_split_premium, services_grid_premium, services_feature_premium), treat featured_* as item 1 and service_two_* through service_seven_* as items 2–7. service_count controls visible services. "Add N services" MUST use edit, increase service_count by N up to 7, and fill the newly exposed sequential service_*_title/text/number fields with relevant content. "Remove the least important service" MUST use edit, compact the remaining service fields in order, decrement service_count, and preserve the layout. requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs. THEME INTELLIGENCE: choose a theme only when the user explicitly asks for a theme/color-family change or when a first-build planner specifically requests one. Never choose midnight as a generic/default theme; use midnight only when the user explicitly asks for midnight/night styling. For vague style directions, preserve the current site theme and redesign within that family. REQUEST INTELLIGENCE: distinguish content edits from structural redesigns. Text/image/link/name/label changes edit the existing Spark. Add/remove/reorder list or card items edits the repeater. Requests for another layout, redesign, slider, video hero, split, grid, mosaic, testimonial style, or different section type are structural and may replace with the closest registered Spark. Global typography/spacing/background requests are handled by the design-token router; section-specific requests should remain local. Header overlay/logo/nav requests belong to the global header, not the body Spark. If a request contains multiple compatible actions, complete all applicable actions in order. ';
         $apiKey=(string)config('openai.api_key'); abort_if($apiKey==='',503,'Luna is temporarily unavailable.');
         $response=Http::withToken($apiKey)->connectTimeout(30)->timeout(150)->post(rtrim((string)(config('openai.base_uri')?:'https://api.openai.com/v1'),'/').'/chat/completions',[
             'model'=>env('OPENAI_MODEL','gpt-5-mini'),'response_format'=>['type'=>'json_object'],
@@ -1899,13 +1959,53 @@ For services_bento_premium specifically, treat featured_* as item 1 and service_
                 // when the catalog truly has no registered alternative for this role.
                 $candidate=null;
                 if($category==='services'){
-                    $preferredServiceKeys=['services_horizontal','services_interactive_tabs','services_hover_cards','services_mega_grid'];
-                    foreach($preferredServiceKeys as $preferredKey){
-                        $match=$ranked->first(fn($spark)=>(string)($spark['key']??'')===$preferredKey);
+                    // Route explicit design language to the matching premium Services family.
+                    // This prevents generic fixed-order fallback from repeatedly choosing
+                    // Editorial/Showcase regardless of what the user actually asked for.
+                    $semanticServiceKey=null;
+                    if(Str::contains($requestLower,['contrast','high-contrast','high contrast','bold','performance-focused','performance focused','dark'])){
+                        $semanticServiceKey='services_contrast_premium';
+                    } elseif(Str::contains($requestLower,['minimal luxury','quiet luxury','minimal and luxurious','minimal','luxurious','whitespace-heavy','whitespace heavy'])){
+                        $semanticServiceKey='services_minimal_luxury';
+                    } elseif(Str::contains($requestLower,['editorial','magazine','asymmetric','asymmetrical'])){
+                        $semanticServiceKey='services_editorial_premium';
+                    } elseif(Str::contains($requestLower,['split layout','split layouts','alternating split','alternating','split service','split services'])){
+                        $semanticServiceKey='services_split_premium';
+                    } elseif(Str::contains($requestLower,['3-column','3 column','three-column','three column','grid premium','service grid','services grid'])){
+                        $semanticServiceKey='services_grid_premium';
+                    } elseif(Str::contains($requestLower,['featured service','feature one service','one featured service','prominently featured','supporting service cards','supporting cards'])){
+                        $semanticServiceKey='services_feature_premium';
+                    } elseif(Str::contains($requestLower,['large imagery','large image','large automotive image','more visual','image-led','image led','showcase'])){
+                        $semanticServiceKey='services_showcase_premium';
+                    } elseif(Str::contains($requestLower,['bento','varied card sizes','varied cards'])){
+                        $semanticServiceKey='services_bento_premium';
+                    }
+
+                    if($semanticServiceKey!==null && $semanticServiceKey!==$currentKey){
+                        $match=$ranked->first(fn($spark)=>(string)($spark['key']??'')===$semanticServiceKey);
                         if(is_array($match) && ($match['_luna_redesign_score']??0)>0){
                             $candidate=$match;
-                            break;
                         }
+                    }
+
+                    // Generic "more premium/better" requests choose the highest-ranked
+                    // materially different Services design rather than a hard-coded first item.
+                    if($candidate===null){
+                        $premiumFamily=[
+                            'services_bento_premium',
+                            'services_editorial_premium',
+                            'services_showcase_premium',
+                            'services_minimal_luxury',
+                            'services_contrast_premium',
+                            'services_split_premium',
+                            'services_grid_premium',
+                            'services_feature_premium',
+                        ];
+                        $candidate=$ranked->first(fn($spark)=>
+                            in_array((string)($spark['key']??''),$premiumFamily,true)
+                            && (string)($spark['key']??'')!==$currentKey
+                            && ($spark['_luna_redesign_score']??0)>0
+                        );
                     }
                 }
                 $candidate=$candidate
@@ -2226,7 +2326,7 @@ For services_bento_premium specifically, treat featured_* as item 1 and service_
     ): ?array {
         if(!isset($blocks[$targetIndex]) || !is_array($blocks[$targetIndex])) return null;
         $block=$blocks[$targetIndex];
-        if(($block['type']??'')!=='services_bento_premium') return null;
+        if(!in_array(($block['type']??''),['services_bento_premium','services_editorial_premium','services_showcase_premium','services_minimal_luxury','services_contrast_premium','services_split_premium','services_grid_premium','services_feature_premium'],true)) return null;
 
         $lower=Str::lower(trim($prompt));
         $addIntent=Str::contains($lower,['add service','add services','add another service','add more service','more relevant service']);
@@ -2453,6 +2553,35 @@ For services_bento_premium specifically, treat featured_* as item 1 and service_
 
         $base=['type'=>$sparkKey,'theme'=>'auto','eyebrow'=>$eyebrow,'heading'=>$heading,'text'=>$text,'primary_label'=>$primaryLabel,'primary_url'=>$primaryUrl];
 
+        $compatiblePremiumServices=['services_bento_premium','services_editorial_premium','services_showcase_premium','services_minimal_luxury','services_contrast_premium','services_split_premium','services_grid_premium','services_feature_premium'];
+        if(in_array($sparkKey,$compatiblePremiumServices,true)){
+            $out=$base;
+            $out['image_url']=(string)($source['image_url']??'');
+            $out['featured_image_url']=(string)($source['featured_image_url']??$source['image_url']??'');
+            $out['service_two_image_url']=(string)($source['service_two_image_url']??'');
+            $out['service_three_image_url']=(string)($source['service_three_image_url']??'');
+            $out['service_four_image_url']=(string)($source['service_four_image_url']??'');
+            $out['service_five_image_url']=(string)($source['service_five_image_url']??'');
+            $out['service_six_image_url']=(string)($source['service_six_image_url']??'');
+            $out['service_seven_image_url']=(string)($source['service_seven_image_url']??'');
+            $out['featured_meta']=(string)($source['featured_meta']??'');
+            $out['proof_value']=(string)($source['proof_value']??'');
+            $out['proof_label']=(string)($source['proof_label']??'');
+            $words=['featured','two','three','four','five','six','seven'];
+            $numberKeys=['featured_number','service_two_number','service_three_number','service_four_number','service_five_number','service_six_number','service_seven_number'];
+            $titleKeys=['featured_title','service_two_title','service_three_title','service_four_title','service_five_title','service_six_title','service_seven_title'];
+            $textKeys=['featured_text','service_two_text','service_three_text','service_four_text','service_five_text','service_six_text','service_seven_text'];
+            for($i=0;$i<7;$i++){
+                $item=$at($i);
+                $out[$numberKeys[$i]]=str_pad((string)($i+1),2,'0',STR_PAD_LEFT);
+                $out[$titleKeys[$i]]=$item['title'];
+                $out[$textKeys[$i]]=$item['text'];
+            }
+            $out['service_count']=max(1,min(7,(int)($source['service_count']??count($services)??5)));
+            $out['_luna_redesign_fallback']=true;
+            return $out;
+        }
+
         if($sparkKey==='services_horizontal'){
             $out=$base;
             for($i=1;$i<=6;$i++){
@@ -2572,7 +2701,36 @@ For services_bento_premium specifically, treat featured_* as item 1 and service_
         }
 
         $normalizedPrompt=Str::lower(trim((string)$validated['prompt']));
-        $user=$request->user();
+
+        // Canonical mutation intent bundle — initialize before any downstream branch.
+        $mutationPrompt=$normalizedPrompt;
+        $explicitMediaMutation=Str::contains($mutationPrompt,[
+            'replace image','replace the image','change image','change the image',
+            'replace photo','change photo','replace media','change media',
+            'replace video','replace the video','change video','change the video',
+            'video background','background video','use this video','use video',
+            'use this image','use this photo','use a different image','use different image',
+            'use a different photo','use different photo','refresh image','refresh photo',
+            'thumbnail','poster'
+        ]);
+        $universalBackgroundIntent=Str::contains($mutationPrompt,[
+            'background image','section background','background photo','background media',
+            'change background','replace background','remove background','clear background'
+        ]);
+        $contentRewriteIntent=Str::contains($mutationPrompt,[
+            'rewrite','reword','rewrite the content','rewrite content','rewrite the copy','rewrite copy',
+            'rewrite the text','rewrite text','make the copy','shorten the copy','shorter copy',
+            'improve the copy','update the content','update content','change the wording',
+            'tone of voice','make the text','make this copy','make the content shorter','make the text shorter'
+        ]);
+        $contentOnlyIntent=$contentRewriteIntent
+            && !$explicitMediaMutation
+            && !$universalBackgroundIntent
+            && !Str::contains($mutationPrompt,[
+                'redesign','change the layout','different layout','change layout','replace section',
+                'change the design','different design','turn this section','transform this section'
+            ]);
+$user=$request->user();
 
         $allowedSiteThemes=['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
         $websiteThemeSettings=(array)($website->theme_settings??[]);
@@ -2785,12 +2943,12 @@ For services_bento_premium specifically, treat featured_* as item 1 and service_
             (Str::contains($normalizedPrompt,'background image') && Str::contains($normalizedPrompt,['add','use','set','change','give','put','apply']))
             || (Str::contains($normalizedPrompt,'background photo') && Str::contains($normalizedPrompt,['add','use','set','change','give','put','apply']))
         );
-        $universalBackgroundIntent=$backgroundAdd||$backgroundRemove||$backgroundDarker||$backgroundLighter;
-        $designGlobalIntent=Str::contains(Str::lower((string)$validated['prompt']),[
+$designGlobalIntent=Str::contains(Str::lower((string)$validated['prompt']),[
             'all sections','every section','all headings','every heading','whole page','entire page','everywhere','sitewide','site-wide'
         ]);
         $artDirectionIntent=$this->lunaArtDirectionIntent((string)$validated['prompt']);
-        if($artDirectionIntent)$designGlobalIntent=true;
+        // Relative art direction on a selected section stays local.
+        if($artDirectionIntent && $scope!=='section')$designGlobalIntent=true;
         $siteMemory=$this->lunaUpdatedSiteMemory((string)$validated['prompt'],$siteMemory,is_array($theme??null)?$theme:[]);
 
 
@@ -3112,7 +3270,9 @@ RULES:
 - Header language mapping: "float header", "overlay header", "header over hero/banner", "transparent header" means header_changes.overlay_header_on_banner=true. "put header above/outside the banner", "solid header", or "disable overlay" means false.
 - DESIGN SAFETY CONTRACT: Cosmic owns typography scales, responsive breakpoints, low-level spacing values, raw CSS/Tailwind/HTML/JS, positioning, z-index, transforms, and other implementation mechanics. Never emit arbitrary technical styling values.
 - Accept normal design intent (make it more prominent, more breathing room, darker/lighter, rounded, cleaner, premium, change layout) only through existing safe schema fields, registered layouts, theme/page_style, or bounded existing design controls. If the exact request cannot be represented safely, emit no styling operation and explain briefly that Luna can apply a design-system-safe equivalent instead.
+- RELATIVE DESIGN RULE: when the user says a selected section should feel "more premium", "more modern", "more polished", "better", or "more visually interesting", treat that as an explicit request for a visibly different compatible section design. Never answer that it is already premium/modern. Prefer a different registered compatible layout/Spark while preserving the section purpose and core content; otherwise apply a meaningful bounded design-system-safe visual change. For a selected Services section, choose a DIFFERENT Spark from the premium Services family than the current selected type; never return the same services_* type for a relative redesign.
 - CHANGE ONLY WHAT THE USER REQUESTED. Preserve all unrelated content, typography, spacing, colors, layout, and media.
+- MUTATION SCOPE LOCK: rewrite/reword/copy/content-only requests may edit textual fields only. Mentions such as "keep images/layout/colors unchanged" are preservation constraints, NOT requests to mutate those fields. Never emit image/media/theme/layout/design changes for a content-only rewrite unless the user explicitly asks to change them.
 - Do not invent raw HTML/CSS/JS/PHP/SQL or image URLs. Cosmic resolves requested photography through its image provider after your plan.
 - Never change ecommerce/dynamic data bindings unless explicitly requested.
 - Never delete content unless the user asks.
@@ -3129,7 +3289,7 @@ PROMPT;
                 'response_format'=>['type'=>'json_object'],
                 'messages'=>[
                     ['role'=>'system','content'=>$system],
-                    ['role'=>'user','content'=>"SCOPE: {$scope}".($scope==='section'?"\nSELECTED INDEX: {$targetIndex}":"")."\n\nUSER REQUEST:\n".$validated['prompt']."\n\nCURRENT PAGE SUMMARY:\n".json_encode($blockSummary,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSELECTED BLOCK FULL JSON:\n".$targetContext."\n\nELEMENT TARGET:\n".json_encode($elementContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT THEME:\n".json_encode(is_array($theme)?$theme:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSITE DESIGN MEMORY:\n".json_encode($siteMemory,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSIBLING PAGE REFERENCES:\n".json_encode($siblingPages,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUSABLE SPARK CATALOG:\n{$catalogJson}"],
+                    ['role'=>'user','content'=>"SCOPE: {$scope}".($scope==='section'?"\nSELECTED INDEX: {$targetIndex}":"")."\n\nUSER REQUEST:\n".$validated['prompt']."\n\nINTERPRETATION:\n".(($scope==='section' && Str::contains(Str::lower((string)$validated['prompt']),['more premium','more modern','more polished','make this section better','polish this section','more visually interesting'])) ? 'This is a relative redesign request. Produce a visibly different compatible registered section layout/design while preserving purpose and core content. Do not reject it because the current section is already premium or modern.' : 'Follow the request literally within the safe schema.')."\n\nCURRENT PAGE SUMMARY:\n".json_encode($blockSummary,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSELECTED BLOCK FULL JSON:\n".$targetContext."\n\nELEMENT TARGET:\n".json_encode($elementContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT THEME:\n".json_encode(is_array($theme)?$theme:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSITE DESIGN MEMORY:\n".json_encode($siteMemory,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSIBLING PAGE REFERENCES:\n".json_encode($siblingPages,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUSABLE SPARK CATALOG:\n{$catalogJson}"],
                 ],
             ]
         )->throw()->json();
@@ -3261,12 +3421,53 @@ PROMPT;
 
                 $candidate=null;
                 if($category==='services'){
-                    foreach(['services_horizontal','services_interactive_tabs','services_hover_cards','services_mega_grid'] as $preferredKey){
-                        $match=$ranked->first(fn($spark)=>(string)($spark['key']??'')===$preferredKey);
+                    // Route explicit design language to the matching premium Services family.
+                    // This prevents generic fixed-order fallback from repeatedly choosing
+                    // Editorial/Showcase regardless of what the user actually asked for.
+                    $semanticServiceKey=null;
+                    if(Str::contains($requestLower,['contrast','high-contrast','high contrast','bold','performance-focused','performance focused','dark'])){
+                        $semanticServiceKey='services_contrast_premium';
+                    } elseif(Str::contains($requestLower,['minimal luxury','quiet luxury','minimal and luxurious','minimal','luxurious','whitespace-heavy','whitespace heavy'])){
+                        $semanticServiceKey='services_minimal_luxury';
+                    } elseif(Str::contains($requestLower,['editorial','magazine','asymmetric','asymmetrical'])){
+                        $semanticServiceKey='services_editorial_premium';
+                    } elseif(Str::contains($requestLower,['split layout','split layouts','alternating split','alternating','split service','split services'])){
+                        $semanticServiceKey='services_split_premium';
+                    } elseif(Str::contains($requestLower,['3-column','3 column','three-column','three column','grid premium','service grid','services grid'])){
+                        $semanticServiceKey='services_grid_premium';
+                    } elseif(Str::contains($requestLower,['featured service','feature one service','one featured service','prominently featured','supporting service cards','supporting cards'])){
+                        $semanticServiceKey='services_feature_premium';
+                    } elseif(Str::contains($requestLower,['large imagery','large image','large automotive image','more visual','image-led','image led','showcase'])){
+                        $semanticServiceKey='services_showcase_premium';
+                    } elseif(Str::contains($requestLower,['bento','varied card sizes','varied cards'])){
+                        $semanticServiceKey='services_bento_premium';
+                    }
+
+                    if($semanticServiceKey!==null && $semanticServiceKey!==$currentKey){
+                        $match=$ranked->first(fn($spark)=>(string)($spark['key']??'')===$semanticServiceKey);
                         if(is_array($match) && ($match['_luna_redesign_score']??0)>0){
                             $candidate=$match;
-                            break;
                         }
+                    }
+
+                    // Generic "more premium/better" requests choose the highest-ranked
+                    // materially different Services design rather than a hard-coded first item.
+                    if($candidate===null){
+                        $premiumFamily=[
+                            'services_bento_premium',
+                            'services_editorial_premium',
+                            'services_showcase_premium',
+                            'services_minimal_luxury',
+                            'services_contrast_premium',
+                            'services_split_premium',
+                            'services_grid_premium',
+                            'services_feature_premium',
+                        ];
+                        $candidate=$ranked->first(fn($spark)=>
+                            in_array((string)($spark['key']??''),$premiumFamily,true)
+                            && (string)($spark['key']??'')!==$currentKey
+                            && ($spark['_luna_redesign_score']??0)>0
+                        );
                     }
                 }
                 $candidate=$candidate
@@ -3346,16 +3547,41 @@ PROMPT;
                 $current=$nextBlocks[$index];
                 $changes=$operation['changes'];
                 unset($changes['type'],$changes['_renderKey']);
-                if(($current['type']??'')==='services_bento_premium'){
+                if($contentOnlyIntent){
+                    // Text-only means text-only. Strip media, layout, theme and runtime
+                    // fields even if the planner returns them. Nested repeaters are
+                    // sanitized recursively so existing card/item imagery survives.
+                    $stripNonTextMutation=function($value) use (&$stripNonTextMutation){
+                        if(!is_array($value)) return $value;
+                        $clean=[];
+                        foreach($value as $key=>$item){
+                            $name=is_string($key)?Str::lower($key):'';
+                            if($name!=='' && preg_match('/(image|photo|picture|avatar|thumbnail|video|media|background|theme|style|layout|spacing|padding|margin|color|colour|font|radius|overlay|position|animation)/i',$name)){
+                                continue;
+                            }
+                            $clean[$key]=is_array($item)?$stripNonTextMutation($item):$item;
+                        }
+                        return $clean;
+                    };
+                    $changes=$stripNonTextMutation($changes);
+                }
+                if(in_array(($current['type']??''),['services_bento_premium','services_editorial_premium','services_showcase_premium','services_minimal_luxury','services_contrast_premium','services_split_premium','services_grid_premium','services_feature_premium'],true)){
                     $bentoCrudKeys=array_flip([
                         'service_count',
                         'featured_number','featured_title','featured_text','featured_meta',
+                        'featured_image_url',
                         'service_two_number','service_two_title','service_two_text',
+                        'service_two_image_url',
                         'service_three_number','service_three_title','service_three_text',
+                        'service_three_image_url',
                         'service_four_number','service_four_title','service_four_text',
+                        'service_four_image_url',
                         'service_five_number','service_five_title','service_five_text',
+                        'service_five_image_url',
                         'service_six_number','service_six_title','service_six_text',
+                        'service_six_image_url',
                         'service_seven_number','service_seven_title','service_seven_text',
+                        'service_seven_image_url',
                         'proof_value','proof_label'
                     ]);
                     $changes=array_intersect_key($changes,$current+$bentoCrudKeys);
@@ -3468,7 +3694,7 @@ PROMPT;
         $designApplied=false;
         $designChanges=[];
         $designPrompt=(string)$validated['prompt'];
-        $designTargets=$designGlobalIntent ? array_keys($nextBlocks) : (($scope==='section'&&isset($nextBlocks[$targetIndex]))?[$targetIndex]:[]);
+        $designTargets=$contentOnlyIntent ? [] : ($designGlobalIntent ? array_keys($nextBlocks) : (($scope==='section'&&isset($nextBlocks[$targetIndex]))?[$targetIndex]:[]));
         foreach($designTargets as $designIndex){
             if(!isset($nextBlocks[$designIndex])||!is_array($nextBlocks[$designIndex]))continue;
             $currentDesign=is_array($nextBlocks[$designIndex]['luna_design_overrides']??null)?$nextBlocks[$designIndex]['luna_design_overrides']:[];
@@ -3518,10 +3744,7 @@ PROMPT;
 
         // A universal background request owns only its isolated background slot.
         // Do not also refresh every existing image in the selected Spark.
-        $imageRequest=!$universalBackgroundIntent && Str::contains(Str::lower((string)$validated['prompt']),[
-            'image','images','photo','photos','photography','unsplash','picture','pictures',
-            'replace the image','change the image','change image','new image'
-        ]);
+        $imageRequest=!$contentOnlyIntent && !$universalBackgroundIntent && $explicitMediaMutation;
         $imageRefreshSucceeded=null;
         $imageRefreshError=null;
         if($imageRequest){

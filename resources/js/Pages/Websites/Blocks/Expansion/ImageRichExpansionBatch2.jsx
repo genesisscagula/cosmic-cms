@@ -12,7 +12,7 @@ const vars=(resolved)=>{
         "--b2-accent":"var(--cosmic-accent,#60A5FA)",
     };
 };
-const Img=({item})=><div data-cosmic-luna-display="image" data-luna-target="image" className="b2-img"><img src={url(item?.image_url)} alt="" className="h-full w-full object-cover pointer-events-none"/></div>;
+const Img=({item})=>{const src=url(item?.image_url);return <div data-cosmic-luna-display="image" data-luna-target="image" className="b2-img">{src?<img src={src} alt="" className="h-full w-full object-cover pointer-events-none"/>:<div className="h-full min-h-[15rem] w-full bg-[var(--b2-surface)]"/>}</div>};
 const Meta=({item,index})=><div className="b2-copy">
     <span className="b2-num">{item?.label || String(index+1).padStart(2,"0")}</span>
     <span data-cosmic-luna-display="text" data-cosmic-type="card-title" data-luna-target="heading" className="b2-title">{item?.title}</span>

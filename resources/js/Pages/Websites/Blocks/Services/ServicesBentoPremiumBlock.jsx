@@ -5,7 +5,7 @@ import { colorFamilies } from "../../../../theme/colorFamilies";
 
 export const ServicesBentoPremiumSchema = {
     type: "services_bento_premium",
-    title: "Bento Services Premium",
+    title: "Services Bento Premium",
     category: "Services",
     purpose: "Present a premium service offer through an asymmetrical bento grid.",
     description: "A Pro-only services section with one featured offer, four supporting cards, proof details, and a clear conversion path.",

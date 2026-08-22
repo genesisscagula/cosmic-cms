@@ -508,7 +508,7 @@ class SparkCompatibilityChecker
     {
         $groups = [
             self::HEROES,
-            ['services_cards', 'services_bento', 'services_bento_premium'],
+            ['services_cards', 'services_bento', 'services_bento_premium', 'services_editorial_premium', 'services_showcase_premium', 'services_minimal_luxury', 'services_dark_premium', 'services_split_premium', 'services_grid_premium', 'services_feature_premium'],
             self::CTA,
         ];
 

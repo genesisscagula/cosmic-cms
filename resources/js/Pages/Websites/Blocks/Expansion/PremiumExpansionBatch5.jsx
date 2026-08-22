@@ -26,7 +26,7 @@ const Batch5=({block,variant,family})=>{
             <div className="b5-grid">
                 {items.map((item,index)=><article className="b5-card group relative" key={`${item?.title||"item"}-${index}`}>
                     <div data-cosmic-luna-display="image" data-luna-target="image" className="b5-img">
-                        <img src={asset(item?.image_url)} alt="" className="h-full w-full object-cover pointer-events-none"/>
+                        {asset(item?.image_url)?<img src={asset(item?.image_url)} alt="" className="h-full w-full object-cover pointer-events-none"/>:<div className="h-full min-h-[16rem] w-full bg-[var(--b5-surface)]"/>}
                     </div>
                     <div className="b5-copy">
                         <span className="b5-label">{item?.label || String(index+1).padStart(2,"0")}</span>

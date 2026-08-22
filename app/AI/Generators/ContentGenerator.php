@@ -407,6 +407,3786 @@ PROMPT;
     }
 
 
+    private function servicesEditorialPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_editorial_premium
+
+    - type = services_editorial_premium
+    - theme = auto
+    - eyebrow, heading, text
+    - primary_label, primary_url
+    - image_url = ""
+    - featured_image_url = ""
+    - service_two_image_url = ""
+    - service_three_image_url = ""
+    - service_four_image_url = ""
+    - service_five_image_url = ""
+    - service_six_image_url = ""
+    - service_seven_image_url = ""
+        - featured_number, featured_title, featured_text, featured_meta
+    - service_two_number, service_two_title, service_two_text
+    - service_three_number, service_three_title, service_three_text
+    - service_four_number, service_four_title, service_four_text
+    - service_five_number, service_five_title, service_five_text
+    - service_six_number, service_six_title, service_six_text
+    - service_seven_number, service_seven_title, service_seven_text
+    - service_count
+    - proof_value, proof_label
+
+    Requirements:
+    - Write seven distinct, relevant services so the section may expand later.
+    - service_count must be 1 through 7 and fresh builds should normally use 5.
+    - Keep numbers sequential 01 through 07.
+    - Make the featured service the strongest strategic/commercial offer.
+    - image_url must be empty; the application resolves imagery.
+    - Do not invent awards, client names, guarantees, metrics, or unverifiable claims.
+    - Preserve industry context and write concise, specific service copy.
+
+    TXT;
+    }
+
+    private function servicesShowcasePremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_showcase_premium
+
+    - type = services_showcase_premium
+    - theme = auto
+    - eyebrow, heading, text
+    - primary_label, primary_url
+    - image_url = ""
+    - featured_image_url = ""
+    - service_two_image_url = ""
+    - service_three_image_url = ""
+    - service_four_image_url = ""
+    - service_five_image_url = ""
+    - service_six_image_url = ""
+    - service_seven_image_url = ""
+        - featured_number, featured_title, featured_text, featured_meta
+    - service_two_number, service_two_title, service_two_text
+    - service_three_number, service_three_title, service_three_text
+    - service_four_number, service_four_title, service_four_text
+    - service_five_number, service_five_title, service_five_text
+    - service_six_number, service_six_title, service_six_text
+    - service_seven_number, service_seven_title, service_seven_text
+    - service_count
+    - proof_value, proof_label
+
+    Requirements:
+    - Write seven distinct, relevant services so the section may expand later.
+    - service_count must be 1 through 7 and fresh builds should normally use 5.
+    - Keep numbers sequential 01 through 07.
+    - Make the featured service the strongest strategic/commercial offer.
+    - image_url must be empty; the application resolves imagery.
+    - Do not invent awards, client names, guarantees, metrics, or unverifiable claims.
+    - Preserve industry context and write concise, specific service copy.
+
+    TXT;
+    }
+
+    private function servicesMinimalLuxurySchema(): string
+    {
+        return <<<TXT
+
+    services_minimal_luxury
+
+    - type = services_minimal_luxury
+    - theme = auto
+    - eyebrow, heading, text
+    - primary_label, primary_url
+    - image_url = ""
+    - featured_image_url = ""
+    - service_two_image_url = ""
+    - service_three_image_url = ""
+    - service_four_image_url = ""
+    - service_five_image_url = ""
+    - service_six_image_url = ""
+    - service_seven_image_url = ""
+        - featured_number, featured_title, featured_text, featured_meta
+    - service_two_number, service_two_title, service_two_text
+    - service_three_number, service_three_title, service_three_text
+    - service_four_number, service_four_title, service_four_text
+    - service_five_number, service_five_title, service_five_text
+    - service_six_number, service_six_title, service_six_text
+    - service_seven_number, service_seven_title, service_seven_text
+    - service_count
+    - proof_value, proof_label
+
+    Requirements:
+    - Write seven distinct, relevant services so the section may expand later.
+    - service_count must be 1 through 7 and fresh builds should normally use 5.
+    - Keep numbers sequential 01 through 07.
+    - Make the featured service the strongest strategic/commercial offer.
+    - image_url must be empty; the application resolves imagery.
+    - Do not invent awards, client names, guarantees, metrics, or unverifiable claims.
+    - Preserve industry context and write concise, specific service copy.
+
+    TXT;
+    }
+
+    private function servicesContrastPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_contrast_premium
+
+    - type = services_contrast_premium
+    - theme = auto
+    - eyebrow, heading, text
+    - primary_label, primary_url
+    - image_url = ""
+    - featured_image_url = ""
+    - service_two_image_url = ""
+    - service_three_image_url = ""
+    - service_four_image_url = ""
+    - service_five_image_url = ""
+    - service_six_image_url = ""
+    - service_seven_image_url = ""
+        - featured_number, featured_title, featured_text, featured_meta
+    - service_two_number, service_two_title, service_two_text
+    - service_three_number, service_three_title, service_three_text
+    - service_four_number, service_four_title, service_four_text
+    - service_five_number, service_five_title, service_five_text
+    - service_six_number, service_six_title, service_six_text
+    - service_seven_number, service_seven_title, service_seven_text
+    - service_count
+    - proof_value, proof_label
+
+    Requirements:
+    - Write seven distinct, relevant services so the section may expand later.
+    - service_count must be 1 through 7 and fresh builds should normally use 5.
+    - Keep numbers sequential 01 through 07.
+    - Make the featured service the strongest strategic/commercial offer.
+    - image_url must be empty; the application resolves imagery.
+    - Do not invent awards, client names, guarantees, metrics, or unverifiable claims.
+    - Preserve industry context and write concise, specific service copy.
+
+    TXT;
+    }
+
+    private function servicesSplitPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_split_premium
+
+    - type = services_split_premium
+    - theme = auto
+    - eyebrow, heading, text
+    - primary_label, primary_url
+    - image_url = ""
+    - featured_image_url = ""
+    - service_two_image_url = ""
+    - service_three_image_url = ""
+    - service_four_image_url = ""
+    - service_five_image_url = ""
+    - service_six_image_url = ""
+    - service_seven_image_url = ""
+        - featured_number, featured_title, featured_text, featured_meta
+    - service_two_number, service_two_title, service_two_text
+    - service_three_number, service_three_title, service_three_text
+    - service_four_number, service_four_title, service_four_text
+    - service_five_number, service_five_title, service_five_text
+    - service_six_number, service_six_title, service_six_text
+    - service_seven_number, service_seven_title, service_seven_text
+    - service_count
+    - proof_value, proof_label
+
+    Requirements:
+    - Write seven distinct, relevant services so the section may expand later.
+    - service_count must be 1 through 7 and fresh builds should normally use 5.
+    - Keep numbers sequential 01 through 07.
+    - Make the featured service the strongest strategic/commercial offer.
+    - image_url must be empty; the application resolves imagery.
+    - Do not invent awards, client names, guarantees, metrics, or unverifiable claims.
+    - Preserve industry context and write concise, specific service copy.
+
+    TXT;
+    }
+
+    private function servicesGridPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_grid_premium
+
+    - type = services_grid_premium
+    - theme = auto
+    - eyebrow, heading, text
+    - primary_label, primary_url
+    - image_url = ""
+    - featured_image_url = ""
+    - service_two_image_url = ""
+    - service_three_image_url = ""
+    - service_four_image_url = ""
+    - service_five_image_url = ""
+    - service_six_image_url = ""
+    - service_seven_image_url = ""
+        - featured_number, featured_title, featured_text, featured_meta
+    - service_two_number, service_two_title, service_two_text
+    - service_three_number, service_three_title, service_three_text
+    - service_four_number, service_four_title, service_four_text
+    - service_five_number, service_five_title, service_five_text
+    - service_six_number, service_six_title, service_six_text
+    - service_seven_number, service_seven_title, service_seven_text
+    - service_count
+    - proof_value, proof_label
+
+    Requirements:
+    - Write seven distinct, relevant services so the section may expand later.
+    - service_count must be 1 through 7 and fresh builds should normally use 5.
+    - Keep numbers sequential 01 through 07.
+    - Make the featured service the strongest strategic/commercial offer.
+    - image_url must be empty; the application resolves imagery.
+    - Do not invent awards, client names, guarantees, metrics, or unverifiable claims.
+    - Preserve industry context and write concise, specific service copy.
+
+    TXT;
+    }
+
+    private function servicesFeaturePremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_feature_premium
+
+    - type = services_feature_premium
+    - theme = auto
+    - eyebrow, heading, text
+    - primary_label, primary_url
+    - image_url = ""
+    - featured_image_url = ""
+    - service_two_image_url = ""
+    - service_three_image_url = ""
+    - service_four_image_url = ""
+    - service_five_image_url = ""
+    - service_six_image_url = ""
+    - service_seven_image_url = ""
+        - featured_number, featured_title, featured_text, featured_meta
+    - service_two_number, service_two_title, service_two_text
+    - service_three_number, service_three_title, service_three_text
+    - service_four_number, service_four_title, service_four_text
+    - service_five_number, service_five_title, service_five_text
+    - service_six_number, service_six_title, service_six_text
+    - service_seven_number, service_seven_title, service_seven_text
+    - service_count
+    - proof_value, proof_label
+
+    Requirements:
+    - Write seven distinct, relevant services so the section may expand later.
+    - service_count must be 1 through 7 and fresh builds should normally use 5.
+    - Keep numbers sequential 01 through 07.
+    - Make the featured service the strongest strategic/commercial offer.
+    - image_url must be empty; the application resolves imagery.
+    - Do not invent awards, client names, guarantees, metrics, or unverifiable claims.
+    - Preserve industry context and write concise, specific service copy.
+
+    TXT;
+    }
+
+    private function aboutFounderVisualPremiumSchema(): string
+    {
+        return <<<TXT
+
+    about_founder_visual_premium
+
+    - type = about_founder_visual_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a about section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function aboutImageManifestoPremiumSchema(): string
+    {
+        return <<<TXT
+
+    about_image_manifesto_premium
+
+    - type = about_image_manifesto_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a about section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function aboutJourneyGalleryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    about_journey_gallery_premium
+
+    - type = about_journey_gallery_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a about section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function aboutStoryCollagePremiumSchema(): string
+    {
+        return <<<TXT
+
+    about_story_collage_premium
+
+    - type = about_story_collage_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a about section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function brandValueCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    brand_value_cards_premium
+
+    - type = brand_value_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a about section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function brandVisualPrinciplesPremiumSchema(): string
+    {
+        return <<<TXT
+
+    brand_visual_principles_premium
+
+    - type = brand_visual_principles_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a about section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function constructionCapabilitySplitPremiumSchema(): string
+    {
+        return <<<TXT
+
+    construction_capability_split_premium
+
+    - type = construction_capability_split_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function constructionProjectCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    construction_project_cards_premium
+
+    - type = construction_project_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function constructionServicePhotosPremiumSchema(): string
+    {
+        return <<<TXT
+
+    construction_service_photos_premium
+
+    - type = construction_service_photos_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function constructionSiteProgressPremiumSchema(): string
+    {
+        return <<<TXT
+
+    construction_site_progress_premium
+
+    - type = construction_site_progress_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function contactEditorialSplitPremiumSchema(): string
+    {
+        return <<<TXT
+
+    contact_editorial_split_premium
+
+    - type = contact_editorial_split_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a contact section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function contactImageFormPremiumSchema(): string
+    {
+        return <<<TXT
+
+    contact_image_form_premium
+
+    - type = contact_image_form_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a contact section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function contactOfficeCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    contact_office_cards_premium
+
+    - type = contact_office_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a contact section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function contactVisualInquiryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    contact_visual_inquiry_premium
+
+    - type = contact_visual_inquiry_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a contact section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function contentAsymmetricStoryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    content_asymmetric_story_premium
+
+    - type = content_asymmetric_story_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a content section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function contentEditorialImageStackPremiumSchema(): string
+    {
+        return <<<TXT
+
+    content_editorial_image_stack_premium
+
+    - type = content_editorial_image_stack_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a content section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function contentMediaManifestoPremiumSchema(): string
+    {
+        return <<<TXT
+
+    content_media_manifesto_premium
+
+    - type = content_media_manifesto_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a content section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function contentVisualQuotePremiumSchema(): string
+    {
+        return <<<TXT
+
+    content_visual_quote_premium
+
+    - type = content_visual_quote_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a content section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function ctaBackgroundMediaPremiumSchema(): string
+    {
+        return <<<TXT
+
+    cta_background_media_premium
+
+    - type = cta_background_media_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a cta section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function ctaEditorialBannerPremiumSchema(): string
+    {
+        return <<<TXT
+
+    cta_editorial_banner_premium
+
+    - type = cta_editorial_banner_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a cta section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function ctaFloatingPanelPremiumSchema(): string
+    {
+        return <<<TXT
+
+    cta_floating_panel_premium
+
+    - type = cta_floating_panel_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a cta section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function ctaImageSplitPremiumSchema(): string
+    {
+        return <<<TXT
+
+    cta_image_split_premium
+
+    - type = cta_image_split_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a cta section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function ctaMediaCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    cta_media_cards_premium
+
+    - type = cta_media_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a cta section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function dentalClinicStoryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    dental_clinic_story_premium
+
+    - type = dental_clinic_story_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function dentalTreatmentCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    dental_treatment_cards_premium
+
+    - type = dental_treatment_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function featuresAsymmetricMediaPremiumSchema(): string
+    {
+        return <<<TXT
+
+    features_asymmetric_media_premium
+
+    - type = features_asymmetric_media_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a feature section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function featuresEditorialMosaicPremiumSchema(): string
+    {
+        return <<<TXT
+
+    features_editorial_mosaic_premium
+
+    - type = features_editorial_mosaic_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a feature section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function featuresFullbleedPanelsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    features_fullbleed_panels_premium
+
+    - type = features_fullbleed_panels_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a feature section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function featuresImageIndexPremiumSchema(): string
+    {
+        return <<<TXT
+
+    features_image_index_premium
+
+    - type = features_image_index_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a feature section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function featuresImageStackPremiumSchema(): string
+    {
+        return <<<TXT
+
+    features_image_stack_premium
+
+    - type = features_image_stack_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a feature section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function featuresMediaStepsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    features_media_steps_premium
+
+    - type = features_media_steps_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a feature section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function featuresOverlapCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    features_overlap_cards_premium
+
+    - type = features_overlap_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a feature section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function featuresSpotlightCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    features_spotlight_cards_premium
+
+    - type = features_spotlight_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a feature section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function featuresVisualSplitPremiumSchema(): string
+    {
+        return <<<TXT
+
+    features_visual_split_premium
+
+    - type = features_visual_split_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a feature section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function galleryAsymmetricPremiumSchema(): string
+    {
+        return <<<TXT
+
+    gallery_asymmetric_premium
+
+    - type = gallery_asymmetric_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function galleryEditorialGridPremiumSchema(): string
+    {
+        return <<<TXT
+
+    gallery_editorial_grid_premium
+
+    - type = gallery_editorial_grid_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function galleryImageRailPremiumSchema(): string
+    {
+        return <<<TXT
+
+    gallery_image_rail_premium
+
+    - type = gallery_image_rail_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function galleryStoryTilesPremiumSchema(): string
+    {
+        return <<<TXT
+
+    gallery_story_tiles_premium
+
+    - type = gallery_story_tiles_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function hotelExperienceCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    hotel_experience_cards_premium
+
+    - type = hotel_experience_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function hotelRoomCollectionPremiumSchema(): string
+    {
+        return <<<TXT
+
+    hotel_room_collection_premium
+
+    - type = hotel_room_collection_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function locationCitySpotlightPremiumSchema(): string
+    {
+        return <<<TXT
+
+    location_city_spotlight_premium
+
+    - type = location_city_spotlight_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a contact section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function locationMultiOfficePremiumSchema(): string
+    {
+        return <<<TXT
+
+    location_multi_office_premium
+
+    - type = location_multi_office_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a contact section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function locationPhotoCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    location_photo_cards_premium
+
+    - type = location_photo_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a contact section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function locationVisualDirectoryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    location_visual_directory_premium
+
+    - type = location_visual_directory_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a contact section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function medicalCarePathwaysPremiumSchema(): string
+    {
+        return <<<TXT
+
+    medical_care_pathways_premium
+
+    - type = medical_care_pathways_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function medicalFacilityShowcasePremiumSchema(): string
+    {
+        return <<<TXT
+
+    medical_facility_showcase_premium
+
+    - type = medical_facility_showcase_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function portfolioCinematicGridPremiumSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_cinematic_grid_premium
+
+    - type = portfolio_cinematic_grid_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function portfolioEditorialCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_editorial_cards_premium
+
+    - type = portfolio_editorial_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function portfolioFullbleedProjectsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_fullbleed_projects_premium
+
+    - type = portfolio_fullbleed_projects_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function portfolioImageIndexPremiumSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_image_index_premium
+
+    - type = portfolio_image_index_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function portfolioMediaLedgerPremiumSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_media_ledger_premium
+
+    - type = portfolio_media_ledger_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function portfolioProjectPanelsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_project_panels_premium
+
+    - type = portfolio_project_panels_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function portfolioSplitShowcasePremiumSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_split_showcase_premium
+
+    - type = portfolio_split_showcase_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function portfolioStaggeredGalleryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_staggered_gallery_premium
+
+    - type = portfolio_staggered_gallery_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function portfolioStoryIndexPremiumSchema(): string
+    {
+        return <<<TXT
+
+    portfolio_story_index_premium
+
+    - type = portfolio_story_index_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a portfolio section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function processEditorialJourneyPremiumSchema(): string
+    {
+        return <<<TXT
+
+    process_editorial_journey_premium
+
+    - type = process_editorial_journey_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a process section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function processImageTimelinePremiumSchema(): string
+    {
+        return <<<TXT
+
+    process_image_timeline_premium
+
+    - type = process_image_timeline_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a process section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function processMediaRoadmapPremiumSchema(): string
+    {
+        return <<<TXT
+
+    process_media_roadmap_premium
+
+    - type = process_media_roadmap_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a process section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function processNumberedPanelsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    process_numbered_panels_premium
+
+    - type = process_numbered_panels_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a process section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function processVisualStepsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    process_visual_steps_premium
+
+    - type = process_visual_steps_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a process section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function proofCaseStoryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    proof_case_story_premium
+
+    - type = proof_case_story_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a stats section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function proofMetricGalleryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    proof_metric_gallery_premium
+
+    - type = proof_metric_gallery_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a stats section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function realestateAgentStoryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    realestate_agent_story_premium
+
+    - type = realestate_agent_story_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function realestateFeaturedListingPremiumSchema(): string
+    {
+        return <<<TXT
+
+    realestate_featured_listing_premium
+
+    - type = realestate_featured_listing_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function realestateNeighborhoodCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    realestate_neighborhood_cards_premium
+
+    - type = realestate_neighborhood_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function realestatePropertyGridPremiumSchema(): string
+    {
+        return <<<TXT
+
+    realestate_property_grid_premium
+
+    - type = realestate_property_grid_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function restaurantAtmosphereGalleryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    restaurant_atmosphere_gallery_premium
+
+    - type = restaurant_atmosphere_gallery_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function restaurantReservationCtaPremiumSchema(): string
+    {
+        return <<<TXT
+
+    restaurant_reservation_cta_premium
+
+    - type = restaurant_reservation_cta_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function restaurantSignatureDishesPremiumSchema(): string
+    {
+        return <<<TXT
+
+    restaurant_signature_dishes_premium
+
+    - type = restaurant_signature_dishes_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function restaurantStoryMenuPremiumSchema(): string
+    {
+        return <<<TXT
+
+    restaurant_story_menu_premium
+
+    - type = restaurant_story_menu_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function servicesEditorialRowsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_editorial_rows_premium
+
+    - type = services_editorial_rows_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function servicesFullbleedOverlayPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_fullbleed_overlay_premium
+
+    - type = services_fullbleed_overlay_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function servicesHorizontalMediaPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_horizontal_media_premium
+
+    - type = services_horizontal_media_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function servicesImageAccordionPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_image_accordion_premium
+
+    - type = services_image_accordion_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function servicesImageTrioPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_image_trio_premium
+
+    - type = services_image_trio_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function servicesMosaicMediaPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_mosaic_media_premium
+
+    - type = services_mosaic_media_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function servicesNumberedImagesPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_numbered_images_premium
+
+    - type = services_numbered_images_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function servicesOverlayGridPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_overlay_grid_premium
+
+    - type = services_overlay_grid_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function servicesStaggeredMediaPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_staggered_media_premium
+
+    - type = services_staggered_media_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function servicesVisualDirectoryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    services_visual_directory_premium
+
+    - type = services_visual_directory_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function statsEditorialNumbersPremiumSchema(): string
+    {
+        return <<<TXT
+
+    stats_editorial_numbers_premium
+
+    - type = stats_editorial_numbers_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a stats section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function statsImagePanelsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    stats_image_panels_premium
+
+    - type = stats_image_panels_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a stats section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function statsPhotoMetricsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    stats_photo_metrics_premium
+
+    - type = stats_photo_metrics_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a stats section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function statsVisualMosaicPremiumSchema(): string
+    {
+        return <<<TXT
+
+    stats_visual_mosaic_premium
+
+    - type = stats_visual_mosaic_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a stats section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function teamImageGridPremiumSchema(): string
+    {
+        return <<<TXT
+
+    team_image_grid_premium
+
+    - type = team_image_grid_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a team section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function teamLeadershipSplitPremiumSchema(): string
+    {
+        return <<<TXT
+
+    team_leadership_split_premium
+
+    - type = team_leadership_split_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a team section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function teamPeopleMosaicPremiumSchema(): string
+    {
+        return <<<TXT
+
+    team_people_mosaic_premium
+
+    - type = team_people_mosaic_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a team section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function teamPortraitEditorialPremiumSchema(): string
+    {
+        return <<<TXT
+
+    team_portrait_editorial_premium
+
+    - type = team_portrait_editorial_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a team section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function teamProfileOverlayPremiumSchema(): string
+    {
+        return <<<TXT
+
+    team_profile_overlay_premium
+
+    - type = team_profile_overlay_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a team section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function testimonialsClientSpotlightPremiumSchema(): string
+    {
+        return <<<TXT
+
+    testimonials_client_spotlight_premium
+
+    - type = testimonials_client_spotlight_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a testimonials section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function testimonialsEditorialQuotesPremiumSchema(): string
+    {
+        return <<<TXT
+
+    testimonials_editorial_quotes_premium
+
+    - type = testimonials_editorial_quotes_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a testimonials section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function testimonialsFeaturedStoryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    testimonials_featured_story_premium
+
+    - type = testimonials_featured_story_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a testimonials section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function testimonialsImageWallPremiumSchema(): string
+    {
+        return <<<TXT
+
+    testimonials_image_wall_premium
+
+    - type = testimonials_image_wall_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a testimonials section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function testimonialsPortraitCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    testimonials_portrait_cards_premium
+
+    - type = testimonials_portrait_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a testimonials section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function travelDestinationStoryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    travel_destination_story_premium
+
+    - type = travel_destination_story_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function travelItineraryVisualPremiumSchema(): string
+    {
+        return <<<TXT
+
+    travel_itinerary_visual_premium
+
+    - type = travel_itinerary_visual_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a services section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function trustCertificationCardsPremiumSchema(): string
+    {
+        return <<<TXT
+
+    trust_certification_cards_premium
+
+    - type = trust_certification_cards_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a stats section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function trustImageProofPremiumSchema(): string
+    {
+        return <<<TXT
+
+    trust_image_proof_premium
+
+    - type = trust_image_proof_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a stats section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function trustLogoStoryPremiumSchema(): string
+    {
+        return <<<TXT
+
+    trust_logo_story_premium
+
+    - type = trust_logo_story_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a stats section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+    private function trustPartnerShowcasePremiumSchema(): string
+    {
+        return <<<TXT
+
+    trust_partner_showcase_premium
+
+    - type = trust_partner_showcase_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - items (array of 4 to 6 relevant items)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Preserve the requested business/industry context.
+    - Use concise, specific copy appropriate to a stats section.
+    - Keep image_url empty; Cosmic assigns relevant provider imagery after generation.
+    - Use 4 items by default unless the requested layout clearly benefits from another count between 4 and 6.
+    - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
     private function aboutTimelineStorySchema(): string
     {
         return <<<TXT
