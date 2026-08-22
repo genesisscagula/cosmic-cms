@@ -33,6 +33,24 @@ final class TemplateMetadataService
             default => 'text-led',
         };
 
+        $explicitHeroMediaMode = strtolower(trim((string) ($template['hero_media_mode'] ?? '')));
+        $heroMediaMode = in_array($explicitHeroMediaMode, ['image', 'slider', 'video'], true)
+            ? $explicitHeroMediaMode
+            : match (true) {
+                $hero && Str::contains($hero, 'video') => 'video',
+                $hero && Str::contains($hero, ['slider', 'carousel', 'crossfade']) => 'slider',
+                $hero && Str::contains($hero, ['background_image', 'editorial_overlay', 'ken_burns', 'parallax', 'image_sequence', 'mask_reveal']) => 'image',
+                default => 'none',
+            };
+
+        $overlayHeaderRecommended = array_key_exists('overlay_header_recommended', $template)
+            ? (bool) $template['overlay_header_recommended']
+            : in_array($heroMediaMode, ['image', 'slider', 'video'], true);
+
+        $overlayHeaderDefault = array_key_exists('overlay_header_default', $template)
+            ? (bool) $template['overlay_header_default']
+            : $overlayHeaderRecommended;
+
         $layoutStyle = $this->layoutStyle($hero, $styles, $sections);
         $textDensity = $denseHits >= 4 ? 'dense' : ($denseHits >= 2 ? 'balanced' : 'airy');
         $visualScore = min(100, 38 + ($mediaHits * 10) + ($interactiveHits * 8) + ($imageSections * 4) + (($template['featured'] ?? false) ? 6 : 0));
@@ -51,6 +69,9 @@ final class TemplateMetadataService
             'page_intents' => $intents,
             'layout_style' => $layoutStyle,
             'media_mode' => $mediaMode,
+            'hero_media_mode' => $heroMediaMode,
+            'overlay_header_recommended' => $overlayHeaderRecommended,
+            'overlay_header_default' => $overlayHeaderDefault,
             'text_density' => $textDensity,
             'visual_score' => $visualScore,
             'premium_level' => $premiumLevel,
@@ -83,6 +104,9 @@ final class TemplateMetadataService
             'features' => $template['features'] ?? [],
             'layout_style' => $template['layout_style'],
             'media_mode' => $template['media_mode'],
+            'hero_media_mode' => $template['hero_media_mode'],
+            'overlay_header_recommended' => $template['overlay_header_recommended'],
+            'overlay_header_default' => $template['overlay_header_default'],
             'text_density' => $template['text_density'],
             'visual_score' => $template['visual_score'],
             'quality_score' => $template['quality_score'],

@@ -86,7 +86,7 @@ export function HeroLuxuryFullscreenBlock({ block, blockIndex, onUpdate, globalT
                     <EditableText value={data.edition_label} className={`text-xs font-medium ${copy.edition}`} onSave={(edition_label)=>onUpdate({edition_label})}/>
                 </div>
                 <div className="max-w-5xl py-0">
-                    <EditableText value={data.heading} className={`block max-w-5xl text-4xl font-medium leading-[.96] tracking-[-.05em] sm:text-5xl lg:text-6xl xl:text-7xl ${copy.heading}`} onSave={(heading)=>onUpdate({heading})}/>
+                    <EditableText value={data.heading} cosmicType="h1" className={`block max-w-5xl text-4xl font-medium leading-[.96] tracking-[-.05em] sm:text-5xl lg:text-6xl xl:text-7xl ${copy.heading}`} onSave={(heading)=>onUpdate({heading})}/>
                     <EditableText value={data.text} isTextArea className={`mt-7 block max-w-xl text-base leading-7 sm:text-lg sm:leading-8 ${copy.body}`} onSave={(text)=>onUpdate({text})}/>
                     <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                         <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label,primary_url)=>onUpdate({primary_label,primary_url})}/>

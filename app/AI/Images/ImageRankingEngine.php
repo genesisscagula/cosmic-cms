@@ -159,6 +159,9 @@ final class ImageRankingEngine
         if (str_contains($query, 'dentist') || str_contains($query, 'medical') || str_contains($query, 'clinic')) {
             return ['restaurant','construction','nightclub','factory'];
         }
+        if (str_contains($query, 'automotive') || str_contains($query, 'vehicle') || str_contains($query, 'mechanic') || str_contains($query, 'car service')) {
+            return ['mountain','snow','ski','resort','landscape','forest','beach','ocean','office','workspace','restaurant','construction site'];
+        }
 
         return [];
     }

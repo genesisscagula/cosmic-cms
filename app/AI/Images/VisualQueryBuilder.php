@@ -57,6 +57,8 @@ final class VisualQueryBuilder
                 => 'luxury residential architecture',
             $this->containsAny($prompt, ['ai website builder', 'website builder', 'saas platform', 'software platform'])
                 => 'modern software product workspace',
+            $this->containsAny($prompt, ['automotive service', 'auto service', 'car service', 'vehicle service', 'auto repair', 'car repair', 'mechanic', 'detailing', 'tire shop', 'tyre shop'])
+                => 'professional automotive service workshop mechanic vehicle',
             $this->containsAny($prompt, ['commercial construction', 'industrial construction', 'construction company'])
                 => 'commercial construction site architecture',
             default => null,

@@ -65,7 +65,7 @@ export function MiniHeroMinimalBlock({ block, onUpdate, globalTheme }) {
             <div className="relative mx-auto max-w-7xl">
                 <div className="max-w-3xl">
                     <EditableText value={data.eyebrow} className={`block text-xs font-bold uppercase tracking-[0.24em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                    <EditableText value={data.heading} className={`mt-3 block text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
+                    <EditableText value={data.heading} cosmicType="h2" className={`mt-3 block text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
                     <EditableText value={data.text} isTextArea className={`mt-4 block max-w-2xl text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />
                     <CTA data={data} theme={theme} />
                 </div>
@@ -85,7 +85,7 @@ export function MiniHeroSplitBlock({ block, blockIndex, onUpdate, globalTheme })
             <div className="mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_.95fr] lg:gap-12">
                 <div className="max-w-2xl">
                     <EditableText value={data.eyebrow} className={`block text-xs font-bold uppercase tracking-[0.24em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                    <EditableText value={data.heading} className={`mt-3 block text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
+                    <EditableText value={data.heading} cosmicType="h2" className={`mt-3 block text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
                     <EditableText value={data.text} isTextArea className={`mt-4 block text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />
                     <CTA data={data} theme={theme} />
                 </div>
@@ -113,7 +113,7 @@ export function MiniHeroPromoBlock({ block, blockIndex, onUpdate, globalTheme })
                     </div>
                     <div className="relative max-w-3xl">
                         <EditableText value={data.eyebrow} className={`block text-xs font-bold uppercase tracking-[0.24em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                        <EditableText value={data.heading} className={`mt-3 block text-3xl font-semibold leading-[1.04] tracking-tight sm:text-4xl lg:text-5xl ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.heading} cosmicType="h2" className={`mt-3 block text-3xl font-semibold leading-[1.04] tracking-tight sm:text-4xl lg:text-5xl ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
                         <EditableText value={data.text} isTextArea className={`mt-4 block max-w-2xl text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />
                         <CTA data={data} theme={theme} />
                     </div>

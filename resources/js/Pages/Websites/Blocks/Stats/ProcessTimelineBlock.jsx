@@ -166,7 +166,7 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
                     />
 
                     <EditableText
-                        value={data.heading}
+                        value={data.heading} cosmicType="h2"
                         className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
                         onSave={(val) =>
                             onUpdate({

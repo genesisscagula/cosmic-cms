@@ -437,21 +437,112 @@ TEXT;
      */
     private function themeForFirstBuildPrompt(string $prompt): string
     {
-        $p = Str::lower($prompt);
+        $p = Str::lower(trim($prompt));
 
-        return match (true) {
-            Str::contains($p, ['terracotta', 'earthy', 'warm clay', 'mediterranean', 'artisan']) => 'terracotta',
-            Str::contains($p, ['violet', 'purple', 'creative', 'futuristic', 'experimental']) => 'violet',
-            Str::contains($p, ['emerald', 'green', 'eco', 'sustainable', 'wellness', 'organic', 'farm', 'nature']) => 'emerald',
-            Str::contains($p, ['forest', 'outdoor', 'landscape', 'garden']) => 'forest',
-            Str::contains($p, ['ocean', 'coastal', 'beach', 'marine', 'travel', 'resort']) => 'ocean',
-            Str::contains($p, ['coffee', 'cafe', 'bakery', 'chocolate']) => 'coffee',
-            Str::contains($p, ['rose', 'beauty', 'salon', 'wedding', 'floral']) => 'rose',
-            Str::contains($p, ['finance', 'law', 'legal', 'corporate', 'investment']) => 'navy',
-            Str::contains($p, ['technology', 'saas', 'software', 'cyber', 'ai ', 'startup']) => 'indigo',
-            Str::contains($p, ['luxury', 'premium', 'cinematic', 'exclusive']) => 'obsidian',
-            default => ['midnight', 'emerald', 'navy', 'indigo', 'terracotta', 'violet', 'ocean'][abs(crc32($p)) % 7],
+        // First-build theme selection is intent-first. Midnight is never used as
+        // a generic fallback; it is selected only when the user explicitly asks
+        // for a midnight/night-style direction.
+        if (Str::contains($p, ['midnight', 'midnight blue', 'night theme', 'night-time', 'nighttime'])) {
+            return 'midnight';
+        }
+
+        $intentPools = [
+            // Industry beats generic mood on a fresh build. A request such as
+            // "premium automotive" must not be swallowed by the generic
+            // luxury pool and repeatedly resolve to the same dark palette.
+            [
+                'terms' => ['automotive', 'auto service', 'car service', 'vehicle service', 'mechanic', 'car repair', 'auto repair', 'detailing', 'tire shop', 'tyre shop'],
+                'themes' => ['teal', 'indigo', 'emerald', 'asphalt', 'ocean', 'navy'],
+            ],
+            [
+                'terms' => ['luxury', 'exclusive', 'high-end', 'high end', 'cinematic', 'dramatic', 'black luxury'],
+                'themes' => ['obsidian', 'charcoal', 'asphalt'],
+            ],
+            [
+                'terms' => ['architecture', 'architect', 'construction', 'builder', 'engineering', 'industrial', 'property developer'],
+                'themes' => ['asphalt', 'navy', 'terracotta', 'charcoal'],
+            ],
+            [
+                'terms' => ['restaurant', 'dining', 'food', 'hospitality', 'chef', 'bar', 'bistro'],
+                'themes' => ['terracotta', 'espresso', 'coffee', 'rose'],
+            ],
+            [
+                'terms' => ['coffee', 'cafe', 'bakery', 'chocolate', 'roastery'],
+                'themes' => ['coffee', 'espresso', 'terracotta'],
+            ],
+            [
+                'terms' => ['finance', 'financial', 'law', 'legal', 'corporate', 'investment', 'accounting', 'insurance'],
+                'themes' => ['navy', 'indigo', 'teal', 'asphalt'],
+            ],
+            [
+                'terms' => ['technology', 'tech', 'saas', 'software', 'cyber', 'artificial intelligence', 'ai-powered', 'ai powered', 'startup'],
+                'themes' => ['indigo', 'violet', 'navy', 'teal'],
+            ],
+            [
+                'terms' => ['medical', 'healthcare', 'health care', 'clinic', 'dental', 'dentist', 'wellness'],
+                'themes' => ['teal', 'emerald', 'ocean', 'navy'],
+            ],
+            [
+                'terms' => ['eco', 'sustainable', 'organic', 'farm', 'nature', 'environment', 'landscape', 'garden', 'outdoor'],
+                'themes' => ['emerald', 'forest', 'teal', 'terracotta'],
+            ],
+            [
+                'terms' => ['travel', 'resort', 'hotel', 'coastal', 'beach', 'marine', 'island', 'tourism'],
+                'themes' => ['ocean', 'teal', 'terracotta', 'navy'],
+            ],
+            [
+                'terms' => ['beauty', 'salon', 'wedding', 'floral', 'fashion', 'skincare', 'spa'],
+                'themes' => ['rose', 'terracotta', 'violet', 'espresso'],
+            ],
+            [
+                'terms' => ['creative', 'studio', 'agency', 'portfolio', 'experimental', 'futuristic', 'artist'],
+                'themes' => ['violet', 'indigo', 'terracotta', 'teal'],
+            ],
+            [
+                'terms' => ['earthy', 'warm clay', 'mediterranean', 'artisan', 'handmade', 'craft'],
+                'themes' => ['terracotta', 'coffee', 'espresso', 'forest'],
+            ],
+        ];
+
+        foreach ($intentPools as $intent) {
+            if (! Str::contains($p, $intent['terms'])) {
+                continue;
+            }
+
+            $themes = $intent['themes'];
+            return $themes[abs(crc32($p.'|'.implode('|', $themes))) % count($themes)];
+        }
+
+        // Explicit color-family language remains deterministic.
+        $explicit = match (true) {
+            Str::contains($p, ['terracotta', 'clay']) => 'terracotta',
+            Str::contains($p, ['violet', 'purple']) => 'violet',
+            Str::contains($p, ['emerald']) => 'emerald',
+            Str::contains($p, ['forest']) => 'forest',
+            Str::contains($p, ['ocean']) => 'ocean',
+            Str::contains($p, ['espresso']) => 'espresso',
+            Str::contains($p, ['coffee']) => 'coffee',
+            Str::contains($p, ['rose', 'pink']) => 'rose',
+            Str::contains($p, ['navy']) => 'navy',
+            Str::contains($p, ['indigo']) => 'indigo',
+            Str::contains($p, ['teal']) => 'teal',
+            Str::contains($p, ['charcoal']) => 'charcoal',
+            Str::contains($p, ['asphalt']) => 'asphalt',
+            Str::contains($p, ['obsidian']) => 'obsidian',
+            default => null,
         };
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
+        // Neutral/ambiguous first prompts deliberately diversify. Midnight is
+        // excluded so an unspecified first build cannot silently bias dark/navy.
+        $fallback = [
+            'emerald', 'navy', 'indigo', 'terracotta', 'violet', 'ocean',
+            'teal', 'forest', 'coffee', 'rose', 'asphalt', 'espresso',
+        ];
+
+        return $fallback[abs(crc32($p !== '' ? $p : 'cosmic-first-build')) % count($fallback)];
     }
 
 }

@@ -102,7 +102,7 @@ export function HeroEditorialOverlayBlock({ block, blockIndex, onUpdate, globalT
                         onSave={(tagline) => onUpdate({ tagline })}
                     />
                     <EditableText
-                        value={data.heading}
+                        value={data.heading} cosmicType="h1"
                         className={`mt-5 block text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`}
                         onSave={(heading) => onUpdate({ heading })}
                     />

@@ -3,6 +3,17 @@ import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 
+const lunaText = (value, fallback = '') => {
+    if (typeof value === 'string') return value;
+    if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+    if (value && typeof value === 'object') {
+        for (const key of ['reply','message','text','content','label','title']) {
+            if (typeof value[key] === 'string' && value[key].trim()) return value[key];
+        }
+    }
+    return fallback;
+};
+
 const STORAGE_KEY='cosmic-global-luna-chat-v2';
 
 const publicComponents = [
@@ -99,10 +110,10 @@ useEffect(()=>{
     const generatePublicTrial=async(message)=>{
         const stages=[
             'Planning your website…',
-            'Choosing the right layouts…',
-            'Writing your content…',
-            'Finding suitable imagery…',
-            'Finishing your website…',
+            'Choosing the best design…',
+            'Building your sections…',
+            'Adding content & imagery…',
+            'Finalizing your website…',
         ];
         let stageIndex=0;
         setStatus(stages[0]);
@@ -119,22 +130,35 @@ useEffect(()=>{
             const payload=rawPayload?.data ?? rawPayload;
             const pageId=payload?.page_id ?? payload?.page?.id;
             const trialToken=payload?.trial_token ?? payload?.token ?? payload?.trial?.token;
+            const responseHeaderUrl=response?.headers?.['x-cosmic-builder-url'] || response?.headers?.get?.('x-cosmic-builder-url') || null;
             const builderUrl=payload?.builder_url
                 ?? payload?.redirect_url
                 ?? payload?.url
+                ?? responseHeaderUrl
                 ?? (pageId&&trialToken?`/pages/${pageId}/builder?token=${encodeURIComponent(trialToken)}`:null);
-            if(!builderUrl)throw new Error('The Builder URL was not returned.');
+            if(!builderUrl){
+                throw new Error(pageId&&trialToken
+                    ? 'The trial was created but the Builder route could not be resolved.'
+                    : 'The Builder URL was not returned.');
+            }
 
             window.clearInterval(stageTimer);
             setStatus('Website ready — opening Builder…');
             setMessages(current=>[...current,{role:'assistant',text:'Your website is ready — opening the Builder now.'}]);
 
-            let navigationUrl=builderUrl;
+            let navigationUrl=String(builderUrl||'').trim();
             try{
-                const parsed=new URL(builderUrl,window.location.origin);
+                const parsed=new URL(navigationUrl,window.location.origin);
                 navigationUrl=`${parsed.pathname}${parsed.search}${parsed.hash}`;
             }catch{}
-            window.setTimeout(()=>{window.location.href=navigationUrl;},650);
+            if(!navigationUrl.startsWith('/')){
+                navigationUrl=pageId&&trialToken
+                    ? `/pages/${pageId}/builder?token=${encodeURIComponent(trialToken)}`
+                    : navigationUrl;
+            }
+            window.setTimeout(()=>{
+                window.location.assign(navigationUrl);
+            },650);
             return true;
         }catch(error){
             window.clearInterval(stageTimer);
@@ -151,12 +175,14 @@ useEffect(()=>{
     };
 
     const send=async(directMessage=null,confirmationToken=null)=>{
-        const message=String(directMessage ?? input).trim();
+        const safeDirectMessage=typeof directMessage==='string' ? directMessage : null;
+        const safeConfirmationToken=typeof confirmationToken==='string' ? confirmationToken : null;
+        const message=String(safeDirectMessage ?? input).trim();
         if(!message||busy)return;
-        if(directMessage===null)setInput('');
+        if(safeDirectMessage===null)setInput('');
         setBusy(true);
         setStatus('Understanding your request…');
-        if(!confirmationToken)setMessages(current=>[...current,{role:'user',text:message}]);
+        if(!safeConfirmationToken)setMessages(current=>[...current,{role:'user',text:message}]);
 
         let stage=0;
         const stages=effectiveAuthenticated ? ['Understanding your request…','Checking your Cosmic workspace…','Preparing the answer…'] : ['Understanding your request…','Checking Cosmic CMS…','Preparing the answer…'];
@@ -174,12 +200,14 @@ useEffect(()=>{
             const payload = {
                 message,
                 context:{component,url:currentUrl,conversation},
-                ...(effectiveAuthenticated && confirmationToken ? {confirmation_token:confirmationToken} : {}),
+                ...(effectiveAuthenticated && safeConfirmationToken ? {confirmation_token:safeConfirmationToken} : {}),
             };
             const {data}=await axios.post(endpoint,payload);
             if(Number.isFinite(Number(data.credit_balance)))setBalance(Number(data.credit_balance));
             const cost=Number(data.credit_cost||0);
-            const reply=`${data.reply||''}${cost>0?` · ${cost} credit${cost===1?'':'s'}`:''}`;
+            const baseReply=lunaText(data.reply,'I’m working on that now.');
+            const trialNotice=(data.mode==='start_trial' || data.start_trial===true) ? ' This may take a moment while I build and QA your website. Please keep this tab open — I’ll take you to the Builder as soon as it’s ready.' : '';
+            const reply=`${baseReply}${trialNotice}${cost>0?` · ${cost} credit${cost===1?'':'s'}`:''}`;
             setMessages(current=>[...current,{
                 role:'assistant',
                 text:reply,
@@ -266,9 +294,9 @@ useEffect(()=>{
             </div>
 
             <div className="min-h-28 flex-1 space-y-2 overflow-y-auto px-4 py-3">
-                {messages.length?messages.slice(-20).map((message,index)=><div key={`${index}-${message.text}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}>
+                {messages.length?messages.slice(-20).map((message,index)=><div key={`${index}-${lunaText(message.text,'')}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}>
                     <div className="max-w-[86%]">
-                        <div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'?'bg-violet-500 text-white':'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div>
+                        <div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'?'bg-violet-500 text-white':'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{lunaText(message.text,'')}</div>
                         {message.role==='assistant'&&Array.isArray(message.options)&&message.options.length>0?<div className="mt-2 flex flex-wrap gap-1.5">{message.options.map((option,optionIndex)=><button key={`${optionIndex}-${option.label}`} type="button" onClick={()=>option.url?router.visit(option.url):(option.send_message?send(option.send_message):null)} className="rounded-lg border border-violet-300/20 bg-violet-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-violet-200 transition hover:bg-violet-400/20">{option.label}</button>)}</div>:null}
                         {message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={busy} onClick={()=>send(message.confirmation.originalMessage,message.confirmation.token)} className="rounded-lg bg-rose-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-rose-400 disabled:opacity-40">{message.confirmation.confirmLabel}</button><button type="button" disabled={busy} onClick={()=>setMessages(current=>current.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">{message.confirmation.cancelLabel}</button></div>:null}
                     </div>
@@ -293,7 +321,7 @@ useEffect(()=>{
                 />
                 <div className="mt-3 flex items-center justify-between">
                     <span className="text-[10px] text-slate-600">{effectiveAuthenticated ? 'Luna requests use credits' : 'Sign in or start a build for full Luna access'}</span>
-                    <button type="button" onClick={send} disabled={busy||!input.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{busy?'Working…':'Send'}</button>
+                    <button type="button" onClick={()=>send()} disabled={busy||!input.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{busy?'Working…':'Send'}</button>
                 </div>
             </div>
         </section>}

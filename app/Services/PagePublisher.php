@@ -30,7 +30,12 @@ class PagePublisher
 
         $theme = $website->theme_settings ?? [];
         $primaryColor = $theme['primary'] ?? 'midnight';
-        return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['page_style' => PageStyleRegistry::normalize($website->page_style ?: $page->page_style)]);
+        return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, [
+            'page_style' => PageStyleRegistry::normalize($website->page_style ?: $page->page_style),
+            'typography' => is_array($theme['typography'] ?? null) ? $theme['typography'] : [],
+            'section_layout' => is_array($theme['section_layout'] ?? null) ? $theme['section_layout'] : [],
+            'background_style' => is_array($theme['background_style'] ?? null) ? $theme['background_style'] : [],
+        ]);
     }
 
     /**
@@ -81,7 +86,15 @@ class PagePublisher
         $contentEntryPages = $this->structuredContentEntryPages($website);
 
         $publishedShellStyle = PageStyleRegistry::normalize($website->published_page_style ?: $website->page_style);
-        $publishedShellContext = ['page_style' => $publishedShellStyle];
+        $publishedTypography = is_array($theme['typography'] ?? null) ? $theme['typography'] : [];
+        $publishedSectionLayout = is_array($theme['section_layout'] ?? null) ? $theme['section_layout'] : [];
+        $publishedBackgroundStyle = is_array($theme['background_style'] ?? null) ? $theme['background_style'] : [];
+        $publishedShellContext = [
+            'page_style' => $publishedShellStyle,
+            'typography' => $publishedTypography,
+            'section_layout' => $publishedSectionLayout,
+            'background_style' => $publishedBackgroundStyle,
+        ];
 
         return [
             'status' => 'success',
@@ -90,7 +103,7 @@ class PagePublisher
             'global_header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor, $publishedShellContext) : '',
             'global_footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor, $publishedShellContext) : '',
             'pages' => $pages
-                ->flatMap(function (Page $page) use ($website, $primaryColor, $publishedPostsByPage, $pagePaths, $commerceContext, $contentContext, $publishedShellStyle) {
+                ->flatMap(function (Page $page) use ($website, $primaryColor, $publishedPostsByPage, $pagePaths, $commerceContext, $contentContext, $publishedShellStyle, $publishedTypography, $publishedSectionLayout, $publishedBackgroundStyle) {
                     // Commerce pages are dynamic Laravel storefront endpoints. Keep
                     // them in the page registry/navigation map, but never export a
                     // static index.html that could shadow /shop, /cart, /checkout,
@@ -136,8 +149,8 @@ class PagePublisher
                             $blocks,
                             $primaryColor,
                             $page->page_type === 'blog'
-                                ? array_merge($commerceContext, $contentContext, ['blog_posts' => $posts, 'page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style])
-                                : array_merge($commerceContext, $contentContext, ['page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style])
+                                ? array_merge($commerceContext, $contentContext, ['blog_posts' => $posts, 'page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style, 'typography' => $publishedTypography, 'section_layout' => $publishedSectionLayout, 'background_style' => $publishedBackgroundStyle])
+                                : array_merge($commerceContext, $contentContext, ['page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style, 'typography' => $publishedTypography, 'section_layout' => $publishedSectionLayout, 'background_style' => $publishedBackgroundStyle])
                         ),
                     ]];
 
@@ -165,6 +178,9 @@ class PagePublisher
                                 'single_blog_post' => $post->toArray(),
                                 'blog_index_url' => $postDirectory . '/',
                                 'page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style,
+                                'typography' => $publishedTypography,
+                                'section_layout' => $publishedSectionLayout,
+                                'background_style' => $publishedBackgroundStyle,
                             ])),
                         ])
                         ->all();

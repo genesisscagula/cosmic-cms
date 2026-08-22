@@ -113,11 +113,11 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
                 <div className="pointer-events-none relative z-10 mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14" style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                     <div className={`pointer-events-auto flex items-center justify-between border-b pb-5 ${mediaStyle.topBorder}`}>
                         <EditableText value={data.eyebrow} className={`text-[11px] font-bold uppercase tracking-[.34em] ${mediaStyle.eyebrow}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                        <EditableText value={data.media_badge} className={`rounded-full border px-4 py-2 text-[11px] font-semibold backdrop-blur-md ${mediaStyle.badge}`} onSave={(media_badge) => onUpdate({ media_badge })} />
+                        <EditableText value={data.media_badge} cosmicType="badge" className={`rounded-full border px-4 py-2 text-[11px] font-semibold backdrop-blur-md ${mediaStyle.badge}`} onSave={(media_badge) => onUpdate({ media_badge })} />
                     </div>
 
                     <div className="pointer-events-auto max-w-4xl py-0">
-                        <EditableText value={data.heading} className={`block max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.heading} cosmicType="h1" className={`block max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`} onSave={(heading) => onUpdate({ heading })} />
                         <EditableText value={data.text} isTextArea className={`mt-7 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${mediaStyle.body}`} onSave={(text) => onUpdate({ text })} />
                         <div className="mt-9 flex flex-col gap-3 sm:flex-row">
                             <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label, primary_url) => onUpdate({ primary_label, primary_url })} />
@@ -128,9 +128,8 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
                     <div className={`pointer-events-auto flex items-end justify-between gap-5 border-t pt-5 ${mediaStyle.footerBorder}`}>
                         <div className="flex items-center gap-4">
                             <EditableText value={data.scroll_label} className={`text-xs font-semibold uppercase tracking-[.2em] ${mediaStyle.scroll}`} onSave={(scroll_label) => onUpdate({ scroll_label })} />
-                            <button type="button" onClick={() => setIsVideoEditorOpen(true)} className={`rounded-full border px-4 py-2 text-xs font-semibold backdrop-blur transition ${mediaStyle.edit}`}>Edit video</button>
                         </div>
-                        <div data-editable-media className={`hidden w-40 overflow-hidden rounded-xl border shadow-xl sm:block ${mediaStyle.posterCard}`}>
+                        <div data-editable-media data-cosmic-no-luna-hover="true" className={`hidden w-40 overflow-hidden rounded-xl border shadow-xl sm:block ${mediaStyle.posterCard}`}>
                             <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.poster_image_url} className="aspect-video w-full object-cover opacity-85" onSave={(poster_image_url) => onUpdate({ poster_image_url })} />
                         </div>
                     </div>

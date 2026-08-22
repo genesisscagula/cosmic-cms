@@ -17,6 +17,9 @@ import ThemeSelector from "./Theme/ThemeSelector";
 import { colorFamilies, installCustomBrandTheme } from "../../theme/colorFamilies";
 
 import { BlockRegistry } from "./BlockRegistry";
+import { cosmicTypographyVars } from "./Components/CosmicTypography";
+import { cosmicSectionVars, cosmicLocalSectionVars } from "./Components/CosmicSection";
+import { cosmicBackgroundVars, cosmicLocalBackgroundVars, cosmicOverlayForState } from "./Components/CosmicBackground";
 import { BLOG_SPARK_GROUPS, FREE_BLOG_SPARKS } from "./Sparks/Blog";
 import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
 
@@ -30,6 +33,18 @@ const isWebsiteUploadedMedia = (value, websiteId) => {
     const normalized = value.trim();
     if (!normalized) return false;
     return normalized.includes(`/storage/websites/${websiteId}/`) || normalized.includes(`/websites/${websiteId}/media-library/files/`);
+};
+
+const cosmicBackgroundVideoProvider = (raw='') => {
+    const value=String(raw||'').trim();
+    const yt=value.match(/(?:youtube\.com\/(?:watch\?.*v=|embed\/|shorts\/)|youtu\.be\/)([A-Za-z0-9_-]{6,})/i);
+    if(yt){
+        const id=yt[1];
+        return {type:'youtube',src:`https://www.youtube.com/embed/${id}?autoplay=1&mute=1&loop=1&playlist=${id}&controls=0&modestbranding=1&playsinline=1&rel=0`};
+    }
+    const vm=value.match(/vimeo\.com\/(?:video\/)?(\d+)/i);
+    if(vm) return {type:'vimeo',src:`https://player.vimeo.com/video/${vm[1]}?autoplay=1&muted=1&loop=1&background=1&controls=0`};
+    return {type:'file',src:value};
 };
 
 const preserveUploadedMedia = (existing, generated, websiteId, fieldName = '') => {
@@ -265,6 +280,19 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 .cosmic-universal-background-host > div > section:first-child {
                     background-color: transparent !important;
                     background-image: none !important;
+                }
+                .cosmic-universal-background-host[data-cosmic-background-state='primary'] .group\/repeatable-section article,
+                [data-cosmic-resolved-theme='primary'] .group\/repeatable-section article {
+                    background: color-mix(in srgb, var(--cosmic-primary, #243447) 72%, rgba(255,255,255,.14)) !important;
+                    border-color: color-mix(in srgb, var(--cosmic-primary, #243447) 54%, rgba(255,255,255,.32)) !important;
+                }
+                .cosmic-universal-background-host[data-cosmic-universal-background='1'][data-cosmic-background-state='primary'] .group\/repeatable-section article,
+                .cosmic-universal-background-host[data-cosmic-background='1'][data-cosmic-background-state='primary'] .group\/repeatable-section article {
+                    background: color-mix(in srgb, var(--cosmic-primary, #243447) 76%, transparent) !important;
+                    border-color: rgba(255,255,255,.22) !important;
+                    -webkit-backdrop-filter: blur(12px);
+                    backdrop-filter: blur(12px);
+                    box-shadow: 0 18px 44px rgba(2,6,23,.16);
                 }
                 .cosmic-luna-design-host > section,
                 .cosmic-luna-design-host > div > section:first-child {
@@ -1539,6 +1567,51 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
 
 
+    const runLunaLogoGeneration = async (companyName) => {
+        const name=String(companyName||'').trim();
+        if(name.length<2 || logoBusy) return false;
+        setLogoBusy(true);
+        try{
+            const currentThemeKey=globalSelections?.primary || 'midnight';
+            const family=currentThemeKey==='my-brand'
+                ? (globalSelections?.custom_brand_theme || colorFamilies.midnight)
+                : (colorFamilies[currentThemeKey] || colorFamilies.midnight);
+            const palette=family?.palette || {};
+            const primaryHex=palette?.background || palette?.primary || '#243447';
+            const response=trialMode
+                ? await axios.post(route('trial-branding.logo.generate',trialToken),{
+                    company_name:name,
+                    theme_key:currentThemeKey,
+                    primary_hex:primaryHex,
+                })
+                : await axios.post(route('websites.logo.generate',website.id),{
+                    company_name:name,
+                    primary:currentThemeKey,
+                    primary_hex:primaryHex,
+                });
+            const url=String(response?.data?.url||'').trim();
+            if(!url) throw new Error('Logo generation did not return an image.');
+            if(Number.isFinite(Number(response?.data?.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
+            if(Number.isFinite(Number(response?.data?.balance))) setCreditBalance(Number(response.data.balance));
+            setLogoCompanyName(name);
+            setData((current)=>({
+                ...current,
+                global_header:{...(current.global_header||{}),logo_image_url:url,logo_text:name,logo_filter:'none'},
+                global_footer:{...(current.global_footer||{}),logo_image_url:url,logo_text:name,logo_filter:'none'},
+            }));
+            setLunaMessages((messages)=>[...messages,{role:'assistant',text:`Logo ready — I applied “${name}” to the site header and footer.`}]);
+            setHasUnsavedTheme(true);
+            return true;
+        }catch(error){
+            const message=error?.response?.data?.message || error?.message || 'I could not generate the logo right now.';
+            setPageAiError(message);
+            setLunaMessages((messages)=>[...messages,{role:'assistant',text:message}]);
+            return false;
+        }finally{
+            setLogoBusy(false);
+        }
+    };
+
     const keepCurrentLogoForSelectedTheme = () => {
         // Keeping the logo is a temporary visual choice, not a dismissal of
         // the mismatch. Preserve the pending state so the ACTIVE theme card
@@ -2704,14 +2777,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const normalizedPageStyle = ['balanced','clean','premium'].includes(String(currentPageStyle || '').toLowerCase()) ? String(currentPageStyle).toLowerCase() : 'balanced';
     const overlayThemeBlocked = ['stone', 'white'].includes(activePrimaryThemeKey);
     const overlayStyleBlocked = normalizedPageStyle === 'clean';
-    const overlayHeaderCompatible = customWebsiteMode
-        ? true
-        : (['premium', 'balanced'].includes(normalizedPageStyle) && !overlayThemeBlocked);
-    const overlayCompatibilityMessage = overlayStyleBlocked
-        ? 'Overlay Header is available with Balanced or Premium page styles.'
-        : overlayThemeBlocked
-            ? 'Overlay Header isn’t compatible with the current theme. Choose another theme to enable it.'
-            : 'Overlay Header is available with Balanced or Premium page styles.';
+    // Explicit Luna/user overlay requests take precedence over old style/theme gating.
+    // Compatibility is now determined by whether the first block is a hero/banner;
+    // the header contrast system handles light/dark surfaces separately.
+    const overlayHeaderCompatible = true;
+    const overlayCompatibilityMessage = firstBlockIsBanner
+        ? 'Overlay Header is available for this hero/banner.'
+        : 'Move or add a hero/banner to the first section to use Overlay Header.';
     const overlayHeaderActive = Boolean(data.global_header?.overlay_header_on_banner && firstBlockIsBanner && overlayHeaderCompatible);
     const overlayHeaderRef = useRef(null);
     const [overlayHeaderHeight, setOverlayHeaderHeight] = useState(80);
@@ -3649,9 +3721,41 @@ const lunaResolvedBackgroundState = (index=lunaScope?.blockIndex) => {
         const resolved=String(resolveBlockTheme(data.blocks[index],index)||'').toLowerCase();
         return ['primary','dark','midnight','obsidian','charcoal','navy'].includes(resolved) ? 'primary' : 'light';
     };
-    const lunaUniversalOverlayForState = (state) => state==='primary'
-        ? 'linear-gradient(135deg, color-mix(in srgb, var(--cosmic-primary, #0f766e) 88%, #020617 12%), color-mix(in srgb, var(--cosmic-primary, #0f766e) 58%, transparent))'
-        : 'linear-gradient(135deg, rgba(255,255,255,.88), rgba(255,255,255,.62))';
+    const lunaUniversalOverlayForState = (state, block = null) => {
+        const themeKey=String(globalSelections?.primary||'midnight');
+        const family=themeKey==='my-brand'
+            ? (globalSelections?.custom_brand_theme || colorFamilies.midnight)
+            : (colorFamilies[themeKey] || colorFamilies.midnight);
+        const blockType=String(block?.type||'').toLowerCase();
+        const cinematic=/cinematic|fullscreen|parallax|video|ken_burns|crossfade/.test(blockType)
+            || String(block?.background_overlay_mode||'').toLowerCase()==='cinematic';
+        return cosmicOverlayForState({
+            state,
+            cinematic,
+            family,
+            settings:globalSelections?.background_style || {},
+            local:block?.luna_background_overrides || {},
+        });
+    };
+
+    useEffect(()=>{
+        const themeKey=String(globalSelections?.primary||'midnight');
+        const blocks=data.blocks||[];
+        let changed=false;
+        const next=blocks.map((block,index)=>{
+            if(!block?.universal_background_enabled) return block;
+            const state=String(block?.universal_background_state || resolveBlockTheme(block,index) || 'light').toLowerCase();
+            const overlay=lunaUniversalOverlayForState(state,block);
+            if(block?.universal_background_theme_key===themeKey && block?.universal_background_overlay===overlay) return block;
+            changed=true;
+            return {
+                ...block,
+                universal_background_theme_key:themeKey,
+                universal_background_overlay:overlay,
+            };
+        });
+        if(changed) setData('blocks',next);
+    },[globalSelections?.primary, globalSelections?.background_style]);
 
     const updateLunaUniversalBackground = (fields={}, message='Section background updated. · 0 credits') => {
         const index=lunaScope?.blockIndex;
@@ -3661,7 +3765,8 @@ const lunaResolvedBackgroundState = (index=lunaScope?.blockIndex) => {
         setData('blocks',normalizeRenderKeys((data.blocks||[]).map((block,i)=>i===index?{
             ...block,
             universal_background_state:state,
-            universal_background_overlay:lunaUniversalOverlayForState(state),
+            universal_background_theme_key:String(globalSelections?.primary||'midnight'),
+            universal_background_overlay:lunaUniversalOverlayForState(state,data.blocks?.[index]||{}),
             ...fields,
             _renderKey:block._renderKey||createRenderKey(),
         }:block)));
@@ -3754,6 +3859,40 @@ const blockHasVideoSlot = (value) => {
         return { value: walk(value), replaced };
     };
 
+    const replaceFirstVideoPoster = (value, imageUrl) => {
+        let replaced = false;
+        const posterKey = /^(poster_image_url|poster_url|thumbnail_url|video_thumbnail_url|image_url)$/i;
+        const walk = (node) => {
+            if (Array.isArray(node)) return node.map(walk);
+            if (node && typeof node === 'object') {
+                const out = { ...node };
+                for (const [key, child] of Object.entries(out)) {
+                    if (!replaced && posterKey.test(key)) {
+                        out[key] = imageUrl;
+                        replaced = true;
+                    } else {
+                        out[key] = walk(child);
+                    }
+                }
+                return out;
+            }
+            return node;
+        };
+        return { value: walk(value), replaced };
+    };
+
+    const applyDirectLunaVideoPoster = (imageUrl, index = lunaScope.blockIndex) => {
+        if (!imageUrl || !Number.isInteger(index) || !data.blocks?.[index]) return false;
+        const result = replaceFirstVideoPoster(data.blocks[index], imageUrl);
+        if (!result.replaced) return false;
+        pushLunaUndoSnapshot();
+        setData('blocks', normalizeRenderKeys((data.blocks || []).map((block, i) =>
+            i === index ? { ...result.value, _renderKey:block._renderKey || createRenderKey() } : block
+        )));
+        setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Video thumbnail updated. · 0 credits'}]);
+        return true;
+    };
+
     const applyDirectLunaVideoUrl = (videoUrl, index = lunaScope.blockIndex) => {
         if (!videoUrl || !Number.isInteger(index) || !data.blocks?.[index]) return false;
         const result = replaceFirstVideoUrl(data.blocks[index], videoUrl);
@@ -3799,7 +3938,11 @@ const blockHasVideoSlot = (value) => {
             const response = await axios.post(`/trials/${encodeURIComponent(trialToken)}/images/upload`, form, { headers:{ Accept:'application/json' } });
             const url = response.data?.url;
             if (!url) throw new Error('No image URL was returned.');
-            if (lunaMediaLibraryPurpose==='section-background-image' && applyLunaUniversalImage(url)) {
+            if (lunaMediaLibraryPurpose==='section-video-poster' && applyDirectLunaVideoPoster(url)) {
+                setLunaMediaLibraryPurpose('element');
+                setPageAiPrompt('');
+                setLunaStatus('Done');
+            } else if (lunaMediaLibraryPurpose==='section-background-image' && applyLunaUniversalImage(url)) {
                 setLunaMediaLibraryPurpose('element');
                 setPageAiPrompt('');
                 setLunaStatus('Done');
@@ -3949,6 +4092,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             form.append('header', JSON.stringify(data.global_header || {}));
             form.append('footer', JSON.stringify(data.global_footer || {}));
             form.append('theme', JSON.stringify(globalSelections || {}));
+            form.append('typography', JSON.stringify(globalSelections?.typography || {}));
+            form.append('background_style', JSON.stringify(globalSelections?.background_style || {}));
+            form.append('section_layout', JSON.stringify(globalSelections?.section_layout || {}));
             form.append('site_memory', JSON.stringify(lunaSiteMemory || {}));
             form.append('target_scope', lunaScope.type === 'section' ? 'section' : lunaScope.type === 'header' ? 'header' : lunaScope.type === 'footer' ? 'footer' : 'page');
             if(lunaScope.type==='header'){
@@ -4000,12 +4146,57 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                     const patched=replaceFirstVideoUrl(responseBlocks[lunaScope.blockIndex], pastedVideoUrl);
                     if (patched.replaced) responseBlocks=responseBlocks.map((block,index)=>index===lunaScope.blockIndex?patched.value:block);
                 }
-                setData('blocks', normalizeRenderKeys(responseBlocks.map((block,index)=>({...block,_renderKey:data.blocks?.[index]?._renderKey || createRenderKey()}))));
+                const explicitThemeRequest=/\b(theme|color family|colour family|emerald|coffee|midnight|violet|terracotta|espresso|obsidian|navy|void|rose|indigo|amber|charcoal|teal|ruby|forest|sapphire|plum|olive)\b/i.test(prompt);
+                setData('blocks', normalizeRenderKeys(responseBlocks.map((block,index)=>{
+                    const previous=data.blocks?.[index];
+                    return {
+                        ...block,
+                        ...(!explicitThemeRequest && previous?.theme!=null ? {theme:previous.theme} : {}),
+                        ...(block?.universal_background_enabled ? {
+                            universal_background_theme_key:String(globalSelections?.primary||'midnight'),
+                            universal_background_overlay:lunaUniversalOverlayForState(String(block?.universal_background_state || resolveBlockTheme(block,index) || 'light').toLowerCase(),block),
+                        } : {}),
+                        _renderKey:previous?._renderKey || createRenderKey(),
+                    };
+                })));
             }
             if (response.header) setData('global_header', response.header);
             if (response.footer) setData('global_footer', response.footer);
+            if (response.logo_company_name) {
+                await runLunaLogoGeneration(response.logo_company_name);
+            }
             if (response.theme_key) {
                 setGlobalSelections((current)=>({...current,primary:response.theme_key}));
+                setHasUnsavedTheme(true);
+            }
+            if (response.typography_settings && typeof response.typography_settings === 'object') {
+                setGlobalSelections((current)=>({
+                    ...current,
+                    typography:{
+                        ...(current?.typography || {}),
+                        ...response.typography_settings,
+                    },
+                }));
+                setHasUnsavedTheme(true);
+            }
+            if (response.background_style && typeof response.background_style === 'object') {
+                setGlobalSelections((current)=>({
+                    ...current,
+                    background_style:{
+                        ...(current?.background_style || {}),
+                        ...response.background_style,
+                    },
+                }));
+                setHasUnsavedTheme(true);
+            }
+            if (response.section_layout && typeof response.section_layout === 'object') {
+                setGlobalSelections((current)=>({
+                    ...current,
+                    section_layout:{
+                        ...(current?.section_layout || {}),
+                        ...response.section_layout,
+                    },
+                }));
                 setHasUnsavedTheme(true);
             }
             if (response.page_style && ['balanced','clean','premium'].includes(String(response.page_style).toLowerCase())) {
@@ -4074,11 +4265,12 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             const Component = registryItem.component;
             const universalBackgroundUrl = String(block?.universal_background_image_url || '').trim();
             const universalVideoUrl = String(block?.universal_background_video_url || '').trim();
+            const universalVideoProvider = cosmicBackgroundVideoProvider(universalVideoUrl);
             const universalType = String(block?.universal_background_type || (universalVideoUrl?'video':'image')).trim();
             const universalState = String(block?.universal_background_state || resolvedTheme || 'light').toLowerCase();
-            const universalOverlay = universalState==='primary'
-                ? 'linear-gradient(135deg, color-mix(in srgb, var(--cosmic-primary, #0f766e) 88%, #020617 12%), color-mix(in srgb, var(--cosmic-primary, #0f766e) 58%, transparent))'
-                : 'linear-gradient(135deg, rgba(255,255,255,.88), rgba(255,255,255,.62))';
+            const universalOverlay = lunaUniversalOverlayForState(universalState,block);
+            const universalCinematic = /cinematic|fullscreen|parallax|video|ken_burns|crossfade/.test(String(block?.type||'').toLowerCase())
+                || String(block?.background_overlay_mode||'').toLowerCase()==='cinematic';
             const universalPosition = String(block?.universal_background_position || 'center center').trim() || 'center center';
             const universalEnabled = Boolean(block?.universal_background_enabled && ((universalType==='video'&&universalVideoUrl)||(universalType!=='video'&&universalBackgroundUrl)));
             const design = block?.luna_design_overrides || {};
@@ -4090,7 +4282,37 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 const number=Number(value);
                 return Number.isFinite(number)?Math.max(min,Math.min(max,number)):fallback;
             };
+            const activeFamilyKey=String(globalSelections?.primary||'midnight');
+            const activeFamily=activeFamilyKey==='my-brand'
+                ? (globalSelections?.custom_brand_theme || colorFamilies.midnight)
+                : (colorFamilies[activeFamilyKey] || colorFamilies.midnight);
+            const activePalette=activeFamily?.palette || {};
+            const activeGradient=activePalette?.gradient || activeFamily?.gradient || {};
+            const localSection=block?.luna_section_overrides || {};
+            const localSectionVars=cosmicLocalSectionVars(localSection);
+            const localBackground=block?.luna_background_overrides || {};
+            const localBackgroundVars=cosmicLocalBackgroundVars(localBackground);
+            const localTypography=block?.luna_typography_overrides || {};
+            const localTypographyVars=Object.fromEntries(
+                Object.entries(localTypography)
+                    .filter(([,value])=>value!==null&&value!==undefined&&value!=='')
+                    .map(([key,value])=>[`--cosmic-local-${String(key).replaceAll('_','-')}`,String(value)])
+            );
             const designVars = {
+                ...cosmicTypographyVars(globalSelections?.typography || {}),
+                ...cosmicSectionVars(globalSelections?.section_layout || {}),
+                ...cosmicBackgroundVars(activeFamily, globalSelections?.background_style || {}),
+                ...localSectionVars,
+                ...localBackgroundVars,
+                ...localTypographyVars,
+                '--cosmic-primary': activePalette.background || activePalette.primary || '#243447',
+                '--cosmic-surface': activePalette.surface || activePalette.background || '#30475E',
+                '--cosmic-accent': activePalette.accent || activeGradient.glow || '#60A5FA',
+                '--cosmic-gradient-from': 'var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from))',
+                '--cosmic-gradient-via': 'var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))',
+                '--cosmic-gradient-to': 'var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to))',
+                '--cosmic-gradient-glow': 'var(--cosmic-local-gradient-glow,var(--cosmic-bg-gradient-glow))',
+                '--cosmic-gradient-angle': 'var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle))',
                 ...(universalEnabled && universalType!=='video' ? {
                     backgroundImage: `${universalOverlay}, url("${universalBackgroundUrl.replace(/"/g,'&quot;')}")`,
                     backgroundSize: 'cover',
@@ -4098,42 +4320,90 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                     backgroundRepeat: 'no-repeat',
                 } : {}),
                 ...(universalEnabled && universalType==='video' ? {position:'relative',overflow:'hidden'} : {}),
-                ...(design.heading_size!=null?{'--luna-heading-size':`${clampNumber(design.heading_size,20,112,52)}px`}:{}),
-                ...(design.body_size!=null?{'--luna-body-size':`${clampNumber(design.body_size,12,26,16)}px`}:{}),
-                ...(design.heading_line_height!=null?{'--luna-heading-line':clampNumber(design.heading_line_height,.88,1.6,1.05)}:{}),
-                ...(design.body_line_height!=null?{'--luna-body-line':clampNumber(design.body_line_height,1.15,2,1.55)}:{}),
-                ...(design.letter_spacing!=null?{'--luna-letter-spacing':`${clampNumber(design.letter_spacing,-2,8,0)}px`}:{}),
+                ...(design.heading_size!=null?{
+                    '--cosmic-local-h1-size':`${clampNumber(design.heading_size,20,112,52)}px`,
+                    '--cosmic-local-h2-size':`${clampNumber(design.heading_size,20,112,52)}px`,
+                    '--cosmic-local-h3-size':`${clampNumber(design.heading_size*.62,16,72,32)}px`,
+                }:{}),
+                ...(design.body_size!=null?{
+                    '--cosmic-local-body-size':`${clampNumber(design.body_size,12,26,16)}px`,
+                    '--cosmic-local-lead-size':`${clampNumber(design.body_size*1.12,13,34,18)}px`,
+                }:{}),
+                ...(design.heading_line_height!=null?{
+                    '--cosmic-local-h1-line':clampNumber(design.heading_line_height,.88,1.6,1.05),
+                    '--cosmic-local-h2-line':clampNumber(design.heading_line_height,.88,1.6,1.05),
+                    '--cosmic-local-h3-line':clampNumber(design.heading_line_height,.88,1.6,1.08),
+                }:{}),
+                ...(design.body_line_height!=null?{
+                    '--cosmic-local-body-line':clampNumber(design.body_line_height,1.15,2,1.55),
+                    '--cosmic-local-lead-line':clampNumber(design.body_line_height,1.15,2,1.65),
+                }:{}),
+                ...(design.letter_spacing!=null?{
+                    '--cosmic-local-h1-tracking':`${clampNumber(design.letter_spacing,-2,8,0)}px`,
+                    '--cosmic-local-h2-tracking':`${clampNumber(design.letter_spacing,-2,8,0)}px`,
+                    '--cosmic-local-h3-tracking':`${clampNumber(design.letter_spacing,-2,8,0)}px`,
+                }:{}),
                 ...(design.section_padding_y!=null
-                    ? {'--luna-section-py':`${clampNumber(design.section_padding_y,0,200,72)}px`}
+                    ? {
+                        '--luna-section-py':`${clampNumber(design.section_padding_y,0,200,72)}px`,
+                        '--cosmic-local-section-py':`${clampNumber(design.section_padding_y,0,200,72)}px`,
+                      }
                     : heroNeedsDefaultPadding
-                        ? {'--luna-section-py':'100px','--luna-section-py-tablet':'76px','--luna-section-py-mobile':'56px'}
+                        ? {
+                            '--luna-section-py':'100px',
+                            '--luna-section-py-tablet':'76px',
+                            '--luna-section-py-mobile':'56px',
+                            '--cosmic-local-section-py':'100px',
+                          }
                         : {}),
-                ...(design.section_padding_x!=null?{'--luna-section-px':`${clampNumber(design.section_padding_x,0,120,24)}px`}:{}),
-                ...(design.content_gap!=null?{'--luna-content-gap':`${clampNumber(design.content_gap,0,96,24)}px`}:{}),
+                ...(design.section_padding_x!=null?{
+                    '--luna-section-px':`${clampNumber(design.section_padding_x,0,120,24)}px`,
+                    '--cosmic-local-section-px':`${clampNumber(design.section_padding_x,0,120,24)}px`,
+                }:{}),
+                ...(design.content_gap!=null?{
+                    '--luna-content-gap':`${clampNumber(design.content_gap,0,96,24)}px`,
+                    '--cosmic-local-section-gap':`${clampNumber(design.content_gap,0,96,24)}px`,
+                }:{}),
                 ...(design.card_radius!=null?{'--luna-card-radius':`${clampNumber(design.card_radius,0,64,16)}px`}:{}),
                 ...(design.image_radius!=null?{'--luna-image-radius':`${clampNumber(design.image_radius,0,64,16)}px`}:{}),
-                ...(design.content_max_width!=null?{'--luna-content-max':`${clampNumber(design.content_max_width,560,1800,1280)}px`}:{}),
-                ...(design.section_min_height!=null?{'--luna-section-min-height':`${clampNumber(design.section_min_height,0,1200,0)}px`}:{}),
+                ...(design.content_max_width!=null?{
+                    '--luna-content-max':`${clampNumber(design.content_max_width,560,1800,1280)}px`,
+                    '--cosmic-local-section-container':`${clampNumber(design.content_max_width,560,1800,1280)}px`,
+                }:{}),
+                ...(design.section_min_height!=null?{
+                    '--luna-section-min-height':`${clampNumber(design.section_min_height,0,1200,0)}px`,
+                    '--cosmic-local-section-min-height':`${clampNumber(design.section_min_height,0,1200,0)}px`,
+                }:{}),
                 ...(['left','center','right'].includes(design.text_align)?{'--luna-text-align':design.text_align}:{}),
             };
 
             return (
                 <div
                     key={block._renderKey || index}
+                    data-cosmic-render-shell="1"
+                    data-cosmic-spark="1"
+                    data-cosmic-block-index={index}
+                    data-cosmic-block-type={block.type}
+                    data-cosmic-resolved-theme={resolvedTheme}
                     data-cosmic-universal-background={universalEnabled ? '1' : undefined}
                     data-cosmic-background-type={universalEnabled ? universalType : undefined}
                     data-cosmic-background-state={universalState}
+                    data-cosmic-overlay-mode={universalEnabled ? (universalCinematic ? 'cinematic' : (universalState==='primary'?'primary':'light')) : undefined}
+                    data-cosmic-layout-mode={/fullscreen|cinematic/.test(blockType) ? 'immersive' : (/hero|banner/.test(blockType) ? 'hero' : 'standard')}
                     data-luna-design={(Object.keys(design).length || heroNeedsDefaultPadding) ? '1' : undefined}
-                    className={`${universalEnabled ? 'cosmic-universal-background-host ' : ''}${(Object.keys(design).length || heroNeedsDefaultPadding) ? 'cosmic-luna-design-host' : ''}`}
+                    className={`cosmic-render-shell ${universalEnabled ? 'cosmic-universal-background-host ' : ''}${(Object.keys(design).length || heroNeedsDefaultPadding) ? 'cosmic-luna-design-host' : ''}`}
                     style={designVars}
                 >
                     {universalEnabled && universalType==='video' ? <>
-                        <video aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata">
-                            <source src={universalVideoUrl}/>
-                        </video>
+                        {universalVideoProvider.type==='file'
+                            ? <video aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata"><source src={universalVideoProvider.src}/></video>
+                            : <iframe aria-hidden="true" tabIndex="-1" title="" src={universalVideoProvider.src}
+                                allow="autoplay; fullscreen; picture-in-picture"
+                                className="pointer-events-none absolute left-1/2 top-1/2 h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0"
+                              />}
                         <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={{background:universalOverlay}}/>
                     </> : null}
-                    <div className={universalEnabled && universalType==='video' ? 'relative z-[1]' : undefined}><Component {...blockProps} /></div>
+                    <div className={`cosmic-render-content ${universalEnabled && universalType==='video' ? 'relative z-[1]' : ''}`}><Component {...blockProps} /></div>
                 </div>
             );
         }
@@ -4277,7 +4547,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
   <div className="px-4 pt-4">
     <div className="rounded-xl border border-violet-300/10 bg-violet-400/[0.06] px-3 py-2 text-xs leading-5 text-slate-400">
       {lunaScope.type==='section'
-        ? 'What would you like me to do with this section? I can update its content or layout, add/remove a background image or video, or help add a relevant section above or below. You can also edit it manually.'
+        ? 'What would you like me to do with this section? I can redesign the layout, change backgrounds or media, add or remove relevant sections, or update the content. Manual edit is available for basic text, links, and images.'
         : lunaScope.type==='header'
             ? 'What would you like me to do with your site? I can update the header, overlay it on the banner, change the brand theme, create or update the logo, manage navigation, or redesign this whole page.'
             : lunaScope.type==='footer'
@@ -4307,18 +4577,12 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
       </button>
     </div> : null}
     {lunaManualOpen && String(lunaElementTarget?.type||'').toLowerCase()==='card' ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
-      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Card controls · 0 credits</p>
-      <p className="mt-1 text-[11px] leading-4 text-slate-400">Card {Number(lunaElementTarget.itemIndex)+1} of {Number(lunaElementTarget.itemCount)||selectedRepeater?.items?.length||0}. Current grid/layout is preserved.</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        <button type="button" onClick={()=>mutateSelectedCard('duplicate')} className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-200 hover:border-emerald-300/30 hover:text-white">Duplicate</button>
-        <button type="button" onClick={()=>mutateSelectedCard('add')} className="rounded-full bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-400">+ Add card</button>
-        <button type="button" onClick={()=>mutateSelectedCard('delete')} className="rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-[11px] font-bold text-rose-200 hover:bg-rose-500/20">Delete card</button>
-      </div>
-      <p className="mt-2 text-[10px] leading-4 text-slate-500">Or ask Luna to rewrite this card or add more relevant items.</p>
+      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Basic content edit · 0 credits</p>
+      <p className="mt-1 text-[11px] leading-4 text-slate-400">Select the card’s heading, text, button, or image to edit it directly. Ask Luna to add/remove cards or redesign the card layout.</p>
     </div> : null}
 
     {lunaManualOpen && lunaElementTarget && ['heading','text','label','button'].includes(String(lunaElementTarget.type||'').toLowerCase()) ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
-      <p className="mb-2 text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Direct edit · 0 credits</p>
+      <p className="mb-2 text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Basic content edit · 0 credits</p>
       {String(lunaElementTarget.type||'').toLowerCase()==='text' && String(lunaDirectText||'').length>90
         ? <textarea value={lunaDirectText} onChange={e=>setLunaDirectText(e.target.value)} rows={4}
             className="w-full resize-y rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs leading-5 text-white outline-none focus:border-emerald-300/40"/>
@@ -4332,92 +4596,44 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
     </div> : null}
 
     {lunaManualOpen && lunaScope.type==='section' && !lunaElementTarget ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
-      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Section background · 0 credits</p>
-      <p className="mt-1 text-[11px] leading-4 text-slate-400">Image/video overlays automatically follow this section’s light or primary theme state.</p>
-      <div className="mt-3 flex flex-wrap gap-2">
-        {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-background-image');setLunaMediaLibraryKind('image');setLunaMediaLibraryOpen(true);}}
-          className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-200 hover:border-emerald-300/30">Background image</button>
-          : <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-background-image');lunaImageUploadRef.current?.click?.();}}
-          className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-200">Upload background image</button>}
-        {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-background-video');setLunaMediaLibraryKind('video');setLunaMediaLibraryOpen(true);}}
-          className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-200 hover:border-violet-300/30">Background video</button> : null}
-        <button type="button" onClick={removeLunaUniversalBackground}
-          className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-300 hover:bg-white/5">Remove background</button>
-      </div>
+      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Basic manual edit · 0 credits</p>
+      <p className="mt-1 text-[11px] leading-4 text-slate-400">Click a heading, paragraph, label, button, or image in this section to edit that content directly. For layout, backgrounds, spacing, adding/removing items, or redesign, ask Luna.</p>
+    </div> : null}
+
+    {lunaManualOpen && lunaScope.type==='section' && Number.isInteger(lunaScope?.blockIndex) && !isLunaVideoSection ? <div className="mb-3 rounded-xl border border-sky-300/15 bg-sky-500/[0.04] p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-sky-300">Section image · 0 credits</p>
+      <p className="mt-1 text-[11px] leading-4 text-slate-400">For sliders, this replaces the active slide image. For image heroes, it replaces the background image.</p>
       <div className="mt-2 flex gap-2">
-        <input value={lunaUniversalVideoUrl} onChange={e=>setLunaUniversalVideoUrl(e.target.value)}
-          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();submitLunaUniversalVideoUrl();}}}
-          placeholder="Or paste video URL"
-          className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/25 px-3 py-2 text-xs text-white outline-none focus:border-violet-300/40"/>
-        <button type="button" onClick={submitLunaUniversalVideoUrl} disabled={!lunaUniversalVideoUrl.trim()}
-          className="rounded-full bg-violet-500 px-4 py-2 text-xs font-bold text-white disabled:opacity-40">Go</button>
+        {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-background-image');setLunaMediaLibraryKind('image');setLunaMediaLibraryOpen(true);}}
+          className="rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200 hover:border-sky-300/30">Media Library</button>
+        : <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-background-image');lunaImageUploadRef.current?.click?.();}}
+          className="rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200">Upload image</button>}
+      </div>
+    </div> : null}
+
+    {lunaManualOpen && lunaScope.type==='section' && isLunaVideoSection ? <div className="mb-3 rounded-xl border border-violet-300/15 bg-violet-500/[0.05] p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-violet-300">Video background · 0 credits</p>
+      <input value={lunaDirectVideoUrl} onChange={e=>setLunaDirectVideoUrl(e.target.value)}
+        placeholder="Paste YouTube, Vimeo, MP4, WebM, OGG or /storage/ video URL"
+        className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs text-white outline-none focus:border-violet-300/40"/>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button type="button" onClick={submitDirectLunaVideoUrl}
+          className="rounded-full bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400">Use video URL</button>
+        {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-background-video');setLunaMediaLibraryKind('video');setLunaMediaLibraryOpen(true);}}
+          className="rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200 hover:border-violet-300/30">Video Media Library</button> : null}
       </div>
       <div className="mt-3 border-t border-white/10 pt-3">
-        <button type="button" onClick={removeLunaSelectedSection}
-          className="rounded-full border border-rose-400/20 bg-rose-500/10 px-3 py-2 text-[11px] font-bold text-rose-200 hover:bg-rose-500/20">Remove section</button>
-      </div>
-    </div> : null}
-
-    {lunaManualOpen && lunaScope.type==='section' && !lunaElementTarget && lunaSmartSectionSuggestions.length ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">✦ Luna suggests</p>
-          <p className="mt-1 text-[11px] leading-4 text-slate-400">These fit the current page flow. Choose where to add one.</p>
+        <p className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">Video thumbnail / poster</p>
+        <p className="mt-1 text-[11px] leading-4 text-slate-500">Used while the video loads and as the mobile/fallback image.</p>
+        <div className="mt-2">
+          {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-video-poster');setLunaMediaLibraryKind('image');setLunaMediaLibraryOpen(true);}}
+            className="rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200 hover:border-violet-300/30">Choose thumbnail from Media Library</button>
+          : <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-video-poster');lunaImageUploadRef.current?.click?.();}}
+            className="rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200">Upload thumbnail</button>}
         </div>
       </div>
-      <div className="mt-3 space-y-2">
-        {lunaSmartSectionSuggestions.map((suggestion)=><div key={suggestion.category} className="flex items-center justify-between gap-3 rounded-xl border border-white/10 bg-black/15 px-3 py-2">
-          <span className="min-w-0 truncate text-[11px] font-semibold text-slate-200">Add {suggestion.label}</span>
-          <div className="flex shrink-0 gap-1.5">
-            <button type="button" disabled={Boolean(lunaSmartSectionBusy)}
-              onClick={()=>lunaInsertSuggestedSection(suggestion,'above')}
-              className="rounded-full border border-white/10 px-2.5 py-1.5 text-[10px] font-bold text-slate-300 hover:border-emerald-300/30 hover:text-white disabled:opacity-35">
-              {lunaSmartSectionBusy===`${suggestion.category}:above`?'Adding…':'↑ Above'}
-            </button>
-            <button type="button" disabled={Boolean(lunaSmartSectionBusy)}
-              onClick={()=>lunaInsertSuggestedSection(suggestion,'below')}
-              className="rounded-full bg-emerald-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-emerald-400 disabled:opacity-35">
-              {lunaSmartSectionBusy===`${suggestion.category}:below`?'Adding…':'↓ Below'}
-            </button>
-          </div>
-        </div>)}
-      </div>
-      <p className="mt-2 text-[10px] leading-4 text-slate-500">Suggestions avoid obvious duplicates and use registered export-safe Sparks.</p>
     </div> : null}
 
-    {lunaManualOpen && lunaScope.type==='section' && !lunaElementTarget && selectedRepeater ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
-      <div className="flex items-center justify-between gap-3">
-        <div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Listing controls · 0 credits</p>
-        <p className="mt-1 text-[11px] text-slate-400">{selectedRepeater.items.length} items · current layout preserved</p></div>
-        <div className="flex gap-2">
-          <button type="button" onClick={()=>mutateSelectedRepeater('remove')} disabled={selectedRepeater.items.length<=1}
-            className="rounded-full border border-white/10 px-3 py-2 text-[11px] font-bold text-slate-300 hover:bg-white/5 disabled:opacity-30">− Remove last</button>
-          <button type="button" onClick={()=>mutateSelectedRepeater('add')}
-            className="rounded-full bg-emerald-500 px-3 py-2 text-[11px] font-bold text-white hover:bg-emerald-400">+ Add item</button>
-        </div>
-      </div>
-      <p className="mt-2 text-[10px] leading-4 text-slate-500">For relevant/generated items, ask Luna e.g. “add 3 more relevant services.”</p>
-    </div> : null}
-
-    {lunaManualOpen && isLunaVideoSection ? <div className="mb-3 rounded-xl border border-violet-300/15 bg-violet-500/[0.06] p-3">
-      <div className="flex flex-wrap items-center gap-2">
-        {!trialMode ? <button type="button" disabled={!website?.id || pageAiBusy}
-          onClick={()=>{setLunaMediaLibraryPurpose('element');setLunaMediaLibraryKind('video');setLunaMediaLibraryOpen(true);}}
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-3 py-2 text-[11px] font-semibold text-slate-200 hover:border-violet-300/35 hover:text-white disabled:opacity-40">
-          <span aria-hidden="true">▣</span> Media Library
-        </button> : null}
-        <span className="text-[10px] font-semibold uppercase tracking-[.14em] text-slate-500">or video URL</span>
-      </div>
-      <div className="mt-2 flex gap-2">
-        <input value={lunaDirectVideoUrl} onChange={e=>setLunaDirectVideoUrl(e.target.value)}
-          onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();submitDirectLunaVideoUrl();}}}
-          placeholder="YouTube, Vimeo, MP4 or WebM URL"
-          className="min-w-0 flex-1 rounded-full border border-white/10 bg-black/25 px-3 py-2 text-xs text-white outline-none focus:border-violet-300/40" />
-        <button type="button" onClick={submitDirectLunaVideoUrl} disabled={pageAiBusy||!lunaDirectVideoUrl.trim()}
-          className="rounded-full bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">Go</button>
-      </div>
-      <p className="mt-2 text-[10px] leading-4 text-slate-500">Direct replacement updates immediately · 0 credits</p>
-    </div> : null}
     {lunaManualOpen && (String(lunaElementTarget?.type||'').includes('image') || lunaElementTarget?.type==='logo') ? (
       trialMode
         ? <button
@@ -4774,13 +4990,25 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 <main className="px-4 py-5 sm:px-6 sm:py-8">
                     <style>{`
                         html.cosmic-header-menu-active .cosmic-block-toolbar { opacity: 0 !important; pointer-events: none !important; }
-                        /* Overlay spacing must target the rendered Spark, not the builder toolbar. */
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > :first-child {
-                            padding-top: calc(var(--cosmic-overlay-header-height, 80px) + var(--cosmic-overlay-first-spark-padding, clamp(5.25rem, 7vw, 7.5rem))) !important;
+                        /* Overlay Header must sit inside the first hero/banner media surface.
+                           Never pad CosmicRenderShell itself: doing that creates a white band
+                           above video/background-image heroes. Add safe content clearance to
+                           the actual rendered section so its media still begins at y=0. */
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark {
+                            position: relative;
+                        }
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
+                            padding-top: calc(var(--cosmic-overlay-header-height, 80px) + var(--cosmic-overlay-first-spark-padding, clamp(3.25rem, 5vw, 5.5rem))) !important;
                         }
                         @media (max-width: 639px) {
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > :first-child {
-                                padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 4rem)) !important;
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
+                                padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 2.75rem)) !important;
                             }
                         }
                         /* Sparks live/export visual contract: keep Builder spacing and overflow
@@ -4791,13 +5019,20 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                             min-width: 0;
                             overflow-x: clip;
                         }
-                        .cosmic-builder-spark > section {
+                        .cosmic-builder-spark > section,
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > section,
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
                             box-sizing: border-box;
                             max-width: 100%;
                             padding-top: 50px !important;
                             padding-bottom: 50px !important;
                         }
                         .cosmic-builder-spark :is(img,video,iframe,svg,canvas) {
+                            max-width: 100%;
+                        }
+                        .cosmic-render-shell, .cosmic-render-content {
+                            width: 100%;
                             max-width: 100%;
                         }
                         .cosmic-builder-spark :is(h1,h2,h3,h4,h5,h6,p,a,button,label) {
@@ -4816,7 +5051,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                         }
                         .cosmic-builder-spark:hover > .cosmic-luna-hover-trigger { opacity:1; transform:scale(1); pointer-events:auto; }
                         @media (min-width: 640px) {
-                            .cosmic-builder-spark > section {
+                            .cosmic-builder-spark > section,
+                            .cosmic-builder-spark > [data-cosmic-render-shell] > section,
+                            .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
+                            .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
                                 padding-top: 80px !important;
                                 padding-bottom: 80px !important;
                             }
@@ -4860,7 +5098,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}
                     {data.global_header && (
-                        <div ref={overlayHeaderRef} className={`group/header-ai w-full z-40 ${overlayHeaderActive ? 'absolute inset-x-0 top-0 border-b-0 bg-transparent shadow-none' : 'relative bg-white'}`}>
+                        <div ref={overlayHeaderRef} data-cosmic-builder-overlay-header={overlayHeaderActive ? 'true' : 'false'} className={`group/header-ai w-full z-40 ${overlayHeaderActive ? 'pointer-events-auto absolute inset-x-0 top-0 border-b-0 bg-transparent shadow-none' : 'relative bg-white'}`}>
                             <button type="button" onClick={openLunaForSiteHeader}
                                 aria-label="Ask Luna about the site header"
                                 title="Ask Luna about the site header"
@@ -4900,6 +5138,12 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                                     const root=event.currentTarget;
                                     const target=event.target instanceof Element ? event.target : null;
                                     if(!target || target.closest('input,textarea,select,[contenteditable="true"]')) return;
+                                    // Slider/carousel navigation is navigation only; do not place a Luna
+                                    // hover target on prev/next/dots or other explicitly marked controls.
+                                    if(target.closest('[data-cosmic-slider-nav],[data-cosmic-no-luna-hover]')){
+                                        setLunaHoverTarget((current)=>current?.blockIndex===index?null:current);
+                                        return;
+                                    }
                                     const explicit=target.closest('[data-luna-target]');
                                     const semantic=explicit || target.closest('h1,h2,h3,h4,h5,h6,p,button,a,img,[role="button"]');
                                     const card=detectLunaRepeaterCard(root,target);
@@ -4929,6 +5173,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                                     if(target?.closest('a')) event.preventDefault();
                                     // Normal clicks no longer open Luna. Use the violet hover icon instead.
                                 }}
+                                data-cosmic-builder-spark="1"
+                                data-cosmic-block-index={index}
+                                data-cosmic-block-type={block.type}
                                 className={`cosmic-builder-spark cursor-default group-hover:ring-2 group-hover:ring-violet-500/20 transition-all duration-500 ${lunaScope.type==='section' && lunaScope.blockIndex===index ? 'ring-2 ring-violet-500/70' : ''} ${layoutApplying === index ? "scale-[0.997] opacity-80 ring-2 ring-violet-400/40" : "opacity-100"}`}
                             >
 
@@ -5534,6 +5781,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                     }
                     if(lunaMediaLibraryPurpose==='section-background-video'){
                         applyLunaUniversalVideo(asset.url);
+                        setLunaMediaLibraryPurpose('element');
+                        return;
+                    }
+                    if(lunaMediaLibraryPurpose==='section-video-poster'){
+                        if(!applyDirectLunaVideoPoster(asset.url)){
+                            setPageAiError('This video section does not expose a thumbnail/poster slot.');
+                        }
                         setLunaMediaLibraryPurpose('element');
                         return;
                     }

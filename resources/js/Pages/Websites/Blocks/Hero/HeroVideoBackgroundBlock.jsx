@@ -222,7 +222,7 @@ export function HeroVideoBackgroundBlock({
                     />
 
                     <EditableText
-                        value={data.heading}
+                        value={data.heading} cosmicType="h1"
                         className={`mt-6 block text-4xl font-bold leading-[0.98] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`}
                         onSave={(heading) =>
                             onUpdate({ heading })
@@ -280,6 +280,7 @@ export function HeroVideoBackgroundBlock({
 
                             <EditableText
                                 value={data.video_badge}
+                                cosmicType="badge"
                                 className={`block text-sm font-semibold ${mediaStyle.pillText}`}
                                 onSave={(video_badge) =>
                                     onUpdate({
@@ -288,14 +289,6 @@ export function HeroVideoBackgroundBlock({
                                 }
                             />
                         </div>
-
-                        <button
-                            type="button"
-                            onClick={() => setIsVideoEditorOpen(true)}
-                            className={`rounded-full border px-4 py-2.5 text-sm font-semibold backdrop-blur transition focus-visible:outline-none focus-visible:ring-2 ${mediaStyle.editButton}`}
-                        >
-                            Edit video
-                        </button>
                     </div>
                 </div>
             </div>
@@ -318,7 +311,7 @@ export function HeroVideoBackgroundBlock({
                         />
                     </div>
 
-                    <div data-editable-media className={`pointer-events-auto hidden w-48 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur sm:block ${mediaStyle.mediaCard}`}>
+                    <div data-editable-media data-cosmic-no-luna-hover="true" className={`pointer-events-auto hidden w-48 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur sm:block ${mediaStyle.mediaCard}`}>
                         <EditableImage
                             websiteId={websiteId}
                             blockIndex={blockIndex}

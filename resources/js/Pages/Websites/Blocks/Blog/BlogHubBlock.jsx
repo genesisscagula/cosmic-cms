@@ -444,7 +444,7 @@ export function BlogHubBlock({
                 {showIntro && (
                     <div className="max-w-3xl">
                         <EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[0.28em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                        <EditableText value={data.heading} className={`mt-4 block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.heading} cosmicType="h2" className={`mt-4 block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
                         <EditableText value={data.text} isTextArea className={`mt-5 block max-w-2xl text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />
                     </div>
                 )}

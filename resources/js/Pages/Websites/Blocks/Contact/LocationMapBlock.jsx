@@ -21,7 +21,7 @@ export function LocationMapBlock({ block, onUpdate, globalTheme }) {
         <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.85fr)_minmax(0,1.15fr)] lg:gap-16">
             <div className="space-y-4">
                 {data.eyebrow && <EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />}
-                <EditableText value={data.heading} className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
+                <EditableText value={data.heading} cosmicType="h2" className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
                 <EditableText value={data.text} isTextArea className={`block max-w-xl text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />
             </div>
             <div className={`relative isolate min-h-[22rem] overflow-hidden rounded-3xl border p-7 sm:p-9 ${theme.border} ${theme.card}`}>

@@ -63,7 +63,7 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
                 <div className="grid gap-8 lg:grid-cols-[1fr_.72fr] lg:items-end lg:gap-16">
                     <div>
                         <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${muted}`} onSave={(eyebrow)=>onUpdate({eyebrow})}/>
-                        <EditableText value={data.heading} className={`mt-5 block max-w-4xl text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl ${theme.text}`} onSave={(heading)=>onUpdate({heading})}/>
+                        <EditableText value={data.heading} cosmicType="h2" className={`mt-5 block max-w-4xl text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl ${theme.text}`} onSave={(heading)=>onUpdate({heading})}/>
                     </div>
                     <div className="lg:pb-1">
                         <EditableText value={data.text} isTextArea className={`block text-base leading-7 sm:text-lg sm:leading-8 ${muted}`} onSave={(text)=>onUpdate({text})}/>

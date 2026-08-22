@@ -1507,17 +1507,21 @@ class PageController extends Controller
                 // page must refresh already-published standard-page HTML so local preview,
                 // static preview, and connector/live output cannot retain an older style.
                 $publishedStyle = PageStyleRegistry::normalize($website->published_page_style ?: $website->page_style);
-                $primaryColor = (string) data_get($website->published_theme_settings ?: $website->theme_settings, 'primary', 'midnight');
+                $publishedThemeSettings = $website->published_theme_settings ?: $website->theme_settings ?: [];
+                $primaryColor = (string) data_get($publishedThemeSettings, 'primary', 'midnight');
+                $publishedTypography = is_array(data_get($publishedThemeSettings, 'typography')) ? data_get($publishedThemeSettings, 'typography') : [];
+                $publishedSectionLayout = is_array(data_get($publishedThemeSettings, 'section_layout')) ? data_get($publishedThemeSettings, 'section_layout') : [];
+                $publishedBackgroundStyle = is_array(data_get($publishedThemeSettings, 'background_style')) ? data_get($publishedThemeSettings, 'background_style') : [];
                 $website->pages()
                     ->where('status', 'published')
                     ->where('page_type', 'standard')
                     ->get()
-                    ->each(function (Page $publishedPage) use ($publishedStyle, $primaryColor) {
+                    ->each(function (Page $publishedPage) use ($publishedStyle, $primaryColor, $publishedTypography, $publishedSectionLayout, $publishedBackgroundStyle) {
                         try {
                             $snapshot = $publishedPage->published_blocks ?? $publishedPage->blocks ?? [];
                             $publishedPage->forceFill([
                                 'published_page_style' => $publishedStyle,
-                                'published_html' => CmsHtmlCompiler::compile($snapshot, $primaryColor, ['page_style' => $publishedStyle]),
+                                'published_html' => CmsHtmlCompiler::compile($snapshot, $primaryColor, ['page_style' => $publishedStyle, 'typography' => $publishedTypography, 'section_layout' => $publishedSectionLayout, 'background_style' => $publishedBackgroundStyle]),
                             ])->save();
                         } catch (Throwable $siblingCompileException) {
                             // A stale sibling page must never turn the current page publish
@@ -1753,7 +1757,7 @@ class PageController extends Controller
 
         // 1. Compile Header
         $headerBlocks = json_decode($website->global_header, true) ?? [];
-        $compiledHeader = \App\Helpers\CmsHtmlCompiler::compile($headerBlocks['blocks'] ?? [], $primaryColor);
+        $compiledHeader = \App\Helpers\CmsHtmlCompiler::compile($headerBlocks['blocks'] ?? [], $primaryColor, ['typography' => is_array($themeSettings['typography'] ?? null) ? $themeSettings['typography'] : [], 'section_layout' => is_array($themeSettings['section_layout'] ?? null) ? $themeSettings['section_layout'] : [], 'background_style' => is_array($themeSettings['background_style'] ?? null) ? $themeSettings['background_style'] : []]);
 
         // 2. Compile Pages
         $pages = $website->pages()->get();
@@ -1762,7 +1766,7 @@ class PageController extends Controller
         foreach ($pages as $page) {
             $pagePayload[] = [
                 'slug' => $page->slug,
-                'html' => \App\Helpers\CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor)
+                'html' => \App\Helpers\CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['typography' => is_array($themeSettings['typography'] ?? null) ? $themeSettings['typography'] : [], 'section_layout' => is_array($themeSettings['section_layout'] ?? null) ? $themeSettings['section_layout'] : [], 'background_style' => is_array($themeSettings['background_style'] ?? null) ? $themeSettings['background_style'] : []])
             ];
         }
 

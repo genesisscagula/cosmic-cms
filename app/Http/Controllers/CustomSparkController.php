@@ -1499,8 +1499,11 @@ PROMPT;
             'header'=>['nullable','string','max:80000'],
             'footer'=>['nullable','string','max:120000'],
             'theme'=>['nullable','string','max:12000'],
+            'typography'=>['nullable','string','max:12000'],
+            'background_style'=>['nullable','string','max:12000'],
+            'section_layout'=>['nullable','string','max:12000'],
             'site_memory'=>['nullable','string','max:24000'],
-            'target_scope'=>['nullable','in:page,section'],
+            'target_scope'=>['nullable','in:page,section,header,footer'],
             'target_index'=>['nullable','integer','min:0','max:100'],
             'element_context'=>['nullable','string','max:6000'],
             'target_resolved_theme'=>['nullable','string','max:40'],
@@ -1517,6 +1520,25 @@ PROMPT;
         $targetIndex=$scope==='section'?(int)($validated['target_index']??-1):-1;
         $prompt=trim((string)$validated['prompt']);
         $lower=Str::lower($prompt);
+        if($scope==='header'){
+            $shellAction=$this->lunaHeaderScopeAction($prompt,is_array($header)?$header:[],$siteMemory);
+            if(is_array($shellAction)){
+                return response()->json([
+                    'reply'=>$shellAction['reply'],
+                    'mode'=>$shellAction['mode']??'reply',
+                    'logo_company_name'=>$shellAction['logo_company_name']??null,
+                    'blocks'=>$blocks,
+                    'header'=>$shellAction['header']??(is_array($header)?$header:[]),
+                    'footer'=>is_array($footer)?$footer:[],
+                    'theme_key'=>null,
+                    'page_style'=>null,
+                    'credit_cost'=>0,
+                    'credit_balance'=>$trialCredits->balance($trial),
+                    'site_memory'=>$shellAction['site_memory']??$siteMemory,
+                    'applied_operations'=>$shellAction['applied_operations']??[],
+                ]);
+            }
+        }
         if($guardrailReply=$this->lunaUnsupportedLowLevelDesignRequest($prompt)){
             return response()->json([
                 'reply'=>$guardrailReply,
@@ -1684,7 +1706,7 @@ PROMPT;
             $elementContext['matched_paths']=array_values(array_unique($paths));
         }
 
-        $system='You are Luna, the invisible website editor. Return JSON only: {"reply":"short reply","operations":[{"action":"edit|replace|insert_before|insert_after|delete|move|theme","index":0,"to_index":0,"spark_key":"registered key when needed","theme_key":"","changes":{},"instruction":""}],"header_changes":{},"footer_changes":{},"page_style":null}. Use ONLY Spark keys from the supplied catalog. Rank candidates by requested aliases/media/capabilities FIRST, selected-section semantic intent/category SECOND, then layout/style/industry/position fit. Never default to Hero merely because Hero also supports the requested media; preserve the selected section role unless the user explicitly asks to change it. For simple edits use edit and only existing schema keys. REPEATER/LIST CRUD IS NON-STRUCTURAL: requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs.';
+        $system='You are Luna, the invisible website editor. Return JSON only: {"reply":"short reply","operations":[{"action":"edit|replace|insert_before|insert_after|delete|move|theme","index":0,"to_index":0,"spark_key":"registered key when needed","theme_key":"","changes":{},"instruction":""}],"header_changes":{},"footer_changes":{},"page_style":null}. Use ONLY Spark keys from the supplied catalog. Rank candidates by requested aliases/media/capabilities FIRST, selected-section semantic intent/category SECOND, then layout/style/industry/position fit. Never default to Hero merely because Hero also supports the requested media; preserve the selected section role unless the user explicitly asks to change it. For simple edits use edit and only existing schema keys. REPEATER/LIST CRUD IS NON-STRUCTURAL: requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs. THEME INTELLIGENCE: choose a theme only when the user explicitly asks for a theme/color-family change or when a first-build planner specifically requests one. Never choose midnight as a generic/default theme; use midnight only when the user explicitly asks for midnight/night styling. For vague style directions, preserve the current site theme and redesign within that family. REQUEST INTELLIGENCE: distinguish content edits from structural redesigns. Text/image/link/name/label changes edit the existing Spark. Add/remove/reorder list or card items edits the repeater. Requests for another layout, redesign, slider, video hero, split, grid, mosaic, testimonial style, or different section type are structural and may replace with the closest registered Spark. Global typography/spacing/background requests are handled by the design-token router; section-specific requests should remain local. Header overlay/logo/nav requests belong to the global header, not the body Spark. If a request contains multiple compatible actions, complete all applicable actions in order. ';
         $apiKey=(string)config('openai.api_key'); abort_if($apiKey==='',503,'Luna is temporarily unavailable.');
         $response=Http::withToken($apiKey)->connectTimeout(30)->timeout(150)->post(rtrim((string)(config('openai.base_uri')?:'https://api.openai.com/v1'),'/').'/chat/completions',[
             'model'=>env('OPENAI_MODEL','gpt-5-mini'),'response_format'=>['type'=>'json_object'],
@@ -1754,6 +1776,65 @@ PROMPT;
                 }
             }
         }
+
+        // Generic redesign fallback: "redesign this section", "make this section better",
+        // "make it more premium/modern/polished", etc. must produce a real structural
+        // alternative even when the planner returns no effective mutation.
+        if($scope==='section' && isset($blocks[$targetIndex])){
+            $genericRedesign=Str::contains($lower,[
+                'redesign this section','redesign the section','redesign this','another layout','different layout',
+                'new layout','make this section better','make this better','improve this section',
+                'make this section more premium','make this more premium','make this section modern',
+                'make this more modern','make this section polished','make this more polished',
+                'refresh this section','rework this section','restyle this section'
+            ]);
+            $hasStructural=collect($ops)->contains(fn($op)=>is_array($op)
+                && in_array(($op['action']??''),['replace','delete','move','insert_before','insert_after'],true)
+                && (int)($op['index']??-1)===$targetIndex);
+
+            if($genericRedesign && !$hasStructural){
+                $current=(array)$blocks[$targetIndex];
+                $currentKey=(string)($current['type']??'');
+                $currentMeta=SparkCatalog::find($currentKey)??[];
+                $category=Str::lower((string)($currentMeta['category']??''));
+                $intent=collect($currentMeta['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                $industry=collect($currentMeta['industry_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                $position=collect($currentMeta['position_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+
+                $ranked=collect($usable)->filter(fn($spark)=>is_array($spark) && !empty($spark['key']) && ($spark['key']??'')!==$currentKey)
+                    ->map(function($spark) use($category,$intent,$industry,$position,$lower){
+                        $score=0;
+                        $sparkCategory=Str::lower((string)($spark['category']??''));
+                        if($category!=='' && $sparkCategory===$category) $score+=180;
+                        elseif($category!=='' && in_array($sparkCategory,['hero','header'],true)) $score-=140;
+                        $sparkIntent=collect($spark['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                        $sparkIndustry=collect($spark['industry_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                        $sparkPosition=collect($spark['position_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                        $score+=count(array_intersect($intent,$sparkIntent))*32;
+                        $score+=count(array_intersect($industry,$sparkIndustry))*14;
+                        $score+=count(array_intersect($position,$sparkPosition))*9;
+                        $style=collect($spark['style']??[])->map(fn($v)=>Str::lower((string)$v))->implode(' ');
+                        if(Str::contains($lower,'premium') && Str::contains($style,['premium','editorial','cinematic','luxury'])) $score+=35;
+                        if(Str::contains($lower,'modern') && Str::contains($style,['modern','clean','editorial','minimal'])) $score+=28;
+                        if(Str::contains($lower,'polished') && Str::contains($style,['premium','clean','editorial'])) $score+=24;
+                        // Stable tie-break keeps repeated prompts predictable without biasing one Spark forever.
+                        $score+=(abs(crc32(($spark['key']??'').'|'.$lower))%17);
+                        $spark['_luna_redesign_score']=$score;
+                        return $spark;
+                    })->sortByDesc('_luna_redesign_score')->values();
+
+                $candidate=$ranked->first(fn($spark)=>($spark['_luna_redesign_score']??0)>0);
+                if(is_array($candidate) && !empty($candidate['key'])){
+                    $ops[]=[
+                        'action'=>'replace',
+                        'index'=>$targetIndex,
+                        'spark_key'=>$candidate['key'],
+                        'instruction'=>'Redesign the selected section into a clearly different, higher-quality layout while preserving its semantic purpose, useful copy, CTA intent, and current site theme. Do not return the same layout.',
+                    ];
+                }
+            }
+        }
+
         $pricing=$lunaPricing->estimate($prompt,$ops,$scope);
         $cost=(int)($pricing['credits']??0);
         if(($pricing['requires_confirmation']??false) && !($validated['confirmed']??false)){
@@ -1863,13 +1944,16 @@ PROMPT;
         $trialPageStyle=in_array(Str::lower((string)($plan['page_style']??'')),['balanced','clean','premium'],true)
             ? Str::lower((string)$plan['page_style']) : null;
         $shellChanged=!empty($plan['header_changes']??[])||!empty($plan['footer_changes']??[])||$trialPageStyle!==null||$trialThemeKey!==null;
-        $balance=$cost>0?$trialCredits->consume($trial,$cost,'luna_change',['scope'=>$scope,'operations'=>$applied]):$trialCredits->balance($trial);
         $afterFingerprint=hash('sha256',json_encode(array_values($next),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
         $blocksActuallyChanged=!hash_equals($beforeFingerprint,$afterFingerprint);
         if(!$blocksActuallyChanged){
             $applied=array_values(array_filter($applied,fn($item)=>in_array(($item['action']??''),['theme'],true)));
         }
         $verifiedSomething=$blocksActuallyChanged||$shellChanged;
+        $chargedCost=$verifiedSomething ? $cost : 0;
+        $balance=$chargedCost>0
+            ? $trialCredits->consume($trial,$chargedCost,'luna_change',['scope'=>$scope,'operations'=>$applied])
+            : $trialCredits->balance($trial);
         $reply=($universalBackgroundIntent && !$backgroundApplied)
             ? ('I could not apply the background image change yet. '.($backgroundError?:'The image provider did not return a usable background.'))
             : ($verifiedSomething
@@ -1882,7 +1966,7 @@ PROMPT;
             'footer'=>array_merge(is_array($footer)?$footer:[],is_array($plan['footer_changes']??null)?$plan['footer_changes']:[]),
             'theme_key'=>$trialThemeKey,
             'page_style'=>$trialPageStyle,
-            'credit_cost'=>$cost,
+            'credit_cost'=>$chargedCost,
             'credit_balance'=>$balance,
             'site_memory'=>$siteMemory,
             'applied_operations'=>$applied
@@ -1909,7 +1993,7 @@ PROMPT;
             'footer'=>['nullable','string','max:120000'],
             'theme'=>['nullable','string','max:12000'],
             'site_memory'=>['nullable','string','max:24000'],
-            'target_scope'=>['nullable','in:page,section'],
+            'target_scope'=>['nullable','in:page,section,header,footer'],
             'target_index'=>['nullable','integer','min:0','max:100'],
             'element_context'=>['nullable','string','max:6000'],
             'target_resolved_theme'=>['nullable','string','max:40'],
@@ -1920,6 +2004,12 @@ PROMPT;
         $header=json_decode((string)($validated['header']??'{}'),true);
         $footer=json_decode((string)($validated['footer']??'{}'),true);
         $theme=json_decode((string)($validated['theme']??'{}'),true);
+        $typography=json_decode((string)($validated['typography']??'{}'),true);
+        if(!is_array($typography))$typography=[];
+        $backgroundStyle=json_decode((string)($validated['background_style']??'{}'),true);
+        if(!is_array($backgroundStyle))$backgroundStyle=[];
+        $sectionLayout=json_decode((string)($validated['section_layout']??'{}'),true);
+        if(!is_array($sectionLayout))$sectionLayout=[];
         if(!is_array($blocks)) {
             throw ValidationException::withMessages(['blocks'=>'The current page could not be prepared for Luna.']);
         }
@@ -1934,6 +2024,119 @@ PROMPT;
 
         $normalizedPrompt=Str::lower(trim((string)$validated['prompt']));
         $user=$request->user();
+
+        // Typography commands are deterministic and cost 0 credits because they
+        // update existing design tokens without making an AI/API request.
+        $typographyAction=$this->lunaTypographyAction(
+            (string)$validated['prompt'],
+            $scope,
+            $targetIndex,
+            $blocks,
+            $typography
+        );
+        if(is_array($typographyAction)){
+            return response()->json([
+                'reply'=>$typographyAction['reply'],
+                'mode'=>'reply',
+                'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+                'blocks'=>$typographyAction['blocks'],
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'theme_key'=>null,
+                'typography_settings'=>$typographyAction['typography_settings'],
+                'page_style'=>null,
+                'site_memory'=>$siteMemory,
+                'applied_operations'=>$typographyAction['applied_operations'],
+            ]);
+        }
+
+        $backgroundAction=$this->lunaBackgroundStyleAction(
+            (string)$validated['prompt'],
+            $scope,
+            $targetIndex,
+            $blocks,
+            $backgroundStyle
+        );
+        if(is_array($backgroundAction)){
+            return response()->json([
+                'reply'=>$backgroundAction['reply'],
+                'mode'=>'reply',
+                'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+                'blocks'=>$backgroundAction['blocks'],
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'theme_key'=>null,
+                'background_style'=>$backgroundAction['background_style'],
+                'page_style'=>null,
+                'site_memory'=>$siteMemory,
+                'applied_operations'=>$backgroundAction['applied_operations'],
+            ]);
+        }
+
+        $sectionLayoutAction=$this->lunaSectionLayoutAction(
+            (string)$validated['prompt'],
+            $scope,
+            $targetIndex,
+            $blocks,
+            $sectionLayout
+        );
+        if(is_array($sectionLayoutAction)){
+            return response()->json([
+                'reply'=>$sectionLayoutAction['reply'],
+                'mode'=>'reply',
+                'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+                'blocks'=>$sectionLayoutAction['blocks'],
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'theme_key'=>null,
+                'section_layout'=>$sectionLayoutAction['section_layout'],
+                'page_style'=>null,
+                'site_memory'=>$siteMemory,
+                'applied_operations'=>$sectionLayoutAction['applied_operations'],
+            ]);
+        }
+
+        if($scope==='header'){
+            $shellAction=$this->lunaHeaderScopeAction((string)$validated['prompt'],is_array($header)?$header:[],$siteMemory);
+            if(is_array($shellAction)){
+                return response()->json([
+                    'reply'=>$shellAction['reply'],
+                    'mode'=>$shellAction['mode']??'reply',
+                    'logo_company_name'=>$shellAction['logo_company_name']??null,
+                    'credit_cost'=>0,
+                    'credit_balance'=>$user ? $credits->balance($user) : null,
+                    'blocks'=>$blocks,
+                    'header'=>$shellAction['header']??(is_array($header)?$header:[]),
+                    'footer'=>is_array($footer)?$footer:[],
+                    'theme_key'=>null,
+                    'page_style'=>null,
+                    'site_memory'=>$shellAction['site_memory']??$siteMemory,
+                    'applied_operations'=>$shellAction['applied_operations']??[],
+                ]);
+            }
+        }
+
+        if($scope==='header'){
+            $pageNavAction=$this->lunaPageNavigationAction((string)$validated['prompt'],$website,is_array($header)?$header:[]);
+            if(is_array($pageNavAction)){
+                return response()->json([
+                    'reply'=>$pageNavAction['reply'],
+                    'mode'=>'reply',
+                    'credit_cost'=>0,
+                    'credit_balance'=>$user ? $credits->balance($user) : null,
+                    'blocks'=>$blocks,
+                    'header'=>$pageNavAction['header'],
+                    'footer'=>is_array($footer)?$footer:[],
+                    'theme_key'=>null,
+                    'page_style'=>null,
+                    'site_memory'=>$siteMemory,
+                    'applied_operations'=>$pageNavAction['applied_operations'],
+                ]);
+            }
+        }
         if($guardrailReply=$this->lunaUnsupportedLowLevelDesignRequest((string)$validated['prompt'])){
             return response()->json([
                 'reply'=>$guardrailReply,
@@ -2323,6 +2526,65 @@ PROMPT;
             }
         }
 
+
+        // Generic redesign fallback: "redesign this section", "make this section better",
+        // "make it more premium/modern/polished", etc. must produce a real structural
+        // alternative even when the planner returns no effective mutation.
+        if($scope==='section' && isset($blocks[$targetIndex])){
+            $genericRedesign=Str::contains($requestLower,[
+                'redesign this section','redesign the section','redesign this','another layout','different layout',
+                'new layout','make this section better','make this better','improve this section',
+                'make this section more premium','make this more premium','make this section modern',
+                'make this more modern','make this section polished','make this more polished',
+                'refresh this section','rework this section','restyle this section'
+            ]);
+            $hasStructural=collect($operations)->contains(fn($op)=>is_array($op)
+                && in_array(($op['action']??''),['replace','delete','move','insert_before','insert_after'],true)
+                && (int)($op['index']??-1)===$targetIndex);
+
+            if($genericRedesign && !$hasStructural){
+                $current=(array)$blocks[$targetIndex];
+                $currentKey=(string)($current['type']??'');
+                $currentMeta=SparkCatalog::find($currentKey)??[];
+                $category=Str::lower((string)($currentMeta['category']??''));
+                $intent=collect($currentMeta['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                $industry=collect($currentMeta['industry_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                $position=collect($currentMeta['position_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+
+                $ranked=collect($usable)->filter(fn($spark)=>is_array($spark) && !empty($spark['key']) && ($spark['key']??'')!==$currentKey)
+                    ->map(function($spark) use($category,$intent,$industry,$position,$requestLower){
+                        $score=0;
+                        $sparkCategory=Str::lower((string)($spark['category']??''));
+                        if($category!=='' && $sparkCategory===$category) $score+=180;
+                        elseif($category!=='' && in_array($sparkCategory,['hero','header'],true)) $score-=140;
+                        $sparkIntent=collect($spark['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                        $sparkIndustry=collect($spark['industry_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                        $sparkPosition=collect($spark['position_fit']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                        $score+=count(array_intersect($intent,$sparkIntent))*32;
+                        $score+=count(array_intersect($industry,$sparkIndustry))*14;
+                        $score+=count(array_intersect($position,$sparkPosition))*9;
+                        $style=collect($spark['style']??[])->map(fn($v)=>Str::lower((string)$v))->implode(' ');
+                        if(Str::contains($requestLower,'premium') && Str::contains($style,['premium','editorial','cinematic','luxury'])) $score+=35;
+                        if(Str::contains($requestLower,'modern') && Str::contains($style,['modern','clean','editorial','minimal'])) $score+=28;
+                        if(Str::contains($requestLower,'polished') && Str::contains($style,['premium','clean','editorial'])) $score+=24;
+                        // Stable tie-break keeps repeated prompts predictable without biasing one Spark forever.
+                        $score+=(abs(crc32(($spark['key']??'').'|'.$requestLower))%17);
+                        $spark['_luna_redesign_score']=$score;
+                        return $spark;
+                    })->sortByDesc('_luna_redesign_score')->values();
+
+                $candidate=$ranked->first(fn($spark)=>($spark['_luna_redesign_score']??0)>0);
+                if(is_array($candidate) && !empty($candidate['key'])){
+                    $operations[]=[
+                        'action'=>'replace',
+                        'index'=>$targetIndex,
+                        'spark_key'=>$candidate['key'],
+                        'instruction'=>'Redesign the selected section into a clearly different, higher-quality layout while preserving its semantic purpose, useful copy, CTA intent, and current site theme. Do not return the same layout.',
+                    ];
+                }
+            }
+        }
+
         $pricing=$lunaPricing->estimate((string)$validated['prompt'],$operations,$scope);
         $creditCost=(int)($pricing['credits']??0);
         if(($pricing['requires_confirmation']??false) && !($validated['confirmed']??false)){
@@ -2610,12 +2872,6 @@ PROMPT;
         $pageStyle=in_array(Str::lower((string)($plan['page_style']??'')),['balanced','clean','premium'],true)
             ? Str::lower((string)$plan['page_style']) : null;
 
-        if($creditCost>0 && $user){
-            $credits->consume($user,$creditCost,'Luna website change',$website,'luna-page-chat-'.Str::uuid(),[
-                'category'=>'ai','scope'=>$scope,'operations'=>$applied,
-            ]);
-        }
-
         $shellChanged=!empty($headerChanges)||!empty($footerChanges)||$themeKey!==null||$pageStyle!==null;
         $afterFingerprint=hash('sha256',json_encode(array_values($nextBlocks),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
         $blocksActuallyChanged=!hash_equals($beforeFingerprint,$afterFingerprint);
@@ -2623,6 +2879,12 @@ PROMPT;
             $applied=array_values(array_filter($applied,fn($item)=>in_array(($item['action']??''),['theme'],true)));
         }
         $verifiedSomething=$blocksActuallyChanged||$shellChanged;
+        $chargedCreditCost=$verifiedSomething ? $creditCost : 0;
+        if($chargedCreditCost>0 && $user){
+            $credits->consume($user,$chargedCreditCost,'Luna website change',$website,'luna-page-chat-'.Str::uuid(),[
+                'category'=>'ai','scope'=>$scope,'operations'=>$applied,
+            ]);
+        }
         $reply=trim((string)($plan['reply']??''));
         if($universalBackgroundIntent && !$backgroundApplied){
             $reply='I could not apply the background image change yet. '.($backgroundError?:'The image provider did not return a usable background.');
@@ -2636,7 +2898,7 @@ PROMPT;
 
         return response()->json([
             'reply'=>$reply,
-            'credit_cost'=>$creditCost,
+            'credit_cost'=>$chargedCreditCost,
             'credit_balance'=>$user ? $credits->balance($user) : null,
             'blocks'=>$nextBlocks,
             'header'=>$safeHeader,
@@ -2770,5 +3032,583 @@ PROMPT;
             'spark'=>$spark->fresh(),
         ]);
     }
+
+
+    /**
+     * Fast deterministic actions for the global header. These run before the
+     * creative planner so simple site-shell requests never fail because a body
+     * Spark scope validator/model misunderstood the target.
+     */
+    private function lunaHeaderScopeAction(string $prompt,array $header,array $siteMemory): ?array
+    {
+        $lower=Str::lower(trim($prompt));
+
+        $asksOverlay=Str::contains($lower,['overlay header','header overlay','overlay the header','header over the banner','header over banner','header over the hero','header over hero']);
+        if($asksOverlay){
+            $disable=Str::contains($lower,['remove','disable','turn off','stop','no overlay','not overlay']);
+            $header['overlay_header_on_banner']=!$disable;
+            return [
+                'reply'=>$disable
+                    ? 'Done — I removed the header overlay so it stays in the normal page flow.'
+                    : 'Done — I overlaid the header on the opening banner.',
+                'header'=>$header,
+                'site_memory'=>$siteMemory,
+                'applied_operations'=>[['type'=>'header_overlay','enabled'=>!$disable]],
+            ];
+        }
+
+        $logoIntent=Str::contains($lower,'logo') && Str::contains($lower,['create','generate','make','new logo','regenerate','replace','update']);
+        $pendingLogo=(bool)($siteMemory['pending_logo_request']??false);
+        if($logoIntent || $pendingLogo){
+            $name=null;
+            if(preg_match('/(?:logo\s+(?:for|called|named)|brand\s+(?:called|named))\s+["\']?([^"\',.!?]{2,80})/i',$prompt,$match)){
+                $name=trim($match[1]);
+            }elseif($pendingLogo && !$logoIntent){
+                $candidate=trim($prompt," \t\n\r\0\x0B\"'");
+                if(mb_strlen($candidate)>=2 && mb_strlen($candidate)<=80)$name=$candidate;
+            }
+
+            if(!$name){
+                $siteMemory['pending_logo_request']=true;
+                return [
+                    'reply'=>'What name should I use for the logo? For example, “Business Name”.',
+                    'mode'=>'logo_name_required',
+                    'header'=>$header,
+                    'site_memory'=>$siteMemory,
+                    'applied_operations'=>[],
+                ];
+            }
+
+            unset($siteMemory['pending_logo_request']);
+            return [
+                'reply'=>"Got it — I’ll create the logo for {$name} and match it to the current brand theme.",
+                'mode'=>'logo_generate',
+                'logo_company_name'=>Str::limit($name,80,''),
+                'header'=>$header,
+                'site_memory'=>$siteMemory,
+                'applied_operations'=>[['type'=>'logo_generate','company_name'=>Str::limit($name,80,'')]],
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * Adds only missing pages and menu links. Existing pages are reused so a
+     * natural request like "add Home, About Us, Services, Projects, Contact"
+     * is idempotent instead of producing duplicates.
+     */
+    private function lunaPageNavigationAction(string $prompt,Website $website,array $header): ?array
+    {
+        $lower=Str::lower($prompt);
+        $intent=(Str::contains($lower,['page','pages']) && Str::contains($lower,['nav','navigation','menu']))
+            && Str::contains($lower,['add','create','make','include']);
+        if(!$intent)return null;
+
+        $catalog=[
+            'Home'=>['home','homepage','home page'],
+            'About Us'=>['about us','about page','about'],
+            'Services'=>['services','service page','services page'],
+            'Projects'=>['projects','project page','portfolio','work page'],
+            'Contact'=>['contact','contact us','contact page'],
+            'Pricing'=>['pricing','pricing page'],
+            'FAQ'=>['faq','faqs','faq page'],
+            'Gallery'=>['gallery','gallery page'],
+            'Testimonials'=>['testimonials','reviews'],
+            'Team'=>['team','our team'],
+            'Blog'=>['blog','news','updates'],
+        ];
+        $requested=[];
+        foreach($catalog as $title=>$aliases){
+            if(Str::contains($lower,$aliases))$requested[]=$title;
+        }
+        $requested=array_values(array_unique($requested));
+        if(!$requested)return null;
+
+        $pages=$website->pages()->orderBy('sort_order')->orderBy('id')->get();
+        $normalize=fn($value)=>Str::of((string)$value)->lower()->replaceMatches('/[^a-z0-9]+/','')->value();
+        $findExisting=function(string $title) use ($pages,$normalize){
+            $needle=$normalize($title);
+            foreach($pages as $page){
+                if($normalize($page->title)===$needle || $normalize($page->slug)===$needle)return $page;
+                if($title==='About Us' && in_array($normalize($page->title),['about','ourstory'],true))return $page;
+                if($title==='Home' && in_array($normalize($page->slug),['home',''],true))return $page;
+                if($title==='Projects' && in_array($normalize($page->title),['portfolio','work','ourwork'],true))return $page;
+            }
+            return null;
+        };
+
+        $created=[];$reused=[];$resolved=[];
+        foreach($requested as $title){
+            $page=$findExisting($title);
+            if($page){
+                $reused[]=$title;
+                $resolved[$title]=$page;
+                continue;
+            }
+            $slug=$title==='Home'?'home':(Str::slug($title)?:'page');
+            $base=$slug;$suffix=2;
+            while($website->pages()->where('slug',$slug)->exists())$slug=$base.'-'.$suffix++;
+            $page=$website->pages()->create([
+                'title'=>$title,
+                'slug'=>$slug,
+                'page_type'=>'standard',
+                'status'=>'draft',
+                'sort_order'=>((int)$website->pages()->max('sort_order'))+1,
+                'blocks'=>[],
+            ]);
+            $pages->push($page);
+            $created[]=$title;
+            $resolved[$title]=$page;
+        }
+
+        $menu=array_values(array_filter(is_array($header['menu']??null)?$header['menu']:[],fn($item)=>is_array($item)));
+        $menuLabels=array_map(fn($item)=>$normalize($item['label']??''),$menu);
+        $addedMenu=[];
+        foreach($requested as $title){
+            if(in_array($normalize($title),$menuLabels,true))continue;
+            $page=$resolved[$title]??null;
+            if(!$page)continue;
+            $menu[]=[
+                'label'=>$title,
+                'url'=>$title==='Home' ? '/' : '/'.ltrim((string)$page->slug,'/'),
+            ];
+            $menuLabels[]=$normalize($title);
+            $addedMenu[]=$title;
+        }
+        $header['menu']=array_values(array_slice($menu,0,12));
+
+        $parts=[];
+        if($created)$parts[]='created '.implode(', ',$created);
+        if($reused)$parts[]='reused existing '.implode(', ',$reused);
+        if($addedMenu)$parts[]='updated navigation with '.implode(', ',$addedMenu);
+        $reply='Done — '.($parts?implode('; ',$parts):'the requested pages and navigation were already in place').'.';
+
+        return [
+            'reply'=>$reply,
+            'header'=>$header,
+            'applied_operations'=>[
+                ['type'=>'pages_create_missing','created'=>$created,'reused'=>$reused],
+                ['type'=>'navigation_add_missing','added'=>$addedMenu],
+            ],
+        ];
+    }
+
+    /**
+     * Deterministic typography intent router.
+     * Global wording updates website theme typography; selected-section wording
+     * writes only luna_typography_overrides on that block.
+     */
+    private function lunaTypographyAction(
+        string $prompt,
+        string $scope,
+        int $targetIndex,
+        array $blocks,
+        array $typography
+    ): ?array {
+        $q=Str::lower(trim($prompt));
+        if($q==='')return null;
+
+        $mentionsType=Str::contains($q,[
+            'typography','font size','font-size','line height','line-height','font weight','font-weight',
+            'letter spacing','letter-spacing','h1','h2','h3','h4','h5','h6','heading 1','heading 2','heading 3','heading 4','heading 5','heading 6',
+            'body text','paragraph text','paragraphs','card title','card titles','card heading','card headings','stat title','stat titles','card body','card text','eyebrow','labels','badge','badges','meta','button text'
+        ]);
+        $changeVerb=Str::contains($q,[
+            'increase','decrease','bigger','larger','smaller','reduce','make','set','change','update','use','adjust'
+        ]);
+        if(!$mentionsType || !$changeVerb)return null;
+
+        $selectedType=$scope==='section' && isset($blocks[$targetIndex])
+            ? Str::lower((string)($blocks[$targetIndex]['type']??''))
+            : '';
+        $role=match(true){
+            Str::contains($q,['all headings','every heading','all heading sizes','every heading size'])=>'all_headings',
+            preg_match('/\b(?:h1|heading\s*1)\b/i',$prompt)===1=>'h1',
+            preg_match('/\b(?:h2|heading\s*2)\b/i',$prompt)===1=>'h2',
+            preg_match('/\b(?:h3|heading\s*3)\b/i',$prompt)===1=>'h3',
+            preg_match('/\b(?:h4|heading\s*4)\b/i',$prompt)===1=>'h4',
+            preg_match('/\b(?:h5|heading\s*5)\b/i',$prompt)===1=>'h5',
+            preg_match('/\b(?:h6|heading\s*6)\b/i',$prompt)===1=>'h6',
+            Str::contains($q,['stat title','stat titles'])=>'stat-title',
+            Str::contains($q,['card title','card titles','card heading','card headings'])=>'card-title',
+            Str::contains($q,['card body','card text'])=>'card-body',
+            Str::contains($q,['body text','paragraph text','paragraphs'])=>'body',
+            Str::contains($q,['badge','badges'])=>'badge',
+            Str::contains($q,['meta'])=>'meta',
+            Str::contains($q,['eyebrow','labels'])=>'eyebrow',
+            Str::contains($q,['button text','buttons'])=>'button',
+            Str::contains($q,['heading','headline','title']) && Str::startsWith($selectedType,'hero')=>'h1',
+            Str::contains($q,['heading','headline','title'])=>'h2',
+            default=>null,
+        };
+        if($role===null)return null;
+
+        $property=match(true){
+            Str::contains($q,['line height','line-height'])=>'line',
+            Str::contains($q,['font weight','font-weight','bold','lighter weight'])=>'weight',
+            Str::contains($q,['letter spacing','letter-spacing','tracking'])=>'tracking',
+            default=>'size',
+        };
+
+        $global=Str::contains($q,[
+            'all ','every ','sitewide','site-wide','whole site','entire site','whole page','entire page',
+            'across the site','across this site','globally'
+        ]);
+        if($scope!=='section' && !Str::contains($q,['this section','only this section','just this section']))$global=true;
+
+        $defaults=[
+            'h1'=>['size'=>'5.75rem','line'=>'.96','weight'=>'700','tracking'=>'-.05em'],
+            'h2'=>['size'=>'4rem','line'=>'1','weight'=>'700','tracking'=>'-.045em'],
+            'h3'=>['size'=>'1.75rem','line'=>'1.08','weight'=>'700','tracking'=>'-.025em'],
+            'h4'=>['size'=>'1.35rem','line'=>'1.15','weight'=>'700','tracking'=>'-.015em'],
+            'h5'=>['size'=>'1.125rem','line'=>'1.25','weight'=>'700','tracking'=>'-.01em'],
+            'h6'=>['size'=>'1rem','line'=>'1.3','weight'=>'700','tracking'=>'0em'],
+            'card-title'=>['size'=>'1.65rem','line'=>'1.12','weight'=>'700','tracking'=>'-.025em'],
+            'stat-title'=>['size'=>'1.35rem','line'=>'1.18','weight'=>'700','tracking'=>'-.015em'],
+            'card-body'=>['size'=>'.975rem','line'=>'1.65','weight'=>'400','tracking'=>'0em'],
+            'body'=>['size'=>'1rem','line'=>'1.75','weight'=>'400','tracking'=>'0em'],
+            'eyebrow'=>['size'=>'.75rem','line'=>'1.35','weight'=>'500','tracking'=>'.28em'],
+            'badge'=>['size'=>'.75rem','line'=>'1.25','weight'=>'600','tracking'=>'0em'],
+            'meta'=>['size'=>'.75rem','line'=>'1.4','weight'=>'500','tracking'=>'.12em'],
+            'button'=>['size'=>'.9rem','line'=>'1.25','weight'=>'700','tracking'=>'0em'],
+        ];
+
+        if($role==='all_headings'){
+            $roles=['h1','h2','h3','h4','h5','h6'];
+            $nextTypography=$typography;
+            $explicitAllSize=null;
+            if($property==='size' && preg_match('/(\d+(?:\.\d+)?)\s*(rem|px)/i',$prompt,$explicitMatch)){
+                $explicitAllSize=$explicitMatch[1].Str::lower($explicitMatch[2]);
+            }
+            foreach($roles as $headingRole){
+                $headingKey=$headingRole.'_'.$property;
+                $currentHeading=(string)($nextTypography[$headingKey]??$defaults[$headingRole][$property]);
+                if($property==='size'){
+                    if($explicitAllSize!==null){
+                        $nextTypography[$headingKey]=$explicitAllSize;
+                        continue;
+                    }
+                    $basePx=['h1'=>92,'h2'=>64,'h3'=>28,'h4'=>21.6,'h5'=>18,'h6'=>16][$headingRole];
+                    if(preg_match('/^(-?\d+(?:\.\d+)?)px$/',$currentHeading,$m))$basePx=(float)$m[1];
+                    elseif(preg_match('/^(-?\d+(?:\.\d+)?)rem$/',$currentHeading,$m))$basePx=(float)$m[1]*16;
+                    $factor=Str::contains($q,['increase','bigger','larger','more']) ? 1.12 : (Str::contains($q,['decrease','smaller','reduce','less']) ? .90 : 1.0);
+                    $nextTypography[$headingKey]=rtrim(rtrim(number_format(max(10,min(144,$basePx*$factor))/16,3,'.',''),'0'),'.').'rem';
+                } elseif($property==='line'){
+                    $base=is_numeric($currentHeading)?(float)$currentHeading:(float)$defaults[$headingRole]['line'];
+                    $nextTypography[$headingKey]=(string)round(max(.8,min(2.4,$base+(Str::contains($q,['increase','more']) ? .08 :(Str::contains($q,['decrease','less']) ? -.08 : 0)))),2);
+                } elseif($property==='weight'){
+                    $base=is_numeric($currentHeading)?(int)$currentHeading:(int)$defaults[$headingRole]['weight'];
+                    $nextTypography[$headingKey]=(string)max(100,min(900,$base+(Str::contains($q,['increase','bolder','heavier']) ? 100 :(Str::contains($q,['decrease','lighter']) ? -100 : 0))));
+                }
+            }
+            return [
+                'reply'=>"Updated heading {$property} across the site.",
+                'blocks'=>$blocks,
+                'typography_settings'=>$nextTypography,
+                'applied_operations'=>[['action'=>'typography_global','role'=>'all_headings','property'=>$property]],
+            ];
+        }
+
+        $key=$role.'_'.$property;
+        $current=(string)($typography[$key]??$defaults[$role][$property]);
+
+        $explicit=null;
+        if($property==='size' && preg_match('/(\d+(?:\.\d+)?)\s*(rem|px)/i',$prompt,$m)){
+            $explicit=$m[1].Str::lower($m[2]);
+        } elseif($property==='line' && preg_match('/(?:line[- ]height(?:\s*(?:to|at|=))?\s*)(\d+(?:\.\d+)?)/i',$prompt,$m)){
+            $explicit=(string)max(.8,min(2.4,(float)$m[1]));
+        } elseif($property==='weight' && preg_match('/\b([1-9]00)\b/',$prompt,$m)){
+            $explicit=$m[1];
+        } elseif($property==='tracking' && preg_match('/(-?\d+(?:\.\d+)?)\s*(em|px)/i',$prompt,$m)){
+            $explicit=$m[1].Str::lower($m[2]);
+        }
+
+        $increase=Str::contains($q,['increase','bigger','larger','more','heavier']);
+        $decrease=Str::contains($q,['decrease','smaller','reduce','less','lighter']);
+
+        $value=$explicit;
+        if($value===null){
+            if($property==='size'){
+                $basePx=[
+                    'h1'=>92,'h2'=>64,'h3'=>28,'h4'=>21.6,'h5'=>18,'h6'=>16,'card-title'=>26.4,'stat-title'=>21.6,'card-body'=>15.6,'body'=>16,'eyebrow'=>12,'badge'=>12,'meta'=>12,'button'=>14.4,
+                ][$role];
+                if(preg_match('/^(-?\d+(?:\.\d+)?)px$/',$current,$m))$basePx=(float)$m[1];
+                elseif(preg_match('/^(-?\d+(?:\.\d+)?)rem$/',$current,$m))$basePx=(float)$m[1]*16;
+                $factor=$increase ? 1.12 : ($decrease ? .90 : 1.0);
+                $value=rtrim(rtrim(number_format(max(10,min(144,$basePx*$factor))/16,3,'.',''),'0'),'.').'rem';
+            } elseif($property==='line'){
+                $base=is_numeric($current)?(float)$current:(float)$defaults[$role]['line'];
+                $value=(string)round(max(.8,min(2.4,$base + ($increase ? .08 : ($decrease ? -.08 : 0)))),2);
+            } elseif($property==='weight'){
+                $base=is_numeric($current)?(int)$current:(int)$defaults[$role]['weight'];
+                $value=(string)max(100,min(900,$base + ($increase ? 100 : ($decrease ? -100 : 0))));
+            } else {
+                $value=$current;
+            }
+        }
+
+        if($global){
+            $nextTypography=$typography;
+            $nextTypography[$key]=$value;
+            return [
+                'reply'=>"Updated {$role} {$property} across the site.",
+                'blocks'=>$blocks,
+                'typography_settings'=>$nextTypography,
+                'applied_operations'=>[[
+                    'action'=>'typography_global',
+                    'role'=>$role,
+                    'property'=>$property,
+                    'value'=>$value,
+                ]],
+            ];
+        }
+
+        if($scope!=='section' || !isset($blocks[$targetIndex]))return null;
+        $nextBlocks=array_values($blocks);
+        $nextBlock=is_array($nextBlocks[$targetIndex])?$nextBlocks[$targetIndex]:[];
+        $local=is_array($nextBlock['luna_typography_overrides']??null)?$nextBlock['luna_typography_overrides']:[];
+        $local[$key]=$value;
+        $nextBlock['luna_typography_overrides']=$local;
+        $nextBlocks[$targetIndex]=$nextBlock;
+
+        return [
+            'reply'=>"Updated only this section's {$role} {$property}.",
+            'blocks'=>$nextBlocks,
+            'typography_settings'=>$typography,
+            'applied_operations'=>[[
+                'action'=>'typography_local',
+                'index'=>$targetIndex,
+                'role'=>$role,
+                'property'=>$property,
+                'value'=>$value,
+            ]],
+        ];
+    }
+
+
+    private function lunaBackgroundStyleAction(
+        string $prompt,
+        string $scope,
+        int $targetIndex,
+        array $blocks,
+        array $backgroundStyle
+    ): ?array {
+        $q=Str::lower(trim($prompt));
+        if($q==='')return null;
+
+        $mentions=Str::contains($q,[
+            'overlay','gradient','background gradient','image overlay','video overlay',
+            'darken background','lighten background','darker background','lighter background'
+        ]);
+        $change=Str::contains($q,[
+            'darker','darken','lighter','lighten','stronger','softer','increase','decrease',
+            'set','change','update','make','angle','from #','via #','to #'
+        ]);
+        if(!$mentions || !$change)return null;
+
+        $global=Str::contains($q,[
+            'all ','every ','sitewide','site-wide','whole site','entire site',
+            'across the site','across this site','globally'
+        ]);
+        if($scope!=='section' && !Str::contains($q,['this section','only this section','just this section']))$global=true;
+
+        $nextStyle=$backgroundStyle;
+        $local=[];
+        if($scope==='section' && isset($blocks[$targetIndex]) && is_array($blocks[$targetIndex])){
+            $local=is_array($blocks[$targetIndex]['luna_background_overrides']??null)
+                ? $blocks[$targetIndex]['luna_background_overrides']
+                : [];
+        }
+
+        $target=&$nextStyle;
+        if(!$global)$target=&$local;
+
+        $changed=[];
+        $adjust=function(string $key,float $fallback,float $delta,float $min=.2,float $max=.99) use (&$target,&$changed){
+            $base=is_numeric($target[$key]??null)?(float)$target[$key]:$fallback;
+            $target[$key]=round(max($min,min($max,$base+$delta)),2);
+            $changed[$key]=$target[$key];
+        };
+
+        $darker=Str::contains($q,['darker','darken','stronger overlay','increase overlay']);
+        $lighter=Str::contains($q,['lighter','lighten','softer overlay','decrease overlay']);
+
+        if($darker || $lighter){
+            $delta=$darker ? .08 : -.08;
+            $adjust('overlay_light_strong',.88,$delta,.35,.98);
+            $adjust('overlay_light_soft',.62,$delta,.20,.95);
+            $adjust('overlay_primary_strong',.88,$delta,.35,.98);
+            $adjust('overlay_primary_soft',.82,$delta,.25,.95);
+            $adjust('overlay_cinematic_strong',.92,$delta,.45,.99);
+            $adjust('overlay_cinematic_soft',.72,$delta,.35,.98);
+        }
+
+        if(preg_match('/(?:gradient\s+)?angle(?:\s*(?:to|at|=))?\s*(-?\d+(?:\.\d+)?)\s*(?:deg|degrees?)?/i',$prompt,$m)){
+            $angle=max(0,min(360,(float)$m[1]));
+            $target['gradient_angle']=$angle;
+            $changed['gradient_angle']=$angle;
+        }
+
+        $hexes=[];
+        if(preg_match_all('/#[0-9A-Fa-f]{6}/',$prompt,$matches))$hexes=$matches[0]??[];
+        if(count($hexes)>=2){
+            $target['gradient_from']=strtoupper($hexes[0]);
+            $target['gradient_to']=strtoupper($hexes[count($hexes)-1]);
+            $changed['gradient_from']=$target['gradient_from'];
+            $changed['gradient_to']=$target['gradient_to'];
+            if(count($hexes)>=3){
+                $target['gradient_via']=strtoupper($hexes[1]);
+                $changed['gradient_via']=$target['gradient_via'];
+            }
+        }
+
+        if($changed===[])return null;
+
+        if($global){
+            return [
+                'reply'=>'Updated the background and overlay styling across the site.',
+                'blocks'=>$blocks,
+                'background_style'=>$nextStyle,
+                'applied_operations'=>[[
+                    'action'=>'background_global',
+                    'changes'=>$changed,
+                ]],
+            ];
+        }
+
+        if($scope!=='section' || !isset($blocks[$targetIndex]))return null;
+        $nextBlocks=array_values($blocks);
+        $nextBlocks[$targetIndex]['luna_background_overrides']=$local;
+
+        return [
+            'reply'=>'Updated only this section’s background and overlay styling.',
+            'blocks'=>$nextBlocks,
+            'background_style'=>$backgroundStyle,
+            'applied_operations'=>[[
+                'action'=>'background_local',
+                'index'=>$targetIndex,
+                'changes'=>$changed,
+            ]],
+        ];
+    }
+
+
+    private function lunaSectionLayoutAction(
+        string $prompt,
+        string $scope,
+        int $targetIndex,
+        array $blocks,
+        array $sectionLayout
+    ): ?array {
+        $q=Str::lower(trim($prompt));
+        if($q==='')return null;
+
+        $mentions=Str::contains($q,[
+            'section padding','padding top','padding bottom','vertical padding','horizontal padding',
+            'section spacing','spacing between sections','container width','content width','max width',
+            'section gap','content gap','minimum height','min height'
+        ]);
+        $change=Str::contains($q,[
+            'increase','decrease','bigger','larger','smaller','reduce','more','less',
+            'set','change','update','make','wider','narrower'
+        ]);
+        if(!$mentions || !$change)return null;
+
+        $global=Str::contains($q,[
+            'all sections','every section','sitewide','site-wide','whole site','entire site',
+            'across the site','globally','all section'
+        ]);
+        if($scope!=='section' && !Str::contains($q,['this section','only this section','just this section']))$global=true;
+
+        $next=$sectionLayout;
+        $local=[];
+        if($scope==='section' && isset($blocks[$targetIndex]) && is_array($blocks[$targetIndex])){
+            $local=is_array($blocks[$targetIndex]['luna_section_overrides']??null)
+                ? $blocks[$targetIndex]['luna_section_overrides']
+                : [];
+        }
+        $target=&$next;
+        if(!$global)$target=&$local;
+
+        $property=match(true){
+            Str::contains($q,['padding top'])=>'py_top',
+            Str::contains($q,['padding bottom'])=>'py_bottom',
+            Str::contains($q,['horizontal padding'])=>'px',
+            Str::contains($q,['container width','content width','max width'])=>'container',
+            Str::contains($q,['section gap','content gap','spacing between sections'])=>'gap',
+            Str::contains($q,['minimum height','min height'])=>'min_height',
+            default=>'py',
+        };
+
+        $globalKey=match($property){
+            'py_top','py_bottom'=>'py',
+            default=>$property,
+        };
+
+        $defaults=['py'=>100,'px'=>28,'container'=>1408,'gap'=>56,'min_height'=>0];
+        $units=['py'=>'px','px'=>'px','container'=>'px','gap'=>'px','min_height'=>'px'];
+
+        $explicit=null;
+        if(preg_match('/(\d+(?:\.\d+)?)\s*(px|rem|em|%|vh|svh|vw)/i',$prompt,$m)){
+            $explicit=$m[1].Str::lower($m[2]);
+        }
+
+        $key=$global ? $globalKey : $property;
+        $current=(string)($target[$key]??($defaults[$globalKey].$units[$globalKey]));
+        $value=$explicit;
+
+        if($value===null){
+            $base=$defaults[$globalKey];
+            if(preg_match('/^(\d+(?:\.\d+)?)px$/i',$current,$m))$base=(float)$m[1];
+            elseif(preg_match('/^(\d+(?:\.\d+)?)rem$/i',$current,$m))$base=(float)$m[1]*16;
+
+            $increase=Str::contains($q,['increase','bigger','larger','more','wider']);
+            $decrease=Str::contains($q,['decrease','smaller','reduce','less','narrower']);
+            if($globalKey==='container'){
+                $base += $increase ? 128 : ($decrease ? -128 : 0);
+                $base=max(560,min(1800,$base));
+            }elseif($globalKey==='min_height'){
+                $base += $increase ? 80 : ($decrease ? -80 : 0);
+                $base=max(0,min(1400,$base));
+            }else{
+                $base *= $increase ? 1.12 : ($decrease ? .90 : 1.0);
+                $base=max(0,min(240,$base));
+            }
+            $value=rtrim(rtrim(number_format($base,2,'.',''),'0'),'.').'px';
+        }
+
+        $target[$key]=$value;
+
+        if($global){
+            return [
+                'reply'=>"Updated {$globalKey} across all sections.",
+                'blocks'=>$blocks,
+                'section_layout'=>$next,
+                'applied_operations'=>[[
+                    'action'=>'section_layout_global',
+                    'property'=>$globalKey,
+                    'value'=>$value,
+                ]],
+            ];
+        }
+
+        if($scope!=='section' || !isset($blocks[$targetIndex]))return null;
+        $nextBlocks=array_values($blocks);
+        $nextBlocks[$targetIndex]['luna_section_overrides']=$local;
+
+        return [
+            'reply'=>"Updated only this section's {$property}.",
+            'blocks'=>$nextBlocks,
+            'section_layout'=>$sectionLayout,
+            'applied_operations'=>[[
+                'action'=>'section_layout_local',
+                'index'=>$targetIndex,
+                'property'=>$property,
+                'value'=>$value,
+            ]],
+        ];
+    }
+
 
 }

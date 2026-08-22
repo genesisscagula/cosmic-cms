@@ -10,11 +10,13 @@ function selectLunaTarget(event, detail) {
     event.stopPropagation();
     event.currentTarget.dispatchEvent(new CustomEvent('cosmic:luna-target', { detail, bubbles:true }));
 }
-export function EditableText({ value, className, style = undefined }) {
+export function EditableText({ value, className, style = undefined, cosmicType = null, onSave: _onSave, isTextArea: _isTextArea, placeholder: _placeholder, ...rest }) {
     const kind = lunaTextKind(className);
     return <span
         data-cosmic-luna-display="text"
         data-luna-target={kind}
+        data-cosmic-type={cosmicType || rest["data-cosmic-type"] || undefined}
+        {...rest}
         className={`${className || ''}`}
         style={style}
     >{value || 'Click to add text'}</span>;

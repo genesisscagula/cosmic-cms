@@ -32,7 +32,7 @@ export function BlogMiniHeroBlock({ block, onUpdate, globalTheme }) {
                 <div className={split ? "grid items-end gap-8 lg:grid-cols-[1.15fr_.85fr]" : centered ? "mx-auto max-w-4xl text-center" : "max-w-3xl"}>
                     <div>
                         <EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[0.28em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                        <EditableText value={data.heading} className={`mt-4 block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.heading} cosmicType="h2" className={`mt-4 block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
                     </div>
                     <EditableText
                         value={data.text}

@@ -177,7 +177,7 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
                     />
 
                     <EditableText
-                        value={data.heading}
+                        value={data.heading} cosmicType="h2"
                         className={`mt-5 block text-4xl font-bold tracking-tight leading-[1.05] sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
                         onSave={(val) => onUpdate({ heading: val })}
                     />
@@ -211,9 +211,10 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
                             {/* Icon */}
 
                             <div
+                                data-cosmic-card-icon="true"
                                 className={`
-                                    w-16
-                                    h-16
+                                    w-[var(--cosmic-card-icon-tile)]
+                                    h-[var(--cosmic-card-icon-tile)]
                                     rounded-2xl
                                     border
                                     ${theme.border}
@@ -228,7 +229,7 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
 
                                 <EditableText
                                     value={card.icon || "✨"}
-                                    className="text-2xl leading-none"
+                                    className="text-[length:var(--cosmic-card-icon-size)] leading-none"
                                     onSave={(val) =>
                                         updateCard(i, "icon", val)
                                     }
@@ -240,7 +241,8 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
 
                             <EditableText
                                 value={card.title}
-                                className={`text-2xl font-bold tracking-tight ${theme.text} block`}
+                                data-cosmic-type="card-title"
+                                className={`font-bold tracking-tight ${theme.text} block`}
                                 onSave={(val) =>
                                     updateCard(i, "title", val)
                                 }
@@ -255,7 +257,8 @@ export function ServicesCardsBlock({ block, onUpdate, globalTheme }) {
                             <EditableText
                                 value={card.desc}
                                 isTextArea={true}
-                                className={`text-base leading-8 ${theme.sub} block flex-grow`}
+                                data-cosmic-type="card-body"
+                                className={`${theme.sub} block flex-grow`}
                                 onSave={(val) =>
                                     updateCard(i, "desc", val)
                                 }

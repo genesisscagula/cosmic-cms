@@ -62,7 +62,7 @@ export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme })
         <div className="mx-auto max-w-7xl">
             <div className="max-w-3xl">
                 <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${muted}`} onSave={save("eyebrow")} />
-                <EditableText value={data.heading} className={`mt-5 block text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl ${theme.text}`} onSave={save("heading")} />
+                <EditableText value={data.heading} cosmicType="h2" className={`mt-5 block text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl ${theme.text}`} onSave={save("heading")} />
                 <EditableText value={data.text} isTextArea className={`mt-5 block max-w-2xl text-base leading-7 sm:text-lg ${muted}`} onSave={save("text")} />
             </div>
 

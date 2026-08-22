@@ -92,7 +92,7 @@ export function HeroVideoStyleBlock({
                     />
 
                     <EditableText
-                        value={data.heading}
+                        value={data.heading} cosmicType="h1"
                         className={`mt-5 block text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`}
                         onSave={(heading) =>
                             onUpdate({ heading })
@@ -159,7 +159,7 @@ export function HeroVideoStyleBlock({
 
                 <div className="relative mx-auto w-full max-w-2xl pb-10 sm:px-6 lg:pb-0">
                     <div
-                        className={`group relative overflow-hidden rounded-[2rem] border shadow-2xl ${theme.border}`}
+                        data-cosmic-no-luna-hover="true" className={`group relative overflow-hidden rounded-[2rem] border shadow-2xl ${theme.border}`}
                     >
                         <EditableImage
                             websiteId={websiteId}
@@ -189,6 +189,7 @@ export function HeroVideoStyleBlock({
                         <div className="absolute bottom-5 left-5 right-5 flex items-end justify-between gap-4">
                             <EditableText
                                 value={data.image_badge}
+                                cosmicType="badge"
                                 className="block max-w-[70%] text-sm font-semibold text-white sm:text-base"
                                 onSave={(image_badge) =>
                                     onUpdate({ image_badge })

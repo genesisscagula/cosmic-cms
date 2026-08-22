@@ -40,7 +40,7 @@ export function NewsletterCtaBlock({ block, onUpdate, globalTheme }) {
                 <div className={`${theme.bg} ${theme.text} ${theme.border} rounded-3xl border px-6 py-10 shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:px-10 lg:px-14 lg:py-12 ${centered ? "text-center" : boxed ? "grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center" : "lg:flex lg:items-center lg:justify-between lg:gap-12"}`}>
                     <div className={centered ? "mx-auto max-w-2xl" : "max-w-2xl"}>
                         <EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[0.28em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                        <EditableText value={data.heading} className="mt-4 block text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl" onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.heading} cosmicType="h2" className="mt-4 block text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl" onSave={(heading) => onUpdate({ heading })} />
                         <EditableText value={data.text} isTextArea className={`mt-4 block max-w-xl text-base leading-7 ${theme.sub} ${centered ? "mx-auto" : ""}`} onSave={(text) => onUpdate({ text })} />
                     </div>
                     <div className={`${centered ? "mx-auto mt-8" : boxed ? "" : "mt-8 lg:mt-0"} w-full max-w-md`}>

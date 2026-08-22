@@ -213,7 +213,7 @@ export function HeroBackgroundImageBlock({
 
     return (
 
-        <section
+        <section data-cosmic-editable-hero-media="true"
             data-cosmic-media-banner="true"
             className={`
                 relative
@@ -305,7 +305,7 @@ export function HeroBackgroundImageBlock({
                 />
 
                 <EditableText
-                    value={data.heading}
+                    value={data.heading} cosmicType="h1"
                     className={`
                         mt-6
                         text-4xl

@@ -238,6 +238,16 @@ import {
     ContentEventsBlock, ContentEventsSchema,
 } from "./Blocks/Content/StructuredContentBlocks";
 import { LunaCustomSectionBlock, LunaCustomSectionSchema } from "./Blocks/General/LunaCustomSectionBlock";
+import { ServicesImageTrioPremiumBlock, ServicesImageTrioPremiumSchema, ServicesOverlayGridPremiumBlock, ServicesOverlayGridPremiumSchema, ServicesEditorialRowsPremiumBlock, ServicesEditorialRowsPremiumSchema, ServicesHorizontalMediaPremiumBlock, ServicesHorizontalMediaPremiumSchema, ServicesNumberedImagesPremiumBlock, ServicesNumberedImagesPremiumSchema, ServicesMosaicMediaPremiumBlock, ServicesMosaicMediaPremiumSchema, FeaturesVisualSplitPremiumBlock, FeaturesVisualSplitPremiumSchema, FeaturesImageStackPremiumBlock, FeaturesImageStackPremiumSchema, FeaturesSpotlightCardsPremiumBlock, FeaturesSpotlightCardsPremiumSchema, FeaturesMediaStepsPremiumBlock, FeaturesMediaStepsPremiumSchema, FeaturesAsymmetricMediaPremiumBlock, FeaturesAsymmetricMediaPremiumSchema, PortfolioCinematicGridPremiumBlock, PortfolioCinematicGridPremiumSchema, PortfolioEditorialCardsPremiumBlock, PortfolioEditorialCardsPremiumSchema, PortfolioProjectPanelsPremiumBlock, PortfolioProjectPanelsPremiumSchema, PortfolioImageIndexPremiumBlock, PortfolioImageIndexPremiumSchema, PortfolioSplitShowcasePremiumBlock, PortfolioSplitShowcasePremiumSchema, AboutStoryCollagePremiumBlock, AboutStoryCollagePremiumSchema, AboutImageManifestoPremiumBlock, AboutImageManifestoPremiumSchema, AboutFounderVisualPremiumBlock, AboutFounderVisualPremiumSchema, AboutJourneyGalleryPremiumBlock, AboutJourneyGalleryPremiumSchema } from "./Blocks/Expansion/ImageRichExpansionBatch1";
+
+import { TeamPortraitEditorialPremiumBlock, TeamPortraitEditorialPremiumSchema, TeamImageGridPremiumBlock, TeamImageGridPremiumSchema, TeamLeadershipSplitPremiumBlock, TeamLeadershipSplitPremiumSchema, TeamProfileOverlayPremiumBlock, TeamProfileOverlayPremiumSchema, TeamPeopleMosaicPremiumBlock, TeamPeopleMosaicPremiumSchema, TestimonialsPortraitCardsPremiumBlock, TestimonialsPortraitCardsPremiumSchema, TestimonialsFeaturedStoryPremiumBlock, TestimonialsFeaturedStoryPremiumSchema, TestimonialsImageWallPremiumBlock, TestimonialsImageWallPremiumSchema, TestimonialsEditorialQuotesPremiumBlock, TestimonialsEditorialQuotesPremiumSchema, TestimonialsClientSpotlightPremiumBlock, TestimonialsClientSpotlightPremiumSchema, ProcessVisualStepsPremiumBlock, ProcessVisualStepsPremiumSchema, ProcessImageTimelinePremiumBlock, ProcessImageTimelinePremiumSchema, ProcessNumberedPanelsPremiumBlock, ProcessNumberedPanelsPremiumSchema, ProcessEditorialJourneyPremiumBlock, ProcessEditorialJourneyPremiumSchema, ProcessMediaRoadmapPremiumBlock, ProcessMediaRoadmapPremiumSchema, CtaImageSplitPremiumBlock, CtaImageSplitPremiumSchema, CtaBackgroundMediaPremiumBlock, CtaBackgroundMediaPremiumSchema, CtaFloatingPanelPremiumBlock, CtaFloatingPanelPremiumSchema, CtaEditorialBannerPremiumBlock, CtaEditorialBannerPremiumSchema, CtaMediaCardsPremiumBlock, CtaMediaCardsPremiumSchema } from "./Blocks/Expansion/ImageRichExpansionBatch2";
+
+import { StatsPhotoMetricsPremiumBlock, StatsPhotoMetricsPremiumSchema, StatsEditorialNumbersPremiumBlock, StatsEditorialNumbersPremiumSchema, StatsImagePanelsPremiumBlock, StatsImagePanelsPremiumSchema, StatsVisualMosaicPremiumBlock, StatsVisualMosaicPremiumSchema, TrustLogoStoryPremiumBlock, TrustLogoStoryPremiumSchema, TrustImageProofPremiumBlock, TrustImageProofPremiumSchema, TrustCertificationCardsPremiumBlock, TrustCertificationCardsPremiumSchema, TrustPartnerShowcasePremiumBlock, TrustPartnerShowcasePremiumSchema, ContactImageFormPremiumBlock, ContactImageFormPremiumSchema, ContactEditorialSplitPremiumBlock, ContactEditorialSplitPremiumSchema, ContactOfficeCardsPremiumBlock, ContactOfficeCardsPremiumSchema, ContactVisualInquiryPremiumBlock, ContactVisualInquiryPremiumSchema, GalleryEditorialGridPremiumBlock, GalleryEditorialGridPremiumSchema, GalleryAsymmetricPremiumBlock, GalleryAsymmetricPremiumSchema, GalleryStoryTilesPremiumBlock, GalleryStoryTilesPremiumSchema, GalleryImageRailPremiumBlock, GalleryImageRailPremiumSchema, LocationPhotoCardsPremiumBlock, LocationPhotoCardsPremiumSchema, LocationCitySpotlightPremiumBlock, LocationCitySpotlightPremiumSchema, LocationMultiOfficePremiumBlock, LocationMultiOfficePremiumSchema, LocationVisualDirectoryPremiumBlock, LocationVisualDirectoryPremiumSchema } from "./Blocks/Expansion/ImageRichExpansionBatch3";
+
+import { RestaurantSignatureDishesPremiumBlock, RestaurantSignatureDishesPremiumSchema, RestaurantStoryMenuPremiumBlock, RestaurantStoryMenuPremiumSchema, RestaurantAtmosphereGalleryPremiumBlock, RestaurantAtmosphereGalleryPremiumSchema, RestaurantReservationCtaPremiumBlock, RestaurantReservationCtaPremiumSchema, ConstructionProjectCardsPremiumBlock, ConstructionProjectCardsPremiumSchema, ConstructionServicePhotosPremiumBlock, ConstructionServicePhotosPremiumSchema, ConstructionCapabilitySplitPremiumBlock, ConstructionCapabilitySplitPremiumSchema, ConstructionSiteProgressPremiumBlock, ConstructionSiteProgressPremiumSchema, DentalTreatmentCardsPremiumBlock, DentalTreatmentCardsPremiumSchema, DentalClinicStoryPremiumBlock, DentalClinicStoryPremiumSchema, MedicalCarePathwaysPremiumBlock, MedicalCarePathwaysPremiumSchema, MedicalFacilityShowcasePremiumBlock, MedicalFacilityShowcasePremiumSchema, RealestatePropertyGridPremiumBlock, RealestatePropertyGridPremiumSchema, RealestateFeaturedListingPremiumBlock, RealestateFeaturedListingPremiumSchema, RealestateNeighborhoodCardsPremiumBlock, RealestateNeighborhoodCardsPremiumSchema, RealestateAgentStoryPremiumBlock, RealestateAgentStoryPremiumSchema, HotelRoomCollectionPremiumBlock, HotelRoomCollectionPremiumSchema, HotelExperienceCardsPremiumBlock, HotelExperienceCardsPremiumSchema, TravelDestinationStoryPremiumBlock, TravelDestinationStoryPremiumSchema, TravelItineraryVisualPremiumBlock, TravelItineraryVisualPremiumSchema } from "./Blocks/Expansion/IndustryExpansionBatch4";
+
+import { ContentEditorialImageStackPremiumBlock, ContentEditorialImageStackPremiumSchema, ContentAsymmetricStoryPremiumBlock, ContentAsymmetricStoryPremiumSchema, ContentMediaManifestoPremiumBlock, ContentMediaManifestoPremiumSchema, ContentVisualQuotePremiumBlock, ContentVisualQuotePremiumSchema, FeaturesOverlapCardsPremiumBlock, FeaturesOverlapCardsPremiumSchema, FeaturesFullbleedPanelsPremiumBlock, FeaturesFullbleedPanelsPremiumSchema, FeaturesImageIndexPremiumBlock, FeaturesImageIndexPremiumSchema, FeaturesEditorialMosaicPremiumBlock, FeaturesEditorialMosaicPremiumSchema, ServicesFullbleedOverlayPremiumBlock, ServicesFullbleedOverlayPremiumSchema, ServicesStaggeredMediaPremiumBlock, ServicesStaggeredMediaPremiumSchema, ServicesImageAccordionPremiumBlock, ServicesImageAccordionPremiumSchema, ServicesVisualDirectoryPremiumBlock, ServicesVisualDirectoryPremiumSchema, PortfolioFullbleedProjectsPremiumBlock, PortfolioFullbleedProjectsPremiumSchema, PortfolioStaggeredGalleryPremiumBlock, PortfolioStaggeredGalleryPremiumSchema, PortfolioStoryIndexPremiumBlock, PortfolioStoryIndexPremiumSchema, PortfolioMediaLedgerPremiumBlock, PortfolioMediaLedgerPremiumSchema, ProofCaseStoryPremiumBlock, ProofCaseStoryPremiumSchema, ProofMetricGalleryPremiumBlock, ProofMetricGalleryPremiumSchema, BrandValueCardsPremiumBlock, BrandValueCardsPremiumSchema, BrandVisualPrinciplesPremiumBlock, BrandVisualPrinciplesPremiumSchema } from "./Blocks/Expansion/PremiumExpansionBatch5";
+
 export const BlockRegistry = {
     luna_custom_section: { component: LunaCustomSectionBlock, schema: LunaCustomSectionSchema },
     commerce_product_grid: { component: CommerceProductGridBlock, schema: CommerceProductGridSchema },
@@ -693,5 +703,115 @@ export const BlockRegistry = {
     content_featured_entry: { component: ContentFeaturedBlock, schema: ContentFeaturedSchema },
     content_latest_entries: { component: ContentLatestBlock, schema: ContentLatestSchema },
     content_events_grid: { component: ContentEventsBlock, schema: ContentEventsSchema },
+
+    // Image-rich Expansion Batch 1 — Luna hidden layout library
+    services_image_trio_premium: { component: ServicesImageTrioPremiumBlock, schema: ServicesImageTrioPremiumSchema },
+    services_overlay_grid_premium: { component: ServicesOverlayGridPremiumBlock, schema: ServicesOverlayGridPremiumSchema },
+    services_editorial_rows_premium: { component: ServicesEditorialRowsPremiumBlock, schema: ServicesEditorialRowsPremiumSchema },
+    services_horizontal_media_premium: { component: ServicesHorizontalMediaPremiumBlock, schema: ServicesHorizontalMediaPremiumSchema },
+    services_numbered_images_premium: { component: ServicesNumberedImagesPremiumBlock, schema: ServicesNumberedImagesPremiumSchema },
+    services_mosaic_media_premium: { component: ServicesMosaicMediaPremiumBlock, schema: ServicesMosaicMediaPremiumSchema },
+    features_visual_split_premium: { component: FeaturesVisualSplitPremiumBlock, schema: FeaturesVisualSplitPremiumSchema },
+    features_image_stack_premium: { component: FeaturesImageStackPremiumBlock, schema: FeaturesImageStackPremiumSchema },
+    features_spotlight_cards_premium: { component: FeaturesSpotlightCardsPremiumBlock, schema: FeaturesSpotlightCardsPremiumSchema },
+    features_media_steps_premium: { component: FeaturesMediaStepsPremiumBlock, schema: FeaturesMediaStepsPremiumSchema },
+    features_asymmetric_media_premium: { component: FeaturesAsymmetricMediaPremiumBlock, schema: FeaturesAsymmetricMediaPremiumSchema },
+    portfolio_cinematic_grid_premium: { component: PortfolioCinematicGridPremiumBlock, schema: PortfolioCinematicGridPremiumSchema },
+    portfolio_editorial_cards_premium: { component: PortfolioEditorialCardsPremiumBlock, schema: PortfolioEditorialCardsPremiumSchema },
+    portfolio_project_panels_premium: { component: PortfolioProjectPanelsPremiumBlock, schema: PortfolioProjectPanelsPremiumSchema },
+    portfolio_image_index_premium: { component: PortfolioImageIndexPremiumBlock, schema: PortfolioImageIndexPremiumSchema },
+    portfolio_split_showcase_premium: { component: PortfolioSplitShowcasePremiumBlock, schema: PortfolioSplitShowcasePremiumSchema },
+    about_story_collage_premium: { component: AboutStoryCollagePremiumBlock, schema: AboutStoryCollagePremiumSchema },
+    about_image_manifesto_premium: { component: AboutImageManifestoPremiumBlock, schema: AboutImageManifestoPremiumSchema },
+    about_founder_visual_premium: { component: AboutFounderVisualPremiumBlock, schema: AboutFounderVisualPremiumSchema },
+    about_journey_gallery_premium: { component: AboutJourneyGalleryPremiumBlock, schema: AboutJourneyGalleryPremiumSchema },
+
+    // Image-rich Expansion Batch 2 — Team / Testimonials / Process / CTA
+    team_portrait_editorial_premium: { component: TeamPortraitEditorialPremiumBlock, schema: TeamPortraitEditorialPremiumSchema },
+    team_image_grid_premium: { component: TeamImageGridPremiumBlock, schema: TeamImageGridPremiumSchema },
+    team_leadership_split_premium: { component: TeamLeadershipSplitPremiumBlock, schema: TeamLeadershipSplitPremiumSchema },
+    team_profile_overlay_premium: { component: TeamProfileOverlayPremiumBlock, schema: TeamProfileOverlayPremiumSchema },
+    team_people_mosaic_premium: { component: TeamPeopleMosaicPremiumBlock, schema: TeamPeopleMosaicPremiumSchema },
+    testimonials_portrait_cards_premium: { component: TestimonialsPortraitCardsPremiumBlock, schema: TestimonialsPortraitCardsPremiumSchema },
+    testimonials_featured_story_premium: { component: TestimonialsFeaturedStoryPremiumBlock, schema: TestimonialsFeaturedStoryPremiumSchema },
+    testimonials_image_wall_premium: { component: TestimonialsImageWallPremiumBlock, schema: TestimonialsImageWallPremiumSchema },
+    testimonials_editorial_quotes_premium: { component: TestimonialsEditorialQuotesPremiumBlock, schema: TestimonialsEditorialQuotesPremiumSchema },
+    testimonials_client_spotlight_premium: { component: TestimonialsClientSpotlightPremiumBlock, schema: TestimonialsClientSpotlightPremiumSchema },
+    process_visual_steps_premium: { component: ProcessVisualStepsPremiumBlock, schema: ProcessVisualStepsPremiumSchema },
+    process_image_timeline_premium: { component: ProcessImageTimelinePremiumBlock, schema: ProcessImageTimelinePremiumSchema },
+    process_numbered_panels_premium: { component: ProcessNumberedPanelsPremiumBlock, schema: ProcessNumberedPanelsPremiumSchema },
+    process_editorial_journey_premium: { component: ProcessEditorialJourneyPremiumBlock, schema: ProcessEditorialJourneyPremiumSchema },
+    process_media_roadmap_premium: { component: ProcessMediaRoadmapPremiumBlock, schema: ProcessMediaRoadmapPremiumSchema },
+    cta_image_split_premium: { component: CtaImageSplitPremiumBlock, schema: CtaImageSplitPremiumSchema },
+    cta_background_media_premium: { component: CtaBackgroundMediaPremiumBlock, schema: CtaBackgroundMediaPremiumSchema },
+    cta_floating_panel_premium: { component: CtaFloatingPanelPremiumBlock, schema: CtaFloatingPanelPremiumSchema },
+    cta_editorial_banner_premium: { component: CtaEditorialBannerPremiumBlock, schema: CtaEditorialBannerPremiumSchema },
+    cta_media_cards_premium: { component: CtaMediaCardsPremiumBlock, schema: CtaMediaCardsPremiumSchema },
+
+    // Image-rich Expansion Batch 3 — Stats / Trust / Contact / Gallery / Locations
+    stats_photo_metrics_premium: { component: StatsPhotoMetricsPremiumBlock, schema: StatsPhotoMetricsPremiumSchema },
+    stats_editorial_numbers_premium: { component: StatsEditorialNumbersPremiumBlock, schema: StatsEditorialNumbersPremiumSchema },
+    stats_image_panels_premium: { component: StatsImagePanelsPremiumBlock, schema: StatsImagePanelsPremiumSchema },
+    stats_visual_mosaic_premium: { component: StatsVisualMosaicPremiumBlock, schema: StatsVisualMosaicPremiumSchema },
+    trust_logo_story_premium: { component: TrustLogoStoryPremiumBlock, schema: TrustLogoStoryPremiumSchema },
+    trust_image_proof_premium: { component: TrustImageProofPremiumBlock, schema: TrustImageProofPremiumSchema },
+    trust_certification_cards_premium: { component: TrustCertificationCardsPremiumBlock, schema: TrustCertificationCardsPremiumSchema },
+    trust_partner_showcase_premium: { component: TrustPartnerShowcasePremiumBlock, schema: TrustPartnerShowcasePremiumSchema },
+    contact_image_form_premium: { component: ContactImageFormPremiumBlock, schema: ContactImageFormPremiumSchema },
+    contact_editorial_split_premium: { component: ContactEditorialSplitPremiumBlock, schema: ContactEditorialSplitPremiumSchema },
+    contact_office_cards_premium: { component: ContactOfficeCardsPremiumBlock, schema: ContactOfficeCardsPremiumSchema },
+    contact_visual_inquiry_premium: { component: ContactVisualInquiryPremiumBlock, schema: ContactVisualInquiryPremiumSchema },
+    gallery_editorial_grid_premium: { component: GalleryEditorialGridPremiumBlock, schema: GalleryEditorialGridPremiumSchema },
+    gallery_asymmetric_premium: { component: GalleryAsymmetricPremiumBlock, schema: GalleryAsymmetricPremiumSchema },
+    gallery_story_tiles_premium: { component: GalleryStoryTilesPremiumBlock, schema: GalleryStoryTilesPremiumSchema },
+    gallery_image_rail_premium: { component: GalleryImageRailPremiumBlock, schema: GalleryImageRailPremiumSchema },
+    location_photo_cards_premium: { component: LocationPhotoCardsPremiumBlock, schema: LocationPhotoCardsPremiumSchema },
+    location_city_spotlight_premium: { component: LocationCitySpotlightPremiumBlock, schema: LocationCitySpotlightPremiumSchema },
+    location_multi_office_premium: { component: LocationMultiOfficePremiumBlock, schema: LocationMultiOfficePremiumSchema },
+    location_visual_directory_premium: { component: LocationVisualDirectoryPremiumBlock, schema: LocationVisualDirectoryPremiumSchema },
+
+    // Industry Expansion Batch 4 — Restaurant / Construction / Health / Real Estate / Travel
+    restaurant_signature_dishes_premium: { component: RestaurantSignatureDishesPremiumBlock, schema: RestaurantSignatureDishesPremiumSchema },
+    restaurant_story_menu_premium: { component: RestaurantStoryMenuPremiumBlock, schema: RestaurantStoryMenuPremiumSchema },
+    restaurant_atmosphere_gallery_premium: { component: RestaurantAtmosphereGalleryPremiumBlock, schema: RestaurantAtmosphereGalleryPremiumSchema },
+    restaurant_reservation_cta_premium: { component: RestaurantReservationCtaPremiumBlock, schema: RestaurantReservationCtaPremiumSchema },
+    construction_project_cards_premium: { component: ConstructionProjectCardsPremiumBlock, schema: ConstructionProjectCardsPremiumSchema },
+    construction_service_photos_premium: { component: ConstructionServicePhotosPremiumBlock, schema: ConstructionServicePhotosPremiumSchema },
+    construction_capability_split_premium: { component: ConstructionCapabilitySplitPremiumBlock, schema: ConstructionCapabilitySplitPremiumSchema },
+    construction_site_progress_premium: { component: ConstructionSiteProgressPremiumBlock, schema: ConstructionSiteProgressPremiumSchema },
+    dental_treatment_cards_premium: { component: DentalTreatmentCardsPremiumBlock, schema: DentalTreatmentCardsPremiumSchema },
+    dental_clinic_story_premium: { component: DentalClinicStoryPremiumBlock, schema: DentalClinicStoryPremiumSchema },
+    medical_care_pathways_premium: { component: MedicalCarePathwaysPremiumBlock, schema: MedicalCarePathwaysPremiumSchema },
+    medical_facility_showcase_premium: { component: MedicalFacilityShowcasePremiumBlock, schema: MedicalFacilityShowcasePremiumSchema },
+    realestate_property_grid_premium: { component: RealestatePropertyGridPremiumBlock, schema: RealestatePropertyGridPremiumSchema },
+    realestate_featured_listing_premium: { component: RealestateFeaturedListingPremiumBlock, schema: RealestateFeaturedListingPremiumSchema },
+    realestate_neighborhood_cards_premium: { component: RealestateNeighborhoodCardsPremiumBlock, schema: RealestateNeighborhoodCardsPremiumSchema },
+    realestate_agent_story_premium: { component: RealestateAgentStoryPremiumBlock, schema: RealestateAgentStoryPremiumSchema },
+    hotel_room_collection_premium: { component: HotelRoomCollectionPremiumBlock, schema: HotelRoomCollectionPremiumSchema },
+    hotel_experience_cards_premium: { component: HotelExperienceCardsPremiumBlock, schema: HotelExperienceCardsPremiumSchema },
+    travel_destination_story_premium: { component: TravelDestinationStoryPremiumBlock, schema: TravelDestinationStoryPremiumSchema },
+    travel_itinerary_visual_premium: { component: TravelItineraryVisualPremiumBlock, schema: TravelItineraryVisualPremiumSchema },
+
+    // Premium Expansion Batch 5 — final non-Hero Luna layout library
+    content_editorial_image_stack_premium: { component: ContentEditorialImageStackPremiumBlock, schema: ContentEditorialImageStackPremiumSchema },
+    content_asymmetric_story_premium: { component: ContentAsymmetricStoryPremiumBlock, schema: ContentAsymmetricStoryPremiumSchema },
+    content_media_manifesto_premium: { component: ContentMediaManifestoPremiumBlock, schema: ContentMediaManifestoPremiumSchema },
+    content_visual_quote_premium: { component: ContentVisualQuotePremiumBlock, schema: ContentVisualQuotePremiumSchema },
+    features_overlap_cards_premium: { component: FeaturesOverlapCardsPremiumBlock, schema: FeaturesOverlapCardsPremiumSchema },
+    features_fullbleed_panels_premium: { component: FeaturesFullbleedPanelsPremiumBlock, schema: FeaturesFullbleedPanelsPremiumSchema },
+    features_image_index_premium: { component: FeaturesImageIndexPremiumBlock, schema: FeaturesImageIndexPremiumSchema },
+    features_editorial_mosaic_premium: { component: FeaturesEditorialMosaicPremiumBlock, schema: FeaturesEditorialMosaicPremiumSchema },
+    services_fullbleed_overlay_premium: { component: ServicesFullbleedOverlayPremiumBlock, schema: ServicesFullbleedOverlayPremiumSchema },
+    services_staggered_media_premium: { component: ServicesStaggeredMediaPremiumBlock, schema: ServicesStaggeredMediaPremiumSchema },
+    services_image_accordion_premium: { component: ServicesImageAccordionPremiumBlock, schema: ServicesImageAccordionPremiumSchema },
+    services_visual_directory_premium: { component: ServicesVisualDirectoryPremiumBlock, schema: ServicesVisualDirectoryPremiumSchema },
+    portfolio_fullbleed_projects_premium: { component: PortfolioFullbleedProjectsPremiumBlock, schema: PortfolioFullbleedProjectsPremiumSchema },
+    portfolio_staggered_gallery_premium: { component: PortfolioStaggeredGalleryPremiumBlock, schema: PortfolioStaggeredGalleryPremiumSchema },
+    portfolio_story_index_premium: { component: PortfolioStoryIndexPremiumBlock, schema: PortfolioStoryIndexPremiumSchema },
+    portfolio_media_ledger_premium: { component: PortfolioMediaLedgerPremiumBlock, schema: PortfolioMediaLedgerPremiumSchema },
+    proof_case_story_premium: { component: ProofCaseStoryPremiumBlock, schema: ProofCaseStoryPremiumSchema },
+    proof_metric_gallery_premium: { component: ProofMetricGalleryPremiumBlock, schema: ProofMetricGalleryPremiumSchema },
+    brand_value_cards_premium: { component: BrandValueCardsPremiumBlock, schema: BrandValueCardsPremiumSchema },
+    brand_visual_principles_premium: { component: BrandVisualPrinciplesPremiumBlock, schema: BrandVisualPrinciplesPremiumSchema },
 
 };

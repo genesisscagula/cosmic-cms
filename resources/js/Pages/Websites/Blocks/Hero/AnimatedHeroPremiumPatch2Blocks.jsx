@@ -85,7 +85,7 @@ function Copy({ data, onUpdate, visual }) {
     const secondaryButton = isLight ? `border-slate-300 bg-white/70 ${theme.text} hover:bg-white` : "border-white/30 bg-white/10 text-white hover:bg-white/20";
     return <div className="max-w-3xl">
         <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[0.32em] ${isLight ? theme.sub : "text-white/70"}`} onSave={(value)=>onUpdate({eyebrow:value})}/>
-        <EditableText value={data.heading} className={`mt-6 block text-4xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${isLight ? theme.text : "text-white"}`} onSave={(value)=>onUpdate({heading:value})}/>
+        <EditableText value={data.heading} cosmicType="h1" className={`mt-6 block text-4xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${isLight ? theme.text : "text-white"}`} onSave={(value)=>onUpdate({heading:value})}/>
         <EditableText value={data.text} className={`mt-7 block max-w-2xl text-base leading-8 sm:text-lg ${isLight ? theme.sub : "text-white/75"}`} onSave={(value)=>onUpdate({text:value})}/>
         <div className="mt-9 flex flex-wrap gap-3">
             <EditableButton label={data.primary_label} url={data.primary_url} onSave={(label,url)=>onUpdate({primary_label:label,primary_url:url})} className={`rounded-full px-6 py-3.5 text-sm font-bold transition ${primaryButton}`}/>

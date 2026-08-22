@@ -134,7 +134,7 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
 
                 <h1 className="mt-6 text-4xl font-extrabold leading-[1.02] sm:text-5xl lg:text-6xl xl:text-7xl">
                     <EditableText
-                        value={data.heading}
+                        value={data.heading} cosmicType="h1"
                         className={`block ${theme.text}`}
                         onSave={(val) => onUpdate({ heading: val })}
                     />

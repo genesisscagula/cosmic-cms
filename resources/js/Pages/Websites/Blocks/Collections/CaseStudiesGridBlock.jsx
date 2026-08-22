@@ -47,7 +47,7 @@ export function CaseStudiesGridBlock({ block, blockIndex, onUpdate, globalTheme 
             <div className="mx-auto max-w-7xl">
                 <div className="mb-10 max-w-2xl space-y-4 sm:mb-12">
                     {data.eyebrow && <EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />}
-                    <EditableText value={data.heading} className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
+                    <EditableText value={data.heading} cosmicType="h2" className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
                     {data.text && <EditableText value={data.text} isTextArea className={`block max-w-xl text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />}
                 </div>
                 <div className="grid gap-5 lg:grid-cols-2">

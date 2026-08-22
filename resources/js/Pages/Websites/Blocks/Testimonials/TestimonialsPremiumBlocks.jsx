@@ -26,7 +26,7 @@ export const TestimonialsTrustDashboardSchema=base("testimonials_trust_dashboard
 export const TestimonialsReviewGridSchema=base("testimonials_review_grid","Review Grid","Balanced premium review grid for displaying several customer stories at once.");
 export const TestimonialsReviewCarouselProSchema=base("testimonials_review_carousel_pro","Review Carousel Pro","Editorial carousel-style review layout with strong featured-card hierarchy and static export fallback.");
 
-function Header({data,onUpdate,theme}){return <div className="mx-auto mb-14 max-w-3xl text-center"><EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[.32em] ${theme.sub}`} onSave={v=>onUpdate({eyebrow:v})}/><EditableText value={data.heading} className={`mt-4 block text-4xl font-bold tracking-tight sm:text-5xl ${theme.text}`} onSave={v=>onUpdate({heading:v})}/><EditableText value={data.text} isTextArea className={`mx-auto mt-5 block max-w-2xl text-base leading-7 ${theme.sub}`} onSave={v=>onUpdate({text:v})}/></div>}
+function Header({data,onUpdate,theme}){return <div className="mx-auto mb-14 max-w-3xl text-center"><EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[.32em] ${theme.sub}`} onSave={v=>onUpdate({eyebrow:v})}/><EditableText value={data.heading} cosmicType="h2" className={`mt-4 block text-4xl font-bold tracking-tight sm:text-5xl ${theme.text}`} onSave={v=>onUpdate({heading:v})}/><EditableText value={data.text} isTextArea className={`mx-auto mt-5 block max-w-2xl text-base leading-7 ${theme.sub}`} onSave={v=>onUpdate({text:v})}/></div>}
 
 function TestimonialControls({data,onUpdate}){
   const items=Array.isArray(data.testimonials)?data.testimonials:[];

@@ -216,7 +216,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                     />
 
                     <EditableText
-                        value={data.heading}
+                        value={data.heading} cosmicType="h2"
                         className={`mt-5 block text-4xl font-bold tracking-tight leading-[1.05] sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
                         onSave={(val) => onUpdate({ heading: val })}
                     />

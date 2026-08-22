@@ -761,6 +761,121 @@ JS;
             $stoneTheme = self::getTheme('stone');
 
             switch ($type) {
+                case 'content_editorial_image_stack_premium':
+                case 'content_asymmetric_story_premium':
+                case 'content_media_manifesto_premium':
+                case 'content_visual_quote_premium':
+                case 'features_overlap_cards_premium':
+                case 'features_fullbleed_panels_premium':
+                case 'features_image_index_premium':
+                case 'features_editorial_mosaic_premium':
+                case 'services_fullbleed_overlay_premium':
+                case 'services_staggered_media_premium':
+                case 'services_image_accordion_premium':
+                case 'services_visual_directory_premium':
+                case 'portfolio_fullbleed_projects_premium':
+                case 'portfolio_staggered_gallery_premium':
+                case 'portfolio_story_index_premium':
+                case 'portfolio_media_ledger_premium':
+                case 'proof_case_story_premium':
+                case 'proof_metric_gallery_premium':
+                case 'brand_value_cards_premium':
+                case 'brand_visual_principles_premium':
+                    $html .= self::premiumExpansionBatch5Html($type, $block, $theme);
+                    break;
+
+                case 'restaurant_signature_dishes_premium':
+                case 'restaurant_story_menu_premium':
+                case 'restaurant_atmosphere_gallery_premium':
+                case 'restaurant_reservation_cta_premium':
+                case 'construction_project_cards_premium':
+                case 'construction_service_photos_premium':
+                case 'construction_capability_split_premium':
+                case 'construction_site_progress_premium':
+                case 'dental_treatment_cards_premium':
+                case 'dental_clinic_story_premium':
+                case 'medical_care_pathways_premium':
+                case 'medical_facility_showcase_premium':
+                case 'realestate_property_grid_premium':
+                case 'realestate_featured_listing_premium':
+                case 'realestate_neighborhood_cards_premium':
+                case 'realestate_agent_story_premium':
+                case 'hotel_room_collection_premium':
+                case 'hotel_experience_cards_premium':
+                case 'travel_destination_story_premium':
+                case 'travel_itinerary_visual_premium':
+                    $html .= self::industryExpansionBatch4Html($type, $block, $theme);
+                    break;
+
+                case 'stats_photo_metrics_premium':
+                case 'stats_editorial_numbers_premium':
+                case 'stats_image_panels_premium':
+                case 'stats_visual_mosaic_premium':
+                case 'trust_logo_story_premium':
+                case 'trust_image_proof_premium':
+                case 'trust_certification_cards_premium':
+                case 'trust_partner_showcase_premium':
+                case 'contact_image_form_premium':
+                case 'contact_editorial_split_premium':
+                case 'contact_office_cards_premium':
+                case 'contact_visual_inquiry_premium':
+                case 'gallery_editorial_grid_premium':
+                case 'gallery_asymmetric_premium':
+                case 'gallery_story_tiles_premium':
+                case 'gallery_image_rail_premium':
+                case 'location_photo_cards_premium':
+                case 'location_city_spotlight_premium':
+                case 'location_multi_office_premium':
+                case 'location_visual_directory_premium':
+                    $html .= self::imageRichExpansionBatch3Html($type, $block, $theme);
+                    break;
+
+                case 'team_portrait_editorial_premium':
+                case 'team_image_grid_premium':
+                case 'team_leadership_split_premium':
+                case 'team_profile_overlay_premium':
+                case 'team_people_mosaic_premium':
+                case 'testimonials_portrait_cards_premium':
+                case 'testimonials_featured_story_premium':
+                case 'testimonials_image_wall_premium':
+                case 'testimonials_editorial_quotes_premium':
+                case 'testimonials_client_spotlight_premium':
+                case 'process_visual_steps_premium':
+                case 'process_image_timeline_premium':
+                case 'process_numbered_panels_premium':
+                case 'process_editorial_journey_premium':
+                case 'process_media_roadmap_premium':
+                case 'cta_image_split_premium':
+                case 'cta_background_media_premium':
+                case 'cta_floating_panel_premium':
+                case 'cta_editorial_banner_premium':
+                case 'cta_media_cards_premium':
+                    $html .= self::imageRichExpansionBatch2Html($type, $block, $theme);
+                    break;
+
+                case 'services_image_trio_premium':
+                case 'services_overlay_grid_premium':
+                case 'services_editorial_rows_premium':
+                case 'services_horizontal_media_premium':
+                case 'services_numbered_images_premium':
+                case 'services_mosaic_media_premium':
+                case 'features_visual_split_premium':
+                case 'features_image_stack_premium':
+                case 'features_spotlight_cards_premium':
+                case 'features_media_steps_premium':
+                case 'features_asymmetric_media_premium':
+                case 'portfolio_cinematic_grid_premium':
+                case 'portfolio_editorial_cards_premium':
+                case 'portfolio_project_panels_premium':
+                case 'portfolio_image_index_premium':
+                case 'portfolio_split_showcase_premium':
+                case 'about_story_collage_premium':
+                case 'about_image_manifesto_premium':
+                case 'about_founder_visual_premium':
+                case 'about_journey_gallery_premium':
+                    $html .= self::imageRichExpansionBatch1Html($type, $block, $theme);
+                    break;
+
                 case 'luna_custom_section':
                     $html .= self::lunaCustomSectionHtml($block, $theme);
                     break;
@@ -1708,13 +1823,10 @@ HTML;
                 $customPhone = trim((string) ($block['phone_text'] ?? ''));
                 $customPhoneEnabled = $customShell && (bool) ($block['phone_enabled'] ?? false) && $customPhone !== '';
                 $overlayRequested = (bool) ($block['overlay_header_on_banner'] ?? false);
-                $overlayPrimaryAllowed = ! in_array(strtolower((string) ($primaryColor ?: 'midnight')), ['stone', 'white'], true);
-                $overlayHeaderCompatible = $customShell
-                    ? true
-                    : (in_array(self::$currentPageStyle, ['premium', 'balanced'], true) && $overlayPrimaryAllowed);
-                // Overlay Header is intentionally limited to Premium/Balanced on
-                // compatible theme families. Clean, Warm Stone and Studio White
-                // always render the normal header even if stale saved data says on.
+                // Explicit overlay state must render consistently in Builder and Export Live.
+                // Contrast is handled below; do not silently disable overlay because of
+                // page-style or theme-family defaults.
+                $overlayHeaderCompatible = true;
                 $overlayHeader = $overlayRequested && $overlayHeaderCompatible;
                 $premiumOverlayHeader = $overlayHeader && ! $customShell;
                 $overlayToneClass = $customShell
@@ -1928,6 +2040,8 @@ HTML;
                         backdrop-filter: blur(3px);
                     }
                     .cosmic-static-overlay-first-spark {
+                        /* This class is attached to the actual first section, never its
+                           outer render shell, so video/image media starts behind header. */
                         padding-top: calc(var(--cosmic-overlay-header-height, 80px) + clamp(2rem, 3.5vw, 3.75rem)) !important;
                     }
                     @media (max-width: 639px) {
@@ -3730,7 +3844,7 @@ HTML;
                     <div class='absolute inset-0 bg-gradient-to-r {$premiumGradientX}'></div>
                     <div class='absolute inset-0 bg-gradient-to-t {$premiumGradientY}'></div>
                     <div class='relative mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
-                        <div class='flex items-center justify-between border-b pb-5 {$premiumBorder}'><span class='text-[11px] font-bold uppercase tracking-[.34em] {$premiumEyebrow}'>{$eyebrow}</span><span class='rounded-full border px-4 py-2 text-[11px] font-semibold {$premiumBadge}'>{$mediaBadge}</span></div>
+                        <div class='flex items-center justify-between border-b pb-5 {$premiumBorder}'><span class='text-[11px] font-bold uppercase tracking-[.34em] {$premiumEyebrow}'>{$eyebrow}</span><span data-cosmic-type='badge' class='rounded-full border px-4 py-2 text-[11px] font-semibold {$premiumBadge}'>{$mediaBadge}</span></div>
                         <div class='max-w-4xl py-0'>
                             <h1 class='max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$premiumHeading}'>{$heading}</h1>
                             <p class='mt-7 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$premiumBody}'>{$text}</p>
@@ -4947,7 +5061,7 @@ HTML;
                                         ▶
                                     </span>
 
-                                    <span class='text-sm font-semibold text-white'>
+                                    <span data-cosmic-type='badge' class='text-sm font-semibold text-white'>
                                         {$videoBadge}
                                     </span>
 
@@ -5097,7 +5211,7 @@ HTML;
                     $extraClass = $motion4Type === 'hero_scroll_morph_premium' ? ' cosmic-motion4-tall' : '';
                     $html .= "<section id='{$motion4Id}' class='cosmic-motion4{$extraClass}{$motion4StateClass}' data-type='{$motion4Type}' style='{$heroGradientVars}'>{$scene}</section>";
                     $html .= "<style>
-#{$motion4Id}{position:relative;isolation:isolate;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));overflow:hidden;background:#020617;color:#fff}#{$motion4Id}.cosmic-motion4-tall{min-height:110svh;overflow:visible}#{$motion4Id} *{box-sizing:border-box}#{$motion4Id} .cosmic-motion4-copywrap{position:relative;z-index:4;display:flex;align-items:center;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));max-width:80rem;margin:auto;padding:0 3.5rem}#{$motion4Id} .cosmic-motion4-copy{max-width:46rem}#{$motion4Id} .cosmic-motion4-copy>p{font-size:.75rem;font-weight:800;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.68)}#{$motion4Id} .cosmic-motion4-copy h1{margin:1.4rem 0 0;font-size:clamp(3rem,7vw,6.7rem)!important;line-height:.94;letter-spacing:-.05em}#{$motion4Id} .cosmic-motion4-body{max-width:42rem;margin-top:1.5rem;font-size:1.06rem;line-height:1.8;color:rgba(255,255,255,.74)}#{$motion4Id} .cosmic-motion4-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}#{$motion4Id} .cosmic-motion4-actions a{padding:.85rem 1.35rem;border-radius:999px;background:#fff;color:#0f172a;font-size:.9rem;font-weight:800;text-decoration:none}#{$motion4Id} .cosmic-motion4-actions a.secondary{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#fff;backdrop-filter:blur(12px)}#{$motion4Id} .cosmic-motion4-grid{position:relative;z-index:3;display:grid;grid-template-columns:.86fr 1.14fr;align-items:center;gap:4rem;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));max-width:80rem;margin:auto;padding:0 3.5rem}#{$motion4Id} .cosmic-motion4-mask{position:absolute;inset:0;animation:cosmicMotion4Mask 1.35s cubic-bezier(.22,1,.36,1) both}#{$motion4Id} .cosmic-motion4-mask img{width:100%;height:100%;object-fit:cover}#{$motion4Id} .cosmic-motion4-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,6,23,.82),rgba(2,6,23,.24),rgba(2,6,23,.12));z-index:2}@keyframes cosmicMotion4Mask{0%{clip-path:inset(16% 28% round 36px);transform:scale(1.08)}100%{clip-path:inset(0 round 0);transform:scale(1)}}
+#{$motion4Id}{position:relative;isolation:isolate;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));overflow:hidden;background:#020617;color:#fff}#{$motion4Id}.cosmic-motion4-tall{min-height:110svh;overflow:visible}#{$motion4Id} *{box-sizing:border-box}#{$motion4Id} .cosmic-motion4-copywrap{position:relative;z-index:4;width:100%;display:flex;align-items:center;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));max-width:88rem;margin:auto;padding:clamp(3.5rem,7vh,5rem) 3.5rem}#{$motion4Id} .cosmic-motion4-copy{max-width:52rem}#{$motion4Id} .cosmic-motion4-copy>p{font-size:.75rem;font-weight:400;letter-spacing:.32em;text-transform:uppercase;color:rgba(255,255,255,.68)}#{$motion4Id} .cosmic-motion4-copy h1{margin:1.4rem 0 0;font-size:clamp(3rem,6.2vw,5.75rem)!important;line-height:.94!important;letter-spacing:-.05em}#{$motion4Id} .cosmic-motion4-body{max-width:42rem;margin-top:1.5rem;font-size:1.06rem;line-height:1.8;color:rgba(255,255,255,.74)}#{$motion4Id} .cosmic-motion4-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}#{$motion4Id} .cosmic-motion4-actions a{padding:.85rem 1.35rem;border-radius:999px;background:#fff;color:#0f172a;font-size:.9rem;font-weight:800;text-decoration:none}#{$motion4Id} .cosmic-motion4-actions a.secondary{border:1px solid rgba(255,255,255,.28);background:rgba(255,255,255,.08);color:#fff;backdrop-filter:blur(12px)}#{$motion4Id} .cosmic-motion4-grid{position:relative;z-index:3;display:grid;grid-template-columns:.86fr 1.14fr;align-items:center;gap:4rem;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));max-width:88rem;margin:auto;padding:clamp(3.5rem,7vh,5rem) 3.5rem}#{$motion4Id} .cosmic-motion4-mask{position:absolute;inset:0;animation:cosmicMotion4Mask 1.35s cubic-bezier(.22,1,.36,1) both}#{$motion4Id} .cosmic-motion4-mask img{width:100%;height:100%;object-fit:cover}#{$motion4Id} .cosmic-motion4-shade{position:absolute;inset:0;background:linear-gradient(90deg,rgba(2,6,23,.82),rgba(2,6,23,.24),rgba(2,6,23,.12));z-index:2}@keyframes cosmicMotion4Mask{0%{clip-path:inset(16% 28% round 36px);transform:scale(1.08)}100%{clip-path:inset(0 round 0);transform:scale(1)}}
 #{$motion4Id} .cosmic-motion4-stack{position:relative;height:34rem}#{$motion4Id} .cosmic-motion4-stack article{position:absolute;left:8%;right:8%;top:50%;overflow:hidden;padding:.45rem;border:1px solid rgba(255,255,255,.15);border-radius:2rem;background:rgba(255,255,255,.08);box-shadow:0 2rem 5rem rgba(0,0,0,.35);transition:transform .7s ease,opacity .7s ease}#{$motion4Id} .cosmic-motion4-stack article img{display:block;width:100%;aspect-ratio:16/11;object-fit:cover;border-radius:1.6rem}
 #{$motion4Id} .cosmic-motion4-carousel{position:relative;height:30rem;perspective:1200px}#{$motion4Id} .cosmic-motion4-carousel button{position:absolute;left:50%;top:50%;width:70%;padding:.45rem;border:1px solid rgba(255,255,255,.15);border-radius:1.8rem;background:#0f172a;box-shadow:0 2rem 5rem rgba(0,0,0,.4);transition:transform .7s ease,opacity .7s ease;cursor:pointer}#{$motion4Id} .cosmic-motion4-carousel img{display:block;width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:1.45rem}
 #{$motion4Id} .cosmic-motion4-beforeafter{position:relative;aspect-ratio:4/3;overflow:hidden;border:1px solid rgba(255,255,255,.15);border-radius:2rem;box-shadow:0 2rem 5rem rgba(0,0,0,.4);touch-action:none;user-select:none}#{$motion4Id} .cosmic-motion4-beforeafter>img,#{$motion4Id} .cosmic-motion4-beforeafter .after img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}#{$motion4Id} .cosmic-motion4-beforeafter .after{position:absolute;inset-block:0;left:0;overflow:hidden}#{$motion4Id} .cosmic-motion4-beforeafter .after img{max-width:none}#{$motion4Id} .cosmic-motion4-beforeafter .divider{position:absolute;inset-block:0;width:1px;background:#fff}#{$motion4Id} .cosmic-motion4-beforeafter .divider span{position:absolute;left:50%;top:50%;display:grid;width:3rem;height:3rem;place-items:center;transform:translate(-50%,-50%);border:1px solid rgba(255,255,255,.4);border-radius:50%;background:rgba(2,6,23,.82)}#{$motion4Id} .cosmic-motion4-beforeafter .label{position:absolute;bottom:1rem;padding:.35rem .65rem;border-radius:999px;background:rgba(2,6,23,.72);font-size:.7rem;text-transform:uppercase;letter-spacing:.1em}#{$motion4Id} .before-label{left:1rem}#{$motion4Id} .after-label{right:1rem;background:rgba(255,255,255,.9)!important;color:#0f172a}
@@ -5108,7 +5222,7 @@ HTML;
 @media(min-width:1024px){#{$motion4Id}[data-type='hero_particle_constellation_premium'] .cosmic-motion4-copywrap{padding-left:3.5rem;padding-right:3.5rem}#{$motion4Id}[data-type='hero_particle_constellation_premium'] .cosmic-motion4-copy h1{font-size:3.75rem}}
 @media(min-width:1280px){#{$motion4Id}[data-type='hero_particle_constellation_premium'] .cosmic-motion4-copy h1{font-size:4.5rem}}
 #{$motion4Id}.cosmic-motion4-light{background:#fff!important;color:#0f172a}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-copy>p,#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-body{color:#475569}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-actions a{background:{$primaryBgHex};color:#fff}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-actions a.secondary{background:rgba(255,255,255,.82);color:#0f172a;border-color:#cbd5e1}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-shade{background:linear-gradient(90deg,rgba(255,255,255,.95),rgba(255,255,255,.86),rgba(255,255,255,.72))}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-orb{opacity:.32}#{$motion4Id}.cosmic-motion4-light .cosmic-motion4-particles{opacity:.18}
-@media(max-width:900px){#{$motion4Id} .cosmic-motion4-grid{grid-template-columns:1fr;gap:2.5rem;padding:0 1.5rem}#{$motion4Id} .cosmic-motion4-copywrap{padding:0 1.5rem}#{$motion4Id} .cosmic-motion4-stack{height:25rem}#{$motion4Id} .cosmic-motion4-carousel{height:24rem}}@media(prefers-reduced-motion:reduce){#{$motion4Id} .cosmic-motion4-mask,#{$motion4Id} .cosmic-motion4-orb{animation:none!important}#{$motion4Id} .cosmic-motion4-mask{clip-path:none!important;transform:none!important}}
+@media(max-width:900px){#{$motion4Id} .cosmic-motion4-grid{grid-template-columns:1fr;gap:2.5rem;padding:3.5rem 1.5rem}#{$motion4Id} .cosmic-motion4-copywrap{padding:3.5rem 1.5rem}#{$motion4Id} .cosmic-motion4-stack{height:25rem}#{$motion4Id} .cosmic-motion4-carousel{height:24rem}}@media(prefers-reduced-motion:reduce){#{$motion4Id} .cosmic-motion4-mask,#{$motion4Id} .cosmic-motion4-orb{animation:none!important}#{$motion4Id} .cosmic-motion4-mask{clip-path:none!important;transform:none!important}}
 </style>";
                     if ($motion4Type === 'hero_stacked_cards_premium') {
                         $html .= "<script>(function(){const r=document.getElementById(" . json_encode($motion4Id) . ");if(!r)return;const s=r.querySelector('.cosmic-motion4-stack'),cards=[...s.children];let a=0;const paint=()=>cards.forEach((c,i)=>{let d=(i-a+cards.length)%cards.length;c.style.transform='translateY(calc(-50% + '+(d*26)+'px)) translateX('+(d*18)+'px) scale('+(1-d*.055)+')';c.style.opacity=1-d*.22;c.style.zIndex=10-d});paint();if(!matchMedia('(prefers-reduced-motion: reduce)').matches){let id=0;const stop=()=>{if(id){clearInterval(id);id=0}},start=()=>{if(!id)id=setInterval(()=>{a=(a+1)%cards.length;paint()},3200)};new IntersectionObserver(([e])=>e.isIntersecting?start():stop(),{rootMargin:'120px'}).observe(r)}})();</script>";
@@ -5367,9 +5481,20 @@ HTML;
             $universalBackgroundEnabled = (bool) ($block['universal_background_enabled'] ?? false)
                 && (($universalType === 'video' && $universalVideoUrl !== '') || ($universalType !== 'video' && $universalBackgroundUrl !== ''));
             if ($fragment !== '' && $universalBackgroundEnabled) {
-                $overlay = $backgroundStateRaw === 'primary'
-                    ? 'linear-gradient(135deg,color-mix(in srgb,var(--cosmic-primary,#0f766e) 88%,#020617 12%),color-mix(in srgb,var(--cosmic-primary,#0f766e) 58%,transparent))'
-                    : 'linear-gradient(135deg,rgba(255,255,255,.88),rgba(255,255,255,.62))';
+                $blockTypeLower=strtolower((string)($block['type']??''));
+                $cinematicOverlay=(bool)preg_match('/cinematic|fullscreen|parallax|video|ken_burns|crossfade/',$blockTypeLower)
+                    || strtolower((string)($block['background_overlay_mode']??''))==='cinematic';
+                if($backgroundStateRaw==='primary'){
+                    $strong=$cinematicOverlay
+                        ? 'var(--cosmic-local-overlay-cinematic-strong,var(--cosmic-bg-overlay-cinematic-strong,.92))'
+                        : 'var(--cosmic-local-overlay-primary-strong,var(--cosmic-bg-overlay-primary-strong,.88))';
+                    $soft=$cinematicOverlay
+                        ? 'var(--cosmic-local-overlay-cinematic-soft,var(--cosmic-bg-overlay-cinematic-soft,.72))'
+                        : 'var(--cosmic-local-overlay-primary-soft,var(--cosmic-bg-overlay-primary-soft,.82))';
+                    $overlay='linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle,135deg)),color-mix(in srgb,var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from,#243447)) calc('.$strong.' * 100%),#020617),color-mix(in srgb,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via,#30475E)) calc('.$soft.' * 100%),var(--cosmic-local-gradient-glow,var(--cosmic-bg-gradient-glow,#60A5FA))))';
+                }else{
+                    $overlay='linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle,135deg)),rgb(255 255 255 / var(--cosmic-local-overlay-light-strong,var(--cosmic-bg-overlay-light-strong,.88))),rgb(255 255 255 / var(--cosmic-local-overlay-light-soft,var(--cosmic-bg-overlay-light-soft,.62))))';
+                }
                 $position = trim((string) ($block['universal_background_position'] ?? 'center center'));
                 if (! preg_match('/^(?:left|center|right|top|bottom|\d{1,3}%)(?:\s+(?:left|center|right|top|bottom|\d{1,3}%))?$/i', $position)) {
                     $position = 'center center';
@@ -5378,9 +5503,21 @@ HTML;
                 $positionEscaped = e($position);
                 $clearChildBackgrounds = "<style>.cosmic-universal-background-host>section,.cosmic-universal-background-host>.cosmic-universal-content>section,.cosmic-universal-background-host>.cosmic-universal-content>div,.cosmic-universal-background-host>.cosmic-universal-content>div>section:first-child{background-color:transparent!important;background-image:none!important}</style>";
                 if ($universalType === 'video') {
-                    $videoUrl = e(self::staticAssetUrl($universalVideoUrl));
                     $overlayEscaped = e($overlay);
-                    $fragment = "<div data-cosmic-universal-background='1' data-cosmic-background-type='video' data-cosmic-background-state='{$backgroundState}' class='cosmic-universal-background-host' style=\"position:relative;overflow:hidden\"><video aria-hidden='true' autoplay muted loop playsinline preload='metadata' style=\"pointer-events:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover\"><source src='{$videoUrl}'></video><div aria-hidden='true' style=\"pointer-events:none;position:absolute;inset:0;background:{$overlayEscaped}\"></div>{$clearChildBackgrounds}<div class='cosmic-universal-content' style=\"position:relative;z-index:1\">{$fragment}</div></div>";
+                    $videoLayer = '';
+                    if (preg_match('~(?:youtube\.com/(?:watch\?.*v=|embed/|shorts/)|youtu\.be/)([A-Za-z0-9_-]{6,})~i', $universalVideoUrl, $videoMatch)) {
+                        $videoId = rawurlencode($videoMatch[1]);
+                        $embed = "https://www.youtube.com/embed/{$videoId}?autoplay=1&mute=1&loop=1&playlist={$videoId}&controls=0&modestbranding=1&playsinline=1&rel=0";
+                        $videoLayer = "<iframe aria-hidden='true' tabindex='-1' title='' src='" . e($embed) . "' allow='autoplay; fullscreen; picture-in-picture' style=\"pointer-events:none;position:absolute;left:50%;top:50%;width:177.78vh;min-width:100%;height:56.25vw;min-height:100%;transform:translate(-50%,-50%);border:0\"></iframe>";
+                    } elseif (preg_match('~vimeo\.com/(?:video/)?(\d+)~i', $universalVideoUrl, $videoMatch)) {
+                        $videoId = rawurlencode($videoMatch[1]);
+                        $embed = "https://player.vimeo.com/video/{$videoId}?autoplay=1&muted=1&loop=1&background=1&controls=0";
+                        $videoLayer = "<iframe aria-hidden='true' tabindex='-1' title='' src='" . e($embed) . "' allow='autoplay; fullscreen; picture-in-picture' style=\"pointer-events:none;position:absolute;left:50%;top:50%;width:177.78vh;min-width:100%;height:56.25vw;min-height:100%;transform:translate(-50%,-50%);border:0\"></iframe>";
+                    } else {
+                        $videoUrl = e(self::staticAssetUrl($universalVideoUrl));
+                        $videoLayer = "<video aria-hidden='true' autoplay muted loop playsinline preload='metadata' style=\"pointer-events:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover\"><source src='{$videoUrl}'></video>";
+                    }
+                    $fragment = "<div data-cosmic-universal-background='1' data-cosmic-background-type='video' data-cosmic-background-state='{$backgroundState}' class='cosmic-universal-background-host' style=\"position:relative;overflow:hidden\">{$videoLayer}<div aria-hidden='true' style=\"pointer-events:none;position:absolute;inset:0;background:{$overlayEscaped}\"></div>{$clearChildBackgrounds}<div class='cosmic-universal-content' style=\"position:relative;z-index:1\">{$fragment}</div></div>";
                 } else {
                     $backgroundUrl = e(self::staticAssetUrl($universalBackgroundUrl));
                     $overlayEscaped = e($overlay);
@@ -5417,22 +5554,115 @@ HTML;
                     'content_max_width'=>['--luna-content-max','px'],'section_min_height'=>['--luna-section-min-height','px'],
                 ];
                 foreach($safe as $key=>$value){[$var,$unit]=$map[$key];$vars.=$var.':'.$value.$unit.';';}
+                if(isset($safe['heading_size'])){
+                    $heading=(float)$safe['heading_size'];
+                    $vars.='--cosmic-local-h1-size:'.$heading.'px;--cosmic-local-h2-size:'.$heading.'px;--cosmic-local-h3-size:'.max(16,min(72,$heading*.62)).'px;';
+                }
+                if(isset($safe['body_size'])){
+                    $body=(float)$safe['body_size'];
+                    $vars.='--cosmic-local-body-size:'.$body.'px;--cosmic-local-lead-size:'.max(13,min(34,$body*1.12)).'px;';
+                }
+                if(isset($safe['heading_line_height'])){
+                    $line=(float)$safe['heading_line_height'];
+                    $vars.='--cosmic-local-h1-line:'.$line.';--cosmic-local-h2-line:'.$line.';--cosmic-local-h3-line:'.$line.';';
+                }
+                if(isset($safe['body_line_height'])){
+                    $bodyLine=(float)$safe['body_line_height'];
+                    $vars.='--cosmic-local-body-line:'.$bodyLine.';--cosmic-local-lead-line:'.$bodyLine.';';
+                }
+                if(isset($safe['letter_spacing'])){
+                    $tracking=(float)$safe['letter_spacing'];
+                    $vars.='--cosmic-local-h1-tracking:'.$tracking.'px;--cosmic-local-h2-tracking:'.$tracking.'px;--cosmic-local-h3-tracking:'.$tracking.'px;';
+                }
                 if($heroNeedsDefaultPadding){
                     $vars.='--luna-section-py:100px;--luna-section-py-tablet:76px;--luna-section-py-mobile:56px;';
                 }
                 $align=in_array(($design['text_align']??''),['left','center','right'],true)?$design['text_align']:'';
                 if($align!=='')$vars.='--luna-text-align:'.$align.';';
-                $css="<style>.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py,revert)!important;padding-bottom:var(--luna-section-py,revert)!important;padding-left:var(--luna-section-px,revert)!important;padding-right:var(--luna-section-px,revert)!important;min-height:var(--luna-section-min-height,revert)!important}.cosmic-luna-design-host h1,.cosmic-luna-design-host h2,.cosmic-luna-design-host h3{font-size:var(--luna-heading-size,revert)!important;line-height:var(--luna-heading-line,revert)!important;letter-spacing:var(--luna-letter-spacing,revert)!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host p,.cosmic-luna-design-host li{font-size:var(--luna-body-size,revert)!important;line-height:var(--luna-body-line,revert)!important}.cosmic-luna-design-host img{border-radius:var(--luna-image-radius,revert)!important}@media(max-width:1024px){.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important}}@media(max-width:767px){.cosmic-luna-design-host h1,.cosmic-luna-design-host h2,.cosmic-luna-design-host h3{font-size:min(var(--luna-heading-size,52px),64px)!important}.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important}}</style>";
+                $css="<style>.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py,revert)!important;padding-bottom:var(--luna-section-py,revert)!important;padding-left:var(--luna-section-px,revert)!important;padding-right:var(--luna-section-px,revert)!important;min-height:var(--luna-section-min-height,revert)!important}.cosmic-luna-design-host h1{font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size))!important;line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line))!important;letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking))!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host h2{font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size))!important;line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line))!important;letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking))!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host p,.cosmic-luna-design-host li{font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size))!important;line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line))!important}.cosmic-luna-design-host img{border-radius:var(--luna-image-radius,revert)!important}@media(max-width:1024px){.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important}}@media(max-width:767px){.cosmic-luna-design-host h1,.cosmic-luna-design-host h2,.cosmic-luna-design-host h3{font-size:min(var(--cosmic-local-h2-size,var(--cosmic-type-h2-size)),64px)!important}.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important}}</style>";
                 $fragment="<div class='cosmic-luna-design-host' data-luna-design='1' style=\"".e($vars)."\">{$css}{$fragment}</div>";
                 $html=substr($html,0,$fragmentStart).$fragment;
+            }
+
+            $localSection=is_array($block['luna_section_overrides']??null)?$block['luna_section_overrides']:[];
+            if($fragment!=='' && $localSection!==[]){
+                $sectionVars='';
+                $map=[
+                    'py'=>'--cosmic-local-section-py',
+                    'py_top'=>'--cosmic-local-section-py-top',
+                    'py_bottom'=>'--cosmic-local-section-py-bottom',
+                    'px'=>'--cosmic-local-section-px',
+                    'container'=>'--cosmic-local-section-container',
+                    'gap'=>'--cosmic-local-section-gap',
+                    'min_height'=>'--cosmic-local-section-min-height',
+                ];
+                foreach($map as $key=>$var){
+                    if(!isset($localSection[$key])||!is_scalar($localSection[$key]))continue;
+                    $raw=trim((string)$localSection[$key]);
+                    if($raw===''||!preg_match('/^-?[0-9.]+(?:px|rem|em|%|vh|svh|vw)?$/i',$raw))continue;
+                    $sectionVars.=$var.':'.$raw.';';
+                }
+                if($sectionVars!==''){
+                    $fragment="<div class='cosmic-local-section-host' style=\"".e($sectionVars)."\">{$fragment}</div>";
+                    $html=substr($html,0,$fragmentStart).$fragment;
+                }
+            }
+
+            $localBackground=is_array($block['luna_background_overrides']??null)?$block['luna_background_overrides']:[];
+            if($fragment!=='' && $localBackground!==[]){
+                $backgroundVars='';
+                $allowed=[
+                    'gradient_from','gradient_via','gradient_to','gradient_glow','gradient_angle',
+                    'overlay_light_strong','overlay_light_soft',
+                    'overlay_primary_strong','overlay_primary_soft',
+                    'overlay_cinematic_strong','overlay_cinematic_soft',
+                ];
+                foreach($localBackground as $key=>$value){
+                    if(!in_array((string)$key,$allowed,true)||!is_scalar($value))continue;
+                    $raw=trim((string)$value);
+                    if($raw==='')continue;
+                    if($key==='gradient_angle' && preg_match('/^-?[0-9.]+$/',$raw))$raw.='deg';
+                    if(Str::startsWith((string)$key,'overlay_')){
+                        if(!is_numeric($raw))continue;
+                        $raw=(string)max(0,min(1,(float)$raw));
+                    } elseif(Str::startsWith((string)$key,'gradient_') && $key!=='gradient_angle' && !preg_match('/^#[0-9A-Fa-f]{6}$/',$raw)){
+                        continue;
+                    }
+                    $var='--cosmic-local-'.str_replace('_','-',(string)$key);
+                    $backgroundVars.=$var.':'.$raw.';';
+                }
+                if($backgroundVars!==''){
+                    $fragment="<div class='cosmic-local-background-host' style=\"".e($backgroundVars)."\">{$fragment}</div>";
+                    $html=substr($html,0,$fragmentStart).$fragment;
+                }
+            }
+
+            $localTypography=is_array($block['luna_typography_overrides']??null)?$block['luna_typography_overrides']:[];
+            if($fragment!=='' && $localTypography!==[]){
+                $allowedRoles=['h1','h2','h3','h4','h5','h6','card-title','stat-title','card-body','lead','body','eyebrow','small','badge','meta','button'];
+                $allowedProps=['size','line','weight','tracking'];
+                $localVars='';
+                foreach($localTypography as $key=>$value){
+                    if(!is_scalar($value))continue;
+                    if(!preg_match('/^(h1|h2|h3|h4|h5|h6|card-title|stat-title|card-body|lead|body|eyebrow|small|badge|meta|button)_(size|line|weight|tracking)$/',(string)$key,$m))continue;
+                    if(!in_array($m[1],$allowedRoles,true)||!in_array($m[2],$allowedProps,true))continue;
+                    $raw=trim((string)$value);
+                    if($raw===''||!preg_match('/^-?[0-9.]+(?:px|rem|em|%)?$/i',$raw))continue;
+                    $localVars.='--cosmic-local-'.$m[1].'-'.$m[2].':'.$raw.';';
+                }
+                if($localVars!==''){
+                    $fragment="<div class='cosmic-local-typography-host' style=\"".e($localVars)."\">{$fragment}</div>";
+                    $html=substr($html,0,$fragmentStart).$fragment;
+                }
             }
 
             if ($fragment !== '' && preg_match('/<section\b/i', $fragment)) {
                 $semanticTheme = e((string) $blockTheme);
                 $semanticType = e((string) ($block['type'] ?? ''));
+                $semanticIndex = (int) $index;
                 $taggedFragment = preg_replace(
-                    '/<section(?![^>]*data-cosmic-resolved-theme)/i',
-                    "<section data-cosmic-resolved-theme='{$semanticTheme}' data-cosmic-block-type='{$semanticType}'",
+                    '/<section(?![^>]*data-cosmic-spark)/i',
+                    "<section data-cosmic-spark='1' data-cosmic-block-index='{$semanticIndex}' data-cosmic-resolved-theme='{$semanticTheme}' data-cosmic-block-type='{$semanticType}'",
                     $fragment,
                     1
                 );
@@ -5442,9 +5672,260 @@ HTML;
                 }
             }
         }
-        $html = preg_replace('/<section(?![^>]*data-cosmic-spark)/i', '<section data-cosmic-spark', $html) ?? $html;
+        // Each compiled block root is tagged inside the block loop above.
+        // Do NOT tag nested <section> elements globally: export CSS would otherwise
+        // apply Spark-level spacing to internal sections and diverge from Builder.
+
+        // Centralized Cosmic typography contract. Existing Sparks are migrated to
+        // these semantic roles in the next pass; keeping this stylesheet in the
+        // compiler now guarantees the same token contract in Preview/Export/Live.
+        $typographyCss = <<<'CSS'
+<style data-cosmic-typography-core>
+:root{
+--cosmic-font-display:Manrope,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+--cosmic-font-body:Manrope,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+--cosmic-type-h1-size:clamp(3rem,6vw,5.75rem);--cosmic-type-h1-line:.96;--cosmic-type-h1-weight:700;--cosmic-type-h1-tracking:-.05em;
+--cosmic-type-h2-size:clamp(2.25rem,4.05vw,4rem);--cosmic-type-h2-line:1;--cosmic-type-h2-weight:700;--cosmic-type-h2-tracking:-.045em;
+--cosmic-type-h3-size:clamp(1.35rem,2vw,1.75rem);--cosmic-type-h3-line:1.08;--cosmic-type-h3-weight:700;--cosmic-type-h3-tracking:-.025em;
+--cosmic-type-h4-size:clamp(1.125rem,1.5vw,1.35rem);--cosmic-type-h4-line:1.15;--cosmic-type-h4-weight:700;--cosmic-type-h4-tracking:-.015em;--cosmic-type-h5-size:clamp(1rem,1.2vw,1.125rem);--cosmic-type-h5-line:1.25;--cosmic-type-h5-weight:700;--cosmic-type-h5-tracking:-.01em;--cosmic-type-h6-size:clamp(.875rem,1vw,1rem);--cosmic-type-h6-line:1.3;--cosmic-type-h6-weight:700;--cosmic-type-h6-tracking:0em;
+--cosmic-type-card-title-size:clamp(1.25rem,1.65vw,1.65rem);--cosmic-type-card-title-line:1.12;--cosmic-type-card-title-weight:700;--cosmic-type-card-title-tracking:-.025em;
+--cosmic-type-card-body-size:.975rem;--cosmic-type-card-body-line:1.65;--cosmic-type-card-body-weight:400;--cosmic-type-card-body-tracking:0em;--cosmic-card-icon-size:2.75rem;--cosmic-card-icon-tile:3.25rem;
+--cosmic-type-lead-size:clamp(1.05rem,1.7vw,1.25rem);--cosmic-type-lead-line:1.7;--cosmic-type-lead-weight:400;--cosmic-type-lead-tracking:0em;
+--cosmic-type-body-size:1rem;--cosmic-type-body-line:1.75;--cosmic-type-body-weight:400;--cosmic-type-body-tracking:0em;
+--cosmic-type-eyebrow-size:.75rem;--cosmic-type-eyebrow-line:1.35;--cosmic-type-eyebrow-weight:500;--cosmic-type-eyebrow-tracking:.28em;
+--cosmic-type-small-size:.875rem;--cosmic-type-small-line:1.55;--cosmic-type-small-weight:400;--cosmic-type-small-tracking:0em;--cosmic-type-badge-size:.75rem;--cosmic-type-badge-line:1.25;--cosmic-type-badge-weight:600;--cosmic-type-badge-tracking:0em;--cosmic-type-meta-size:.75rem;--cosmic-type-meta-line:1.4;--cosmic-type-meta-weight:500;--cosmic-type-meta-tracking:.12em;--cosmic-type-stat-title-size:clamp(1.1rem,1.35vw,1.35rem);--cosmic-type-stat-title-line:1.18;--cosmic-type-stat-title-weight:700;--cosmic-type-stat-title-tracking:-.015em;
+--cosmic-type-button-size:.9rem;--cosmic-type-button-line:1.25;--cosmic-type-button-weight:700;--cosmic-type-button-tracking:0em
+}
+.cosmic-type-h1,[data-cosmic-type=h1]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display));font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size));line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line));font-weight:var(--cosmic-local-h1-weight,var(--cosmic-type-h1-weight));letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking))}
+.cosmic-type-h2,[data-cosmic-type=h2]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display));font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size));line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line));font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight));letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking))}
+.cosmic-type-h3,[data-cosmic-type=h3]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display));font-size:var(--cosmic-local-h3-size,var(--cosmic-type-h3-size));line-height:var(--cosmic-local-h3-line,var(--cosmic-type-h3-line));font-weight:var(--cosmic-local-h3-weight,var(--cosmic-type-h3-weight));letter-spacing:var(--cosmic-local-h3-tracking,var(--cosmic-type-h3-tracking))}
+.cosmic-type-h4,[data-cosmic-type=h4]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display));font-size:var(--cosmic-local-h4-size,var(--cosmic-type-h4-size));line-height:var(--cosmic-local-h4-line,var(--cosmic-type-h4-line));font-weight:var(--cosmic-local-h4-weight,var(--cosmic-type-h4-weight));letter-spacing:var(--cosmic-local-h4-tracking,var(--cosmic-type-h4-tracking))}.cosmic-type-h5,[data-cosmic-type=h5]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display));font-size:var(--cosmic-local-h5-size,var(--cosmic-type-h5-size));line-height:var(--cosmic-local-h5-line,var(--cosmic-type-h5-line));font-weight:var(--cosmic-local-h5-weight,var(--cosmic-type-h5-weight));letter-spacing:var(--cosmic-local-h5-tracking,var(--cosmic-type-h5-tracking))}.cosmic-type-h6,[data-cosmic-type=h6]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display));font-size:var(--cosmic-local-h6-size,var(--cosmic-type-h6-size));line-height:var(--cosmic-local-h6-line,var(--cosmic-type-h6-line));font-weight:var(--cosmic-local-h6-weight,var(--cosmic-type-h6-weight));letter-spacing:var(--cosmic-local-h6-tracking,var(--cosmic-type-h6-tracking))}
+[data-cosmic-card-icon]{width:var(--cosmic-local-card-icon-tile,var(--cosmic-card-icon-tile));height:var(--cosmic-local-card-icon-tile,var(--cosmic-card-icon-tile));font-size:var(--cosmic-local-card-icon-size,var(--cosmic-card-icon-size))}
+.cosmic-type-card-title,[data-cosmic-type=card-title]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display));font-size:var(--cosmic-local-card-title-size,var(--cosmic-type-card-title-size))!important;line-height:var(--cosmic-local-card-title-line,var(--cosmic-type-card-title-line))!important;font-weight:var(--cosmic-local-card-title-weight,var(--cosmic-type-card-title-weight));letter-spacing:var(--cosmic-local-card-title-tracking,var(--cosmic-type-card-title-tracking))}
+
+.cosmic-type-card-body,[data-cosmic-type=card-body]{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body));font-size:var(--cosmic-local-card-body-size,var(--cosmic-type-card-body-size));line-height:var(--cosmic-local-card-body-line,var(--cosmic-type-card-body-line));font-weight:var(--cosmic-local-card-body-weight,var(--cosmic-type-card-body-weight));letter-spacing:var(--cosmic-local-card-body-tracking,var(--cosmic-type-card-body-tracking))}
+.cosmic-type-badge,[data-cosmic-type=badge]{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body));font-size:var(--cosmic-local-badge-size,var(--cosmic-type-badge-size))!important;line-height:var(--cosmic-local-badge-line,var(--cosmic-type-badge-line))!important;font-weight:var(--cosmic-local-badge-weight,var(--cosmic-type-badge-weight));letter-spacing:var(--cosmic-local-badge-tracking,var(--cosmic-type-badge-tracking))}.cosmic-type-meta,[data-cosmic-type=meta]{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body));font-size:var(--cosmic-local-meta-size,var(--cosmic-type-meta-size))!important;line-height:var(--cosmic-local-meta-line,var(--cosmic-type-meta-line))!important;font-weight:var(--cosmic-local-meta-weight,var(--cosmic-type-meta-weight));letter-spacing:var(--cosmic-local-meta-tracking,var(--cosmic-type-meta-tracking))}.cosmic-type-stat-title,[data-cosmic-type=stat-title]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display));font-size:var(--cosmic-local-stat-title-size,var(--cosmic-type-stat-title-size))!important;line-height:var(--cosmic-local-stat-title-line,var(--cosmic-type-stat-title-line))!important;font-weight:var(--cosmic-local-stat-title-weight,var(--cosmic-type-stat-title-weight));letter-spacing:var(--cosmic-local-stat-title-tracking,var(--cosmic-type-stat-title-tracking))}.cosmic-type-lead,[data-cosmic-type=lead]{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body));font-size:var(--cosmic-local-lead-size,var(--cosmic-type-lead-size));line-height:var(--cosmic-local-lead-line,var(--cosmic-type-lead-line));font-weight:var(--cosmic-local-lead-weight,var(--cosmic-type-lead-weight));letter-spacing:var(--cosmic-local-lead-tracking,var(--cosmic-type-lead-tracking))}
+.cosmic-type-body,[data-cosmic-type=body]{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body));font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size));line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line));font-weight:var(--cosmic-local-body-weight,var(--cosmic-type-body-weight));letter-spacing:var(--cosmic-local-body-tracking,var(--cosmic-type-body-tracking))}
+.cosmic-type-eyebrow,[data-cosmic-type=eyebrow]{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body));font-size:var(--cosmic-local-eyebrow-size,var(--cosmic-type-eyebrow-size));line-height:var(--cosmic-local-eyebrow-line,var(--cosmic-type-eyebrow-line));font-weight:var(--cosmic-local-eyebrow-weight,var(--cosmic-type-eyebrow-weight));letter-spacing:var(--cosmic-local-eyebrow-tracking,var(--cosmic-type-eyebrow-tracking))}
+.cosmic-type-small,[data-cosmic-type=small]{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body));font-size:var(--cosmic-local-small-size,var(--cosmic-type-small-size));line-height:var(--cosmic-local-small-line,var(--cosmic-type-small-line));font-weight:var(--cosmic-local-small-weight,var(--cosmic-type-small-weight));letter-spacing:var(--cosmic-local-small-tracking,var(--cosmic-type-small-tracking))}
+.cosmic-type-button,[data-cosmic-type=button]{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body));font-size:var(--cosmic-local-button-size,var(--cosmic-type-button-size));line-height:var(--cosmic-local-button-line,var(--cosmic-type-button-line));font-weight:var(--cosmic-local-button-weight,var(--cosmic-type-button-weight));letter-spacing:var(--cosmic-local-button-tracking,var(--cosmic-type-button-tracking))}
+@media(max-width:1024px){:root{--cosmic-type-h1-size:clamp(2.8rem,7vw,4.75rem);--cosmic-type-h2-size:clamp(2.05rem,5vw,3.45rem);--cosmic-type-h3-size:clamp(1.5rem,3vw,2rem)}}
+@media(max-width:767px){:root{--cosmic-type-h1-size:clamp(2.5rem,12vw,4rem);--cosmic-type-h2-size:clamp(1.95rem,9vw,2.9rem);--cosmic-type-h3-size:clamp(1.45rem,7vw,1.9rem);--cosmic-type-h4-size:clamp(1.15rem,5vw,1.4rem);--cosmic-type-lead-size:1.05rem;--cosmic-type-body-size:1rem}}
+
+/* Batch 2 semantic migration: every exported Spark resolves typography from the
+   same central contract. These selectors intentionally beat legacy scoped Spark
+   sizes while preserving color, spacing, layout and media styling. */
+section[data-cosmic-spark='1'] :is(h1,[data-cosmic-type=h1]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size))!important;line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line))!important;font-weight:var(--cosmic-local-h1-weight,var(--cosmic-type-h1-weight))!important;letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking))!important}
+section[data-cosmic-spark='1'] :is(h2,[data-cosmic-type=h2]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size))!important;line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line))!important;font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight))!important;letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking))!important}
+section[data-cosmic-spark='1'] :is(h3,[data-cosmic-type=h3]),section[data-cosmic-spark='1'] [data-luna-target=heading]:not([data-cosmic-type]):not(h1):not(h2):not(h4):not(h5):not(h6){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h3-size,var(--cosmic-type-h3-size))!important;line-height:var(--cosmic-local-h3-line,var(--cosmic-type-h3-line))!important;font-weight:var(--cosmic-local-h3-weight,var(--cosmic-type-h3-weight))!important;letter-spacing:var(--cosmic-local-h3-tracking,var(--cosmic-type-h3-tracking))!important}
+section[data-cosmic-spark='1'] :is(h4,[data-cosmic-type=h4]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h4-size,var(--cosmic-type-h4-size))!important;line-height:var(--cosmic-local-h4-line,var(--cosmic-type-h4-line))!important;font-weight:var(--cosmic-local-h4-weight,var(--cosmic-type-h4-weight))!important;letter-spacing:var(--cosmic-local-h4-tracking,var(--cosmic-type-h4-tracking))!important}section[data-cosmic-spark='1'] :is(h5,[data-cosmic-type=h5]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h5-size,var(--cosmic-type-h5-size))!important;line-height:var(--cosmic-local-h5-line,var(--cosmic-type-h5-line))!important;font-weight:var(--cosmic-local-h5-weight,var(--cosmic-type-h5-weight))!important;letter-spacing:var(--cosmic-local-h5-tracking,var(--cosmic-type-h5-tracking))!important}
+section[data-cosmic-spark='1'] :is(h6,[data-cosmic-type=h6]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h6-size,var(--cosmic-type-h6-size))!important;line-height:var(--cosmic-local-h6-line,var(--cosmic-type-h6-line))!important;font-weight:var(--cosmic-local-h6-weight,var(--cosmic-type-h6-weight))!important;letter-spacing:var(--cosmic-local-h6-tracking,var(--cosmic-type-h6-tracking))!important}
+section[data-cosmic-spark='1'] :is(article,[data-repeatable-item],[data-cosmic-repeatable-item]) :is(h2,h3,[data-luna-target=heading]:not([data-cosmic-type])){font-size:var(--cosmic-local-card-title-size,var(--cosmic-type-card-title-size))!important;line-height:var(--cosmic-local-card-title-line,var(--cosmic-type-card-title-line))!important}
+
+section[data-cosmic-spark='1'] :is(p,li,[data-cosmic-type=body],[data-luna-target=text]:not([data-cosmic-type])){font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size))!important;line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line))!important;font-weight:var(--cosmic-local-body-weight,var(--cosmic-type-body-weight))!important;letter-spacing:var(--cosmic-local-body-tracking,var(--cosmic-type-body-tracking))!important}
+section[data-cosmic-spark='1'][data-cosmic-block-type^='hero_'] [data-luna-target=text]:not([data-cosmic-type]),section[data-cosmic-spark='1'][data-cosmic-block-type='hero'] [data-luna-target=text]:not([data-cosmic-type]),section[data-cosmic-spark='1'] [data-cosmic-type=lead]{font-size:var(--cosmic-local-lead-size,var(--cosmic-type-lead-size))!important;line-height:var(--cosmic-local-lead-line,var(--cosmic-type-lead-line))!important;font-weight:var(--cosmic-local-lead-weight,var(--cosmic-type-lead-weight))!important;letter-spacing:var(--cosmic-local-lead-tracking,var(--cosmic-type-lead-tracking))!important}
+section[data-cosmic-spark='1'] [data-luna-target=label]:not([data-cosmic-type]),section[data-cosmic-spark='1'] [data-cosmic-type=eyebrow]{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-eyebrow-size,var(--cosmic-type-eyebrow-size))!important;line-height:var(--cosmic-local-eyebrow-line,var(--cosmic-type-eyebrow-line))!important;font-weight:var(--cosmic-local-eyebrow-weight,var(--cosmic-type-eyebrow-weight))!important;letter-spacing:var(--cosmic-local-eyebrow-tracking,var(--cosmic-type-eyebrow-tracking))!important}
+section[data-cosmic-spark='1'] :is(article,[data-repeatable-item],[data-cosmic-repeatable-item]) [data-luna-target=label]:not([data-cosmic-type]),section[data-cosmic-spark='1'] [data-cosmic-type=small]{font-size:var(--cosmic-local-small-size,var(--cosmic-type-small-size))!important;line-height:var(--cosmic-local-small-line,var(--cosmic-type-small-line))!important;font-weight:var(--cosmic-local-small-weight,var(--cosmic-type-small-weight))!important;letter-spacing:var(--cosmic-local-small-tracking,var(--cosmic-type-small-tracking))!important}
+section[data-cosmic-spark='1'] :is(a,button,[role=button],[data-cosmic-luna-display=button],[data-cosmic-type=button]){font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-button-size,var(--cosmic-type-button-size))!important;line-height:var(--cosmic-local-button-line,var(--cosmic-type-button-line))!important;font-weight:var(--cosmic-local-button-weight,var(--cosmic-type-button-weight))!important;letter-spacing:var(--cosmic-local-button-tracking,var(--cosmic-type-button-tracking))!important}
+section[data-cosmic-spark='1'] [data-cosmic-type-lock='1']{font-size:var(--cosmic-local-locked-size,revert)!important;line-height:var(--cosmic-local-locked-line,revert)!important;font-weight:var(--cosmic-local-locked-weight,revert)!important;letter-spacing:var(--cosmic-local-locked-tracking,revert)!important}
+</style>
+CSS;
+
+        $backgroundOverlayCss = <<<'CSS'
+<style data-cosmic-background-overlay-core>
+:root{
+--cosmic-on-primary:#F8FAFC;
+--cosmic-on-primary-muted:rgba(248,250,252,.76);
+--cosmic-on-surface:#172033;
+--cosmic-on-surface-muted:#64748B;
+--cosmic-bg-surface:#FFFFFF;
+--cosmic-bg-primary:#243447;
+--cosmic-bg-primary-surface:#30475E;
+--cosmic-bg-accent:#60A5FA;
+--cosmic-bg-gradient-from:#071426;
+--cosmic-bg-gradient-via:#111936;
+--cosmic-bg-gradient-to:#28164D;
+--cosmic-bg-gradient-glow:#7C3AED;
+--cosmic-bg-gradient-angle:135deg;
+--cosmic-bg-overlay-light-strong:.88;
+--cosmic-bg-overlay-light-soft:.62;
+--cosmic-bg-overlay-primary-strong:.88;
+--cosmic-bg-overlay-primary-soft:.82;
+--cosmic-bg-overlay-cinematic-strong:.92;
+--cosmic-bg-overlay-cinematic-soft:.72
+}
+.cosmic-bg-surface{background:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface))}
+.cosmic-bg-primary{background:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary))}
+.cosmic-bg-primary-gradient{background:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)),var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)),var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)))}
+.cosmic-bg-overlay-light{background:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),rgb(255 255 255 / var(--cosmic-local-overlay-light-strong,var(--cosmic-bg-overlay-light-strong))),rgb(255 255 255 / var(--cosmic-local-overlay-light-soft,var(--cosmic-bg-overlay-light-soft))))}
+.cosmic-bg-overlay-primary{background:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),color-mix(in srgb,var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) calc(var(--cosmic-local-overlay-primary-strong,var(--cosmic-bg-overlay-primary-strong))*100%),#020617),color-mix(in srgb,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) calc(var(--cosmic-local-overlay-primary-soft,var(--cosmic-bg-overlay-primary-soft))*100%),var(--cosmic-local-gradient-glow,var(--cosmic-bg-gradient-glow))))}
+.cosmic-bg-overlay-cinematic{background:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),color-mix(in srgb,var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) calc(var(--cosmic-local-overlay-cinematic-strong,var(--cosmic-bg-overlay-cinematic-strong))*100%),#020617),color-mix(in srgb,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) calc(var(--cosmic-local-overlay-cinematic-soft,var(--cosmic-bg-overlay-cinematic-soft))*100%),var(--cosmic-local-gradient-glow,var(--cosmic-bg-gradient-glow))))}
+section[data-cosmic-spark='1']{--cosmic-section-from:var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from));--cosmic-section-mid:var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via));--cosmic-section-to:var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to));--cosmic-section-angle:var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle))}
+section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary']:not(.cosmic-theme-gradient){background-color:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary))!important}
+section[data-cosmic-spark='1'][data-cosmic-resolved-theme='light']:not([class*='bg-black']):not([class*='bg-slate-9']){background-color:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface))!important}
+section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary']{--cosmic-current-text:var(--cosmic-on-primary);--cosmic-current-muted:var(--cosmic-on-primary-muted)}
+section[data-cosmic-spark='1'][data-cosmic-resolved-theme='light']{--cosmic-current-text:var(--cosmic-on-surface);--cosmic-current-muted:var(--cosmic-on-surface-muted)}
+section[data-cosmic-spark='1'].cosmic-theme-gradient{background-color:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary));background-image:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 0%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 100%)!important;background-size:100% 100%}
+section[data-cosmic-spark='1'].cosmic-theme-gradient--subtle{background-image:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),color-mix(in srgb,var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 72%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))) 0%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,color-mix(in srgb,var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 70%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))) 100%)!important}
+section[data-cosmic-spark='1'].cosmic-theme-gradient--deep{background-image:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 0%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 100%)!important}
+</style>
+CSS;
+
+        $sectionWrapperCss = <<<'CSS'
+<style data-cosmic-section-wrapper-core>
+:root{
+--cosmic-section-py:100px;
+--cosmic-section-py-tablet:80px;
+--cosmic-section-py-mobile:56px;
+--cosmic-section-px:28px;
+--cosmic-section-px-tablet:24px;
+--cosmic-section-px-mobile:20px;
+--cosmic-section-container:88rem;
+--cosmic-section-container-wide:96rem;
+--cosmic-section-container-narrow:52rem;
+--cosmic-section-gap:56px;
+--cosmic-section-gap-tablet:44px;
+--cosmic-section-gap-mobile:32px;
+--cosmic-section-min-height:0px
+}
+.cosmic-section,[data-cosmic-section-wrapper='1']{
+width:100%;
+padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py)));
+padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py)));
+padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px));
+padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px));
+min-height:var(--cosmic-local-section-min-height,var(--cosmic-section-min-height))
+}
+.cosmic-section-container,[data-cosmic-section-container='1']{width:100%;max-width:var(--cosmic-local-section-container,var(--cosmic-section-container));margin-left:auto;margin-right:auto}
+.cosmic-section-container--wide{max-width:var(--cosmic-local-section-container,var(--cosmic-section-container-wide))}
+.cosmic-section-container--narrow{max-width:var(--cosmic-local-section-container,var(--cosmic-section-container-narrow))}
+.cosmic-section-stack{display:flex;flex-direction:column;gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap))}
+@media(max-width:1024px){
+.cosmic-section,[data-cosmic-section-wrapper='1']{padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)));padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)));padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet));padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))}
+.cosmic-section-stack{gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap-tablet))}
+}
+@media(max-width:767px){
+.cosmic-section,[data-cosmic-section-wrapper='1']{padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)));padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)));padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile));padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))}
+.cosmic-section-stack{gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap-mobile))}
+}
+
+/* Batch 4: migrate all compiled Spark roots to the centralized wrapper rhythm.
+   Fullscreen/cinematic roots retain their vertical composition but inherit horizontal padding. */
+section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']){
+padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py)))!important;
+padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py)))!important;
+padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px))!important;
+padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px))!important
+}
+section[data-cosmic-spark='1'][data-cosmic-block-type*='fullscreen'],
+section[data-cosmic-spark='1'][data-cosmic-block-type*='cinematic']{
+padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px))!important;
+padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px))!important
+}
+section[data-cosmic-spark='1']>:is(div,article)[class*='mx-auto'][class*='max-w-']{
+width:100%;max-width:var(--cosmic-local-section-container,var(--cosmic-section-container))!important;margin-left:auto!important;margin-right:auto!important
+}
+@media(max-width:1024px){
+section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']){
+padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)))!important;
+padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)))!important;
+padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))!important;
+padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))!important
+}}
+@media(max-width:767px){
+section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']){
+padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)))!important;
+padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)))!important;
+padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important;
+padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important
+}
+section[data-cosmic-spark='1'][data-cosmic-block-type*='fullscreen'],
+section[data-cosmic-spark='1'][data-cosmic-block-type*='cinematic']{
+padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important;
+padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important
+}}
+</style>
+CSS;
+
+        $globalTypography=is_array($context['typography']??null)?$context['typography']:[];
+        $globalTypographyVars='';
+        foreach($globalTypography as $key=>$value){
+            if(!is_scalar($value))continue;
+            if(!preg_match('/^(h1|h2|h3|h4|lead|body|eyebrow|small|button)_(size|line|weight|tracking)$/',(string)$key,$m))continue;
+            $raw=trim((string)$value);
+            if($raw===''||!preg_match('/^-?[0-9.]+(?:px|rem|em|%)?$/i',$raw))continue;
+            $globalTypographyVars.='--cosmic-type-'.$m[1].'-'.$m[2].':'.$raw.';';
+        }
+        $globalTypographyCss=$globalTypographyVars!==''?"<style data-cosmic-typography-settings>:root{{$globalTypographyVars}}</style>":'';
+
+        $globalBackground=is_array($context['background_style']??null)?$context['background_style']:[];
+        $activeTheme=self::getTheme($primaryColor ?: 'midnight');
+        $activePalette=is_array($activeTheme['palette']??null)?$activeTheme['palette']:[];
+        $activeGradient=is_array($activePalette['gradient']??null)
+            ? $activePalette['gradient']
+            : (is_array($activeTheme['gradient']??null)?$activeTheme['gradient']:[]);
+        $globalBackground=array_merge([
+            'primary'=>$activePalette['background']??$activePalette['primary']??'#243447',
+            'primary_surface'=>$activePalette['surface']??$activePalette['background']??'#30475E',
+            'accent'=>$activePalette['accent']??$activeGradient['glow']??'#60A5FA',
+            'gradient_from'=>$activeGradient['from']??$activePalette['background']??'#071426',
+            'gradient_via'=>$activeGradient['via']??$activePalette['surface']??'#111936',
+            'gradient_to'=>$activeGradient['to']??$activePalette['background']??'#28164D',
+            'gradient_glow'=>$activeGradient['glow']??$activePalette['accent']??'#7C3AED',
+            'gradient_angle'=>$activeGradient['angle']??135,
+        ],$globalBackground);
+        $backgroundMap=[
+            'surface'=>'--cosmic-bg-surface',
+            'primary'=>'--cosmic-bg-primary',
+            'primary_surface'=>'--cosmic-bg-primary-surface',
+            'accent'=>'--cosmic-bg-accent',
+            'gradient_from'=>'--cosmic-bg-gradient-from',
+            'gradient_via'=>'--cosmic-bg-gradient-via',
+            'gradient_to'=>'--cosmic-bg-gradient-to',
+            'gradient_glow'=>'--cosmic-bg-gradient-glow',
+            'gradient_angle'=>'--cosmic-bg-gradient-angle',
+            'overlay_light_strong'=>'--cosmic-bg-overlay-light-strong',
+            'overlay_light_soft'=>'--cosmic-bg-overlay-light-soft',
+            'overlay_primary_strong'=>'--cosmic-bg-overlay-primary-strong',
+            'overlay_primary_soft'=>'--cosmic-bg-overlay-primary-soft',
+            'overlay_cinematic_strong'=>'--cosmic-bg-overlay-cinematic-strong',
+            'overlay_cinematic_soft'=>'--cosmic-bg-overlay-cinematic-soft',
+        ];
+        $globalBackgroundVars='';
+        foreach($backgroundMap as $key=>$var){
+            if(!isset($globalBackground[$key])||!is_scalar($globalBackground[$key]))continue;
+            $raw=trim((string)$globalBackground[$key]);
+            if($raw==='')continue;
+            if($key==='gradient_angle' && preg_match('/^-?[0-9.]+$/',$raw))$raw.='deg';
+            if(Str::startsWith($key,'overlay_')){
+                if(!is_numeric($raw))continue;
+                $raw=(string)max(0,min(1,(float)$raw));
+            } elseif(!preg_match('/^(#[0-9A-Fa-f]{6}|-?[0-9.]+deg)$/',$raw)) {
+                continue;
+            }
+            $globalBackgroundVars.=$var.':'.$raw.';';
+        }
+        $globalBackgroundCss=$globalBackgroundVars!==''?"<style data-cosmic-background-overlay-settings>:root{{$globalBackgroundVars}}</style>":'';
+
+        $globalSection=is_array($context['section_layout']??null)?$context['section_layout']:[];
+        $sectionMap=[
+            'py'=>'--cosmic-section-py','py_tablet'=>'--cosmic-section-py-tablet','py_mobile'=>'--cosmic-section-py-mobile',
+            'px'=>'--cosmic-section-px','px_tablet'=>'--cosmic-section-px-tablet','px_mobile'=>'--cosmic-section-px-mobile',
+            'container'=>'--cosmic-section-container','container_wide'=>'--cosmic-section-container-wide','container_narrow'=>'--cosmic-section-container-narrow',
+            'gap'=>'--cosmic-section-gap','gap_tablet'=>'--cosmic-section-gap-tablet','gap_mobile'=>'--cosmic-section-gap-mobile',
+            'min_height'=>'--cosmic-section-min-height',
+        ];
+        $globalSectionVars='';
+        foreach($sectionMap as $key=>$var){
+            if(!isset($globalSection[$key])||!is_scalar($globalSection[$key]))continue;
+            $raw=trim((string)$globalSection[$key]);
+            if($raw===''||!preg_match('/^-?[0-9.]+(?:px|rem|em|%|vh|svh|vw)?$/i',$raw))continue;
+            $globalSectionVars.=$var.':'.$raw.';';
+        }
+        $globalSectionCss=$globalSectionVars!==''?"<style data-cosmic-section-wrapper-settings>:root{{$globalSectionVars}}</style>":'';
+
         // Global Cosmic CTA default: rounded buttons across preview/export/live.
-        $html = "<style data-cosmic-button-default>section[data-cosmic-spark] :is(button,a,[role='button'],[data-cosmic-luna-display='button']){border-radius:100px!important}section[data-cosmic-spark] [class~='rounded-full']{border-radius:9999px!important}</style>" . $html;
+        $html = $typographyCss . $globalTypographyCss . $backgroundOverlayCss . $globalBackgroundCss . $sectionWrapperCss . $globalSectionCss . "<style data-cosmic-button-default>section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button']){border-radius:100px!important}section[data-cosmic-spark='1'] [class~='rounded-full']{border-radius:9999px!important}</style>" . $html;
 
         return self::normalizePublishedAssetUrls($html);
     }
@@ -5826,5 +6307,549 @@ HTML;
             default => 'brightness(0) saturate(100%) invert(20%) sepia(14%) saturate(1108%) hue-rotate(176deg) brightness(94%) contrast(91%)',
         };
     }
+
+    private static function imageRichExpansionBatch1Html(string $type,array $block,array $theme): string
+    {
+        $variants = [
+            'services_image_trio_premium'=>'trio','services_overlay_grid_premium'=>'overlay','services_editorial_rows_premium'=>'rows',
+            'services_horizontal_media_premium'=>'horizontal','services_numbered_images_premium'=>'numbered','services_mosaic_media_premium'=>'mosaic',
+            'features_visual_split_premium'=>'split','features_image_stack_premium'=>'stack','features_spotlight_cards_premium'=>'spotlight',
+            'features_media_steps_premium'=>'steps','features_asymmetric_media_premium'=>'asymmetric',
+            'portfolio_cinematic_grid_premium'=>'cinematic','portfolio_editorial_cards_premium'=>'editorial','portfolio_project_panels_premium'=>'panels',
+            'portfolio_image_index_premium'=>'index','portfolio_split_showcase_premium'=>'showcase',
+            'about_story_collage_premium'=>'collage','about_image_manifesto_premium'=>'manifesto','about_founder_visual_premium'=>'founder',
+            'about_journey_gallery_premium'=>'journey',
+        ];
+        $variant=$variants[$type]??'trio';
+        $primary=in_array(strtolower((string)($block['resolvedTheme']??$block['theme']??'')),['primary','dark','midnight','obsidian','charcoal','navy'],true);
+        $palette=is_array($theme['palette']??null)?$theme['palette']:[];
+        $bg=$primary?(string)($palette['background']??'#243447'):'#ffffff';
+        $surface=$primary?(string)($palette['surface']??$palette['card']??'#30475E'):'#f7f7f5';
+        $text=$primary?'#f8fafc':'#172033';
+        $muted=$primary?'rgba(248,250,252,.76)':'#64748b';
+        $accent=(string)($palette['accent']??'#60A5FA');
+        $border=$primary?'rgba(248,250,252,.18)':'rgba(15,23,42,.12)';
+        $eyebrow=e((string)($block['eyebrow']??''));
+        $heading=e((string)($block['heading']??''));
+        $intro=e((string)($block['text']??''));
+        $button=e((string)($block['button_label']??'Learn more'));
+        $buttonUrl=e((string)($block['button_url']??'#'));
+        $items=is_array($block['items']??null)?array_values($block['items']):[];
+        $cards='';
+        foreach($items as $i=>$item){
+            if(!is_array($item))continue;
+            $title=e((string)($item['title']??''));
+            $copy=e((string)($item['text']??''));
+            $image=e(self::staticAssetUrl((string)($item['image_url']??'/storage/cms-images/background/background-1.avif')));
+            $number=str_pad((string)($i+1),2,'0',STR_PAD_LEFT);
+            $cards.="<article class='x-card'><div class='x-img'><img src='{$image}' alt='' loading='lazy' decoding='async'></div><div class='x-card-copy'><span class='x-index'>{$number}</span><span class='x-title'>{$title}</span><span class='x-text'>{$copy}</span></div></article>";
+        }
+        $id='cosmic-image-rich-'.substr(sha1($type.'|'.$heading.'|'.count($items)),0,12);
+        $css=<<<CSS
+<style>
+#{$id}{--x-bg:{$bg};--x-surface:{$surface};--x-text:{$text};--x-muted:{$muted};--x-border:{$border};--x-accent:{$accent};background:var(--x-bg);color:var(--x-text);padding:7rem 1.75rem}
+#{$id} .x-shell{width:100%;max-width:88rem;margin:0 auto}#{$id} .x-head{max-width:48rem;margin-bottom:3.5rem}
+#{$id} .x-eyebrow{display:block;font-size:.75rem;font-weight:600;letter-spacing:.28em;text-transform:uppercase;color:var(--x-muted)}
+#{$id} .x-heading{display:block;margin-top:1rem;font-size:clamp(2.4rem,5vw,4.75rem);line-height:.98;letter-spacing:-.045em;font-weight:700}
+#{$id} .x-intro{display:block;margin-top:1.25rem;max-width:42rem;font-size:1.05rem;line-height:1.8;color:var(--x-muted)}
+#{$id} .x-grid{display:grid;gap:1.25rem}#{$id} .x-card{position:relative;overflow:hidden;border:1px solid var(--x-border);background:var(--x-surface);border-radius:1.75rem}
+#{$id} .x-img{overflow:hidden;min-height:15rem}#{$id} .x-img img{width:100%;height:100%;object-fit:cover;display:block;transition:transform .55s ease}#{$id} .x-card:hover .x-img img{transform:scale(1.035)}
+#{$id} .x-card-copy{padding:1.5rem}#{$id} .x-index{display:block;font-size:.72rem;letter-spacing:.2em;color:var(--x-muted);margin-bottom:.75rem}
+#{$id} .x-title{display:block;font-size:1.35rem;line-height:1.15;font-weight:700}#{$id} .x-text{display:block;margin-top:.7rem;color:var(--x-muted);line-height:1.7}
+#{$id} .x-cta{display:inline-flex;margin-top:2rem;min-height:50px;align-items:center;justify-content:center;border-radius:100px;padding:.75rem 1.5rem;background:var(--x-text);color:var(--x-bg);font-weight:700}
+#{$id}.x-trio .x-grid,#{$id}.x-spotlight .x-grid,#{$id}.x-editorial .x-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+#{$id}.x-trio .x-card:first-child,#{$id}.x-spotlight .x-card:first-child{grid-column:span 2}#{$id}.x-trio .x-card:first-child .x-img,#{$id}.x-spotlight .x-card:first-child .x-img{min-height:25rem}
+#{$id}.x-overlay .x-grid,#{$id}.x-cinematic .x-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#{$id}.x-overlay .x-card,#{$id}.x-cinematic .x-card{min-height:29rem}
+#{$id}.x-overlay .x-img,#{$id}.x-cinematic .x-img{position:absolute;inset:0;height:100%}#{$id}.x-overlay .x-card:after,#{$id}.x-cinematic .x-card:after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(2,6,23,.84),rgba(2,6,23,.08))}
+#{$id}.x-overlay .x-card-copy,#{$id}.x-cinematic .x-card-copy{position:absolute;z-index:2;left:0;right:0;bottom:0;color:white}#{$id}.x-overlay .x-text,#{$id}.x-cinematic .x-text,#{$id}.x-overlay .x-index,#{$id}.x-cinematic .x-index{color:rgba(255,255,255,.72)}
+#{$id}.x-rows .x-grid,#{$id}.x-steps .x-grid,#{$id}.x-journey .x-grid{grid-template-columns:1fr}#{$id}.x-rows .x-card,#{$id}.x-steps .x-card,#{$id}.x-journey .x-card{display:grid;grid-template-columns:minmax(18rem,.8fr) 1.2fr;align-items:center}
+#{$id}.x-horizontal .x-grid,#{$id}.x-numbered .x-grid,#{$id}.x-index .x-grid{grid-template-columns:repeat(4,minmax(0,1fr))}#{$id}.x-horizontal .x-img,#{$id}.x-numbered .x-img,#{$id}.x-index .x-img{aspect-ratio:4/5}
+#{$id}.x-mosaic .x-grid,#{$id}.x-asymmetric .x-grid,#{$id}.x-collage .x-grid{grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:7rem}#{$id}.x-mosaic .x-card,#{$id}.x-asymmetric .x-card,#{$id}.x-collage .x-card{grid-column:span 5;grid-row:span 3}#{$id}.x-mosaic .x-card:nth-child(2),#{$id}.x-asymmetric .x-card:nth-child(2),#{$id}.x-collage .x-card:nth-child(2){grid-column:span 7;grid-row:span 3}
+#{$id}.x-mosaic .x-img,#{$id}.x-asymmetric .x-img,#{$id}.x-collage .x-img{position:absolute;inset:0;height:100%;opacity:.32}#{$id}.x-mosaic .x-card-copy,#{$id}.x-asymmetric .x-card-copy,#{$id}.x-collage .x-card-copy{position:relative;z-index:2;display:flex;min-height:100%;flex-direction:column;justify-content:flex-end;padding:1.75rem}
+#{$id}.x-split .x-grid,#{$id}.x-showcase .x-grid,#{$id}.x-manifesto .x-grid,#{$id}.x-founder .x-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
+#{$id}.x-stack .x-grid,#{$id}.x-panels .x-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+#{$id}.x-split .x-card:first-child,#{$id}.x-showcase .x-card:first-child,#{$id}.x-manifesto .x-card:first-child,#{$id}.x-founder .x-card:first-child{grid-row:1 / span 3;display:flex;flex-direction:column;height:100%}#{$id}.x-split .x-card:first-child .x-img,#{$id}.x-showcase .x-card:first-child .x-img,#{$id}.x-manifesto .x-card:first-child .x-img,#{$id}.x-founder .x-card:first-child .x-img{min-height:32rem;flex:1}
+#{$id}.x-stack .x-card:nth-child(even),#{$id}.x-panels .x-card:nth-child(even){margin-top:1.75rem}
+@media(max-width:900px){#{$id}.x-split .x-card:first-child,#{$id}.x-showcase .x-card:first-child,#{$id}.x-manifesto .x-card:first-child,#{$id}.x-founder .x-card:first-child{grid-row:auto;height:auto}#{$id}.x-split .x-card:first-child .x-img,#{$id}.x-showcase .x-card:first-child .x-img,#{$id}.x-manifesto .x-card:first-child .x-img,#{$id}.x-founder .x-card:first-child .x-img{flex:none}#{$id}{padding:5rem 1.25rem}#{$id} .x-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}#{$id}.x-mosaic .x-grid,#{$id}.x-asymmetric .x-grid,#{$id}.x-collage .x-grid{grid-auto-rows:auto}#{$id}.x-mosaic .x-card,#{$id}.x-asymmetric .x-card,#{$id}.x-collage .x-card{grid-column:auto;grid-row:auto;min-height:22rem}}
+@media(max-width:640px){#{$id}{padding:4rem 1rem}#{$id} .x-heading{font-size:clamp(2.2rem,12vw,3.4rem)}#{$id} .x-grid{grid-template-columns:1fr!important}#{$id}.x-rows .x-card,#{$id}.x-steps .x-card,#{$id}.x-journey .x-card{display:block}#{$id}.x-stack .x-card:nth-child(even),#{$id}.x-panels .x-card:nth-child(even){margin-top:0}}
+#{$id} .x-card,#{$id} .x-copy{min-width:0;overflow-wrap:anywhere}
+</style>
+CSS;
+        return "<section id='{$id}' class='cosmic-image-rich x-".e($variant)."'><div class='x-shell'><div class='x-head'><span class='x-eyebrow'>{$eyebrow}</span><span class='x-heading'>{$heading}</span><span class='x-intro'>{$intro}</span></div><div class='x-grid'>{$cards}</div><a class='x-cta' href='{$buttonUrl}'>{$button}</a></div>{$css}</section>";
+    }
+
+
+    private static function imageRichExpansionBatch2Html(string $type,array $block,array $theme): string
+    {
+        $variants = [
+            'team_portrait_editorial_premium'=>'portrait','team_image_grid_premium'=>'grid','team_leadership_split_premium'=>'split',
+            'team_profile_overlay_premium'=>'overlay','team_people_mosaic_premium'=>'mosaic',
+            'testimonials_portrait_cards_premium'=>'portrait','testimonials_featured_story_premium'=>'featured',
+            'testimonials_image_wall_premium'=>'wall','testimonials_editorial_quotes_premium'=>'editorial',
+            'testimonials_client_spotlight_premium'=>'spotlight',
+            'process_visual_steps_premium'=>'steps','process_image_timeline_premium'=>'timeline',
+            'process_numbered_panels_premium'=>'panels','process_editorial_journey_premium'=>'journey',
+            'process_media_roadmap_premium'=>'roadmap',
+            'cta_image_split_premium'=>'split','cta_background_media_premium'=>'background',
+            'cta_floating_panel_premium'=>'floating','cta_editorial_banner_premium'=>'editorial',
+            'cta_media_cards_premium'=>'cards',
+        ];
+        $families = [
+            'team_portrait_editorial_premium'=>'team','team_image_grid_premium'=>'team','team_leadership_split_premium'=>'team',
+            'team_profile_overlay_premium'=>'team','team_people_mosaic_premium'=>'team',
+            'testimonials_portrait_cards_premium'=>'testimonials','testimonials_featured_story_premium'=>'testimonials',
+            'testimonials_image_wall_premium'=>'testimonials','testimonials_editorial_quotes_premium'=>'testimonials',
+            'testimonials_client_spotlight_premium'=>'testimonials',
+            'process_visual_steps_premium'=>'process','process_image_timeline_premium'=>'process',
+            'process_numbered_panels_premium'=>'process','process_editorial_journey_premium'=>'process',
+            'process_media_roadmap_premium'=>'process',
+            'cta_image_split_premium'=>'cta','cta_background_media_premium'=>'cta',
+            'cta_floating_panel_premium'=>'cta','cta_editorial_banner_premium'=>'cta','cta_media_cards_premium'=>'cta',
+        ];
+        $variant=$variants[$type]??'grid';
+        $family=$families[$type]??'team';
+        $primary=in_array(strtolower((string)($block['resolvedTheme']??$block['theme']??'')),['primary','dark','midnight','obsidian','charcoal','navy'],true);
+        $palette=is_array($theme['palette']??null)?$theme['palette']:[];
+        $bg=$primary?(string)($palette['background']??'#243447'):'#ffffff';
+        $surface=$primary?(string)($palette['surface']??$palette['card']??'#30475E'):'#f7f7f5';
+        $text=$primary?'#f8fafc':'#172033';
+        $muted=$primary?'rgba(248,250,252,.76)':'#64748b';
+        $accent=(string)($palette['accent']??'#60A5FA');
+        $border=$primary?'rgba(248,250,252,.18)':'rgba(15,23,42,.12)';
+        $eyebrow=e((string)($block['eyebrow']??''));
+        $heading=e((string)($block['heading']??''));
+        $intro=e((string)($block['text']??''));
+        $button=e((string)($block['button_label']??'Start a conversation'));
+        $buttonUrl=e((string)($block['button_url']??'#'));
+        $secondary=e((string)($block['secondary_label']??'View work'));
+        $secondaryUrl=e((string)($block['secondary_url']??'#'));
+        $items=is_array($block['items']??null)?array_values($block['items']):[];
+        $cards='';
+        foreach($items as $i=>$item){
+            if(!is_array($item))continue;
+            $title=e((string)($item['title']??''));
+            $copy=e((string)($item['text']??''));
+            $label=e((string)($item['label']??str_pad((string)($i+1),2,'0',STR_PAD_LEFT)));
+            $image=e(self::staticAssetUrl((string)($item['image_url']??'/storage/cms-images/background/background-1.avif')));
+            $cards.="<article class='b2-card'><div class='b2-img'><img src='{$image}' alt='' loading='lazy' decoding='async'></div><div class='b2-copy'><span class='b2-num'>{$label}</span><span class='b2-title'>{$title}</span><span class='b2-text'>{$copy}</span></div></article>";
+        }
+
+        $id='cosmic-b2-'.substr(sha1($type.'|'.$heading.'|'.count($items)),0,12);
+        $css=<<<CSS
+<style>
+#{$id}{--b2-bg:{$bg};--b2-surface:{$surface};--b2-text:{$text};--b2-muted:{$muted};--b2-border:{$border};--b2-accent:{$accent};background:var(--b2-bg);color:var(--b2-text);padding:7rem 1.75rem}
+#{$id} .b2-shell{width:100%;max-width:88rem;margin:0 auto}#{$id} .b2-head{max-width:50rem;margin-bottom:3.5rem}
+#{$id} .b2-eyebrow{display:block;font-size:.75rem;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--b2-muted)}
+#{$id} .b2-heading{display:block;margin-top:1rem;font-size:clamp(2.4rem,5vw,4.6rem);line-height:.98;letter-spacing:-.045em;font-weight:700}
+#{$id} .b2-intro{display:block;margin-top:1.25rem;max-width:42rem;font-size:1.05rem;line-height:1.8;color:var(--b2-muted)}
+#{$id} .b2-grid{display:grid;gap:1.25rem}#{$id} .b2-card{position:relative;overflow:hidden;border:1px solid var(--b2-border);background:var(--b2-surface);border-radius:1.75rem}
+#{$id} .b2-img{overflow:hidden;min-height:15rem}#{$id} .b2-img img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .55s ease}#{$id} .b2-card:hover .b2-img img{transform:scale(1.035)}
+#{$id} .b2-copy{padding:1.5rem}#{$id} .b2-num{display:block;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--b2-muted);margin-bottom:.75rem}
+#{$id} .b2-title{display:block;font-size:1.35rem;line-height:1.15;font-weight:700}#{$id} .b2-text{display:block;margin-top:.7rem;line-height:1.7;color:var(--b2-muted)}
+#{$id} .b2-actions{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:2.25rem}#{$id} .b2-primary,#{$id} .b2-secondary{display:inline-flex;min-height:50px;align-items:center;justify-content:center;border-radius:100px;padding:.75rem 1.5rem;font-weight:700}
+#{$id} .b2-primary{background:var(--b2-text);color:var(--b2-bg)}#{$id} .b2-secondary{border:1px solid var(--b2-border);color:var(--b2-text)}
+#{$id}.b2-grid .b2-grid,#{$id}.b2-portrait .b2-grid,#{$id}.b2-editorial .b2-grid,#{$id}.b2-cards .b2-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+#{$id}.b2-grid .b2-img,#{$id}.b2-portrait .b2-img{aspect-ratio:4/5}
+#{$id}.b2-split .b2-grid,#{$id}.b2-featured .b2-grid,#{$id}.b2-spotlight .b2-grid{grid-template-columns:1.25fr .75fr;align-items:stretch}
+#{$id}.b2-split .b2-card:first-child,#{$id}.b2-featured .b2-card:first-child,#{$id}.b2-spotlight .b2-card:first-child{grid-row:1 / span 3;display:flex;flex-direction:column;height:100%}
+#{$id}.b2-split .b2-card:first-child .b2-img,#{$id}.b2-featured .b2-card:first-child .b2-img,#{$id}.b2-spotlight .b2-card:first-child .b2-img{min-height:34rem;flex:1}
+#{$id}.b2-overlay .b2-grid,#{$id}.b2-background .b2-grid{grid-template-columns:repeat(2,minmax(0,1fr))}#{$id}.b2-overlay .b2-card,#{$id}.b2-background .b2-card{min-height:28rem}
+#{$id}.b2-overlay .b2-img,#{$id}.b2-background .b2-img{position:absolute;inset:0;height:100%}
+#{$id}.b2-overlay .b2-card:after,#{$id}.b2-background .b2-card:after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(2,6,23,.88),rgba(2,6,23,.08))}
+#{$id}.b2-overlay .b2-copy,#{$id}.b2-background .b2-copy{position:absolute;z-index:2;left:0;right:0;bottom:0;color:white}
+#{$id}.b2-overlay .b2-text,#{$id}.b2-background .b2-text,#{$id}.b2-overlay .b2-num,#{$id}.b2-background .b2-num{color:rgba(255,255,255,.72)}
+#{$id}.b2-mosaic .b2-grid{grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:7rem}
+#{$id}.b2-mosaic .b2-card{grid-column:span 5;grid-row:span 3}#{$id}.b2-mosaic .b2-card:nth-child(2){grid-column:span 7;grid-row:span 3}
+#{$id}.b2-mosaic .b2-img{position:absolute;inset:0;height:100%;opacity:.35}#{$id}.b2-mosaic .b2-copy{position:relative;z-index:2}
+#{$id}.b2-wall .b2-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:stretch}
+#{$id}.b2-wall .b2-card{display:grid;grid-template-columns:minmax(10rem,.82fr) minmax(0,1.18fr);min-height:19rem}
+#{$id}.b2-wall .b2-img{position:relative;inset:auto;height:100%;min-height:19rem;opacity:1}
+#{$id}.b2-wall .b2-copy{position:relative;z-index:2;display:flex;min-width:0;flex-direction:column;justify-content:center;padding:2rem}
+#{$id}.b2-wall .b2-num{margin-bottom:.9rem}#{$id}.b2-wall .b2-title{font-size:1.45rem}#{$id}.b2-wall .b2-text{margin-top:1rem;line-height:1.75}
+#{$id}.b2-steps .b2-grid,#{$id}.b2-timeline .b2-grid,#{$id}.b2-journey .b2-grid,#{$id}.b2-roadmap .b2-grid{grid-template-columns:1fr}
+#{$id}.b2-steps .b2-card,#{$id}.b2-timeline .b2-card,#{$id}.b2-journey .b2-card,#{$id}.b2-roadmap .b2-card{display:grid;grid-template-columns:minmax(17rem,.8fr) 1.2fr;align-items:center}
+#{$id}.b2-panels .b2-grid,#{$id}.b2-floating .b2-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}#{$id}.b2-panels .b2-card:nth-child(even),#{$id}.b2-floating .b2-card:nth-child(even){margin-top:1.5rem}
+@media(max-width:900px){#{$id}.b2-split .b2-card:first-child,#{$id}.b2-featured .b2-card:first-child,#{$id}.b2-spotlight .b2-card:first-child{grid-row:auto;height:auto}#{$id}.b2-split .b2-card:first-child .b2-img,#{$id}.b2-featured .b2-card:first-child .b2-img,#{$id}.b2-spotlight .b2-card:first-child .b2-img{flex:none}#{$id}{padding:5rem 1.25rem}#{$id} .b2-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}#{$id}.b2-mosaic .b2-grid{grid-auto-rows:auto}#{$id}.b2-mosaic .b2-card{grid-column:auto;grid-row:auto;min-height:21rem}#{$id}.b2-wall .b2-grid{grid-template-columns:1fr!important}#{$id}.b2-wall .b2-card{grid-template-columns:minmax(11rem,.8fr) minmax(0,1.2fr);min-height:18rem}#{$id}.b2-wall .b2-img{min-height:18rem}}
+@media(max-width:640px){#{$id}{padding:4rem 1rem}#{$id} .b2-heading{font-size:clamp(2.2rem,12vw,3.4rem)}#{$id} .b2-grid{grid-template-columns:1fr!important}#{$id}.b2-steps .b2-card,#{$id}.b2-timeline .b2-card,#{$id}.b2-journey .b2-card,#{$id}.b2-roadmap .b2-card{display:block}#{$id}.b2-panels .b2-card:nth-child(even),#{$id}.b2-floating .b2-card:nth-child(even){margin-top:0}#{$id}.b2-wall .b2-card{display:block;min-height:0}#{$id}.b2-wall .b2-img{height:auto;min-height:15rem;aspect-ratio:16/10}#{$id}.b2-wall .b2-copy{padding:1.5rem}}
+#{$id} .b2-card,#{$id} .b2-copy{min-width:0;overflow-wrap:anywhere}
+</style>
+CSS;
+        return "<section id='{$id}' class='cosmic-b2 b2-".e($family)." b2-".e($variant)."'><div class='b2-shell'><div class='b2-head'><span class='b2-eyebrow'>{$eyebrow}</span><span class='b2-heading'>{$heading}</span><span class='b2-intro'>{$intro}</span></div><div class='b2-grid'>{$cards}</div><div class='b2-actions'><a class='b2-primary' href='{$buttonUrl}'>{$button}</a><a class='b2-secondary' href='{$secondaryUrl}'>{$secondary}</a></div></div>{$css}</section>";
+    }
+
+
+    private static function imageRichExpansionBatch3Html(string $type,array $block,array $theme): string
+    {
+        $variants = [
+            'stats_photo_metrics_premium'=>'photo','stats_editorial_numbers_premium'=>'editorial',
+            'stats_image_panels_premium'=>'panels','stats_visual_mosaic_premium'=>'mosaic',
+            'trust_logo_story_premium'=>'logos','trust_image_proof_premium'=>'proof',
+            'trust_certification_cards_premium'=>'certifications','trust_partner_showcase_premium'=>'partners',
+            'contact_image_form_premium'=>'form','contact_editorial_split_premium'=>'split',
+            'contact_office_cards_premium'=>'offices','contact_visual_inquiry_premium'=>'inquiry',
+            'gallery_editorial_grid_premium'=>'editorial','gallery_asymmetric_premium'=>'asymmetric',
+            'gallery_story_tiles_premium'=>'tiles','gallery_image_rail_premium'=>'rail',
+            'location_photo_cards_premium'=>'cards','location_city_spotlight_premium'=>'spotlight',
+            'location_multi_office_premium'=>'offices','location_visual_directory_premium'=>'directory',
+        ];
+        $families = [
+            'stats_photo_metrics_premium'=>'stats','stats_editorial_numbers_premium'=>'stats',
+            'stats_image_panels_premium'=>'stats','stats_visual_mosaic_premium'=>'stats',
+            'trust_logo_story_premium'=>'trust','trust_image_proof_premium'=>'trust',
+            'trust_certification_cards_premium'=>'trust','trust_partner_showcase_premium'=>'trust',
+            'contact_image_form_premium'=>'contact','contact_editorial_split_premium'=>'contact',
+            'contact_office_cards_premium'=>'contact','contact_visual_inquiry_premium'=>'contact',
+            'gallery_editorial_grid_premium'=>'gallery','gallery_asymmetric_premium'=>'gallery',
+            'gallery_story_tiles_premium'=>'gallery','gallery_image_rail_premium'=>'gallery',
+            'location_photo_cards_premium'=>'locations','location_city_spotlight_premium'=>'locations',
+            'location_multi_office_premium'=>'locations','location_visual_directory_premium'=>'locations',
+        ];
+
+        $variant=$variants[$type]??'editorial';
+        $family=$families[$type]??'stats';
+
+        $resolved=strtolower((string)($block['resolvedTheme']??$block['theme']??''));
+        $primary=in_array($resolved,['primary','dark','midnight','obsidian','charcoal','navy'],true);
+
+        $palette=is_array($theme['palette']??null)?$theme['palette']:[];
+        $bg=$primary?(string)($palette['background']??'#243447'):'#ffffff';
+        $surface=$primary?(string)($palette['surface']??$palette['card']??'#30475E'):'#f7f7f5';
+        $text=$primary?'#f8fafc':'#172033';
+        $muted=$primary?'rgba(248,250,252,.76)':'#64748b';
+        $accent=(string)($palette['accent']??'#60A5FA');
+        $border=$primary?'rgba(248,250,252,.18)':'rgba(15,23,42,.12)';
+
+        $eyebrow=e((string)($block['eyebrow']??''));
+        $heading=e((string)($block['heading']??''));
+        $intro=e((string)($block['text']??''));
+        $button=e((string)($block['button_label']??'Learn more'));
+        $buttonUrl=e((string)($block['button_url']??'#'));
+        $secondary=e((string)($block['secondary_label']??'Contact us'));
+        $secondaryUrl=e((string)($block['secondary_url']??'#'));
+
+        $items=is_array($block['items']??null)?array_values($block['items']):[];
+        $cards='';
+        foreach($items as $i=>$item){
+            if(!is_array($item))continue;
+            $title=e((string)($item['title']??''));
+            $copy=e((string)($item['text']??''));
+            $label=e((string)($item['label']??str_pad((string)($i+1),2,'0',STR_PAD_LEFT)));
+            $image=e(self::staticAssetUrl((string)($item['image_url']??'/storage/cms-images/background/background-1.avif')));
+            $cards.="<article class='b3-card'><div class='b3-img'><img src='{$image}' alt='' loading='lazy' decoding='async'></div><div class='b3-copy'><span class='b3-label'>{$label}</span><span class='b3-title'>{$title}</span><span class='b3-text'>{$copy}</span></div></article>";
+        }
+
+        $id='cosmic-b3-'.substr(sha1($type.'|'.$heading.'|'.count($items)),0,12);
+
+        $css=<<<CSS
+<style>
+#{$id}{--b3-bg:{$bg};--b3-surface:{$surface};--b3-text:{$text};--b3-muted:{$muted};--b3-border:{$border};--b3-accent:{$accent};background:var(--b3-bg);color:var(--b3-text);padding:7rem 1.75rem}
+#{$id} .b3-shell{width:100%;max-width:88rem;margin:0 auto}
+#{$id} .b3-head{max-width:50rem;margin-bottom:3.5rem}
+#{$id} .b3-eyebrow{display:block;font-size:.75rem;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--b3-muted)}
+#{$id} .b3-heading{display:block;margin-top:1rem;font-size:clamp(2.4rem,5vw,4.6rem);line-height:.98;letter-spacing:-.045em;font-weight:700}
+#{$id} .b3-intro{display:block;margin-top:1.25rem;max-width:42rem;font-size:1.05rem;line-height:1.8;color:var(--b3-muted)}
+#{$id} .b3-grid{display:grid;gap:1.25rem}
+#{$id} .b3-card{position:relative;overflow:hidden;border:1px solid var(--b3-border);background:var(--b3-surface);border-radius:1.75rem}
+#{$id} .b3-img{overflow:hidden;min-height:15rem}
+#{$id} .b3-img img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .55s ease}
+#{$id} .b3-card:hover .b3-img img{transform:scale(1.035)}
+#{$id} .b3-copy{padding:1.5rem}
+#{$id} .b3-label{display:block;font-size:.72rem;letter-spacing:.18em;text-transform:uppercase;color:var(--b3-muted);margin-bottom:.75rem}
+#{$id} .b3-title{display:block;font-size:1.45rem;line-height:1.12;font-weight:700}
+#{$id} .b3-text{display:block;margin-top:.7rem;line-height:1.7;color:var(--b3-muted)}
+#{$id} .b3-actions{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:2.25rem}
+#{$id} .b3-primary,#{$id} .b3-secondary{display:inline-flex;min-height:50px;align-items:center;justify-content:center;border-radius:100px;padding:.75rem 1.5rem;font-weight:700}
+#{$id} .b3-primary{background:var(--b3-text);color:var(--b3-bg)}
+#{$id} .b3-secondary{border:1px solid var(--b3-border);color:var(--b3-text)}
+
+#{$id}.b3-editorial .b3-grid,#{$id}.b3-logos .b3-grid,#{$id}.b3-certifications .b3-grid,#{$id}.b3-offices .b3-grid,#{$id}.b3-cards .b3-grid,#{$id}.b3-directory .b3-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+#{$id}.b3-photo .b3-grid,#{$id}.b3-proof .b3-grid,#{$id}.b3-form .b3-grid,#{$id}.b3-split .b3-grid,#{$id}.b3-spotlight .b3-grid{grid-template-columns:1.25fr .75fr;align-items:stretch}
+#{$id}.b3-photo .b3-card:first-child,#{$id}.b3-proof .b3-card:first-child,#{$id}.b3-form .b3-card:first-child,#{$id}.b3-split .b3-card:first-child,#{$id}.b3-spotlight .b3-card:first-child{grid-row:1 / span 3;display:flex;flex-direction:column;height:100%}
+#{$id}.b3-photo .b3-card:first-child .b3-img,#{$id}.b3-proof .b3-card:first-child .b3-img,#{$id}.b3-form .b3-card:first-child .b3-img,#{$id}.b3-split .b3-card:first-child .b3-img,#{$id}.b3-spotlight .b3-card:first-child .b3-img{min-height:34rem;flex:1}
+
+#{$id}.b3-panels .b3-grid,#{$id}.b3-partners .b3-grid,#{$id}.b3-inquiry .b3-grid,#{$id}.b3-tiles .b3-grid{grid-template-columns:repeat(2,minmax(0,1fr));align-items:start}
+#{$id}.b3-panels .b3-card:nth-child(even),#{$id}.b3-inquiry .b3-card:nth-child(even){margin-top:1.5rem}
+
+#{$id}.b3-mosaic .b3-grid,#{$id}.b3-asymmetric .b3-grid{grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:7rem}
+#{$id}.b3-mosaic .b3-card,#{$id}.b3-asymmetric .b3-card{grid-column:span 5;grid-row:span 3}
+#{$id}.b3-mosaic .b3-card:nth-child(2),#{$id}.b3-asymmetric .b3-card:nth-child(2){grid-column:span 7;grid-row:span 3}
+#{$id}.b3-mosaic .b3-img,#{$id}.b3-asymmetric .b3-img{position:absolute;inset:0;height:100%;opacity:.35}
+#{$id}.b3-mosaic .b3-copy,#{$id}.b3-asymmetric .b3-copy{position:relative;z-index:2;display:flex;min-height:100%;flex-direction:column;justify-content:flex-end;padding:1.75rem}
+
+#{$id}.b3-rail .b3-grid{grid-auto-flow:column;grid-auto-columns:minmax(18rem,28rem);overflow-x:auto;padding-bottom:.5rem;scroll-snap-type:x proximity}
+#{$id}.b3-rail .b3-card{scroll-snap-align:start}
+#{$id}.b3-rail .b3-img{aspect-ratio:4/3}
+
+@media(max-width:900px){
+#{$id}.b3-photo .b3-card:first-child,#{$id}.b3-proof .b3-card:first-child,#{$id}.b3-form .b3-card:first-child,#{$id}.b3-split .b3-card:first-child,#{$id}.b3-spotlight .b3-card:first-child{grid-row:auto;height:auto}
+#{$id}.b3-photo .b3-card:first-child .b3-img,#{$id}.b3-proof .b3-card:first-child .b3-img,#{$id}.b3-form .b3-card:first-child .b3-img,#{$id}.b3-split .b3-card:first-child .b3-img,#{$id}.b3-spotlight .b3-card:first-child .b3-img{flex:none}
+#{$id}{padding:5rem 1.25rem}
+#{$id} .b3-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#{$id}.b3-mosaic .b3-grid,#{$id}.b3-asymmetric .b3-grid{grid-auto-rows:auto}
+#{$id}.b3-mosaic .b3-card,#{$id}.b3-asymmetric .b3-card{grid-column:auto;grid-row:auto;min-height:21rem}
+#{$id}.b3-rail .b3-grid{display:grid;grid-auto-flow:row;grid-auto-columns:auto}
+}
+@media(max-width:640px){
+#{$id}{padding:4rem 1rem}
+#{$id} .b3-heading{font-size:clamp(2.2rem,12vw,3.4rem)}
+#{$id} .b3-grid{grid-template-columns:1fr!important}
+#{$id}.b3-panels .b3-card:nth-child(even),#{$id}.b3-inquiry .b3-card:nth-child(even){margin-top:0}
+}
+#{$id} .b3-card,#{$id} .b3-copy{min-width:0;overflow-wrap:anywhere}
+</style>
+CSS;
+
+        return "<section id='{$id}' class='cosmic-b3 b3-".e($family)." b3-".e($variant)."'><div class='b3-shell'><div class='b3-head'><span class='b3-eyebrow'>{$eyebrow}</span><span class='b3-heading'>{$heading}</span><span class='b3-intro'>{$intro}</span></div><div class='b3-grid'>{$cards}</div><div class='b3-actions'><a class='b3-primary' href='{$buttonUrl}'>{$button}</a><a class='b3-secondary' href='{$secondaryUrl}'>{$secondary}</a></div></div>{$css}</section>";
+    }
+
+
+    private static function industryExpansionBatch4Html(string $type,array $block,array $theme): string
+    {
+        $variants = [
+            'restaurant_signature_dishes_premium'=>'dishes','restaurant_story_menu_premium'=>'story',
+            'restaurant_atmosphere_gallery_premium'=>'gallery','restaurant_reservation_cta_premium'=>'reservation',
+            'construction_project_cards_premium'=>'projects','construction_service_photos_premium'=>'services',
+            'construction_capability_split_premium'=>'capabilities','construction_site_progress_premium'=>'progress',
+            'dental_treatment_cards_premium'=>'treatments','dental_clinic_story_premium'=>'story',
+            'medical_care_pathways_premium'=>'pathways','medical_facility_showcase_premium'=>'facility',
+            'realestate_property_grid_premium'=>'properties','realestate_featured_listing_premium'=>'featured',
+            'realestate_neighborhood_cards_premium'=>'neighborhoods','realestate_agent_story_premium'=>'agent',
+            'hotel_room_collection_premium'=>'rooms','hotel_experience_cards_premium'=>'experiences',
+            'travel_destination_story_premium'=>'destination','travel_itinerary_visual_premium'=>'itinerary',
+        ];
+        $families = [
+            'restaurant_signature_dishes_premium'=>'restaurant','restaurant_story_menu_premium'=>'restaurant',
+            'restaurant_atmosphere_gallery_premium'=>'restaurant','restaurant_reservation_cta_premium'=>'restaurant',
+            'construction_project_cards_premium'=>'construction','construction_service_photos_premium'=>'construction',
+            'construction_capability_split_premium'=>'construction','construction_site_progress_premium'=>'construction',
+            'dental_treatment_cards_premium'=>'dental','dental_clinic_story_premium'=>'dental',
+            'medical_care_pathways_premium'=>'medical','medical_facility_showcase_premium'=>'medical',
+            'realestate_property_grid_premium'=>'realestate','realestate_featured_listing_premium'=>'realestate',
+            'realestate_neighborhood_cards_premium'=>'realestate','realestate_agent_story_premium'=>'realestate',
+            'hotel_room_collection_premium'=>'hotel','hotel_experience_cards_premium'=>'hotel',
+            'travel_destination_story_premium'=>'travel','travel_itinerary_visual_premium'=>'travel',
+        ];
+
+        $variant=$variants[$type]??'services';
+        $family=$families[$type]??'restaurant';
+        $resolved=strtolower((string)($block['resolvedTheme']??$block['theme']??''));
+        $primary=in_array($resolved,['primary','dark','midnight','obsidian','charcoal','navy'],true);
+
+        $palette=is_array($theme['palette']??null)?$theme['palette']:[];
+        $bg=$primary?(string)($palette['background']??'#243447'):'#ffffff';
+        $surface=$primary?(string)($palette['surface']??$palette['card']??'#30475E'):'#f7f7f5';
+        $text=$primary?'#f8fafc':'#172033';
+        $muted=$primary?'rgba(248,250,252,.76)':'#64748b';
+        $accent=(string)($palette['accent']??'#60A5FA');
+        $border=$primary?'rgba(248,250,252,.18)':'rgba(15,23,42,.12)';
+
+        $eyebrow=e((string)($block['eyebrow']??''));
+        $heading=e((string)($block['heading']??''));
+        $intro=e((string)($block['text']??''));
+        $button=e((string)($block['button_label']??'Learn more'));
+        $buttonUrl=e((string)($block['button_url']??'#'));
+        $secondary=e((string)($block['secondary_label']??'Get in touch'));
+        $secondaryUrl=e((string)($block['secondary_url']??'#'));
+        $items=is_array($block['items']??null)?array_values($block['items']):[];
+
+        $cards='';
+        foreach($items as $i=>$item){
+            if(!is_array($item))continue;
+            $title=e((string)($item['title']??''));
+            $copy=e((string)($item['text']??''));
+            $label=e((string)($item['label']??str_pad((string)($i+1),2,'0',STR_PAD_LEFT)));
+            $image=e(self::staticAssetUrl((string)($item['image_url']??'/storage/cms-images/background/background-1.avif')));
+            $cards.="<article class='b4-card'><div class='b4-img'><img src='{$image}' alt='' loading='lazy' decoding='async'></div><div class='b4-copy'><span class='b4-label'>{$label}</span><span class='b4-title'>{$title}</span><span class='b4-text'>{$copy}</span></div></article>";
+        }
+
+        $id='cosmic-b4-'.substr(sha1($type.'|'.$heading.'|'.count($items)),0,12);
+
+        $css=<<<CSS
+<style>
+#{$id}{--b4-bg:{$bg};--b4-surface:{$surface};--b4-text:{$text};--b4-muted:{$muted};--b4-border:{$border};--b4-accent:{$accent};background:var(--b4-bg);color:var(--b4-text);padding:7rem 1.75rem}
+#{$id} .b4-shell{width:100%;max-width:88rem;margin:0 auto}
+#{$id} .b4-head{max-width:52rem;margin-bottom:3.5rem}
+#{$id} .b4-eyebrow{display:block;font-size:.75rem;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--b4-muted)}
+#{$id} .b4-heading{display:block;margin-top:1rem;font-size:clamp(2.4rem,5vw,4.6rem);line-height:.98;letter-spacing:-.045em;font-weight:700}
+#{$id} .b4-intro{display:block;margin-top:1.25rem;max-width:44rem;font-size:1.05rem;line-height:1.8;color:var(--b4-muted)}
+#{$id} .b4-grid{display:grid;gap:1.25rem}
+#{$id} .b4-card{position:relative;overflow:hidden;border:1px solid var(--b4-border);background:var(--b4-surface);border-radius:1.75rem}
+#{$id} .b4-img{overflow:hidden;min-height:16rem}
+#{$id} .b4-img img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .55s ease}
+#{$id} .b4-card:hover .b4-img img{transform:scale(1.035)}
+#{$id} .b4-copy{padding:1.5rem}
+#{$id} .b4-label{display:block;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--b4-muted);margin-bottom:.75rem}
+#{$id} .b4-title{display:block;font-size:1.45rem;line-height:1.12;font-weight:700}
+#{$id} .b4-text{display:block;margin-top:.7rem;line-height:1.7;color:var(--b4-muted)}
+#{$id} .b4-actions{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:2.25rem}
+#{$id} .b4-primary,#{$id} .b4-secondary{display:inline-flex;min-height:50px;align-items:center;justify-content:center;border-radius:100px;padding:.75rem 1.5rem;font-weight:700}
+#{$id} .b4-primary{background:var(--b4-text);color:var(--b4-bg)}
+#{$id} .b4-secondary{border:1px solid var(--b4-border);color:var(--b4-text)}
+#{$id}.b4-dishes .b4-grid,#{$id}.b4-projects .b4-grid,#{$id}.b4-treatments .b4-grid,#{$id}.b4-properties .b4-grid,#{$id}.b4-rooms .b4-grid,#{$id}.b4-experiences .b4-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+#{$id}.b4-dishes .b4-img,#{$id}.b4-treatments .b4-img,#{$id}.b4-properties .b4-img,#{$id}.b4-rooms .b4-img{aspect-ratio:4/5}
+#{$id}.b4-story .b4-grid,#{$id}.b4-capabilities .b4-grid,#{$id}.b4-featured .b4-grid,#{$id}.b4-agent .b4-grid,#{$id}.b4-destination .b4-grid{grid-template-columns:1.25fr .75fr;align-items:stretch}
+#{$id}.b4-story .b4-card:first-child,#{$id}.b4-capabilities .b4-card:first-child,#{$id}.b4-featured .b4-card:first-child,#{$id}.b4-agent .b4-card:first-child,#{$id}.b4-destination .b4-card:first-child{grid-row:1 / span 3;display:flex;flex-direction:column;height:100%}
+#{$id}.b4-story .b4-card:first-child .b4-img,#{$id}.b4-capabilities .b4-card:first-child .b4-img,#{$id}.b4-featured .b4-card:first-child .b4-img,#{$id}.b4-agent .b4-card:first-child .b4-img,#{$id}.b4-destination .b4-card:first-child .b4-img{min-height:34rem;flex:1}
+#{$id}.b4-gallery .b4-grid,#{$id}.b4-progress .b4-grid{grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:7rem}
+#{$id}.b4-gallery .b4-card,#{$id}.b4-progress .b4-card{grid-column:span 5;grid-row:span 3}
+#{$id}.b4-gallery .b4-card:nth-child(2),#{$id}.b4-progress .b4-card:nth-child(2){grid-column:span 7;grid-row:span 3}
+#{$id}.b4-gallery .b4-img,#{$id}.b4-progress .b4-img{position:absolute;inset:0;height:100%;opacity:.42}
+#{$id}.b4-gallery .b4-copy,#{$id}.b4-progress .b4-copy{position:relative;z-index:2;display:flex;min-height:100%;flex-direction:column;justify-content:flex-end;padding:1.75rem}
+#{$id}.b4-reservation .b4-grid,#{$id}.b4-services .b4-grid,#{$id}.b4-pathways .b4-grid,#{$id}.b4-facility .b4-grid,#{$id}.b4-neighborhoods .b4-grid,#{$id}.b4-itinerary .b4-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#{$id}.b4-reservation .b4-card,#{$id}.b4-facility .b4-card{min-height:27rem}
+#{$id}.b4-reservation .b4-img,#{$id}.b4-facility .b4-img{position:absolute;inset:0;height:100%}
+#{$id}.b4-reservation .b4-card:after,#{$id}.b4-facility .b4-card:after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(2,6,23,.86),rgba(2,6,23,.08))}
+#{$id}.b4-reservation .b4-copy,#{$id}.b4-facility .b4-copy{position:absolute;z-index:2;left:0;right:0;bottom:0;color:#fff}
+#{$id}.b4-reservation .b4-text,#{$id}.b4-facility .b4-text,#{$id}.b4-reservation .b4-label,#{$id}.b4-facility .b4-label{color:rgba(255,255,255,.72)}
+@media(max-width:900px){
+#{$id}.b4-story .b4-card:first-child,#{$id}.b4-capabilities .b4-card:first-child,#{$id}.b4-featured .b4-card:first-child,#{$id}.b4-agent .b4-card:first-child,#{$id}.b4-destination .b4-card:first-child{grid-row:auto;height:auto}
+#{$id}.b4-story .b4-card:first-child .b4-img,#{$id}.b4-capabilities .b4-card:first-child .b4-img,#{$id}.b4-featured .b4-card:first-child .b4-img,#{$id}.b4-agent .b4-card:first-child .b4-img,#{$id}.b4-destination .b4-card:first-child .b4-img{flex:none}
+#{$id}{padding:5rem 1.25rem}
+#{$id} .b4-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#{$id}.b4-gallery .b4-grid,#{$id}.b4-progress .b4-grid{grid-auto-rows:auto}
+#{$id}.b4-gallery .b4-card,#{$id}.b4-progress .b4-card{grid-column:auto;grid-row:auto;min-height:21rem}
+}
+@media(max-width:640px){
+#{$id}{padding:4rem 1rem}
+#{$id} .b4-heading{font-size:clamp(2.2rem,12vw,3.4rem)}
+#{$id} .b4-grid{grid-template-columns:1fr!important}
+}
+#{$id} .b4-card,#{$id} .b4-copy{min-width:0;overflow-wrap:anywhere}
+</style>
+CSS;
+
+        return "<section id='{$id}' class='cosmic-b4 b4-".e($family)." b4-".e($variant)."'><div class='b4-shell'><div class='b4-head'><span class='b4-eyebrow'>{$eyebrow}</span><span class='b4-heading'>{$heading}</span><span class='b4-intro'>{$intro}</span></div><div class='b4-grid'>{$cards}</div><div class='b4-actions'><a class='b4-primary' href='{$buttonUrl}'>{$button}</a><a class='b4-secondary' href='{$secondaryUrl}'>{$secondary}</a></div></div>{$css}</section>";
+    }
+
+
+    private static function premiumExpansionBatch5Html(string $type,array $block,array $theme): string
+    {
+        $variants = [
+            'content_editorial_image_stack_premium'=>'stack','content_asymmetric_story_premium'=>'asymmetric',
+            'content_media_manifesto_premium'=>'manifesto','content_visual_quote_premium'=>'quote',
+            'features_overlap_cards_premium'=>'overlap','features_fullbleed_panels_premium'=>'fullbleed',
+            'features_image_index_premium'=>'index','features_editorial_mosaic_premium'=>'mosaic',
+            'services_fullbleed_overlay_premium'=>'fullbleed','services_staggered_media_premium'=>'staggered',
+            'services_image_accordion_premium'=>'accordion','services_visual_directory_premium'=>'directory',
+            'portfolio_fullbleed_projects_premium'=>'fullbleed','portfolio_staggered_gallery_premium'=>'staggered',
+            'portfolio_story_index_premium'=>'index','portfolio_media_ledger_premium'=>'ledger',
+            'proof_case_story_premium'=>'case','proof_metric_gallery_premium'=>'metrics',
+            'brand_value_cards_premium'=>'values','brand_visual_principles_premium'=>'principles',
+        ];
+        $families = [
+            'content_editorial_image_stack_premium'=>'content','content_asymmetric_story_premium'=>'content',
+            'content_media_manifesto_premium'=>'content','content_visual_quote_premium'=>'content',
+            'features_overlap_cards_premium'=>'features','features_fullbleed_panels_premium'=>'features',
+            'features_image_index_premium'=>'features','features_editorial_mosaic_premium'=>'features',
+            'services_fullbleed_overlay_premium'=>'services','services_staggered_media_premium'=>'services',
+            'services_image_accordion_premium'=>'services','services_visual_directory_premium'=>'services',
+            'portfolio_fullbleed_projects_premium'=>'portfolio','portfolio_staggered_gallery_premium'=>'portfolio',
+            'portfolio_story_index_premium'=>'portfolio','portfolio_media_ledger_premium'=>'portfolio',
+            'proof_case_story_premium'=>'proof','proof_metric_gallery_premium'=>'proof',
+            'brand_value_cards_premium'=>'brand','brand_visual_principles_premium'=>'brand',
+        ];
+
+        $variant=$variants[$type]??'stack';
+        $family=$families[$type]??'content';
+        $resolved=strtolower((string)($block['resolvedTheme']??$block['theme']??''));
+        $primary=in_array($resolved,['primary','dark','midnight','obsidian','charcoal','navy'],true);
+
+        $palette=is_array($theme['palette']??null)?$theme['palette']:[];
+        $bg=$primary?(string)($palette['background']??'#243447'):'#ffffff';
+        $surface=$primary?(string)($palette['surface']??$palette['card']??'#30475E'):'#f7f7f5';
+        $text=$primary?'#f8fafc':'#172033';
+        $muted=$primary?'rgba(248,250,252,.76)':'#64748b';
+        $accent=(string)($palette['accent']??'#60A5FA');
+        $border=$primary?'rgba(248,250,252,.18)':'rgba(15,23,42,.12)';
+
+        $eyebrow=e((string)($block['eyebrow']??''));
+        $heading=e((string)($block['heading']??''));
+        $intro=e((string)($block['text']??''));
+        $button=e((string)($block['button_label']??'Learn more'));
+        $buttonUrl=e((string)($block['button_url']??'#'));
+        $secondary=e((string)($block['secondary_label']??'View details'));
+        $secondaryUrl=e((string)($block['secondary_url']??'#'));
+        $items=is_array($block['items']??null)?array_values($block['items']):[];
+
+        $cards='';
+        foreach($items as $i=>$item){
+            if(!is_array($item))continue;
+            $title=e((string)($item['title']??''));
+            $copy=e((string)($item['text']??''));
+            $label=e((string)($item['label']??str_pad((string)($i+1),2,'0',STR_PAD_LEFT)));
+            $image=e(self::staticAssetUrl((string)($item['image_url']??'/storage/cms-images/background/background-1.avif')));
+            $cards.="<article class='b5-card'><div class='b5-img'><img src='{$image}' alt='' loading='lazy' decoding='async'></div><div class='b5-copy'><span class='b5-label'>{$label}</span><span class='b5-title'>{$title}</span><span class='b5-text'>{$copy}</span></div></article>";
+        }
+
+        $id='cosmic-b5-'.substr(sha1($type.'|'.$heading.'|'.count($items)),0,12);
+
+        $css=<<<CSS
+<style>
+#{$id}{--b5-bg:{$bg};--b5-surface:{$surface};--b5-text:{$text};--b5-muted:{$muted};--b5-border:{$border};--b5-accent:{$accent};background:var(--b5-bg);color:var(--b5-text);padding:7rem 1.75rem}
+#{$id} .b5-shell{width:100%;max-width:88rem;margin:0 auto}
+#{$id} .b5-head{max-width:52rem;margin-bottom:3.5rem}
+#{$id} .b5-eyebrow{display:block;font-size:.75rem;font-weight:500;letter-spacing:.28em;text-transform:uppercase;color:var(--b5-muted)}
+#{$id} .b5-heading{display:block;margin-top:1rem;font-size:clamp(2.5rem,5vw,4.8rem);line-height:.96;letter-spacing:-.045em;font-weight:700}
+#{$id} .b5-intro{display:block;margin-top:1.25rem;max-width:44rem;font-size:1.05rem;line-height:1.8;color:var(--b5-muted)}
+#{$id} .b5-grid{display:grid;gap:1.25rem}
+#{$id} .b5-card{position:relative;overflow:hidden;border:1px solid var(--b5-border);background:var(--b5-surface);border-radius:1.75rem}
+#{$id} .b5-img{overflow:hidden;min-height:16rem}
+#{$id} .b5-img img{display:block;width:100%;height:100%;object-fit:cover;transition:transform .55s ease}
+#{$id} .b5-card:hover .b5-img img{transform:scale(1.035)}
+#{$id} .b5-copy{padding:1.5rem}
+#{$id} .b5-label{display:block;font-size:.72rem;letter-spacing:.16em;text-transform:uppercase;color:var(--b5-muted);margin-bottom:.75rem}
+#{$id} .b5-title{display:block;font-size:1.45rem;line-height:1.12;font-weight:700}
+#{$id} .b5-text{display:block;margin-top:.7rem;line-height:1.7;color:var(--b5-muted)}
+#{$id} .b5-actions{display:flex;gap:.8rem;flex-wrap:wrap;margin-top:2.25rem}
+#{$id} .b5-primary,#{$id} .b5-secondary{display:inline-flex;min-height:50px;align-items:center;justify-content:center;border-radius:100px;padding:.75rem 1.5rem;font-weight:700}
+#{$id} .b5-primary{background:var(--b5-text);color:var(--b5-bg)}
+#{$id} .b5-secondary{border:1px solid var(--b5-border);color:var(--b5-text)}
+
+#{$id}.b5-stack .b5-grid,#{$id}.b5-ledger .b5-grid{grid-template-columns:1fr}
+#{$id}.b5-stack .b5-card,#{$id}.b5-ledger .b5-card{display:grid;grid-template-columns:minmax(18rem,.8fr) 1.2fr;align-items:center}
+#{$id}.b5-stack .b5-card:nth-child(even),#{$id}.b5-ledger .b5-card:nth-child(even){grid-template-columns:1.2fr minmax(18rem,.8fr)}
+#{$id}.b5-stack .b5-card:nth-child(even) .b5-img,#{$id}.b5-ledger .b5-card:nth-child(even) .b5-img{order:2}
+
+#{$id}.b5-asymmetric .b5-grid,#{$id}.b5-mosaic .b5-grid,#{$id}.b5-staggered .b5-grid{grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:7rem}
+#{$id}.b5-asymmetric .b5-card,#{$id}.b5-mosaic .b5-card,#{$id}.b5-staggered .b5-card{grid-column:span 5;grid-row:span 3}
+#{$id}.b5-asymmetric .b5-card:nth-child(2),#{$id}.b5-mosaic .b5-card:nth-child(2),#{$id}.b5-staggered .b5-card:nth-child(2){grid-column:span 7;grid-row:span 3}
+#{$id}.b5-asymmetric .b5-img,#{$id}.b5-mosaic .b5-img,#{$id}.b5-staggered .b5-img{position:absolute;inset:0;height:100%;opacity:.38}
+#{$id}.b5-asymmetric .b5-copy,#{$id}.b5-mosaic .b5-copy,#{$id}.b5-staggered .b5-copy{position:relative;z-index:2;display:flex;min-height:100%;flex-direction:column;justify-content:flex-end;padding:1.75rem}
+
+#{$id}.b5-manifesto .b5-grid,#{$id}.b5-quote .b5-grid,#{$id}.b5-fullbleed .b5-grid,#{$id}.b5-case .b5-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+#{$id}.b5-manifesto .b5-card,#{$id}.b5-quote .b5-card,#{$id}.b5-fullbleed .b5-card,#{$id}.b5-case .b5-card{min-height:28rem}
+#{$id}.b5-manifesto .b5-img,#{$id}.b5-quote .b5-img,#{$id}.b5-fullbleed .b5-img,#{$id}.b5-case .b5-img{position:absolute;inset:0;height:100%}
+#{$id}.b5-manifesto .b5-card:after,#{$id}.b5-quote .b5-card:after,#{$id}.b5-fullbleed .b5-card:after,#{$id}.b5-case .b5-card:after{content:"";position:absolute;inset:0;background:linear-gradient(to top,rgba(2,6,23,.86),rgba(2,6,23,.06))}
+#{$id}.b5-manifesto .b5-copy,#{$id}.b5-quote .b5-copy,#{$id}.b5-fullbleed .b5-copy,#{$id}.b5-case .b5-copy{position:absolute;z-index:2;left:0;right:0;bottom:0;color:#fff}
+#{$id}.b5-manifesto .b5-text,#{$id}.b5-quote .b5-text,#{$id}.b5-fullbleed .b5-text,#{$id}.b5-case .b5-text,#{$id}.b5-manifesto .b5-label,#{$id}.b5-quote .b5-label,#{$id}.b5-fullbleed .b5-label,#{$id}.b5-case .b5-label{color:rgba(255,255,255,.72)}
+
+#{$id}.b5-overlap .b5-grid,#{$id}.b5-index .b5-grid,#{$id}.b5-directory .b5-grid,#{$id}.b5-metrics .b5-grid,#{$id}.b5-values .b5-grid,#{$id}.b5-principles .b5-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+#{$id}.b5-overlap .b5-grid{align-items:start}#{$id}.b5-overlap .b5-card:nth-child(even){margin-top:1.5rem}
+#{$id}.b5-index .b5-img,#{$id}.b5-directory .b5-img{aspect-ratio:4/5}
+
+#{$id}.b5-accordion .b5-grid{grid-template-columns:1fr}
+#{$id}.b5-accordion .b5-card{display:grid;grid-template-columns:minmax(15rem,.7fr) 1.3fr;align-items:center}
+#{$id}.b5-accordion .b5-card:not(:first-child) .b5-img{max-height:13rem}
+
+@media(max-width:900px){
+#{$id}{padding:5rem 1.25rem}
+#{$id} .b5-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+#{$id}.b5-asymmetric .b5-grid,#{$id}.b5-mosaic .b5-grid,#{$id}.b5-staggered .b5-grid{grid-auto-rows:auto}
+#{$id}.b5-asymmetric .b5-card,#{$id}.b5-mosaic .b5-card,#{$id}.b5-staggered .b5-card{grid-column:auto;grid-row:auto;min-height:21rem}
+}
+@media(max-width:640px){
+#{$id}{padding:4rem 1rem}
+#{$id} .b5-heading{font-size:clamp(2.2rem,12vw,3.4rem)}
+#{$id} .b5-grid{grid-template-columns:1fr!important}#{$id}.b5-overlap .b5-card:nth-child(even){margin-top:0}
+#{$id}.b5-stack .b5-card,#{$id}.b5-ledger .b5-card,#{$id}.b5-accordion .b5-card{display:block}
+#{$id}.b5-overlap .b5-card:nth-child(even){transform:none}
+}
+#{$id} .b5-card,#{$id} .b5-copy{min-width:0;overflow-wrap:anywhere}
+</style>
+CSS;
+
+        return "<section id='{$id}' class='cosmic-b5 b5-".e($family)." b5-".e($variant)."'><div class='b5-shell'><div class='b5-head'><span class='b5-eyebrow'>{$eyebrow}</span><span class='b5-heading'>{$heading}</span><span class='b5-intro'>{$intro}</span></div><div class='b5-grid'>{$cards}</div><div class='b5-actions'><a class='b5-primary' href='{$buttonUrl}'>{$button}</a><a class='b5-secondary' href='{$secondaryUrl}'>{$secondary}</a></div></div>{$css}</section>";
+    }
+
 
 }

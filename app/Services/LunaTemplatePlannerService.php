@@ -37,6 +37,7 @@ SELECTION RULES
 - Prefer a clear visual rhythm: alternate dense information with editorial/media/proof moments; avoid card-on-card-on-card pacing.
 - A template should normally contain one hero, useful proof, and a conversion close.
 - If the prompt explicitly asks for video, slider, parallax, editorial, minimal, luxury, bento or another presentation, strongly honor that signal when industry-compatible.
+- hero_media_mode describes the opening hero media contract. For image, slider, or video hero templates, respect overlay_header_recommended and overlay_header_default as part of the template design rather than treating header overlay as a separate manual choice.
 - Never return a key that is not in the candidate metadata.
 TXT;
 
@@ -72,10 +73,15 @@ TXT;
             throw new RuntimeException("Template [{$key}] has no registered Spark schemas.");
         }
 
+        $metadata = app(TemplateMetadataService::class)->enrich($template);
+
         return [
             'template_key' => $key,
             'template_name' => (string) ($template['name'] ?? $key),
             'sections' => $sections,
+            'hero_media_mode' => (string) ($metadata['hero_media_mode'] ?? 'none'),
+            'overlay_header_recommended' => (bool) ($metadata['overlay_header_recommended'] ?? false),
+            'overlay_header_default' => (bool) ($metadata['overlay_header_default'] ?? false),
             'planner' => 'luna_template_metadata',
             'metadata_candidates' => count($candidates),
         ];

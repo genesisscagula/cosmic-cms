@@ -55,7 +55,7 @@ export function HeroAiConversationBlock({ block, onUpdate, globalTheme }) {
             <div className="relative mx-auto grid w-full max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-16">
                 <div>
                     <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${theme.sub}`} onSave={(eyebrow)=>onUpdate({eyebrow})}/>
-                    <EditableText value={data.heading} className={`mt-5 block text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`} onSave={(heading)=>onUpdate({heading})}/>
+                    <EditableText value={data.heading} cosmicType="h1" className={`mt-5 block text-4xl font-semibold leading-[1] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`} onSave={(heading)=>onUpdate({heading})}/>
                     <EditableText value={data.text} isTextArea className={`mt-6 block max-w-xl text-base leading-7 sm:text-lg sm:leading-8 ${theme.sub}`} onSave={(text)=>onUpdate({text})}/>
                     <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                         <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label,primary_url)=>onUpdate({primary_label,primary_url})}/>

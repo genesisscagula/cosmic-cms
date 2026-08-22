@@ -222,6 +222,8 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
     return (
         <section
             data-cosmic-media-banner="true"
+            data-cosmic-slider-active-index={activeIndex}
+            data-cosmic-editable-hero-media="true"
             className="relative isolate overflow-hidden"
             onClick={handleGalleryEdit}
             onMouseEnter={() => setPaused(true)}
@@ -291,15 +293,13 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                         type="button"
                         onClick={() => setActiveIndex(index)}
                         className={`h-2.5 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white ${index === activeIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/70'}`}
-                        aria-label={`Show slide ${index + 1}`}
+                        data-cosmic-slider-nav="dot" aria-label={`Show slide ${index + 1}`}
                         aria-current={index === activeIndex ? 'true' : undefined}
                     />
                 ))}
             </div>
 
             <div className="absolute bottom-16 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 sm:bottom-6">
-                <button type="button" data-cosmic-builder-only="true" onClick={() => openEditor(activeIndex)} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit slide</button>
-                <button type="button" data-cosmic-edit-control onClick={() => galleryRef.current?.openEditor()} className="rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit images</button>
                 <button type="button" data-cosmic-builder-only="true" onClick={addSlide} className="cosmic-hero-slider-add rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Add slide</button>
             </div>
 
@@ -313,8 +313,8 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                         {floatingCta.text}
                     </a>
                 )}
-                <button type="button" onClick={previous} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" aria-label="Previous slide">←</button>
-                <button type="button" onClick={next} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" aria-label="Next slide">→</button>
+                <button type="button" onClick={previous} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" data-cosmic-slider-nav="previous" aria-label="Previous slide">←</button>
+                <button type="button" onClick={next} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" data-cosmic-slider-nav="next" aria-label="Next slide">→</button>
             </div>
 
             <EditableImageGallery ref={galleryRef} websiteId={websiteId} images={slides.map((slide)=>slide.image_url).filter(Boolean)} maxItems={12} title="Hero slider images" onSave={saveGalleryImages} />

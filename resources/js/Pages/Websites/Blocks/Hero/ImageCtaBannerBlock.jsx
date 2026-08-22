@@ -106,7 +106,7 @@ export function ImageCtaBannerBlock({ block, blockIndex, onUpdate, globalTheme }
                         onSave={(eyebrow) => onUpdate({ eyebrow })}
                     />
                     <EditableText
-                        value={data.heading}
+                        value={data.heading} cosmicType="h1"
                         className={`mt-4 block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${mediaStyle.heading}`}
                         onSave={(heading) => onUpdate({ heading })}
                     />

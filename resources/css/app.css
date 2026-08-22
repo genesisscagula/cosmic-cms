@@ -5887,6 +5887,682 @@ body .cosmic-start-quick-idea.rounded-full.border {
     background:rgba(255,255,255,.07) !important; color:#ffffff !important; -webkit-text-fill-color:#ffffff !important;
 }
 
+
+/* ==================================================================
+   Cosmic Typography Core — centralized semantic type contract
+   Batch 1: tokens + reusable roles only. Existing Sparks migrate in Batch 2.
+   Global variables may be changed once at the website root. A section can
+   override only the --cosmic-local-* variables when Luna receives a specific
+   section request, leaving the global system untouched.
+   ================================================================== */
+:root {
+    --cosmic-font-display: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    --cosmic-font-body: Manrope, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+
+    --cosmic-type-h1-size: clamp(3rem, 6vw, 5.75rem);
+    --cosmic-type-h1-line: .96;
+    --cosmic-type-h1-weight: 700;
+    --cosmic-type-h1-tracking: -.05em;
+
+    --cosmic-type-h2-size: clamp(2.25rem, 4.05vw, 4rem);
+    --cosmic-type-h2-line: 1;
+    --cosmic-type-h2-weight: 700;
+    --cosmic-type-h2-tracking: -.045em;
+
+    --cosmic-type-h3-size: clamp(1.35rem, 2vw, 1.75rem);
+    --cosmic-type-h3-line: 1.08;
+    --cosmic-type-h3-weight: 700;
+    --cosmic-type-h3-tracking: -.025em;
+
+    --cosmic-type-h4-size: clamp(1.125rem, 1.5vw, 1.35rem);
+    --cosmic-type-h4-line: 1.15;
+    --cosmic-type-h4-weight: 700;
+    --cosmic-type-h4-tracking: -.015em;
+
+    --cosmic-type-h5-size: clamp(1rem, 1.2vw, 1.125rem);
+    --cosmic-type-h5-line: 1.25;
+    --cosmic-type-h5-weight: 700;
+    --cosmic-type-h5-tracking: -.01em;
+
+    --cosmic-type-h6-size: clamp(.875rem, 1vw, 1rem);
+    --cosmic-type-h6-line: 1.3;
+    --cosmic-type-h6-weight: 700;
+    --cosmic-type-h6-tracking: 0em;
+
+    --cosmic-type-card-title-size: clamp(1.25rem, 1.65vw, 1.65rem);
+    --cosmic-type-card-title-line: 1.12;
+    --cosmic-type-card-title-weight: 700;
+    --cosmic-type-card-title-tracking: -.025em;
+
+    --cosmic-type-card-body-size: .975rem;
+    --cosmic-type-card-body-line: 1.65;
+    --cosmic-type-card-body-weight: 400;
+    --cosmic-type-card-body-tracking: 0em;
+    --cosmic-card-icon-size: 2.75rem;
+    --cosmic-card-icon-tile: 3.25rem;
+
+    --cosmic-type-lead-size: clamp(1.05rem, 1.7vw, 1.25rem);
+    --cosmic-type-lead-line: 1.7;
+    --cosmic-type-lead-weight: 400;
+    --cosmic-type-lead-tracking: 0em;
+
+    --cosmic-type-body-size: 1rem;
+    --cosmic-type-body-line: 1.75;
+    --cosmic-type-body-weight: 400;
+    --cosmic-type-body-tracking: 0em;
+
+    --cosmic-type-eyebrow-size: .75rem;
+    --cosmic-type-eyebrow-line: 1.35;
+    --cosmic-type-eyebrow-weight: 500;
+    --cosmic-type-eyebrow-tracking: .28em;
+
+    --cosmic-type-small-size: .875rem;
+    --cosmic-type-small-line: 1.55;
+    --cosmic-type-small-weight: 400;
+    --cosmic-type-small-tracking: 0em;
+
+    --cosmic-type-badge-size: .75rem;
+    --cosmic-type-badge-line: 1.25;
+    --cosmic-type-badge-weight: 600;
+    --cosmic-type-badge-tracking: 0em;
+
+    --cosmic-type-meta-size: .75rem;
+    --cosmic-type-meta-line: 1.4;
+    --cosmic-type-meta-weight: 500;
+    --cosmic-type-meta-tracking: .12em;
+
+    --cosmic-type-stat-title-size: clamp(1.1rem, 1.35vw, 1.35rem);
+    --cosmic-type-stat-title-line: 1.18;
+    --cosmic-type-stat-title-weight: 700;
+    --cosmic-type-stat-title-tracking: -.015em;
+
+    --cosmic-type-button-size: .9rem;
+    --cosmic-type-button-line: 1.25;
+    --cosmic-type-button-weight: 700;
+    --cosmic-type-button-tracking: 0em;
+}
+
+/* Reusable semantic roles. Local section overrides use the same role without
+   creating a second component or hard-coded selector. */
+.cosmic-type-h1,[data-cosmic-type="h1"] {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display));
+    font-size: var(--cosmic-local-h1-size, var(--cosmic-type-h1-size));
+    line-height: var(--cosmic-local-h1-line, var(--cosmic-type-h1-line));
+    font-weight: var(--cosmic-local-h1-weight, var(--cosmic-type-h1-weight));
+    letter-spacing: var(--cosmic-local-h1-tracking, var(--cosmic-type-h1-tracking));
+}
+.cosmic-type-h2,[data-cosmic-type="h2"] {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display));
+    font-size: var(--cosmic-local-h2-size, var(--cosmic-type-h2-size));
+    line-height: var(--cosmic-local-h2-line, var(--cosmic-type-h2-line));
+    font-weight: var(--cosmic-local-h2-weight, var(--cosmic-type-h2-weight));
+    letter-spacing: var(--cosmic-local-h2-tracking, var(--cosmic-type-h2-tracking));
+}
+.cosmic-type-h3,[data-cosmic-type="h3"] {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display));
+    font-size: var(--cosmic-local-h3-size, var(--cosmic-type-h3-size));
+    line-height: var(--cosmic-local-h3-line, var(--cosmic-type-h3-line));
+    font-weight: var(--cosmic-local-h3-weight, var(--cosmic-type-h3-weight));
+    letter-spacing: var(--cosmic-local-h3-tracking, var(--cosmic-type-h3-tracking));
+}
+.cosmic-type-h4,[data-cosmic-type="h4"] {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display));
+    font-size: var(--cosmic-local-h4-size, var(--cosmic-type-h4-size));
+    line-height: var(--cosmic-local-h4-line, var(--cosmic-type-h4-line));
+    font-weight: var(--cosmic-local-h4-weight, var(--cosmic-type-h4-weight));
+    letter-spacing: var(--cosmic-local-h4-tracking, var(--cosmic-type-h4-tracking));
+}
+.cosmic-type-h5,[data-cosmic-type="h5"] {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display));
+    font-size: var(--cosmic-local-h5-size, var(--cosmic-type-h5-size));
+    line-height: var(--cosmic-local-h5-line, var(--cosmic-type-h5-line));
+    font-weight: var(--cosmic-local-h5-weight, var(--cosmic-type-h5-weight));
+    letter-spacing: var(--cosmic-local-h5-tracking, var(--cosmic-type-h5-tracking));
+}
+.cosmic-type-h6,[data-cosmic-type="h6"] {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display));
+    font-size: var(--cosmic-local-h6-size, var(--cosmic-type-h6-size));
+    line-height: var(--cosmic-local-h6-line, var(--cosmic-type-h6-line));
+    font-weight: var(--cosmic-local-h6-weight, var(--cosmic-type-h6-weight));
+    letter-spacing: var(--cosmic-local-h6-tracking, var(--cosmic-type-h6-tracking));
+}
+
+[data-cosmic-card-icon] {
+    width: var(--cosmic-local-card-icon-tile, var(--cosmic-card-icon-tile));
+    height: var(--cosmic-local-card-icon-tile, var(--cosmic-card-icon-tile));
+    font-size: var(--cosmic-local-card-icon-size, var(--cosmic-card-icon-size));
+}
+[data-cosmic-card-icon] [contenteditable],
+[data-cosmic-card-icon] .cosmic-editable-text { font-size: inherit !important; line-height: 1 !important; }
+
+.cosmic-type-card-title,[data-cosmic-type="card-title"] {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display));
+    font-size: var(--cosmic-local-card-title-size, var(--cosmic-type-card-title-size)) !important;
+    line-height: var(--cosmic-local-card-title-line, var(--cosmic-type-card-title-line)) !important;
+    font-weight: var(--cosmic-local-card-title-weight, var(--cosmic-type-card-title-weight));
+    letter-spacing: var(--cosmic-local-card-title-tracking, var(--cosmic-type-card-title-tracking));
+}
+.cosmic-type-card-body,[data-cosmic-type="card-body"] {
+    font-family: var(--cosmic-local-font-body, var(--cosmic-font-body));
+    font-size: var(--cosmic-local-card-body-size, var(--cosmic-type-card-body-size));
+    line-height: var(--cosmic-local-card-body-line, var(--cosmic-type-card-body-line));
+    font-weight: var(--cosmic-local-card-body-weight, var(--cosmic-type-card-body-weight));
+    letter-spacing: var(--cosmic-local-card-body-tracking, var(--cosmic-type-card-body-tracking));
+}
+.cosmic-type-badge,[data-cosmic-type="badge"] {
+    font-family: var(--cosmic-local-font-body, var(--cosmic-font-body));
+    font-size: var(--cosmic-local-badge-size, var(--cosmic-type-badge-size)) !important;
+    line-height: var(--cosmic-local-badge-line, var(--cosmic-type-badge-line)) !important;
+    font-weight: var(--cosmic-local-badge-weight, var(--cosmic-type-badge-weight));
+    letter-spacing: var(--cosmic-local-badge-tracking, var(--cosmic-type-badge-tracking));
+}
+.cosmic-type-meta,[data-cosmic-type="meta"] {
+    font-family: var(--cosmic-local-font-body, var(--cosmic-font-body));
+    font-size: var(--cosmic-local-meta-size, var(--cosmic-type-meta-size)) !important;
+    line-height: var(--cosmic-local-meta-line, var(--cosmic-type-meta-line)) !important;
+    font-weight: var(--cosmic-local-meta-weight, var(--cosmic-type-meta-weight));
+    letter-spacing: var(--cosmic-local-meta-tracking, var(--cosmic-type-meta-tracking));
+}
+.cosmic-type-stat-title,[data-cosmic-type="stat-title"] {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display));
+    font-size: var(--cosmic-local-stat-title-size, var(--cosmic-type-stat-title-size)) !important;
+    line-height: var(--cosmic-local-stat-title-line, var(--cosmic-type-stat-title-line)) !important;
+    font-weight: var(--cosmic-local-stat-title-weight, var(--cosmic-type-stat-title-weight));
+    letter-spacing: var(--cosmic-local-stat-title-tracking, var(--cosmic-type-stat-title-tracking));
+}
+.cosmic-type-lead,[data-cosmic-type="lead"] {
+    font-family: var(--cosmic-local-font-body, var(--cosmic-font-body));
+    font-size: var(--cosmic-local-lead-size, var(--cosmic-type-lead-size));
+    line-height: var(--cosmic-local-lead-line, var(--cosmic-type-lead-line));
+    font-weight: var(--cosmic-local-lead-weight, var(--cosmic-type-lead-weight));
+    letter-spacing: var(--cosmic-local-lead-tracking, var(--cosmic-type-lead-tracking));
+}
+.cosmic-type-body,[data-cosmic-type="body"] {
+    font-family: var(--cosmic-local-font-body, var(--cosmic-font-body));
+    font-size: var(--cosmic-local-body-size, var(--cosmic-type-body-size));
+    line-height: var(--cosmic-local-body-line, var(--cosmic-type-body-line));
+    font-weight: var(--cosmic-local-body-weight, var(--cosmic-type-body-weight));
+    letter-spacing: var(--cosmic-local-body-tracking, var(--cosmic-type-body-tracking));
+}
+.cosmic-type-eyebrow,[data-cosmic-type="eyebrow"] {
+    font-family: var(--cosmic-local-font-body, var(--cosmic-font-body));
+    font-size: var(--cosmic-local-eyebrow-size, var(--cosmic-type-eyebrow-size));
+    line-height: var(--cosmic-local-eyebrow-line, var(--cosmic-type-eyebrow-line));
+    font-weight: var(--cosmic-local-eyebrow-weight, var(--cosmic-type-eyebrow-weight));
+    letter-spacing: var(--cosmic-local-eyebrow-tracking, var(--cosmic-type-eyebrow-tracking));
+}
+.cosmic-type-small,[data-cosmic-type="small"] {
+    font-family: var(--cosmic-local-font-body, var(--cosmic-font-body));
+    font-size: var(--cosmic-local-small-size, var(--cosmic-type-small-size));
+    line-height: var(--cosmic-local-small-line, var(--cosmic-type-small-line));
+    font-weight: var(--cosmic-local-small-weight, var(--cosmic-type-small-weight));
+    letter-spacing: var(--cosmic-local-small-tracking, var(--cosmic-type-small-tracking));
+}
+.cosmic-type-button,[data-cosmic-type="button"] {
+    font-family: var(--cosmic-local-font-body, var(--cosmic-font-body));
+    font-size: var(--cosmic-local-button-size, var(--cosmic-type-button-size));
+    line-height: var(--cosmic-local-button-line, var(--cosmic-type-button-line));
+    font-weight: var(--cosmic-local-button-weight, var(--cosmic-type-button-weight));
+    letter-spacing: var(--cosmic-local-button-tracking, var(--cosmic-type-button-tracking));
+}
+
+@media (max-width: 1024px) {
+    :root {
+        --cosmic-type-h1-size: clamp(2.8rem, 7vw, 4.75rem);
+        --cosmic-type-h2-size: clamp(2.05rem, 5vw, 3.45rem);
+        --cosmic-type-h3-size: clamp(1.5rem, 3vw, 2rem);
+    }
+}
+@media (max-width: 767px) {
+    :root {
+        --cosmic-type-h1-size: clamp(2.5rem, 12vw, 4rem);
+        --cosmic-type-h2-size: clamp(1.95rem, 9vw, 2.9rem);
+        --cosmic-type-h3-size: clamp(1.45rem, 7vw, 1.9rem);
+        --cosmic-type-h4-size: clamp(1.15rem, 5vw, 1.4rem);
+        --cosmic-type-lead-size: 1.05rem;
+        --cosmic-type-body-size: 1rem;
+    }
+}
+
+
+
+
+/* ==================================================================
+   Cosmic Background + Overlay Core — centralized visual surface contract
+   Batch 2: tokens/classes only. Full Spark migration follows in Batch 3.
+   ================================================================== */
+:root {
+    --cosmic-bg-surface:#FFFFFF;
+    --cosmic-bg-primary:#243447;
+    --cosmic-bg-primary-surface:#30475E;
+    --cosmic-bg-accent:#60A5FA;
+
+    --cosmic-bg-gradient-from:#071426;
+    --cosmic-bg-gradient-via:#111936;
+    --cosmic-bg-gradient-to:#28164D;
+    --cosmic-bg-gradient-glow:#7C3AED;
+    --cosmic-bg-gradient-angle:135deg;
+
+    --cosmic-bg-overlay-light-strong:.88;
+    --cosmic-bg-overlay-light-soft:.62;
+    --cosmic-bg-overlay-primary-strong:.88;
+    --cosmic-bg-overlay-primary-soft:.82;
+    --cosmic-bg-overlay-cinematic-strong:.92;
+    --cosmic-bg-overlay-cinematic-soft:.72;
+}
+
+.cosmic-bg-surface {
+    background:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface));
+}
+.cosmic-bg-primary {
+    background:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary));
+}
+.cosmic-bg-primary-gradient {
+    background:
+        linear-gradient(
+            var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),
+            var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)),
+            var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)),
+            var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to))
+        );
+}
+.cosmic-bg-overlay-light {
+    background:
+        linear-gradient(
+            var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),
+            rgb(255 255 255 / var(--cosmic-local-overlay-light-strong,var(--cosmic-bg-overlay-light-strong))),
+            rgb(255 255 255 / var(--cosmic-local-overlay-light-soft,var(--cosmic-bg-overlay-light-soft)))
+        );
+}
+.cosmic-bg-overlay-primary {
+    background:
+        linear-gradient(
+            var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),
+            color-mix(in srgb,
+                var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from))
+                calc(var(--cosmic-local-overlay-primary-strong,var(--cosmic-bg-overlay-primary-strong))*100%),
+                #020617
+            ),
+            color-mix(in srgb,
+                var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))
+                calc(var(--cosmic-local-overlay-primary-soft,var(--cosmic-bg-overlay-primary-soft))*100%),
+                var(--cosmic-local-gradient-glow,var(--cosmic-bg-gradient-glow))
+            )
+        );
+}
+.cosmic-bg-overlay-cinematic {
+    background:
+        linear-gradient(
+            var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),
+            color-mix(in srgb,
+                var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from))
+                calc(var(--cosmic-local-overlay-cinematic-strong,var(--cosmic-bg-overlay-cinematic-strong))*100%),
+                #020617
+            ),
+            color-mix(in srgb,
+                var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))
+                calc(var(--cosmic-local-overlay-cinematic-soft,var(--cosmic-bg-overlay-cinematic-soft))*100%),
+                var(--cosmic-local-gradient-glow,var(--cosmic-bg-gradient-glow))
+            )
+        );
+}
+
+/* Semantic hooks for future Sparks and generated/custom sections. */
+[data-cosmic-background-state="light"] { --cosmic-background-state:light; }
+[data-cosmic-background-state="primary"] { --cosmic-background-state:primary; }
+[data-cosmic-overlay-mode="light"] { --cosmic-overlay-mode:light; }
+[data-cosmic-overlay-mode="primary"] { --cosmic-overlay-mode:primary; }
+[data-cosmic-overlay-mode="cinematic"] { --cosmic-overlay-mode:cinematic; }
+
+
+
+
+/* ==================================================================
+   New Sparks QA — Batch 1 semantic contrast contract
+   Primary/dark roots always receive readable light foreground tokens.
+   Surface roots always receive dark foreground tokens.
+   ================================================================== */
+:root{
+    --cosmic-on-primary:#F8FAFC;
+    --cosmic-on-primary-muted:rgba(248,250,252,.76);
+    --cosmic-on-surface:#172033;
+    --cosmic-on-surface-muted:#64748B;
+}
+.cosmic-render-shell[data-cosmic-resolved-theme="primary"]{
+    --cosmic-current-text:var(--cosmic-on-primary);
+    --cosmic-current-muted:var(--cosmic-on-primary-muted);
+}
+.cosmic-render-shell[data-cosmic-resolved-theme="light"]{
+    --cosmic-current-text:var(--cosmic-on-surface);
+    --cosmic-current-muted:var(--cosmic-on-surface-muted);
+}
+/* Expansion families own their foreground through semantic vars. This is intentionally
+   scoped to the five new-Spark families so card/image overlays can keep their own white text. */
+.cosmic-render-shell[data-cosmic-resolved-theme="primary"] :is(.cosmic-image-rich,.cosmic-b2,.cosmic-b3,.cosmic-b4,.cosmic-b5)
+:is(.x-heading,.x-intro,.x-eyebrow,.b2-heading,.b2-intro,.b2-eyebrow,.b3-heading,.b3-intro,.b3-eyebrow,.b4-heading,.b4-intro,.b4-eyebrow,.b5-heading,.b5-intro,.b5-eyebrow){
+    color:inherit;
+}
+
+/* ==================================================================
+   Cosmic Visual System — Batch 4 master wrapper migration
+   Existing Sparks now receive section rhythm from the common render boundary.
+   Immersive/cinematic heroes keep their full-screen composition while still
+   inheriting horizontal/container tokens.
+   ================================================================== */
+.cosmic-render-shell[data-cosmic-layout-mode="standard"]
+> .cosmic-render-content
+> section {
+    padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py))) !important;
+    padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py))) !important;
+    padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
+    padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
+}
+.cosmic-render-shell[data-cosmic-layout-mode="hero"]
+> .cosmic-render-content
+> section {
+    padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py))) !important;
+    padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py))) !important;
+    padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
+    padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
+}
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"]
+> .cosmic-render-content
+> section {
+    padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
+    padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
+}
+
+/* Normalize the common first content container without changing cards/grids deeper inside. */
+.cosmic-render-shell
+> .cosmic-render-content
+> section
+> :is(div,article)[class*="mx-auto"][class*="max-w-"] {
+    width:100%;
+    max-width:var(--cosmic-local-section-container,var(--cosmic-section-container)) !important;
+    margin-left:auto !important;
+    margin-right:auto !important;
+}
+
+/* Legacy content-gap utilities can coexist; when the common stack role is present,
+   the centralized gap wins. */
+.cosmic-render-shell .cosmic-section-stack {
+    gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap)) !important;
+}
+
+@media (max-width:1024px) {
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"]
+    > .cosmic-render-content
+    > section,
+    .cosmic-render-shell[data-cosmic-layout-mode="hero"]
+    > .cosmic-render-content
+    > section {
+        padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet))) !important;
+        padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet))) !important;
+        padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)) !important;
+        padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)) !important;
+    }
+}
+@media (max-width:767px) {
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"]
+    > .cosmic-render-content
+    > section,
+    .cosmic-render-shell[data-cosmic-layout-mode="hero"]
+    > .cosmic-render-content
+    > section {
+        padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile))) !important;
+        padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile))) !important;
+        padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;
+        padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;
+    }
+    .cosmic-render-shell[data-cosmic-layout-mode="immersive"]
+    > .cosmic-render-content
+    > section {
+        padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;
+        padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;
+    }
+}
+
+/* ==================================================================
+   Cosmic Background Migration — Batch 3
+   All registered Sparks inherit the same theme-family surface contract.
+   Spark layout remains unique; only root surface/gradient/overlay ownership is centralized.
+   ================================================================== */
+.cosmic-render-shell {
+    --cosmic-section-from:var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from));
+    --cosmic-section-mid:var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via));
+    --cosmic-section-to:var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to));
+    --cosmic-section-angle:var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle));
+}
+
+/* Plain primary Spark roots take the centralized primary family color.
+   Background images are preserved because only background-color is normalized. */
+.cosmic-render-shell[data-cosmic-resolved-theme="primary"]
+> .cosmic-render-content
+> section:not(.cosmic-theme-gradient) {
+    background-color:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary)) !important;
+}
+
+/* Surface/light sections stay genuinely light even when image/video media is added;
+   universal media itself is painted on the outer render shell. */
+.cosmic-render-shell[data-cosmic-resolved-theme="light"]
+> .cosmic-render-content
+> section:not([class*="bg-black"]):not([class*="bg-slate-9"]) {
+    --cosmic-surface-background:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface));
+    background-color:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface)) !important;
+}
+
+/* Existing Spark gradient modifier families become compatibility aliases only.
+   Actual color comes from the active theme-family central variables above. */
+.cosmic-render-shell section[class*="cosmic-theme-gradient--"] {
+    --cosmic-section-from:var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) !important;
+    --cosmic-section-mid:var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) !important;
+    --cosmic-section-to:var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) !important;
+    --cosmic-section-angle:var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)) !important;
+}
+
+/* Universal image/video overlays use a semantic overlay layer instead of Spark colors. */
+.cosmic-universal-background-host[data-cosmic-background-state="light"] {
+    --cosmic-active-overlay-mode:light;
+}
+.cosmic-universal-background-host[data-cosmic-background-state="primary"] {
+    --cosmic-active-overlay-mode:primary;
+}
+.cosmic-universal-background-host[data-cosmic-overlay-mode="cinematic"] {
+    --cosmic-active-overlay-mode:cinematic;
+}
+
+/* ==================================================================
+   Cosmic Section Wrapper Core — centralized layout rhythm
+   Batch 1: global tokens + reusable wrapper/container roles.
+   Existing Sparks migrate to this contract in the next batch.
+   ================================================================== */
+:root {
+    --cosmic-section-py: 100px;
+    --cosmic-section-py-tablet: 80px;
+    --cosmic-section-py-mobile: 56px;
+
+    --cosmic-section-px: 28px;
+    --cosmic-section-px-tablet: 24px;
+    --cosmic-section-px-mobile: 20px;
+
+    --cosmic-section-container: 88rem;
+    --cosmic-section-container-wide: 96rem;
+    --cosmic-section-container-narrow: 52rem;
+
+    --cosmic-section-gap: 56px;
+    --cosmic-section-gap-tablet: 44px;
+    --cosmic-section-gap-mobile: 32px;
+
+    --cosmic-section-min-height: 0px;
+}
+
+/* New/future Sparks should use these roles instead of hard-coding py/px/max-width. */
+.cosmic-section {
+    width:100%;
+    padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py)));
+    padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py)));
+    padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px));
+    padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px));
+    min-height:var(--cosmic-local-section-min-height,var(--cosmic-section-min-height));
+}
+.cosmic-section-container {
+    width:100%;
+    max-width:var(--cosmic-local-section-container,var(--cosmic-section-container));
+    margin-left:auto;
+    margin-right:auto;
+}
+.cosmic-section-container--wide {
+    max-width:var(--cosmic-local-section-container,var(--cosmic-section-container-wide));
+}
+.cosmic-section-container--narrow {
+    max-width:var(--cosmic-local-section-container,var(--cosmic-section-container-narrow));
+}
+.cosmic-section-stack {
+    display:flex;
+    flex-direction:column;
+    gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap));
+}
+
+/* Optional semantic hooks for Sparks that cannot use the React wrapper component. */
+[data-cosmic-section-wrapper="1"] {
+    width:100%;
+    padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py)));
+    padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py)));
+    padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px));
+    padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px));
+    min-height:var(--cosmic-local-section-min-height,var(--cosmic-section-min-height));
+}
+[data-cosmic-section-container="1"] {
+    width:100%;
+    max-width:var(--cosmic-local-section-container,var(--cosmic-section-container));
+    margin-left:auto;
+    margin-right:auto;
+}
+
+@media (max-width: 1024px) {
+    .cosmic-section,
+    [data-cosmic-section-wrapper="1"] {
+        padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)));
+        padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)));
+        padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet));
+        padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet));
+    }
+    .cosmic-section-stack {
+        gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap-tablet));
+    }
+}
+@media (max-width: 767px) {
+    .cosmic-section,
+    [data-cosmic-section-wrapper="1"] {
+        padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)));
+        padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)));
+        padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile));
+        padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile));
+    }
+    .cosmic-section-stack {
+        gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap-mobile));
+    }
+}
+
+/* ==================================================================
+   Cosmic Typography Migration — Batch 2
+   Apply the centralized semantic contract to every rendered Spark.
+   Scoped to website render shells only so Builder controls are untouched.
+   ================================================================== */
+.cosmic-render-shell :is(h1,[data-cosmic-type="h1"]) {
+    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
+    font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size)) !important;
+    line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line)) !important;
+    font-weight:var(--cosmic-local-h1-weight,var(--cosmic-type-h1-weight)) !important;
+    letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking)) !important;
+}
+.cosmic-render-shell :is(h2,[data-cosmic-type="h2"]) {
+    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
+    font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size)) !important;
+    line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line)) !important;
+    font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight)) !important;
+    letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking)) !important;
+}
+.cosmic-render-shell :is(h3,[data-cosmic-type="h3"]),
+.cosmic-render-shell [data-luna-target="heading"]:not([data-cosmic-type]):not(h1):not(h2):not(h4):not(h5):not(h6) {
+    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
+    font-size:var(--cosmic-local-h3-size,var(--cosmic-type-h3-size)) !important;
+    line-height:var(--cosmic-local-h3-line,var(--cosmic-type-h3-line)) !important;
+    font-weight:var(--cosmic-local-h3-weight,var(--cosmic-type-h3-weight)) !important;
+    letter-spacing:var(--cosmic-local-h3-tracking,var(--cosmic-type-h3-tracking)) !important;
+}
+.cosmic-render-shell :is(h4,[data-cosmic-type="h4"]) {
+    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
+    font-size:var(--cosmic-local-h4-size,var(--cosmic-type-h4-size)) !important;
+    line-height:var(--cosmic-local-h4-line,var(--cosmic-type-h4-line)) !important;
+    font-weight:var(--cosmic-local-h4-weight,var(--cosmic-type-h4-weight)) !important;
+    letter-spacing:var(--cosmic-local-h4-tracking,var(--cosmic-type-h4-tracking)) !important;
+}
+
+.cosmic-render-shell :is(h5,[data-cosmic-type="h5"]) {
+    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
+    font-size:var(--cosmic-local-h5-size,var(--cosmic-type-h5-size)) !important;
+    line-height:var(--cosmic-local-h5-line,var(--cosmic-type-h5-line)) !important;
+    font-weight:var(--cosmic-local-h5-weight,var(--cosmic-type-h5-weight)) !important;
+    letter-spacing:var(--cosmic-local-h5-tracking,var(--cosmic-type-h5-tracking)) !important;
+}
+.cosmic-render-shell :is(h6,[data-cosmic-type="h6"]) {
+    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
+    font-size:var(--cosmic-local-h6-size,var(--cosmic-type-h6-size)) !important;
+    line-height:var(--cosmic-local-h6-line,var(--cosmic-type-h6-line)) !important;
+    font-weight:var(--cosmic-local-h6-weight,var(--cosmic-type-h6-weight)) !important;
+    letter-spacing:var(--cosmic-local-h6-tracking,var(--cosmic-type-h6-tracking)) !important;
+}
+.cosmic-render-shell :is(article,[data-repeatable-item],[data-cosmic-repeatable-item]) [data-luna-target="heading"]:not([data-cosmic-type]) {
+    font-size:var(--cosmic-local-card-title-size,var(--cosmic-type-card-title-size)) !important;
+    line-height:var(--cosmic-local-card-title-line,var(--cosmic-type-card-title-line)) !important;
+}
+.cosmic-render-shell :is(p,li,[data-cosmic-type="body"],[data-luna-target="text"]:not([data-cosmic-type])) {
+    font-family:var(--cosmic-local-font-body,var(--cosmic-font-body)) !important;
+    font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size)) !important;
+    line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line)) !important;
+    font-weight:var(--cosmic-local-body-weight,var(--cosmic-type-body-weight)) !important;
+    letter-spacing:var(--cosmic-local-body-tracking,var(--cosmic-type-body-tracking)) !important;
+}
+.cosmic-render-shell[data-cosmic-block-type^="hero_"] [data-luna-target="text"]:not([data-cosmic-type]),
+.cosmic-render-shell[data-cosmic-block-type="hero"] [data-luna-target="text"]:not([data-cosmic-type]),
+.cosmic-render-shell [data-cosmic-type="lead"] {
+    font-size:var(--cosmic-local-lead-size,var(--cosmic-type-lead-size)) !important;
+    line-height:var(--cosmic-local-lead-line,var(--cosmic-type-lead-line)) !important;
+    font-weight:var(--cosmic-local-lead-weight,var(--cosmic-type-lead-weight)) !important;
+    letter-spacing:var(--cosmic-local-lead-tracking,var(--cosmic-type-lead-tracking)) !important;
+}
+.cosmic-render-shell [data-luna-target="label"]:not([data-cosmic-type]),
+.cosmic-render-shell [data-cosmic-type="eyebrow"] {
+    font-family:var(--cosmic-local-font-body,var(--cosmic-font-body)) !important;
+    font-size:var(--cosmic-local-eyebrow-size,var(--cosmic-type-eyebrow-size)) !important;
+    line-height:var(--cosmic-local-eyebrow-line,var(--cosmic-type-eyebrow-line)) !important;
+    font-weight:var(--cosmic-local-eyebrow-weight,var(--cosmic-type-eyebrow-weight)) !important;
+    letter-spacing:var(--cosmic-local-eyebrow-tracking,var(--cosmic-type-eyebrow-tracking)) !important;
+}
+.cosmic-render-shell :is(article,[data-repeatable-item],[data-cosmic-repeatable-item]) [data-luna-target="label"]:not([data-cosmic-type]),
+.cosmic-render-shell [data-cosmic-type="small"] {
+    font-size:var(--cosmic-local-small-size,var(--cosmic-type-small-size)) !important;
+    line-height:var(--cosmic-local-small-line,var(--cosmic-type-small-line)) !important;
+    font-weight:var(--cosmic-local-small-weight,var(--cosmic-type-small-weight)) !important;
+    letter-spacing:var(--cosmic-local-small-tracking,var(--cosmic-type-small-tracking)) !important;
+}
+.cosmic-render-shell :is(a,button,[role="button"],[data-cosmic-luna-display="button"],[data-cosmic-type="button"]) {
+    font-family:var(--cosmic-local-font-body,var(--cosmic-font-body)) !important;
+    font-size:var(--cosmic-local-button-size,var(--cosmic-type-button-size)) !important;
+    line-height:var(--cosmic-local-button-line,var(--cosmic-type-button-line)) !important;
+    font-weight:var(--cosmic-local-button-weight,var(--cosmic-type-button-weight)) !important;
+    letter-spacing:var(--cosmic-local-button-tracking,var(--cosmic-type-button-tracking)) !important;
+}
+/* Special art-directed typography remains compatible through section-local
+   variables rather than hard-coded global exceptions. */
+.cosmic-render-shell [data-cosmic-type-lock="1"] {
+    font-size:var(--cosmic-local-locked-size,revert) !important;
+    line-height:var(--cosmic-local-locked-line,revert) !important;
+    font-weight:var(--cosmic-local-locked-weight,revert) !important;
+    letter-spacing:var(--cosmic-local-locked-tracking,revert) !important;
+}
+
 /* ==================================================================
    UI QA Patch 2 — custom Spark editor control isolation
    Keep authoring controls legible regardless of the website section theme.
@@ -8104,9 +8780,32 @@ body:has(#cosmic-dashboard-spark-preview) { overflow: hidden !important; }
 
 
 /* Cosmic premium theme-gradient engine: section depth without tinting buttons/cards. */
-section.cosmic-theme-gradient{background-color:var(--cosmic-section-mid,#243447);background-image:linear-gradient(var(--cosmic-section-angle,120deg),var(--cosmic-section-from,#17283B) 0%,var(--cosmic-section-mid,#243447) 48%,var(--cosmic-section-to,#2B2447) 100%)!important;background-size:100% 100%;}
-section.cosmic-theme-gradient--subtle{background-image:linear-gradient(var(--cosmic-section-angle,120deg),color-mix(in srgb,var(--cosmic-section-from) 72%,var(--cosmic-section-mid)) 0%,var(--cosmic-section-mid) 48%,color-mix(in srgb,var(--cosmic-section-to) 70%,var(--cosmic-section-mid)) 100%)!important;}
-section.cosmic-theme-gradient--deep{background-image:linear-gradient(var(--cosmic-section-angle,120deg),var(--cosmic-section-from) 0%,var(--cosmic-section-mid) 48%,var(--cosmic-section-to) 100%)!important;}
+section.cosmic-theme-gradient{
+    background-color:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary,#243447));
+    background-image:linear-gradient(
+        var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle,135deg)),
+        var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from,#17283B)) 0%,
+        var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via,#243447)) 48%,
+        var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to,#2B2447)) 100%
+    )!important;
+    background-size:100% 100%;
+}
+section.cosmic-theme-gradient--subtle{
+    background-image:linear-gradient(
+        var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle,135deg)),
+        color-mix(in srgb,var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 72%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))) 0%,
+        var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,
+        color-mix(in srgb,var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 70%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))) 100%
+    )!important;
+}
+section.cosmic-theme-gradient--deep{
+    background-image:linear-gradient(
+        var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle,135deg)),
+        var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 0%,
+        var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,
+        var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 100%
+    )!important;
+}
 .cosmic-theme-gradient--emerald{--cosmic-section-from:#064B3D;--cosmic-section-mid:#0B5D4B;--cosmic-section-to:#0C4B55;--cosmic-section-angle:120deg;}
 .cosmic-theme-gradient--coffee{--cosmic-section-from:#352014;--cosmic-section-mid:#4A2A14;--cosmic-section-to:#49301F;--cosmic-section-angle:120deg;}
 .cosmic-theme-gradient--rose{--cosmic-section-from:#68233E;--cosmic-section-mid:#8C3156;--cosmic-section-to:#663148;--cosmic-section-angle:120deg;}

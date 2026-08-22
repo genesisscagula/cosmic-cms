@@ -255,7 +255,7 @@ function AnimatedHeroPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) 
             <div className={`relative z-20 mx-auto flex w-full max-w-7xl items-center px-6 py-0 sm:px-10 lg:px-14 ${split ? "lg:min-h-[640px]" : ""}`} style={{minHeight: split ? "640px" : "var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                 <div className="max-w-3xl">
                     <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[0.32em] ${isLight ? theme.sub : "text-white/70"}`} onSave={(value) => onUpdate({ eyebrow: value })} />
-                    <EditableText value={data.heading} className={`mt-6 block text-4xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${copyText}`} onSave={(value) => onUpdate({ heading: value })} />
+                    <EditableText value={data.heading} cosmicType="h1" className={`mt-6 block text-4xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${copyText}`} onSave={(value) => onUpdate({ heading: value })} />
                     <EditableText value={data.text} className={`mt-7 block max-w-2xl text-base leading-8 sm:text-lg ${copySub}`} onSave={(value) => onUpdate({ text: value })} />
                     <div className="mt-9 flex flex-wrap gap-3">
                         <EditableButton label={data.primary_label} url={data.primary_url} onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })} className={`rounded-full px-6 py-3.5 text-sm font-bold transition ${primaryButton}`} />

@@ -61,7 +61,7 @@ export function HeroSplitEditorialBlock({ block, blockIndex, onUpdate, globalThe
                 <div className="grid items-end gap-10 lg:grid-cols-[minmax(0,1.05fr)_minmax(360px,0.95fr)] lg:gap-16">
                     <div className="relative z-10 lg:pb-8">
                         <EditableText
-                            value={data.heading}
+                            value={data.heading} cosmicType="h1"
                             className={`block max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`}
                             onSave={(heading) => onUpdate({ heading })}
                         />

@@ -212,7 +212,7 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
                     </div>
 
                     <EditableText
-                        value={data.heading}
+                        value={data.heading} cosmicType="h1"
                         className={`mt-7 text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`}
                         onSave={(value) => onUpdate({ heading: value })}
                     />

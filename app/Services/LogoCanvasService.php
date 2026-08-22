@@ -138,7 +138,30 @@ class LogoCanvasService
      */
     public function fitTransparentPngToCanvas(string $bytes, int $canvasWidth = 650, int $canvasHeight = 200, int|float $padding = 0.12): string
     {
+        // Generated logos are normalized automatically: trim generator whitespace,
+        // retain 10–15% breathing room, then fit the visible mark to the standard
+        // horizontal header canvas. No cropper interaction is required.
         if (! function_exists('imagecreatefromstring')) {
+            if (class_exists(\Imagick::class)) {
+                try {
+                    $image = new \Imagick();
+                    $image->readImageBlob($this->trimTransparentPng($bytes, 2));
+                    $image->setImageFormat('png');
+                    $padX = (int) round($canvasWidth * (is_float($padding) ? $padding : 0.12));
+                    $padY = (int) round($canvasHeight * (is_float($padding) ? $padding : 0.12));
+                    $image->thumbnailImage(max(1,$canvasWidth-$padX*2), max(1,$canvasHeight-$padY*2), true, true);
+                    $canvas = new \Imagick();
+                    $canvas->newImage($canvasWidth, $canvasHeight, new \ImagickPixel('transparent'), 'png');
+                    $x=(int) floor(($canvasWidth-$image->getImageWidth())/2);
+                    $y=(int) floor(($canvasHeight-$image->getImageHeight())/2);
+                    $canvas->compositeImage($image, \Imagick::COMPOSITE_OVER, $x, $y);
+                    $result=$canvas->getImagesBlob();
+                    $image->clear(); $canvas->clear();
+                    return is_string($result) && $result!=='' ? $result : $bytes;
+                } catch (\Throwable $e) {
+                    logger()->warning('Automatic logo canvas fit failed.', ['message'=>$e->getMessage()]);
+                }
+            }
             return $bytes;
         }
 
