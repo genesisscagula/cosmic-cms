@@ -444,10 +444,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
                     <WebsiteLaunchGuide pages={pages || []} onNewPage={() => openNewPage()} />
 
-                    <section id="cosmic-website-shell-card" className="cosmic-website-shell-card rounded-2xl p-4 sm:flex sm:items-center sm:justify-between sm:gap-5">
-                        <div className="flex items-start gap-3"><span className="cosmic-shell-icon" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8"><path d="M4 5.5h16v13H4z"/><path d="M4 9h16"/><path d="M8 5.5v3.5"/></svg></span><div><p className="cosmic-shell-title text-sm font-semibold">Website shell</p><p className="cosmic-shell-copy mt-1 text-sm">Configure the shared header and footer used across this website.</p></div></div>
-                        <div className="mt-4 flex gap-2 sm:mt-0"><button type="button" onClick={() => { setSavedHeader(replaceLegacyHeaderLogo(globalHeaderBlock, website.name)); setIsHeaderModalOpen(true); }} className="cosmic-shell-action rounded-lg px-3 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Header</button><button type="button" onClick={() => setIsFooterModalOpen(true)} className="cosmic-shell-action rounded-lg px-3 py-2 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-violet-400">Edit Footer</button></div>
-                    </section>
+                    {/* Global header/footer editing moved into each page Builder. */}
 
                     <section className="space-y-4">
                         <div id="cosmic-website-page-type-tabs" className="cosmic-website-page-type-tabs flex flex-wrap gap-2 rounded-2xl border border-white/10 bg-white/[0.025] p-2" role="tablist" aria-label="Website content types">
@@ -474,7 +471,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
 
                         {workspaceContentTab === 'shop' ? <CommerceProductsWorkspace website={website} commerce={commerce} /> : workspaceContentTab === 'posts' ? <div className="space-y-5"><PostsUpdatesWorkspace website={website} initialWorkspace={contentWorkspace} />{(pages || []).some((page) => page.page_type === 'blog') ? <div className="rounded-2xl border border-white/10 bg-white/[0.025] p-4"><div className="mb-3"><p className="text-sm font-semibold text-white">Legacy Posts / Updates pages</p><p className="mt-1 text-xs text-slate-500">Existing blog-style Builder pages stay available while the structured content engine is introduced.</p></div><PageList pages={(pages || []).filter((page) => page.page_type === 'blog')} onDelete={deletePage} onAddChild={openNewPage} onEditTitle={setEditingPage} onClone={clonePage} /></div> : null}</div> : (() => {
                             const visiblePages = (pages || []).filter((page) => page.page_type === 'standard');
-                            return <div><div className="mb-3 flex items-center justify-between"><div><p className="cosmic-pages-section-title text-sm font-semibold">Standard Pages</p><p className="cosmic-pages-section-copy mt-1 text-sm">Open a page in Builder to edit its blocks and layout.</p></div><span className="text-xs text-slate-500">{visiblePages.length} total</span></div>{visiblePages.length ? <PageList pages={visiblePages} onDelete={deletePage} onAddChild={openNewPage} onEditTitle={setEditingPage} onClone={clonePage} /> : <PageEmptyState onNewPage={() => openNewPage()} />}</div>;
+                            return <div><div className="mb-3 flex items-center justify-between"><div><p className="cosmic-pages-section-title text-sm font-semibold">Standard Pages</p><p className="cosmic-pages-section-copy mt-1 text-sm">Open a page in Builder to edit its sections, global header, and global footers and layout.</p></div><span className="text-xs text-slate-500">{visiblePages.length} total</span></div>{visiblePages.length ? <PageList pages={visiblePages} onDelete={deletePage} onAddChild={openNewPage} onEditTitle={setEditingPage} onClone={clonePage} /> : <PageEmptyState onNewPage={() => openNewPage()} />}</div>;
                         })()}
                     </section>
 
@@ -543,41 +540,7 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
                         </form>
                     </div>
 
-                    {/* GLOBAL ELEMENTS CONFIGURATION PANEL */}
-                    <div className="hidden p-6 bg-slate-900 overflow-hidden shadow-xl sm:rounded-lg border border-slate-800 text-white">
-                        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-                            <div>
-                                <div className="flex items-center gap-2">
-                                    <span className="px-2 py-0.5 text-[10px] uppercase tracking-wider bg-purple-500/20 text-purple-300 rounded font-bold font-mono">Global Layout Matrix</span>
-                                    <span className="animate-ping w-2 h-2 rounded-full bg-emerald-400"></span>
-                                </div>
-                                <h3 className="text-lg font-bold mt-1 text-white">Website Shell: Global Header & Footer</h3>
-                                <p className="text-xs text-slate-400 max-w-xl mt-0.5">
-                                    Configure shared layouts, brand details, and footer content for the full website.
-                                </p>
-                            </div>
-                            <div className="flex gap-3 w-full md:w-auto shrink-0">
-                                <button 
-                                    type="button"
-                                    onClick={() => {
-                                        // Pwersahon nato ang state base sa pinakabag-ong globalHeaderBlock prop sa dili pa i-open ang frame
-                                        setSavedHeader(globalHeaderBlock || null);
-                                        setIsHeaderModalOpen(true);
-                                    }}
-                                    className="flex-1 md:flex-initial text-center text-xs font-bold bg-purple-650 hover:bg-purple-600 text-white px-4 py-2.5 rounded-xl border border-purple-500/30 transition shadow-lg shadow-purple-900/20"
-                                >
-                                    🌐 AI Edit Header
-                                </button>
-                                <button 
-                                    type="button"
-                                    onClick={() => setIsFooterModalOpen(true)}
-                                    className="flex-1 md:flex-initial text-center text-xs font-bold bg-slate-800 hover:bg-slate-700 text-slate-200 px-4 py-2.5 rounded-xl border border-slate-700 transition"
-                                >
-                                    📥 AI Edit Footer
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                    {/* Header and footer editing now lives exclusively inside Builder. */}
 
                     {/* PAGES ARCHITECTURE LIST */}
                     <div className="hidden p-6 bg-white overflow-hidden shadow-sm sm:rounded-lg border border-gray-100">
@@ -634,299 +597,13 @@ export default function Index({ website, pages, inquiryCount = 0, recentInquirie
             </div>
 
             {/* GLOBAL HEADER MODAL POPUP SYSTEM */}
-            {isHeaderModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-                    <button type="button" aria-label="Close header dialog" onClick={() => !isSaving && setIsHeaderModalOpen(false)} className="absolute inset-0 cursor-default" />
-                    <div role="dialog" aria-modal="true" aria-labelledby="edit-header-title" id="cosmic-global-header-modal" className="cosmic-global-header-modal relative h-[min(88dvh,900px)] max-h-[calc(100dvh-2rem)] w-full max-w-7xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151519] p-5 text-slate-100 shadow-2xl shadow-black/50 sm:p-6 [&::-webkit-scrollbar]:w-2 [&::-webkit-scrollbar-track]:bg-transparent [&::-webkit-scrollbar-thumb]:rounded-full [&::-webkit-scrollbar-thumb]:bg-slate-700 hover:[&::-webkit-scrollbar-thumb]:bg-violet-500/70">
-                        <div className="mb-5 flex items-start justify-between gap-4">
-                            <div>
-                                <h2 id="edit-header-title" className="text-xl font-semibold text-white">Edit global header</h2>
-                                <p className="mt-1 text-sm text-slate-400">Choose the header used across this website. Publish a page when you are ready to send changes live.</p>
-                            </div>
-                            <button type="button" disabled={isSaving} onClick={() => setIsHeaderModalOpen(false)} className="flex h-9 w-9 items-center justify-center rounded-lg text-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Close">×</button>
-                        </div>
-
-                        {/* LIVE PREVIEW FIELD */}
-                        <div className="cosmic-footer-preview mb-6 rounded-xl border border-white/10 bg-black/20 px-2 pb-2 pt-5 sm:px-3 sm:pb-3">
-                            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Preview</h3>
-                            {savedHeader ? (
-                                <div className="w-full overflow-hidden rounded-lg">
-                                    {savedHeader.type === 'dark_cyan_header' && <DarkCyanHeader block={savedHeader} onUpdate={updateHeaderContent} pageTargets={publishedPageTargets} onLogoClick={savedHeader.logo_image_url ? () => setIsLogoSizeOpen(true) : null} />}
-                                    {savedHeader.type === 'glassmorphism_header' && <GlassmorphismHeader block={savedHeader} onUpdate={updateHeaderContent} globalTheme={globalTheme} pageTargets={publishedPageTargets} onLogoClick={savedHeader.logo_image_url ? () => setIsLogoSizeOpen(true) : null} />}
-                                </div>
-                            ) : (
-                                <div className="py-7 text-center text-sm text-slate-500">
-                                    Choose a header layout to preview it here.
-                                </div>
-                            )}
-                        </div>
-
-                        {savedHeader && (
-                            <div className="mb-6 border-t border-white/10 pt-5">
-                                <div className="mb-5 rounded-xl border border-white/10 bg-white/[0.025] p-3.5">
-                                    <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Brand</h3>
-                                    <p className="mt-1 text-xs leading-5 text-slate-400">Logo text appears when no logo image has been uploaded.</p>
-
-                                    <label className="mt-3 block">
-                                        <span className="mb-1 block text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">Logo text</span>
-                                        <input
-                                            type="text"
-                                            value={savedHeader.logo_text || ''}
-                                            onChange={(event) => updateHeaderContent({ logo_text: event.target.value })}
-                                            placeholder={website.name}
-                                            className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
-                                        />
-                                    </label>
-
-                                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                                        <div>
-                                            <p className="text-xs font-medium text-slate-200">Logo image <span className="font-normal text-slate-500">(optional)</span></p>
-                                            <p className="mt-1 text-xs text-slate-500">SVG, PNG, JPG, or WebP. Up to 2 MB. Your logo keeps its original brand colors.</p>
-                                        </div>
-                                        <label className="inline-flex shrink-0 cursor-pointer items-center justify-center rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus-within:ring-2 focus-within:ring-violet-400">
-                                            <span>{isLogoUploading ? 'Uploading...' : 'Upload logo'}</span>
-                                            <input
-                                                type="file"
-                                                accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp"
-                                                onChange={uploadHeaderLogo}
-                                                disabled={isLogoUploading || isSaving}
-                                                className="sr-only"
-                                            />
-                                        </label>
-                                    </div>
-
-                                    {savedHeader.logo_image_url && (
-                                        <div className="mt-3 flex flex-wrap items-center gap-3 rounded-lg border border-white/10 bg-black/20 p-2.5">
-                                            <div className="flex h-11 min-w-24 items-center rounded-md bg-white px-3">
-                                                <img src={savedHeader.logo_image_url} alt="Uploaded website logo" style={{ height: `${Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))}px` }} className="w-auto max-w-[250px] object-contain" />
-                                            </div>
-                                            <button type="button" onClick={() => setIsLogoSizeOpen(true)} disabled={isSaving || isLogoUploading} className="text-xs font-medium text-violet-300 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Adjust size</button>
-                                            <button
-                                                type="button"
-                                                onClick={() => updateHeaderContent({ logo_image_url: null })}
-                                                disabled={isSaving || isLogoUploading}
-                                                className="text-xs font-medium text-slate-400 transition hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
-                                            >
-                                                Use logo text instead
-                                            </button>
-                                        </div>
-                                    )}
-                                </div>
-
-                                <div className="flex flex-col gap-1 sm:flex-row sm:items-end sm:justify-between">
-                                    <div>
-                                        <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Menu links</h3>
-                                        <p className="mt-1 text-xs leading-5 text-slate-400">
-                                            Use the exact published page slug for static links. <span className="text-slate-300">home</span> opens the homepage; <span className="text-slate-300">about</span> becomes <span className="text-slate-300">/about</span> after Push to live.
-                                        </p>
-                                    </div>
-                                    <p className="text-[11px] text-slate-500">External URLs and #section anchors stay unchanged.</p>
-                                </div>
-
-                                <HeaderMenuEditor menu={savedHeader.menu || []} onChange={updateHeaderMenu} targetOptions={publishedPageTargets} />
-
-                                {savedHeader.type === 'glassmorphism_header' && (
-                                    <div className="mt-2 grid grid-cols-1 gap-2 rounded-lg border border-violet-400/15 bg-violet-400/[0.035] p-2.5 sm:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]">
-                                        <label className="min-w-0">
-                                            <span className="cosmic-header-cta-field-label mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-200/70">CTA label</span>
-                                            <input
-                                                type="text"
-                                                value={savedHeader.cta_label || 'Get Started'}
-                                                onChange={(event) => updateHeaderContent({ cta_label: event.target.value })}
-                                                className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
-                                            />
-                                        </label>
-                                        <label className="min-w-0">
-                                            <span className="cosmic-header-cta-field-label mb-1 block text-[10px] font-semibold uppercase tracking-[0.12em] text-violet-200/70">CTA link target</span>
-                                            <input
-                                                type="text"
-                                                list="published-page-slugs"
-                                                value={savedHeader.cta_url || '#'}
-                                                onChange={(event) => updateHeaderContent({ cta_url: event.target.value })}
-                                                placeholder="contact, #contact, or https://..."
-                                                className="w-full rounded-md border border-white/10 bg-black/20 px-3 py-2 text-sm text-white outline-none transition placeholder:text-slate-600 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20"
-                                            />
-                                        </label>
-                                    </div>
-                                )}
-
-                                {publishedPageTargets.length === 0 && (
-                                    <p className="mt-3 text-xs text-amber-200/80">Publish a page before its slug can be included in a live static navigation link.</p>
-                                )}
-                            </div>
-                        )}
-
-                        {/* BLUEPRINTS ARCHIVE */}
-                        <div className="border-t border-white/10 pt-5">
-                            <h3 className="mb-3 text-[10px] font-semibold uppercase tracking-[0.16em] text-slate-500">Header layouts</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                
-                                {/* TEMPLATE INJECT BUTTON 1 */}
-                                <div className={`flex flex-col justify-between space-y-3 rounded-xl border p-4 transition ${savedHeader?.type === 'dark_cyan_header' ? 'border-violet-400/70 bg-violet-400/[0.07] ring-1 ring-violet-400/30' : 'border-white/10 bg-white/[0.03] hover:border-white/20'}`}>
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-white">Minimal navigation</h4>
-                                        <p className="mt-1 text-xs leading-5 text-slate-400">A simple logo and navigation layout.</p>
-                                    </div>
-                                    <button 
-                                        type="button"
-                                        onClick={() => updateHeaderContent({
-                                            type: 'dark_cyan_header',
-                                            logo_text: website.name,
-                                            menu: [{ label: 'Home', url: 'home' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }]
-                                        })}
-                                        className="w-full rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
-                                    >
-                                        {savedHeader?.type === 'dark_cyan_header' ? 'Selected' : 'Use layout'}
-                                    </button>
-                                </div>
-
-                                {/* TEMPLATE INJECT BUTTON 2 */}
-                                <div className={`flex flex-col justify-between space-y-3 rounded-xl border p-4 transition ${savedHeader?.type === 'glassmorphism_header' ? 'border-violet-400/70 bg-violet-400/[0.07] ring-1 ring-violet-400/30' : 'border-white/10 bg-white/[0.03] hover:border-white/20'}`}>
-                                    <div>
-                                        <h4 className="text-sm font-semibold text-white">CTA navigation</h4>
-                                        <p className="mt-1 text-xs leading-5 text-slate-400">Navigation with a highlighted call-to-action.</p>
-                                    </div>
-                                    <button 
-                                        type="button"
-                                        onClick={() => updateHeaderContent({
-                                            type: 'glassmorphism_header',
-                                            logo_text: website.name,
-                                            cta_label: 'Get Started',
-	                                            cta_url: '#',
-                                            menu: [{ label: 'Home', url: 'home' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }, { label: 'Blog', url: '#' }]
-                                        })}
-                                        className="w-full rounded-lg border border-white/10 bg-white px-3 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
-                                    >
-                                        {savedHeader?.type === 'glassmorphism_header' ? 'Selected' : 'Use layout'}
-                                    </button>
-                                </div>
-
-                            </div>
-                        </div>
-
-                        {/* MASTER SUBMIT CONTROL SYSTEM PANEL */}
-                        <div className="mt-6 flex justify-end gap-2 border-t border-white/10 pt-4">
-                            <button 
-                                type="button" 
-                                onClick={() => setIsHeaderModalOpen(false)}
-                                className="rounded-lg px-4 py-2 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400"
-                            >
-                                Cancel
-                            </button>
-                            <button 
-                                type="button"
-                                onClick={saveHeaderToDatabase}
-                                disabled={isSaving || isLogoUploading || !savedHeader}
-                                className="rounded-lg bg-white px-4 py-2 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
-                            >
-                                {isSaving ? 'Saving...' : pendingMenuCreditCost > 0 ? <CreditPrice label="Save header ·" amount={pendingMenuCreditCost} /> : 'Save header'}
-                            </button>
-                        </div>
-
-                    </div>
-                </div>
-            )}
+            
 
 
-            {isLogoSizeOpen && savedHeader?.logo_image_url && (
-                <div className="fixed inset-0 z-[130] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm">
-                    <button type="button" onClick={() => setIsLogoSizeOpen(false)} className="absolute inset-0" aria-label="Close logo size settings" />
-                    <section role="dialog" aria-modal="true" className="cosmic-logo-size-modal relative z-10 w-full max-w-md rounded-2xl border border-white/10 bg-[#18181d] p-5 text-slate-100 shadow-2xl">
-                        <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-violet-300">Global header</p><h3 className="mt-1 text-lg font-semibold text-white">Logo size</h3><p className="mt-1 text-xs leading-5 text-slate-400">Adjust the logo height. The aspect ratio stays unchanged and the width remains capped at 250px.</p></div><button type="button" onClick={() => setIsLogoSizeOpen(false)} className="rounded-lg px-2 py-1 text-slate-400 hover:bg-white/5 hover:text-white">×</button></div>
-                        <div className="mt-5 rounded-xl border border-white/10 bg-white p-4"><img src={savedHeader.logo_image_url} alt="Logo size preview" style={{ height: `${Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))}px` }} className="mx-auto w-auto max-w-[250px] object-contain" /></div>
-                        <label className="mt-5 block"><span className="flex items-center justify-between text-xs font-medium text-slate-300"><span>Logo height</span><span>{Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))}px</span></span><input type="range" min="24" max="60" step="1" value={Math.min(60, Math.max(24, Number(savedHeader.logo_height || 40)))} onChange={(event) => updateHeaderContent({ logo_height: Number(event.target.value), logo_max_width: 250 })} className="mt-3 w-full accent-violet-500" /></label>
-                        <div className="mt-5 flex justify-between gap-2"><button type="button" onClick={() => updateHeaderContent({ logo_height: 40, logo_max_width: 250 })} className="rounded-lg border border-white/10 px-3 py-2 text-sm font-medium text-slate-300 hover:bg-white/5">Use default</button><button type="button" onClick={() => setIsLogoSizeOpen(false)} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-slate-200">Done</button></div>
-                    </section>
-                </div>
-            )}
+            
 
             {/* GLOBAL FOOTER MODAL POPUP SYSTEM */}
-            {isFooterModalOpen && (
-                <div className="fixed inset-0 z-[100] flex items-center justify-center bg-slate-950/80 p-3 backdrop-blur-md sm:p-5">
-                    <button type="button" aria-label="Close footer dialog" onClick={() => !isSaving && setIsFooterModalOpen(false)} className="absolute inset-0 cursor-default" />
-                    <div role="dialog" aria-modal="true" aria-labelledby="edit-footer-title" id="cosmic-shell-mega-footer-editor" className="cosmic-global-footer-premium-modal relative max-h-[calc(100dvh-1.5rem)] w-[97vw] max-w-[1540px] overflow-y-auto rounded-[1.75rem] border border-white/10 bg-[#111216] text-slate-100 shadow-[0_40px_120px_rgba(0,0,0,.6)]">
-                        <div className="sticky top-0 z-20 flex items-start justify-between gap-5 border-b border-white/10 bg-[#111216]/95 px-5 py-5 backdrop-blur-xl sm:px-7">
-                            <div>
-                                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-emerald-300">Website shell</p>
-                                <div className="mt-1 flex flex-wrap items-center gap-3">
-                                    <h2 id="edit-footer-title" className="text-xl font-semibold tracking-[-.02em] text-white sm:text-2xl">Edit global footer</h2>
-                                    <span className="rounded-full border border-white/10 bg-white/[0.05] px-2.5 py-1 text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">Shared across every page</span>
-                                </div>
-                                <p className="mt-1.5 max-w-2xl text-sm leading-6 text-slate-400">Configure the same Mega Footer experience used in the Builder, with clean hover editing and one shared saved state.</p>
-                            </div>
-                            <button type="button" disabled={isSaving} onClick={() => setIsFooterModalOpen(false)} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 bg-white/[0.03] text-lg text-slate-400 transition hover:border-white/20 hover:bg-white/[0.08] hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-50" aria-label="Close">×</button>
-                        </div>
-
-                        <div className="space-y-5 p-5 sm:p-7">
-                            <div className="grid gap-4 xl:grid-cols-[1fr_auto]">
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:p-5">
-                                    <div className="flex items-center justify-between gap-5">
-                                        <div>
-                                            <div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${savedFooter?.mega_enabled ? 'bg-emerald-400' : 'bg-slate-600'}`} /><h3 className="text-sm font-semibold text-white">Enable Mega Footer</h3></div>
-                                            <p className="mt-1.5 text-xs leading-5 text-slate-400">Adds the global multi-column footer above the legal footer on every page. Turning it off keeps all menu content saved.</p>
-                                        </div>
-                                        <button
-                                            type="button"
-                                            role="switch"
-                                            aria-checked={Boolean(savedFooter?.mega_enabled)}
-                                            onClick={() => {
-                                                const enabled = !savedFooter?.mega_enabled;
-                                                updateFooterContent({
-                                                    type: 'minimal_footer',
-                                                    mega_enabled: enabled,
-                                                    mega_footer: {
-                                                        ...(savedFooter?.mega_footer || defaultMegaFooter),
-                                                        enabled,
-                                                    },
-                                                });
-                                            }}
-                                            className={`relative h-7 w-12 shrink-0 rounded-full transition focus:outline-none focus:ring-2 focus:ring-emerald-400 ${savedFooter?.mega_enabled ? 'bg-emerald-500' : 'bg-slate-700'}`}
-                                        >
-                                            <span className={`absolute top-1 h-5 w-5 rounded-full bg-white shadow transition ${savedFooter?.mega_enabled ? 'left-6' : 'left-1'}`} />
-                                        </button>
-                                    </div>
-                                </div>
-
-                                <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 sm:min-w-[360px]">
-                                    <p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Mega Footer appearance</p>
-                                    <div className="mt-3 grid grid-cols-4 gap-2">
-                                        {[['auto','Auto'],['primary','Primary'],['white','White'],['surface','Surface']].map(([value,label]) => {
-                                            const active = (savedFooter?.mega_footer?.theme || 'auto') === value;
-                                            return <button key={value} type="button" onClick={() => updateFooterContent({ mega_footer: { ...(savedFooter?.mega_footer || defaultMegaFooter), theme: value, enabled: Boolean(savedFooter?.mega_enabled) } })} className={`cosmic-mega-appearance-option rounded-xl border px-3 py-2 text-xs font-semibold transition ${active ? 'is-active border-emerald-400/60 bg-emerald-400/10 text-emerald-200' : 'border-white/10 bg-black/10 text-slate-400 hover:border-white/20 hover:text-white'}`}>{label}</button>;
-                                        })}
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="cosmic-footer-preview overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#0b0c10] shadow-inner shadow-black/30">
-                                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 px-4 py-3 sm:px-5">
-                                    <div><p className="text-[10px] font-bold uppercase tracking-[0.18em] text-slate-500">Global footer preview</p><p className="mt-0.5 text-xs text-slate-400">Hover the brand, column, or menu item to edit it. Add controls appear only in context.</p></div>
-                                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">Maximum 4 columns</span>
-                                </div>
-                                <div className="w-full overflow-hidden bg-white">
-                                    <MinimalFooter
-                                            block={savedFooter}
-                                            onUpdate={updateFooterContent}
-                                            editorMode
-                                            resolvedTheme={(savedFooter?.mega_footer?.theme && savedFooter.mega_footer.theme !== 'auto') ? savedFooter.mega_footer.theme : 'primary'}
-                                        />
-                                </div>
-                            </div>
-
-                            <div className="rounded-2xl border border-white/10 bg-white/[0.025] px-4 py-3.5 sm:px-5">
-                                <p className="text-xs leading-5 text-slate-400"><span className="font-semibold text-slate-200">One global footer system.</span> When Mega Footer is enabled, the website logo moves into it and the legal footer below switches to Privacy Policy, Terms & Conditions, and copyright. Builder and Website Shell share the same content and theme state.</p>
-                            </div>
-
-                            <div className="sticky bottom-0 z-20 -mx-5 -mb-5 flex justify-end gap-2 border-t border-white/10 bg-[#111216]/95 px-5 py-4 backdrop-blur-xl sm:-mx-7 sm:-mb-7 sm:px-7">
-                                <button type="button" disabled={isSaving} onClick={() => setIsFooterModalOpen(false)} className="rounded-xl px-4 py-2.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-emerald-400 disabled:cursor-not-allowed disabled:opacity-50">Cancel</button>
-                                <button type="button" disabled={isSaving || !savedFooter} onClick={saveFooterToDatabase} className="rounded-xl bg-emerald-500 px-5 py-2.5 text-xs font-bold text-white shadow-lg shadow-emerald-950/20 transition hover:bg-emerald-400 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50">
-                                    {isSaving ? 'Saving...' : 'Save footer'}
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            )}
+            
         </WebsiteWorkspaceShell>
     );
 }

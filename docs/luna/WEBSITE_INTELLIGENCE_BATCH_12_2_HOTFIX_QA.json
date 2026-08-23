@@ -1,0 +1,18 @@
+{
+  "hotfix": "Batch 12.2 \u2014 Informational capability billing/confirmation guard",
+  "status": "PASS_STATIC_QA",
+  "root_cause": "The capability regex expected the question to start with 'what/can/do/is'. A greeting prefix such as 'Hello Luna, what can you do?' bypassed the informational route and entered mutation planning.",
+  "fixes": [
+    "Strip conversational greeting prefixes before capability classification.",
+    "Treat knowledge query_type=capability_question as a hard informational signal.",
+    "Hard-block pending confirmation creation for capability/informational requests.",
+    "Grounded informational response remains credit_cost=0 and applied_operations=[]"
+  ],
+  "regression_tests": [
+    "Hello Luna, what can you do?",
+    "Hi Luna, can you build pages?",
+    "Hey, do you support mega menus?",
+    "What can you do?",
+    "Expected for all: informational response, 0 user credits, no pending action, no Continue/Cancel, no mutation."
+  ]
+}

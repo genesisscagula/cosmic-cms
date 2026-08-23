@@ -1,0 +1,15 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 10,
+  "name": "Site Memory / Design DNA",
+  "status": "PASS_STATIC_QA",
+  "next": "Batch 11 \u2014 Design Critic",
+  "runtime_tests": [
+    "Build Home with a distinct brand/theme, then create About and verify visual DNA carries over.",
+    "Make only one card square; verify later pages do not inherit square cards globally.",
+    "Ask to make all cards square, confirm, execute, then create another page; verify global card treatment is inherited.",
+    "Trigger a failed rebrand request and verify stored Site DNA remains unchanged.",
+    "Perform a partial multi-operation global change and verify only verified global values become durable memory.",
+    "Explicitly request a new website-wide brand and verify new verified DNA replaces the old one."
+  ]
+}

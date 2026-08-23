@@ -1,3 +1,5 @@
+@import "./cosmic-render-contract.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -42,4 +44,5 @@ section.cosmic-theme-gradient--deep{background-image:linear-gradient(var(--cosmi
 .cosmic-theme-gradient--moss{--cosmic-section-from:#192217;--cosmic-section-mid:#405B3B;--cosmic-section-to:#293E2C;--cosmic-section-angle:120deg;}
 .cosmic-theme-gradient--champagne{--cosmic-section-from:#392D20;--cosmic-section-mid:#9A7650;--cosmic-section-to:#554D32;--cosmic-section-angle:120deg;}
 .cosmic-theme-gradient--my-brand{--cosmic-section-from:var(--cosmic-gradient-from,#17283B);--cosmic-section-mid:var(--cosmic-brand-bg,#243447);--cosmic-section-to:var(--cosmic-gradient-to,#2B2447);--cosmic-section-angle:var(--cosmic-gradient-angle,120deg);}
+
 

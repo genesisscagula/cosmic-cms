@@ -1,0 +1,23 @@
+{
+  "batch": 2,
+  "scope": "Machine-readable Luna Capability Registry",
+  "status": "PASS_STATIC_QA",
+  "capability_count": 20,
+  "files_added": [
+    "resources/luna/capabilities.json",
+    "config/luna_capabilities.php",
+    "app/Services/LunaCapabilityRegistry.php",
+    "docs/luna/CAPABILITY_REGISTRY.md"
+  ],
+  "key_rules_encoded": [
+    "Header navigation max 3 levels.",
+    "Header Mega Menu unsupported.",
+    "Mega Footer supported with documented limits.",
+    "Manual CMS operations are zero-credit unless AI/API is invoked.",
+    "Explicit HEX rebrand uses validated premium color-family capability.",
+    "Publish success requires runtime verification.",
+    "Capability questions are informational and should not mutate the site.",
+    "Large creative confirmation and contextual AI-icon unified chat are marked planned until later batches."
+  ],
+  "next": "Batch 3: documentation/capability-grounded conversation router."
+}

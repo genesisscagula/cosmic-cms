@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "mode": "preflight_critic",
+  "dimensions": {
+    "composition": {
+      "weight": 24,
+      "checks": [
+        "section sequence",
+        "duplicate layout roles",
+        "hero/cta balance",
+        "page intent fit"
+      ]
+    },
+    "hierarchy": {
+      "weight": 18,
+      "checks": [
+        "heading progression",
+        "content density",
+        "scannability"
+      ]
+    },
+    "consistency": {
+      "weight": 18,
+      "checks": [
+        "site DNA continuity",
+        "theme stability",
+        "component rhythm"
+      ]
+    },
+    "media": {
+      "weight": 14,
+      "checks": [
+        "industry relevance",
+        "media repetition",
+        "missing focal media"
+      ]
+    },
+    "responsive": {
+      "weight": 14,
+      "checks": [
+        "known responsive risks",
+        "dense card/grid pressure"
+      ]
+    },
+    "conversion": {
+      "weight": 12,
+      "checks": [
+        "CTA presence",
+        "CTA repetition",
+        "journey closure"
+      ]
+    }
+  },
+  "thresholds": {
+    "pass": 82,
+    "revise": 68
+  },
+  "rules": [
+    "Critic runs after design planning and before content generation for new page builds.",
+    "Critic may recommend a revised registered section sequence but may not invent unregistered Sparks.",
+    "Critic must preserve explicit user requirements and established Site Design DNA unless the user explicitly requested a rebrand.",
+    "Critic is deterministic and diagnostic; it does not consume AI credits.",
+    "At most one automatic preflight revision pass is allowed.",
+    "Post-generation Visual QA remains separate and does not imply pixel-perfect rendering."
+  ]
+}

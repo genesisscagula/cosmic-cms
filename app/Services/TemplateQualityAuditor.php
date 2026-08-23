@@ -8,7 +8,11 @@ final class TemplateQualityAuditor
     public function audit(array $template): array
     {
         $sections = array_values(array_filter($template['sections'] ?? [], 'is_string'));
-        $registered = array_keys(SchemaManager::map());
+        // SchemaManager builds the full Spark schema registry. A planner pass
+        // audits 500+ templates, so rebuilding it per template made a cold
+        // shortlist take tens of seconds.
+        static $registered = null;
+        $registered ??= array_keys(SchemaManager::map());
         $invalid = array_values(array_diff($sections, $registered));
         $duplicateSections = count($sections) !== count(array_unique($sections));
         $heroCount = count(array_filter($sections, fn ($s) => str_starts_with($s, 'hero_')));

@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "mode": "bounded_recovery",
+  "rules": [
+    "Recovery starts only after execution verification reports partial or failed.",
+    "Recovery is deterministic and does not make another AI/API request.",
+    "Never retry an operation already verified.",
+    "Never widen scope: element stays element, section stays section, page stays page, site stays site.",
+    "Never silently rebrand, delete content, or replace a Spark during recovery.",
+    "Only allow explicitly safe idempotent retries.",
+    "At most one recovery pass per user request.",
+    "Re-run execution verification after recovery.",
+    "Only verified recovery changes may be reported as completed.",
+    "Recovery itself consumes zero additional AI credits."
+  ],
+  "safe_retry_actions": [
+    "edit",
+    "theme"
+  ],
+  "blocked_retry_actions": [
+    "delete",
+    "move",
+    "replace",
+    "insert_before",
+    "insert_after"
+  ]
+}

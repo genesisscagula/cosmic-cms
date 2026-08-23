@@ -1,0 +1,31 @@
+{
+  "batch": 4,
+  "scope": "Legacy hardcoded/non-AI conversational reply cleanup",
+  "status": "PASS_STATIC_QA",
+  "reply_authority": "LunaNaturalReplyService grounded in canonical knowledge and verified facts",
+  "naturalized_paths": [
+    "typography deterministic actions",
+    "background design-token actions",
+    "section layout actions",
+    "section reorder",
+    "services CRUD result reporting",
+    "header shell actions",
+    "page/navigation updates",
+    "low-level design guardrail responses",
+    "trial mutation result fallback",
+    "authenticated mutation result fallback",
+    "capability-answer fallback"
+  ],
+  "retained_deterministic_authority": [
+    "routing",
+    "permissions",
+    "credits",
+    "validation",
+    "schema",
+    "guardrails",
+    "state mutation",
+    "destructive confirmation",
+    "verification"
+  ],
+  "next": "Batch 5 pending-plan confirmation for large creative actions."
+}

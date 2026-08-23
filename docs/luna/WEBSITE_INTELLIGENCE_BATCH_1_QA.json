@@ -1,0 +1,14 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 1,
+  "name": "Page Composition Engine",
+  "status": "PASS_STATIC_QA",
+  "next": "Batch 2 \u2014 Design Continuity",
+  "runtime_tests": [
+    "Build me a premium automotive services homepage",
+    "Build me a luxury hotel homepage",
+    "Build me a restaurant homepage",
+    "Create an About Us page for the same website",
+    "Create a Services page for the same website"
+  ]
+}

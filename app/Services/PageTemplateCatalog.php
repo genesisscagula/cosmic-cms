@@ -4278,10 +4278,10 @@ class PageTemplateCatalog
                 'sections' => ['hero_background_image', 'services_image_trio_premium', 'trust_image_proof_premium', 'location_photo_cards_premium', 'testimonials_portrait_cards_premium', 'contact_image_form_premium'],
             ],
             [
-                'key' => 'electrician-service-pro', 'name' => 'Electrician Service Pro', 'price_credits' => 240,
+                'key' => 'electrician-visual-premium', 'name' => 'Electrician Visual Premium', 'price_credits' => 240,
                 'description' => 'A professional electrician template with clear services, credentials, proof and contact pathways.',
                 'tags' => ['Premium', 'Template Batch 2', 'Curated'], 'featured' => true,
-                'aliases' => ['electrician service pro', 'electrician service pro', 'electrician', 'trades', 'local services'],
+                'aliases' => ['electrician visual premium', 'visual electrician', 'electrician', 'trades', 'local services'],
                 'industry' => ['electrician', 'trades', 'local services'],
                 'intent' => ['generate leads', 'build trust', 'showcase expertise'],
                 'audience' => ['customers', 'decision makers', 'prospective clients'],
@@ -4604,7 +4604,7 @@ class PageTemplateCatalog
                 'hero_media_mode' => 'slider',
                 'overlay_header_recommended' => true,
                 'overlay_header_default' => true,
-                'sections' => ['hero_crossfade_gallery_premium', 'portfolio_fullbleed_projects_premium', 'portfolio_staggered_gallery_premium', 'content_visual_quote_premium', 'testimonials_client_spotlight_premium', 'contact_image_form_premium'],
+                'sections' => ['hero_editorial_image_sequence_premium', 'portfolio_media_ledger_premium', 'gallery_editorial_grid_premium', 'content_visual_quote_premium', 'testimonials_featured_story_premium', 'contact_editorial_split_premium'],
             ],
             [
                 'key' => 'creator-personal-brand', 'name' => 'Creator Personal Brand', 'price_credits' => 240,
@@ -5164,7 +5164,7 @@ class PageTemplateCatalog
                 'hero_media_mode' => 'image',
                 'overlay_header_recommended' => true,
                 'overlay_header_default' => true,
-                'sections' => ['hero_ken_burns_premium', 'content_asymmetric_story_premium', 'gallery_story_tiles_premium', 'services_staggered_media_premium', 'testimonials_image_wall_premium', 'contact_visual_inquiry_premium'],
+                'sections' => ['hero_crossfade_gallery_premium', 'content_editorial_image_stack_premium', 'services_fullbleed_overlay_premium', 'gallery_editorial_grid_premium', 'location_city_spotlight_premium', 'contact_editorial_split_premium'],
             ],
             [
                 'key' => 'veterinary-care-modern', 'name' => 'Veterinary Care Modern', 'price_credits' => 240,
@@ -5472,7 +5472,7 @@ class PageTemplateCatalog
                 'hero_media_mode' => 'none',
                 'overlay_header_recommended' => false,
                 'overlay_header_default' => false,
-                'sections' => ['hero_split_editorial', 'services_image_accordion_premium', 'features_overlap_cards_premium', 'stats_photo_metrics_premium', 'trust_partner_showcase_premium', 'contact_image_form_premium'],
+                'sections' => ['hero_split_editorial', 'services_visual_directory_premium', 'process_media_roadmap_premium', 'stats_visual_mosaic_premium', 'trust_certification_cards_premium', 'contact_editorial_split_premium'],
             ],
             [
                 'key' => 'business-coach-authority', 'name' => 'Business Coach Authority', 'price_credits' => 240,
@@ -5713,10 +5713,10 @@ class PageTemplateCatalog
                 'sections' => ['hero_ken_burns_premium', 'portfolio_cinematic_grid_premium', 'services_fullbleed_overlay_premium', 'process_visual_steps_premium', 'testimonials_image_wall_premium', 'contact_visual_inquiry_premium'],
             ],
             [
-                'key' => 'commercial-cleaning-pro', 'name' => 'Commercial Cleaning Pro', 'price_credits' => 240,
+                'key' => 'commercial-cleaning-visual-premium', 'name' => 'Commercial Cleaning Visual Premium', 'price_credits' => 240,
                 'description' => 'A professional commercial-cleaning template with clear service scope, benefits, operational proof, credentials and enquiries.',
                 'tags' => ['Premium', 'Template Batch 7', 'Curated'], 'featured' => true,
-                'aliases' => ['commercial cleaning pro', 'commercial cleaning pro', 'commercial cleaning', 'business', 'local services'],
+                'aliases' => ['commercial cleaning visual premium', 'visual commercial cleaning', 'commercial cleaning', 'business', 'local services'],
                 'industry' => ['commercial cleaning', 'business', 'local services'],
                 'intent' => ['generate leads', 'build trust', 'showcase expertise'],
                 'audience' => ['customers', 'decision makers', 'prospective clients'],
@@ -6354,7 +6354,7 @@ class PageTemplateCatalog
                 'hero_media_mode' => 'video',
                 'overlay_header_recommended' => true,
                 'overlay_header_default' => true,
-                'sections' => ['hero_video_cinematic_premium', 'hotel_room_collection_premium', 'hotel_experience_cards_premium', 'gallery_asymmetric_premium', 'testimonials_client_spotlight_premium', 'cta_background_media_premium'],
+                'sections' => ['hero_cinematic_slider_premium', 'hotel_room_collection_premium', 'hotel_experience_cards_premium', 'gallery_image_rail_premium', 'testimonials_featured_story_premium', 'contact_visual_inquiry_premium'],
             ],
             [
                 'key' => 'restaurant-immersive-tasting', 'name' => 'Restaurant Immersive Tasting', 'price_credits' => 240,
@@ -6628,9 +6628,14 @@ class PageTemplateCatalog
     public static function plannerIndex(): array
     {
         $metadata = app(TemplateMetadataService::class);
+        $templates = self::all();
+        $diversity = app(TemplateDiversityService::class)->profiles($templates);
 
-        return collect(self::all())
-            ->map(fn (array $template) => $metadata->plannerPayload($template))
+        return collect($templates)
+            ->map(fn (array $template) => array_merge(
+                $metadata->plannerPayload($template),
+                $diversity[(string) ($template['key'] ?? '')] ?? []
+            ))
             ->values()
             ->all();
     }

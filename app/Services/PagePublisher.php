@@ -30,11 +30,16 @@ class PagePublisher
 
         $theme = $website->theme_settings ?? [];
         $primaryColor = $theme['primary'] ?? 'midnight';
+        $brandPalette = is_array($theme['brand_palette'] ?? null)
+            ? $theme['brand_palette']
+            : (is_array(data_get($theme, 'custom_brand_theme.palette')) ? data_get($theme, 'custom_brand_theme.palette') : []);
         return CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, [
             'page_style' => PageStyleRegistry::normalize($website->page_style ?: $page->page_style),
             'typography' => is_array($theme['typography'] ?? null) ? $theme['typography'] : [],
             'section_layout' => is_array($theme['section_layout'] ?? null) ? $theme['section_layout'] : [],
             'background_style' => is_array($theme['background_style'] ?? null) ? $theme['background_style'] : [],
+            'components' => is_array($theme['components'] ?? null) ? $theme['components'] : [],
+            'brand_palette' => $brandPalette,
         ]);
     }
 
@@ -81,6 +86,7 @@ class PagePublisher
 
         $pagePaths = $this->pagePaths($pages);
         $header = $this->staticNavigationHeader($header, $pages, $pagePaths);
+        $footer = $this->staticNavigationFooter($footer, $pages, $pagePaths);
         $commerceContext = $this->commerceExportContext($website);
         $contentContext = $this->structuredContentExportContext($website);
         $contentEntryPages = $this->structuredContentEntryPages($website);
@@ -89,21 +95,25 @@ class PagePublisher
         $publishedTypography = is_array($theme['typography'] ?? null) ? $theme['typography'] : [];
         $publishedSectionLayout = is_array($theme['section_layout'] ?? null) ? $theme['section_layout'] : [];
         $publishedBackgroundStyle = is_array($theme['background_style'] ?? null) ? $theme['background_style'] : [];
+        $publishedComponents = is_array($theme['components'] ?? null) ? $theme['components'] : [];
         $publishedShellContext = [
             'page_style' => $publishedShellStyle,
             'typography' => $publishedTypography,
             'section_layout' => $publishedSectionLayout,
             'background_style' => $publishedBackgroundStyle,
+            'components' => $publishedComponents,
+            'brand_palette' => $themePalette,
         ];
 
         return [
             'status' => 'success',
+            'render_contract' => CmsHtmlCompiler::renderContractVersion(),
             'website_name' => $website->name,
             'theme_palette' => $themePalette,
             'global_header' => is_array($header) ? CmsHtmlCompiler::compile([$header], $primaryColor, $publishedShellContext) : '',
             'global_footer' => is_array($footer) ? CmsHtmlCompiler::compile([$footer], $primaryColor, $publishedShellContext) : '',
             'pages' => $pages
-                ->flatMap(function (Page $page) use ($website, $primaryColor, $publishedPostsByPage, $pagePaths, $commerceContext, $contentContext, $publishedShellStyle, $publishedTypography, $publishedSectionLayout, $publishedBackgroundStyle) {
+                ->flatMap(function (Page $page) use ($website, $primaryColor, $publishedPostsByPage, $pagePaths, $commerceContext, $contentContext, $publishedShellStyle, $publishedTypography, $publishedSectionLayout, $publishedBackgroundStyle, $publishedComponents) {
                     // Commerce pages are dynamic Laravel storefront endpoints. Keep
                     // them in the page registry/navigation map, but never export a
                     // static index.html that could shadow /shop, /cart, /checkout,
@@ -149,8 +159,8 @@ class PagePublisher
                             $blocks,
                             $primaryColor,
                             $page->page_type === 'blog'
-                                ? array_merge($commerceContext, $contentContext, ['blog_posts' => $posts, 'page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style, 'typography' => $publishedTypography, 'section_layout' => $publishedSectionLayout, 'background_style' => $publishedBackgroundStyle])
-                                : array_merge($commerceContext, $contentContext, ['page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style, 'typography' => $publishedTypography, 'section_layout' => $publishedSectionLayout, 'background_style' => $publishedBackgroundStyle])
+                                ? array_merge($commerceContext, $contentContext, ['blog_posts' => $posts, 'page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style, 'typography' => $publishedTypography, 'section_layout' => $publishedSectionLayout, 'background_style' => $publishedBackgroundStyle, 'components' => $publishedComponents])
+                                : array_merge($commerceContext, $contentContext, ['page_style' => $website->published_page_style ?: $website->page_style ?: $page->published_page_style ?: $page->page_style, 'typography' => $publishedTypography, 'section_layout' => $publishedSectionLayout, 'background_style' => $publishedBackgroundStyle, 'components' => $publishedComponents])
                         ),
                     ]];
 
@@ -181,6 +191,7 @@ class PagePublisher
                                 'typography' => $publishedTypography,
                                 'section_layout' => $publishedSectionLayout,
                                 'background_style' => $publishedBackgroundStyle,
+                                'components' => $publishedComponents,
                             ])),
                         ])
                         ->all();
@@ -488,6 +499,55 @@ class PagePublisher
         }
 
         return $header;
+    }
+
+    private function staticNavigationFooter(?array $footer, $pages, array $pagePaths): ?array
+    {
+        if (!is_array($footer)) return $footer;
+
+        $publishedTargets=[];
+        foreach($pages as $page){
+            $path=trim((string)($pagePaths[$page->id]??$page->slug),'/');
+            $url=$path===''?'./':$path.'/';
+            $publishedTargets[strtolower($path)]=$url;
+            $publishedTargets[strtolower(trim((string)$page->slug,'/'))]??=$url;
+        }
+
+        foreach(['privacy_url','terms_url'] as $key){
+            if(array_key_exists($key,$footer)){
+                $footer[$key]=$this->staticNavigationTarget((string)$footer[$key],$publishedTargets);
+            }
+        }
+
+        if(is_array($footer['mega_footer']??null)){
+            $mega=$footer['mega_footer'];
+            if(array_key_exists('primary_url',$mega)){
+                $mega['primary_url']=$this->staticNavigationTarget((string)$mega['primary_url'],$publishedTargets);
+            }
+            if(is_array($mega['columns']??null)){
+                $mega['columns']=array_values(array_map(function($column) use($publishedTargets){
+                    if(!is_array($column)) return $column;
+                    $items=is_array($column['items']??null)?$column['items']:[];
+                    $column['items']=array_values(array_map(function($item) use($publishedTargets){
+                        if(!is_array($item)) return $item;
+                        $item['url']=$this->staticNavigationTarget((string)($item['url']??'#'),$publishedTargets);
+                        return $item;
+                    },$items));
+                    return $column;
+                },$mega['columns']));
+            }
+            $footer['mega_footer']=$mega;
+        }
+
+        if(is_array($footer['social_links']??null)){
+            $footer['social_links']=array_values(array_map(function($item) use($publishedTargets){
+                if(!is_array($item)) return $item;
+                $item['url']=$this->staticNavigationTarget((string)($item['url']??'#'),$publishedTargets);
+                return $item;
+            },$footer['social_links']));
+        }
+
+        return $footer;
     }
 
     /** Recursively map menu items, hard-capped at Cosmic's three menu levels. */

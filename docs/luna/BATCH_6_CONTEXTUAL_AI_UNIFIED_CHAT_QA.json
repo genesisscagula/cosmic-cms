@@ -1,0 +1,16 @@
+{
+  "batch": 6,
+  "scope": "Contextual AI icon unified Luna chat UX",
+  "status": "PASS_STATIC_QA",
+  "changes": [
+    "Removed legacy green role:context messages.",
+    "Contextual \u2726 targets open the same Luna chat.",
+    "Added brief Luna looking-at/typing state before a normal assistant context prompt.",
+    "Selected target remains attached to the chat.",
+    "Clicking \u2726 alone does not call the mutation endpoint.",
+    "Manual edit entry is now a subtle Edit manually \u00b7 0 credits action.",
+    "Header/footer/logo/nav/CTA and section/element contextual openers share the same flow.",
+    "Header CTA manual editing writes global header state directly."
+  ],
+  "next": "Runtime QA: click representative contextual targets, then continue with the 10-Spark Builder vs Live audit."
+}

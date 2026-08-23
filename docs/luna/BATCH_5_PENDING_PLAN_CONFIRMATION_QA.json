@@ -1,0 +1,40 @@
+{
+  "batch": 5,
+  "scope": "Pending plan / Proceed confirmation",
+  "status": "PASS_STATIC_QA",
+  "supported_confirmations": [
+    "yes",
+    "yep",
+    "yeah",
+    "sure",
+    "ok",
+    "okay",
+    "proceed",
+    "continue",
+    "go ahead",
+    "do it",
+    "yes please"
+  ],
+  "supported_cancellations": [
+    "no",
+    "cancel",
+    "stop",
+    "never mind",
+    "not now"
+  ],
+  "surfaces": [
+    "authenticated Builder page Luna",
+    "trial page Luna",
+    "public trial-build Luna"
+  ],
+  "invariants": [
+    "Large creative requests are planned before mutation.",
+    "Planner JSON and finalized operations are stored.",
+    "Typed confirmation resumes stored plan rather than reinterpreting confirmation text.",
+    "Existing Continue button resumes the same stored plan.",
+    "Changed page fingerprint invalidates stale pending plans.",
+    "Cancellation clears pending server state.",
+    "Public trial generation receives the original confirmed brief."
+  ],
+  "next": "Batch 6 \u2014 contextual AI icon unified chat/typing UX and removal of legacy green context bubble."
+}

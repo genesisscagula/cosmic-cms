@@ -1,0 +1,16 @@
+{
+  "phase": "Chat vs Action Simplification",
+  "batch": 4,
+  "name": "Codex-style statuses + obsolete confirmation cleanup",
+  "status": "PASS_STATIC_QA",
+  "series_status": "4_BATCH_SIMPLIFICATION_COMPLETE",
+  "runtime_regression": [
+    "Chat: Hello Luna, what can you do? -> Thinking -> docs reply -> no mutation.",
+    "Build: Build me a restaurant website in Ormoc City -> action/build executes directly; no Proceed/Continue.",
+    "Update: Make this heading smaller -> action/update executes directly.",
+    "Build status should progress through Thinking, Planning, Choosing the design, Building your page, Checking the result.",
+    "Update status should progress through Thinking, Preparing changes, Applying changes, Checking the result.",
+    "Delete page/site may show one safety Confirm control at 0 confirmation credits.",
+    "No duplicate Luna success toast; final result remains in chat."
+  ]
+}

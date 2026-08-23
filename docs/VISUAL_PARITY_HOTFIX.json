@@ -1,0 +1,21 @@
+{
+  "batch": "visual-parity-hotfix",
+  "status": "PASS_STATIC_QA",
+  "scope": [
+    "logo sizing",
+    "duplicate logo Media Library control",
+    "dark/image hero contrast",
+    "centralized content image radius",
+    "Builder/live component-token parity"
+  ],
+  "changes": [
+    "AI-generated and Media Library header logos now receive 52px / 240px display defaults; footer logos 48px / 240px.",
+    "Header Builder renderer and static compiler now use the same logo sizing bounds.",
+    "Removed the second generic Media Library button when the selected target is a logo.",
+    "Dark/primary hero and immersive sections get light semantic heading/body foregrounds despite global heading-brand colors.",
+    "Standard content images inherit the centralized image-radius token unless explicitly opted out.",
+    "Static compiler now includes matching image radius, object-fit and hero contrast rules.",
+    "Theme component settings are passed into publish/export and converted to compiler CSS variables."
+  ],
+  "next": "Run the separate 10-Spark Builder-vs-Live visual parity audit."
+}

@@ -881,14 +881,19 @@ class PageController extends Controller
                 'ready' => filled($website->preview_slug) && filled($website->last_preview_deployed_at),
             ],
             'websitePages' => $isTrialMode
-                ? collect($trial->menu_structure ?? [])
-                    ->map(fn (array $menuPage, int $index) => [
-                        'id' => ($menuPage['is_home'] ?? false) ? $page->id : null,
-                        'title' => $menuPage['title'],
-                        'slug' => $menuPage['slug'],
-                        'parent_id' => null,
-                        'is_home' => (bool) ($menuPage['is_home'] ?? false),
-                        'sort_order' => $menuPage['sort_order'] ?? ($index + 1),
+                ? $page->website->pages()
+                    ->orderBy('sort_order')
+                    ->orderBy('id')
+                    ->get(['id', 'title', 'slug', 'parent_id', 'sort_order'])
+                    ->map(fn (Page $trialPage) => [
+                        'id' => $trialPage->id,
+                        'title' => $trialPage->title,
+                        'slug' => $trialPage->slug,
+                        'parent_id' => $trialPage->parent_id,
+                        'is_home' => (int) $trialPage->id === (int) $trial->page_id,
+                        'sort_order' => $trialPage->sort_order,
+                        'builder_url' => route('pages.builder', ['page' => $trialPage], false)
+                            .'?token='.rawurlencode($trial->token),
                     ])
                     ->values()
                 : $website->pages()
@@ -1025,6 +1030,7 @@ class PageController extends Controller
         $validated = $request->validate([
             'blocks' => 'nullable|array',
             'global_header' => 'nullable|array',
+            'global_footer' => 'nullable|array',
         ]);
 
         $isWebsiteEditor = app(\App\Services\WorkspaceAccessService::class)->websiteRole($request->user(), $page->website) === 'website_editor';
@@ -1032,9 +1038,16 @@ class PageController extends Controller
             $page->blocks = $validated['blocks'];
             $page->save();
 
-            if (! $isWebsiteEditor && array_key_exists('global_header', $validated)) {
-                $page->website->global_header = $validated['global_header'];
-                $page->website->save();
+            if (! $isWebsiteEditor) {
+                if (array_key_exists('global_header', $validated)) {
+                    $page->website->global_header = $validated['global_header'];
+                }
+                if (array_key_exists('global_footer', $validated)) {
+                    $page->website->global_footer = $validated['global_footer'];
+                }
+                if (array_key_exists('global_header', $validated) || array_key_exists('global_footer', $validated)) {
+                    $page->website->save();
+                }
             }
         });
 
@@ -1142,7 +1155,24 @@ class PageController extends Controller
             $page->save();
 
             if ($trial !== null) {
-                $trialUpdate = ['generated_blocks' => $page->blocks, 'last_saved_at' => now()];
+                $trialUpdate = ['last_saved_at' => now()];
+                // generated_blocks remains the Home fallback used by ownership
+                // provisioning. Editing a child bundle page must not overwrite it.
+                if ((int) $page->id === (int) $trial->page_id) {
+                    $trialUpdate['generated_blocks'] = $page->blocks;
+                }
+                if (is_array($trial->bundle_manifest)) {
+                    $manifest = $trial->bundle_manifest;
+                    $manifest['pages'] = collect($manifest['pages'] ?? [])->map(function (array $manifestPage) use ($page): array {
+                        if ((int) ($manifestPage['page_id'] ?? 0) === (int) $page->id) {
+                            $manifestPage['build_status'] = 'ready';
+                            $manifestPage['built_at'] = now()->toIso8601String();
+                            $manifestPage['build_error'] = null;
+                        }
+                        return $manifestPage;
+                    })->values()->all();
+                    $trialUpdate['bundle_manifest'] = $manifest;
+                }
                 $previewTheme = array_key_exists('theme_settings', $validated)
                     ? (array) $validated['theme_settings']
                     : (array) $trial->preview_theme;
@@ -1391,7 +1421,12 @@ class PageController extends Controller
 
         $trial = TrialGeneration::query()
             ->where('token', $token)
-            ->where('page_id', $page->id)
+            ->where(function ($query) use ($page) {
+                $query->where('page_id', $page->id);
+                if ((int) $page->website_id > 0) {
+                    $query->orWhere('website_id', $page->website_id);
+                }
+            })
             ->where('status', 'ready')
             ->whereNull('claimed_at')
             ->first();
@@ -1512,16 +1547,20 @@ class PageController extends Controller
                 $publishedTypography = is_array(data_get($publishedThemeSettings, 'typography')) ? data_get($publishedThemeSettings, 'typography') : [];
                 $publishedSectionLayout = is_array(data_get($publishedThemeSettings, 'section_layout')) ? data_get($publishedThemeSettings, 'section_layout') : [];
                 $publishedBackgroundStyle = is_array(data_get($publishedThemeSettings, 'background_style')) ? data_get($publishedThemeSettings, 'background_style') : [];
+                $publishedComponents = is_array(data_get($publishedThemeSettings, 'components')) ? data_get($publishedThemeSettings, 'components') : [];
+                $publishedBrandPalette = is_array(data_get($publishedThemeSettings, 'brand_palette'))
+                    ? data_get($publishedThemeSettings, 'brand_palette')
+                    : (is_array(data_get($publishedThemeSettings, 'custom_brand_theme.palette')) ? data_get($publishedThemeSettings, 'custom_brand_theme.palette') : []);
                 $website->pages()
                     ->where('status', 'published')
                     ->where('page_type', 'standard')
                     ->get()
-                    ->each(function (Page $publishedPage) use ($publishedStyle, $primaryColor, $publishedTypography, $publishedSectionLayout, $publishedBackgroundStyle) {
+                    ->each(function (Page $publishedPage) use ($publishedStyle, $primaryColor, $publishedTypography, $publishedSectionLayout, $publishedBackgroundStyle, $publishedComponents, $publishedBrandPalette) {
                         try {
                             $snapshot = $publishedPage->published_blocks ?? $publishedPage->blocks ?? [];
                             $publishedPage->forceFill([
                                 'published_page_style' => $publishedStyle,
-                                'published_html' => CmsHtmlCompiler::compile($snapshot, $primaryColor, ['page_style' => $publishedStyle, 'typography' => $publishedTypography, 'section_layout' => $publishedSectionLayout, 'background_style' => $publishedBackgroundStyle]),
+                                'published_html' => CmsHtmlCompiler::compile($snapshot, $primaryColor, ['page_style' => $publishedStyle, 'typography' => $publishedTypography, 'section_layout' => $publishedSectionLayout, 'background_style' => $publishedBackgroundStyle, 'components' => $publishedComponents, 'brand_palette' => $publishedBrandPalette]),
                             ])->save();
                         } catch (Throwable $siblingCompileException) {
                             // A stale sibling page must never turn the current page publish

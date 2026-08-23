@@ -1,0 +1,44 @@
+{
+  "batch": 2,
+  "scope": "Navigation + Submenu + Mega Menu Audit",
+  "status": "PASS_AFTER_PATCH",
+  "checks": {
+    "manual add root": true,
+    "manual submenu": true,
+    "manual remove": true,
+    "manual reorder": true,
+    "manual label url": true,
+    "mega toggle": true,
+    "builder mobile menu": true,
+    "Luna nav target": true,
+    "Luna full header context": true,
+    "Luna nav contract": true,
+    "header sanitizer": true,
+    "compiler nested": true,
+    "compiler mega": true,
+    "compiler dark alias": true,
+    "publisher recursive nav": true,
+    "global save": true
+  },
+  "patched": [
+    "Navigation-wide hover exposes Edit menu and Luna.",
+    "Manual root menu item add.",
+    "Manual submenu add within three-level hierarchy.",
+    "Manual label and URL editing in navigation manager.",
+    "Manual remove and sibling reorder.",
+    "Mega-menu enable/disable stored in global_header.mega_menu_enabled.",
+    "Builder mobile hamburger and recursive navigation representation.",
+    "Luna receives current header JSON and exact header.menu target.",
+    "Luna header_changes menu payload is sanitized/capped.",
+    "Static compiler supports mega-menu plus recursive mobile submenus.",
+    "dark_cyan_header shares static header compiler path."
+  ],
+  "guardrails": [
+    "Root menu maximum 12 items.",
+    "Submenu maximum 8 items per level.",
+    "Maximum 3 levels.",
+    "Manual menu actions cost 0 credits.",
+    "Mega menu changes only on explicit request.",
+    "Published nesting/order retained by PagePublisher."
+  ]
+}

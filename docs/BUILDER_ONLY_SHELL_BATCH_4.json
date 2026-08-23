@@ -1,0 +1,40 @@
+{
+  "batch": 4,
+  "scope": "Builder-only Shell Consolidation",
+  "status": "PASS_STATIC_QA",
+  "architecture": {
+    "user_facing_source_of_truth": "Builder",
+    "visual_order": [
+      "Global Header",
+      "Page Sections",
+      "Global Footer"
+    ],
+    "backend_storage": [
+      "website.global_header",
+      "website.global_footer"
+    ],
+    "published_snapshots": [
+      "website.published_global_header",
+      "website.published_global_footer"
+    ],
+    "old_dashboard_shell_ui": "removed"
+  },
+  "verified": [
+    "Dashboard Website Shell card removed.",
+    "Separate header/footer dashboard modals removed.",
+    "Builder header and footer are explicitly marked as global site-wide regions.",
+    "Builder Save payload includes both global_header and global_footer.",
+    "Legacy updateBlocks path now also accepts/persists global_footer for parity.",
+    "Publish snapshots both global shell objects.",
+    "Static deployment consumes published global shell objects.",
+    "Header and footer compilers remain intact."
+  ],
+  "runtime_tests": [
+    "Manual header logo/nav/CTA edit -> Save -> hard refresh.",
+    "Manual footer logo/tagline/CTA/menu/contact/social edit -> Save -> hard refresh.",
+    "Navigate to another page and confirm global header/footer changes are present.",
+    "Luna header navigation request and footer request.",
+    "Publish -> preview -> hard refresh.",
+    "Export/live verify nested nav, mega menu, mega footer, footer internal links."
+  ]
+}

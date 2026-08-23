@@ -1,0 +1,24 @@
+{
+  "phase": "Chat vs Action Simplification",
+  "batch": 1,
+  "status": "PASS_STATIC_QA",
+  "top_level_intents": [
+    "chat",
+    "action"
+  ],
+  "action_types": [
+    "build",
+    "update",
+    "publish",
+    "delete",
+    "navigate"
+  ],
+  "runtime_tests": [
+    "Hello Luna, what can you do? -> intent=chat, chat_type=capability",
+    "Can you build me a restaurant website in Ormoc City? -> intent=action, action=build",
+    "Make this heading smaller -> intent=action, action=update",
+    "Publish my website -> intent=action, action=publish",
+    "No normal direct-execution behavior is expected yet; Batch 2 removes confirmation/pending loops."
+  ],
+  "next": "Batch 2 \u2014 Direct Action Execution"
+}

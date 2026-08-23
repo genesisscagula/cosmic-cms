@@ -1,0 +1,125 @@
+{
+  "version": 1,
+  "principles": [
+    "specific over generic",
+    "business facts are immutable unless the user changes them",
+    "unknown facts remain unknown",
+    "copy length follows the selected Spark's visual capacity",
+    "CTA language follows page intent",
+    "avoid repeated headings and repeated claims across sections"
+  ],
+  "forbidden_inventions": [
+    "awards",
+    "certifications",
+    "client names",
+    "review quotes",
+    "ratings",
+    "years in business",
+    "addresses",
+    "phone numbers",
+    "email addresses",
+    "prices",
+    "discounts",
+    "statistics",
+    "performance metrics",
+    "guarantees",
+    "licensed/insured status"
+  ],
+  "generic_phrases": [
+    "welcome to our world",
+    "where excellence meets",
+    "your trusted partner",
+    "we are passionate about",
+    "unlock your potential",
+    "elevate your experience",
+    "quality you can trust",
+    "committed to excellence",
+    "one-stop solution"
+  ],
+  "length_guidance": {
+    "eyebrow": "2-6 words",
+    "hero_heading": "4-12 words",
+    "section_heading": "3-10 words",
+    "card_title": "2-7 words",
+    "card_body": "12-35 words",
+    "section_body": "25-70 words",
+    "cta_label": "1-4 words"
+  },
+  "page_cta": {
+    "home": [
+      "Get a Quote",
+      "Book a Consultation",
+      "Explore Services",
+      "Get Started"
+    ],
+    "services": [
+      "Request a Quote",
+      "Discuss Your Project",
+      "Book a Consultation"
+    ],
+    "about": [
+      "Explore Our Services",
+      "Talk to Our Team"
+    ],
+    "contact": [
+      "Send an Enquiry",
+      "Book a Consultation",
+      "Get in Touch"
+    ],
+    "pricing": [
+      "Choose a Plan",
+      "Talk to Sales",
+      "Get Started"
+    ],
+    "work": [
+      "Discuss Your Project",
+      "Start a Project"
+    ]
+  },
+  "industry_focus": {
+    "automotive": [
+      "service clarity",
+      "vehicle care",
+      "booking",
+      "local trust without invented claims"
+    ],
+    "hospitality": [
+      "stay experience",
+      "rooms/amenities only when supplied or safely generic",
+      "booking",
+      "location only when supplied"
+    ],
+    "restaurant": [
+      "food/menu experience",
+      "reservation/order CTA where appropriate",
+      "atmosphere",
+      "location only when supplied"
+    ],
+    "construction": [
+      "project type",
+      "scope clarity",
+      "process",
+      "quote CTA",
+      "no invented licences"
+    ],
+    "technology": [
+      "product outcome",
+      "features",
+      "workflow",
+      "demo/contact CTA",
+      "no invented performance metrics"
+    ],
+    "health": [
+      "service clarity",
+      "appointment CTA",
+      "no medical outcome claims",
+      "no invented credentials"
+    ],
+    "professional-services": [
+      "expertise area",
+      "process",
+      "consultation CTA",
+      "no invented credentials or client results"
+    ]
+  }
+}

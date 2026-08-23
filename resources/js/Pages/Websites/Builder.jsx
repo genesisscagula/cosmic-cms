@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Head, Link, useForm, usePage } from '@inertiajs/react';
+import { Head, Link, router, useForm, usePage } from '@inertiajs/react';
 import axios from 'axios';
 import html2canvas from 'html2canvas';
 import { confirmCosmicAction, showCosmicNotification } from '../../Components/CosmicNotification';
@@ -20,11 +20,13 @@ import { BlockRegistry } from "./BlockRegistry";
 import { cosmicTypographyVars } from "./Components/CosmicTypography";
 import { cosmicSectionVars, cosmicLocalSectionVars } from "./Components/CosmicSection";
 import { cosmicBackgroundVars, cosmicLocalBackgroundVars, cosmicOverlayForState } from "./Components/CosmicBackground";
+import { cosmicComponentVars, cosmicLocalComponentVars } from "./Components/CosmicComponentTokens";
 import { BLOG_SPARK_GROUPS, FREE_BLOG_SPARKS } from "./Sparks/Blog";
 import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
 
 import { MinimalFooter } from './GenerateFooter';
 import MediaPickerModal from '@/Components/Media/MediaPickerModal';
+import renderContract from '../../../render-contract.json';
 
 const MEDIA_FIELD_PATTERN = /(image|photo|avatar|poster|logo|video|media)/i;
 
@@ -168,6 +170,15 @@ const normalizeGlobalFooterBlock = (footer = {}) => ({
     privacy_url: footer?.privacy_url || '/privacy-policy',
     terms_label: footer?.terms_label || 'Terms & Conditions',
     terms_url: footer?.terms_url || '/terms-and-conditions',
+    contact: {
+        email: footer?.contact?.email || '',
+        phone: footer?.contact?.phone || '',
+        address: footer?.contact?.address || '',
+    },
+    social_links: Array.isArray(footer?.social_links) ? footer.social_links.slice(0, 6).map((item)=>({
+        label:item?.label || 'Social',
+        url:item?.url || '#',
+    })) : [],
     mega_enabled: Boolean(footer?.mega_enabled ?? footer?.mega_footer?.enabled ?? false),
     mega_footer: {
         theme: ['auto', 'primary', 'white', 'surface'].includes(footer?.mega_footer?.theme) ? footer.mega_footer.theme : 'auto',
@@ -212,6 +223,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         overlay_header_on_banner: false,
         cta_label: 'Get Started',
         cta_url: '#',
+        mega_menu_enabled: false,
         menu: [
             { label: 'Home', url: '#' },
             { label: 'About', url: '#' },
@@ -379,6 +391,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const lunaMessagesEndRef = useRef(null);
     const lunaPromptRef = useRef(null);
     const [lunaStatus, setLunaStatus] = useState('Ready');
+    const [lunaContextTyping, setLunaContextTyping] = useState(false);
+    const lunaContextTimerRef = useRef(null);
     const lunaMemoryKey = `cosmic:luna-site-memory:${website?.id || trialToken || 'trial'}`;
     const [lunaSiteMemory, setLunaSiteMemory] = useState(() => {
         try { return JSON.parse(window.localStorage.getItem(lunaMemoryKey) || '{}') || {}; } catch (_) { return {}; }
@@ -441,6 +455,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [lunaDirectText, setLunaDirectText] = useState('');
     const [lunaDirectLink, setLunaDirectLink] = useState('');
     const [lunaManualOpen, setLunaManualOpen] = useState(false);
+    const [headerNavManualOpenSignal, setHeaderNavManualOpenSignal] = useState(0);
     const [lunaSmartSectionBusy, setLunaSmartSectionBusy] = useState('');
 
     const [showLogoGenerateForm, setShowLogoGenerateForm] = useState(false);
@@ -2337,7 +2352,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     message,
                     tone:'warning',
                 });
-                return;
+                return {status:'preparing',message,data:response.data};
+            }
+
+            const publishVerified=String(response.data?.status||'').toLowerCase()==='published'
+                && Boolean(response.data?.published_at || response.data?.last_published_at);
+            if(!publishVerified){
+                const message='The publish request returned without a verified published snapshot.';
+                setPublishError(message);
+                showCosmicNotification({title:'Publish not verified',message,tone:'error'});
+                return {status:'failed',message,data:response.data};
             }
 
             setPageStatus(response.data.status || 'published');
@@ -2361,6 +2385,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     : 'Published and preview deployed successfully.') + healthSuffix,
                 tone: response.data.preview_deployment_failed ? 'warning' : 'success',
             });
+            return {status:'published',data:response.data};
         } catch (error) {
             const message = error.response?.data?.message ||
                 'Publishing failed. Your previous live version is still available.';
@@ -2370,6 +2395,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 message,
                 tone: 'error',
             });
+            return {status:'failed',message};
         } finally {
             setIsPublishing(false);
         }
@@ -2389,7 +2415,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 message: 'Your latest Builder changes could not be saved, so publishing was stopped.',
                 tone: 'error',
             });
-            return;
+            return {status:'failed',message:'Your latest Builder changes could not be saved, so publishing was stopped.'};
         }
 
         let needsReview = false;
@@ -2416,8 +2442,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             setIsCheckingHealth(false);
         }
 
-        if (needsReview) return;
-        await performPublish();
+        if (needsReview) return {status:'review_required',message:'Publishing is waiting for the website-health review.'};
+        return await performPublish();
     };
 
     const publishAfterHealthReview = async () => {
@@ -3206,6 +3232,34 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
 
 
+    const announceLunaContext = (label='selected item', {manual=true, focus=true}={}) => {
+        if (lunaContextTimerRef.current) window.clearTimeout(lunaContextTimerRef.current);
+        const safeLabel=String(label||'selected item').trim() || 'selected item';
+        setLunaChatOpen(true);
+        setLunaContextTyping(true);
+        setLunaStatus(`Luna is looking at ${safeLabel}…`);
+        lunaContextTimerRef.current=window.setTimeout(()=>{
+            setLunaMessages((messages)=>{
+                const next=messages.filter((message)=>!message?.contextualIntro);
+                return [...next,{
+                    role:'assistant',
+                    contextualIntro:true,
+                    text:`I’m looking at ${safeLabel}. Tell me what you’d like to change${manual ? ', or use Edit manually · 0 credits for direct controls.' : '.'}`,
+                }];
+            });
+            setLunaContextTyping(false);
+            setLunaStatus('Ready');
+            if(focus){
+                window.requestAnimationFrame(()=>lunaPromptRef.current?.focus?.());
+            }
+        },520);
+    };
+
+    useEffect(()=>()=> {
+        if(lunaContextTimerRef.current) window.clearTimeout(lunaContextTimerRef.current);
+    },[]);
+
+
     const detectLunaRepeaterCard = (root, target) => {
         if (!(root instanceof Element) || !(target instanceof Element)) return null;
         let node=target;
@@ -3248,22 +3302,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setPageAiError('');
         setPageAiPrompt('');
         setLunaDirectVideoUrl('');
-        const selectedIsVideo=isSection && blockHasVideoSlot(data.blocks?.[blockIndex]);
-        if (type === 'image') {
-            setLunaMessages((messages)=>[...messages,{role:'context',text:'Image selected. Tell me what you want to change, or choose Edit manually for upload / Media Library controls.'}]);
-        } else if (selectedIsVideo) {
-            setLunaMessages((messages)=>[...messages,{role:'context',text:trialMode
-                ? 'Video section selected. Tell me what video change you want, or choose Edit manually for a direct video URL.'
-                : 'Video section selected. Tell me what video change you want, or choose Edit manually for Media Library / video URL controls.'}]);
-        } else if (isSection) {
-            setLunaMessages((messages)=>[...messages,{role:'context',text:'Section selected. Tell me what you want to change or add here, or choose Edit manually for section tools.'}]);
-        } else if (isCard) {
-            setLunaMessages((messages)=>[...messages,{role:'context',text:`Selected card ${Number(itemIndex)+1}${currentValue ? ` · ${String(currentValue).slice(0,80)}` : ''}. Tell me what you want to change, duplicate, add, or remove — or choose Edit manually for card controls.`}]);
-        } else {
-            setLunaMessages((messages)=>[...messages,{role:'context',text:`${type.charAt(0).toUpperCase()+type.slice(1)} selected. Tell me what you want changed, or choose Edit manually.`}]);
-        }
-        setLunaChatOpen(true);
-        window.requestAnimationFrame(()=>{ lunaPromptRef.current?.focus?.(); if(type!=='image') lunaPromptRef.current?.select?.(); });
+        announceLunaContext(label,{manual:true,focus:true});
     };
     useEffect(() => {
         const handleLunaTarget = (event) => {
@@ -3302,23 +3341,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             setLunaDirectText(currentValue);
             setLunaDirectLink(String(detail.url || ''));
             setPageAiError('');
-            if(type==='image' || type==='background image'){
-                setPageAiPrompt('');
-                setLunaMessages((messages)=>[...messages,{role:'context',text:'Image selected. Tell me what you want to change, or choose Edit manually for upload / Media Library controls.'}]);
-            }else{
-                setPageAiPrompt('');
-                setLunaMessages((messages)=>[...messages,{role:'context',text:`${label} selected. Tell me what you want changed, or choose Edit manually.`}]);
-            }
-            setLunaChatOpen(true);
-            window.requestAnimationFrame(() => {
-                lunaPromptRef.current?.focus?.();
-                if(type!=='image' && type!=='background image')lunaPromptRef.current?.select?.();
-            });
+            setPageAiPrompt('');
+            announceLunaContext(`${label} · Section ${blockIndex + 1}`,{manual:true,focus:true});
         };
 
         window.addEventListener('cosmic:luna-target', handleLunaTarget);
         return () => window.removeEventListener('cosmic:luna-target', handleLunaTarget);
-    }, []);
+    }, [data.blocks]);
 
 
     useEffect(() => {
@@ -3424,6 +3453,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         if(!asset?.url)return;
         const type=String(lunaElementTarget?.type||'');
         if(type==='logo'){
+            const fieldPath=String(lunaElementTarget?.fieldPath||'');
+            const headerOnly=fieldPath==='header.logo_image_url';
+            const footerOnly=fieldPath==='footer.logo_image_url';
             setLunaUndoStack((stack)=>[{
                 blocks:stripClientBlockFields(data.blocks||[]),
                 header:data.global_header||{},
@@ -3432,12 +3464,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             },...stack].slice(0,10));
             setData((current)=>({
                 ...current,
-                global_header:{...(current.global_header||{}),logo_image_url:asset.url},
-                global_footer:{...(current.global_footer||{}),logo_image_url:asset.url},
+                ...(!footerOnly ? {global_header:{...(current.global_header||{}),logo_image_url:asset.url,logo_height:52,logo_max_width:240}} : {}),
+                ...(!headerOnly ? {global_footer:{...(current.global_footer||{}),logo_image_url:asset.url,logo_height:48,logo_max_width:240}} : {}),
             }));
             setLunaElementTarget((current)=>current?{...current,currentValue:asset.url}:current);
             setPageAiPrompt('');
-            setLunaMessages((messages)=>[...messages,{role:'assistant',text:'I used the selected Media Library asset for the logo.'}]);
+            setLunaMessages((messages)=>[...messages,{role:'assistant',text:headerOnly?'Header logo updated from the Media Library. · 0 credits':footerOnly?'Footer logo updated from the Media Library. · 0 credits':'Logo updated from the Media Library. · 0 credits'}]);
             return;
         }
         if(replaceFirstSelectedMedia(asset.url)){
@@ -3455,9 +3487,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setLunaManualOpen(false);
         setPageAiError('');
         setPageAiPrompt('');
-        setLunaMessages((messages)=>[...messages,{role:'context',text:'Site header selected.'},{role:'assistant',text:'What would you like me to do with your site? I can update the header, overlay it on the banner, change the brand theme, create or update the logo, manage navigation, or redesign this whole page. Tell me what you want changed.'}]);
-        setLunaChatOpen(true);
-        window.requestAnimationFrame(()=>{lunaPromptRef.current?.focus?.();});
+        announceLunaContext('Site Header',{manual:true,focus:true});
     };
 
     const openLunaForSiteFooter = () => {
@@ -3466,22 +3496,97 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setLunaManualOpen(false);
         setPageAiError('');
         setPageAiPrompt('');
-        setLunaMessages((messages)=>[...messages,{role:'context',text:'Site footer selected.'},{role:'assistant',text:'What would you like me to do with your footer? I can turn it into a mega footer, simplify the layout, update footer navigation, contact details, social links, calls to action, branding, copyright, or match it more closely to the rest of your site.'}]);
-        setLunaChatOpen(true);
-        window.requestAnimationFrame(()=>{lunaPromptRef.current?.focus?.();});
+        announceLunaContext('Site Footer',{manual:true,focus:true});
+    };
+
+    const openFooterLogoManual = () => {
+        setLunaScope({type:'footer',blockIndex:null,label:'Footer Logo'});
+        setLunaElementTarget({type:'logo',fieldPath:'footer.logo_image_url',currentValue:String(data.global_footer?.logo_image_url||'')});
+        setLunaManualOpen(false);
+        setPageAiError('');
+        setLunaMediaLibraryKind('image');
+        setLunaMediaLibraryPurpose('element');
+        if(trialMode){
+            logoUploadRef.current?.click?.();
+        }else{
+            setLunaMediaLibraryOpen(true);
+        }
+    };
+
+    const openLunaForFooterLogo = () => {
+        const current=String(data.global_footer?.logo_image_url||'');
+        setLunaScope({type:'footer',blockIndex:null,label:'Footer Logo'});
+        setLunaElementTarget({type:'logo',fieldPath:'footer.logo_image_url',currentValue:current});
+        setLunaManualOpen(false);
+        setPageAiError('');
+        setPageAiPrompt('');
+        announceLunaContext('Footer Logo',{manual:true,focus:true});
+    };
+
+    const openLunaForFooterElement = (target={}) => {
+        const label=target.label || 'Footer Element';
+        setLunaScope({type:'footer',blockIndex:null,label});
+        setLunaElementTarget({
+            type:target.type || 'text',
+            fieldPath:target.fieldPath || 'footer',
+            currentValue:String(target.currentValue || ''),
+            currentUrl:String(target.currentUrl || ''),
+        });
+        setLunaManualOpen(false);
+        setPageAiError('');
+        setPageAiPrompt('');
+        announceLunaContext(label,{manual:true,focus:true});
+    };
+
+    const openHeaderLogoManual = () => {
+        setLunaScope({type:'header',blockIndex:null,label:'Header Logo'});
+        setLunaElementTarget({type:'logo',fieldPath:'header.logo_image_url',currentValue:String(data.global_header?.logo_image_url||'')});
+        setLunaManualOpen(false);
+        setPageAiError('');
+        setLunaMediaLibraryKind('image');
+        setLunaMediaLibraryPurpose('element');
+        if(trialMode){
+            logoUploadRef.current?.click?.();
+        }else{
+            setLunaMediaLibraryOpen(true);
+        }
+    };
+
+    const openLunaForHeaderCta = () => {
+        setLunaScope({type:'header',blockIndex:null,label:'Header CTA'});
+        setLunaElementTarget({
+            type:'button',
+            fieldPath:'header.cta',
+            currentValue:String(data.global_header?.cta_label||''),
+            currentUrl:String(data.global_header?.cta_url||'#'),
+        });
+        setLunaManualOpen(false);
+        setPageAiError('');
+        setPageAiPrompt('');
+        announceLunaContext('Header CTA',{manual:true,focus:true});
+    };
+
+    const openLunaForHeaderNavigation = () => {
+        setLunaScope({type:'header',blockIndex:null,label:'Header Navigation'});
+        setLunaElementTarget({
+            type:'navigation',
+            fieldPath:'header.menu',
+            currentValue:JSON.stringify(data.global_header?.menu || []),
+        });
+        setLunaManualOpen(false);
+        setPageAiError('');
+        setPageAiPrompt('');
+        announceLunaContext('Header Navigation',{manual:true,focus:true});
     };
 
     const openLunaForLogo = () => {
         const current=String(data.global_header?.logo_image_url||'');
-        setLunaScope({type:'page',blockIndex:null,label:'Logo'});
-        setLunaElementTarget({type:'logo',currentValue:current});
+        setLunaScope({type:'header',blockIndex:null,label:'Header Logo'});
+        setLunaElementTarget({type:'logo',fieldPath:'header.logo_image_url',currentValue:current});
+        setLunaManualOpen(false);
         setPageAiError('');
         setPageAiPrompt('');
-        setLunaMessages((messages)=>[...messages,{role:'assistant',text:trialMode
-            ? 'What would you like to do with the logo? You can describe the change, generate a new logo, or upload your own logo.'
-            : 'What would you like to do with the logo? Describe the change, generate a new logo, or choose one from your Media Library.'}]);
-        setLunaChatOpen(true);
-        window.requestAnimationFrame(()=>{lunaPromptRef.current?.focus?.();});
+        announceLunaContext('Header Logo',{manual:true,focus:true});
     };
 
     const runLunaGeneratedImage = async (prompt) => {
@@ -3522,10 +3627,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             : await axios.post(route('websites.logo.generate',website.id),{company_name:companyName,primary:themeKey,primary_hex:primaryHex});
         const url=response.data?.url;
         if(!url)throw new Error('Luna generated a logo but no usable URL was returned.');
+        const logoFieldPath=String(lunaElementTarget?.fieldPath||'');
+        const headerOnly=logoFieldPath==='header.logo_image_url';
+        const footerOnly=logoFieldPath==='footer.logo_image_url';
         setData((current)=>({
             ...current,
-            global_header:{...(current.global_header||{}),logo_image_url:url},
-            global_footer:{...(current.global_footer||{}),logo_image_url:url},
+            ...(!footerOnly ? {global_header:{...(current.global_header||{}),logo_image_url:url,logo_height:52,logo_max_width:240}} : {}),
+            ...(!headerOnly ? {global_footer:{...(current.global_footer||{}),logo_image_url:url,logo_height:48,logo_max_width:240}} : {}),
         }));
         const balance=response.data?.credit_balance ?? response.data?.balance;
         if(Number.isFinite(Number(balance)))setCreditBalance(Number(balance));
@@ -3625,7 +3733,45 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         if(!lunaElementTarget || !['heading','text','label','button'].includes(type)) return;
         const next=String(lunaDirectText||'').trim();
         if(!next){ setPageAiError('Enter a value before saving.'); return; }
-        if(!replaceSelectedScalar(next,type==='button'?String(lunaDirectLink||'#').trim()||'#':null)){
+        const nextUrl=type==='button'?String(lunaDirectLink||'#').trim()||'#':null;
+        const fieldPath=String(lunaElementTarget?.fieldPath||'');
+
+        // Global shell targets use direct stored fields instead of trying to map
+        // them back to a page Spark.
+        if(lunaScope.type==='header' && fieldPath==='header.cta'){
+            pushLunaUndoSnapshot();
+            setData('global_header',{
+                ...(data.global_header||{}),
+                cta_label:next,
+                cta_url:nextUrl||'#',
+            });
+            setLunaElementTarget((current)=>current?{...current,currentValue:next,currentUrl:nextUrl||'#'}:current);
+            setPageAiError('');
+            setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Header CTA updated directly. · 0 credits'}]);
+            showCosmicNotification({title:'Saved',message:'The header CTA was updated.',tone:'success',mode:'toast',duration:2200});
+            return;
+        }
+
+        if(lunaScope.type==='footer' && fieldPath.startsWith('footer.')){
+            const path=fieldPath.replace(/^footer\./,'').split('.').filter(Boolean);
+            if(path.length){
+                const updateNested=(source,parts,value)=>{
+                    const [head,...rest]=parts;
+                    if(!head)return source;
+                    if(!rest.length)return {...(source||{}),[head]:value};
+                    return {...(source||{}),[head]:updateNested(source?.[head]||{},rest,value)};
+                };
+                pushLunaUndoSnapshot();
+                setData('global_footer',updateNested(data.global_footer||{},path,next));
+                setLunaElementTarget((current)=>current?{...current,currentValue:next}:current);
+                setPageAiError('');
+                setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Footer content updated directly. · 0 credits'}]);
+                showCosmicNotification({title:'Saved',message:'The footer content was updated.',tone:'success',mode:'toast',duration:2200});
+                return;
+            }
+        }
+
+        if(!replaceSelectedScalar(next,nextUrl)){
             setPageAiError('I could not map this rendered element back to its content field.');
             return;
         }
@@ -3941,7 +4087,7 @@ const blockHasVideoSlot = (value) => {
             if (lunaMediaLibraryPurpose==='section-video-poster' && applyDirectLunaVideoPoster(url)) {
                 setLunaMediaLibraryPurpose('element');
                 setPageAiPrompt('');
-                setLunaStatus('Done');
+                setLunaStatus('Ready');
             } else if (lunaMediaLibraryPurpose==='section-background-image' && applyLunaUniversalImage(url)) {
                 setLunaMediaLibraryPurpose('element');
                 setPageAiPrompt('');
@@ -3964,7 +4110,7 @@ const blockHasVideoSlot = (value) => {
         }
     };
 
-const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
+const sendPageAiRequest = async (directPrompt = null, confirmed = false, pendingActionToken = null) => {
         // React passes the click event when a handler is used as onClick={fn}.
         // Only an explicit string is a real direct prompt; everything else must
         // behave like the normal composer Send action.
@@ -3973,6 +4119,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
         if (!prompt || pageAiBusy || (!trialMode && !website?.id)) return;
         const targetType=String(lunaElementTarget?.type||'').toLowerCase();
         const lowerPrompt=prompt.toLowerCase();
+        // Batch 2: normal build/update requests execute directly.
+        // `confirmed` is reserved for an explicit destructive safety confirmation.
+        confirmed=Boolean(confirmed);
         const pastedVideoUrl=extractLunaVideoUrl(prompt);
         const videoIntent=Boolean(pastedVideoUrl) && /\b(video|background|hero|youtube|vimeo|mp4|webm)\b/i.test(prompt);
         const asksMediaLibrary=/media library|my uploads|uploaded image|uploaded photo|our photo|our image|my image|my photo/.test(lowerPrompt);
@@ -4073,18 +4222,31 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
         if (directPrompt === null) setPageAiPrompt('');
         setPageAiBusy(true);
         setPageAiError('');
-        setLunaStatus('Understanding your request…');
+        // Batch 4 — Codex-style phase display. The first visible state is always
+        // neutral Thinking. We only advance into action phases when the prompt
+        // clearly looks executable; conversational prompts stay on Thinking.
+        setLunaStatus('Thinking…');
         if (directPrompt === null) setLunaMessages((messages)=>[...messages,{role:'user',text:prompt,scope:lunaScope.label}]);
         const imageIntent = /image|photo|photography|picture|unsplash|background image/i.test(prompt);
-        const structuralIntent = /video|slider|carousel|testimonial|pricing|faq|replace|change this into|add .* (above|below)|layout|build/i.test(prompt);
-        const stages = structuralIntent
-            ? ['Understanding your request…','Choosing the best design…','Preparing the right sections…',...(imageIntent?['Finding suitable imagery…']:[]),'Applying the change…']
-            : ['Understanding your request…','Reviewing the current design…',...(imageIntent?['Finding suitable imagery…']:[]),'Applying your edits…'];
-        let lunaStageIndex = 0;
-        const lunaStatusTimer = window.setInterval(()=>{
-            lunaStageIndex = Math.min(lunaStageIndex + 1, stages.length - 1);
-            setLunaStatus(stages[lunaStageIndex]);
-        }, 2200);
+        const buildIntent = /\b(build|create|generate|design|make)\b.{0,100}\b(website|site|homepage|home page|landing page|page)\b/i.test(prompt);
+        const updateIntent = /\b(change|update|edit|rewrite|replace|redesign|rebrand|adjust|increase|decrease|add|remove|make this|make the|make all)\b/i.test(prompt);
+        const publishIntent = /\b(publish|go live|make .* live)\b/i.test(prompt);
+        const navigateIntent = /\b(open|go to|take me to|navigate to)\b/i.test(prompt);
+        const actionIntent = buildIntent || updateIntent || publishIntent || navigateIntent;
+        const phases = buildIntent
+            ? ['Thinking…','Planning…','Designing…','Building…','Checking…']
+            : updateIntent
+                ? ['Thinking…','Planning…','Designing…','Building…','Checking…']
+                : publishIntent
+                    ? ['Thinking…','Planning…','Building…','Checking…']
+                    : navigateIntent
+                        ? ['Thinking…','Checking…']
+                        : ['Thinking…'];
+        let lunaPhaseIndex=0;
+        const lunaStatusTimer = actionIntent ? window.setInterval(()=>{
+            lunaPhaseIndex=Math.min(lunaPhaseIndex+1,phases.length-1);
+            setLunaStatus(phases[lunaPhaseIndex]);
+        },1800) : null;
         try {
             const form = new FormData();
             form.append('prompt', prompt);
@@ -4095,7 +4257,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             form.append('typography', JSON.stringify(globalSelections?.typography || {}));
             form.append('background_style', JSON.stringify(globalSelections?.background_style || {}));
             form.append('section_layout', JSON.stringify(globalSelections?.section_layout || {}));
+            form.append('components', JSON.stringify(globalSelections?.components || {}));
             form.append('site_memory', JSON.stringify(lunaSiteMemory || {}));
+            if (!trialMode && page?.id) form.append('current_page_id', String(page.id));
             form.append('target_scope', lunaScope.type === 'section' ? 'section' : lunaScope.type === 'header' ? 'header' : lunaScope.type === 'footer' ? 'footer' : 'page');
             if(lunaScope.type==='header'){
                 form.append('shell_context', 'global_header_brand_theme_logo_navigation_page_redesign');
@@ -4119,19 +4283,50 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 }
             }
             if (confirmed) form.append('confirmed', '1');
+            if (pendingActionToken) form.append('pending_action_token', String(pendingActionToken));
             const lunaEndpoint = trialMode
                 ? route('trial-luna.chat', { trial: trialToken })
                 : `/websites/${website.id}/custom-page-ai`;
             const { data: response } = await axios.post(lunaEndpoint, form, { headers:{'Content-Type':'multipart/form-data'} });
+            if (response.mode === 'grounded_info' || response.mode === 'clarify') {
+                setLunaStatus('Ready');
+            } else if (response.mode !== 'confirm' && actionIntent) {
+                setLunaStatus('Checking…');
+            }
             if (response.mode === 'confirm') {
                 setLunaStatus('Waiting for confirmation');
                 if (Number.isFinite(Number(response.credit_balance))) setCreditBalance(Number(response.credit_balance));
                 const planningCost = Number(response.credit_cost || 0);
                 setLunaMessages((messages)=>[...messages,{
                     role:'assistant',
-                    text:`${response.reply || `This change will use ${response.confirmation_cost || 0} credits. Continue?`}${planningCost>0?` · ${planningCost} credits used to plan`:''}`,
-                    confirmation:{prompt,cost:Number(response.confirmation_cost || 0)},
+                    text:`${response.reply || `Delete the selected content for ${response.confirmation_cost || 0} credits?`}${planningCost>0?` · ${planningCost} credits used to plan`:''}`,
+                    confirmation:{prompt,cost:Number(response.confirmation_cost || 0),token:response.pending_action_token || null},
                 }]);
+                return;
+            }
+            if (response.mode === 'publish') {
+                if (lunaStatusTimer) window.clearInterval(lunaStatusTimer);
+                setLunaStatus('Building…');
+                const publishResult=await handlePublish();
+                setLunaStatus('Checking…');
+                const publishReply=publishResult?.status==='published'
+                    ? 'Your page is published, and the live result was verified.'
+                    : publishResult?.status==='review_required'
+                        ? 'I saved the page, but publishing is waiting for your website-health review.'
+                        : publishResult?.status==='preparing'
+                            ? (publishResult.message || 'The page is saved, and Cosmic is preparing it for publishing. Try again in a moment.')
+                            : (publishResult?.message || 'Publishing failed. Your previous live version is still available.');
+                setLunaMessages((messages)=>[...messages,{role:'assistant',text:publishReply}]);
+                setLunaStatus('Ready');
+                if (Number.isFinite(Number(response.credit_balance))) setCreditBalance(Number(response.credit_balance));
+                return;
+            }
+            if (response.mode === 'navigate') {
+                if (lunaStatusTimer) window.clearInterval(lunaStatusTimer);
+                setLunaStatus('Checking…');
+                if(response.reply) setLunaMessages((messages)=>[...messages,{role:'assistant',text:response.reply}]);
+                setLunaStatus('Ready');
+                if(response.navigate_url) router.visit(response.navigate_url);
                 return;
             }
             setLunaUndoStack((stack)=>[{
@@ -4169,6 +4364,63 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 setGlobalSelections((current)=>({...current,primary:response.theme_key}));
                 setHasUnsavedTheme(true);
             }
+            if (response.brand_color_family && typeof response.brand_color_family === 'object') {
+                const family=response.brand_color_family;
+                const customTheme={
+                    key:'my-brand',
+                    name:'My Brand',
+                    mode:'light',
+                    palette:{
+                        sourceColor:family.sourceColor || family.primary,
+                        primary:family.primary,
+                        primaryHover:family.primaryHover,
+                        primarySoft:family.primarySoft,
+                        secondary:family.secondary,
+                        accent:family.accent,
+                        background:family.background,
+                        surface:family.surface,
+                        surfaceMuted:family.surfaceMuted,
+                        surfaceText:family.text,
+                        heading:family.heading || family.primary,
+                        text:family.text,
+                        muted:family.muted,
+                        border:family.border,
+                        buttonPrimary:family.buttonPrimary || family.primary,
+                        buttonText:family.buttonText,
+                        buttonSecondary:family.buttonSecondary,
+                        buttonSecondaryText:family.buttonSecondaryText,
+                        success:family.success,
+                        warning:family.warning,
+                        error:family.error,
+                        onPrimary:family.onPrimary || family.buttonText,
+                        onDark:family.onDark || '#FFFFFF',
+                        gradient:family.gradient || null,
+                        buttonHover:family.primaryHover || family.buttonHover,
+                    },
+                };
+                installCustomBrandTheme(customTheme);
+                setGlobalSelections((current)=>({
+                    ...current,
+                    primary:'my-brand',
+                    custom_brand_theme:customTheme,
+                    brand_palette:customTheme.palette,
+                    brand_source:'luna',
+                    logo_theme_sync_state:'theme_changed',
+                    components:{
+                        ...(current?.components || {}),
+                        button_primary_bg:family.buttonPrimary || family.primary,
+                        button_primary_text:family.buttonText || family.onPrimary,
+                        button_secondary_bg:family.buttonSecondary,
+                        button_secondary_text:family.buttonSecondaryText,
+                        input_focus:family.primary,
+                        card_bg:family.surface,
+                        card_border:family.border,
+                        link_color:family.primary,
+                        link_hover:family.primaryHover,
+                    },
+                }));
+                setHasUnsavedTheme(true);
+            }
             if (response.typography_settings && typeof response.typography_settings === 'object') {
                 setGlobalSelections((current)=>({
                     ...current,
@@ -4199,6 +4451,16 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 }));
                 setHasUnsavedTheme(true);
             }
+            if (response.components && typeof response.components === 'object') {
+                setGlobalSelections((current)=>({
+                    ...current,
+                    components:{
+                        ...(current?.components || {}),
+                        ...response.components,
+                    },
+                }));
+                setHasUnsavedTheme(true);
+            }
             if (response.page_style && ['balanced','clean','premium'].includes(String(response.page_style).toLowerCase())) {
                 setCurrentPageStyle(String(response.page_style).toLowerCase());
             }
@@ -4211,7 +4473,6 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             if (Number.isFinite(Number(response.credit_balance))) setCreditBalance(Number(response.credit_balance));
             const lunaReply = `${response.reply || 'Done.'}${Number(response.credit_cost) > 0 ? ` · ${Number(response.credit_cost)} credits` : ''}`;
             setLunaMessages((messages)=>[...messages,{role:'assistant',text:lunaReply}]);
-            showCosmicNotification({title:'Luna updated the design',message:response.reply || 'Done.',tone:'success',mode:'toast',duration:3200});
         } catch (error) {
             const rawMessage = error?.response?.data?.message || error?.response?.data?.errors?.prompt?.[0] || error?.message || '';
             const isNetworkFailure = /curl|timed out|timeout|resolve|network|api\.openai\.com|connection/i.test(String(rawMessage));
@@ -4222,7 +4483,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             setPageAiError(message);
             setLunaMessages((messages)=>[...messages,{role:'assistant',text:message}]);
         } finally {
-            window.clearInterval(lunaStatusTimer);
+            if (lunaStatusTimer) window.clearInterval(lunaStatusTimer);
             setPageAiBusy(false);
         }
     };
@@ -4293,6 +4554,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
             const localBackground=block?.luna_background_overrides || {};
             const localBackgroundVars=cosmicLocalBackgroundVars(localBackground);
             const localTypography=block?.luna_typography_overrides || {};
+            const localComponent=block?.luna_component_overrides || {};
+            const localComponentVars=cosmicLocalComponentVars(localComponent);
             const localTypographyVars=Object.fromEntries(
                 Object.entries(localTypography)
                     .filter(([,value])=>value!==null&&value!==undefined&&value!=='')
@@ -4302,12 +4565,24 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 ...cosmicTypographyVars(globalSelections?.typography || {}),
                 ...cosmicSectionVars(globalSelections?.section_layout || {}),
                 ...cosmicBackgroundVars(activeFamily, globalSelections?.background_style || {}),
+                ...cosmicComponentVars(globalSelections?.components || {}),
                 ...localSectionVars,
+                ...localComponentVars,
                 ...localBackgroundVars,
                 ...localTypographyVars,
                 '--cosmic-primary': activePalette.background || activePalette.primary || '#243447',
                 '--cosmic-surface': activePalette.surface || activePalette.background || '#30475E',
                 '--cosmic-accent': activePalette.accent || activeGradient.glow || '#60A5FA',
+                '--cosmic-brand-primary': activePalette.primary || activePalette.background || '#243447',
+                '--cosmic-brand-secondary': activePalette.secondary || activePalette.muted || '#475569',
+                '--cosmic-brand-accent': activePalette.accent || activeGradient.glow || '#60A5FA',
+                '--cosmic-color-heading': activePalette.primary || activePalette.background || '#243447',
+                '--cosmic-color-body': activePalette.surfaceText || activePalette.text || '#0f172a',
+                '--cosmic-color-muted': activePalette.muted || '#64748b',
+                '--cosmic-color-border': activePalette.border || '#dce8e1',
+                '--cosmic-color-surface': activePalette.surface || activePalette.background || '#ffffff',
+                '--cosmic-color-page': activePalette.background || '#f7faf8',
+                '--cosmic-color-on-primary': activePalette.buttonText || activePalette.button_text || '#ffffff',
                 '--cosmic-gradient-from': 'var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from))',
                 '--cosmic-gradient-via': 'var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))',
                 '--cosmic-gradient-to': 'var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to))',
@@ -4364,8 +4639,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                     '--luna-content-gap':`${clampNumber(design.content_gap,0,96,24)}px`,
                     '--cosmic-local-section-gap':`${clampNumber(design.content_gap,0,96,24)}px`,
                 }:{}),
-                ...(design.card_radius!=null?{'--luna-card-radius':`${clampNumber(design.card_radius,0,64,16)}px`}:{}),
-                ...(design.image_radius!=null?{'--luna-image-radius':`${clampNumber(design.image_radius,0,64,16)}px`}:{}),
+                ...(design.card_radius!=null?{
+                    '--luna-card-radius':`${clampNumber(design.card_radius,0,64,16)}px`,
+                    '--cosmic-local-card-radius':`${clampNumber(design.card_radius,0,64,16)}px`,
+                }:{}),
+                ...(design.image_radius!=null?{
+                    '--luna-image-radius':`${clampNumber(design.image_radius,0,64,16)}px`,
+                    '--cosmic-local-image-radius':`${clampNumber(design.image_radius,0,64,16)}px`,
+                }:{}),
                 ...(design.content_max_width!=null?{
                     '--luna-content-max':`${clampNumber(design.content_max_width,560,1800,1280)}px`,
                     '--cosmic-local-section-container':`${clampNumber(design.content_max_width,560,1800,1280)}px`,
@@ -4381,7 +4662,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                 <div
                     key={block._renderKey || index}
                     data-cosmic-render-shell="1"
+                    data-cosmic-render-contract={renderContract.version}
                     data-cosmic-spark="1"
+                    data-cosmic-design-system="1"
                     data-cosmic-block-index={index}
                     data-cosmic-block-type={block.type}
                     data-cosmic-resolved-theme={resolvedTheme}
@@ -4544,24 +4827,17 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
       <button type="button" onClick={()=>setLunaChatOpen(false)} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white">×</button>
     </div>
   </div>
-  <div className="px-4 pt-4">
-    <div className="rounded-xl border border-violet-300/10 bg-violet-400/[0.06] px-3 py-2 text-xs leading-5 text-slate-400">
-      {lunaScope.type==='section'
-        ? 'What would you like me to do with this section? I can redesign the layout, change backgrounds or media, add or remove relevant sections, or update the content. Manual edit is available for basic text, links, and images.'
-        : lunaScope.type==='header'
-            ? 'What would you like me to do with your site? I can update the header, overlay it on the banner, change the brand theme, create or update the logo, manage navigation, or redesign this whole page.'
-            : lunaScope.type==='footer'
-                ? 'What would you like me to do with your footer? I can add a mega footer, simplify the layout, update navigation, contact details, social links, calls to action, branding, copyright, or match it to the rest of your site.'
-                : 'Luna is looking at the whole page. Ask for site-wide design, theme, structure, or content changes.'}
+  <div className="px-4 pt-3">
+    <div className="flex items-center gap-2 text-[10px] font-semibold uppercase tracking-[.12em] text-slate-500">
+      <span className="h-1.5 w-1.5 rounded-full bg-violet-400" aria-hidden="true"/>
+      Context · {lunaScope.label || (lunaScope.type==='page'?'Whole Page':'Selected target')}
     </div>
   </div>
   <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pt-3 pb-2">
     {lunaMessages.length ? lunaMessages.slice(-12).map((message,i)=><div key={`${i}-${message.text}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}><div className="max-w-[86%]"><div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'
     ?'bg-violet-500 text-white'
-    :message.role==='context'
-        ?'border border-emerald-300/20 bg-emerald-500/70 text-white'
-        :'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div>{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Continue · {message.confirmation.cost} credits</button><button type="button" onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5">Cancel</button></div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
-    {pageAiBusy?<div className="flex items-center gap-2 text-xs font-semibold text-violet-300"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-300"/>{lunaStatus}</div>:null}
+    :'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div>{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true,message.confirmation.token);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Delete · {message.confirmation.cost} credits</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Keep content</button></div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
+    {(pageAiBusy||lunaContextTyping)?<div className="flex items-center gap-2 text-xs font-semibold text-violet-300" role="status" aria-live="polite"><span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-violet-300/25 border-t-violet-300" aria-hidden="true"/><span>{lunaStatus}</span></div>:null}
     <div ref={lunaMessagesEndRef} aria-hidden="true" className="h-px" />
   </div>
   <div className="shrink-0 border-t border-white/10 p-4">
@@ -4569,13 +4845,28 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
       <span className="font-semibold text-violet-200">Selected {lunaElementTarget.type}{lunaElementTarget.currentValue ? ` · ${lunaElementTarget.currentValue.slice(0,54)}${lunaElementTarget.currentValue.length>54?'…':''}` : ''}</span>
       <button type="button" onClick={()=>{setLunaElementTarget(null);setLunaManualOpen(false);setPageAiPrompt('');}} className="text-slate-500 hover:text-white">×</button>
     </div> : null}
-    {lunaScope.type==='section' ? <div className="mb-3 flex items-center justify-between gap-3 rounded-xl border border-emerald-300/10 bg-emerald-500/[0.04] px-3 py-2">
-      <span className="text-[11px] leading-4 text-slate-400">Prefer direct controls?</span>
+    {(lunaScope.type==='section' || Boolean(lunaElementTarget)) ? <div className="mb-3 flex justify-end">
       <button type="button" onClick={()=>setLunaManualOpen((open)=>!open)}
-        className="shrink-0 rounded-full border border-emerald-300/20 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-bold text-emerald-200 hover:bg-emerald-500/20">
-        {lunaManualOpen ? 'Hide manual editor' : 'Edit manually'}
+        className="shrink-0 rounded-full border border-violet-300/20 bg-white/[0.04] px-3 py-1.5 text-[11px] font-bold text-violet-200 transition hover:border-violet-300/40 hover:bg-violet-500/10">
+        {lunaManualOpen ? 'Hide manual editor' : 'Edit manually · 0 credits'}
       </button>
     </div> : null}
+    {lunaManualOpen && String(lunaElementTarget?.type||'').toLowerCase()==='navigation' ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Navigation manual edit · 0 credits</p>
+      <p className="mt-1 text-[11px] leading-4 text-slate-400">Add, rename, link, remove, and reorder menu items. Submenus are limited to 3 levels. Header navigation stays plain — no mega menu.</p>
+      <button type="button" onClick={()=>setHeaderNavManualOpenSignal((value)=>value+1)}
+        className="mt-2 rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200 hover:border-emerald-300/30">Manage navigation</button>
+    </div> : null}
+
+    {lunaManualOpen && String(lunaElementTarget?.type||'').toLowerCase()==='logo' ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Logo manual edit · 0 credits</p>
+      <p className="mt-1 text-[11px] leading-4 text-slate-400">Choose an existing logo from your Media Library. AI generation stays in the Luna prompt below.</p>
+      <div className="mt-2 flex gap-2">
+        <button type="button" onClick={()=>{setLunaMediaLibraryKind('image');setLunaMediaLibraryPurpose('element');if(trialMode){logoUploadRef.current?.click?.();}else{setLunaMediaLibraryOpen(true);}}}
+          className="rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200 hover:border-emerald-300/30">{trialMode?'Upload logo':'Media Library'}</button>
+      </div>
+    </div> : null}
+
     {lunaManualOpen && String(lunaElementTarget?.type||'').toLowerCase()==='card' ? <div className="mb-3 rounded-xl border border-emerald-300/15 bg-emerald-500/[0.05] p-3">
       <p className="text-[10px] font-bold uppercase tracking-[.14em] text-emerald-300">Basic content edit · 0 credits</p>
       <p className="mt-1 text-[11px] leading-4 text-slate-400">Select the card’s heading, text, button, or image to edit it directly. Ask Luna to add/remove cards or redesign the card layout.</p>
@@ -4634,7 +4925,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
       </div>
     </div> : null}
 
-    {lunaManualOpen && (String(lunaElementTarget?.type||'').includes('image') || lunaElementTarget?.type==='logo') ? (
+    {lunaManualOpen && String(lunaElementTarget?.type||'').includes('image') ? (
       trialMode
         ? <button
             type="button"
@@ -5098,13 +5389,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                     
                     {/* GI-PASSED ANG UPDATED STATE UG FUNCTION SA HEADER */}
                     {data.global_header && (
-                        <div ref={overlayHeaderRef} data-cosmic-builder-overlay-header={overlayHeaderActive ? 'true' : 'false'} className={`group/header-ai w-full z-40 ${overlayHeaderActive ? 'pointer-events-auto absolute inset-x-0 top-0 border-b-0 bg-transparent shadow-none' : 'relative bg-white'}`}>
+                        <div ref={overlayHeaderRef} data-cosmic-shell-region="header" data-cosmic-builder-overlay-header={overlayHeaderActive ? 'true' : 'false'} className={`group/header-ai w-full z-40 ${overlayHeaderActive ? 'pointer-events-auto absolute inset-x-0 top-0 border-b-0 bg-transparent shadow-none' : 'relative bg-white'}`}>
+                            <div className="pointer-events-none absolute left-4 top-3 z-[89] hidden rounded-full border border-white/15 bg-slate-950/80 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.15em] text-white/75 shadow-lg backdrop-blur group-hover/header-ai:block">Global Header · site-wide</div>
                             <button type="button" onClick={openLunaForSiteHeader}
                                 aria-label="Ask Luna about the site header"
                                 title="Ask Luna about the site header"
                                 className="absolute right-4 top-3 z-[90] hidden h-9 w-9 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-base font-black text-white shadow-xl shadow-violet-950/30 backdrop-blur transition hover:scale-105 hover:bg-violet-500 group-hover/header-ai:inline-flex">✦</button>
                             {data.global_header.type === 'dark_cyan_header' && (
-                                <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayLogoLight={overlayLogoLight} globalTheme={globalSelections} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={openLunaForLogo} />
+                                <DarkCyanHeader block={data.global_header} overlay={overlayHeaderActive} overlayTone={overlayHeaderTone} overlayLogoLight={overlayLogoLight} globalTheme={globalSelections} onUpdate={updateHeader} pageTargets={websitePages} onLogoClick={openLunaForLogo} onLogoManual={openHeaderLogoManual} onNavAi={openLunaForHeaderNavigation} navManualOpenSignal={headerNavManualOpenSignal} />
                             )}
                             {data.global_header.type === 'glassmorphism_header' && (
                                 <GlassmorphismHeader
@@ -5117,6 +5409,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                                     globalTheme={globalSelections}
                                     pageTargets={websitePages}
                                     onLogoClick={openLunaForLogo}
+                                    onLogoManual={openHeaderLogoManual}
+                                    onCtaAi={openLunaForHeaderCta}
+                                    onNavAi={openLunaForHeaderNavigation}
+                                    navManualOpenSignal={headerNavManualOpenSignal}
                                 />
                             )}
                         </div>
@@ -5224,7 +5520,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
 
                     {/* FOOTER RENDERER */}
                     {data.global_footer && (
-                        <div className="relative group/footer w-full mt-auto">
+                        <div data-cosmic-shell-region="footer" className="relative group/footer w-full mt-auto">
+                            <div className="pointer-events-none absolute left-4 top-4 z-[89] hidden rounded-full border border-white/15 bg-slate-950/80 px-2.5 py-1 text-[9px] font-bold uppercase tracking-[.15em] text-white/75 shadow-lg backdrop-blur group-hover/footer:block">Global Footer · site-wide</div>
                             <button type="button" onClick={openLunaForSiteFooter}
                                 aria-label="Ask Luna about the site footer"
                                 title="Ask Luna about the site footer"
@@ -5257,7 +5554,15 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false) => {
                                     </div>
                                 </div>
                             )}
-                            <MinimalFooter block={normalizeGlobalFooterBlock(data.global_footer)} onUpdate={updateFooter} editorMode={Boolean(capabilities.canEditGlobalShell && (data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled))} resolvedTheme={resolveBlockTheme({ theme: data.global_footer?.mega_footer?.theme || 'auto' }, data.blocks.length)} />
+                            <MinimalFooter
+                                block={normalizeGlobalFooterBlock(data.global_footer)}
+                                onUpdate={updateFooter}
+                                editorMode={Boolean(capabilities.canEditGlobalShell)}
+                                resolvedTheme={resolveBlockTheme({ theme: data.global_footer?.mega_footer?.theme || 'auto' }, data.blocks.length)}
+                                onLogoManual={openFooterLogoManual}
+                                onLogoAi={openLunaForFooterLogo}
+                                onAiTarget={openLunaForFooterElement}
+                            />
                         </div>
                     )}
                 </div>

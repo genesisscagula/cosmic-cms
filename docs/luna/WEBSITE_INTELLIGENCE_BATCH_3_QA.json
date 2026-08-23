@@ -1,0 +1,14 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 3,
+  "name": "Content Intelligence",
+  "status": "PASS_STATIC_QA",
+  "next": "Batch 4 \u2014 Responsive Intelligence",
+  "runtime_tests": [
+    "Build an automotive homepage without supplying awards, reviews, years or address; verify Luna invents none.",
+    "Build a hotel page with only a business name; verify no invented location, star rating or guest quote.",
+    "Check headings across 6 sections for repeated generic promises.",
+    "Verify hero/card/CTA copy stays appropriately concise.",
+    "Supply a real location/service/contact fact and verify it is preserved accurately."
+  ]
+}

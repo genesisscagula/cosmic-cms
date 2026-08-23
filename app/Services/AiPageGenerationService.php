@@ -111,11 +111,17 @@ class AiPageGenerationService
 
                 // Trial generation uses the same category-schema custom UI path as the registered Builder.
                 // Existing 200+ Sparks remain a manual library and are not planner candidates here.
-                $categorySections = $this->lunaCategoryPages->plan($selectionPrompt);
+                $categoryPlan = $this->lunaCategoryPages->planDetailed($selectionPrompt);
+                $categorySections = is_array($categoryPlan['sections']??null)?$categoryPlan['sections']:[];
                 $selection = [
                     'sections' => $categorySections,
                     'image_folder' => 'default',
                     'planner' => 'luna_template_metadata',
+                    'page_intent' => $categoryPlan['page_intent']??'home',
+                    'composition_industry' => $categoryPlan['composition_industry']??'general',
+                    'composition_roles' => $categoryPlan['composition_roles']??[],
+                    'composition_pass' => (bool)($categoryPlan['composition_pass']??false),
+                    'template_key' => $categoryPlan['template_key']??null,
                 ];
                 $placeholderFolder = 'default';
                 $blocks = $this->images->withRemoteDownloadBudget(0, fn () => $this->lunaCategoryPages->generate(

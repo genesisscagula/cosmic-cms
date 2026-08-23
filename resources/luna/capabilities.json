@@ -1,0 +1,1361 @@
+{
+  "version": 1,
+  "name": "Cosmic CMS Luna Capability Registry",
+  "source_of_truth": "docs/luna",
+  "statuses": [
+    "supported",
+    "partially_supported",
+    "planned",
+    "unsupported"
+  ],
+  "confirmation_modes": [
+    "direct",
+    "confirm_large",
+    "confirm_destructive",
+    "clarify_if_missing",
+    "informational_only"
+  ],
+  "credit_modes": [
+    "zero_manual",
+    "billable_ai",
+    "runtime_defined",
+    "no_execution"
+  ],
+  "capabilities": [
+    {
+      "id": "conversation.capability_questions",
+      "name": "Capability Questions",
+      "category": "conversation",
+      "status": "supported",
+      "scopes": [
+        "global",
+        "site",
+        "page",
+        "section",
+        "element"
+      ],
+      "manual": false,
+      "luna": true,
+      "confirmation": "informational_only",
+      "credit_behavior": "no_execution",
+      "can_do": [
+        "answer what Luna can do",
+        "explain documented limits",
+        "explain whether a feature is available",
+        "offer the closest supported alternative"
+      ],
+      "cannot_do": [
+        "execute a mutation solely because the user asked whether it is possible",
+        "invent undocumented product capabilities"
+      ],
+      "fallback": "State that the capability is not documented as supported and avoid claiming execution.",
+      "verification": "No mutation should occur.",
+      "tags": [
+        "capability",
+        "conversation",
+        "help",
+        "luna",
+        "questions"
+      ],
+      "aliases": [
+        "answer what luna can do",
+        "capability questions",
+        "conversation capability questions",
+        "do you support",
+        "explain documented limits",
+        "explain whether a feature is available",
+        "is it possible",
+        "offer the closest supported alternative",
+        "what can luna do",
+        "what can you do"
+      ],
+      "keywords": [
+        "a",
+        "alternative",
+        "answer",
+        "available",
+        "can",
+        "capability",
+        "closest",
+        "conversation",
+        "do",
+        "documented",
+        "explain",
+        "feature",
+        "is",
+        "it",
+        "limits",
+        "luna",
+        "offer",
+        "possible",
+        "questions",
+        "support",
+        "supported",
+        "the",
+        "what",
+        "whether",
+        "you"
+      ],
+      "doc_refs": [
+        "CONVERSATION.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md",
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "id": "pages.generate",
+      "name": "Generate Website Pages",
+      "category": "pages",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "page"
+      ],
+      "manual": false,
+      "luna": true,
+      "confirmation": "confirm_large",
+      "credit_behavior": "billable_ai",
+      "can_do": [
+        "generate pages from registered Sparks",
+        "compose pages for documented page intents",
+        "inherit an established site theme",
+        "use an approved first-build design direction"
+      ],
+      "cannot_do": [
+        "invent unsupported page builders or arbitrary runtime systems",
+        "silently rebrand an established site during normal page generation"
+      ],
+      "fallback": "Generate the closest supported page composition using registered Sparks.",
+      "verification": "Confirm that generated page blocks were persisted.",
+      "tags": [
+        "generate",
+        "generation",
+        "page",
+        "pages",
+        "structure",
+        "website"
+      ],
+      "aliases": [
+        "build page",
+        "build website",
+        "compose pages for documented page intents",
+        "create page",
+        "create website",
+        "generate pages from registered sparks",
+        "generate website",
+        "generate website pages",
+        "inherit an established site theme",
+        "pages generate",
+        "use an approved first-build design direction"
+      ],
+      "keywords": [
+        "an",
+        "approved",
+        "build",
+        "compose",
+        "create",
+        "design",
+        "direction",
+        "documented",
+        "established",
+        "first",
+        "for",
+        "from",
+        "generate",
+        "inherit",
+        "intents",
+        "page",
+        "pages",
+        "registered",
+        "site",
+        "sparks",
+        "theme",
+        "use",
+        "website"
+      ],
+      "doc_refs": [
+        "PAGES.md",
+        "CAPABILITIES.md",
+        "CONVERSATION.md"
+      ]
+    },
+    {
+      "id": "sections.content_edit",
+      "name": "Section Content Editing",
+      "category": "builder",
+      "status": "supported",
+      "scopes": [
+        "section",
+        "element"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "edit headings and copy",
+        "edit labels and URLs",
+        "edit repeatable items",
+        "preserve existing layout for content-only requests"
+      ],
+      "cannot_do": [
+        "claim a redesign when only copy changed",
+        "mutate unrelated fields in a narrow edit"
+      ],
+      "fallback": "Apply the smallest supported edit and preserve unrelated content.",
+      "verification": "Compare before/after block state.",
+      "tags": [
+        "builder",
+        "content",
+        "edit",
+        "editing",
+        "section",
+        "spark"
+      ],
+      "aliases": [
+        "edit headings and copy",
+        "edit labels and urls",
+        "edit repeatable items",
+        "preserve existing layout for content-only requests",
+        "section content editing",
+        "sections content edit"
+      ],
+      "keywords": [
+        "and",
+        "content",
+        "copy",
+        "edit",
+        "editing",
+        "existing",
+        "for",
+        "headings",
+        "items",
+        "labels",
+        "layout",
+        "only",
+        "preserve",
+        "repeatable",
+        "requests",
+        "section",
+        "sections",
+        "urls"
+      ],
+      "doc_refs": [
+        "BUILDER.md",
+        "DESIGN_SYSTEM.md",
+        "GUARDRAILS.md",
+        "CAPABILITIES.md"
+      ]
+    },
+    {
+      "id": "sections.redesign",
+      "name": "Section Redesign",
+      "category": "builder",
+      "status": "supported",
+      "scopes": [
+        "section"
+      ],
+      "manual": false,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "billable_ai",
+      "can_do": [
+        "replace with a materially different compatible registered Spark",
+        "preserve semantic section purpose and useful content",
+        "respect existing site theme unless explicitly rebranded"
+      ],
+      "cannot_do": [
+        "return the same layout while claiming a redesign when alternatives exist",
+        "use an incompatible Spark only because it has requested media"
+      ],
+      "fallback": "Use the closest compatible registered Spark or explain that no safe alternative is available.",
+      "verification": "Verify a material block/layout change.",
+      "tags": [
+        "builder",
+        "edit",
+        "redesign",
+        "section",
+        "spark"
+      ],
+      "aliases": [
+        "change section layout",
+        "make section premium",
+        "preserve semantic section purpose and useful content",
+        "redesign section",
+        "replace with a materially different compatible registered spark",
+        "respect existing site theme unless explicitly rebranded",
+        "section redesign",
+        "sections redesign"
+      ],
+      "keywords": [
+        "a",
+        "and",
+        "change",
+        "compatible",
+        "content",
+        "different",
+        "existing",
+        "explicitly",
+        "layout",
+        "make",
+        "materially",
+        "premium",
+        "preserve",
+        "purpose",
+        "rebranded",
+        "redesign",
+        "registered",
+        "replace",
+        "respect",
+        "section",
+        "sections",
+        "semantic",
+        "site",
+        "spark",
+        "theme",
+        "unless",
+        "useful",
+        "with"
+      ],
+      "doc_refs": [
+        "BUILDER.md",
+        "DESIGN_SYSTEM.md",
+        "GUARDRAILS.md",
+        "CAPABILITIES.md"
+      ]
+    },
+    {
+      "id": "theme.named",
+      "name": "Named Theme Changes",
+      "category": "design_system",
+      "status": "supported",
+      "scopes": [
+        "site"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "confirm_large",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "change the site theme when explicitly requested",
+        "apply theme-linked design tokens site-wide"
+      ],
+      "cannot_do": [
+        "randomly switch themes during ordinary redesign/content requests"
+      ],
+      "fallback": "Preserve the current theme.",
+      "verification": "Verify global theme state changed.",
+      "tags": [
+        "brand",
+        "changes",
+        "design",
+        "design_system",
+        "named",
+        "style",
+        "theme"
+      ],
+      "aliases": [
+        "apply theme-linked design tokens site-wide",
+        "change the site theme when explicitly requested",
+        "named theme changes",
+        "theme named"
+      ],
+      "keywords": [
+        "apply",
+        "change",
+        "changes",
+        "design",
+        "explicitly",
+        "linked",
+        "named",
+        "requested",
+        "site",
+        "the",
+        "theme",
+        "tokens",
+        "when",
+        "wide"
+      ],
+      "doc_refs": [
+        "DESIGN_SYSTEM.md",
+        "GUARDRAILS.md",
+        "CAPABILITIES.md"
+      ]
+    },
+    {
+      "id": "theme.brand_color_family",
+      "name": "AI Brand Color Family",
+      "category": "design_system",
+      "status": "supported",
+      "scopes": [
+        "site"
+      ],
+      "manual": false,
+      "luna": true,
+      "confirmation": "confirm_large",
+      "credit_behavior": "billable_ai",
+      "can_do": [
+        "design a premium semantic color family around an explicit HEX",
+        "keep the exact user HEX as primary anchor",
+        "map family into headings, surfaces, buttons, borders, links, semantic status colors and gradients",
+        "use deterministic repair/fallback for invalid AI palette output"
+      ],
+      "limits": {
+        "hex_format": "#RRGGBB or accepted #RGB input normalized to #RRGGBB",
+        "heading_default": "primary on light/default surfaces",
+        "dark_hero_override": "light contrast foreground"
+      },
+      "cannot_do": [
+        "drift the requested HEX away from the primary anchor",
+        "bypass server contrast validation"
+      ],
+      "fallback": "Use deterministic validated premium family around the requested HEX.",
+      "verification": "Verify My Brand palette persisted and active site theme points to it.",
+      "tags": [
+        "ai",
+        "brand",
+        "color",
+        "design",
+        "design_system",
+        "family",
+        "style",
+        "theme"
+      ],
+      "aliases": [
+        "ai brand color family",
+        "brand color",
+        "brand colour",
+        "brand palette",
+        "color family",
+        "colour family",
+        "design a premium semantic color family around an explicit hex",
+        "hex theme",
+        "keep the exact user hex as primary anchor",
+        "theme brand color family",
+        "use deterministic repair/fallback for invalid ai palette output"
+      ],
+      "keywords": [
+        "a",
+        "ai",
+        "an",
+        "anchor",
+        "around",
+        "as",
+        "brand",
+        "color",
+        "colour",
+        "design",
+        "deterministic",
+        "exact",
+        "explicit",
+        "fallback",
+        "family",
+        "for",
+        "hex",
+        "invalid",
+        "keep",
+        "output",
+        "palette",
+        "premium",
+        "primary",
+        "repair",
+        "semantic",
+        "the",
+        "theme",
+        "use",
+        "user"
+      ],
+      "doc_refs": [
+        "DESIGN_SYSTEM.md",
+        "GUARDRAILS.md",
+        "CAPABILITIES.md"
+      ]
+    },
+    {
+      "id": "header.logo",
+      "name": "Header Logo",
+      "category": "header",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "header",
+        "element"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "choose a logo from Media Library",
+        "generate a logo through Luna when image generation is available",
+        "change the header logo without silently replacing footer logo"
+      ],
+      "limits": {
+        "rendering": "preserve aspect ratio and centralized responsive bounds"
+      },
+      "cannot_do": [
+        "charge manual Media Library selection as an AI action"
+      ],
+      "fallback": "Use Media Library/manual logo selection.",
+      "verification": "Verify header.logo_image_url changed and footer remains unchanged unless explicitly requested.",
+      "tags": [
+        "cta",
+        "header",
+        "logo",
+        "navigation"
+      ],
+      "aliases": [
+        "change the header logo without silently replacing footer logo",
+        "choose a logo from media library",
+        "generate a logo through luna when image generation is available",
+        "header logo"
+      ],
+      "keywords": [
+        "a",
+        "available",
+        "change",
+        "choose",
+        "footer",
+        "from",
+        "generate",
+        "generation",
+        "header",
+        "image",
+        "is",
+        "library",
+        "logo",
+        "luna",
+        "media",
+        "replacing",
+        "silently",
+        "the",
+        "through",
+        "when",
+        "without"
+      ],
+      "doc_refs": [
+        "HEADER_FOOTER.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md"
+      ]
+    },
+    {
+      "id": "header.navigation",
+      "name": "Header Navigation",
+      "category": "header",
+      "status": "partially_supported",
+      "scopes": [
+        "site",
+        "header",
+        "element"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "add menu items",
+        "rename menu items",
+        "change URLs",
+        "remove menu items",
+        "reorder sibling items",
+        "create submenus"
+      ],
+      "limits": {
+        "max_depth": 3,
+        "mega_menu": false,
+        "navigation_type": "plain dropdown"
+      },
+      "cannot_do": [
+        "create a fourth navigation level",
+        "create or enable a header Mega Menu"
+      ],
+      "fallback": "Offer standard nested dropdown navigation up to three levels.",
+      "verification": "Validate resulting menu tree depth and persisted global header state.",
+      "tags": [
+        "cta",
+        "header",
+        "logo",
+        "navigation"
+      ],
+      "aliases": [
+        "3rd level menu",
+        "add menu items",
+        "change urls",
+        "dropdown",
+        "header menu",
+        "header navigation",
+        "main menu",
+        "nav",
+        "remove menu items",
+        "rename menu items",
+        "submenu",
+        "third-level menu",
+        "website menu"
+      ],
+      "keywords": [
+        "3rd",
+        "add",
+        "change",
+        "dropdown",
+        "header",
+        "items",
+        "level",
+        "main",
+        "menu",
+        "nav",
+        "navigation",
+        "remove",
+        "rename",
+        "submenu",
+        "third",
+        "urls",
+        "website"
+      ],
+      "doc_refs": [
+        "HEADER_FOOTER.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md"
+      ]
+    },
+    {
+      "id": "header.mega_menu",
+      "name": "Header Mega Menu",
+      "category": "header",
+      "status": "unsupported",
+      "scopes": [
+        "site",
+        "header"
+      ],
+      "manual": false,
+      "luna": false,
+      "confirmation": "informational_only",
+      "credit_behavior": "no_execution",
+      "can_do": [],
+      "cannot_do": [
+        "enable a header Mega Menu",
+        "claim Mega Menu is available in header"
+      ],
+      "fallback": "Use standard header dropdown navigation up to three levels. Mega Footer is available separately.",
+      "verification": "No header mega-menu mutation should occur.",
+      "tags": [
+        "cta",
+        "header",
+        "logo",
+        "mega",
+        "menu",
+        "navigation"
+      ],
+      "aliases": [
+        "header mega menu",
+        "mega menu",
+        "mega navigation"
+      ],
+      "keywords": [
+        "header",
+        "mega",
+        "menu",
+        "navigation"
+      ],
+      "doc_refs": [
+        "HEADER_FOOTER.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md"
+      ]
+    },
+    {
+      "id": "header.cta",
+      "name": "Header CTA",
+      "category": "header",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "header",
+        "element"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "edit CTA label",
+        "edit CTA URL"
+      ],
+      "cannot_do": [
+        "mutate unrelated header content during a CTA-only request"
+      ],
+      "fallback": "Use manual CTA editor.",
+      "verification": "Verify CTA label/URL changed globally.",
+      "tags": [
+        "cta",
+        "header",
+        "logo",
+        "navigation"
+      ],
+      "aliases": [
+        "edit cta label",
+        "edit cta url",
+        "header cta"
+      ],
+      "keywords": [
+        "cta",
+        "edit",
+        "header",
+        "label",
+        "url"
+      ],
+      "doc_refs": [
+        "HEADER_FOOTER.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md"
+      ]
+    },
+    {
+      "id": "footer.standard",
+      "name": "Global Footer",
+      "category": "footer",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "footer",
+        "element"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "edit footer logo",
+        "edit tagline/text",
+        "manage footer links",
+        "edit contact details",
+        "edit social links",
+        "edit CTA",
+        "edit privacy/terms/copyright"
+      ],
+      "cannot_do": [
+        "mutate header when user targets footer only"
+      ],
+      "fallback": "Use documented manual footer editing.",
+      "verification": "Verify global_footer changed and persists across pages.",
+      "tags": [
+        "branding",
+        "footer",
+        "global",
+        "navigation"
+      ],
+      "aliases": [
+        "edit contact details",
+        "edit footer logo",
+        "edit tagline/text",
+        "footer standard",
+        "global footer",
+        "manage footer links"
+      ],
+      "keywords": [
+        "contact",
+        "details",
+        "edit",
+        "footer",
+        "global",
+        "links",
+        "logo",
+        "manage",
+        "standard",
+        "tagline",
+        "text"
+      ],
+      "doc_refs": [
+        "HEADER_FOOTER.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md"
+      ]
+    },
+    {
+      "id": "footer.mega",
+      "name": "Mega Footer",
+      "category": "footer",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "footer"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "enable or disable Mega Footer",
+        "manage columns",
+        "manage links in columns",
+        "edit CTA/tagline/contact/social content"
+      ],
+      "limits": {
+        "max_columns": 4,
+        "max_links_per_column": 6,
+        "max_social_links": 6
+      },
+      "cannot_do": [
+        "treat Mega Footer as a header Mega Menu"
+      ],
+      "fallback": "Use standard footer if Mega Footer is not desired.",
+      "verification": "Validate footer schema limits and persistence.",
+      "tags": [
+        "branding",
+        "footer",
+        "mega",
+        "navigation"
+      ],
+      "aliases": [
+        "edit cta/tagline/contact/social content",
+        "enable or disable mega footer",
+        "footer mega",
+        "large footer",
+        "manage columns",
+        "manage links in columns",
+        "mega footer",
+        "multi-column footer"
+      ],
+      "keywords": [
+        "column",
+        "columns",
+        "contact",
+        "content",
+        "cta",
+        "disable",
+        "edit",
+        "enable",
+        "footer",
+        "in",
+        "large",
+        "links",
+        "manage",
+        "mega",
+        "multi",
+        "or",
+        "social",
+        "tagline"
+      ],
+      "doc_refs": [
+        "HEADER_FOOTER.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md"
+      ]
+    },
+    {
+      "id": "media.library",
+      "name": "Media Library Selection",
+      "category": "media",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "section",
+        "element",
+        "header",
+        "footer"
+      ],
+      "manual": true,
+      "luna": false,
+      "confirmation": "direct",
+      "credit_behavior": "zero_manual",
+      "can_do": [
+        "select existing media assets"
+      ],
+      "cannot_do": [
+        "generate a new AI image without invoking the AI path"
+      ],
+      "fallback": "Upload or select an existing media asset.",
+      "verification": "Verify selected asset URL/ID is applied.",
+      "tags": [
+        "image",
+        "library",
+        "media",
+        "selection",
+        "upload",
+        "video"
+      ],
+      "aliases": [
+        "media library",
+        "media library selection",
+        "select existing media assets"
+      ],
+      "keywords": [
+        "assets",
+        "existing",
+        "library",
+        "media",
+        "select",
+        "selection"
+      ],
+      "doc_refs": [
+        "MEDIA.md",
+        "CAPABILITIES.md",
+        "CREDITS.md"
+      ]
+    },
+    {
+      "id": "media.ai_image",
+      "name": "AI Image Generation",
+      "category": "media",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "page",
+        "section",
+        "element",
+        "header",
+        "footer"
+      ],
+      "manual": false,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "billable_ai",
+      "can_do": [
+        "generate images through configured AI image service",
+        "generate logos through documented logo workflow"
+      ],
+      "cannot_do": [
+        "regenerate only to work around a display-size bug",
+        "claim generation succeeded when provider/runtime failed"
+      ],
+      "fallback": "Use Media Library or explain the provider/runtime limitation.",
+      "verification": "Verify returned media asset exists and is applied.",
+      "tags": [
+        "ai",
+        "generation",
+        "image",
+        "media",
+        "upload",
+        "video"
+      ],
+      "aliases": [
+        "ai image generation",
+        "generate images through configured ai image service",
+        "generate logos through documented logo workflow",
+        "media ai image"
+      ],
+      "keywords": [
+        "ai",
+        "configured",
+        "documented",
+        "generate",
+        "generation",
+        "image",
+        "images",
+        "logo",
+        "logos",
+        "media",
+        "service",
+        "through",
+        "workflow"
+      ],
+      "doc_refs": [
+        "MEDIA.md",
+        "CAPABILITIES.md",
+        "CREDITS.md"
+      ]
+    },
+    {
+      "id": "media.video",
+      "name": "Video Media",
+      "category": "media",
+      "status": "partially_supported",
+      "scopes": [
+        "section",
+        "hero"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "use documented supported video sources/integration paths",
+        "use direct video links where product workflow supports them"
+      ],
+      "cannot_do": [
+        "invent a completed video integration when no supported runtime path exists"
+      ],
+      "fallback": "Use a supported image/slider treatment or explain the available video path.",
+      "verification": "Verify the resulting section uses a supported video source.",
+      "tags": [
+        "image",
+        "media",
+        "upload",
+        "video"
+      ],
+      "aliases": [
+        "media video",
+        "use direct video links where product workflow supports them",
+        "use documented supported video sources/integration paths",
+        "video media"
+      ],
+      "keywords": [
+        "direct",
+        "documented",
+        "integration",
+        "links",
+        "media",
+        "paths",
+        "product",
+        "sources",
+        "supported",
+        "supports",
+        "them",
+        "use",
+        "video",
+        "where",
+        "workflow"
+      ],
+      "doc_refs": [
+        "MEDIA.md",
+        "CAPABILITIES.md",
+        "CREDITS.md"
+      ]
+    },
+    {
+      "id": "publishing.publish",
+      "name": "Publish Website",
+      "category": "publishing",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "page"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "confirm_large",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "invoke supported publishing workflow",
+        "report verified publish result"
+      ],
+      "cannot_do": [
+        "claim publish succeeded before runtime verification"
+      ],
+      "fallback": "Report the publish failure accurately and provide supported next step.",
+      "verification": "Publishing workflow must return success.",
+      "tags": [
+        "deployment",
+        "export",
+        "live",
+        "publish",
+        "publishing",
+        "website"
+      ],
+      "aliases": [
+        "invoke supported publishing workflow",
+        "publish website",
+        "publishing publish",
+        "report verified publish result"
+      ],
+      "keywords": [
+        "invoke",
+        "publish",
+        "publishing",
+        "report",
+        "result",
+        "supported",
+        "verified",
+        "website",
+        "workflow"
+      ],
+      "doc_refs": [
+        "PUBLISHING.md",
+        "CAPABILITIES.md",
+        "QA.md"
+      ]
+    },
+    {
+      "id": "publishing.builder_live_parity",
+      "name": "Builder and Live Visual Parity",
+      "category": "publishing",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "page",
+        "section"
+      ],
+      "manual": false,
+      "luna": false,
+      "confirmation": "informational_only",
+      "credit_behavior": "no_execution",
+      "can_do": [
+        "use same semantic design system in Builder and compiler",
+        "preserve shell, typography, spacing, radius, media and responsive intent"
+      ],
+      "cannot_do": [
+        "treat Builder-only chrome as live website content"
+      ],
+      "fallback": "Flag parity mismatch for product QA/patching.",
+      "verification": "Compare representative Builder and published/live renders.",
+      "tags": [
+        "and",
+        "builder",
+        "deployment",
+        "export",
+        "live",
+        "publish",
+        "publishing",
+        "visual"
+      ],
+      "aliases": [
+        "builder and live visual parity",
+        "publishing builder live parity",
+        "use same semantic design system in builder and compiler"
+      ],
+      "keywords": [
+        "and",
+        "builder",
+        "compiler",
+        "design",
+        "in",
+        "live",
+        "parity",
+        "publishing",
+        "same",
+        "semantic",
+        "system",
+        "use",
+        "visual"
+      ],
+      "doc_refs": [
+        "PUBLISHING.md",
+        "CAPABILITIES.md",
+        "QA.md"
+      ]
+    },
+    {
+      "id": "manual.editing",
+      "name": "Manual Editing",
+      "category": "builder",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "page",
+        "section",
+        "element",
+        "header",
+        "footer"
+      ],
+      "manual": true,
+      "luna": false,
+      "confirmation": "direct",
+      "credit_behavior": "zero_manual",
+      "can_do": [
+        "perform exposed CMS manual edits",
+        "use contextual Edit manually controls where available"
+      ],
+      "cannot_do": [
+        "consume credits without an actual billable AI/API request",
+        "perform AI-only generation while pretending it is manual"
+      ],
+      "fallback": "Use Luna for AI-required operations.",
+      "verification": "Verify target data changed with no AI charge.",
+      "tags": [
+        "builder",
+        "edit",
+        "editing",
+        "manual",
+        "section",
+        "spark"
+      ],
+      "aliases": [
+        "manual editing",
+        "perform exposed cms manual edits",
+        "use contextual edit manually controls where available"
+      ],
+      "keywords": [
+        "available",
+        "cms",
+        "contextual",
+        "controls",
+        "edit",
+        "editing",
+        "edits",
+        "exposed",
+        "manual",
+        "manually",
+        "perform",
+        "use",
+        "where"
+      ],
+      "doc_refs": [
+        "BUILDER.md",
+        "DESIGN_SYSTEM.md",
+        "GUARDRAILS.md",
+        "CAPABILITIES.md"
+      ]
+    },
+    {
+      "id": "conversation.large_creative_confirmation",
+      "name": "Large Creative Confirmation",
+      "category": "conversation",
+      "status": "supported",
+      "scopes": [
+        "site",
+        "page"
+      ],
+      "manual": false,
+      "luna": true,
+      "confirmation": "confirm_large",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "prepare and store a large creative plan before execution",
+        "ask the user to confirm before the large action runs",
+        "resume the exact stored plan from yes/proceed/go ahead/do it",
+        "cancel a pending plan without mutating the website",
+        "discard a stale plan if the Builder page changed before confirmation"
+      ],
+      "cannot_do": [
+        "execute a stored plan against changed page state",
+        "treat an unrelated yes as confirmation when no pending plan exists",
+        "claim the large action completed before execution is verified"
+      ],
+      "fallback": "If the pending plan is stale or missing, ask the user to restate the desired change so Luna can prepare a fresh plan.",
+      "verification": "The exact stored planner payload/operations must be resumed only when the page-state fingerprint still matches.",
+      "tags": [
+        "capability",
+        "confirmation",
+        "conversation",
+        "creative",
+        "help",
+        "large",
+        "luna"
+      ],
+      "aliases": [
+        "ask the user to confirm before the large action runs",
+        "cancel a pending plan without mutating the website",
+        "conversation large creative confirmation",
+        "large creative confirmation",
+        "prepare and store a large creative plan before execution",
+        "resume the exact stored plan from yes/proceed/go ahead/do it"
+      ],
+      "keywords": [
+        "a",
+        "action",
+        "ahead",
+        "and",
+        "ask",
+        "before",
+        "cancel",
+        "confirm",
+        "confirmation",
+        "conversation",
+        "creative",
+        "do",
+        "exact",
+        "execution",
+        "from",
+        "go",
+        "it",
+        "large",
+        "mutating",
+        "pending",
+        "plan",
+        "prepare",
+        "proceed",
+        "resume",
+        "runs",
+        "store",
+        "stored",
+        "the",
+        "to",
+        "user",
+        "website",
+        "without",
+        "yes"
+      ],
+      "doc_refs": [
+        "CONVERSATION.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md",
+        "PRODUCT.md"
+      ]
+    },
+    {
+      "id": "conversation.contextual_ai_icon",
+      "name": "Contextual AI Icon Chat",
+      "category": "conversation",
+      "status": "supported",
+      "scopes": [
+        "section",
+        "element",
+        "header",
+        "footer"
+      ],
+      "manual": true,
+      "luna": true,
+      "confirmation": "direct",
+      "credit_behavior": "runtime_defined",
+      "can_do": [
+        "open the normal Luna chat with selected target context",
+        "show Luna typing/looking-at state instead of a separate green context bubble",
+        "keep the selected section/element/header/footer attached to the same chat",
+        "offer Edit manually \u00b7 0 credits inside the same chat",
+        "preserve the existing global Luna conversation rather than creating another assistant"
+      ],
+      "cannot_do": [
+        "create a separate independent conversation identity/history",
+        "auto-run an AI mutation merely because the contextual icon was clicked",
+        "show the legacy green context bubble/card as a second interaction layer"
+      ],
+      "fallback": "Keep the selected target attached and let the user type the desired change in the normal Luna chat.",
+      "verification": "Clicking any supported contextual AI icon opens the same Luna chat, shows contextual typing, preserves target context, and does not mutate the website until the user asks for a change.",
+      "tags": [
+        "ai",
+        "capability",
+        "chat",
+        "contextual",
+        "conversation",
+        "help",
+        "icon",
+        "luna"
+      ],
+      "aliases": [
+        "ai icon",
+        "contextual ai",
+        "contextual ai icon chat",
+        "conversation contextual ai icon",
+        "edit manually",
+        "offer edit manually \u00b7 0 credits inside the same chat",
+        "open the normal luna chat with selected target context"
+      ],
+      "keywords": [
+        "0",
+        "ai",
+        "chat",
+        "context",
+        "contextual",
+        "conversation",
+        "credits",
+        "edit",
+        "icon",
+        "inside",
+        "luna",
+        "manually",
+        "normal",
+        "offer",
+        "open",
+        "same",
+        "selected",
+        "target",
+        "the",
+        "with"
+      ],
+      "doc_refs": [
+        "CONVERSATION.md",
+        "CAPABILITIES.md",
+        "LIMITATIONS.md",
+        "PRODUCT.md"
+      ]
+    }
+  ],
+  "metadata_schema": {
+    "category": "primary routing domain",
+    "tags": "broad semantic labels used for shortlist scoring",
+    "aliases": "English phrases users may use for this capability",
+    "keywords": "normalized lightweight lookup terms",
+    "doc_refs": "canonical documentation to read after shortlist match"
+  }
+}

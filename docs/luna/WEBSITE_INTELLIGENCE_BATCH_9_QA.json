@@ -1,0 +1,15 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 9,
+  "name": "Execution Verification",
+  "status": "PASS_STATIC_QA",
+  "next": "Batch 10 \u2014 Site Memory / Design DNA",
+  "runtime_tests": [
+    "Request one simple edit and verify execution_verification.status=complete.",
+    "Request a multi-operation change where one operation cannot apply; verify status=partial and Luna does not say Done.",
+    "Request an invalid/unavailable structural operation; verify status=failed and zero success claim.",
+    "Move a section and verify target/to_index match.",
+    "Replace a section and verify the requested Spark key is the applied Spark key.",
+    "Confirm Builder and Trial both return execution_verification."
+  ]
+}

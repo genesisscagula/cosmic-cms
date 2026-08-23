@@ -109,11 +109,11 @@ useEffect(()=>{
 
     const generatePublicTrial=async(message)=>{
         const stages=[
-            'Planning your website…',
-            'Choosing the best design…',
-            'Building your sections…',
-            'Adding content & imagery…',
-            'Finalizing your website…',
+            'Thinking…',
+            'Planning…',
+            'Designing…',
+            'Building…',
+            'Checking…',
         ];
         let stageIndex=0;
         setStatus(stages[0]);
@@ -181,15 +181,28 @@ useEffect(()=>{
         if(!message||busy)return;
         if(safeDirectMessage===null)setInput('');
         setBusy(true);
-        setStatus('Understanding your request…');
+        setStatus('Thinking…');
         if(!safeConfirmationToken)setMessages(current=>[...current,{role:'user',text:message}]);
 
-        let stage=0;
-        const stages=effectiveAuthenticated ? ['Understanding your request…','Checking your Cosmic workspace…','Preparing the answer…'] : ['Understanding your request…','Checking Cosmic CMS…','Preparing the answer…'];
-        const timer=window.setInterval(()=>{
-            stage=Math.min(stage+1,stages.length-1);
-            setStatus(stages[stage]);
-        },1800);
+        const buildIntent=/\b(build|create|generate|design|make)\b.{0,100}\b(website|site|homepage|home page|landing page|page)\b/i.test(message);
+        const updateIntent=/\b(change|update|edit|rewrite|replace|redesign|rebrand|adjust|increase|decrease|add|remove)\b/i.test(message);
+        const publishIntent=/\b(publish|go live|make .* live)\b/i.test(message);
+        const navigateIntent=/\b(open|go to|take me to|navigate to)\b/i.test(message);
+        const actionIntent=buildIntent||updateIntent||publishIntent||navigateIntent;
+        const phases=buildIntent
+            ? ['Thinking…','Planning…','Designing…','Building…','Checking…']
+            : updateIntent
+                ? ['Thinking…','Planning…','Designing…','Building…','Checking…']
+                : publishIntent
+                    ? ['Thinking…','Planning…','Building…','Checking…']
+                    : navigateIntent
+                        ? ['Thinking…','Checking…']
+                        : ['Thinking…'];
+        let phaseIndex=0;
+        const timer=actionIntent ? window.setInterval(()=>{
+            phaseIndex=Math.min(phaseIndex+1,phases.length-1);
+            setStatus(phases[phaseIndex]);
+        },1800) : null;
 
         try{
             const endpoint = effectiveAuthenticated ? route('luna.global.chat') : route('luna.public.chat');
@@ -222,11 +235,11 @@ useEffect(()=>{
             setStatus(data.status_label||'Ready');
 
             if(data.mode==='start_trial' || data.start_trial===true){
-                window.clearInterval(timer);
+                if (timer) window.clearInterval(timer);
                 // The AI acknowledgement above is rendered first. Generation then
                 // continues inside this same chat instead of opening the old /start loader.
                 await new Promise(resolve=>window.setTimeout(resolve,420));
-                await generatePublicTrial(message);
+                await generatePublicTrial(String(data.generation_prompt || message));
             } else if(data.mode==='navigate'&&data.navigate_action==='back'){
                 window.setTimeout(()=>window.history.back(),500);
             } else if(data.mode==='navigate'&&data.navigate_url){
@@ -253,7 +266,7 @@ useEffect(()=>{
             }
             setMessages(current=>[...current,{role:'assistant',text:explanation}]);
         }finally{
-            window.clearInterval(timer);
+            if (timer) window.clearInterval(timer);
             setBusy(false);
         }
     };
@@ -305,7 +318,7 @@ useEffect(()=>{
                         ? 'Try “Create an About Us page in Cosmic React”, “Open Orders for my store”, or “Rename Contact to Get a Quote”.'
                         : 'Try “What can Luna do?”, “Show me the plans”, or “Start building a website”.'}
                 </div>}
-                {busy&&<div className="flex items-center gap-2 text-xs font-semibold text-violet-300"><span className="h-1.5 w-1.5 animate-pulse rounded-full bg-violet-300"/>{status}</div>}
+                {busy&&<div className="flex items-center gap-2 text-xs font-semibold text-violet-300" role="status" aria-live="polite"><span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-violet-300/25 border-t-violet-300" aria-hidden="true"/><span>{status}</span></div>}
                 <div ref={endRef} className="h-px" aria-hidden="true"/>
             </div>
 

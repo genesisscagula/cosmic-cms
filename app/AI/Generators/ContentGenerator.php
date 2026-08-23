@@ -3,11 +3,20 @@
 namespace App\AI\Generators;
 use App\AI\Schemas\SelectedSchemaLoader;
 use App\AI\Validation\GeneratedContentValidator;
+use App\Services\LunaPageCompositionService;
+use App\Services\LunaContentIntelligenceService;
+use App\Services\LunaResponsiveIntelligenceService;
 
 use OpenAI\Laravel\Facades\OpenAI;
 
 class ContentGenerator
 {
+    public function __construct(
+        private readonly LunaPageCompositionService $composition,
+        private readonly LunaContentIntelligenceService $contentIntelligence,
+        private readonly LunaResponsiveIntelligenceService $responsive
+    ) {}
+
 
     private const IMAGE_FOLDERS = [
         'construction',
@@ -43,7 +52,8 @@ class ContentGenerator
             throw new \InvalidArgumentException('No supported Spark schemas were selected.');
         }
 
-        $system = $this->buildSystemPrompt($schemaSelection);
+        $composition=$this->composition->context($prompt);
+        $system = $this->buildSystemPrompt($schemaSelection,$prompt,$composition);
         $user = $this->buildUserPrompt($prompt, $selectedSections);
         $attemptLimit = max(1, (int) config('openai.content_json_attempts', 2));
         $lastContent = '';
@@ -78,6 +88,11 @@ class ContentGenerator
                     $selectedSections
                 );
 
+                $contentAudit=$this->contentIntelligence->audit($validation['blocks']);
+
+                // Generic-copy findings are diagnostic rather than schema failures:
+                // schema correctness remains the hard boundary, while the prompt contract
+                // steers generation away from filler and unsupported facts.
                 return [
                     'image_folder' => $data['image_folder'],
                     'blocks' => $validation['blocks'],
@@ -89,6 +104,7 @@ class ContentGenerator
                         'content_model' => config('openai.content_model'),
                         'json_attempts_used' => $attempt,
                         'json_validation' => $validation['diagnostics'],
+                        'content_intelligence' => $contentAudit,
                     ],
                 ];
             } catch (\UnexpectedValueException $exception) {
@@ -105,7 +121,7 @@ class ContentGenerator
     /**
      * Build the complete schema boundary for the selected Sparks only.
      */
-    private function buildSystemPrompt(array $schemaSelection): string
+    private function buildSystemPrompt(array $schemaSelection,string $prompt,array $composition): string
     {
         $system = <<<PROMPT
 You are Cosmic's senior website content generator.
@@ -148,6 +164,30 @@ GLOBAL CONTENT CONTRACT
 - Keep URLs editable and safe. Use "#" when no real destination was supplied.
 - Image URL fields defined by a schema must remain empty strings; the application assigns images after generation.
 RULES;
+
+        $system .= "
+
+".$this->contentIntelligence->contract($prompt,$composition);
+        $system .= "
+
+".$this->responsive->plannerDirective(array_values($schemaSelection['selected']??[]));
+        $system .= <<<'CONTENTRULES'
+
+CONTENT QUALITY RULES
+- Prefer concrete, industry-relevant language over generic marketing filler.
+- Preserve every factual detail supplied by the user. Do not silently alter business names, locations, contact details, services, prices, credentials, or other supplied facts.
+- If a fact was not supplied, write around the unknown rather than inventing it.
+- Never create fake testimonial quotes or attribute praise to fictional customers.
+- Never turn editable proof placeholders into factual claims. If a Spark schema requires proof/stat fields but the user supplied no verified metric, use neutral non-quantified starter wording that does not assert an achievement.
+- Vary headings and supporting copy across the page; do not repeat the same promise in multiple sections.
+- Match copy density to the field: short labels stay short, card copy stays scannable, and hero copy must not become a paragraph wall.
+- CTA labels should describe a plausible next action for the page intent. Use "#" for destinations not supplied by the user.
+- Do not use generic filler phrases listed in the CONTENT INTELLIGENCE CONTRACT.
+- Write text lengths that remain usable when desktop layouts collapse on tablet/mobile.
+- Do not create excessively long button labels, badges, card titles, stat labels, or navigation-like labels that are likely to overflow.
+- For comparison/grid/card content, keep sibling item copy reasonably balanced so responsive stacking does not produce extreme height mismatch.
+- For media-led Sparks, keep copy concise enough that text does not fight the media area at tablet/mobile widths.
+CONTENTRULES;
 
         return $system;
     }
@@ -4183,6 +4223,639 @@ PROMPT;
     - Do not invent awards, client names, certifications, guarantees, numeric performance claims, addresses, or people.
     - button_url and secondary_url must be # when no destination is supplied.
     - Do not use markdown or placeholder lorem ipsum.
+
+    TXT;
+    }
+
+
+    private function blogMiniHeroSchema(): string
+    {
+        return <<<TXT
+
+    blog_mini_hero
+
+    - type = blog_mini_hero
+    - theme = auto
+    - layout_variant = mini-header-01
+    - eyebrow
+    - heading
+    - text
+
+    Requirements:
+    - Use this only as a compact introduction for Blog, Posts, Updates, Resources, News, or editorial archives.
+    - Keep the heading concise and the supporting text useful.
+    - layout_variant may be mini-header-01, mini-header-02, or mini-header-03.
+    - Preserve the active website theme.
+    - Do not invent article counts, authors, publication statistics, or claims.
+
+    TXT;
+    }
+
+    private function commerceCartClassicSchema(): string
+    {
+        return <<<TXT
+
+    commerce_cart_classic
+
+    - type = commerce_cart_classic
+    - theme = auto
+    - heading
+    - text
+    - checkout_label
+    - continue_label
+
+    Requirements:
+    - This is a commerce runtime cart layout. Luna may edit presentation copy only.
+    - Never invent cart items, prices, discounts, shipping totals, taxes, stock, or order data.
+    - Preserve live commerce runtime behavior and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceCartCompactSchema(): string
+    {
+        return <<<TXT
+
+    commerce_cart_compact
+
+    - type = commerce_cart_compact
+    - theme = auto
+    - heading
+    - text
+    - checkout_label
+    - continue_label
+
+    Requirements:
+    - This is a compact commerce runtime cart layout. Luna may edit presentation copy only.
+    - Never invent cart items, prices, discounts, shipping totals, taxes, stock, or order data.
+    - Preserve live commerce runtime behavior and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceCartSplitSchema(): string
+    {
+        return <<<TXT
+
+    commerce_cart_split
+
+    - type = commerce_cart_split
+    - theme = auto
+    - heading
+    - text
+    - checkout_label
+    - continue_label
+
+    Requirements:
+    - This is a split commerce runtime cart layout. Luna may edit presentation copy only.
+    - Never invent cart items, prices, discounts, shipping totals, taxes, stock, or order data.
+    - Preserve live commerce runtime behavior and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceCatalogCompactSchema(): string
+    {
+        return <<<TXT
+
+    commerce_catalog_compact
+
+    - type = commerce_catalog_compact
+    - theme = auto
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a live commerce catalog/product presentation layout.
+    - Luna may edit section copy and choose this registered layout, but product names, prices, inventory, variants, categories, and product images are runtime/catalog-owned.
+    - Never fabricate product data.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceCatalogEditorialSchema(): string
+    {
+        return <<<TXT
+
+    commerce_catalog_editorial
+
+    - type = commerce_catalog_editorial
+    - theme = auto
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a live commerce catalog/product presentation layout.
+    - Luna may edit section copy and choose this registered layout, but product names, prices, inventory, variants, categories, and product images are runtime/catalog-owned.
+    - Never fabricate product data.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceCatalogGridSchema(): string
+    {
+        return <<<TXT
+
+    commerce_catalog_grid
+
+    - type = commerce_catalog_grid
+    - theme = auto
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a live commerce catalog/product presentation layout.
+    - Luna may edit section copy and choose this registered layout, but product names, prices, inventory, variants, categories, and product images are runtime/catalog-owned.
+    - Never fabricate product data.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceCategoriesSchema(): string
+    {
+        return <<<TXT
+
+    commerce_categories
+
+    - type = commerce_categories
+    - theme = auto
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a live commerce catalog/product presentation layout.
+    - Luna may edit section copy and choose this registered layout, but product names, prices, inventory, variants, categories, and product images are runtime/catalog-owned.
+    - Never fabricate product data.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceCheckoutClassicSchema(): string
+    {
+        return <<<TXT
+
+    commerce_checkout_classic
+
+    - type = commerce_checkout_classic
+    - theme = auto
+    - heading
+    - text
+    - payment_label
+    - help_text
+
+    Requirements:
+    - This is a live commerce checkout layout. Luna may edit presentation copy/layout only.
+    - Never invent customer details, cart items, prices, tax, shipping, discounts, payment state, or order totals.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceCheckoutExpressSchema(): string
+    {
+        return <<<TXT
+
+    commerce_checkout_express
+
+    - type = commerce_checkout_express
+    - theme = auto
+    - heading
+    - text
+    - payment_label
+    - help_text
+
+    Requirements:
+    - This is a live commerce checkout layout. Luna may edit presentation copy/layout only.
+    - Never invent customer details, cart items, prices, tax, shipping, discounts, payment state, or order totals.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceCheckoutSplitSchema(): string
+    {
+        return <<<TXT
+
+    commerce_checkout_split
+
+    - type = commerce_checkout_split
+    - theme = auto
+    - heading
+    - text
+    - payment_label
+    - help_text
+
+    Requirements:
+    - This is a live commerce checkout layout. Luna may edit presentation copy/layout only.
+    - Never invent customer details, cart items, prices, tax, shipping, discounts, payment state, or order totals.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceFeaturedCollectionSchema(): string
+    {
+        return <<<TXT
+
+    commerce_featured_collection
+
+    - type = commerce_featured_collection
+    - theme = auto
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a live commerce catalog/product presentation layout.
+    - Luna may edit section copy and choose this registered layout, but product names, prices, inventory, variants, categories, and product images are runtime/catalog-owned.
+    - Never fabricate product data.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceFeaturedProductsSchema(): string
+    {
+        return <<<TXT
+
+    commerce_featured_products
+
+    - type = commerce_featured_products
+    - theme = auto
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a live commerce catalog/product presentation layout.
+    - Luna may edit section copy and choose this registered layout, but product names, prices, inventory, variants, categories, and product images are runtime/catalog-owned.
+    - Never fabricate product data.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceMiniCartSchema(): string
+    {
+        return <<<TXT
+
+    commerce_mini_cart
+
+    - type = commerce_mini_cart
+    - theme = auto
+    - heading
+    - text
+
+    Requirements:
+    - This is a commerce runtime component. Luna may edit presentation copy/layout only.
+    - Never invent product, price, variant, stock, cart, or order data.
+    - Preserve runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commercePriceSchema(): string
+    {
+        return <<<TXT
+
+    commerce_price
+
+    - type = commerce_price
+    - theme = auto
+    - heading
+    - text
+
+    Requirements:
+    - This is a commerce runtime component. Luna may edit presentation copy/layout only.
+    - Never invent product, price, variant, stock, cart, or order data.
+    - Preserve runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceProductGallerySchema(): string
+    {
+        return <<<TXT
+
+    commerce_product_gallery
+
+    - type = commerce_product_gallery
+    - theme = auto
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a live commerce catalog/product presentation layout.
+    - Luna may edit section copy and choose this registered layout, but product names, prices, inventory, variants, categories, and product images are runtime/catalog-owned.
+    - Never fabricate product data.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commercePromoSplitSchema(): string
+    {
+        return <<<TXT
+
+    commerce_promo_split
+
+    - type = commerce_promo_split
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - image_url = "" 
+
+    Requirements:
+    - Use image_url only as presentation media; Cosmic may resolve it from the media provider.
+    - Do not fabricate discounts, coupon values, expiry dates, stock, or product claims.
+    - Preserve the active website theme.
+
+    TXT;
+    }
+
+    private function commerceRelatedProductsSchema(): string
+    {
+        return <<<TXT
+
+    commerce_related_products
+
+    - type = commerce_related_products
+    - theme = auto
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a live commerce catalog/product presentation layout.
+    - Luna may edit section copy and choose this registered layout, but product names, prices, inventory, variants, categories, and product images are runtime/catalog-owned.
+    - Never fabricate product data.
+    - Preserve commerce runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function commerceVariationSelectorSchema(): string
+    {
+        return <<<TXT
+
+    commerce_variation_selector
+
+    - type = commerce_variation_selector
+    - theme = auto
+    - heading
+    - text
+
+    Requirements:
+    - This is a commerce runtime component. Luna may edit presentation copy/layout only.
+    - Never invent product, price, variant, stock, cart, or order data.
+    - Preserve runtime bindings and the active website theme.
+
+    TXT;
+    }
+
+    private function contentEventsGridSchema(): string
+    {
+        return <<<TXT
+
+    content_events_grid
+
+    - type = content_events_grid
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a dynamic content/posts layout. Luna may edit section framing copy and select the layout.
+    - Entries, event records, dates, authors, excerpts, taxonomies, and resource data are runtime/content-store owned.
+    - Never invent live content records.
+    - Preserve the active website theme.
+
+    TXT;
+    }
+
+    private function contentFeaturedEntrySchema(): string
+    {
+        return <<<TXT
+
+    content_featured_entry
+
+    - type = content_featured_entry
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a dynamic content/posts layout. Luna may edit section framing copy and select the layout.
+    - Entries, event records, dates, authors, excerpts, taxonomies, and resource data are runtime/content-store owned.
+    - Never invent live content records.
+    - Preserve the active website theme.
+
+    TXT;
+    }
+
+    private function contentGridClassicSchema(): string
+    {
+        return <<<TXT
+
+    content_grid_classic
+
+    - type = content_grid_classic
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a dynamic content/posts layout. Luna may edit section framing copy and select the layout.
+    - Entries, event records, dates, authors, excerpts, taxonomies, and resource data are runtime/content-store owned.
+    - Never invent live content records.
+    - Preserve the active website theme.
+
+    TXT;
+    }
+
+    private function contentGridCompactSchema(): string
+    {
+        return <<<TXT
+
+    content_grid_compact
+
+    - type = content_grid_compact
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a dynamic content/posts layout. Luna may edit section framing copy and select the layout.
+    - Entries, event records, dates, authors, excerpts, taxonomies, and resource data are runtime/content-store owned.
+    - Never invent live content records.
+    - Preserve the active website theme.
+
+    TXT;
+    }
+
+    private function contentGridEditorialSchema(): string
+    {
+        return <<<TXT
+
+    content_grid_editorial
+
+    - type = content_grid_editorial
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a dynamic content/posts layout. Luna may edit section framing copy and select the layout.
+    - Entries, event records, dates, authors, excerpts, taxonomies, and resource data are runtime/content-store owned.
+    - Never invent live content records.
+    - Preserve the active website theme.
+
+    TXT;
+    }
+
+    private function contentLatestEntriesSchema(): string
+    {
+        return <<<TXT
+
+    content_latest_entries
+
+    - type = content_latest_entries
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+
+    Requirements:
+    - This is a dynamic content/posts layout. Luna may edit section framing copy and select the layout.
+    - Entries, event records, dates, authors, excerpts, taxonomies, and resource data are runtime/content-store owned.
+    - Never invent live content records.
+    - Preserve the active website theme.
+
+    TXT;
+    }
+
+
+    private function miniHeroMinimalSchema(): string
+    {
+        return <<<TXT
+
+    mini_hero_minimal
+
+    - type = mini_hero_minimal
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+
+    Requirements:
+    - Use as a compact internal-page hero with restrained visual weight.
+    - Keep copy concise and preserve the active website theme.
+    - Do not invent statistics, awards, client names, or unverifiable claims.
+
+    TXT;
+    }
+
+    private function miniHeroPromoSchema(): string
+    {
+        return <<<TXT
+
+    mini_hero_promo
+
+    - type = mini_hero_promo
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - image_url = ""
+
+    Requirements:
+    - Use as a compact promotional internal-page hero.
+    - image_url must remain empty for Cosmic media resolution.
+    - Keep the CTA factual; do not invent discounts, expiry dates, or guarantees.
+    - Preserve the active website theme.
+
+    TXT;
+    }
+
+    private function miniHeroSplitSchema(): string
+    {
+        return <<<TXT
+
+    mini_hero_split
+
+    - type = mini_hero_split
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - image_url = ""
+
+    Requirements:
+    - Use as a compact split internal-page hero with relevant imagery.
+    - image_url must remain empty for Cosmic media resolution.
+    - Preserve industry context and the active website theme.
+    - Do not invent awards, client names, or unverifiable claims.
+
+    TXT;
+    }
+
+    private function newsletterCtaSchema(): string
+    {
+        return <<<TXT
+
+    newsletter_cta
+
+    - type = newsletter_cta
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+
+    Requirements:
+    - Use for newsletter/email signup framing only.
+    - Do not invent subscriber counts, send frequency, incentives, or privacy claims.
+    - Form submission behavior is runtime-owned; Luna edits presentation copy only.
+    - Preserve the active website theme.
 
     TXT;
     }

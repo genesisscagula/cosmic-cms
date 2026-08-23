@@ -1,0 +1,25 @@
+{
+  "batch": 5,
+  "status": "PASS_STATIC_QA",
+  "features": [
+    "site-wide Luna design scope vocabulary",
+    "semantic component radius commands",
+    "brand hex -> coherent semantic color family",
+    "contrast-aware primary button text",
+    "Builder My Brand persistence wiring",
+    "section-local component overrides",
+    "existing saveDraft theme_settings persistence",
+    "render-shell migration retained"
+  ],
+  "qa_note": "Static integration/lint QA passed. Runtime browser QA should verify save, refresh, publish and exported/live CSS behavior.",
+  "checks": {
+    "global scope vocabulary": true,
+    "component intent": true,
+    "brand family derivation": true,
+    "contrast selection": true,
+    "brand response": true,
+    "builder persistence": true,
+    "component overrides": true,
+    "design system shell": true
+  }
+}

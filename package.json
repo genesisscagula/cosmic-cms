@@ -2,9 +2,10 @@
   "$schema": "https://www.schemastore.org/package.json",
   "private": true,
   "type": "module",
-  "scripts": {
-    "build": "vite build && tailwindcss -c tailwind.export.config.cjs -i ./resources/css/export-tailwind.css -o ./public/cosmic/cosmic-tailwind.css --minify",
-    "dev": "vite"
+    "scripts": {
+        "build": "vite build && tailwindcss -c tailwind.export.config.cjs -i ./resources/css/export-tailwind.css -o ./public/cosmic/cosmic-tailwind.css --minify",
+        "dev": "vite",
+        "audit:sparks": "node scripts/audit-spark-render-parity.mjs"
   },
   "devDependencies": {
     "@headlessui/react": "^2.0.0",
@@ -25,5 +26,5 @@
     "lottie-react": "^2.4.1",
     "html2canvas": "^1.4.1"
   },
-  "version": "1.0.164"
+  "version": "1.0.165"
 }

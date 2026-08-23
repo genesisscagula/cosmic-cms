@@ -118,6 +118,9 @@ final class TemplateMetadataService
             'section_count' => $template['section_count'],
             'hero_type' => $template['hero_type'],
             'diversity_fingerprint' => $template['diversity_fingerprint'],
+            // The planner needs the real registered composition to score page
+            // roles. Omitting this reduced selection to names and tags only.
+            'sections' => array_values($template['sections'] ?? []),
         ];
     }
 

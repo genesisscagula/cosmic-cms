@@ -1,0 +1,28 @@
+{
+  "batch": 1,
+  "scope": "Global Header Element Audit",
+  "status": "PASS_AFTER_PATCH",
+  "findings": [
+    "Global header already persists through Builder save and published snapshots.",
+    "Export compiler already consumes logo_image_url, menu, cta_label and cta_url.",
+    "Logo lacked a direct manual Media Library hover action.",
+    "Navigation items had manual label/URL editing but no stable shell field path.",
+    "Header CTA label was editable but CTA URL had no dedicated manual editor.",
+    "Logo Media Library selection previously synchronized header and footer, preventing true individual element editing."
+  ],
+  "patched": [
+    "Header logo now exposes Edit + Luna hover controls.",
+    "Manual logo Media Library selection targets header.logo_image_url only.",
+    "Logo Luna target uses stable header field path.",
+    "Navigation items expose stable header.menu.<index path> metadata.",
+    "Header CTA has a dedicated 0-credit label + URL editor.",
+    "Header CTA has a dedicated Luna hover target.",
+    "Global save/publish/export data model remains unchanged."
+  ],
+  "deferred_to_batch_2": [
+    "Add/remove/reorder navigation items",
+    "Add/remove nested submenu items",
+    "Navigation-wide Luna operations",
+    "Mega menu configuration and mobile parity QA"
+  ]
+}

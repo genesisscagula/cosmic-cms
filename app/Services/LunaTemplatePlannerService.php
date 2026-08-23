@@ -9,10 +9,17 @@ use RuntimeException;
 
 final class LunaTemplatePlannerService
 {
+    public function __construct(
+        private readonly LunaPageCompositionService $composition,
+        private readonly LunaResponsiveIntelligenceService $responsive
+    ) {}
+
     /** @return array{template_key:string,template_name:string,sections:array,theme:string,industry:string,design_direction:string,media_direction:string,planner:string,metadata_candidates:int} */
     public function plan(string $prompt): array
     {
-        $candidates = $this->shortlist($prompt, PageTemplateCatalog::plannerIndex());
+        $composition=$this->composition->plannerDirective($prompt);
+        $responsiveContract=$this->responsive->plannerDirective();
+        $candidates = $this->shortlist($prompt, PageTemplateCatalog::plannerIndex(),$composition['context']);
         if ($candidates === []) {
             throw new RuntimeException('No Cosmic page templates are available to Luna.');
         }
@@ -36,13 +43,24 @@ THEME RULES
 - Automotive does not imply dark. Consider teal, emerald, indigo, ocean, amber and other compatible directions when they better fit the brief.
 - The theme decision is authoritative for a fresh build and will be locked before content generation.
 - If WEBSITE REQUEST includes an EXISTING WEBSITE BRAND CONSTRAINT, that constraint is authoritative: return exactly that current theme while still choosing the best compatible template/Spark composition. Do not reinterpret a different industry or design mood as permission to rebrand.
+- If WEBSITE REQUEST includes EXISTING SITE DESIGN DNA, preserve its visual language: color family, typography direction, radius/component treatment, spacing rhythm, background treatment and media direction. Choose a page-appropriate composition without cloning the sibling page's section sequence.
+- Page intent may change the layout and Spark variants; it does not by itself authorize a rebrand.
 
 SELECTION RULES
+- PAGE COMPOSITION CONTRACT is authoritative for page purpose and section rhythm. Select a template whose registered section sequence satisfies as many required roles as possible.
 - Match industry and page intent first, then audience and style.
+- Purpose first, layout second: choose sections because they serve the page's job, not merely because their visual effect matches a keyword.
+- Do not add pricing, FAQ, statistics, galleries, or card grids simply to fill section count.
+- Avoid more than two dense card/grid/comparison sections in a row when a mixed-media/story/proof alternative exists.
+- Prefer a useful conversion/contact close and put credibility/proof before or near that close.
+- RESPONSIVE DESIGN CONTRACT is authoritative for small-screen viability. Avoid choosing a composition whose value depends on desktop-only width, hover-only interaction, or fixed media sizing when a responsive-compatible alternative exists.
+- Treat sliders, bento/grid, comparison, horizontal, timeline, and other wide/interactive templates as responsive-risk sections that require a clear tablet/mobile strategy.
 - Prefer image-led/editorial/cinematic templates for hospitality, property, travel, food, beauty and visually driven brands.
 - Prefer product-led/bento/dashboard/comparison templates for SaaS, AI and software.
 - Prefer credibility/process/consultation templates for legal, finance, consulting and professional services.
 - Avoid repetitive card/grid-heavy compositions when a more editorial or mixed-media template fits.
+- Use composition_novelty_score and semantic_roles to distinguish otherwise equally relevant candidates. Prefer the more novel composition when industry, intent, quality and responsiveness are comparable.
+- Do not select a familiar composition merely because its generic tags match more words. Relevance remains first, then page-purpose coverage, then composition novelty.
 - Use media_mode, layout_style, text_density, visual_rhythm, visual_score and quality_score to create a premium balanced result.
 - Prefer quality_status=excellent. Avoid review/invalid templates unless no stronger industry match exists.
 - Prefer a clear visual rhythm: alternate dense information with editorial/media/proof moments; avoid card-on-card-on-card pacing.
@@ -57,7 +75,7 @@ TXT;
             'response_format' => ['type' => 'json_object'],
             'messages' => [
                 ['role' => 'system', 'content' => $system],
-                ['role' => 'user', 'content' => "WEBSITE REQUEST\n{$prompt}\n\nTEMPLATE METADATA\n{$catalogJson}"],
+                ['role' => 'user', 'content' => "WEBSITE REQUEST\n{$prompt}\n\n{$composition['directive']}\n\n{$responsiveContract}\n\nTEMPLATE METADATA\n{$catalogJson}"],
             ],
         ]);
 
@@ -76,6 +94,21 @@ TXT;
         $template = PageTemplateCatalog::find($key);
         if (! $template) {
             throw new RuntimeException('Luna selected an unavailable Cosmic template.');
+        }
+
+        $selectedAudit=$this->composition->audit($template['sections']??[],$composition['context']);
+        if(!$selectedAudit['pass']){
+            foreach($candidates as $candidate){
+                $candidateTemplate=PageTemplateCatalog::find((string)($candidate['key']??''));
+                if(!$candidateTemplate)continue;
+                $candidateAudit=$this->composition->audit($candidateTemplate['sections']??[],$composition['context']);
+                if($candidateAudit['pass']){
+                    $key=(string)$candidate['key'];
+                    $template=$candidateTemplate;
+                    $selectedAudit=$candidateAudit;
+                    break;
+                }
+            }
         }
 
         $schemaMap = SchemaManager::map();
@@ -105,17 +138,24 @@ TXT;
             'overlay_header_default' => (bool) ($metadata['overlay_header_default'] ?? false),
             'planner' => 'luna_template_metadata',
             'metadata_candidates' => count($candidates),
+            'page_intent' => (string)($composition['context']['page_intent']??'home'),
+            'composition_industry' => (string)($composition['context']['industry']??'general'),
+            'composition_roles' => $selectedAudit['roles']??[],
+            'composition_issues' => $selectedAudit['issues']??[],
+            'composition_pass' => (bool)($selectedAudit['pass']??false),
+            'responsive_risks' => $this->responsive->auditSections($sections)['risks']??[],
+            'responsive_contract' => $this->responsive->contract($sections),
         ];
     }
 
-    private function shortlist(string $prompt, array $templates): array
+    private function shortlist(string $prompt, array $templates, array $composition=[]): array
     {
         $terms = collect(preg_split('/[^a-z0-9]+/i', Str::lower($prompt)) ?: [])
             ->filter(fn ($term) => strlen($term) >= 3)
             ->unique()
             ->values();
 
-        $scored = collect($templates)->map(function (array $template) use ($terms) {
+        $scored = collect($templates)->map(function (array $template) use ($terms,$composition) {
             $industry = Str::lower(implode(' ', $template['industries'] ?? []));
             $aliases = Str::lower(implode(' ', $template['aliases'] ?? []));
             $style = Str::lower(implode(' ', $template['style'] ?? []));
@@ -137,11 +177,26 @@ TXT;
             $score -= ($template['quality_status'] ?? '') === 'review' ? 4 : 0;
             $score -= ($template['quality_status'] ?? '') === 'invalid' ? 50 : 0;
             $score += ($template['premium_level'] ?? '') === 'signature' ? 2 : 0;
+            $score += ((int) ($template['composition_novelty_score'] ?? 50)) / 18;
+            $score -= max(0, ((int) ($template['exact_composition_uses'] ?? 1)) - 1) * 2.5;
+
+            $audit=$this->composition->audit($template['sections']??[],$composition);
+            $requiredCount=max(1,count($composition['required_roles']??[]));
+            $satisfied=$requiredCount-count(array_filter($audit['issues']??[],fn($issue)=>str_starts_with($issue,'Missing page-purpose role:')));
+            $score += max(0,$satisfied)*4;
+            $score += ($audit['pass']??false)?14:0;
+            $score -= count($audit['issues']??[])*2.5;
+
+            $industryPriority=implode(' ',array_map('strtolower',$composition['industry_priorities']??[]));
+            $templateFeatures=Str::lower(implode(' ',array_merge($template['features']??[],$template['page_intents']??[])));
+            foreach($composition['industry_priorities']??[] as $priority){
+                if(Str::contains($templateFeatures,Str::lower((string)$priority)))$score+=3;
+            }
 
             return array_merge($template, ['_match_score' => round($score, 2)]);
         })->sortByDesc('_match_score')->values();
 
-        $top = $scored->take(48);
+        $top = collect($this->diverseCandidates($scored->all(), 48));
         if ($top->where('_match_score', '>', 4)->count() < 12) {
             $top = $top->concat($scored->filter(fn ($template) => ($template['premium_level'] ?? '') !== 'standard')->take(18));
         }
@@ -150,6 +205,50 @@ TXT;
             unset($template['_match_score']);
             return $template;
         })->values()->all();
+    }
+
+    /**
+     * Maximal-marginal-relevance shortlist: preserve prompt relevance while
+     * preventing a near-identical Spark set from crowding out alternatives.
+     */
+    private function diverseCandidates(array $ranked, int $limit): array
+    {
+        $selected = [];
+        $remaining = array_values($ranked);
+        while ($remaining !== [] && count($selected) < $limit) {
+            $bestIndex = 0;
+            $bestScore = -INF;
+            foreach ($remaining as $index => $candidate) {
+                $overlap = 0.0;
+                foreach ($selected as $chosen) {
+                    $overlap = max($overlap, $this->sectionSimilarity(
+                        (array) ($candidate['sections'] ?? []),
+                        (array) ($chosen['sections'] ?? [])
+                    ));
+                }
+                $score = (float) ($candidate['_match_score'] ?? 0)
+                    - ($overlap * 5.5)
+                    + (((int) ($candidate['composition_novelty_score'] ?? 50)) / 35);
+                if ($score > $bestScore) {
+                    $bestScore = $score;
+                    $bestIndex = $index;
+                }
+            }
+            $selected[] = $remaining[$bestIndex];
+            array_splice($remaining, $bestIndex, 1);
+        }
+
+        return $selected;
+    }
+
+    private function sectionSimilarity(array $left, array $right): float
+    {
+        $left = array_values(array_unique(array_filter($left, 'is_string')));
+        $right = array_values(array_unique(array_filter($right, 'is_string')));
+        $union = array_unique(array_merge($left, $right));
+        if ($union === []) return 1.0;
+
+        return count(array_intersect($left, $right)) / count($union);
     }
 
     private function decode(string $content): array

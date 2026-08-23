@@ -1,0 +1,20 @@
+{
+  "batch": 3,
+  "scope": "Documentation/capability-grounded conversation router",
+  "status": "PASS_STATIC_QA",
+  "surfaces": [
+    "public global Luna",
+    "authenticated global Luna",
+    "trial page Luna",
+    "Builder page Luna"
+  ],
+  "behavior": {
+    "all_requests_receive_relevant_knowledge": true,
+    "capability_questions_are_informational": true,
+    "capability_questions_mutate": false,
+    "capability_question_credit_cost": 0,
+    "unsupported_capabilities_must_not_be_invented": true,
+    "server_guardrails_remain_authoritative": true
+  },
+  "next": "Batch 4 \u2014 audit/remove legacy non-AI/hardcoded conversational replies while retaining deterministic execution and guardrails."
+}

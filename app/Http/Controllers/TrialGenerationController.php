@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\AI\Registries\IndustryMenuRegistry;
+use App\Jobs\BuildTrialSiteBundleJob;
 use App\Jobs\SendTrialAccessLinkJob;
 use App\Models\MediaPack;
 use App\Models\Page;
@@ -15,6 +16,8 @@ use App\Services\MyBrandThemeService;
 use App\Services\TrialBrandContextService;
 use App\Services\InitialTrialLogoService;
 use App\Services\LunaPexelsVideoService;
+use App\Services\LunaSiteBundlePlannerService;
+use App\Services\TrialSiteBundleService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -76,7 +79,9 @@ class TrialGenerationController extends Controller
         private readonly MyBrandThemeService $myBrandThemes,
         private readonly TrialBrandContextService $trialBrandContext,
         private readonly InitialTrialLogoService $initialTrialLogo,
-        private readonly LunaPexelsVideoService $lunaVideos
+        private readonly LunaPexelsVideoService $lunaVideos,
+        private readonly LunaSiteBundlePlannerService $siteBundlePlanner,
+        private readonly TrialSiteBundleService $trialSiteBundles,
     ) {
     }
 
@@ -144,6 +149,14 @@ class TrialGenerationController extends Controller
 
         $profile = $this->profileFromPrompt($validated['prompt']);
         $generationPrompt = $this->buildPrompt($profile);
+        $bundlePlan = $this->siteBundlePlanner->plan($validated['prompt'], $profile['industry']);
+        $bundleMenu = collect($bundlePlan['pages'] ?? [])->map(fn (array $page) => [
+            'title' => (string) $page['title'],
+            'slug' => (string) $page['slug'],
+            'is_home' => (bool) ($page['is_home'] ?? false),
+            'sort_order' => (int) ($page['sort_order'] ?? 1),
+            'page_type' => (string) ($page['page_type'] ?? 'standard'),
+        ])->values()->all();
 
         // Provisional theme only while the trial row is being created. The
         // final prompt-aware theme is committed after page/content generation
@@ -166,7 +179,9 @@ class TrialGenerationController extends Controller
             'brand_context' => $brandContext,
             'status' => 'generating',
             'ip_hash' => hash('sha256', (string) $request->ip()),
-            'menu_structure' => IndustryMenuRegistry::for($profile['industry']),
+            'menu_structure' => $bundleMenu,
+            'bundle_manifest' => $bundlePlan,
+            'bundle_status' => 'planning',
             'preview_theme' => $initialThemeSettings,
             'guest_credits' => TrialCreditService::STARTING_BALANCE,
         ]);
@@ -241,39 +256,7 @@ class TrialGenerationController extends Controller
                 'last_error' => null,
             ]);
 
-            $page = DB::transaction(function () use ($trial, $profile, $generated) {
-                $trialWebsiteId = (int) config('cosmic.trial_website_id', 1);
-
-                abort_if($trialWebsiteId < 1, 500, 'TRIAL_WEBSITE_ID must reference a valid website.');
-
-                $website = Website::query()->findOrFail($trialWebsiteId);
-
-                $website->update([
-                    'industry' => $this->industryResolver->resolve($profile['industry'], 'default'),
-                    'location' => $profile['location'],
-                    'business_description' => $profile['business_description'],
-                ]);
-
-                $page = $website->pages()->create([
-                    'title' => $profile['business_name'],
-                    'slug' => $this->uniqueDemoSlug($website, $profile['business_name']),
-                    'parent_id' => null,
-                    'sort_order' => ((int) $website->pages()->whereNull('parent_id')->max('sort_order')) + 1,
-                    'page_type' => 'standard',
-                    'blocks' => $generated['blocks'],
-                    'status' => 'draft',
-                ]);
-
-                $trial->update([
-                    'page_id' => $page->id,
-                    'sections' => $generated['sections'],
-                    'generated_blocks' => $generated['blocks'],
-                    'status' => 'ready',
-                    'error_message' => null,
-                ]);
-
-                return $page;
-            });
+            $page = $this->trialSiteBundles->create($trial, $profile, $bundlePlan, $generated);
 
             Log::info('[TrialGeneration] Trial page persisted and ready.', [
                 'trial' => $trial->id,
@@ -284,6 +267,10 @@ class TrialGenerationController extends Controller
             // navigation and the final prompt-aware theme are already committed.
             // This is best-effort and never blocks the website draft.
             $this->initialTrialLogo->generate($trial->fresh());
+
+            // Home is immediately usable. Remaining pages build after the HTTP
+            // response so a five-page trial never recreates the old timeout.
+            BuildTrialSiteBundleJob::dispatchAfterResponse($trial->id);
 
             Log::info('[MediaPack] Trial remote preview ready; local download deferred until purchase.', [
                 'media_pack_id' => $mediaPack->id,
@@ -324,6 +311,9 @@ class TrialGenerationController extends Controller
                 'url' => $builderUrl,
                 'media_pack_uuid' => $mediaPack->uuid,
                 'media_pack_status' => $mediaPack->fresh()->status,
+                'bundle_key' => data_get($trial->fresh()->bundle_manifest, 'bundle_key'),
+                'bundle_status' => $trial->fresh()->bundle_status,
+                'bundle_page_count' => (int) data_get($trial->fresh()->bundle_manifest, 'page_count', 1),
             ])->header('X-Cosmic-Builder-Url', $builderUrl);
         } catch (TransporterException $exception) {
             Log::warning('Public trial generation unavailable', [

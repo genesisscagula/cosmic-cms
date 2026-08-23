@@ -1,0 +1,15 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 7,
+  "name": "Smart Spark Editing",
+  "status": "PASS_STATIC_QA",
+  "next": "Batch 8 \u2014 Builder vs Live Parity Audit",
+  "runtime_tests": [
+    "Click a card heading and ask to shorten it; only matched heading path changes.",
+    "Add another service/card; repeater schema and sibling layout remain intact.",
+    "Remove this selected card; only selected item is removed.",
+    "Request ambiguous removal without selection; no arbitrary sibling deletion.",
+    "Rewrite copy while preserving images/layout; non-text fields remain unchanged.",
+    "Convert a static section to slider; replacement is reserved for structural capability change."
+  ]
+}

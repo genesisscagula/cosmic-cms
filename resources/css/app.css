@@ -1,3 +1,5 @@
+@import "./cosmic-render-contract.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -5889,6 +5891,87 @@ body .cosmic-start-quick-idea.rounded-full.border {
 
 
 /* ==================================================================
+   Cosmic Design Token Core — Batch 1
+   Site-global semantic tokens. Sparks/templates migrate to these contracts
+   in later batches; local/page/section overrides can shadow them safely.
+   ================================================================== */
+:root {
+    /* Brand + semantic color family */
+    --cosmic-brand-primary: var(--cosmic-primary, #047857);
+    --cosmic-brand-secondary: #334155;
+    --cosmic-brand-accent: var(--cosmic-accent, #10b981);
+    --cosmic-brand-neutral: #64748b;
+    --cosmic-color-success: #15803d;
+    --cosmic-color-warning: #b45309;
+    --cosmic-color-error: #b91c1c;
+
+    --cosmic-color-page: var(--cosmic-bg, #f7faf8);
+    --cosmic-color-surface: var(--cosmic-surface, #ffffff);
+    --cosmic-color-surface-alt: var(--cosmic-surface-muted, #f0f7f3);
+    --cosmic-color-heading: var(--cosmic-brand-primary);
+    --cosmic-color-body: var(--cosmic-text, #0f172a);
+    --cosmic-color-muted: var(--cosmic-text-muted, #64748b);
+    --cosmic-color-border: var(--cosmic-border, #dce8e1);
+    --cosmic-color-on-primary: #ffffff;
+    --cosmic-color-on-dark: #ffffff;
+    --cosmic-color-on-light: #0f172a;
+
+    /* Heading colors can inherit one semantic heading color or diverge later. */
+    --cosmic-color-h1: var(--cosmic-color-heading);
+    --cosmic-color-h2: var(--cosmic-color-heading);
+    --cosmic-color-h3: var(--cosmic-color-heading);
+    --cosmic-color-h4: var(--cosmic-color-heading);
+    --cosmic-color-h5: var(--cosmic-color-heading);
+    --cosmic-color-h6: var(--cosmic-color-heading);
+    --cosmic-color-eyebrow: var(--cosmic-brand-accent);
+
+    /* Central radius family */
+    --cosmic-radius-none: 0px;
+    --cosmic-radius-xs: 6px;
+    --cosmic-radius-sm: 10px;
+    --cosmic-radius-md: 16px;
+    --cosmic-radius-lg: 24px;
+    --cosmic-radius-xl: 32px;
+    --cosmic-radius-pill: 9999px;
+    --cosmic-radius-button: var(--cosmic-radius-pill);
+    --cosmic-radius-card: var(--cosmic-radius-lg);
+    --cosmic-radius-image: var(--cosmic-radius-lg);
+    --cosmic-radius-input: var(--cosmic-radius-sm);
+    --cosmic-radius-modal: var(--cosmic-radius-xl);
+    --cosmic-radius-section: var(--cosmic-radius-xl);
+
+    /* Central border + shadow levels */
+    --cosmic-border-width: 1px;
+    --cosmic-border-style: solid;
+    --cosmic-shadow-none: none;
+    --cosmic-shadow-sm: 0 4px 14px rgba(15, 23, 42, .06);
+    --cosmic-shadow-md: 0 12px 30px rgba(15, 23, 42, .09);
+    --cosmic-shadow-lg: 0 22px 55px rgba(15, 23, 42, .13);
+    --cosmic-shadow-card: var(--cosmic-shadow-sm);
+    --cosmic-shadow-modal: var(--cosmic-shadow-lg);
+}
+
+/* Semantic color roles. These are intentionally scoped to Cosmic semantic
+   roles rather than every raw h1/h2 in the builder UI. */
+[data-cosmic-type="h1"], .cosmic-type-h1 { color: var(--cosmic-local-h1-color, var(--cosmic-color-h1)); }
+[data-cosmic-type="h2"], .cosmic-type-h2 { color: var(--cosmic-local-h2-color, var(--cosmic-color-h2)); }
+[data-cosmic-type="h3"], .cosmic-type-h3 { color: var(--cosmic-local-h3-color, var(--cosmic-color-h3)); }
+[data-cosmic-type="h4"], .cosmic-type-h4 { color: var(--cosmic-local-h4-color, var(--cosmic-color-h4)); }
+[data-cosmic-type="h5"], .cosmic-type-h5 { color: var(--cosmic-local-h5-color, var(--cosmic-color-h5)); }
+[data-cosmic-type="h6"], .cosmic-type-h6 { color: var(--cosmic-local-h6-color, var(--cosmic-color-h6)); }
+[data-cosmic-type="eyebrow"], .cosmic-type-eyebrow { color: var(--cosmic-local-eyebrow-color, var(--cosmic-color-eyebrow)); }
+
+/* Opt-in semantic component primitives used during the migration batch. */
+[data-cosmic-radius="button"] { border-radius: var(--cosmic-local-button-radius, var(--cosmic-radius-button)); }
+[data-cosmic-radius="card"] { border-radius: var(--cosmic-local-card-radius, var(--cosmic-radius-card)); }
+[data-cosmic-radius="image"] { border-radius: var(--cosmic-local-image-radius, var(--cosmic-radius-image)); }
+[data-cosmic-radius="input"] { border-radius: var(--cosmic-local-input-radius, var(--cosmic-radius-input)); }
+[data-cosmic-radius="modal"] { border-radius: var(--cosmic-local-modal-radius, var(--cosmic-radius-modal)); }
+[data-cosmic-radius="section"] { border-radius: var(--cosmic-local-section-radius, var(--cosmic-radius-section)); }
+[data-cosmic-shadow="card"] { box-shadow: var(--cosmic-local-card-shadow, var(--cosmic-shadow-card)); }
+[data-cosmic-shadow="modal"] { box-shadow: var(--cosmic-local-modal-shadow, var(--cosmic-shadow-modal)); }
+
+/* ==================================================================
    Cosmic Typography Core — centralized semantic type contract
    Batch 1: tokens + reusable roles only. Existing Sparks migrate in Batch 2.
    Global variables may be changed once at the website root. A section can
@@ -6372,26 +6455,430 @@ body .cosmic-start-quick-idea.rounded-full.border {
 }
 
 /* ==================================================================
+   Cosmic Global Design System — Batch 2: Layout + Responsive Tokens
+   Central layout scale for sections, containers, grids/cards and responsive
+   typography. Existing legacy tokens remain compatibility aliases.
+   ================================================================== */
+:root {
+    /* Container system */
+    --cosmic-container-narrow: 52rem;
+    --cosmic-container-content: 72rem;
+    --cosmic-container-default: 88rem;
+    --cosmic-container-wide: 96rem;
+    --cosmic-container-full: 100%;
+
+    /* Section spacing */
+    --cosmic-space-section-y: 100px;
+    --cosmic-space-section-y-tablet: 80px;
+    --cosmic-space-section-y-mobile: 56px;
+    --cosmic-space-section-x: 28px;
+    --cosmic-space-section-x-tablet: 24px;
+    --cosmic-space-section-x-mobile: 20px;
+
+    /* Content rhythm */
+    --cosmic-space-stack: 56px;
+    --cosmic-space-stack-tablet: 44px;
+    --cosmic-space-stack-mobile: 32px;
+    --cosmic-space-grid: 24px;
+    --cosmic-space-grid-tablet: 20px;
+    --cosmic-space-grid-mobile: 16px;
+    --cosmic-space-card: 32px;
+    --cosmic-space-card-tablet: 28px;
+    --cosmic-space-card-mobile: 22px;
+
+    /* Component spacing primitives */
+    --cosmic-space-inline-xs: 8px;
+    --cosmic-space-inline-sm: 12px;
+    --cosmic-space-inline-md: 16px;
+    --cosmic-space-inline-lg: 24px;
+    --cosmic-space-block-xs: 8px;
+    --cosmic-space-block-sm: 12px;
+    --cosmic-space-block-md: 20px;
+    --cosmic-space-block-lg: 32px;
+
+    /* Responsive typography multipliers. Individual role tokens remain the source values. */
+    --cosmic-type-scale-desktop: 1;
+    --cosmic-type-scale-tablet: .92;
+    --cosmic-type-scale-mobile: .82;
+
+    /* Backward-compatible aliases used by existing section infrastructure. */
+    --cosmic-section-py: var(--cosmic-space-section-y);
+    --cosmic-section-py-tablet: var(--cosmic-space-section-y-tablet);
+    --cosmic-section-py-mobile: var(--cosmic-space-section-y-mobile);
+    --cosmic-section-px: var(--cosmic-space-section-x);
+    --cosmic-section-px-tablet: var(--cosmic-space-section-x-tablet);
+    --cosmic-section-px-mobile: var(--cosmic-space-section-x-mobile);
+    --cosmic-section-container: var(--cosmic-container-default);
+    --cosmic-section-container-wide: var(--cosmic-container-wide);
+    --cosmic-section-container-narrow: var(--cosmic-container-narrow);
+    --cosmic-section-gap: var(--cosmic-space-stack);
+    --cosmic-section-gap-tablet: var(--cosmic-space-stack-tablet);
+    --cosmic-section-gap-mobile: var(--cosmic-space-stack-mobile);
+}
+
+/* Reusable opt-in layout roles for Batch 4 migration. */
+[data-cosmic-container="narrow"] { width:100%; max-width:var(--cosmic-local-container-narrow,var(--cosmic-container-narrow)); margin-inline:auto; }
+[data-cosmic-container="content"] { width:100%; max-width:var(--cosmic-local-container-content,var(--cosmic-container-content)); margin-inline:auto; }
+[data-cosmic-container="default"] { width:100%; max-width:var(--cosmic-local-container-default,var(--cosmic-container-default)); margin-inline:auto; }
+[data-cosmic-container="wide"] { width:100%; max-width:var(--cosmic-local-container-wide,var(--cosmic-container-wide)); margin-inline:auto; }
+[data-cosmic-container="full"] { width:100%; max-width:var(--cosmic-container-full); }
+
+[data-cosmic-layout="stack"] {
+    display:flex;
+    flex-direction:column;
+    gap:var(--cosmic-local-stack-gap,var(--cosmic-space-stack));
+}
+[data-cosmic-layout="grid"] {
+    gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid));
+}
+[data-cosmic-layout="card"] {
+    padding:var(--cosmic-local-card-padding,var(--cosmic-space-card));
+}
+
+/* Responsive semantic typography hooks. We keep role-specific clamp values as
+   defaults and allow site-level responsive overrides without touching Sparks. */
+@media (max-width:1024px) {
+    :root {
+        --cosmic-responsive-h1-size: var(--cosmic-type-h1-size-tablet, clamp(2.6rem, 5.2vw, 4.7rem));
+        --cosmic-responsive-h2-size: var(--cosmic-type-h2-size-tablet, clamp(2rem, 3.7vw, 3.35rem));
+        --cosmic-responsive-h3-size: var(--cosmic-type-h3-size-tablet, clamp(1.25rem, 1.8vw, 1.6rem));
+        --cosmic-responsive-body-size: var(--cosmic-type-body-size-tablet, 1rem);
+        --cosmic-responsive-lead-size: var(--cosmic-type-lead-size-tablet, 1.1rem);
+    }
+    [data-cosmic-layout="stack"] { gap:var(--cosmic-local-stack-gap,var(--cosmic-space-stack-tablet)); }
+    [data-cosmic-layout="grid"] { gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-tablet)); }
+    [data-cosmic-layout="card"] { padding:var(--cosmic-local-card-padding,var(--cosmic-space-card-tablet)); }
+}
+@media (max-width:767px) {
+    :root {
+        --cosmic-responsive-h1-size: var(--cosmic-type-h1-size-mobile, clamp(2.15rem, 10vw, 3.25rem));
+        --cosmic-responsive-h2-size: var(--cosmic-type-h2-size-mobile, clamp(1.75rem, 8vw, 2.65rem));
+        --cosmic-responsive-h3-size: var(--cosmic-type-h3-size-mobile, clamp(1.2rem, 5vw, 1.5rem));
+        --cosmic-responsive-body-size: var(--cosmic-type-body-size-mobile, .975rem);
+        --cosmic-responsive-lead-size: var(--cosmic-type-lead-size-mobile, 1.05rem);
+    }
+    [data-cosmic-layout="stack"] { gap:var(--cosmic-local-stack-gap,var(--cosmic-space-stack-mobile)); }
+    [data-cosmic-layout="grid"] { gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-mobile)); }
+    [data-cosmic-layout="card"] { padding:var(--cosmic-local-card-padding,var(--cosmic-space-card-mobile)); }
+}
+
+/* ==================================================================
+   Cosmic Global Design System — Batch 3: Component Tokens
+   Central semantic primitives for buttons, forms, cards, media and links.
+   Existing Sparks migrate explicitly in Batch 4; these roles are safe opt-ins.
+   ================================================================== */
+:root {
+    /* Buttons */
+    --cosmic-button-height: 52px;
+    --cosmic-button-height-sm: 44px;
+    --cosmic-button-height-lg: 58px;
+    --cosmic-button-px: 24px;
+    --cosmic-button-px-sm: 18px;
+    --cosmic-button-px-lg: 30px;
+    --cosmic-button-font-weight: 700;
+    --cosmic-button-primary-bg: var(--cosmic-brand-primary);
+    --cosmic-button-primary-text: var(--cosmic-color-on-primary);
+    --cosmic-button-primary-border: var(--cosmic-brand-primary);
+    --cosmic-button-secondary-bg: var(--cosmic-color-surface);
+    --cosmic-button-secondary-text: var(--cosmic-color-heading);
+    --cosmic-button-secondary-border: var(--cosmic-color-border);
+    --cosmic-button-outline-bg: transparent;
+    --cosmic-button-outline-text: var(--cosmic-color-heading);
+    --cosmic-button-outline-border: var(--cosmic-color-border);
+    --cosmic-button-hover-shift: -1px;
+
+    /* Forms */
+    --cosmic-input-height: 52px;
+    --cosmic-input-px: 16px;
+    --cosmic-input-bg: var(--cosmic-color-surface);
+    --cosmic-input-text: var(--cosmic-color-body);
+    --cosmic-input-placeholder: var(--cosmic-color-muted);
+    --cosmic-input-border: var(--cosmic-color-border);
+    --cosmic-input-focus: var(--cosmic-brand-primary);
+    --cosmic-input-focus-ring: color-mix(in srgb, var(--cosmic-brand-primary) 24%, transparent);
+    --cosmic-label-color: var(--cosmic-color-body);
+    --cosmic-label-weight: 600;
+
+    /* Cards */
+    --cosmic-card-bg: var(--cosmic-color-surface);
+    --cosmic-card-text: var(--cosmic-color-body);
+    --cosmic-card-heading: var(--cosmic-color-heading);
+    --cosmic-card-border: var(--cosmic-color-border);
+    --cosmic-card-padding: var(--cosmic-space-card);
+    --cosmic-card-shadow: var(--cosmic-shadow-card);
+
+    /* Media */
+    --cosmic-media-radius: var(--cosmic-radius-image);
+    --cosmic-media-object-fit: cover;
+    --cosmic-media-aspect-auto: auto;
+    --cosmic-media-aspect-square: 1 / 1;
+    --cosmic-media-aspect-landscape: 4 / 3;
+    --cosmic-media-aspect-wide: 16 / 9;
+    --cosmic-media-aspect-portrait: 4 / 5;
+
+    /* Links */
+    --cosmic-link-color: var(--cosmic-brand-primary);
+    --cosmic-link-hover: color-mix(in srgb, var(--cosmic-brand-primary) 82%, black);
+    --cosmic-link-decoration: none;
+    --cosmic-link-decoration-hover: underline;
+    --cosmic-link-underline-offset: .18em;
+}
+
+/* Buttons */
+[data-cosmic-button],
+.cosmic-button {
+    min-height:var(--cosmic-local-button-height,var(--cosmic-button-height));
+    padding-inline:var(--cosmic-local-button-px,var(--cosmic-button-px));
+    border-radius:var(--cosmic-local-button-radius,var(--cosmic-radius-button));
+    font-weight:var(--cosmic-local-button-weight,var(--cosmic-button-font-weight));
+    display:inline-flex;
+    align-items:center;
+    justify-content:center;
+    gap:.5rem;
+    transition:transform .16s ease, box-shadow .16s ease, background-color .16s ease, border-color .16s ease, color .16s ease;
+}
+[data-cosmic-button]:hover,
+.cosmic-button:hover {
+    transform:translateY(var(--cosmic-button-hover-shift));
+}
+[data-cosmic-button="primary"],
+.cosmic-button--primary {
+    background:var(--cosmic-local-button-bg,var(--cosmic-button-primary-bg));
+    color:var(--cosmic-local-button-text,var(--cosmic-button-primary-text));
+    border:var(--cosmic-border-width) var(--cosmic-border-style) var(--cosmic-local-button-border,var(--cosmic-button-primary-border));
+}
+[data-cosmic-button="secondary"],
+.cosmic-button--secondary {
+    background:var(--cosmic-local-button-bg,var(--cosmic-button-secondary-bg));
+    color:var(--cosmic-local-button-text,var(--cosmic-button-secondary-text));
+    border:var(--cosmic-border-width) var(--cosmic-border-style) var(--cosmic-local-button-border,var(--cosmic-button-secondary-border));
+}
+[data-cosmic-button="outline"],
+.cosmic-button--outline {
+    background:var(--cosmic-local-button-bg,var(--cosmic-button-outline-bg));
+    color:var(--cosmic-local-button-text,var(--cosmic-button-outline-text));
+    border:var(--cosmic-border-width) var(--cosmic-border-style) var(--cosmic-local-button-border,var(--cosmic-button-outline-border));
+}
+
+/* Forms */
+[data-cosmic-form-field],
+.cosmic-form-field {
+    min-height:var(--cosmic-local-input-height,var(--cosmic-input-height));
+    padding-inline:var(--cosmic-local-input-px,var(--cosmic-input-px));
+    border-radius:var(--cosmic-local-input-radius,var(--cosmic-radius-input));
+    border:var(--cosmic-border-width) var(--cosmic-border-style) var(--cosmic-local-input-border,var(--cosmic-input-border));
+    background:var(--cosmic-local-input-bg,var(--cosmic-input-bg));
+    color:var(--cosmic-local-input-text,var(--cosmic-input-text));
+    outline:none;
+}
+[data-cosmic-form-field]::placeholder,
+.cosmic-form-field::placeholder { color:var(--cosmic-input-placeholder); }
+[data-cosmic-form-field]:focus,
+.cosmic-form-field:focus {
+    border-color:var(--cosmic-local-input-focus,var(--cosmic-input-focus));
+    box-shadow:0 0 0 3px var(--cosmic-input-focus-ring);
+}
+[data-cosmic-form-label],
+.cosmic-form-label {
+    color:var(--cosmic-label-color);
+    font-weight:var(--cosmic-label-weight);
+}
+
+/* Cards */
+[data-cosmic-card],
+.cosmic-card {
+    background:var(--cosmic-local-card-bg,var(--cosmic-card-bg));
+    color:var(--cosmic-local-card-text,var(--cosmic-card-text));
+    border:var(--cosmic-border-width) var(--cosmic-border-style) var(--cosmic-local-card-border,var(--cosmic-card-border));
+    border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card));
+    padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding));
+    box-shadow:var(--cosmic-local-card-shadow,var(--cosmic-card-shadow));
+}
+[data-cosmic-card] :is(h2,h3,h4,h5,h6,[data-cosmic-type="card-title"]) {
+    color:var(--cosmic-local-card-heading,var(--cosmic-card-heading));
+}
+
+/* Media */
+[data-cosmic-media],
+.cosmic-media {
+    border-radius:var(--cosmic-local-image-radius,var(--cosmic-media-radius));
+    object-fit:var(--cosmic-local-media-object-fit,var(--cosmic-media-object-fit));
+    overflow:hidden;
+}
+[data-cosmic-media="square"] { aspect-ratio:var(--cosmic-media-aspect-square); }
+[data-cosmic-media="landscape"] { aspect-ratio:var(--cosmic-media-aspect-landscape); }
+[data-cosmic-media="wide"] { aspect-ratio:var(--cosmic-media-aspect-wide); }
+[data-cosmic-media="portrait"] { aspect-ratio:var(--cosmic-media-aspect-portrait); }
+
+/* Links */
+[data-cosmic-link],
+.cosmic-link {
+    color:var(--cosmic-local-link-color,var(--cosmic-link-color));
+    text-decoration:var(--cosmic-local-link-decoration,var(--cosmic-link-decoration));
+    text-underline-offset:var(--cosmic-link-underline-offset);
+}
+[data-cosmic-link]:hover,
+.cosmic-link:hover {
+    color:var(--cosmic-local-link-hover,var(--cosmic-link-hover));
+    text-decoration:var(--cosmic-link-decoration-hover);
+}
+
+/* ==================================================================
+   Cosmic Global Design System — Batch 4: Registered Spark Migration Layer
+   All registered Sparks already render inside `.cosmic-render-shell`.
+   This compatibility layer lets legacy Tailwind-shaped components consume
+   global semantic tokens without rewriting hundreds of source files.
+   Intentional immersive/dark/overlay treatments remain locally authoritative.
+   ================================================================== */
+
+/* Global heading/body roles across registered Sparks. Explicit white/current
+   text in immersive/dark sections remains protected by the exclusions below. */
+.cosmic-render-shell:not([data-cosmic-layout-mode="immersive"])
+    :is(h1,h2,h3,h4,h5,h6):not(.text-white):not([class*="text-white/"]):not([data-cosmic-preserve-color]) {
+    color:var(--cosmic-local-heading-color,var(--cosmic-color-heading));
+}
+.cosmic-render-shell:not([data-cosmic-layout-mode="immersive"])
+    :is(p,li):not(.text-white):not([class*="text-white/"]):not([data-cosmic-preserve-color]) {
+    --cosmic-inherited-body-color:var(--cosmic-local-body-color,var(--cosmic-color-body));
+}
+
+/* Legacy rounded utilities now inherit the centralized radius family inside
+   website render shells. Pills/circles and intentionally asymmetric shapes
+   are not touched. */
+.cosmic-render-shell :is(.rounded,.rounded-md,.rounded-lg,.rounded-xl,.rounded-2xl,.rounded-3xl):not(.rounded-full):not([data-cosmic-preserve-radius]) {
+    border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card)) !important;
+}
+.cosmic-render-shell :is(img.rounded,img.rounded-md,img.rounded-lg,img.rounded-xl,img.rounded-2xl,img.rounded-3xl):not(.rounded-full):not([data-cosmic-preserve-radius]) {
+    border-radius:var(--cosmic-local-image-radius,var(--cosmic-radius-image)) !important;
+}
+
+/* Legacy shadows consume the semantic scale. Strong cinematic/glow-specific
+   custom shadows remain untouched because only standard Tailwind shadow roles
+   are mapped. */
+.cosmic-render-shell .shadow-sm:not([data-cosmic-preserve-shadow]) { box-shadow:var(--cosmic-shadow-sm) !important; }
+.cosmic-render-shell :is(.shadow,.shadow-md):not([data-cosmic-preserve-shadow]) { box-shadow:var(--cosmic-shadow-md) !important; }
+.cosmic-render-shell :is(.shadow-lg,.shadow-xl,.shadow-2xl):not([data-cosmic-preserve-shadow]) { box-shadow:var(--cosmic-shadow-lg) !important; }
+
+/* Buttons/CTA anchors: radius and sizing can be controlled globally even for
+   legacy Sparks. Avoid icon-only circular controls and navigation anchors. */
+.cosmic-render-shell :is(button,a)[class*="px-"][class*="py-"]:not(.rounded-full):not([aria-label]):not([data-cosmic-preserve-button]) {
+    border-radius:var(--cosmic-local-button-radius,var(--cosmic-radius-button)) !important;
+    font-weight:var(--cosmic-local-button-weight,var(--cosmic-button-font-weight));
+}
+
+/* Form controls. This is deliberately type-based rather than every input so
+   checkboxes/radios/file controls keep native/specialized shapes. */
+.cosmic-render-shell :is(input[type="text"],input[type="email"],input[type="tel"],input[type="url"],input[type="number"],input[type="search"],input:not([type]),textarea,select):not([data-cosmic-preserve-form]) {
+    border-radius:var(--cosmic-local-input-radius,var(--cosmic-radius-input)) !important;
+}
+
+/* Standard card-like surfaces can opt out with data-cosmic-preserve-radius.
+   We map common rounded+border/shadow combinations rather than every div. */
+.cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {
+    border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card)) !important;
+}
+.cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="shadow"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {
+    border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card)) !important;
+}
+
+/* Images with explicit rounded utilities inherit media radius. Background
+   images, fullscreen video and edge-to-edge media are intentionally excluded. */
+.cosmic-render-shell img[class*="rounded"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {
+    border-radius:var(--cosmic-local-image-radius,var(--cosmic-radius-image)) !important;
+}
+
+/* Legacy max-width container utilities get a global ceiling without forcing
+   full-width/cinematic sections into a boxed layout. */
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] .max-w-7xl,
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] .max-w-6xl {
+    max-width:var(--cosmic-local-section-container,var(--cosmic-container-default));
+}
+
+/* Site-wide section spacing is available to legacy standard sections that
+   explicitly opt into migration through the render-shell marker. Hero and
+   immersive padding stays under the existing hero/background logic. */
+.cosmic-render-shell[data-cosmic-design-system="1"][data-cosmic-layout-mode="standard"] > .cosmic-render-content > section[data-cosmic-section-wrapper="1"] {
+    padding-block:var(--cosmic-local-section-py,var(--cosmic-space-section-y));
+}
+
+/* Responsive component migration. */
+@media (max-width:1024px) {
+    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {
+        --cosmic-card-padding:var(--cosmic-space-card-tablet);
+    }
+}
+@media (max-width:767px) {
+    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {
+        --cosmic-card-padding:var(--cosmic-space-card-mobile);
+    }
+}
+
+/* ==================================================================
+   Default Heading Brand Color
+   H1-H6 follow the active primary/brand color on light/default surfaces.
+   Dark/primary/image hero contrast rules below intentionally override this.
+   ================================================================== */
+.cosmic-render-shell[data-cosmic-resolved-theme="light"] :is(h1,h2,h3,h4,h5,h6):not([data-cosmic-preserve-heading-color]),
+.cosmic-render-shell:not([data-cosmic-resolved-theme="primary"]):not([data-cosmic-background-state="primary"]) :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) {
+    color:var(--cosmic-local-heading-color,var(--cosmic-color-heading,var(--cosmic-brand-primary,var(--cosmic-primary,#243447)))) !important;
+}
+
+/* ==================================================================
+   Visual Parity Hotfix — logo/hero/media/live parity
+   ================================================================== */
+:root {
+    --cosmic-logo-height-desktop: 52px;
+    --cosmic-logo-height-mobile: 44px;
+    --cosmic-logo-max-width: 240px;
+}
+
+/* Dark/image hero contrast wins over global heading brand color. */
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is(h1,h2,h3,h4,h5,h6),
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"] section[class*="text-white"] :is(h1,h2,h3,h4,h5,h6),
+.cosmic-render-shell[data-cosmic-layout-mode="hero"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6),
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6) {
+    color:var(--cosmic-color-on-dark,#fff) !important;
+}
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is(p,li,[data-cosmic-type="eyebrow"]),
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"] section[class*="text-white"] :is(p,li,[data-cosmic-type="eyebrow"]),
+.cosmic-render-shell[data-cosmic-layout-mode="hero"][data-cosmic-background-state="primary"] :is(p,li,[data-cosmic-type="eyebrow"]),
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"][data-cosmic-background-state="primary"] :is(p,li,[data-cosmic-type="eyebrow"]) {
+    color:var(--cosmic-on-primary-muted,rgba(255,255,255,.86)) !important;
+}
+
+/* All ordinary content media inherits the centralized image radius.
+   Immersive/full-bleed media and explicit opt-outs remain untouched. */
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] img:not(.rounded-full):not([data-cosmic-preserve-radius]),
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] img:not(.rounded-full):not([data-cosmic-preserve-radius]):not(.absolute) {
+    border-radius:var(--cosmic-local-image-radius,var(--cosmic-radius-image,24px)) !important;
+}
+
+/* Keep media box behavior identical across Builder and exported markup. */
+.cosmic-render-shell img:not([data-cosmic-preserve-fit]) {
+    object-fit:var(--cosmic-local-media-object-fit,var(--cosmic-media-object-fit,cover));
+}
+
+/* ==================================================================
    Cosmic Section Wrapper Core — centralized layout rhythm
    Batch 1: global tokens + reusable wrapper/container roles.
    Existing Sparks migrate to this contract in the next batch.
    ================================================================== */
 :root {
-    --cosmic-section-py: 100px;
-    --cosmic-section-py-tablet: 80px;
-    --cosmic-section-py-mobile: 56px;
+    --cosmic-section-py: var(--cosmic-space-section-y);
+    --cosmic-section-py-tablet: var(--cosmic-space-section-y-tablet);
+    --cosmic-section-py-mobile: var(--cosmic-space-section-y-mobile);
 
-    --cosmic-section-px: 28px;
-    --cosmic-section-px-tablet: 24px;
-    --cosmic-section-px-mobile: 20px;
+    --cosmic-section-px: var(--cosmic-space-section-x);
+    --cosmic-section-px-tablet: var(--cosmic-space-section-x-tablet);
+    --cosmic-section-px-mobile: var(--cosmic-space-section-x-mobile);
 
-    --cosmic-section-container: 88rem;
-    --cosmic-section-container-wide: 96rem;
-    --cosmic-section-container-narrow: 52rem;
+    --cosmic-section-container: var(--cosmic-container-default);
+    --cosmic-section-container-wide: var(--cosmic-container-wide);
+    --cosmic-section-container-narrow: var(--cosmic-container-narrow);
 
-    --cosmic-section-gap: 56px;
-    --cosmic-section-gap-tablet: 44px;
-    --cosmic-section-gap-mobile: 32px;
+    --cosmic-section-gap: var(--cosmic-space-stack);
+    --cosmic-section-gap-tablet: var(--cosmic-space-stack-tablet);
+    --cosmic-section-gap-mobile: var(--cosmic-space-stack-mobile);
 
     --cosmic-section-min-height: 0px;
 }
@@ -8878,3 +9365,4 @@ header.cosmic-header-overlay,
 .cosmic-website-preview [data-cosmic-spark] [class~="rounded-full"] {
     border-radius: 9999px !important;
 }
+

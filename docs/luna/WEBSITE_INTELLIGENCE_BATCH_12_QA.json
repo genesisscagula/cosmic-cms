@@ -1,0 +1,16 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 12,
+  "name": "Self-Correction / Recovery",
+  "status": "PASS_STATIC_QA",
+  "series_status": "12_BATCH_BLUEPRINT_COMPLETE",
+  "runtime_tests": [
+    "Make a normal verified edit; self_correction.attempted must be false.",
+    "Cause an edit to fail on first execution but remain safely applicable; verify one recovery pass and second verification.",
+    "Cause a structural replace/delete/move failure; verify recovery refuses to guess and final status remains partial/failed.",
+    "Verify recovery never broadens section/element scope.",
+    "Verify no second LLM planning call is made by recovery.",
+    "Verify additional_credit_cost and additional_ai_calls are both 0.",
+    "Verify Luna says Done only when final execution_verification.status is complete."
+  ]
+}

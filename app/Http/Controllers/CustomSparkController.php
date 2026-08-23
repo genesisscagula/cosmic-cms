@@ -17,6 +17,20 @@ use App\Services\LunaTemplatePlannerService;
 use App\Services\LunaCategoryPageService;
 use App\Services\LunaCreditPricingService;
 use App\Services\LunaNaturalReplyService;
+use App\Services\LunaKnowledgeRouter;
+use App\Services\LunaFeasibilityGate;
+use App\Services\LunaDesignContinuityService;
+use App\Services\LunaResponsiveIntelligenceService;
+use App\Services\LunaVisualQaService;
+use App\Services\LunaScopeIntelligenceService;
+use App\Services\LunaSmartSparkEditingService;
+use App\Services\LunaRenderParityService;
+use App\Services\LunaExecutionVerificationService;
+use App\Services\LunaSiteDesignDnaService;
+use App\Services\LunaDesignCriticService;
+use App\Services\LunaSelfCorrectionService;
+use App\Services\LunaIntentGateway;
+use App\Services\LunaPendingActionService;
 use App\Services\LunaPexelsVideoService;
 use App\Services\TrialCreditService;
 use App\Services\SmartImageService;
@@ -1353,6 +1367,364 @@ PROMPT;
         return $this->clampLunaDesignOverrides($changes);
     }
 
+    /**
+     * Map natural-language global design requests onto the centralized semantic
+     * component tokens. This is deterministic after Luna has interpreted scope:
+     * one token change can safely affect all registered Sparks.
+     */
+    private function lunaComponentDesignIntent(string $prompt, array $current=[]): array
+    {
+        $p=Str::lower($prompt);
+        $changes=[];
+
+        $radius=null;
+        if(Str::contains($p,['square','sharp corners','no rounding','no rounded'])) $radius=0;
+        elseif(Str::contains($p,['less rounded','reduce rounding','smaller radius'])) $radius=10;
+        elseif(Str::contains($p,['more rounded','softer corners','rounded cards'])) $radius=24;
+
+        if($radius!==null){
+            if(Str::contains($p,['button'])) $changes['button_radius']=$radius===24?9999:$radius;
+            elseif(Str::contains($p,['image','photo'])) $changes['image_radius']=$radius;
+            elseif(Str::contains($p,['input','form'])) $changes['input_radius']=$radius;
+            elseif(Str::contains($p,['card'])) $changes['card_radius']=$radius;
+            else{
+                $changes['card_radius']=$radius;
+                $changes['image_radius']=$radius;
+                $changes['input_radius']=$radius;
+                $changes['button_radius']=$radius===24?9999:$radius;
+            }
+        }
+
+        if(Str::contains($p,['pill button','pill-shaped button','pill shaped button'])){
+            $changes['button_radius']=9999;
+        }
+
+        return array_merge($current,$changes);
+    }
+
+    private function lunaGlobalComponentTokenAction(
+        string $prompt,
+        array $scopeResolution,
+        array $components
+    ): ?array {
+        if(($scopeResolution['scope']??'')!=='global_token') return null;
+        $token=(string)($scopeResolution['global_token']??'');
+        if(!in_array($token,['card','button','image'],true)) return null;
+
+        $q=Str::lower(trim($prompt));
+        $changes=[];
+
+        $explicitRadius=null;
+        if(preg_match('/(\d+(?:\.\d+)?)\s*(px|rem)/i',$prompt,$m)){
+            $explicitRadius=$m[1].Str::lower($m[2]);
+        }
+
+        $less=Str::contains($q,['less rounded','reduce rounding','smaller radius','sharper','more square']);
+        $more=Str::contains($q,['more rounded','softer corners','rounder','pill']);
+        $square=Str::contains($q,['square','no rounding','sharp corners','no rounded']);
+
+        $key=match($token){
+            'card'=>'card_radius',
+            'button'=>'button_radius',
+            'image'=>'image_radius',
+        };
+        $current=(string)($components[$key]??match($token){
+            'button'=>'9999px',
+            'card'=>'20px',
+            'image'=>'16px',
+        });
+
+        if($explicitRadius!==null){
+            $value=$explicitRadius;
+        }elseif($square){
+            $value='0px';
+        }elseif($token==='button' && $more){
+            $value='9999px';
+        }else{
+            $base=match($token){'button'=>18,'card'=>20,'image'=>16};
+            if(preg_match('/^(\d+(?:\.\d+)?)px$/i',$current,$m))$base=(float)$m[1];
+            elseif(preg_match('/^(\d+(?:\.\d+)?)rem$/i',$current,$m))$base=(float)$m[1]*16;
+            if($less)$base=max(0,$base*.65);
+            elseif($more)$base=min($token==='button'?9999:48,$base*1.35);
+            else return null;
+            $value=$base>=9999?'9999px':rtrim(rtrim(number_format($base,2,'.',''),'0'),'.').'px';
+        }
+
+        $next=$components;
+        $next[$key]=$value;
+
+        return [
+            'reply'=>"Updated the global {$token} radius token.",
+            'components'=>$next,
+            'applied_operations'=>[[
+                'action'=>'component_token_global',
+                'target'=>$token,
+                'property'=>'radius',
+                'value'=>$value,
+            ]],
+        ];
+    }
+
+
+    /**
+     * Extract an explicitly supplied brand hex. Palette derivation remains
+     * centralized/deterministic so a manual brand picker can reuse it at 0 AI credits.
+     */
+    private function lunaExplicitBrandColor(string $prompt): ?string
+    {
+        $lower=Str::lower($prompt);
+        $hasThemeIntent=Str::contains($lower,[
+            'brand color','brand colour','primary color','primary colour',
+            'website theme','site theme','theme into','theme to','color family','colour family',
+            'brand theme','make the website','make this website','use this brand','this brand'
+        ]);
+        if(!$hasThemeIntent) return null;
+        if(preg_match('/#([0-9a-f]{6}|[0-9a-f]{3})\b/i',$prompt,$m)){
+            $hex='#'.Str::upper($m[1]);
+            if(strlen($hex)===4) $hex='#'.$hex[1].$hex[1].$hex[2].$hex[2].$hex[3].$hex[3];
+            return $hex;
+        }
+        return null;
+    }
+
+    /**
+     * Resolve short theme follow-ups against the last concrete color choice.
+     * Luna suggestions remain conversational, but once the user supplies a HEX
+     * after an apply/change request, the request becomes directly executable.
+     */
+    private function lunaResolveThemeFollowUp(string $prompt,array &$siteMemory): string
+    {
+        $prompt=trim($prompt);
+        $lower=Str::lower($prompt);
+        $prior=is_array($siteMemory['intent_context']??null)?$siteMemory['intent_context']:[];
+        $themeContext=is_array($siteMemory['theme_context']??null)?$siteMemory['theme_context']:[];
+        $hex=null;
+        if(preg_match('/#([0-9a-f]{6}|[0-9a-f]{3})\b/i',$prompt,$match)){
+            $hex=$this->lunaNormalizeHex('#'.$match[1]);
+        }
+
+        $directThemeLanguage=Str::contains($lower,[
+            'theme','brand color','brand colour','primary color','primary colour',
+            'palette','color scheme','colour scheme','green theme','website color','website colour',
+        ]);
+        $referenceLanguage=Str::contains($lower,['this one','use this','that one','apply it','yes please']);
+        $priorAction=($prior['intent']??null)==='action';
+
+        if($hex && ($directThemeLanguage || $referenceLanguage || $priorAction)){
+            $siteMemory['theme_context']=[
+                'primary'=>$hex,
+                'scope'=>'site',
+                'status'=>'resolved',
+            ];
+
+            return $prompt."\n\nRESOLVED THEME ACTION: Apply {$hex} as the exact primary anchor of a premium website theme across the whole page and site design tokens. Execute now without asking another scope or color question.";
+        }
+
+        $rememberedHex=$this->lunaNormalizeHex((string)($themeContext['primary']??''));
+        $scopeFollowUp=Str::contains($lower,[
+            'apply to the whole page','apply it to the whole page','whole page','entire page',
+            'apply everywhere','sitewide','site-wide','whole site','entire site',
+        ]);
+        if($rememberedHex && $scopeFollowUp && ($priorAction || Str::contains($lower,['apply','use','set']))){
+            return $prompt."\n\nRESOLVED THEME ACTION: Use the previously selected {$rememberedHex} as the exact primary anchor and apply its premium semantic theme across the whole page and site design tokens. Execute now without clarification.";
+        }
+
+        return $prompt;
+    }
+
+    private function lunaHexRgb(string $hex): array
+    {
+        $hex=ltrim($hex,'#');
+        return [hexdec(substr($hex,0,2)),hexdec(substr($hex,2,2)),hexdec(substr($hex,4,2))];
+    }
+
+    private function lunaMixHex(string $a,string $b,float $weight): string
+    {
+        $weight=max(0,min(1,$weight));
+        [$ar,$ag,$ab]=$this->lunaHexRgb($a);[$br,$bg,$bb]=$this->lunaHexRgb($b);
+        return sprintf('#%02X%02X%02X',
+            (int)round($ar*(1-$weight)+$br*$weight),
+            (int)round($ag*(1-$weight)+$bg*$weight),
+            (int)round($ab*(1-$weight)+$bb*$weight)
+        );
+    }
+
+    private function lunaContrastText(string $hex): string
+    {
+        [$r,$g,$b]=$this->lunaHexRgb($hex);
+        $luma=(0.2126*$r+0.7152*$g+0.0722*$b)/255;
+        return $luma>0.58?'#0F172A':'#FFFFFF';
+    }
+
+    /**
+     * Produce a coherent semantic family instead of blindly replacing every
+     * old primary color with the supplied brand color.
+     */
+    private function lunaNormalizeHex(?string $value): ?string
+    {
+        $value=trim((string)$value);
+        if(!preg_match('/^#([0-9a-f]{6}|[0-9a-f]{3})$/i',$value,$m)) return null;
+        $hex=Str::upper($m[1]);
+        if(strlen($hex)===3) $hex=$hex[0].$hex[0].$hex[1].$hex[1].$hex[2].$hex[2];
+        return '#'.$hex;
+    }
+
+    private function lunaRelativeLuminance(string $hex): float
+    {
+        [$r,$g,$b]=$this->lunaHexRgb($hex);
+        $convert=static function(float $channel): float {
+            $v=$channel/255;
+            return $v<=0.04045 ? $v/12.92 : (($v+0.055)/1.055)**2.4;
+        };
+        return 0.2126*$convert($r)+0.7152*$convert($g)+0.0722*$convert($b);
+    }
+
+    private function lunaContrastRatio(string $a,string $b): float
+    {
+        $l1=$this->lunaRelativeLuminance($a);
+        $l2=$this->lunaRelativeLuminance($b);
+        $lighter=max($l1,$l2);$darker=min($l1,$l2);
+        return ($lighter+0.05)/($darker+0.05);
+    }
+
+    private function lunaReadableText(string $background,string $preferred='#0F172A'): string
+    {
+        $preferred=$this->lunaNormalizeHex($preferred)?:'#0F172A';
+        if($this->lunaContrastRatio($background,$preferred)>=4.5) return $preferred;
+        $white='#FFFFFF';$dark='#0F172A';
+        return $this->lunaContrastRatio($background,$white)>=$this->lunaContrastRatio($background,$dark)?$white:$dark;
+    }
+
+    /**
+     * Premium deterministic fallback. This is also the repair source when
+     * Luna's proposed family is incomplete or fails contrast validation.
+     */
+    private function lunaBrandColorFamily(string $primary): array
+    {
+        $primary=$this->lunaNormalizeHex($primary)?:'#224248';
+        $dark='#0F172A';$white='#FFFFFF';
+        $heading=$primary;
+        $background=$this->lunaMixHex($primary,$white,.965);
+        $surfaceMuted=$this->lunaMixHex($primary,$white,.92);
+        $secondary=$this->lunaMixHex($primary,$dark,.34);
+        $accent=$this->lunaMixHex($primary,$white,.28);
+        return [
+            'sourceColor'=>$primary,
+            'primary'=>$primary,
+            'primaryHover'=>$this->lunaMixHex($primary,$dark,.14),
+            'primarySoft'=>$this->lunaMixHex($primary,$white,.84),
+            'secondary'=>$secondary,
+            'accent'=>$accent,
+            'background'=>$background,
+            'surface'=>$white,
+            'surfaceMuted'=>$surfaceMuted,
+            'heading'=>$heading,
+            'text'=>'#243236',
+            'muted'=>'#667679',
+            'border'=>$this->lunaMixHex($primary,$white,.78),
+            'buttonPrimary'=>$primary,
+            'buttonText'=>$this->lunaReadableText($primary,'#FFFFFF'),
+            'buttonSecondary'=>$this->lunaMixHex($primary,$white,.88),
+            'buttonSecondaryText'=>$this->lunaReadableText($this->lunaMixHex($primary,$white,.88),$primary),
+            'success'=>'#237A57',
+            'warning'=>'#A86D22',
+            'error'=>'#B44949',
+            'onPrimary'=>$this->lunaReadableText($primary,'#FFFFFF'),
+            'onDark'=>'#FFFFFF',
+            'gradient'=>[
+                'from'=>$this->lunaMixHex($primary,$dark,.24),
+                'via'=>$primary,
+                'to'=>$this->lunaMixHex($primary,$white,.16),
+                'glow'=>$accent,
+                'angle'=>125,
+            ],
+        ];
+    }
+
+    /**
+     * Validate Luna's proposed premium family against a strict schema.
+     * The user's supplied brand hex always remains the primary anchor.
+     */
+    private function lunaValidateBrandColorFamily(string $primary,mixed $proposal): array
+    {
+        $primary=$this->lunaNormalizeHex($primary)?:'#224248';
+        $fallback=$this->lunaBrandColorFamily($primary);
+        if(!is_array($proposal)) return $fallback;
+
+        $aliases=[
+            'sourceColor'=>['sourceColor','source_color'],
+            'primary'=>['primary'],
+            'primaryHover'=>['primaryHover','primary_hover'],
+            'primarySoft'=>['primarySoft','primary_soft'],
+            'secondary'=>['secondary'],
+            'accent'=>['accent'],
+            'background'=>['background','page'],
+            'surface'=>['surface'],
+            'surfaceMuted'=>['surfaceMuted','surface_muted','surface_alt'],
+            'heading'=>['heading'],
+            'text'=>['text','body'],
+            'muted'=>['muted'],
+            'border'=>['border'],
+            'buttonPrimary'=>['buttonPrimary','button_primary'],
+            'buttonText'=>['buttonText','button_text','button_primary_text'],
+            'buttonSecondary'=>['buttonSecondary','button_secondary'],
+            'buttonSecondaryText'=>['buttonSecondaryText','button_secondary_text'],
+            'success'=>['success'],
+            'warning'=>['warning'],
+            'error'=>['error'],
+            'onPrimary'=>['onPrimary','on_primary'],
+            'onDark'=>['onDark','on_dark'],
+        ];
+        $result=$fallback;
+        foreach($aliases as $canonical=>$keys){
+            foreach($keys as $key){
+                if(!array_key_exists($key,$proposal)) continue;
+                $hex=$this->lunaNormalizeHex((string)$proposal[$key]);
+                if($hex) $result[$canonical]=$hex;
+                break;
+            }
+        }
+
+        // Never allow the model to drift away from the exact requested brand anchor.
+        $result['sourceColor']=$primary;
+        $result['primary']=$primary;
+        $result['buttonPrimary']=$primary;
+        $result['heading']=$primary;
+
+        $gradient=is_array($proposal['gradient']??null)?$proposal['gradient']:[];
+        foreach(['from','via','to','glow'] as $key){
+            $hex=$this->lunaNormalizeHex((string)($gradient[$key]??''));
+            if($hex) $result['gradient'][$key]=$hex;
+        }
+        if(isset($gradient['angle']) && is_numeric($gradient['angle'])){
+            $result['gradient']['angle']=(int)max(0,min(360,(float)$gradient['angle']));
+        }
+
+        // Accessibility and visual separation guardrails.
+        $result['buttonText']=$this->lunaReadableText($result['buttonPrimary'],$result['buttonText']);
+        $result['onPrimary']=$this->lunaReadableText($result['primary'],$result['onPrimary']);
+        $result['onDark']='#FFFFFF';
+        $result['text']=$this->lunaReadableText($result['background'],$result['text']);
+        $result['buttonSecondaryText']=$this->lunaReadableText($result['buttonSecondary'],$result['buttonSecondaryText']);
+
+        if($this->lunaContrastRatio($result['background'],$result['surface'])<1.08){
+            $result['surfaceMuted']=$fallback['surfaceMuted'];
+        }
+        if($this->lunaContrastRatio($result['background'],$result['border'])<1.15){
+            $result['border']=$fallback['border'];
+        }
+        if($this->lunaContrastRatio($result['primary'],$result['secondary'])<1.18){
+            $result['secondary']=$fallback['secondary'];
+        }
+        if($this->lunaContrastRatio($result['primary'],$result['accent'])<1.12){
+            $result['accent']=$fallback['accent'];
+            $result['gradient']['glow']=$fallback['gradient']['glow'];
+        }
+
+        return $result;
+    }
+
+
     private function lunaDesignQa(array $overrides): array
     {
         $safe=$this->clampLunaDesignOverrides($overrides);
@@ -1378,6 +1750,128 @@ PROMPT;
             $notes[]='content width raised to the safe minimum';
         }
         return ['overrides'=>$safe,'notes'=>$notes];
+    }
+
+    /**
+     * Sanitize Luna header mutations so navigation structure remains exportable,
+     * mobile-safe, and compatible with the manual Builder editor.
+     */
+    private function lunaNormalizeHeaderMenu(array $items, int $depth=0): array
+    {
+        if($depth>2) return [];
+        $limit=$depth===0?12:8;
+        $clean=[];
+        foreach(array_slice($items,0,$limit) as $item){
+            if(!is_array($item)) continue;
+            $label=trim((string)($item['label']??''));
+            $url=trim((string)($item['url']??'#'));
+            if($label==='') $label='Menu item';
+            $label=mb_substr($label,0,80);
+            $url=mb_substr($url===''?'#':$url,0,1000);
+            $next=['label'=>$label,'url'=>$url];
+            $children=is_array($item['children']??null)?$item['children']:[];
+            if($children!==[]){
+                $normalized=$this->lunaNormalizeHeaderMenu($children,$depth+1);
+                if($normalized!==[]) $next['children']=$normalized;
+            }
+            $clean[]=$next;
+        }
+        return $clean;
+    }
+
+    private function lunaSafeHeaderChanges(array $current, array $changes): array
+    {
+        $allowed=[
+            'type','theme','logo_text','logo_image_url','logo_height','logo_max_width','logo_filter_key','logo_filter',
+            'overlay_header_on_banner','cta_label','cta_url','menu',
+            'phone_enabled','phone_text','custom_shell_mode','custom_style'
+        ];
+        $safe=[];
+        foreach($allowed as $key){
+            if(!array_key_exists($key,$changes)) continue;
+            $value=$changes[$key];
+            if($key==='menu'){
+                if(is_array($value)) $safe[$key]=$this->lunaNormalizeHeaderMenu($value);
+                continue;
+            }
+            if($key==='overlay_header_on_banner'||$key==='phone_enabled'||$key==='custom_shell_mode'){
+                $safe[$key]=(bool)$value;
+                continue;
+            }
+            if(in_array($key,['cta_label','logo_text','phone_text'],true)){
+                $safe[$key]=mb_substr(trim((string)$value),0,160);
+                continue;
+            }
+            if(in_array($key,['cta_url','logo_image_url'],true)){
+                $safe[$key]=mb_substr(trim((string)$value),0,1000);
+                continue;
+            }
+            $safe[$key]=$value;
+        }
+        return array_merge($current,$safe);
+    }
+
+    private function lunaNormalizeFooterColumns(array $columns): array
+    {
+        $clean=[];
+        foreach(array_slice($columns,0,4) as $column){
+            if(!is_array($column)) continue;
+            $title=mb_substr(trim((string)($column['title']??'Column')),0,80);
+            $items=[];
+            foreach(array_slice(is_array($column['items']??null)?$column['items']:[],0,6) as $item){
+                if(!is_array($item)) continue;
+                $items[]=[
+                    'label'=>mb_substr(trim((string)($item['label']??'Menu item')),0,80) ?: 'Menu item',
+                    'url'=>mb_substr(trim((string)($item['url']??'#')) ?: '#',0,1000),
+                ];
+            }
+            $clean[]=['title'=>$title ?: 'Column','items'=>$items];
+        }
+        return $clean;
+    }
+
+    private function lunaSafeFooterChanges(array $current, array $changes): array
+    {
+        $safe=$current;
+        foreach(['logo_text','logo_image_url','logo_height','logo_filter_key','logo_filter','copyright','privacy_label','privacy_url','terms_label','terms_url','theme'] as $key){
+            if(array_key_exists($key,$changes)) $safe[$key]=$changes[$key];
+        }
+        if(array_key_exists('mega_enabled',$changes)) $safe['mega_enabled']=(bool)$changes['mega_enabled'];
+
+        if(is_array($changes['contact']??null)){
+            $contact=[];
+            foreach(['email','phone','address'] as $key){
+                if(array_key_exists($key,$changes['contact'])) $contact[$key]=mb_substr(trim((string)$changes['contact'][$key]),0,240);
+            }
+            $safe['contact']=array_merge(is_array($safe['contact']??null)?$safe['contact']:[],$contact);
+        }
+
+        if(is_array($changes['social_links']??null)){
+            $links=[];
+            foreach(array_slice($changes['social_links'],0,6) as $item){
+                if(!is_array($item)) continue;
+                $links[]=[
+                    'label'=>mb_substr(trim((string)($item['label']??'Social')),0,80) ?: 'Social',
+                    'url'=>mb_substr(trim((string)($item['url']??'#')) ?: '#',0,1000),
+                ];
+            }
+            $safe['social_links']=$links;
+        }
+
+        if(is_array($changes['mega_footer']??null)){
+            $incoming=$changes['mega_footer'];
+            $mega=is_array($safe['mega_footer']??null)?$safe['mega_footer']:[];
+            foreach(['tagline','primary_label','primary_url','theme','enabled'] as $key){
+                if(array_key_exists($key,$incoming)) $mega[$key]=$incoming[$key];
+            }
+            if(array_key_exists('columns',$incoming) && is_array($incoming['columns'])){
+                $mega['columns']=$this->lunaNormalizeFooterColumns($incoming['columns']);
+            }
+            if(array_key_exists('enabled',$mega)) $mega['enabled']=(bool)$mega['enabled'];
+            $safe['mega_footer']=$mega;
+        }
+
+        return $safe;
     }
 
     private function lunaBlockFingerprint(array $block): string
@@ -1565,8 +2059,24 @@ PROMPT;
         LunaCreditPricingService $lunaPricing,
         TrialCreditService $trialCredits,
         LunaNaturalReplyService $natural,
-        LunaPexelsVideoService $lunaVideos
+        LunaPexelsVideoService $lunaVideos,
+        LunaKnowledgeRouter $knowledge,
+        LunaPendingActionService $pendingActions,
+        LunaFeasibilityGate $feasibilityGate,
+        LunaScopeIntelligenceService $scopeIntelligence,
+        LunaSmartSparkEditingService $smartSparkEditing,
+        LunaRenderParityService $renderParity,
+        LunaExecutionVerificationService $executionVerification,
+        LunaSiteDesignDnaService $siteDna,
+        LunaIntentGateway $intentGateway
     ) {
+        // A whole-page Luna build intentionally runs several bounded provider
+        // calls (intent, planning, content, media and the final reply). The
+        // default web SAPI limit is only 60 seconds, so it can terminate a
+        // healthy build between stages before their own HTTP timeouts apply.
+        // Keep this scoped to the throttled builder endpoint.
+        set_time_limit(600);
+
         abort_if($trial->claimed_at, 410, 'This trial has already been claimed.');
 
         $validated=$request->validate([
@@ -1578,12 +2088,14 @@ PROMPT;
             'typography'=>['nullable','string','max:12000'],
             'background_style'=>['nullable','string','max:12000'],
             'section_layout'=>['nullable','string','max:12000'],
+            'components'=>['nullable','string','max:12000'],
             'site_memory'=>['nullable','string','max:24000'],
             'target_scope'=>['nullable','in:page,section,header,footer'],
             'target_index'=>['nullable','integer','min:0','max:100'],
             'element_context'=>['nullable','string','max:6000'],
             'target_resolved_theme'=>['nullable','string','max:40'],
             'confirmed'=>['nullable','boolean'],
+            'pending_action_token'=>['nullable','string','max:100'],
         ]);
         $blocks=json_decode($validated['blocks'],true);
         $header=json_decode((string)($validated['header']??'{}'),true);
@@ -1591,16 +2103,201 @@ PROMPT;
         if(!is_array($blocks)) throw ValidationException::withMessages(['blocks'=>'The page could not be prepared for Luna.']);
         $siteMemory=json_decode((string)($validated['site_memory']??'{}'),true);
         if(!is_array($siteMemory))$siteMemory=[];
+        $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
+        if(!is_array($elementContext))$elementContext=[];
 
         $scope=(string)($validated['target_scope']??'page');
         $targetIndex=$scope==='section'?(int)($validated['target_index']??-1):-1;
-        $prompt=trim((string)$validated['prompt']);
+        $originalUserPrompt=trim((string)$validated['prompt']);
+        $scopeResolution=$scopeIntelligence->resolve($originalUserPrompt,$scope,$elementContext);
+        $scopeContract=$scopeIntelligence->plannerDirective($scopeResolution);
+        $smartEditContract=$smartSparkEditing->contractDirective();
+        $pendingActor='trial:'.$trial->id;
+        $resumePendingPlan=null;
+        $stalePendingPlan=false;
+        $orphanAffirmative=false;
+
+        if($validated['confirmed']??false){
+            $token=trim((string)($validated['pending_action_token']??''));
+            $candidate=$token!=='' ? $pendingActions->consume($pendingActor,$token) : null;
+            if(is_array($candidate) && ($candidate['kind']??'')==='trial_destructive_delete'){
+                $currentFingerprint=hash('sha256',json_encode(array_values($blocks),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
+                if(hash_equals((string)($candidate['blocks_fingerprint']??''),$currentFingerprint)){
+                    $resumePendingPlan=$candidate;
+                    $validated['prompt']=(string)$candidate['prompt'];
+                    $scope=(string)($candidate['scope']??$scope);
+                    $targetIndex=$scope==='section'?(int)($candidate['target_index']??$targetIndex):-1;
+                }else{
+                    $stalePendingPlan=true;
+                }
+            }else{
+                $orphanAffirmative=true;
+            }
+        }
+
+        $prompt=$this->lunaResolveThemeFollowUp(trim((string)$validated['prompt']),$siteMemory);
+        $validated['prompt']=$prompt;
+        $scopeResolution=$scopeIntelligence->resolve($prompt,$scope,$elementContext);
+        $scopeContract=$scopeIntelligence->plannerDirective($scopeResolution);
+        $smartEditContract=$smartSparkEditing->contractDirective();
+        if($resumePendingPlan && is_array($resumePendingPlan['canonical_schema']??null)){
+            $canonicalIntent=$resumePendingPlan['canonical_schema'];
+        }else{
+            $routeContext=[
+                'surface'=>'trial_builder',
+                'ui_scope'=>$scope,
+                'target_index'=>$targetIndex,
+                'has_blocks'=>count($blocks)>0,
+            ];
+            $intentRoute=$intentGateway->route($prompt,$siteMemory,$routeContext);
+            $canonicalIntent=($intentRoute['intent']??'chat')==='action'
+                ? $intentGateway->classifyAction($prompt,$siteMemory,$routeContext)
+                : ['intent'=>'chat'];
+        }
+        $siteMemory=$intentGateway->memory($siteMemory,$canonicalIntent);
+        $trialDna=$siteDna->hydrate($siteMemory,[]);
+        $siteDnaContract=$siteDna->plannerDirective($siteMemory,$trialDna,false);
+        $knowledgePacket=$knowledge->contextFor($prompt,$scope);
+        $canonicalConversation=(($canonicalIntent['intent']??'chat')==='chat');
+        $capabilityQuestion=$resumePendingPlan?false:(($canonicalIntent['intent']??'chat')==='chat' && ($canonicalIntent['chat_type']??'general')==='capability');
+        $feasibility=$resumePendingPlan
+            ? ['feasibility'=>'supported','execution_allowed'=>true,'requires_confirmation'=>false,'informational'=>false]
+            : $feasibilityGate->evaluate($prompt,$knowledgePacket,$scope);
+        if($canonicalConversation){
+            $feasibility['informational']=true;
+            $feasibility['execution_allowed']=false;
+            $feasibility['requires_confirmation']=false;
+        } elseif(($canonicalIntent['intent']??'')==='action'){
+            // Direct-action architecture: the canonical router owns chat vs action.
+            // Legacy feasibility may describe limits/fallbacks, but it must not turn
+            // a concrete build/update action back into a conversational proposal.
+            $feasibility['informational']=false;
+            $feasibility['execution_allowed']=(bool)($canonicalIntent['execution_allowed']??true);
+            $feasibility['requires_confirmation']=(($canonicalIntent['action']??'')==='delete');
+        } else {
+            $feasibility['execution_allowed']=false;
+            $feasibility['requires_confirmation']=false;
+        }
+        $trialNaturalReplyFromFacts=function(array $facts) use($natural,$prompt,$knowledgePacket){
+            return $natural->compose($prompt,[
+                'authenticated'=>false,
+                'trial'=>true,
+                'canonical_knowledge'=>$knowledgePacket,
+            ],array_merge([
+                'canonical_knowledge'=>$knowledgePacket,
+                'rule'=>'Formulate the user-facing reply from verified facts and canonical documentation. Never invent a completed action.',
+            ],$facts));
+        };
+
+        if(!$resumePendingPlan && $canonicalConversation){
+            return response()->json([
+                'reply'=>$trialNaturalReplyFromFacts([
+                    'canonical_intent'=>$canonicalIntent,
+                    'action_completed'=>false,
+                    'conversation_mode'=>'chat_docs_only',
+                    'rule'=>'This is a chat turn. Answer from canonical documentation and verified context, then stop. Do not create a pending action, do not mutate the trial page, do not ask for Proceed/Continue, and do not expose internal implementation terminology.',
+                ]),
+                'mode'=>'grounded_info',
+                'canonical_intent'=>$canonicalIntent,
+                'credit_cost'=>0,
+                'credit_balance'=>$trialCredits->balance($trial),
+                'blocks'=>$blocks,
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'site_memory'=>$siteMemory,
+                'pending_action'=>false,
+                'applied_operations'=>[],
+            ]);
+        }
+
+        if(
+            !$resumePendingPlan
+            && ($canonicalIntent['needs_clarification']??false)
+            && !(($canonicalIntent['intent']??'')==='action' && ($canonicalIntent['execution_allowed']??false))
+        ){
+            return response()->json([
+                'reply'=>$trialNaturalReplyFromFacts([
+                    'canonical_intent'=>$canonicalIntent,
+                    'action_completed'=>false,
+                    'missing_information'=>$canonicalIntent['missing']??[],
+                    'known_entities'=>$canonicalIntent['entities']??[],
+                    'rule'=>'Ask only for genuinely missing information. Preserve known entities and do not mutate the trial page.',
+                ]),
+                'mode'=>'clarify',
+                'canonical_intent'=>$canonicalIntent,
+                'credit_cost'=>0,
+                'credit_balance'=>$trialCredits->balance($trial),
+                'blocks'=>$blocks,
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'site_memory'=>$siteMemory,
+                'pending_action'=>false,
+                'applied_operations'=>[],
+            ]);
+        }
+
+        if($stalePendingPlan || $orphanAffirmative){
+            return response()->json([
+                'reply'=>$natural->compose($originalUserPrompt,[
+                    'authenticated'=>false,
+                    'trial'=>true,
+                    'canonical_knowledge'=>$knowledgePacket,
+                ],[
+                    'action_completed'=>false,
+                    'pending_action_available'=>false,
+                    'constraint'=>$stalePendingPlan
+                        ? 'The trial page changed after deletion confirmation was prepared, so the destructive action was discarded for safety.'
+                        : 'There is no valid destructive-action confirmation to execute.',
+                    'next_step'=>'Ask the user to request the deletion again.',
+                ]),
+                'mode'=>'reply',
+                'credit_cost'=>0,
+                'credit_balance'=>$trialCredits->balance($trial),
+                'blocks'=>$blocks,
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'applied_operations'=>[],
+            ]);
+        }
+
+        $trialAction=(string)($canonicalIntent['action']??'update');
+        if(!$resumePendingPlan && $trialAction==='publish'){
+            $verification=$executionVerification->verify([['action'=>'publish']],[],false);
+            return response()->json([
+                'reply'=>$trialNaturalReplyFromFacts(['action'=>'publish trial page','action_completed'=>false,'execution_verification'=>$verification,'constraint'=>'A trial page must be saved to an account before it can be published.','available_next_action'=>'save the trial, then publish from Builder']),
+                'mode'=>'reply','canonical_intent'=>$canonicalIntent,'execution_verification'=>$verification,
+                'credit_cost'=>0,'credit_balance'=>$trialCredits->balance($trial),'blocks'=>$blocks,
+                'header'=>is_array($header)?$header:[],'footer'=>is_array($footer)?$footer:[],
+                'site_memory'=>$siteMemory,'pending_action'=>false,'applied_operations'=>[],
+            ],422);
+        }
+        if(!$resumePendingPlan && $trialAction==='navigate'){
+            $target=Str::lower(trim((string)($canonicalIntent['target']??'').' '.$prompt));
+            $navigateUrl=Str::contains($target,['pricing','plans','upgrade'])?route('pricing',['token'=>$trial->token]):null;
+            $verification=$executionVerification->verify([['action'=>'navigate']],$navigateUrl?[['action'=>'navigate','target'=>$navigateUrl,'verified'=>true]]:[],$navigateUrl!==null);
+            return response()->json([
+                'reply'=>$trialNaturalReplyFromFacts(['action'=>'navigate','action_completed'=>$navigateUrl!==null,'destination'=>$navigateUrl?'Pricing':null,'execution_verification'=>$verification,'constraint'=>$navigateUrl?null:'That destination is not available from the trial Builder.']),
+                'mode'=>$navigateUrl?'navigate':'reply','navigate_url'=>$navigateUrl,'canonical_intent'=>$canonicalIntent,
+                'execution_verification'=>$verification,'execution_phases'=>['Thinking','Checking'],'credit_cost'=>0,
+                'credit_balance'=>$trialCredits->balance($trial),'site_memory'=>$siteMemory,'pending_action'=>false,
+                'applied_operations'=>$verification['verified_operations']??[],
+            ],$navigateUrl?200:422);
+        }
+
         $lower=Str::lower($prompt);
         if($scope==='header'){
             $shellAction=$this->lunaHeaderScopeAction($prompt,is_array($header)?$header:[],$siteMemory);
             if(is_array($shellAction)){
                 return response()->json([
-                    'reply'=>$shellAction['reply'],
+                    'reply'=>$trialNaturalReplyFromFacts([
+                    'action'=>($shellAction['mode']??'reply')==='logo_name_required'?'prepare logo generation':'header change',
+                    'action_completed'=>!empty($shellAction['applied_operations']),
+                    'verified_operations'=>$shellAction['applied_operations']??[],
+                    'needs_user_input'=>($shellAction['mode']??'')==='logo_name_required',
+                    'missing_information'=>($shellAction['mode']??'')==='logo_name_required'?'the business/company name to use in the logo':null,
+                    'planned_action'=>($shellAction['mode']??'')==='logo_generate'?'generate the logo using the resolved company name':null,
+                    'logo_company_name'=>$shellAction['logo_company_name']??null,
+                ]),
                     'mode'=>$shellAction['mode']??'reply',
                     'logo_company_name'=>$shellAction['logo_company_name']??null,
                     'blocks'=>$blocks,
@@ -1617,7 +2314,12 @@ PROMPT;
         }
         if($guardrailReply=$this->lunaUnsupportedLowLevelDesignRequest($prompt)){
             return response()->json([
-                'reply'=>$guardrailReply,
+                'reply'=>$trialNaturalReplyFromFacts([
+                    'action_completed'=>false,
+                    'capability_status'=>'unsupported exact low-level implementation request',
+                    'constraint'=>'Cosmic owns raw CSS/Tailwind/DOM implementation details to protect responsive Builder/live parity.',
+                    'fallback'=>'Offer the closest design-system-safe visual equivalent.',
+                ]),
                 'blocks'=>$blocks,
                 'header'=>is_array($header)?$header:[],
                 'footer'=>is_array($footer)?$footer:[],
@@ -1660,7 +2362,11 @@ PROMPT;
             ]);
 
         $designGlobalIntent=Str::contains(Str::lower((string)$validated['prompt']),[
-            'all sections','every section','all headings','every heading','whole page','entire page','everywhere','sitewide','site-wide'
+            'all sections','every section','all headings','every heading','all h1','all h2','all h3','all h4','all h5','all h6',
+            'all buttons','every button','all cards','every card','all images','every image','all forms','every form',
+            'whole page','entire page','everywhere','sitewide','site-wide','whole website','entire website','global',
+            'brand color','brand colour','primary color','primary colour','color family','colour family',
+            'all heading colors','all heading colours','website rounding','site rounding'
         ]);
         $artDirectionIntent=$this->lunaArtDirectionIntent((string)$validated['prompt']);
         // Relative art direction on a selected section stays local.
@@ -1747,22 +2453,28 @@ PROMPT;
         }
 
         if($scope==='page' && count($blocks)===0){
-            $sections=$lunaPages->plan($prompt);
-            $generated=$lunaPages->generate($prompt,$sections);
-            try{$remote=$pageGeneration->applyStartPageRemoteImages($prompt,$generated);if(is_array($remote['blocks']??null))$generated=$remote['blocks'];}catch(\Throwable $e){report($e);}
+            $designPlan=$lunaPages->planDetailed($prompt);
+            $sections=is_array($designPlan['sections']??null)?array_values($designPlan['sections']):[];
+            if($sections===[]) throw ValidationException::withMessages(['prompt'=>'Luna could not prepare a valid page composition.']);
+            $lockedPlan=[
+                'theme'=>(string)($designPlan['theme']??''),'template_key'=>(string)($designPlan['template_key']??''),
+                'industry'=>(string)($designPlan['industry']??'general'),'design_direction'=>(string)($designPlan['design_direction']??''),
+                'media_direction'=>(string)($designPlan['media_direction']??''),'sections'=>$sections,
+            ];
+            $contentPrompt=$prompt."\n\nLOCKED DESIGN/COMPOSITION JSON:\n".json_encode($lockedPlan,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\nGenerate content only for these selected registered sections. Do not redesign.";
+            $generated=$lunaPages->generate($contentPrompt,$sections);
+            try{$remote=$pageGeneration->applyStartPageRemoteImages($contentPrompt,$generated);if(is_array($remote['blocks']??null))$generated=$remote['blocks'];}catch(\Throwable $e){report($e);}
+            $verification=$executionVerification->verify([['action'=>'build_page']],count($generated)>0?[['action'=>'build_page','count'=>count($generated),'verified'=>true]]:[],count($generated)>0);
             $cost=40; $trialCredits->ensureCanSpend($trial,$cost,'Building this page');
-            $balance=$trialCredits->consume($trial,$cost,'luna_build_page',['scope'=>'trial']);
-            $reply=$natural->compose($prompt,[
-                'authenticated'=>false,
-                'trial'=>true,
-                'scope'=>'page',
-            ],[
-                'action'=>'build page',
-                'action_completed'=>true,
-                'generated_sections'=>count($generated),
-                'credits_used'=>$cost,
+            $balance=($verification['can_claim_complete']??false)?$trialCredits->consume($trial,$cost,'luna_build_page',['scope'=>'trial']):$trialCredits->balance($trial);
+            $reply=$trialNaturalReplyFromFacts(['action'=>'build page','action_completed'=>(bool)($verification['can_claim_complete']??false),'generated_sections'=>count($generated),'credits_used'=>($verification['can_claim_complete']??false)?$cost:0,'execution_verification'=>$verification]);
+            return response()->json([
+                'reply'=>$reply,'blocks'=>array_values($generated),'header'=>$header?:[],'footer'=>$footer?:[],
+                'design_plan'=>$lockedPlan,'execution_verification'=>$verification,'canonical_intent'=>$canonicalIntent,
+                'execution_phases'=>['Thinking','Planning','Designing','Building','Checking'],
+                'credit_cost'=>($verification['can_claim_complete']??false)?$cost:0,'credit_balance'=>$balance,
+                'applied_operations'=>$verification['verified_operations']??[],
             ]);
-            return response()->json(['reply'=>$reply,'blocks'=>array_values($generated),'header'=>$header?:[],'footer'=>$footer?:[],'credit_cost'=>$cost,'credit_balance'=>$balance]);
         }
 
         $usable=collect(SparkCatalog::all())->map(fn($s)=>[
@@ -1817,15 +2529,56 @@ PROMPT;
             $elementContext['matched_paths']=array_values(array_unique($paths));
         }
 
-        $system='You are Luna, the invisible website editor. Return JSON only: {"reply":"short reply","operations":[{"action":"edit|replace|insert_before|insert_after|delete|move|theme","index":0,"to_index":0,"spark_key":"registered key when needed","theme_key":"","changes":{},"instruction":""}],"header_changes":{},"footer_changes":{},"page_style":null}. Use ONLY Spark keys from the supplied catalog. Rank candidates by requested aliases/media/capabilities FIRST, selected-section semantic intent/category SECOND, then layout/style/industry/position fit. Never default to Hero merely because Hero also supports the requested media; preserve the selected section role unless the user explicitly asks to change it. For simple edits use edit and only existing schema keys. REPEATER/LIST CRUD IS NON-STRUCTURAL:
-For the compatible premium Services family (services_bento_premium, services_editorial_premium, services_showcase_premium, services_minimal_luxury, services_contrast_premium, services_split_premium, services_grid_premium, services_feature_premium), treat featured_* as item 1 and service_two_* through service_seven_* as items 2–7. service_count controls visible services. "Add N services" MUST use edit, increase service_count by N up to 7, and fill the newly exposed sequential service_*_title/text/number fields with relevant content. "Remove the least important service" MUST use edit, compact the remaining service fields in order, decrement service_count, and preserve the layout. requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs. THEME INTELLIGENCE: choose a theme only when the user explicitly asks for a theme/color-family change or when a first-build planner specifically requests one. Never choose midnight as a generic/default theme; use midnight only when the user explicitly asks for midnight/night styling. For vague style directions, preserve the current site theme and redesign within that family. REQUEST INTELLIGENCE: distinguish content edits from structural redesigns. Text/image/link/name/label changes edit the existing Spark. Add/remove/reorder list or card items edits the repeater. Requests for another layout, redesign, slider, video hero, split, grid, mosaic, testimonial style, or different section type are structural and may replace with the closest registered Spark. Global typography/spacing/background requests are handled by the design-token router; section-specific requests should remain local. Header overlay/logo/nav requests belong to the global header, not the body Spark. If a request contains multiple compatible actions, complete all applicable actions in order. ';
-        $apiKey=(string)config('openai.api_key'); abort_if($apiKey==='',503,'Luna is temporarily unavailable.');
-        $response=Http::withToken($apiKey)->connectTimeout(30)->timeout(150)->post(rtrim((string)(config('openai.base_uri')?:'https://api.openai.com/v1'),'/').'/chat/completions',[
-            'model'=>env('OPENAI_MODEL','gpt-5-mini'),'response_format'=>['type'=>'json_object'],
-            'messages'=>[['role'=>'system','content'=>$system],['role'=>'user','content'=>"SCOPE: {$scope}\nTARGET: {$targetIndex}\nREQUEST: {$prompt}\nPAGE: ".json_encode($summary)."\nSELECTED: ".json_encode($selected)."\nELEMENT TARGET: ".json_encode($elementContext)."\nSITE DESIGN MEMORY: ".json_encode($siteMemory)."\nCATALOG: ".json_encode($usable)]],
-        ])->throw()->json();
-        $plan=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+        $system='You are Luna, the invisible website editor. Return JSON only: {"operations":[{"action":"edit|replace|insert_before|insert_after|delete|move|theme","index":0,"to_index":0,"spark_key":"registered key when needed","theme_key":"","changes":{},"instruction":""}],"header_changes":{},"footer_changes":{},"brand_color_family":null,"page_style":null}. Use ONLY Spark keys from the supplied catalog. Rank candidates by requested aliases/media/capabilities FIRST, selected-section semantic intent/category SECOND, then layout/style/industry/position fit. Never default to Hero merely because Hero also supports the requested media; preserve the selected section role unless the user explicitly asks to change it. For simple edits use edit and only existing schema keys. REPEATER/LIST CRUD IS NON-STRUCTURAL:
+For the compatible premium Services family (services_bento_premium, services_editorial_premium, services_showcase_premium, services_minimal_luxury, services_contrast_premium, services_split_premium, services_grid_premium, services_feature_premium), treat featured_* as item 1 and service_two_* through service_seven_* as items 2–7. service_count controls visible services. "Add N services" MUST use edit, increase service_count by N up to 7, and fill the newly exposed sequential service_*_title/text/number fields with relevant content. "Remove the least important service" MUST use edit, compact the remaining service fields in order, decrement service_count, and preserve the layout. requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. FOOTER CONTRACT: footer_changes may update logo metadata, copyright, privacy/terms labels+URLs, contact {email,phone,address}, social_links [{label,url}], mega_enabled, and mega_footer {enabled,theme,tagline,primary_label,primary_url,columns:[{title,items:[{label,url}]}]}. Preserve unrelated footer fields. Footer columns max 4, items max 6 each, social links max 6. Footer-only requests must not mutate header or body sections. HEADER NAVIGATION CONTRACT: header_changes.menu is the complete resulting menu array. Each item is {"label":"...","url":"...","children":[...]}; children may nest to 3 levels total. For add/remove/rename/reorder/submenu requests, preserve unrelated items and return the complete updated menu. Header navigation is always plain dropdown navigation; do not create or enable mega menus. Never invent a page URL when the user did not provide one; use an existing matching menu/page target or "#". Header manual-equivalent navigation structure changes are valid shell changes. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs. COLOR FAMILY DESIGN: when the user supplies an explicit HEX and asks to make/change the website theme, brand, colors, or color family around it, keep that exact HEX as `brand_color_family.primary` and design a tasteful premium semantic family around it. Return `brand_color_family` with this schema: {"sourceColor":"#RRGGBB","primary":"#RRGGBB","primaryHover":"#RRGGBB","primarySoft":"#RRGGBB","secondary":"#RRGGBB","accent":"#RRGGBB","background":"#RRGGBB","surface":"#RRGGBB","surfaceMuted":"#RRGGBB","heading":"#RRGGBB","text":"#RRGGBB","muted":"#RRGGBB","border":"#RRGGBB","buttonPrimary":"#RRGGBB","buttonText":"#RRGGBB","buttonSecondary":"#RRGGBB","buttonSecondaryText":"#RRGGBB","success":"#RRGGBB","warning":"#RRGGBB","error":"#RRGGBB","onPrimary":"#RRGGBB","onDark":"#RRGGBB","gradient":{"from":"#RRGGBB","via":"#RRGGBB","to":"#RRGGBB","glow":"#RRGGBB","angle":125}}. Aim for premium restraint: harmonious surfaces, readable body text, meaningful accent separation, and no random rainbow palette. Headings default to the exact primary brand color on light surfaces. Dark/image sections use contrast-safe light text.  DOCUMENTATION GROUNDING: You receive a LUNA KNOWLEDGE PACKET containing relevant canonical Cosmic CMS documentation and capability records. Product/capability claims MUST be grounded in that packet. If a capability is unsupported, planned, or limited, say so accurately and offer the documented fallback. If the packet does not establish support, do not invent support. A capability question is informational: return a useful natural reply and NO operations/header/footer/theme/page-style mutation. Server runtime guards remain authoritative. THEME INTELLIGENCE: choose a theme only when the user explicitly asks for a theme/color-family change or when a first-build planner specifically requests one. Never choose midnight as a generic/default theme; use midnight only when the user explicitly asks for midnight/night styling. For vague style directions, preserve the current site theme and redesign within that family. REQUEST INTELLIGENCE: distinguish content edits from structural redesigns. Text/image/link/name/label changes edit the existing Spark. Add/remove/reorder list or card items edits the repeater. Requests for another layout, redesign, slider, video hero, split, grid, mosaic, testimonial style, or different section type are structural and may replace with the closest registered Spark. Global typography/spacing/background requests are handled by the design-token router; section-specific requests should remain local. Header overlay/logo/nav requests belong to the global header, not the body Spark. If a request contains multiple compatible actions, complete all applicable actions in order. ';
+        $system="INTERNAL TARGET/CHANGE PLANNER. Intermediate output is JSON only. Never return reply, message, response, suggestion, question, confirmation copy, or any user-facing text.\n".$system;
+        if($resumePendingPlan && is_array($resumePendingPlan['plan']??null)){
+            $plan=$resumePendingPlan['plan'];
+        }else{
+            $apiKey=(string)config('openai.api_key'); abort_if($apiKey==='',503,'Luna is temporarily unavailable.');
+            $response=Http::withToken($apiKey)->connectTimeout(30)->timeout(150)->post(rtrim((string)(config('openai.base_uri')?:'https://api.openai.com/v1'),'/').'/chat/completions',[
+                'model'=>env('OPENAI_MODEL','gpt-5-mini'),'response_format'=>['type'=>'json_object'],
+                'messages'=>[['role'=>'system','content'=>$system],['role'=>'user','content'=>"SCOPE: {$scope}\nTARGET: {$targetIndex}\n{$scopeContract}\n{$smartEditContract}\n{$siteDnaContract}\nREQUEST: {$prompt}\nPAGE: ".json_encode($summary)."\nCURRENT HEADER: ".json_encode(is_array($header)?$header:[])."\nCURRENT FOOTER: ".json_encode(is_array($footer)?$footer:[])."\nSELECTED: ".json_encode($selected)."\nELEMENT TARGET: ".json_encode($elementContext)."\nSITE DESIGN MEMORY: ".json_encode($siteMemory)."\nLUNA KNOWLEDGE PACKET: ".json_encode($knowledgePacket,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\nCATALOG: ".json_encode($usable)]],
+            ])->throw()->json();
+            $plan=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+        }
+        if(!is_array($plan)) {
+            throw ValidationException::withMessages(['prompt'=>'Luna returned an invalid grounded response.']);
+        }
+        if(
+            $capabilityQuestion
+            || (
+                !($feasibility['execution_allowed']??false)
+                && !(($canonicalIntent['intent']??'')==='action' && ($canonicalIntent['execution_allowed']??false))
+            )
+        ){
+            return response()->json([
+                'reply'=>$trialNaturalReplyFromFacts([
+                    'action_completed'=>false,
+                    'conversation_mode'=>'feasibility_first',
+                    'feasibility'=>$feasibility,
+                    'constraint'=>'No website mutation is allowed from this request in the current turn.',
+                    'fallback'=>$feasibility['alternative']??'Explain the documented limit naturally.',
+                    'next_step'=>($feasibility['feasibility']??'')==='alternative_available'
+                        ? 'Offer the documented alternative and ask whether the user wants that alternative.'
+                        : 'Answer naturally from canonical documentation without claiming a change.',
+                ]),
+                'blocks'=>$blocks,
+                'header'=>$header,
+                'footer'=>$footer,
+                'credit_cost'=>0,
+                'credit_balance'=>$trialCredits->balance($trial),
+                'site_memory'=>$siteMemory,
+                'mode'=>'grounded_info',
+                'grounded_capabilities'=>array_values(array_filter(array_map(fn($cap)=>$cap['id']??null,$knowledgePacket['capabilities']??[]))),
+                'applied_operations'=>[],
+            ]);
+        }
+        $explicitBrandPrimary=$this->lunaExplicitBrandColor($prompt);
         $ops=array_values(array_slice(is_array($plan['operations']??null)?$plan['operations']:[],0,12));
+        if($explicitBrandPrimary){
+            $ops=array_values(array_filter($ops,fn($op)=>!(is_array($op)&&($op['action']??'')==='theme')));
+        }
 
         // Deterministic structural correction: natural-language positioning commands
         // must become real move operations even if the planner under-specifies them.
@@ -2018,13 +2771,13 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 if(is_array($candidate) && !empty($candidate['key'])){
                     // Override target redesign operations from the model. This prevents
                     // same-Spark replacements or no-op edits from blocking the fallback.
-                    $operations=array_values(array_filter($operations,function($op) use($targetIndex){
+                    $ops=array_values(array_filter($ops,function($op) use($targetIndex){
                         if(!is_array($op)) return true;
                         if((int)($op['index']??-1)!==$targetIndex) return true;
                         return !in_array(($op['action']??''),['edit','replace'],true);
                     }));
 
-                    $operations[]=[
+                    $ops[]=[
                         'action'=>'replace',
                         'index'=>$targetIndex,
                         'spark_key'=>(string)$candidate['key'],
@@ -2035,28 +2788,67 @@ For the compatible premium Services family (services_bento_premium, services_edi
             }
         }
 
+        if(
+            $resumePendingPlan
+            && is_array($resumePendingPlan['operations']??null)
+            && array_values($resumePendingPlan['operations'])!==[]
+        ){
+            $ops=array_values($resumePendingPlan['operations']);
+        }
+
         $pricing=$lunaPricing->estimate($prompt,$ops,$scope);
         $cost=(int)($pricing['credits']??0);
-        if(($pricing['requires_confirmation']??false) && !($validated['confirmed']??false)){
-            $planningCost=2;
-            $trialCredits->ensureCanSpend($trial,$planningCost,'Luna planning');
-            $balance=$trialCredits->consume($trial,$planningCost,'luna_plan_confirmation',['scope'=>$scope]);
+        // Batch 2 direct execution: trial build/update actions execute immediately.
+        // Only destructive delete keeps a confirmation gate.
+        $needsLargeConfirmation=!$resumePendingPlan
+            && (($canonicalIntent['intent']??'')==='action')
+            && (($canonicalIntent['action']??'')==='delete');
+
+        if($needsLargeConfirmation && !($validated['confirmed']??false)){
+            // Destructive safety confirmation is UI/state only — no AI credit charge.
+            $planningCost=0;
+            $balance=$trialCredits->balance($trial);
+
+            $blocksFingerprint=hash('sha256',json_encode(array_values($blocks),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
+            $pendingToken=$pendingActions->put($pendingActor,[
+                'kind'=>'trial_destructive_delete',
+                'prompt'=>$prompt,
+                'scope'=>$scope,
+                'target_index'=>$targetIndex,
+                'plan'=>$plan,
+                'operations'=>$ops,
+                'canonical_schema'=>$canonicalIntent,
+                'blocks_fingerprint'=>$blocksFingerprint,
+                'estimated_execution_cost'=>$cost,
+                'trial_id'=>$trial->id,
+            ]);
+
             $reply=$natural->compose($prompt,[
                 'authenticated'=>false,
                 'trial'=>true,
                 'scope'=>$scope,
+                'canonical_knowledge'=>$knowledgePacket,
             ],[
                 'action_completed'=>false,
                 'confirmation_required'=>true,
+                'pending_action_stored'=>true,
+                'pending_action_token'=>$pendingToken,
+                'planned_operations'=>$ops,
                 'estimated_execution_cost'=>$cost,
                 'planning_credits_used'=>$planningCost,
+                'next_step'=>'Ask for an explicit deletion confirmation using the Delete button. This safety confirmation costs 0 credits.',
+                'rule'=>'Do not claim the website changed. Ask only whether to delete the selected content. Never say Proceed, Continue, Shall I proceed, or expose implementation details.',
             ]);
             return response()->json([
                 'reply'=>$reply,
                 'mode'=>'confirm',
+                'pending_action'=>true,
+                'pending_action_token'=>$pendingToken,
+                'canonical_intent'=>$canonicalIntent,
                 'confirmation_cost'=>$cost,
                 'credit_cost'=>$planningCost,
                 'credit_balance'=>$balance,
+            'site_memory'=>$siteMemory,
             ]);
         }
         if($cost>0)$trialCredits->ensureCanSpend($trial,$cost,'This Luna change');
@@ -2066,7 +2858,17 @@ For the compatible premium Services family (services_bento_premium, services_edi
             if(!is_array($op))continue;$action=(string)($op['action']??'');$i=(int)($op['index']??-1);
             if($scope==='section'&&!in_array($action,['insert_before','insert_after'],true)&&$i!==$targetIndex)continue;
             if($action==='edit'&&isset($next[$i])&&is_array($op['changes']??null)){
-                $changes=$op['changes'];unset($changes['type'],$changes['_renderKey']);$changes=array_intersect_key($changes,$next[$i]);$next[$i]=array_merge($next[$i],$changes);$applied[]=['action'=>'edit','index'=>$i];continue;
+                $changes=$op['changes'];unset($changes['type'],$changes['_renderKey']);
+                $repeaterResult=$smartSparkEditing->applyRepeaterIntent($prompt,$next[$i],$elementContext);
+                if(is_array($repeaterResult) && ($repeaterResult['action']??'')!=='repeater_remove_unresolved'){
+                    $next[$i]=$repeaterResult['block'];
+                    $applied[]=['action'=>$repeaterResult['action'],'index'=>$i,'collection'=>$repeaterResult['collection']??null,'item_index'=>$repeaterResult['item_index']??null,'verified'=>true];
+                    continue;
+                }
+                $sanitized=$smartSparkEditing->sanitizeEdit($next[$i],$changes,$elementContext);
+                $next[$i]=$sanitized['block'];
+                if(($sanitized['paths']??[])!==[])$applied[]=['action'=>'edit','index'=>$i,'mode'=>$sanitized['mode']??'block','paths'=>$sanitized['paths'],'verified'=>true];
+                continue;
             }
             if(in_array($action,['replace','insert_before','insert_after'],true)){
                 $key=(string)($op['spark_key']??'');if(!$keys->has($key))continue;
@@ -2098,6 +2900,13 @@ For the compatible premium Services family (services_bento_premium, services_edi
         foreach($designTargets as $designIndex){
             if(!isset($next[$designIndex])||!is_array($next[$designIndex]))continue;
             $currentDesign=is_array($next[$designIndex]['luna_design_overrides']??null)?$next[$designIndex]['luna_design_overrides']:[];
+            $currentComponents=is_array($next[$designIndex]['luna_component_overrides']??null)?$next[$designIndex]['luna_component_overrides']:[];
+            $componentChanges=$this->lunaComponentDesignIntent($designPrompt,$currentComponents);
+            if($componentChanges!==$currentComponents){
+                $next[$designIndex]['luna_component_overrides']=$componentChanges;
+                $designChanges['components']=$componentChanges;
+                $designApplied=true;
+            }
             $referenceIndex=$this->lunaReferenceSectionIndex($designPrompt,$next,(int)$designIndex);
             $reference=$referenceIndex!==null&&isset($next[$referenceIndex])?$next[$referenceIndex]:[];
             $changes=$this->lunaRelativeDesignIntent($designPrompt,$currentDesign,$reference);
@@ -2142,36 +2951,94 @@ For the compatible premium Services family (services_bento_premium, services_edi
             }
         }
 
+        $brandPrimary=$explicitBrandPrimary ?: $this->lunaExplicitBrandColor($designPrompt);
+        $brandColorFamily=$brandPrimary
+            ? $this->lunaValidateBrandColorFamily($brandPrimary,$plan['brand_color_family']??null)
+            : null;
+        if($brandColorFamily){
+            $aiPaletteProposed=is_array($plan['brand_color_family']??null);
+            $applied[]=[
+                'action'=>'brand_color_family',
+                'scope'=>'site',
+                'primary'=>$brandPrimary,
+                'source'=>$aiPaletteProposed?'luna_designed_validated':'deterministic_fallback',
+                'verified'=>true
+            ];
+        }
+
         $trialThemeKey=collect($applied)->first(fn($item)=>($item['action']??'')==='theme')['theme_key']??null;
         $trialPageStyle=in_array(Str::lower((string)($plan['page_style']??'')),['balanced','clean','premium'],true)
             ? Str::lower((string)$plan['page_style']) : null;
-        $shellChanged=!empty($plan['header_changes']??[])||!empty($plan['footer_changes']??[])||$trialPageStyle!==null||$trialThemeKey!==null;
+        $shellChanged=!empty($plan['header_changes']??[])||!empty($plan['footer_changes']??[])||$trialPageStyle!==null||$trialThemeKey!==null||$brandColorFamily!==null;
         $afterFingerprint=hash('sha256',json_encode(array_values($next),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
         $blocksActuallyChanged=!hash_equals($beforeFingerprint,$afterFingerprint);
         if(!$blocksActuallyChanged){
             $applied=array_values(array_filter($applied,fn($item)=>in_array(($item['action']??''),['theme'],true)));
         }
         $verifiedSomething=$blocksActuallyChanged||$shellChanged;
+        $executionVerificationResult=$executionVerification->verify($ops,$applied,$verifiedSomething);
+        $siteMemory=$siteDna->updateAfterExecution(
+            $siteMemory,$trialDna,$executionVerificationResult,$scopeResolution,
+            ['primary'=>$trialThemeKey,'custom_brand_theme'=>$brandColorFamily],
+            ['page_style'=>$trialPageStyle]
+        );
         $chargedCost=$verifiedSomething ? $cost : 0;
         $balance=$chargedCost>0
             ? $trialCredits->consume($trial,$chargedCost,'luna_change',['scope'=>$scope,'operations'=>$applied])
             : $trialCredits->balance($trial);
-        $reply=($universalBackgroundIntent && !$backgroundApplied)
-            ? ('I could not apply the background image change yet. '.($backgroundError?:'The image provider did not return a usable background.'))
-            : ($verifiedSomething
-                ? (trim((string)($plan['reply']??''))?:'The requested change was applied.')
-                : 'I could not verify a real change to the current website, so I left it as-is.');
+        $reply='';
+        if(($executionVerificationResult['status']??'failed')==='partial'){
+            $reply=$trialNaturalReplyFromFacts([
+                'action_completed'=>false,
+                'execution_status'=>'partial',
+                'verified_operations'=>$executionVerificationResult['verified_operations']??[],
+                'unverified_operations'=>$executionVerificationResult['unverified_operations']??[],
+                'constraint'=>'Some requested changes were verified, but at least one planned operation did not complete. Do not say Done or imply full completion.',
+            ]);
+        } elseif(($executionVerificationResult['status']??'failed')==='failed' && $verifiedSomething){
+            $reply=$trialNaturalReplyFromFacts([
+                'action_completed'=>false,
+                'execution_status'=>'failed',
+                'verified_operations'=>$executionVerificationResult['verified_operations']??[],
+                'unverified_operations'=>$executionVerificationResult['unverified_operations']??[],
+                'constraint'=>'The requested plan could not be fully verified. Report what failed instead of claiming completion.',
+            ]);
+        } elseif($universalBackgroundIntent && !$backgroundApplied){
+            $reply=$trialNaturalReplyFromFacts([
+                'action'=>'background image change',
+                'action_completed'=>false,
+                'error'=>$backgroundError?:'The image provider did not return a usable background.',
+                'verified_operations'=>$applied,
+            ]);
+        } elseif(!$verifiedSomething){
+            $reply=$trialNaturalReplyFromFacts([
+                'action_completed'=>false,
+                'verified_operations'=>$applied,
+                'constraint'=>'The server could not verify a real website-state change.',
+            ]);
+        } elseif($reply===''){
+            $reply=$trialNaturalReplyFromFacts([
+                'action_completed'=>true,
+                'verified_operations'=>$applied,
+                'theme_changed'=>$trialThemeKey!==null || $brandColorFamily!==null,
+                'page_style_changed'=>$trialPageStyle!==null,
+            ]);
+        }
         return response()->json([
             'reply'=>$reply,
             'blocks'=>$next,
-            'header'=>array_merge(is_array($header)?$header:[],is_array($plan['header_changes']??null)?$plan['header_changes']:[]),
-            'footer'=>array_merge(is_array($footer)?$footer:[],is_array($plan['footer_changes']??null)?$plan['footer_changes']:[]),
+            'brand_color_family'=>$brandColorFamily,
+            'header'=>$this->lunaSafeHeaderChanges(is_array($header)?$header:[],is_array($plan['header_changes']??null)?$plan['header_changes']:[]),
+            'footer'=>$this->lunaSafeFooterChanges(is_array($footer)?$footer:[],is_array($plan['footer_changes']??null)?$plan['footer_changes']:[]),
             'theme_key'=>$trialThemeKey,
             'page_style'=>$trialPageStyle,
             'credit_cost'=>$chargedCost,
             'credit_balance'=>$balance,
             'site_memory'=>$siteMemory,
-            'applied_operations'=>$applied
+            'applied_operations'=>$applied,
+            'execution_verification'=>$executionVerificationResult,
+            'canonical_intent'=>$canonicalIntent,
+            'execution_phases'=>['Thinking','Planning','Designing','Building','Checking'],
         ]);
     }
 
@@ -2651,6 +3518,35 @@ For the compatible premium Services family (services_bento_premium, services_edi
         return false;
     }
 
+    /** Resolve only known, authorized Builder destinations. */
+    private function lunaBuilderNavigationTarget(Website $website,array $canonicalIntent,string $prompt,?int $currentPageId=null): ?array
+    {
+        $target=Str::lower(trim((string)($canonicalIntent['target']??'')));
+        $haystack=trim($target.' '.Str::lower($prompt));
+        if(Str::contains($haystack,['dashboard','workspace'])) return ['url'=>route('dashboard'),'label'=>'Dashboard'];
+        if(Str::contains($haystack,['media library','media-library','uploads'])) return ['url'=>route('media-library.index',['website'=>$website->id]),'label'=>'Media Library'];
+        if(Str::contains($haystack,['inquiries','form submissions','messages'])) return ['url'=>route('websites.inquiries.index',['website'=>$website->id]),'label'=>'Inquiries'];
+        $pages=$website->pages()->get(['id','title','slug']);
+        $page=null;
+        if(Str::contains($haystack,['homepage','home page']) || $target==='home') $page=$pages->first(fn($candidate)=>in_array(Str::lower((string)$candidate->slug),['home','homepage'],true));
+        if(!$page && $target!==''){
+            $page=$pages->first(function($candidate) use($target){
+                $title=Str::lower((string)$candidate->title);$slug=Str::lower((string)$candidate->slug);
+                return $target===$title || $target===$slug || Str::contains($target,[$title,$slug]);
+            });
+        }
+        if(!$page){
+            $page=$pages->first(function($candidate) use($haystack){
+                $title=Str::lower((string)$candidate->title);$slug=Str::lower((string)$candidate->slug);
+                return ($title!=='' && Str::contains($haystack,$title)) || ($slug!=='' && Str::contains($haystack,$slug));
+            });
+        }
+        if(!$page && $currentPageId && Str::contains($haystack,['current page','this page','builder'])) $page=$pages->firstWhere('id',$currentPageId);
+        if($page) return ['url'=>route('pages.builder',['page'=>$page->id]),'label'=>(string)$page->title];
+        if(Str::contains($haystack,['pages','page list','all pages'])) return ['url'=>route('pages.index',['website'=>$website->id]),'label'=>'Pages'];
+        return null;
+    }
+
     public function pageChat(
         Request $request,
         Website $website,
@@ -2660,8 +3556,28 @@ For the compatible premium Services family (services_bento_premium, services_edi
         LunaCreditPricingService $lunaPricing,
         CreditService $credits,
         LunaNaturalReplyService $natural,
-        LunaPexelsVideoService $lunaVideos
+        LunaPexelsVideoService $lunaVideos,
+        LunaKnowledgeRouter $knowledge,
+        LunaPendingActionService $pendingActions,
+        LunaFeasibilityGate $feasibilityGate,
+        LunaDesignContinuityService $designContinuity,
+        LunaResponsiveIntelligenceService $responsive,
+        LunaVisualQaService $visualQa,
+        LunaScopeIntelligenceService $scopeIntelligence,
+        LunaSmartSparkEditingService $smartSparkEditing,
+        LunaRenderParityService $renderParity,
+        LunaExecutionVerificationService $executionVerification,
+        LunaSiteDesignDnaService $siteDna,
+        LunaDesignCriticService $designCritic,
+        LunaSelfCorrectionService $selfCorrection,
+        LunaIntentGateway $intentGateway
     ) {
+        // Whole-page generation is a multi-stage operation and can legitimately
+        // exceed PHP's default 60-second request limit. Each remote call still
+        // has its own tighter timeout; this only prevents PHP from killing the
+        // orchestration while a valid build is in progress.
+        set_time_limit(600);
+
         $this->authorize('update', $website);
 
         $validated=$request->validate([
@@ -2670,13 +3586,21 @@ For the compatible premium Services family (services_bento_premium, services_edi
             'header'=>['nullable','string','max:80000'],
             'footer'=>['nullable','string','max:120000'],
             'theme'=>['nullable','string','max:12000'],
+            'typography'=>['nullable','string','max:12000'],
+            'background_style'=>['nullable','string','max:12000'],
+            'section_layout'=>['nullable','string','max:12000'],
+            'components'=>['nullable','string','max:12000'],
             'site_memory'=>['nullable','string','max:24000'],
             'target_scope'=>['nullable','in:page,section,header,footer'],
             'target_index'=>['nullable','integer','min:0','max:100'],
             'element_context'=>['nullable','string','max:6000'],
             'target_resolved_theme'=>['nullable','string','max:40'],
             'confirmed'=>['nullable','boolean'],
+            'pending_action_token'=>['nullable','string','max:100'],
+            'current_page_id'=>['nullable','integer','min:1'],
         ]);
+        $originalUserPrompt=trim((string)$validated['prompt']);
+        $user=$request->user();
 
         $blocks=json_decode($validated['blocks'],true);
         $header=json_decode((string)($validated['header']??'{}'),true);
@@ -2688,6 +3612,10 @@ For the compatible premium Services family (services_bento_premium, services_edi
         if(!is_array($backgroundStyle))$backgroundStyle=[];
         $sectionLayout=json_decode((string)($validated['section_layout']??'{}'),true);
         if(!is_array($sectionLayout))$sectionLayout=[];
+        $components=json_decode((string)($validated['components']??'{}'),true);
+        if(!is_array($components))$components=[];
+        $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
+        if(!is_array($elementContext))$elementContext=[];
         if(!is_array($blocks)) {
             throw ValidationException::withMessages(['blocks'=>'The current page could not be prepared for Luna.']);
         }
@@ -2696,6 +3624,144 @@ For the compatible premium Services family (services_bento_premium, services_edi
 
         $scope=(string)($validated['target_scope']??'page');
         $targetIndex=$scope==='section' ? (int)($validated['target_index']??-1) : -1;
+        $scopeResolution=$scopeIntelligence->resolve($originalUserPrompt,$scope,$elementContext);
+        $scopeContract=$scopeIntelligence->plannerDirective($scopeResolution);
+        // Hotfix: pageChat must initialize the smart-edit planner contract
+        // before any conversational or mutation planning branch references it.
+        $smartEditContract=$smartSparkEditing->contractDirective();
+        $pendingActor='builder:'.($user?->id ?? 'guest').':website:'.$website->id;
+        $resumePendingPlan=null;
+        $stalePendingPlan=false;
+        $orphanAffirmative=false;
+
+        if($validated['confirmed']??false){
+            $token=trim((string)($validated['pending_action_token']??''));
+            $candidate=$token!=='' ? $pendingActions->consume($pendingActor,$token) : null;
+            if(is_array($candidate) && ($candidate['kind']??'')==='builder_destructive_delete'){
+                $currentFingerprint=hash('sha256',json_encode(array_values($blocks),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
+                if(hash_equals((string)($candidate['blocks_fingerprint']??''),$currentFingerprint)){
+                    $resumePendingPlan=$candidate;
+                    $validated['prompt']=(string)$candidate['prompt'];
+                    $validated['confirmed']=true;
+                    $scope=(string)($candidate['scope']??$scope);
+                    $targetIndex=$scope==='section' ? (int)($candidate['target_index']??$targetIndex) : -1;
+                }else{
+                    $stalePendingPlan=true;
+                }
+            }else{
+                $orphanAffirmative=true;
+            }
+        }
+
+        $prompt=$this->lunaResolveThemeFollowUp(trim((string)$validated['prompt']),$siteMemory);
+        $validated['prompt']=$prompt;
+        $scopeResolution=$scopeIntelligence->resolve($prompt,$scope,$elementContext);
+        $scopeContract=$scopeIntelligence->plannerDirective($scopeResolution);
+
+        // API 1 decides only chat/action. API 2 emits machine-only action JSON.
+        if($resumePendingPlan && is_array($resumePendingPlan['canonical_schema']??null)){
+            $canonicalIntent=$resumePendingPlan['canonical_schema'];
+        }else{
+            $routeContext=[
+                'surface'=>'builder',
+                'ui_scope'=>$scope,
+                'target_index'=>$targetIndex,
+                'has_blocks'=>count($blocks)>0,
+                'website_name'=>$website->name,
+            ];
+            $intentRoute=$intentGateway->route($prompt,$siteMemory,$routeContext);
+            $canonicalIntent=($intentRoute['intent']??'chat')==='action'
+                ? $intentGateway->classifyAction($prompt,$siteMemory,$routeContext)
+                : ['intent'=>'chat'];
+        }
+        $siteMemory=$intentGateway->memory($siteMemory,$canonicalIntent);
+        $knowledgePacket=$knowledge->contextFor($prompt,$scope);
+        $canonicalConversation=(($canonicalIntent['intent']??'chat')==='chat');
+        $capabilityQuestion=!$resumePendingPlan && (
+            (($canonicalIntent['intent']??'chat')==='chat' && ($canonicalIntent['chat_type']??'general')==='capability')
+            || (($knowledgePacket['query_type']??'')==='capability_question')
+        );
+        $feasibility=$resumePendingPlan
+            ? ['feasibility'=>'supported','execution_allowed'=>true,'requires_confirmation'=>false,'informational'=>false]
+            : $feasibilityGate->evaluate($prompt,$knowledgePacket,$scope);
+
+        // Canonical intent owns the top-level execution gate.
+        if($canonicalConversation){
+            $feasibility['informational']=true;
+            $feasibility['execution_allowed']=false;
+            $feasibility['requires_confirmation']=false;
+        } elseif(($canonicalIntent['intent']??'')==='action'){
+            // Direct-action architecture: the canonical router owns chat vs action.
+            // Legacy feasibility may describe limits/fallbacks, but it must not turn
+            // a concrete build/update action back into a conversational proposal.
+            $feasibility['informational']=false;
+            $feasibility['execution_allowed']=(bool)($canonicalIntent['execution_allowed']??true);
+            $feasibility['requires_confirmation']=(($canonicalIntent['action']??'')==='delete');
+        } else {
+            $feasibility['execution_allowed']=false;
+            $feasibility['requires_confirmation']=false;
+        }
+
+        if(!$resumePendingPlan && $canonicalConversation){
+            $reply=$natural->compose($prompt,[
+                'authenticated'=>true,
+                'scope'=>$scope,
+                'website'=>$website->name,
+                'canonical_knowledge'=>$knowledgePacket,
+            ],[
+                'canonical_intent'=>$canonicalIntent,
+                'action_completed'=>false,
+                'conversation_mode'=>'chat_docs_only',
+                'credit_cost'=>0,
+                'rule'=>'This is a chat turn. Answer naturally and concisely from canonical documentation and verified context, then stop. Do not ask the user to Proceed/Continue. Do not imply work has started. Use customer-facing website language only; never expose Sparks, templates, schemas, planner internals, API mechanics, or other implementation details unless explicitly asked about Cosmic internals.',
+            ]);
+            return response()->json([
+                'reply'=>$reply,
+                'mode'=>'grounded_info',
+                'canonical_intent'=>$canonicalIntent,
+                'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+                'blocks'=>$blocks,
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'site_memory'=>$siteMemory,
+                'pending_action'=>false,
+                'applied_operations'=>[],
+            ]);
+        }
+
+        if(
+            !$resumePendingPlan
+            && ($canonicalIntent['needs_clarification']??false)
+            && !(($canonicalIntent['intent']??'')==='action' && ($canonicalIntent['execution_allowed']??false))
+        ){
+            $reply=$natural->compose($prompt,[
+                'authenticated'=>true,
+                'scope'=>$scope,
+                'website'=>$website->name,
+                'canonical_knowledge'=>$knowledgePacket,
+            ],[
+                'canonical_intent'=>$canonicalIntent,
+                'action_completed'=>false,
+                'missing_information'=>$canonicalIntent['missing']??[],
+                'known_entities'=>$canonicalIntent['entities']??[],
+                'rule'=>'Ask only for the information genuinely missing from the canonical intent. Preserve known details from prior turns. Do not ask the user to Proceed yet and do not mutate the website.',
+            ]);
+            return response()->json([
+                'reply'=>$reply,
+                'mode'=>'clarify',
+                'canonical_intent'=>$canonicalIntent,
+                'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+                'blocks'=>$blocks,
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'site_memory'=>$siteMemory,
+                'pending_action'=>false,
+                'applied_operations'=>[],
+            ]);
+        }
+
         if($scope==='section' && !isset($blocks[$targetIndex])) {
             throw ValidationException::withMessages(['target_index'=>'That section is no longer available.']);
         }
@@ -2730,7 +3796,77 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'redesign','change the layout','different layout','change layout','replace section',
                 'change the design','different design','turn this section','transform this section'
             ]);
-$user=$request->user();
+        $naturalReplyFromFacts=function(array $facts) use($natural,$validated,$scope,$website,$knowledgePacket){
+            return $natural->compose((string)$validated['prompt'],[
+                'authenticated'=>true,
+                'scope'=>$scope,
+                'website'=>$website->name,
+                'canonical_knowledge'=>$knowledgePacket,
+            ],array_merge([
+                'canonical_knowledge'=>$knowledgePacket,
+                'rule'=>'Formulate the user-facing reply from verified facts and canonical documentation. Never invent a completed action.',
+            ],$facts));
+        };
+
+
+        if($stalePendingPlan || $orphanAffirmative){
+            return response()->json([
+                'reply'=>$natural->compose($originalUserPrompt,[
+                    'authenticated'=>true,
+                    'scope'=>$scope,
+                    'website'=>$website->name,
+                    'canonical_knowledge'=>$knowledgePacket,
+                ],[
+                    'action_completed'=>false,
+                    'pending_action_available'=>false,
+                    'constraint'=>$stalePendingPlan
+                        ? 'The page changed after deletion confirmation was prepared, so the destructive action was discarded for safety.'
+                        : 'There is no valid destructive-action confirmation to execute.',
+                    'next_step'=>'Ask the user to request the deletion again.',
+                ]),
+                'mode'=>'reply',
+                'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+                'blocks'=>$blocks,
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'applied_operations'=>[],
+            ]);
+        }
+
+
+        $canonicalAction=(string)($canonicalIntent['action']??'update');
+        if(!$resumePendingPlan && $canonicalAction==='publish'){
+            $pageId=(int)($validated['current_page_id']??0);
+            $pageExists=$pageId>0 && $website->pages()->whereKey($pageId)->exists();
+            if(!$pageExists){
+                $verification=$executionVerification->verify([['action'=>'publish']],[],false);
+                return response()->json([
+                    'reply'=>$naturalReplyFromFacts(['action'=>'publish page','action_completed'=>false,'execution_verification'=>$verification,'constraint'=>'The current page could not be resolved inside this website, so publishing was not attempted.']),
+                    'mode'=>'reply','canonical_intent'=>$canonicalIntent,'execution_verification'=>$verification,
+                    'credit_cost'=>0,'credit_balance'=>$user ? $credits->balance($user) : null,
+                    'blocks'=>$blocks,'header'=>is_array($header)?$header:[],'footer'=>is_array($footer)?$footer:[],'applied_operations'=>[],
+                ],422);
+            }
+            return response()->json([
+                'reply'=>null,'mode'=>'publish','publish_page_id'=>$pageId,'canonical_intent'=>$canonicalIntent,
+                'execution_request'=>['action'=>'publish','page_id'=>$pageId],
+                'execution_phases'=>['Thinking','Planning','Building','Checking'],'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,'site_memory'=>$siteMemory,'pending_action'=>false,
+            ]);
+        }
+        if(!$resumePendingPlan && $canonicalAction==='navigate'){
+            $destination=$this->lunaBuilderNavigationTarget($website,$canonicalIntent,$prompt,isset($validated['current_page_id'])?(int)$validated['current_page_id']:null);
+            $verification=$executionVerification->verify([['action'=>'navigate']],$destination?[['action'=>'navigate','target'=>$destination['url'],'verified'=>true]]:[],is_array($destination));
+            return response()->json([
+                'reply'=>$naturalReplyFromFacts(['action'=>'navigate','action_completed'=>is_array($destination),'destination'=>$destination['label']??null,'execution_verification'=>$verification,'constraint'=>$destination?null:'No authorized destination matched the request.']),
+                'mode'=>$destination?'navigate':'reply','navigate_url'=>$destination['url']??null,
+                'canonical_intent'=>$canonicalIntent,'execution_verification'=>$verification,
+                'execution_phases'=>['Thinking','Checking'],'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,'site_memory'=>$siteMemory,
+                'pending_action'=>false,'applied_operations'=>$verification['verified_operations']??[],
+            ],$destination?200:422);
+        }
 
         $allowedSiteThemes=['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
         $websiteThemeSettings=(array)($website->theme_settings??[]);
@@ -2740,6 +3876,36 @@ $user=$request->user();
         $hasExistingSiteContent=(bool)($websiteThemeSettings['luna_theme_locked']??false)
             || $website->pages()->get(['blocks'])->contains(fn($candidate)=>is_array($candidate->blocks??null) && count($candidate->blocks)>0);
         $preserveSiteTheme=$hasExistingSiteContent && !$explicitThemeChange;
+        $designDna=$designContinuity->designDna($website,is_array($theme)?$theme:[],$siteMemory);
+        $designContinuityConstraint=$designContinuity->plannerConstraint($designDna,$explicitThemeChange);
+        $siteDesignDna=$siteDna->hydrate($siteMemory,$designDna);
+        $siteDnaContract=$siteDna->plannerDirective($siteMemory,$siteDesignDna,$explicitThemeChange);
+
+        $globalComponentAction=$this->lunaGlobalComponentTokenAction(
+            (string)$validated['prompt'],
+            $scopeResolution,
+            $components
+        );
+        if(is_array($globalComponentAction)){
+            return response()->json([
+                'reply'=>$naturalReplyFromFacts([
+                    'action'=>'global component token change',
+                    'action_completed'=>true,
+                    'resolved_scope'=>$scopeResolution,
+                    'verified_operations'=>$globalComponentAction['applied_operations']??[],
+                ]),
+                'mode'=>'reply',
+                'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+                'blocks'=>$blocks,
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'components'=>$globalComponentAction['components']??$components,
+                'site_memory'=>$siteMemory,
+                'scope_resolution'=>$scopeResolution,
+                'applied_operations'=>$globalComponentAction['applied_operations']??[],
+            ]);
+        }
 
         // Typography commands are deterministic and cost 0 credits because they
         // update existing design tokens without making an AI/API request.
@@ -2752,7 +3918,12 @@ $user=$request->user();
         );
         if(is_array($typographyAction)){
             return response()->json([
-                'reply'=>$typographyAction['reply'],
+                'reply'=>$naturalReplyFromFacts([
+                    'action'=>'typography change',
+                    'action_completed'=>!empty($typographyAction['applied_operations']),
+                    'verified_operations'=>$typographyAction['applied_operations']??[],
+                    'scope'=>$scope,
+                ]),
                 'mode'=>'reply',
                 'credit_cost'=>0,
                 'credit_balance'=>$user ? $credits->balance($user) : null,
@@ -2776,7 +3947,12 @@ $user=$request->user();
         );
         if(is_array($backgroundAction)){
             return response()->json([
-                'reply'=>$backgroundAction['reply'],
+                'reply'=>$naturalReplyFromFacts([
+                    'action'=>'background/design-token change',
+                    'action_completed'=>!empty($backgroundAction['applied_operations']),
+                    'verified_operations'=>$backgroundAction['applied_operations']??[],
+                    'scope'=>$scope,
+                ]),
                 'mode'=>'reply',
                 'credit_cost'=>0,
                 'credit_balance'=>$user ? $credits->balance($user) : null,
@@ -2800,7 +3976,12 @@ $user=$request->user();
         );
         if(is_array($sectionLayoutAction)){
             return response()->json([
-                'reply'=>$sectionLayoutAction['reply'],
+                'reply'=>$naturalReplyFromFacts([
+                    'action'=>'section layout/design-token change',
+                    'action_completed'=>!empty($sectionLayoutAction['applied_operations']),
+                    'verified_operations'=>$sectionLayoutAction['applied_operations']??[],
+                    'scope'=>$scope,
+                ]),
                 'mode'=>'reply',
                 'credit_cost'=>0,
                 'credit_balance'=>$user ? $credits->balance($user) : null,
@@ -2824,7 +4005,12 @@ $user=$request->user();
             );
             if(is_array($reorderAction)){
                 return response()->json([
-                    'reply'=>$reorderAction['reply'],
+                    'reply'=>$naturalReplyFromFacts([
+                        'action'=>'section reorder',
+                        'action_completed'=>(bool)($reorderAction['changed']??false),
+                        'verified_operations'=>$reorderAction['applied_operations']??[],
+                        'constraint'=>($reorderAction['changed']??false)?null:'The requested deterministic move did not change page order.',
+                    ]),
                     'mode'=>'reply',
                     'credit_cost'=>0,
                     'credit_balance'=>$user ? $credits->balance($user) : null,
@@ -2862,7 +4048,15 @@ $user=$request->user();
                     ]);
                 }
                 return response()->json([
-                    'reply'=>$serviceCrud['reply']??($serviceCrud['error']??'I could not apply that service change.'),
+                    'reply'=>$naturalReplyFromFacts([
+                        'action'=>'services list change',
+                        'action_completed'=>(bool)($serviceCrud['changed']??false),
+                        'operation'=>$serviceCrud['operation']??null,
+                        'count_before'=>$serviceCrud['count_before']??null,
+                        'count_after'=>$serviceCrud['count_after']??null,
+                        'error'=>$serviceCrud['error']??null,
+                        'constraint'=>(!($serviceCrud['changed']??false))?($serviceCrud['reason']??'The server did not verify a service-list mutation.'):null,
+                    ]),
                     'mode'=>'reply',
                     'credit_cost'=>$crudCost,
                     'credit_balance'=>$user ? $credits->balance($user) : null,
@@ -2888,7 +4082,15 @@ $user=$request->user();
             $shellAction=$this->lunaHeaderScopeAction((string)$validated['prompt'],is_array($header)?$header:[],$siteMemory);
             if(is_array($shellAction)){
                 return response()->json([
-                    'reply'=>$shellAction['reply'],
+                    'reply'=>$naturalReplyFromFacts([
+                    'action'=>($shellAction['mode']??'reply')==='logo_name_required'?'prepare logo generation':'header change',
+                    'action_completed'=>!empty($shellAction['applied_operations']),
+                    'verified_operations'=>$shellAction['applied_operations']??[],
+                    'needs_user_input'=>($shellAction['mode']??'')==='logo_name_required',
+                    'missing_information'=>($shellAction['mode']??'')==='logo_name_required'?'the business/company name to use in the logo':null,
+                    'planned_action'=>($shellAction['mode']??'')==='logo_generate'?'generate the logo using the resolved company name':null,
+                    'logo_company_name'=>$shellAction['logo_company_name']??null,
+                ]),
                     'mode'=>$shellAction['mode']??'reply',
                     'logo_company_name'=>$shellAction['logo_company_name']??null,
                     'credit_cost'=>0,
@@ -2908,7 +4110,11 @@ $user=$request->user();
             $pageNavAction=$this->lunaPageNavigationAction((string)$validated['prompt'],$website,is_array($header)?$header:[]);
             if(is_array($pageNavAction)){
                 return response()->json([
-                    'reply'=>$pageNavAction['reply'],
+                    'reply'=>$naturalReplyFromFacts([
+                    'action'=>'pages/navigation update',
+                    'action_completed'=>!empty($pageNavAction['applied_operations']),
+                    'verified_operations'=>$pageNavAction['applied_operations']??[],
+                ]),
                     'mode'=>'reply',
                     'credit_cost'=>0,
                     'credit_balance'=>$user ? $credits->balance($user) : null,
@@ -2924,7 +4130,12 @@ $user=$request->user();
         }
         if($guardrailReply=$this->lunaUnsupportedLowLevelDesignRequest((string)$validated['prompt'])){
             return response()->json([
-                'reply'=>$guardrailReply,
+                'reply'=>$naturalReplyFromFacts([
+                    'action_completed'=>false,
+                    'capability_status'=>'unsupported exact low-level implementation request',
+                    'constraint'=>'Cosmic owns raw CSS/Tailwind/DOM implementation details to protect responsive Builder/live parity.',
+                    'fallback'=>'Offer the closest design-system-safe visual equivalent.',
+                ]),
                 'credit_cost'=>0,
                 'credit_balance'=>$user ? $credits->balance($user) : null,
                 'blocks'=>$blocks,
@@ -2943,12 +4154,11 @@ $user=$request->user();
             (Str::contains($normalizedPrompt,'background image') && Str::contains($normalizedPrompt,['add','use','set','change','give','put','apply']))
             || (Str::contains($normalizedPrompt,'background photo') && Str::contains($normalizedPrompt,['add','use','set','change','give','put','apply']))
         );
-$designGlobalIntent=Str::contains(Str::lower((string)$validated['prompt']),[
-            'all sections','every section','all headings','every heading','whole page','entire page','everywhere','sitewide','site-wide'
-        ]);
+$resolvedMutationScope=(string)($scopeResolution['scope']??$scope);
+        $designGlobalIntent=in_array($resolvedMutationScope,['page','site','global_token'],true);
         $artDirectionIntent=$this->lunaArtDirectionIntent((string)$validated['prompt']);
-        // Relative art direction on a selected section stays local.
-        if($artDirectionIntent && $scope!=='section')$designGlobalIntent=true;
+        // Relative art direction inherits the resolved scope; explicit local wording never widens.
+        if($artDirectionIntent && in_array($resolvedMutationScope,['element','item','section'],true))$designGlobalIntent=false;
         $siteMemory=$this->lunaUpdatedSiteMemory((string)$validated['prompt'],$siteMemory,is_array($theme??null)?$theme:[]);
 
 
@@ -3054,6 +4264,9 @@ $designGlobalIntent=Str::contains(Str::lower((string)$validated['prompt']),[
             ]);
         }
 
+        // Batch 2: normal action/build requests execute directly.
+        // No pending plan or Proceed/Continue round-trip is created here.
+
         // Empty page: Luna silently uses the existing hidden template/Spark planner,
         // then returns a complete starter page. No Add Spark/Template UI is required.
         if($scope==='page' && count($blocks)===0){
@@ -3067,12 +4280,39 @@ $designGlobalIntent=Str::contains(Str::lower((string)$validated['prompt']),[
 
 EXISTING WEBSITE BRAND CONSTRAINT: Preserve the current website theme '{$currentSiteTheme}'. You may choose a different template/Spark composition, but do not rebrand or choose a different theme unless the user explicitly requested a theme/color/rebrand change.";
                 }
+                if($designContinuityConstraint!==''){
+                    $plannerPrompt.="
+
+".$designContinuityConstraint;
+                }
+                if($siteDnaContract!==''){
+                    $plannerPrompt.="\n\n".$siteDnaContract;
+                }
                 $designPlan=$lunaPages->planDetailed($plannerPrompt);
                 if($preserveSiteTheme){
                     $designPlan['theme']=$currentSiteTheme;
                     $designPlan['theme_action']='preserve';
                 } else {
                     $designPlan['theme_action']='replace';
+                }
+
+                // Batch 11 — deterministic design critic before content generation.
+                // It may reorder already selected registered Sparks, but never invent
+                // a Spark or silently change the user's established brand.
+                $registeredSparkKeys=collect(SparkCatalog::all())->pluck('key')->filter()->values()->all();
+                $designCritique=$designCritic->critique($designPlan,$siteDesignDna,$registeredSparkKeys);
+                $criticRevisionApplied=false;
+                if(($designCritique['decision']??'accept')==='revise'){
+                    $recommended=array_values(array_filter(
+                        (array)($designCritique['recommended_sections']??[]),
+                        fn($key)=>in_array($key,$registeredSparkKeys,true)
+                    ));
+                    if($recommended!==[] && $recommended!==array_values((array)($designPlan['sections']??[]))){
+                        $designPlan['sections']=$recommended;
+                        $criticRevisionApplied=true;
+                        $designCritique['revision_applied']=true;
+                        $designCritique['revision_passes']=1;
+                    }
                 }
                 $sections=is_array($designPlan['sections']??null)?$designPlan['sections']:[];
                 if(count($sections)===0) throw new \RuntimeException('Luna did not select any registered sections.');
@@ -3087,6 +4327,27 @@ EXISTING WEBSITE BRAND CONSTRAINT: Preserve the current website theme '{$current
                     'industry'=>(string)($designPlan['industry']??'general'),
                     'design_direction'=>(string)($designPlan['design_direction']??''),
                     'media_direction'=>(string)($designPlan['media_direction']??''),
+                    'page_intent'=>(string)($designPlan['page_intent']??'home'),
+                    'composition_industry'=>(string)($designPlan['composition_industry']??($designPlan['industry']??'general')),
+                    'composition_roles'=>is_array($designPlan['composition_roles']??null)?$designPlan['composition_roles']:[],
+                    'composition_pass'=>(bool)($designPlan['composition_pass']??false),
+                    'design_continuity'=>[
+                        'established'=>(bool)($designDna['established']??false),
+                        'theme_family'=>$designDna['theme_family']??null,
+                        'page_style'=>$designDna['page_style']??null,
+                        'preserve_tokens'=>$preserveSiteTheme,
+                    ],
+                    'responsive'=>[
+                        'contract'=>$designPlan['responsive_contract']??$responsive->contract($sections),
+                        'risks'=>$designPlan['responsive_risks']??[],
+                    ],
+                    'design_critic'=>[
+                        'score'=>$designCritique['score']??null,
+                        'grade'=>$designCritique['grade']??null,
+                        'decision'=>$designCritique['decision']??'accept',
+                        'finding_count'=>count((array)($designCritique['findings']??[])),
+                        'revision_applied'=>$criticRevisionApplied,
+                    ],
                     'theme_action'=>(string)($designPlan['theme_action']??($preserveSiteTheme?'preserve':'replace')),
                 ];
                 $contentPrompt=(string)$validated['prompt']
@@ -3121,16 +4382,90 @@ EXISTING WEBSITE BRAND CONSTRAINT: Preserve the current website theme '{$current
                         $website->forceFill(['theme_settings'=>$settings])->save();
                     }
 
-                    if($user) $credits->consume($user,$creditCost,'Luna page build',$website,'luna-build-'.Str::uuid(),['category'=>'ai','template_key'=>$designPlan['template_key']??null,'theme'=>$appliedTheme]);
+                    $responsiveTokens=$responsive->recommendedTokens([
+                        'section_layout'=>(array)($designDna['section_layout']??[]),
+                        'components'=>(array)($designDna['components']??[]),
+                    ]);
+
+                    // Preserve centralized design tokens across sibling pages.
+                    // New page composition may vary, but site-wide visual DNA remains authoritative.
+                    if($preserveSiteTheme){
+                        $settings=(array)($website->theme_settings??[]);
+                        foreach(['typography','components','section_layout','background_style','custom_brand_theme'] as $tokenGroup){
+                            if(array_key_exists($tokenGroup,$designDna) && $designDna[$tokenGroup]!==[] && $designDna[$tokenGroup]!==null){
+                                $settings[$tokenGroup]=$designDna[$tokenGroup];
+                            }
+                        }
+                        $website->forceFill(['theme_settings'=>$settings])->save();
+                    }
+
+                    $settings=(array)($website->theme_settings??[]);
+                    $settings['section_layout']=array_replace(
+                        (array)($responsiveTokens['section_layout']??[]),
+                        (array)($settings['section_layout']??[])
+                    );
+                    $settings['components']=array_replace(
+                        (array)($responsiveTokens['components']??[]),
+                        (array)($settings['components']??[])
+                    );
+                    $website->forceFill(['theme_settings'=>$settings])->save();
+
+                    $siteMemory=$designContinuity->memory($siteMemory,$designDna,$designPlan);
+                    $siteMemory['responsive']=[
+                        'risks'=>$designPlan['responsive_risks']??[],
+                        'breakpoints'=>($designPlan['responsive_contract']['breakpoints']??[]),
+                    ];
+                    $visualQaResult=$visualQa->audit(
+                        (string)$validated['prompt'],
+                        $sections,
+                        array_values($generated),
+                        (array)($website->theme_settings??[])
+                    );
+                    $renderParityResult=$renderParity->audit(
+                        array_values($generated),
+                        (array)($website->theme_settings??[])
+                    );
+                    $siteMemory['visual_qa']=[
+                        'score'=>$visualQaResult['score']??null,
+                        'grade'=>$visualQaResult['grade']??null,
+                        'finding_count'=>$visualQaResult['summary']['total']??0,
+                    ];
+                    $siteMemory['design_critic']=[
+                        'score'=>$designCritique['score']??null,
+                        'grade'=>$designCritique['grade']??null,
+                        'decision'=>$designCritique['decision']??null,
+                        'finding_count'=>count((array)($designCritique['findings']??[])),
+                        'revision_applied'=>$criticRevisionApplied,
+                    ];
+
+                    $buildVerification=$executionVerification->verify(
+                        [['action'=>'build_page']],
+                        count($generated)>0?[['action'=>'build_page','count'=>count($generated),'verified'=>true]]:[],
+                        count($generated)>0
+                    );
+                    if($user && ($buildVerification['can_claim_complete']??false)) $credits->consume($user,$creditCost,'Luna page build',$website,'luna-build-'.Str::uuid(),['category'=>'ai','template_key'=>$designPlan['template_key']??null,'theme'=>$appliedTheme]);
                     $reply=$natural->compose((string)$validated['prompt'],[
                         'authenticated'=>true,
                         'scope'=>'page',
                         'website'=>$website->name,
                     ],[
                         'action'=>'build page',
-                        'action_completed'=>true,
+                        'action_completed'=>(bool)($buildVerification['can_claim_complete']??false),
                         'generated_sections'=>count($generated),
-                        'credits_used'=>$creditCost,
+                        'credits_used'=>($buildVerification['can_claim_complete']??false)?$creditCost:0,
+                        'execution_verification'=>$buildVerification,
+                        'visual_qa'=>[
+                            'score'=>$visualQaResult['score']??null,
+                            'grade'=>$visualQaResult['grade']??null,
+                            'finding_count'=>$visualQaResult['summary']['total']??0,
+                            'auto_mutated'=>false,
+                        ],
+                        'render_parity'=>[
+                            'render_contract'=>$renderParityResult['render_contract']??null,
+                            'page_supported'=>$renderParityResult['page_supported']??false,
+                            'runtime_visual_parity_verified'=>false,
+                        ],
+                        'rule'=>'The page build completed. Visual QA is diagnostic. Static render-contract coverage is not proof of runtime Builder/Live visual parity; do not claim runtime parity until a rendered comparison verifies it.',
                     ]);
                     return response()->json([
                         'reply'=>$reply,
@@ -3139,9 +4474,20 @@ EXISTING WEBSITE BRAND CONSTRAINT: Preserve the current website theme '{$current
                         'footer'=>is_array($footer)?$footer:[],
                         'theme_key'=>$appliedTheme,
                         'design_plan'=>$lockedPlan,
-                        'credit_cost'=>$creditCost,
+                        'site_memory'=>$siteMemory,
+                        'design_continuity'=>$lockedPlan['design_continuity']??[],
+                        'section_layout'=>$settings['section_layout']??[],
+                        'components'=>$settings['components']??[],
+                        'responsive'=>$lockedPlan['responsive']??[],
+                        'design_critic'=>$designCritique,
+                        'visual_qa'=>$visualQaResult,
+                        'render_parity'=>$renderParityResult,
+                        'execution_verification'=>$buildVerification,
+                        'canonical_intent'=>$canonicalIntent,
+                        'execution_phases'=>['Thinking','Planning','Designing','Building','Checking'],
+                        'credit_cost'=>($buildVerification['can_claim_complete']??false)?$creditCost:0,
                         'credit_balance'=>$user ? $credits->balance($user) : null,
-                        'applied_operations'=>[['action'=>'build_page','count'=>count($generated)]],
+                        'applied_operations'=>$buildVerification['verified_operations']??[],
                     ]);
                 }
             } catch(\Throwable $e) {
@@ -3174,8 +4520,6 @@ EXISTING WEBSITE BRAND CONSTRAINT: Preserve the current website theme '{$current
             ->all();
 
         $catalogJson=json_encode($usable,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
-        $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
-        if(!is_array($elementContext))$elementContext=[];
         if($namedTargetOverrodeSelection)$elementContext=[];
         if($elementContext && $scope==='section' && isset($blocks[$targetIndex])){
             $needles=array_values(array_filter([
@@ -3229,7 +4573,6 @@ The user never sees the Spark library or Theme picker. Your job is to make natur
 
 Return JSON only:
 {
- "reply":"short natural confirmation",
  "operations":[
    {"action":"edit","index":0,"changes":{}},
    {"action":"replace","index":0,"spark_key":"exact_registered_key","instruction":"content/style migration instruction"},
@@ -3240,25 +4583,37 @@ Return JSON only:
  ],
  "header_changes":{},
  "footer_changes":{},
+ "brand_color_family":null,
  "page_style":"balanced|clean|premium|null"
 }
 
 RULES:
+- This is an internal target/change planner. Never return reply, message, response, suggestion, question, confirmation copy, or any user-facing text.
+- Intermediate output is JSON only. The server composes a natural reply after verified execution.
+- DOCUMENTATION GROUNDING: LUNA KNOWLEDGE PACKET is the canonical basis for Cosmic CMS capability/product claims. Respect status, limits, cannot_do, fallback, confirmation, and verification fields. If support is not established, do not invent it. Capability questions are informational only: reply from the packet with no website mutation.
 - Use ONLY spark_key values present in USABLE SPARK CATALOG.
+- HEADER NAVIGATION: when the target is Header Navigation or the user asks to add/remove/rename/reorder menu items, create/remove submenus, use `header_changes` only. Return the COMPLETE resulting `menu` array with items shaped as {label,url,children}. Maximum nesting is 3 levels total. Preserve unrelated menu items. Do not return `mega_menu_enabled`; header navigation does not support mega menus. Do not alter body sections for a navigation-only request.
+
+- FOOTER: when target scope is footer, use `footer_changes` only unless the user explicitly requests a body/header change. Preserve the existing footer and return only intended changed fields. Mega footer columns use {title,items:[{label,url}]}; contact uses {email,phone,address}; social links use [{label,url}]. Manual-equivalent footer structure is global site state.
 - CROSS-PAGE REFERENCES: when the user says match Home/About/Services/etc, use SIBLING PAGE REFERENCES as design context. Preserve current-page content unless explicitly asked to replace it. Edit the current page only; never claim another page changed.
 - SPARK SELECTION RANKING: requested media/capability/aliases are the strongest signal; current selected section intent/category is second; layout/style/industry/position fit are third. Do NOT prefer Hero merely because a candidate is a Hero.
 - A request for "slider" means consider EVERY catalog item whose media=slider, aliases mention slider/carousel/slideshow, or capabilities include supports-slider. Then choose the one whose intent best matches the selected section. Example: testimonials -> testimonial carousel; portfolio/work -> gallery/project slider; opening banner -> hero slider.
 - Preserve semantic role when transforming media unless the user explicitly asks to change the role. A mid-page services/work/testimonial section should not become a Hero just because Hero has the requested media.
 - Use position_fit=top/opening-section-safe as a bonus only when the target is actually the first/opening section.
 - THEME STICKINESS: Existing website theme/brand colors are persistent. Do NOT emit a theme operation for redesigns, new sections, different industries, "make it premium", or other normal design requests. Emit action=theme ONLY when the user explicitly asks to change/switch the theme, color scheme/palette, named theme, or rebrand.
+- COLOR FAMILY DESIGN: If the user supplies an explicit HEX and asks to make/change the website theme, brand, palette, colors, or color family around it, do NOT pick a named theme. Return `brand_color_family` using exactly this semantic schema: {sourceColor,primary,primaryHover,primarySoft,secondary,accent,background,surface,surfaceMuted,heading,text,muted,border,buttonPrimary,buttonText,buttonSecondary,buttonSecondaryText,success,warning,error,onPrimary,onDark,gradient:{from,via,to,glow,angle}}. Every color is #RRGGBB. Keep `primary`, `heading`, and `buttonPrimary` equal to the exact user HEX. Design a restrained premium family with readable surfaces and purposeful accent separation. Do not create a random rainbow palette. The server will validate contrast and repair unsafe values.
 - Never reveal implementation details such as Spark IDs, templates, schemas or hidden selection.
 - For a simple copy/color/image/repeater adjustment, prefer edit. In section scope, use keys exactly from SELECTED BLOCK FULL JSON; do not invent schema keys.
 - REPEATER/LIST CRUD MUST PRESERVE LAYOUT: add/remove/update/rename/expand/reduce/reorder services, cards, items, testimonials, FAQs, team members, pricing entries, features, logos, gallery items, steps/process entries, or similar collections by editing the existing array key in SELECTED BLOCK FULL JSON. Return the complete resulting array under that same key. Never use replace for these requests unless the user explicitly asks to change the layout/design/section type.
+- SMART SPARK EDIT CONTRACT is authoritative for schema-preserving edits. Unknown keys must not be invented. Element edits must use resolved matched paths. Add/remove item requests must preserve the existing repeater schema and sibling items.
 - STRUCTURAL COMMANDS MUST EMIT STRUCTURAL OPERATIONS. For "change/turn this banner/section into a video", "use a slider", "make this testimonials", etc., use replace on the exact target index with the closest registered Spark. Never answer a structural request with only edit/copy changes.
 - For "add X below/above", use insert_after/insert_before relative to the target.
 - For "move this section to the top/first", emit move with to_index=0. For "move to the bottom/last", emit move with to_index equal to the last page index. For "move up/down", emit move to the adjacent index.
 - In SELECTED SECTION scope, "this", "it", "the slider", "this banner", and similar references mean the selected index unless the user explicitly names another section.
 - When ELEMENT TARGET is non-empty, it identifies the exact clicked heading/text/label/button/image. For ordinary edits, change only the matching field(s) indicated by matched_paths/currentValue/url and preserve unrelated fields. For button targets, update label and URL together when the user supplies both. Explicit structural section requests override element-only targeting.
+- SCOPE CONTRACT is authoritative. `element` means change only the clicked field(s). `item` means change only the selected repeater/card item when its array/index can be resolved. `section` means one section. `page` means the current page. `site` means website-level state only where supported. `global_token` means use centralized design tokens rather than editing every Spark.
+- Never broaden `this`, `selected`, `only this`, or `just this` to multiple sections.
+- For an item/card target, preserve sibling repeater items unless the user explicitly asks for all/every items.
 - Preserve useful current content when replacing; instruction should explicitly say what to migrate.
 - Do not replace a section when its current Spark can safely satisfy the request.
 - Section scope: operate on the selected index only, except an explicit add-before/add-after request.
@@ -3279,29 +4634,69 @@ RULES:
 - Never claim success in reply unless the JSON contains the operation/state change that performs the request.
 PROMPT;
 
-        $apiKey=(string)config('openai.api_key');
-        abort_if($apiKey==='',503,'OpenAI is not configured.');
+        if($resumePendingPlan && is_array($resumePendingPlan['plan']??null)){
+            $plan=$resumePendingPlan['plan'];
+        }else{
+            $apiKey=(string)config('openai.api_key');
+            abort_if($apiKey==='',503,'OpenAI is not configured.');
 
-        $response=Http::withToken($apiKey)->timeout(150)->post(
-            rtrim((string)(config('openai.base_uri')?:'https://api.openai.com/v1'),'/').'/chat/completions',
-            [
-                'model'=>env('OPENAI_MODEL','gpt-5-mini'),
-                'response_format'=>['type'=>'json_object'],
-                'messages'=>[
-                    ['role'=>'system','content'=>$system],
-                    ['role'=>'user','content'=>"SCOPE: {$scope}".($scope==='section'?"\nSELECTED INDEX: {$targetIndex}":"")."\n\nUSER REQUEST:\n".$validated['prompt']."\n\nINTERPRETATION:\n".(($scope==='section' && Str::contains(Str::lower((string)$validated['prompt']),['more premium','more modern','more polished','make this section better','polish this section','more visually interesting'])) ? 'This is a relative redesign request. Produce a visibly different compatible registered section layout/design while preserving purpose and core content. Do not reject it because the current section is already premium or modern.' : 'Follow the request literally within the safe schema.')."\n\nCURRENT PAGE SUMMARY:\n".json_encode($blockSummary,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSELECTED BLOCK FULL JSON:\n".$targetContext."\n\nELEMENT TARGET:\n".json_encode($elementContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT THEME:\n".json_encode(is_array($theme)?$theme:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSITE DESIGN MEMORY:\n".json_encode($siteMemory,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSIBLING PAGE REFERENCES:\n".json_encode($siblingPages,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUSABLE SPARK CATALOG:\n{$catalogJson}"],
-                ],
-            ]
-        )->throw()->json();
+            $response=Http::withToken($apiKey)->timeout(150)->post(
+                rtrim((string)(config('openai.base_uri')?:'https://api.openai.com/v1'),'/').'/chat/completions',
+                [
+                    'model'=>env('OPENAI_MODEL','gpt-5-mini'),
+                    'response_format'=>['type'=>'json_object'],
+                    'messages'=>[
+                        ['role'=>'system','content'=>$system],
+                        ['role'=>'user','content'=>"SCOPE: {$scope}".($scope==='section'?"\nSELECTED INDEX: {$targetIndex}":"")."\n\n".$scopeContract."\n\n".$smartEditContract."\n\n".$siteDnaContract."\n\nUSER REQUEST:\n".$validated['prompt']."\n\nINTERPRETATION:\n".(($scope==='section' && Str::contains(Str::lower((string)$validated['prompt']),['more premium','more modern','more polished','make this section better','polish this section','more visually interesting'])) ? 'This is a relative redesign request. Produce a visibly different compatible registered section layout/design while preserving purpose and core content. Do not reject it because the current section is already premium or modern.' : 'Follow the request literally within the safe schema.')."\n\nCURRENT PAGE SUMMARY:\n".json_encode($blockSummary,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT HEADER:\n".json_encode(is_array($header)?$header:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT FOOTER:\n".json_encode(is_array($footer)?$footer:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSELECTED BLOCK FULL JSON:\n".$targetContext."\n\nELEMENT TARGET:\n".json_encode($elementContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT THEME:\n".json_encode(is_array($theme)?$theme:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSITE DESIGN MEMORY:\n".json_encode($siteMemory,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nLUNA KNOWLEDGE PACKET:\n".json_encode($knowledgePacket,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSIBLING PAGE REFERENCES:\n".json_encode($siblingPages,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUSABLE SPARK CATALOG:\n{$catalogJson}"],
+                    ],
+                ]
+            )->throw()->json();
 
-        $plan=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+            $plan=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+        }
         if(!is_array($plan)) {
             throw ValidationException::withMessages(['prompt'=>'Luna returned an invalid design plan.']);
+        }
+        if(
+            $capabilityQuestion
+            || (
+                !($feasibility['execution_allowed']??false)
+                && !(($canonicalIntent['intent']??'')==='action' && ($canonicalIntent['execution_allowed']??false))
+            )
+        ){
+            return response()->json([
+                'reply'=>$naturalReplyFromFacts([
+                    'action_completed'=>false,
+                    'conversation_mode'=>'feasibility_first',
+                    'feasibility'=>$feasibility,
+                    'constraint'=>'No website mutation is allowed from this request in the current turn.',
+                    'fallback'=>$feasibility['alternative']??'Explain the documented limit naturally.',
+                    'next_step'=>($feasibility['feasibility']??'')==='alternative_available'
+                        ? 'Offer the documented alternative and ask whether the user wants that alternative.'
+                        : 'Answer naturally from canonical documentation without claiming a change.',
+                ]),
+                'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+                'blocks'=>$blocks,
+                'header'=>$header,
+                'footer'=>$footer,
+                'theme_key'=>null,
+                'brand_color_family'=>null,
+                'page_style'=>null,
+                'site_memory'=>$siteMemory,
+                'mode'=>'grounded_info',
+                'grounded_capabilities'=>array_values(array_filter(array_map(fn($cap)=>$cap['id']??null,$knowledgePacket['capabilities']??[]))),
+                'applied_operations'=>[],
+            ]);
         }
 
         $operations=array_values(array_slice(is_array($plan['operations']??null)?$plan['operations']:[],0,8));
 
         $requestLower=Str::lower((string)$validated['prompt']);
+        $explicitBrandPrimary=$this->lunaExplicitBrandColor((string)$validated['prompt']);
+        if($explicitBrandPrimary){
+            $operations=array_values(array_filter($operations,fn($op)=>!(is_array($op)&&($op['action']??'')==='theme')));
+        }
         if($scope==='section' && isset($blocks[$targetIndex])){
             $moveTo=null;
             if(Str::contains($requestLower,['top of the page','top of page','first section','move it to the top','move this to the top','move to top'])) $moveTo=0;
@@ -3496,27 +4891,70 @@ PROMPT;
             }
         }
 
+        if(
+            $resumePendingPlan
+            && is_array($resumePendingPlan['operations']??null)
+            && array_values($resumePendingPlan['operations'])!==[]
+        ){
+            $operations=array_values($resumePendingPlan['operations']);
+        }
+
+        // Batch 12 recovery uses the exact final operation plan. It never asks the
+        // model to reinterpret the request during recovery.
+        $recoveryPlannedOperations=$operations;
+
         $pricing=$lunaPricing->estimate((string)$validated['prompt'],$operations,$scope);
         $creditCost=(int)($pricing['credits']??0);
-        if(($pricing['requires_confirmation']??false) && !($validated['confirmed']??false)){
-            $planningCost=2;
-            if($user){
-                abort_unless($credits->canAfford($user,$planningCost),422,"Luna planning needs {$planningCost} credits.");
-                $credits->consume($user,$planningCost,'Luna planning',$website,'luna-plan-'.Str::uuid(),['category'=>'ai','scope'=>$scope]);
-            }
+        // Batch 2 direct execution: normal build/update/publish/navigate actions
+        // never enter the legacy pending-confirmation pipeline. Keep a safety
+        // confirmation only for destructive delete operations.
+        $needsLargeConfirmation=!$capabilityQuestion
+            && (($knowledgePacket['query_type']??'')!=='capability_question')
+            && !($feasibility['informational']??false)
+            && !$resumePendingPlan
+            && (($canonicalIntent['intent']??'')==='action')
+            && (($canonicalIntent['action']??'')==='delete');
+
+        if($needsLargeConfirmation && !($validated['confirmed']??false)){
+            // Destructive safety confirmation is not an AI/API operation.
+            $planningCost=0;
+
+            $blocksFingerprint=hash('sha256',json_encode(array_values($blocks),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
+            $pendingToken=$pendingActions->put($pendingActor,[
+                'kind'=>'builder_destructive_delete',
+                'prompt'=>(string)$validated['prompt'],
+                'scope'=>$scope,
+                'target_index'=>$targetIndex,
+                'plan'=>$plan,
+                'operations'=>$operations,
+                'canonical_schema'=>$canonicalIntent,
+                'blocks_fingerprint'=>$blocksFingerprint,
+                'estimated_execution_cost'=>$creditCost,
+                'website_id'=>$website->id,
+            ]);
+
             $reply=$natural->compose((string)$validated['prompt'],[
                 'authenticated'=>true,
                 'scope'=>$scope,
                 'website'=>$website->name,
+                'canonical_knowledge'=>$knowledgePacket,
             ],[
                 'action_completed'=>false,
                 'confirmation_required'=>true,
+                'pending_action_stored'=>true,
+                'pending_action_token'=>$pendingToken,
+                'planned_operations'=>$operations,
                 'estimated_execution_cost'=>$creditCost,
                 'planning_credits_used'=>$planningCost,
+                'next_step'=>'Ask for an explicit deletion confirmation using the Delete button. This safety confirmation costs 0 credits.',
+                'rule'=>'Do not claim the website changed. Ask only whether to delete the selected content. Never say Proceed, Continue, Shall I proceed, or expose implementation details.',
             ]);
             return response()->json([
                 'reply'=>$reply,
                 'mode'=>'confirm',
+                'pending_action'=>true,
+                'pending_action_token'=>$pendingToken,
+                'canonical_intent'=>$canonicalIntent,
                 'confirmation_cost'=>$creditCost,
                 'credit_cost'=>$planningCost,
                 'credit_balance'=>$user ? $credits->balance($user) : null,
@@ -3591,8 +5029,35 @@ PROMPT;
                 }else{
                     $changes=array_intersect_key($changes,$current);
                 }
-                $nextBlocks[$index]=array_merge($current,$changes);
-                $applied[]=['action'=>'edit','index'=>$index];
+
+                $repeaterResult=$smartSparkEditing->applyRepeaterIntent(
+                    (string)$validated['prompt'],
+                    $current,
+                    $elementContext
+                );
+                if(is_array($repeaterResult) && ($repeaterResult['action']??'')!=='repeater_remove_unresolved'){
+                    $nextBlocks[$index]=$repeaterResult['block'];
+                    $applied[]=[
+                        'action'=>$repeaterResult['action'],
+                        'index'=>$index,
+                        'collection'=>$repeaterResult['collection']??null,
+                        'item_index'=>$repeaterResult['item_index']??null,
+                        'verified'=>true,
+                    ];
+                    continue;
+                }
+
+                $sanitizedEdit=$smartSparkEditing->sanitizeEdit($current,$changes,$elementContext);
+                $nextBlocks[$index]=$sanitizedEdit['block'];
+                if(($sanitizedEdit['paths']??[])!==[]){
+                    $applied[]=[
+                        'action'=>'edit',
+                        'index'=>$index,
+                        'mode'=>$sanitizedEdit['mode']??'block',
+                        'paths'=>$sanitizedEdit['paths']??[],
+                        'verified'=>true,
+                    ];
+                }
                 continue;
             }
 
@@ -3847,35 +5312,178 @@ PROMPT;
             $operations=array_values(array_filter($operations,fn($operation)=>(($operation['action']??'')!=='theme')));
         }
 
+        $brandPrimary=$explicitBrandPrimary;
+        $brandColorFamily=$brandPrimary
+            ? $this->lunaValidateBrandColorFamily($brandPrimary,$plan['brand_color_family']??null)
+            : null;
+        if($brandColorFamily){
+            $applied[]=[
+                'action'=>'brand_color_family',
+                'scope'=>'site',
+                'primary'=>$brandPrimary,
+                'source'=>is_array($plan['brand_color_family']??null)?'luna_designed_validated':'deterministic_fallback',
+                'verified'=>true,
+            ];
+        }
+
         $headerChanges=is_array($plan['header_changes']??null)?$plan['header_changes']:[];
         $footerChanges=is_array($plan['footer_changes']??null)?$plan['footer_changes']:[];
-        $safeHeader=is_array($header)?array_merge($header,$headerChanges):$headerChanges;
-        $safeFooter=is_array($footer)?array_merge($footer,$footerChanges):$footerChanges;
+        $safeHeader=$this->lunaSafeHeaderChanges(is_array($header)?$header:[],$headerChanges);
+        $safeFooter=$this->lunaSafeFooterChanges(is_array($footer)?$footer:[],$footerChanges);
         $pageStyle=in_array(Str::lower((string)($plan['page_style']??'')),['balanced','clean','premium'],true)
             ? Str::lower((string)$plan['page_style']) : null;
 
-        $shellChanged=!empty($headerChanges)||!empty($footerChanges)||$themeKey!==null||$pageStyle!==null;
+        $shellChanged=!empty($headerChanges)||!empty($footerChanges)||$themeKey!==null||$pageStyle!==null||$brandColorFamily!==null;
         $afterFingerprint=hash('sha256',json_encode(array_values($nextBlocks),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
         $blocksActuallyChanged=!hash_equals($beforeFingerprint,$afterFingerprint);
         if(!$blocksActuallyChanged){
             $applied=array_values(array_filter($applied,fn($item)=>in_array(($item['action']??''),['theme'],true)));
         }
         $verifiedSomething=$blocksActuallyChanged||$shellChanged;
+        $executionVerificationResult=$executionVerification->verify($operations,$applied,$verifiedSomething);
+
+        // Batch 12 — one bounded deterministic recovery pass.
+        // Only safe idempotent retries are eligible. Destructive/structural actions
+        // remain manual failures instead of being guessed or broadened.
+        $recoveryPlan=$selfCorrection->prepare(
+            $executionVerificationResult,
+            $recoveryPlannedOperations,
+            $applied,
+            $scopeResolution
+        );
+        $recoveredApplied=[];
+        $beforeRecoveryStatus=$executionVerificationResult['status']??null;
+
+        if($recoveryPlan['attempted']??false){
+            foreach((array)($recoveryPlan['retry_operations']??[]) as $retry){
+                $retryAction=(string)($retry['action']??'');
+
+                if($retryAction==='edit'){
+                    $retryIndex=isset($retry['index'])?(int)$retry['index']:-1;
+                    $original=collect($recoveryPlannedOperations)->first(function($op) use($retryIndex){
+                        return is_array($op)
+                            && ($op['action']??'')==='edit'
+                            && (int)($op['index']??-1)===$retryIndex;
+                    });
+                    if(is_array($original) && isset($nextBlocks[$retryIndex]) && is_array($original['changes']??null)){
+                        $current=$nextBlocks[$retryIndex];
+                        $changes=$original['changes'];
+                        unset($changes['type'],$changes['_renderKey']);
+                        $changes=array_intersect_key($changes,$current);
+                        $sanitized=$smartSparkEditing->sanitizeEdit($current,$changes,$elementContext);
+                        if(($sanitized['paths']??[])!==[]){
+                            $beforeRetry=hash('sha256',json_encode($nextBlocks[$retryIndex],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
+                            $nextBlocks[$retryIndex]=$sanitized['block'];
+                            $afterRetry=hash('sha256',json_encode($nextBlocks[$retryIndex],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
+                            if(!hash_equals($beforeRetry,$afterRetry)){
+                                $recoveredApplied[]=[
+                                    'action'=>'edit',
+                                    'index'=>$retryIndex,
+                                    'mode'=>$sanitized['mode']??'block',
+                                    'paths'=>$sanitized['paths']??[],
+                                    'verified'=>true,
+                                    'recovery_pass'=>1,
+                                ];
+                            }
+                        }
+                    }
+                } elseif($retryAction==='theme'){
+                    $retryTheme=trim((string)($retry['theme_key']??''));
+                    if($explicitThemeChange && in_array($retryTheme,$allowedThemes,true)){
+                        $themeKey=$retryTheme;
+                        $recoveredApplied[]=[
+                            'action'=>'theme',
+                            'theme_key'=>$retryTheme,
+                            'scope'=>'site',
+                            'verified'=>true,
+                            'recovery_pass'=>1,
+                        ];
+                    }
+                }
+            }
+
+            if($recoveredApplied!==[]){
+                $applied=array_values(array_merge($applied,$recoveredApplied));
+                $afterFingerprint=hash('sha256',json_encode(array_values($nextBlocks),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
+                $blocksActuallyChanged=!hash_equals($beforeFingerprint,$afterFingerprint);
+                $verifiedSomething=$blocksActuallyChanged||$shellChanged||$recoveredApplied!==[];
+                $executionVerificationResult=$executionVerification->verify($operations,$applied,$verifiedSomething);
+            }
+        }
+
+        $executionVerificationResult['before_status']=$beforeRecoveryStatus;
+        $recoveryResult=$selfCorrection->finalize(
+            $recoveryPlan,
+            $executionVerificationResult,
+            $recoveredApplied
+        );
+
+        $siteMemory=$siteDna->updateAfterExecution(
+            $siteMemory,$siteDesignDna,$executionVerificationResult,$scopeResolution,
+            [
+                'primary'=>$themeKey ?: ($theme['primary']??null),
+                'typography'=>$typography,
+                'components'=>$components,
+                'section_layout'=>$sectionLayout,
+                'background_style'=>$backgroundStyle,
+                'custom_brand_theme'=>$brandColorFamily ?: ($theme['custom_brand_theme']??null),
+            ],
+            [
+                'page_style'=>$pageStyle,
+                'design_direction'=>$plan['design_direction']??null,
+                'media_direction'=>$plan['media_direction']??null,
+            ]
+        );
         $chargedCreditCost=$verifiedSomething ? $creditCost : 0;
         if($chargedCreditCost>0 && $user){
             $credits->consume($user,$chargedCreditCost,'Luna website change',$website,'luna-page-chat-'.Str::uuid(),[
                 'category'=>'ai','scope'=>$scope,'operations'=>$applied,
             ]);
         }
-        $reply=trim((string)($plan['reply']??''));
-        if($universalBackgroundIntent && !$backgroundApplied){
-            $reply='I could not apply the background image change yet. '.($backgroundError?:'The image provider did not return a usable background.');
+        $reply='';
+        if(($executionVerificationResult['status']??'failed')==='partial'){
+            $reply=$naturalReplyFromFacts([
+                'action_completed'=>false,
+                'execution_status'=>'partial',
+                'verified_operations'=>$executionVerificationResult['verified_operations']??[],
+                'unverified_operations'=>$executionVerificationResult['unverified_operations']??[],
+                'constraint'=>'Some requested changes were verified, but at least one planned operation did not complete. Do not say Done or imply full completion.',
+            ]);
+        } elseif(($executionVerificationResult['status']??'failed')==='failed' && $verifiedSomething){
+            $reply=$naturalReplyFromFacts([
+                'action_completed'=>false,
+                'execution_status'=>'failed',
+                'verified_operations'=>$executionVerificationResult['verified_operations']??[],
+                'unverified_operations'=>$executionVerificationResult['unverified_operations']??[],
+                'constraint'=>'The requested plan could not be fully verified. Report what failed instead of claiming completion.',
+            ]);
+        } elseif($universalBackgroundIntent && !$backgroundApplied){
+            $reply=$naturalReplyFromFacts([
+                'action'=>'background image change',
+                'action_completed'=>false,
+                'error'=>$backgroundError?:'The image provider did not return a usable background.',
+                'verified_operations'=>$applied,
+            ]);
         } elseif($imageRequest && $imageRefreshSucceeded===false){
-            $reply='I could not replace the requested images yet. '.($imageRefreshError?:'No new matching images were returned.');
+            $reply=$naturalReplyFromFacts([
+                'action'=>'image replacement',
+                'action_completed'=>false,
+                'error'=>$imageRefreshError?:'No new matching images were returned.',
+                'verified_operations'=>$applied,
+            ]);
         } elseif(!$verifiedSomething){
-            $reply='I could not verify a real change to the current website, so I left it as-is.';
+            $reply=$naturalReplyFromFacts([
+                'action_completed'=>false,
+                'verified_operations'=>$applied,
+                'constraint'=>'The server could not verify a real website-state change.',
+            ]);
         } elseif($reply===''){
-            $reply='The requested change was applied.';
+            $reply=$naturalReplyFromFacts([
+                'action_completed'=>true,
+                'verified_operations'=>$applied,
+                'theme_changed'=>$themeKey!==null || $brandColorFamily!==null,
+                'page_style_changed'=>$pageStyle!==null,
+            ]);
         }
 
         return response()->json([
@@ -3886,9 +5494,14 @@ PROMPT;
             'header'=>$safeHeader,
             'footer'=>$safeFooter,
             'theme_key'=>$themeKey,
+            'brand_color_family'=>$brandColorFamily,
             'page_style'=>$pageStyle,
             'site_memory'=>$siteMemory,
             'applied_operations'=>$applied,
+            'execution_verification'=>$executionVerificationResult,
+            'self_correction'=>$recoveryResult,
+            'canonical_intent'=>$canonicalIntent,
+            'execution_phases'=>['Thinking','Planning','Designing','Building','Checking'],
         ]);
     }
 
@@ -4038,6 +5651,7 @@ PROMPT;
                 'applied_operations'=>[['type'=>'header_overlay','enabled'=>!$disable]],
             ];
         }
+
 
         $logoIntent=Str::contains($lower,'logo') && Str::contains($lower,['create','generate','make','new logo','regenerate','replace','update']);
         $pendingLogo=(bool)($siteMemory['pending_logo_request']??false);

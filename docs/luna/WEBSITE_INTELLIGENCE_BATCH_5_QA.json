@@ -1,0 +1,14 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 5,
+  "name": "Visual QA Engine",
+  "status": "PASS_STATIC_QA",
+  "next": "Batch 6 \u2014 Scope Intelligence",
+  "runtime_tests": [
+    "Build a premium automotive homepage and confirm response includes visual_qa score/grade/findings.",
+    "Use a slider/bento/comparison-heavy page and verify responsive risks are reported, not silently fixed.",
+    "Generate repeated generic headings and verify content QA flags them.",
+    "Verify QA does not claim Builder/Live parity.",
+    "Verify Luna says a build completed while clearly separating noticed QA findings from fixes."
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 6,
+  "name": "Scope Intelligence",
+  "status": "PASS_STATIC_QA",
+  "next": "Batch 7 \u2014 Smart Spark Editing",
+  "runtime_tests": [
+    "Click one card and ask: Make this card title shorter. Verify only that card changes.",
+    "Select a section and ask: Make only this section more compact. Verify no sibling sections change.",
+    "Ask: Make all headings slightly smaller. Verify global typography tokens change.",
+    "Ask: Make all cards less rounded. Verify global card radius token changes instead of per-Spark overrides.",
+    "Ask: Increase spacing on all sections. Verify global section-layout token changes.",
+    "Ask: Make this image less rounded. Verify only the selected image/section context changes.",
+    "Create a pending local request, then Proceed. Verify stored original scope is retained."
+  ]
+}

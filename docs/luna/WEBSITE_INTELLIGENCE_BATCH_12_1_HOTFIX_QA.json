@@ -1,0 +1,12 @@
+{
+  "hotfix": "Batch 12.1 \u2014 Builder smartEditContract initialization",
+  "status": "PASS_STATIC_QA",
+  "cause": "pageChat referenced $smartEditContract in the planner prompt without initializing it in the Builder flow.",
+  "fix": "Initialize LunaSmartSparkEditingService contract immediately after scope resolution, before conversational/planning branches.",
+  "regression_test": [
+    "Fresh Builder with 0 Sparks: send 'Hello Luna, what can you do?'",
+    "Expected: grounded conversational reply, 0 Sparks, no generation, no undefined-variable error.",
+    "Repeat on an existing page and verify the same conversational-only behavior.",
+    "Then continue the 12-batch QA suite."
+  ]
+}

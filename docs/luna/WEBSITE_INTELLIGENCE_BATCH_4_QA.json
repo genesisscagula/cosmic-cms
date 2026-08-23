@@ -1,0 +1,15 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 4,
+  "name": "Responsive Intelligence",
+  "status": "PASS_STATIC_QA",
+  "next": "Batch 5 \u2014 Visual QA Engine",
+  "runtime_tests": [
+    "Generate a 6-section automotive homepage and inspect desktop/tablet/mobile.",
+    "Check 3-4 column card Sparks collapse without horizontal overflow.",
+    "Check hero H1 and CTA labels do not clip on mobile.",
+    "Check slider/gallery/video media stays inside viewport and remains usable on touch.",
+    "Check section spacing reduces from desktop to tablet/mobile.",
+    "Publish and spot-check responsive behavior before the deeper Batch 8 parity audit."
+  ]
+}

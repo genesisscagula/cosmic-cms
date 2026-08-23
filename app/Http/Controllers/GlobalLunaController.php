@@ -8,6 +8,10 @@ use App\Services\CreditService;
 use App\Services\PlanRegistry;
 use App\Services\LunaNaturalReplyService;
 use App\Services\LunaCapabilityService;
+use App\Services\LunaKnowledgeRouter;
+use App\Services\LunaFeasibilityGate;
+use App\Services\LunaIntentGateway;
+use App\Services\LunaExecutionVerificationService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
@@ -16,7 +20,7 @@ use Illuminate\Validation\ValidationException;
 
 class GlobalLunaController extends Controller
 {
-    public function publicChat(Request $request, LunaNaturalReplyService $natural, LunaCapabilityService $lunaCapabilities)
+    public function publicChat(Request $request, LunaNaturalReplyService $natural, LunaCapabilityService $lunaCapabilities, LunaKnowledgeRouter $knowledge, LunaFeasibilityGate $feasibilityGate, LunaIntentGateway $intentGateway)
     {
         $validated=$request->validate([
             'message'=>['required','string','max:1200'],
@@ -28,8 +32,27 @@ class GlobalLunaController extends Controller
             'context.conversation.*.content'=>['required_with:context.conversation','string','max:1600'],
         ]);
 
-        $message=trim((string)$validated['message']);
+        $originalMessage=trim((string)$validated['message']);
+        $routeContext=[
+            'surface'=>'public',
+            'component'=>(string)data_get($validated,'context.component',''),
+            'url'=>(string)data_get($validated,'context.url',''),
+        ];
+        $intentRoute=$intentGateway->route($originalMessage,[],$routeContext);
+        $canonicalIntent=($intentRoute['intent']??'chat')==='action'
+            ? $intentGateway->classifyAction($originalMessage,[],$routeContext)
+            : ['intent'=>'chat'];
+        $message=$originalMessage;
         $lower=Str::lower($message);
+        $knowledgePacket=$knowledge->contextFor($message,'global');
+        $capabilityQuestion=(($canonicalIntent['intent']??'chat')==='chat');
+        $feasibility=$feasibilityGate->evaluate($message,$knowledgePacket,'global');
+        if($capabilityQuestion){
+            $feasibility['execution_allowed']=false;$feasibility['informational']=true;
+        }else{
+            $feasibility['execution_allowed']=in_array(($canonicalIntent['action']??''),['build','navigate'],true);
+            $feasibility['informational']=false;$feasibility['requires_confirmation']=false;
+        }
         $conversation=(array)data_get($validated,'context.conversation',[]);
         $cameFromBuildPrompt=collect($conversation)->contains(function($item){
             if(($item['role']??'')!=='assistant') return false;
@@ -60,19 +83,25 @@ class GlobalLunaController extends Controller
             'design_access'=>'Luna and the full visual design library are available across personal plans.',
             'important'=>'No authenticated workspace or website is available yet, so workspace mutations cannot be executed from this state.',
             'capabilities'=>$lunaCapabilities->forPublic(),
+            'canonical_knowledge'=>$knowledgePacket,
         ];
 
         $mode='reply';
         $navigateUrl=null;
         $options=[];
-
-        if(Str::contains($lower,['dashboard','workspace']) && !Str::contains($lower,['pricing','price'])){
+        if($capabilityQuestion || !($feasibility['execution_allowed']??false)){
+            $facts['conversation_mode']='feasibility_first';
+            $facts['action_completed']=false;
+            $facts['feasibility']=$feasibility;
+            $facts['rule']='Answer from canonical knowledge. If supported, explain it without executing. If unsupported and a documented fallback exists, offer that alternative. If no fallback exists, say it is not currently possible. Do not start a trial, navigate, or mutate anything in this turn.';
+        } elseif(Str::contains($lower,['dashboard','workspace']) && !Str::contains($lower,['pricing','price'])){
             $facts['requested_destination']='authenticated dashboard/workspace';
             $facts['constraint']='The visitor is not authenticated, so the dashboard cannot be opened yet.';
             $facts['available_next_action']='sign in';
             $options[]=['label'=>'Sign in','url'=>route('login')];
         } elseif(
-            $cameFromBuildPrompt
+            ($canonicalIntent['intent']??'')==='action' && ($canonicalIntent['action']??'')==='build'
+            || $cameFromBuildPrompt
             || Str::contains($lower,['start a website','start website','trial','build a website','build me a website','build me a site','create website','create a website','make me a website','design a website','try cosmic','try luna'])
             || preg_match('/\b(build|create|design|make)\b.{0,50}\b(website|site|homepage|landing page)\b/i',$message)
         ){
@@ -84,9 +113,10 @@ class GlobalLunaController extends Controller
 
             if($hasUsefulBrief){
                 $mode='start_trial';
-                $facts['planned_action']='generate the requested website now after this acknowledgement';
-                $facts['generation_behavior']='Acknowledge the user naturally in one short response. Briefly reflect the requested direction. Do not say the website is already finished.';
-                $facts['next_step']='Cosmic will immediately begin generation in this same Luna conversation and open the Builder when ready.';
+                $facts['planned_action']='start website generation from the supplied brief';
+                $facts['action_dispatched']=true;
+                $facts['generation_behavior']='Cosmic will begin generation now; do not ask for a second confirmation.';
+                $facts['next_step']='Open the Builder when generation is ready.';
             } else {
                 $facts['needs_user_input']=true;
                 $facts['missing_information']='a short description of the business or website, such as the industry, purpose, or desired content';
@@ -115,12 +145,15 @@ class GlobalLunaController extends Controller
             'navigate_url'=>$navigateUrl,
             'options'=>$options,
             'start_trial'=>$mode==='start_trial',
+            'pending_action'=>false,'confirmation_token'=>null,'confirm_label'=>null,'cancel_label'=>null,
+            'generation_prompt'=>$mode==='start_trial'?$message:null,
             'credit_cost'=>0,
+            'canonical_intent'=>$canonicalIntent,
         ]);
     }
 
 
-    public function chat(Request $request, CreditService $credits, PlanRegistry $plans, LunaNaturalReplyService $natural, LunaCapabilityService $lunaCapabilities)
+    public function chat(Request $request, CreditService $credits, PlanRegistry $plans, LunaNaturalReplyService $natural, LunaCapabilityService $lunaCapabilities, LunaKnowledgeRouter $knowledge, LunaFeasibilityGate $feasibilityGate, LunaIntentGateway $intentGateway, LunaExecutionVerificationService $executionVerification)
     {
         $user=$request->user();
         abort_unless($user,401);
@@ -137,6 +170,24 @@ class GlobalLunaController extends Controller
         ]);
 
         $message=trim((string)$validated['message']);
+        $routeContext=[
+            'surface'=>'global_authenticated',
+            'component'=>(string)data_get($validated,'context.component',''),
+            'url'=>(string)data_get($validated,'context.url',''),
+        ];
+        $intentRoute=$intentGateway->route($message,[],$routeContext);
+        $canonicalIntent=($intentRoute['intent']??'chat')==='action'
+            ? $intentGateway->classifyAction($message,[],$routeContext)
+            : ['intent'=>'chat'];
+        $knowledgePacket=$knowledge->contextFor($message,'global');
+        $capabilityQuestion=(($canonicalIntent['intent']??'chat')==='chat');
+        $feasibility=$feasibilityGate->evaluate($message,$knowledgePacket,'global');
+        if($capabilityQuestion){
+            $feasibility['execution_allowed']=false;$feasibility['informational']=true;
+        }else{
+            $feasibility['execution_allowed']=(bool)($canonicalIntent['execution_allowed']??true);
+            $feasibility['informational']=false;$feasibility['requires_confirmation']=(($canonicalIntent['action']??'')==='delete');
+        }
         $conversation=(array)data_get($validated,'context.conversation',[]);
         $resolutionMessage=$this->resolutionMessage($message,$conversation);
         $lower=Str::lower($resolutionMessage);
@@ -165,7 +216,27 @@ class GlobalLunaController extends Controller
             'website_count'=>$websites->count(),
             'conversation'=>(array)data_get($validated,'context.conversation',[]),
             'capabilities'=>$lunaCapabilities->forUser($user,$capabilities),
+            'canonical_knowledge'=>$knowledgePacket,
         ];
+
+        if($capabilityQuestion || !($feasibility['execution_allowed']??false)){
+            $reply=$natural->compose($message,$replyContext,[
+                'conversation_mode'=>'feasibility_first',
+                'action_completed'=>false,
+                'credit_cost'=>0,
+                'canonical_knowledge'=>$knowledgePacket,
+                'feasibility'=>$feasibility,
+                'rule'=>'Answer from canonical knowledge. If supported, explain naturally without executing. If unsupported and a documented fallback exists, offer it and ask whether the user wants that alternative. If there is no supported fallback, say it is not currently possible. Do not execute, navigate, clarify an action target, or mutate website state in this turn.',
+            ]);
+            return response()->json([
+                'reply'=>$reply,
+                'mode'=>'grounded_info',
+                'credit_cost'=>0,
+                'credit_balance'=>$credits->balance($user),
+                'grounded_capabilities'=>array_values(array_filter(array_map(fn($cap)=>$cap['id']??null,$knowledgePacket['capabilities']??[]))),
+                'canonical_intent'=>$canonicalIntent,
+            ]);
+        }
 
         // Confirmed destructive action.
         $confirmationToken=trim((string)($validated['confirmation_token']??''));
@@ -203,22 +274,26 @@ class GlobalLunaController extends Controller
                 $pageIds=$this->descendantPageIds($site,$page);
                 $site->blogPosts()->whereIn('page_id',$pageIds)->delete();
                 $page->delete();
+                $deleted=!$site->pages()->whereKey($page->id)->exists();
+                $verification=$executionVerification->verify([['action'=>'delete','index'=>$page->id]],$deleted?[['action'=>'delete','index'=>$page->id,'verified'=>true]]:[],$deleted);
                 $this->charge($credits,$user,$cost,'Luna delete page',[
                     'category'=>'ai','mode'=>'mutation','website_id'=>$site->id,'page_title'=>$title,
                 ]);
 
                 $reply=$natural->compose($message,$replyContext,[
                     'action'=>'delete page',
-                    'action_completed'=>true,
+                    'action_completed'=>(bool)($verification['can_claim_complete']??false),
                     'website'=>$site->name,
                     'page'=>$title,
                     'credits_used'=>$cost,
+                    'execution_verification'=>$verification,
                 ]);
                 return response()->json([
                     'reply'=>$reply,
                     'mode'=>'reply',
                     'credit_cost'=>$cost,
                     'credit_balance'=>$credits->balance($user),
+                    'execution_verification'=>$verification,
                 ]);
             }
         }
@@ -282,6 +357,8 @@ class GlobalLunaController extends Controller
                     'sort_order'=>((int)$site->pages()->max('sort_order'))+1,
                     'blocks'=>[],
                 ]);
+                $created=$site->pages()->whereKey($page->id)->exists();
+                $verification=$executionVerification->verify([['action'=>'build_page']],$created?[['action'=>'build_page','page_id'=>$page->id,'verified'=>true]]:[],$created);
 
                 $this->charge($credits,$user,$cost,'Luna create page',[
                     'category'=>'ai','mode'=>'mutation','website_id'=>$site->id,'page_id'=>$page->id,
@@ -289,11 +366,12 @@ class GlobalLunaController extends Controller
 
                 $reply=$natural->compose($message,$replyContext,[
                     'action'=>'create page',
-                    'action_completed'=>true,
+                    'action_completed'=>(bool)($verification['can_claim_complete']??false),
                     'page'=>$title,
                     'website'=>$site->name,
                     'planned_action'=>'open the new page in Builder with Luna ready to design it',
                     'credits_used'=>$cost,
+                    'execution_verification'=>$verification,
                 ]);
                 return response()->json([
                     'reply'=>$reply,
@@ -301,6 +379,7 @@ class GlobalLunaController extends Controller
                     'navigate_url'=>route('pages.builder',['page'=>$page->id]).'?luna_open=1&luna_prompt='.rawurlencode("Build this {$title} page with a polished layout and relevant content."),
                     'credit_cost'=>$cost,
                     'credit_balance'=>$credits->balance($user),
+                    'execution_verification'=>$verification,
                 ]);
             }
 
@@ -310,15 +389,18 @@ class GlobalLunaController extends Controller
                 abort_unless($credits->canAfford($user,$cost),422,"Renaming this page needs {$cost} credits.");
                 $old=$page->title;
                 $page->update(['title'=>$newTitle,'slug'=>Str::slug($newTitle)?:$page->slug]);
+                $renamed=(string)$site->pages()->whereKey($page->id)->value('title')===$newTitle;
+                $verification=$executionVerification->verify([['action'=>'edit','index'=>$page->id]],$renamed?[['action'=>'edit','index'=>$page->id,'verified'=>true]]:[],$renamed);
                 $this->charge($credits,$user,$cost,'Luna rename page',['category'=>'ai','mode'=>'mutation','website_id'=>$site->id,'page_id'=>$page->id]);
                 $reply=$natural->compose($message,$replyContext,[
                     'action'=>'rename page',
-                    'action_completed'=>true,
+                    'action_completed'=>(bool)($verification['can_claim_complete']??false),
                     'old_title'=>$old,
                     'new_title'=>$newTitle,
                     'website'=>$site->name,
                     'planned_action'=>'open the renamed page in Builder',
                     'credits_used'=>$cost,
+                    'execution_verification'=>$verification,
                 ]);
                 return response()->json([
                     'reply'=>$reply,
@@ -326,6 +408,7 @@ class GlobalLunaController extends Controller
                     'navigate_url'=>route('pages.builder',['page'=>$page->id]),
                     'credit_cost'=>$cost,
                     'credit_balance'=>$credits->balance($user),
+                    'execution_verification'=>$verification,
                 ]);
             }
 

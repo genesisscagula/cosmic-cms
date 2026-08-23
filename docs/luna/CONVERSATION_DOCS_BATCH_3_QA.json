@@ -1,0 +1,35 @@
+{
+  "batch": 3,
+  "name": "Luna Conversation + Docs Cleanup",
+  "status": "PASS_STATIC_QA",
+  "chat_contract": "chat -> docs/context -> natural reply -> stop",
+  "action_contract": "concrete website task -> action pipeline; no normal Proceed/Continue",
+  "customer_language": {
+    "allowed_examples": [
+      "pages",
+      "sections",
+      "content",
+      "images",
+      "layout",
+      "design",
+      "theme",
+      "branding",
+      "navigation",
+      "forms",
+      "publishing"
+    ],
+    "hidden_in_normal_chat": [
+      "Sparks",
+      "registered Sparks",
+      "template-selection mechanics",
+      "schemas",
+      "canonical intent",
+      "planner internals",
+      "first-build design direction",
+      "routes/controllers",
+      "API/model-call mechanics"
+    ]
+  },
+  "important_fix": "Removed the old broad knowledge-router rule that treated every 'Can you...' sentence as a capability question. Concrete 'Can you build/update...' requests remain actions under the canonical router.",
+  "next": "Batch 4 \u2014 Codex-style phase statuses + obsolete confirmation cleanup + regression QA"
+}

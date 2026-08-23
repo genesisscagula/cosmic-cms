@@ -365,6 +365,7 @@ class WorkspaceProvisioningService
                 ->find($recordedPageId);
 
             if ($recorded) {
+                $this->transferTrialBundlePages($trial, $website, $recorded);
                 $this->syncTrialWebsiteSettings($trial, $website);
                 $this->claimTrial($trial, $onboarding, $recorded);
 
@@ -425,10 +426,70 @@ class WorkspaceProvisioningService
             $page->forceFill(['blocks' => $trial->generated_blocks])->save();
         }
 
+        $this->transferTrialBundlePages($trial, $website, $page);
         $this->syncTrialWebsiteSettings($trial, $website);
         $this->claimTrial($trial, $onboarding, $page);
 
         return $page->fresh();
+    }
+
+    /**
+     * Move every generated sibling page from the isolated staging website into
+     * the paid website. Retries are idempotent: pages already moved are absent
+     * from the staging query and existing customer pages are never overwritten.
+     */
+    private function transferTrialBundlePages(?TrialGeneration $trial, Website $website, Page $homePage): void
+    {
+        $sourceWebsiteId = (int) ($trial?->website_id ?? 0);
+        if (! $trial || $sourceWebsiteId < 1 || $sourceWebsiteId === (int) $website->id) {
+            return;
+        }
+
+        $sourceWebsite = Website::query()->lockForUpdate()->find($sourceWebsiteId);
+        $sourcePages = Page::query()
+            ->where('website_id', $sourceWebsiteId)
+            ->whereKeyNot($homePage->id)
+            ->orderBy('sort_order')
+            ->orderBy('id')
+            ->lockForUpdate()
+            ->get();
+        $moved = [];
+
+        foreach ($sourcePages as $sourcePage) {
+            $existing = $website->pages()
+                ->where('slug', $sourcePage->slug)
+                ->whereKeyNot($sourcePage->id)
+                ->oldest('id')
+                ->first();
+
+            if ($existing) {
+                // A paid-site page is authoritative. Never replace customer work
+                // during a webhook retry or a recovery run.
+                continue;
+            }
+
+            $sourcePage->forceFill([
+                'website_id' => $website->id,
+                'parent_id' => null,
+                'status' => 'draft',
+                'published_blocks' => null,
+                'published_html' => null,
+                'published_at' => null,
+                'last_published_at' => null,
+                'publish_error' => null,
+            ])->save();
+            $moved[] = $sourcePage->slug;
+        }
+
+        if ($sourceWebsite) {
+            $settings = is_array($sourceWebsite->settings) ? $sourceWebsite->settings : [];
+            $settings['trial_bundle_claim'] = [
+                'paid_website_id' => $website->id,
+                'moved_slugs' => $moved,
+                'claimed_at' => now()->toIso8601String(),
+            ];
+            $sourceWebsite->forceFill(['settings' => $settings])->save();
+        }
     }
 
     /**
@@ -500,6 +561,7 @@ class WorkspaceProvisioningService
         }
 
         $provisioned = [];
+        $ready = [];
         foreach ($items as $item) {
             if ($item['is_home'] || $item['slug'] === 'home') {
                 continue;
@@ -512,7 +574,11 @@ class WorkspaceProvisioningService
 
             if ($existing) {
                 // Never replace an existing customer's work on retries.
-                $provisioned[] = $existing->slug;
+                if (is_array($existing->blocks) && $existing->blocks !== []) {
+                    $ready[] = $existing->slug;
+                } else {
+                    $provisioned[] = $existing->slug;
+                }
                 continue;
             }
 
@@ -536,6 +602,7 @@ class WorkspaceProvisioningService
             'source' => $trial ? 'trial_menu' : 'industry_default',
             'home_page_id' => $homePage->id,
             'unbuilt_slugs' => array_values(array_unique($provisioned)),
+            'ready_slugs' => array_values(array_unique($ready)),
             'provisioned_at' => data_get($settings, 'post_purchase_pages.provisioned_at', now()->toIso8601String()),
         ];
         $website->forceFill(['settings' => $settings])->save();
@@ -759,6 +826,7 @@ class WorkspaceProvisioningService
             'claimed_at' => $trial->claimed_at ?? now(),
             'claimed_by_user_id' => $onboarding->user_id,
             'status' => 'claimed',
+            'bundle_status' => $trial->bundle_status ? 'claimed' : null,
             'last_saved_at' => $trial->last_saved_at ?? now(),
         ])->save();
     }

@@ -1,0 +1,23 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 8,
+  "name": "Builder vs Live Parity",
+  "status": "PASS_STATIC_QA",
+  "renderer_coverage": {
+    "builder": 321,
+    "live": 321,
+    "missing": []
+  },
+  "render_contract": "2026.08-b8",
+  "runtime_visual_parity_verified": false,
+  "build_note": "The provided ZIP does not contain tailwind.export.config.cjs, although package.json references it. A production npm export build could not be validated from this artifact; runtime/deployment QA should confirm the generated CSS bundle.",
+  "next": "Batch 9 \u2014 Execution Verification",
+  "runtime_tests": [
+    "Publish and compare 10 representative Sparks in Builder vs Live at desktop.",
+    "Repeat representative responsive checks at tablet and mobile.",
+    "Include Hero, Services, Cards/Grid, Media/Slider, Testimonials, Pricing, CTA, Process/Timeline, Gallery/Portfolio, and Contact/Form.",
+    "Verify theme, H1/H2 colors, radii, spacing, responsive typography, media crop, gradients, overlays, buttons, and interaction.",
+    "Confirm live package reports render_contract 2026.08-b8.",
+    "If any Spark differs, patch that renderer contract before declaring runtime parity."
+  ]
+}

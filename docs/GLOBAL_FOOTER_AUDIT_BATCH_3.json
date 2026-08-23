@@ -1,0 +1,46 @@
+{
+  "batch": 3,
+  "scope": "Global Footer Audit",
+  "status": "PASS_AFTER_PATCH",
+  "checks": {
+    "footer logo manual+ai": true,
+    "footer logo isolated": true,
+    "footer stable paths": true,
+    "footer columns/items": true,
+    "footer reorder": true,
+    "contact manual": true,
+    "social manual": true,
+    "mega manual": true,
+    "footer Luna element": true,
+    "footer current context": true,
+    "footer sanitizer": true,
+    "footer compiler contact": true,
+    "footer static urls": true,
+    "footer persistence": true
+  },
+  "patched": [
+    "Footer logo has individual Edit and Luna hover actions.",
+    "Footer logo Media Library and AI generation can target footer only.",
+    "Mega Footer enable/disable is available directly in Builder at 0 credits.",
+    "Tagline and CTA have stable field paths plus manual/Luna targeting.",
+    "Columns support add/edit/remove/reorder and max 4 columns.",
+    "Footer menu links support add/edit/remove/reorder and max 6 links per column.",
+    "Contact email/phone/address manual fields added.",
+    "Social links manual add/edit/remove added, max 6.",
+    "Privacy, Terms and copyright expose stable paths and Luna targets.",
+    "Luna receives current footer JSON and server-sanitized footer_changes.",
+    "Static export renders contact/social data.",
+    "PagePublisher rewrites footer internal links for static export."
+  ],
+  "guardrails": [
+    "Manual footer mutations are 0 credits.",
+    "Footer column maximum 4; menu items maximum 6 per column; social maximum 6.",
+    "Footer-only Luna requests preserve header/body unless explicitly requested.",
+    "Global footer remains website-level data and publishes through snapshots."
+  ],
+  "deferred_to_batch_4": [
+    "Builder-only shell consolidation.",
+    "Remove/hide old Website Shell UI.",
+    "End-to-end save/refresh/publish/export runtime QA."
+  ]
+}

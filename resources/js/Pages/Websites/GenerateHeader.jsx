@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { getEffectiveTheme } from '../../theme/Theme';
 import { logoFilterForImage } from '@/Branding/logoFilters';
 import { colorFamilies } from '../../theme/colorFamilies';
@@ -22,7 +22,48 @@ function overlayThemeVisuals(globalTheme) {
     };
 }
 
-export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', overlayLogoLight = false, globalTheme, onUpdate, pageTargets = [], onLogoClick = null }) {
+
+function HeaderLogoEditor({ imageUrl, alt, imageStyle, imageClassName="", onManual, onAi }) {
+    return (
+        <div data-cosmic-shell-element="logo" data-cosmic-shell-path="header.logo_image_url" className="group/header-logo relative shrink-0">
+            <img src={imageUrl} alt={alt} style={imageStyle} className={imageClassName} />
+            {onAi && <div className="pointer-events-none absolute -right-2 -top-2 z-[620] flex gap-1 opacity-0 transition group-hover/header-logo:opacity-100 group-focus-within/header-logo:opacity-100">
+                <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onAi();}} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-xs font-black text-white shadow-lg hover:bg-violet-500" aria-label="Ask Luna about this logo">✦</button>
+            </div>}
+        </div>
+    );
+}
+
+function HeaderCtaEditor({ block, className="", style, textClass="", onUpdate, onAi }) {
+    const [open,setOpen]=useState(false);
+    const [label,setLabel]=useState(block.cta_label || 'Get Started');
+    const [url,setUrl]=useState(block.cta_url || '#');
+    const openEditor=()=>{setLabel(block.cta_label || 'Get Started');setUrl(block.cta_url || '#');setOpen(true);};
+    return <>
+        <div data-cosmic-shell-element="cta" data-cosmic-shell-path="header.cta" className={`group/header-cta-edit relative ${className}`} style={style}>
+            <button type="button" onClick={openEditor} className={`block w-full ${textClass}`}>{block.cta_label || 'Get Started'}</button>
+            {onAi && <button type="button" onClick={(e)=>{e.preventDefault();e.stopPropagation();onAi();}} className="absolute -right-2 -top-2 hidden h-7 w-7 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-xs font-black text-white shadow-lg hover:bg-violet-500 group-hover/header-cta-edit:inline-flex" aria-label="Ask Luna about this CTA">✦</button>}
+        </div>
+        {open && <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={()=>setOpen(false)}>
+            <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#18181d] p-5 text-white shadow-2xl" onMouseDown={(e)=>e.stopPropagation()}>
+                <div className="flex items-start justify-between gap-4">
+                    <div><p className="text-[10px] font-semibold uppercase tracking-[.18em] text-violet-300">Header CTA</p><h3 className="mt-1 text-lg font-semibold">Edit button</h3></div>
+                    <button type="button" onClick={()=>setOpen(false)} className="rounded-md px-2 py-1 text-slate-400 hover:bg-white/5 hover:text-white">×</button>
+                </div>
+                <div className="mt-4 space-y-3">
+                    <label className="block text-xs font-medium text-slate-300">Label<input autoFocus value={label} onChange={(e)=>setLabel(e.target.value)} className="mt-1.5 block w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400"/></label>
+                    <label className="block text-xs font-medium text-slate-300">URL<input value={url} onChange={(e)=>setUrl(e.target.value)} placeholder="/contact or https://..." className="mt-1.5 block w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400"/></label>
+                </div>
+                <div className="mt-5 flex justify-end gap-2">
+                    <button type="button" onClick={()=>setOpen(false)} className="rounded-lg px-3 py-2 text-sm text-slate-300 hover:bg-white/5">Cancel</button>
+                    <button type="button" onClick={()=>{onUpdate({cta_label:label.trim()||'Get Started',cta_url:url.trim()||'#'});setOpen(false);}} className="rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 hover:bg-slate-200">Save · 0 credits</button>
+                </div>
+            </div>
+        </div>}
+    </>;
+}
+
+export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', overlayLogoLight = false, globalTheme, onUpdate, pageTargets = [], onLogoClick = null, onLogoManual = null, onNavAi = null, navManualOpenSignal = 0 }) {
     const menuItems = block.menu || [{ label: 'Home', url: '#' }, { label: 'About', url: '#' }, { label: 'Services', url: '#' }];
 
     // Theme Config for Light Mode
@@ -34,8 +75,8 @@ export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', 
 
     const overlayVisuals = overlayThemeVisuals(globalTheme);
     const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
-    const logoHeight = Math.min(64, Math.max(24, Number(block.logo_height || 40)));
-    const logoMaxWidth = Math.min(320, Math.max(220, Number(block.logo_max_width || 300)));
+    const logoHeight = Math.min(60, Math.max(44, Number(block.logo_height || 48)));
+    const logoMaxWidth = Math.min(300, Math.max(180, Number(block.logo_max_width || 240)));
 
     const overlayStyle = overlay ? {
         backgroundImage: 'none',
@@ -47,7 +88,14 @@ export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', 
     return (
         <header id={overlay ? 'cosmic-overlay-header' : undefined} style={overlayStyle} className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${overlay ? 'px-[3.5rem] pt-[3.25rem] pb-[2.5rem]' : 'px-5 py-5 sm:px-6 sm:py-6'} lg:flex-nowrap transition-colors duration-500`}>
             {logoImageUrl ? (
-                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: overlay ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }} className="w-auto object-contain" /></button>
+                <HeaderLogoEditor
+                    imageUrl={logoImageUrl}
+                    alt={block.logo_text || 'Website logo'}
+                    imageStyle={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: overlay ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter) }}
+                    imageClassName="w-auto object-contain"
+                    onManual={onLogoManual}
+                    onAi={onLogoClick}
+                />
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
@@ -56,20 +104,20 @@ export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', 
                 />
             )}
             <nav className="w-full lg:w-auto">
-                <ul className="flex flex-wrap list-none items-center gap-x-3 gap-y-2 whitespace-nowrap sm:gap-x-5 lg:flex-nowrap">
-                    <HeaderNavigation
-                        items={menuItems}
-                        textClass={`${textColor} text-base hover:text-emerald-600`}
-                        onUpdate={(menu) => onUpdate({ menu })}
-                        pageTargets={pageTargets}
-                    />
-                </ul>
+                <HeaderNavigation
+                    items={menuItems}
+                    textClass={`${textColor} text-base hover:text-emerald-600`}
+                    onUpdate={(menu) => onUpdate({ menu })}
+                    pageTargets={pageTargets}
+                    onAi={onNavAi}
+                    manualOpenSignal={navManualOpenSignal}
+                />
             </nav>
         </header>
     );
 }
 
-export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'light', overlayLogoLight = false, overlayCtaTreatment = 'primary', onUpdate, globalTheme, pageTargets = [], onLogoClick = null }) {
+export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'light', overlayLogoLight = false, overlayCtaTreatment = 'primary', onUpdate, globalTheme, pageTargets = [], onLogoClick = null, onLogoManual = null, onCtaAi = null, onNavAi = null, navManualOpenSignal = 0 }) {
     const menuItems = block.menu || [
         { label: 'Home', url: '#' }, 
         { label: 'About', url: '#' }, 
@@ -130,13 +178,20 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
     } : undefined);
 
     const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
-    const logoHeight = Math.min(64, Math.max(24, Number(block.logo_height || 40)));
-    const logoMaxWidth = Math.min(320, Math.max(220, Number(block.logo_max_width || 300)));
+    const logoHeight = Math.min(60, Math.max(44, Number(block.logo_height || 48)));
+    const logoMaxWidth = Math.min(300, Math.max(180, Number(block.logo_max_width || 240)));
 
     return (
         <header id={overlay ? 'cosmic-overlay-header' : undefined} style={overlayStyle} className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${customShell ? 'border-transparent py-3' : (overlay ? 'border-transparent px-[3.5rem] pt-[3.25rem] pb-[2.5rem]' : 'border-slate-200 px-5 py-5 sm:px-6 sm:py-6')} lg:flex-nowrap`}>
             {logoImageUrl ? (
-                <button type="button" onClick={onLogoClick || undefined} className={`shrink-0 rounded-lg ${onLogoClick ? "cursor-pointer focus:outline-none focus:ring-2 focus:ring-violet-400" : "cursor-default"}`} aria-label={onLogoClick ? "Adjust logo size" : undefined}><img src={logoImageUrl} alt={block.logo_text || 'Website logo'} style={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: customShell && customStyle.logo_tone === 'light' ? 'brightness(0) invert(1)' : (overlay ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter)) }} className="w-auto object-contain" /></button>
+                <HeaderLogoEditor
+                    imageUrl={logoImageUrl}
+                    alt={block.logo_text || 'Website logo'}
+                    imageStyle={{ height: `${logoHeight}px`, maxHeight: "64px", maxWidth: `${logoMaxWidth}px`, filter: customShell && customStyle.logo_tone === 'light' ? 'brightness(0) invert(1)' : (overlay ? 'brightness(0) invert(1)' : logoFilterForImage(logoImageUrl, block.logo_filter_key || block.theme || 'midnight', block.logo_filter)) }}
+                    imageClassName="w-auto object-contain"
+                    onManual={onLogoManual}
+                    onAi={onLogoClick}
+                />
             ) : (
                 <EditableText 
                     value={block.logo_text || 'Your Website'} 
@@ -145,127 +200,221 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
                 />
             )}
             <nav className="flex w-full items-center justify-between gap-4 lg:w-auto lg:justify-start lg:gap-6">
-                <ul className="flex flex-wrap list-none gap-x-3 gap-y-2 whitespace-nowrap sm:gap-x-5 lg:flex-nowrap">
-                    <HeaderNavigation
-                        items={menuItems}
-                        textClass={`${customShell ? 'text-[color:var(--cosmic-custom-nav)]' : subColor} font-medium ${overlay ? (overlayDarkText ? 'hover:text-slate-950' : 'hover:text-white') : 'hover:text-slate-900'}`}
-                        textStyle={customShell ? {fontSize:`${Number(customStyle.nav_size || 14)}px`} : undefined}
-                        onUpdate={(menu) => onUpdate({ menu })}
-                        pageTargets={pageTargets}
-                    />
-                </ul>
+                <HeaderNavigation
+                    items={menuItems}
+                    textClass={`${customShell ? 'text-[color:var(--cosmic-custom-nav)]' : subColor} font-medium ${overlay ? (overlayDarkText ? 'hover:text-slate-950' : 'hover:text-white') : 'hover:text-slate-900'}`}
+                    textStyle={customShell ? {fontSize:`${Number(customStyle.nav_size || 14)}px`} : undefined}
+                    onUpdate={(menu) => onUpdate({ menu })}
+                    pageTargets={pageTargets}
+                    onAi={onNavAi}
+                    manualOpenSignal={navManualOpenSignal}
+                />
                 {block.phone_enabled && String(block.phone_text || '').trim() ? (
                     <span className={`hidden shrink-0 items-center gap-2 text-sm font-semibold lg:inline-flex ${customShell ? 'text-[color:var(--cosmic-custom-nav)]' : subColor}`}>
                         <span aria-hidden="true">☎</span>{block.phone_text}
                     </span>
                 ) : null}
-                <div
-                    id={overlay ? 'cosmic-overlay-header-cta' : undefined}
-                    data-cosmic-overlay-cta={overlay ? 'true' : undefined}
+                <HeaderCtaEditor
+                    block={block}
+                    onUpdate={onUpdate}
+                    onAi={onCtaAi}
                     style={overlayCtaStyle}
-                    className={`cosmic-header-cta ${overlayCtaTreatment === 'gradient' ? 'cosmic-overlay-gradient-cta' : 'cosmic-header-cta-primary'}
-                        ${overlayCtaTreatment === 'gradient' ? '' : `${primaryTheme.bg} ${primaryTheme.text}`}
-                        px-7
-                        py-3
-                        shrink-0
-                        rounded-full
-                        text-sm
-                        font-semibold
-                        cursor-pointer
-                        hover:opacity-90
-                        transition
-                    `}
-                >
-                    <EditableText 
-                        value={block.cta_label || 'Get Started'} 
-                        className={`${overlayCtaTreatment === 'gradient' ? 'cosmic-overlay-header-cta-label !text-current' : 'text-white'} font-bold`}
-                        onSave={(val) => onUpdate({ cta_label: val })}
-                    />
-                </div>
+                    className={`cosmic-header-cta ${overlayCtaTreatment === 'gradient' ? 'cosmic-overlay-gradient-cta' : 'cosmic-header-cta-primary'} ${overlayCtaTreatment === 'gradient' ? '' : `${primaryTheme.bg} ${primaryTheme.text}`} px-7 py-3 shrink-0 rounded-full text-sm font-semibold cursor-pointer hover:opacity-90 transition`}
+                    textClass={overlayCtaTreatment === 'gradient' ? 'cosmic-overlay-header-cta-label !text-current font-bold' : 'text-white font-bold'}
+                />
             </nav>
         </header>
     );
 }
 
-function HeaderNavigation({ items, textClass, textStyle, onUpdate, pageTargets = [] }) {
+function HeaderNavigation({ items, textClass, textStyle, onUpdate, pageTargets = [], onAi=null, manualOpenSignal=0 }) {
+    const [managerOpen,setManagerOpen]=useState(false);
+    const [mobileOpen,setMobileOpen]=useState(false);
+    const [managerEditPath,setManagerEditPath]=useState(null);
+    const [managerLabel,setManagerLabel]=useState('');
+    const [managerUrl,setManagerUrl]=useState('#');
+    useEffect(()=>{ if(Number(manualOpenSignal)>0) setManagerOpen(true); },[manualOpenSignal]);
+    const clone=()=>JSON.parse(JSON.stringify(items || []));
+
+    const collectionAtPath=(root,path=[])=>{
+        let collection=root;
+        for(const index of path){
+            const item=collection[index];
+            if(!item) return [];
+            if(!Array.isArray(item.children)) item.children=[];
+            collection=item.children;
+        }
+        return collection;
+    };
     const updateAtPath = (path, changes) => {
-        const next = JSON.parse(JSON.stringify(items || []));
-        let collection = next;
-        path.forEach((index, depth) => {
-            if (depth === path.length - 1) {
-                collection[index] = { ...collection[index], ...changes };
-                return;
-            }
-            collection = collection[index].children || [];
-        });
+        const next=clone();
+        const parent=collectionAtPath(next,path.slice(0,-1));
+        const index=path[path.length-1];
+        if(parent[index]) parent[index]={...parent[index],...changes};
+        onUpdate(next);
+    };
+    const removeAtPath=(path)=>{
+        const next=clone();
+        const parent=collectionAtPath(next,path.slice(0,-1));
+        parent.splice(path[path.length-1],1);
+        onUpdate(next);
+    };
+    const moveAtPath=(path,direction)=>{
+        const next=clone();
+        const parent=collectionAtPath(next,path.slice(0,-1));
+        const index=path[path.length-1];
+        const target=index+direction;
+        if(target<0||target>=parent.length)return;
+        [parent[index],parent[target]]=[parent[target],parent[index]];
+        onUpdate(next);
+    };
+    const addAtPath=(parentPath=[])=>{
+        const next=clone();
+        const parent=collectionAtPath(next,parentPath);
+        parent.push({label:'New item',url:'#'});
+        onUpdate(next);
+    };
+    const addChildAtPath=(path)=>{
+        const next=clone();
+        const parent=collectionAtPath(next,path.slice(0,-1));
+        const item=parent[path[path.length-1]];
+        if(!item)return;
+        item.children=Array.isArray(item.children)?item.children:[];
+        item.children.push({label:'Submenu item',url:'#'});
         onUpdate(next);
     };
 
-    const normalizeTarget = (value) => String(value || '')
-        .trim()
-        .replace(/^\/+|\/+$/g, '')
-        .toLowerCase();
-
-    const findPageTarget = (url) => {
-        const normalized = normalizeTarget(url);
-        if (!normalized || normalized === '#' || normalized.startsWith('http') || normalized.startsWith('mailto:') || normalized.startsWith('tel:')) return null;
-        return pageTargets.find((pageTarget) => normalizeTarget(pageTarget.slug) === normalized) || null;
+    const openManagerEdit=(path,item)=>{
+        setManagerEditPath(path);
+        setManagerLabel(item?.label||'');
+        setManagerUrl(item?.url||'#');
+    };
+    const saveManagerEdit=()=>{
+        if(!Array.isArray(managerEditPath))return;
+        updateAtPath(managerEditPath,{label:managerLabel.trim()||'Menu item',url:managerUrl.trim()||'#'});
+        setManagerEditPath(null);
     };
 
-    const navigationGroups = [
-        {
-            wrapper: 'group/header-root',
-            reveal: 'group-hover/header-root:visible group-hover/header-root:opacity-100 group-focus-within/header-root:visible group-focus-within/header-root:opacity-100',
-        },
-        {
-            wrapper: 'group/header-sub',
-            reveal: 'group-hover/header-sub:visible group-hover/header-sub:opacity-100 group-focus-within/header-sub:visible group-focus-within/header-sub:opacity-100',
-        },
-        {
-            wrapper: 'group/header-deep',
-            reveal: 'group-hover/header-deep:visible group-hover/header-deep:opacity-100 group-focus-within/header-deep:visible group-focus-within/header-deep:opacity-100',
-        },
+    const normalizeTarget = (value) => String(value || '').trim().replace(/^\/+|\/+$/g, '').toLowerCase();
+    const findPageTarget = (url) => {
+        const normalized=normalizeTarget(url);
+        if(!normalized||normalized==='#'||normalized.startsWith('http')||normalized.startsWith('mailto:')||normalized.startsWith('tel:'))return null;
+        return pageTargets.find((pageTarget)=>normalizeTarget(pageTarget.slug)===normalized)||null;
+    };
+
+    const navigationGroups=[
+        {wrapper:'group/header-root',reveal:'group-hover/header-root:visible group-hover/header-root:opacity-100 group-focus-within/header-root:visible group-focus-within/header-root:opacity-100'},
+        {wrapper:'group/header-sub',reveal:'group-hover/header-sub:visible group-hover/header-sub:opacity-100 group-focus-within/header-sub:visible group-focus-within/header-sub:opacity-100'},
+        {wrapper:'group/header-deep',reveal:'group-hover/header-deep:visible group-hover/header-deep:opacity-100 group-focus-within/header-deep:visible group-focus-within/header-deep:opacity-100'},
     ];
 
-    const renderItems = (menu, parentPath = [], depth = 0) => menu.map((item, index) => {
-        const path = [...parentPath, index];
-        const children = Array.isArray(item.children) ? item.children : [];
-        const targetListId = `header-page-targets-${path.join('-')}`;
-        const navigationGroup = navigationGroups[Math.min(depth, navigationGroups.length - 1)];
-        const nested = depth > 0;
-
-        const linkedPage = findPageTarget(item.url);
-
-        return <li
-            key={path.join('-')}
-            className={`${navigationGroup.wrapper} relative z-[520]`}
-            onMouseEnter={() => document.documentElement.classList.add('cosmic-header-menu-active')}
-            onMouseLeave={() => document.documentElement.classList.remove('cosmic-header-menu-active')}
-        >
-            <HeaderMenuItemEditor
-                item={item}
-                textClass={textClass}
-                textStyle={textStyle}
-                targetListId={targetListId}
-                pageTargets={pageTargets}
-                hasChildren={children.length > 0}
-                linkedPage={linkedPage}
-                onSave={(changes) => updateAtPath(path, changes)}
-            />
-            {children.length > 0 && (
-                <div className={`${nested ? 'left-full top-0 pl-2' : 'left-0 top-full pt-2'} ${navigationGroup.reveal} invisible absolute z-[530] min-w-52 opacity-0 transition duration-150`}>
-                    <ul className={`list-none rounded-xl border bg-white p-2 shadow-xl ring-1 ring-slate-950/5 ${nested ? 'border-slate-300' : 'border-slate-200'}`}>
-                        {renderItems(children, path, depth + 1)}
-                    </ul>
-                </div>
-            )}
+    const renderItems=(menu,parentPath=[],depth=0)=>menu.map((item,index)=>{
+        const path=[...parentPath,index];
+        const children=Array.isArray(item.children)?item.children:[];
+        const targetListId=`header-page-targets-${path.join('-')}`;
+        const navigationGroup=navigationGroups[Math.min(depth,navigationGroups.length-1)];
+        const nested=depth>0;
+        const linkedPage=findPageTarget(item.url);
+        return <li key={path.join('-')} className={`${navigationGroup.wrapper} relative z-[520]`}
+            onMouseEnter={()=>document.documentElement.classList.add('cosmic-header-menu-active')}
+            onMouseLeave={()=>document.documentElement.classList.remove('cosmic-header-menu-active')}>
+            <HeaderMenuItemEditor item={item} textClass={textClass} textStyle={textStyle}
+                targetListId={targetListId} pageTargets={pageTargets} hasChildren={children.length>0}
+                linkedPage={linkedPage} fieldPath={`header.menu.${path.join('.')}`}
+                onSave={(changes)=>updateAtPath(path,changes)}/>
+            {children.length>0&&<div className={`${nested?'left-full top-0 pl-2':'left-0 top-full pt-2'} ${navigationGroup.reveal} invisible absolute z-[530] opacity-0 transition duration-150 min-w-52`}>
+                <ul className={`list-none rounded-xl border bg-white p-2 shadow-xl ring-1 ring-slate-950/5 ${nested?'border-slate-300':'border-slate-200'}`}>
+                    {renderItems(children,path,depth+1)}
+                </ul>
+            </div>}
         </li>;
     });
 
-    return <>{renderItems(items || [])}</>;
+    const renderManagerItems=(menu,parentPath=[],depth=0)=>menu.map((item,index)=>{
+        const path=[...parentPath,index];
+        const children=Array.isArray(item.children)?item.children:[];
+        return <div key={path.join('-')} className="space-y-2">
+            <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/[.04] p-2.5" style={{marginLeft:`${Math.min(depth,3)*16}px`}}>
+                <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-semibold text-white">{item.label||'Menu item'}</div>
+                    <div className="truncate text-[11px] text-slate-500">{item.url||'#'} · {`header.menu.${path.join('.')}`}</div>
+                </div>
+                <button type="button" onClick={()=>openManagerEdit(path,item)} className="rounded-lg px-2 py-1 text-xs font-semibold text-slate-200 hover:bg-white/10">Edit</button>
+                <button type="button" onClick={()=>moveAtPath(path,-1)} disabled={index===0} className="rounded-lg px-2 py-1 text-xs text-slate-300 hover:bg-white/10 disabled:opacity-25">↑</button>
+                <button type="button" onClick={()=>moveAtPath(path,1)} disabled={index===menu.length-1} className="rounded-lg px-2 py-1 text-xs text-slate-300 hover:bg-white/10 disabled:opacity-25">↓</button>
+                {depth<2&&<button type="button" onClick={()=>addChildAtPath(path)} className="rounded-lg px-2 py-1 text-xs font-semibold text-violet-200 hover:bg-violet-500/10">+ Sub</button>}
+                <button type="button" onClick={()=>removeAtPath(path)} className="rounded-lg px-2 py-1 text-xs text-rose-300 hover:bg-rose-500/10">Remove</button>
+            </div>
+            {children.length>0&&renderManagerItems(children,path,depth+1)}
+        </div>;
+    });
+
+    const renderMobile=(menu,parentPath=[],depth=0)=>menu.map((item,index)=>{
+        const children=Array.isArray(item.children)?item.children:[];
+        return <li key={[...parentPath,index].join('-')} style={{paddingLeft:`${Math.min(depth,3)*14}px`}}>
+            <div className="flex items-center gap-1">
+                <a href={item.url||'#'} className="min-w-0 flex-1 rounded-lg px-3 py-2.5 text-sm font-semibold text-slate-800 hover:bg-slate-100">{item.label||'Menu item'}</a>
+            </div>
+            {children.length>0&&<ul className="list-none space-y-1">{renderMobile(children,[...parentPath,index],depth+1)}</ul>}
+        </li>;
+    });
+
+    return <div data-cosmic-shell-element="navigation" data-cosmic-shell-path="header.menu" className="group/header-navigation relative">
+        <div className="hidden lg:block">
+            <ul className="flex list-none flex-nowrap items-center gap-x-3 gap-y-2 whitespace-nowrap sm:gap-x-5">{renderItems(items||[])}</ul>
+        </div>
+        <div className="lg:hidden">
+            <button type="button" onClick={()=>setMobileOpen(v=>!v)} className="inline-flex h-10 items-center gap-2 rounded-full border border-current/20 px-3 text-sm font-semibold" aria-expanded={mobileOpen}>
+                <span aria-hidden="true">☰</span> Menu
+            </button>
+            {mobileOpen&&<div className="absolute right-0 top-full z-[700] mt-2 w-[min(88vw,22rem)] rounded-2xl border border-slate-200 bg-white p-3 shadow-2xl">
+                <ul className="list-none space-y-1">{renderMobile(items||[])}</ul>
+            </div>}
+        </div>
+        {onAi&&<div className="pointer-events-none absolute -right-2 -top-8 z-[650] flex gap-1 opacity-0 transition group-hover/header-navigation:opacity-100 group-focus-within/header-navigation:opacity-100">
+            <button type="button" onClick={onAi} className="pointer-events-auto inline-flex h-7 w-7 items-center justify-center rounded-full border border-violet-300/30 bg-violet-600 text-xs font-black text-white shadow-lg" aria-label="Ask Luna about navigation">✦</button>
+        </div>}
+
+        {managerOpen&&<div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" onMouseDown={()=>setManagerOpen(false)}>
+            <div className="max-h-[85vh] w-full max-w-2xl overflow-y-auto rounded-2xl border border-white/10 bg-[#18181d] p-5 text-white shadow-2xl" onMouseDown={(e)=>e.stopPropagation()}>
+                <div className="flex items-start justify-between gap-4">
+                    <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[.18em] text-violet-300">Global navigation</p>
+                        <h3 className="mt-1 text-lg font-semibold">Manage menu</h3>
+                        <p className="mt-1 text-xs text-slate-500">Manual menu changes use 0 credits and apply site-wide after Save.</p>
+                    </div>
+                    <button type="button" onClick={()=>setManagerOpen(false)} className="rounded-md px-2 py-1 text-slate-400 hover:bg-white/5 hover:text-white">×</button>
+                </div>
+                <div className="mt-5 space-y-2">{renderManagerItems(items||[])}</div>
+                {Array.isArray(managerEditPath)&&<div className="mt-4 rounded-xl border border-violet-300/20 bg-violet-500/[.06] p-4">
+                    <p className="text-[10px] font-bold uppercase tracking-[.14em] text-violet-300">Edit menu item</p>
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                        <label className="text-xs font-medium text-slate-300">Label
+                            <input value={managerLabel} onChange={(e)=>setManagerLabel(e.target.value)} className="mt-1.5 block w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400"/>
+                        </label>
+                        <label className="text-xs font-medium text-slate-300">Link
+                            <input value={managerUrl} list="header-manager-page-targets" onChange={(e)=>setManagerUrl(e.target.value)} className="mt-1.5 block w-full rounded-lg border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400"/>
+                            <datalist id="header-manager-page-targets">{pageTargets.map((target)=><option key={target.slug} value={target.slug}>{target.title}</option>)}</datalist>
+                        </label>
+                    </div>
+                    <div className="mt-3 flex justify-end gap-2">
+                        <button type="button" onClick={()=>setManagerEditPath(null)} className="rounded-lg px-3 py-2 text-xs font-semibold text-slate-400">Cancel</button>
+                        <button type="button" onClick={saveManagerEdit} className="rounded-lg bg-violet-500 px-3 py-2 text-xs font-semibold text-white">Save item · 0 credits</button>
+                    </div>
+                </div>}
+                <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-4">
+                    <div className="flex items-center gap-3">
+                        <button type="button" onClick={()=>addAtPath([])} className="rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950">+ Add menu item</button>
+                        <span className="text-[11px] text-slate-500">Plain navigation · maximum 3 levels</span>
+                    </div>
+                    <button type="button" onClick={()=>setManagerOpen(false)} className="rounded-lg border border-white/10 px-4 py-2 text-sm font-semibold text-white hover:bg-white/5">Done</button>
+                </div>
+            </div>
+        </div>}
+    </div>;
 }
 
-function HeaderMenuItemEditor({ item, textClass, textStyle, targetListId, pageTargets, hasChildren, linkedPage, onSave }) {
+function HeaderMenuItemEditor({ item, textClass, textStyle, targetListId, pageTargets, hasChildren, linkedPage, fieldPath, onSave }) {
     const [isEditing, setIsEditing] = useState(false);
     const [label, setLabel] = useState(item.label || 'Menu item');
     const [url, setUrl] = useState(item.url || '#');
@@ -278,7 +427,7 @@ function HeaderMenuItemEditor({ item, textClass, textStyle, targetListId, pageTa
 
     return (
         <>
-            <div className="group/menu-edit flex max-w-full items-center gap-0.5 rounded-md hover:bg-slate-950/5">
+            <div data-cosmic-shell-element="nav-item" data-cosmic-shell-path={fieldPath} className="group/menu-edit flex max-w-full items-center gap-0.5 rounded-md hover:bg-slate-950/5">
                 <button
                     type="button"
                     onClick={openEditor}
@@ -299,7 +448,7 @@ function HeaderMenuItemEditor({ item, textClass, textStyle, targetListId, pageTa
                         onClick={(event) => {
                             event.preventDefault();
                             event.stopPropagation();
-                            window.location.assign(`/pages/${linkedPage.id}/builder`);
+                            window.location.assign(linkedPage.builder_url || `/pages/${linkedPage.id}/builder`);
                         }}
                         className="mr-1 hidden h-6 w-6 shrink-0 items-center justify-center rounded-md text-slate-400 transition hover:bg-violet-500/10 hover:text-violet-600 group-hover/menu-edit:flex group-focus-within/menu-edit:flex"
                         title={`Open ${linkedPage.title || item.label || 'page'} in Builder`}

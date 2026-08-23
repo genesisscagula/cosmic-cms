@@ -1,0 +1,21 @@
+{
+  "version": 2,
+  "statuses": [
+    "complete",
+    "partial",
+    "failed",
+    "noop"
+  ],
+  "rules": [
+    "Every planned mutation must have a corresponding verified applied result or an explicit failure reason.",
+    "Complete means every executable planned operation is verified.",
+    "Partial means at least one planned operation verified and at least one did not.",
+    "Failed means no executable planned operation verified.",
+    "Noop means there were no executable planned mutations.",
+    "Luna must never say done/complete/success when status is partial or failed.",
+    "Verification compares planned action, target index/scope, and relevant target metadata where available.",
+    "Verification reports unmatched planned operations; it does not silently invent a repair.",
+    "Credits remain governed by the billing layer; this verifier controls truthfulness, not pricing.",
+    "Build, update, publish, and navigation executors expose verification results before any final action reply."
+  ]
+}

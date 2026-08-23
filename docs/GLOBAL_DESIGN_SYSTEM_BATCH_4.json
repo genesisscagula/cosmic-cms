@@ -1,0 +1,23 @@
+{
+  "batch": 4,
+  "registered_sparks": 322,
+  "migration_strategy": "central render-shell compatibility layer",
+  "template_strategy": "template recipes inherit registered Spark token behavior",
+  "legacy_style_inventory": {
+    "rounded": 590,
+    "shadow": 81,
+    "maxw": 340,
+    "buttons": 113,
+    "images": 44
+  },
+  "safety_exceptions": [
+    "immersive/cinematic heading color",
+    "explicit white/on-dark content",
+    "rounded-full circles/pills",
+    "aria-label icon controls",
+    "custom/asymmetric radii opt-out",
+    "background/fullscreen media",
+    "specialized form controls"
+  ],
+  "status": "PASS"
+}

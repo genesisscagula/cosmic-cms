@@ -1,0 +1,13 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 2,
+  "name": "Design Continuity",
+  "status": "PASS_STATIC_QA",
+  "next": "Batch 3 \u2014 Content Intelligence",
+  "runtime_tests": [
+    "Build a premium automotive homepage, then create an About page",
+    "Create a Services page without changing the established brand",
+    "Verify Home/About/Services use the same colors, typography, radii, buttons and spacing but different section compositions",
+    "Explicitly ask Luna to rebrand and verify continuity can be intentionally replaced only after confirmation"
+  ]
+}

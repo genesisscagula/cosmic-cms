@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "principle": "Inner pages inherit the established site design language without cloning the same page composition.",
+  "inherit": [
+    "theme_family",
+    "custom_brand_theme",
+    "typography",
+    "components",
+    "section_layout",
+    "background_style",
+    "page_style",
+    "media_direction",
+    "design_direction"
+  ],
+  "preserve_unless_explicit": [
+    "theme_family",
+    "custom_brand_theme",
+    "font_display",
+    "font_body",
+    "heading_color",
+    "button_radius",
+    "card_radius",
+    "image_radius",
+    "section_spacing",
+    "container_width"
+  ],
+  "vary_by_page": [
+    "section_sequence",
+    "spark_variants",
+    "media_crop",
+    "content_density",
+    "page_specific_cta"
+  ],
+  "rules": [
+    "Existing site design DNA outranks a new page's industry mood unless the user explicitly requests a rebrand.",
+    "Use the same token family across sibling pages but do not clone the same section sequence.",
+    "A new page may choose different compatible Sparks while preserving typography, color, radius, spacing, buttons, cards and media treatment.",
+    "Local section overrides remain local and must not silently become global site DNA.",
+    "Explicit user requests to rebrand or change global design tokens override inherited DNA after confirmation."
+  ]
+}

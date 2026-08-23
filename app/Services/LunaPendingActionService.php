@@ -1,0 +1,108 @@
+<?php
+
+namespace App\Services;
+
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
+
+class LunaPendingActionService
+{
+    public function isAffirmative(string $message): bool
+    {
+        $value=Str::lower(trim($message));
+        if($value==='') return false;
+
+        return (bool) preg_match(
+            '/^(?:yes|yep|yeah|sure|ok|okay|proceed|continue|go|go ahead|do it|please proceed|please continue|please go ahead|sounds good|go for it|yes please|absolutely|confirmed?)[.! ]*$/i',
+            $value
+        );
+    }
+
+    public function isNegative(string $message): bool
+    {
+        $value=Str::lower(trim($message));
+        if($value==='') return false;
+
+        return (bool) preg_match(
+            '/^(?:no|nope|cancel|stop|never mind|nevermind|don\'t|do not|not now)[.! ]*$/i',
+            $value
+        );
+    }
+
+    public function shouldConfirmLarge(string $message, string $scope='page'): bool
+    {
+        $q=Str::lower(trim($message));
+        if($q==='') return false;
+
+        if(Str::contains($q,[
+            'delete','remove this page','delete page','delete website','remove website'
+        ])) return true;
+
+        $broadBuild=(bool)preg_match('/\b(build|create|design|generate|make)\b.{0,70}\b(website|site|homepage|landing page)\b/i',$message);
+        $broadRedesign=(bool)preg_match('/\b(redesign|rebrand|revamp|redo|rework|transform)\b.{0,80}\b(website|site|whole site|entire site|whole page|entire page|homepage)\b/i',$message);
+        $themeFamily=Str::contains($q,['rebrand the site','rebrand website','entire theme','whole theme','site-wide theme','sitewide theme']);
+        $explicitHexRebrand=(bool)preg_match('/#[0-9a-f]{3,6}\b/i',$message)
+            && Str::contains($q,['theme','brand','palette','color family','colour family','website color','website colour']);
+        $multiPage=Str::contains($q,['all pages','entire website','whole website','full website','complete website','5 pages','five pages']);
+
+        if($scope==='section' && !$broadBuild && !$multiPage && !$themeFamily && !$explicitHexRebrand) return false;
+
+        return $broadBuild || $broadRedesign || $themeFamily || $explicitHexRebrand || $multiPage;
+    }
+
+    public function put(string $actorKey, array $payload, int $ttlSeconds=1800): string
+    {
+        $token=(string)Str::uuid();
+        $payload['token']=$token;
+        $payload['created_at']=now()->toIso8601String();
+        Cache::put($this->tokenKey($actorKey,$token),$payload,now()->addSeconds($ttlSeconds));
+        Cache::put($this->latestKey($actorKey),$token,now()->addSeconds($ttlSeconds));
+        return $token;
+    }
+
+    public function peekLatest(string $actorKey): ?array
+    {
+        $token=Cache::get($this->latestKey($actorKey));
+        if(!is_string($token)||$token==='') return null;
+        $payload=Cache::get($this->tokenKey($actorKey,$token));
+        return is_array($payload)?$payload:null;
+    }
+
+
+    public function consume(string $actorKey,string $token): ?array
+    {
+        $token=trim($token);
+        if($token==='') return null;
+
+        $payload=Cache::pull($this->tokenKey($actorKey,$token));
+        $latest=Cache::get($this->latestKey($actorKey));
+        if(is_string($latest) && hash_equals($latest,$token)){
+            Cache::forget($this->latestKey($actorKey));
+        }
+        return is_array($payload)?$payload:null;
+    }
+
+    public function consumeLatest(string $actorKey): ?array
+    {
+        $token=Cache::pull($this->latestKey($actorKey));
+        if(!is_string($token)||$token==='') return null;
+        $payload=Cache::pull($this->tokenKey($actorKey,$token));
+        return is_array($payload)?$payload:null;
+    }
+
+    public function cancelLatest(string $actorKey): void
+    {
+        $token=Cache::pull($this->latestKey($actorKey));
+        if(is_string($token)&&$token!=='') Cache::forget($this->tokenKey($actorKey,$token));
+    }
+
+    private function latestKey(string $actorKey): string
+    {
+        return 'luna-pending:latest:'.sha1($actorKey);
+    }
+
+    private function tokenKey(string $actorKey,string $token): string
+    {
+        return 'luna-pending:item:'.sha1($actorKey).':'.$token;
+    }
+}

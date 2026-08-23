@@ -1,0 +1,76 @@
+{
+  "version": 1,
+  "scopes": [
+    "element",
+    "item",
+    "section",
+    "page",
+    "site",
+    "global_token"
+  ],
+  "patterns": {
+    "element": [
+      "this heading",
+      "this text",
+      "this button",
+      "this image",
+      "this logo",
+      "this link",
+      "selected element"
+    ],
+    "item": [
+      "this card",
+      "this item",
+      "this service",
+      "this testimonial",
+      "this pricing card",
+      "selected card"
+    ],
+    "section": [
+      "this section",
+      "selected section",
+      "only this section",
+      "just this section"
+    ],
+    "page": [
+      "this page",
+      "whole page",
+      "entire page",
+      "all sections on this page"
+    ],
+    "site": [
+      "whole website",
+      "entire website",
+      "whole site",
+      "entire site",
+      "sitewide",
+      "site-wide",
+      "across the website",
+      "across the site"
+    ],
+    "global_token": [
+      "all headings",
+      "every heading",
+      "all buttons",
+      "every button",
+      "all cards",
+      "every card",
+      "all images",
+      "every image",
+      "all sections",
+      "every section",
+      "all h1",
+      "all h2",
+      "all h3"
+    ]
+  },
+  "rules": [
+    "Explicit scope wording outranks the UI selection.",
+    "A named individual target such as this card or this heading remains local even when the chat is opened at section scope.",
+    "All/every + semantic design primitive routes to a global design token when such a token exists.",
+    "Whole page affects the current page only; whole website/sitewide may affect site-level design settings.",
+    "Never broaden this/selected/only/just wording into page or site scope.",
+    "Ambiguous requests inherit the current UI scope and element context.",
+    "A site-wide token request should not iterate and mutate every Spark when a centralized token can represent the same intent."
+  ]
+}

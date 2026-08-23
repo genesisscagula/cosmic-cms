@@ -1,0 +1,17 @@
+{
+  "hotfix": "Direct Action No-Followup",
+  "status": "PASS_STATIC_QA",
+  "root_cause": "Legacy feasibility/clarification layers could still downgrade a canonical executable action into a conversational proposal, causing Luna to ask 'Shall I proceed?' even after the direct-action refactor.",
+  "fixes": [
+    "Canonical action now overrides legacy feasibility routing for normal executable actions.",
+    "Executable action no longer enters clarification-only branch.",
+    "Late feasibility fallback no longer blocks a canonical executable action.",
+    "Natural reply rules explicitly forbid Proceed/Build-it style follow-up language for executable actions."
+  ],
+  "regression": [
+    "Build me a premium restaurant website for Milagrina in Ormoc City. You choose the design and build the homepage. -> execute directly.",
+    "Expected statuses: Thinking -> Planning -> Choosing the design -> Building your page -> Checking the result.",
+    "No Shall I proceed / Ready to build / Build it / Continue.",
+    "Expected result: blocks > 0 and verified final reply."
+  ]
+}

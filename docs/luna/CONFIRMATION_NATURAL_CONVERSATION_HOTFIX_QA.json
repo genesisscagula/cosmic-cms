@@ -1,0 +1,19 @@
+{
+  "hotfix": "Confirmation State + Natural Conversation",
+  "fixes": [
+    "Added 'Go' and additional affirmative aliases.",
+    "Confirmed-button resume no longer requires the current message to equal the original planned prompt.",
+    "Pending canonical schema is resumed as the exact action context.",
+    "Fresh-build pending records with empty operations no longer overwrite newly generated execution operations.",
+    "Customer-facing Luna replies hide Sparks/templates/planner/schema mechanics unless the user explicitly asks about Cosmic internals.",
+    "Confirmation replies describe the visible result rather than implementation mechanics."
+  ],
+  "expected_flow": [
+    "Build request -> clarify missing details if needed",
+    "Ready action -> one confirmation",
+    "Yes / Proceed / Go / Go ahead / Continue / Do it -> execute exact stored action",
+    "No second confirmation",
+    "No 'What would you like Luna to do?' after a valid confirmation",
+    "Successful execution clears pending state because it was consumed"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "batch": 2,
+  "name": "Direct Action Execution",
+  "status": "PASS_STATIC_QA",
+  "expected": [
+    "What can you do? -> chat -> reply only",
+    "Build me a restaurant website -> action/build -> execute immediately, no confirmation",
+    "Make this heading smaller -> action/update -> execute immediately, no confirmation",
+    "Publish my website -> action/publish -> publishing flow without normal Proceed round-trip",
+    "Delete this page -> destructive safety confirmation may remain"
+  ],
+  "removed_from_normal_flow": [
+    "Proceed",
+    "Continue",
+    "Go ahead",
+    "Build it",
+    "pending-action planning charge",
+    "second intent interpretation for confirmation"
+  ],
+  "next": "Batch 3 \u2014 Luna Conversation + Docs cleanup"
+}

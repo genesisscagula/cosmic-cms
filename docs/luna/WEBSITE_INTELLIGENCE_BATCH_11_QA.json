@@ -1,0 +1,16 @@
+{
+  "phase": "Luna Website Intelligence",
+  "batch": 11,
+  "name": "Design Critic",
+  "status": "PASS_STATIC_QA",
+  "next": "Batch 12 \u2014 Self-Correction / Recovery",
+  "runtime_tests": [
+    "Generate a normal premium home page and inspect design_critic score/decision before Visual QA.",
+    "Force a plan with a hero later in the sequence and verify one safe reorder moves it first.",
+    "Use repeated service-like sections and verify repetition findings are surfaced.",
+    "Create a sibling page with established Site DNA and verify critic flags an unintended theme conflict.",
+    "Confirm critic never outputs or inserts an unregistered Spark.",
+    "Confirm only one critic revision pass occurs.",
+    "Confirm Design Critic costs no extra credits and post-generation Visual QA still runs."
+  ]
+}

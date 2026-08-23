@@ -1,0 +1,109 @@
+/*
+ * Shared Builder / Preview / Export / Live responsive safety contract.
+ * Keep cross-surface layout rules here so one edit reaches both CSS bundles.
+ */
+:root {
+    --cosmic-button-height-tablet: var(--cosmic-button-height);
+    --cosmic-button-height-mobile: 48px;
+    --cosmic-button-px-tablet: 22px;
+    --cosmic-button-px-mobile: 18px;
+    --cosmic-input-height-tablet: var(--cosmic-input-height);
+    --cosmic-input-height-mobile: 48px;
+    --cosmic-card-padding-tablet: var(--cosmic-space-card-tablet);
+    --cosmic-card-padding-mobile: var(--cosmic-space-card-mobile);
+}
+
+.cosmic-render-shell,
+[data-cosmic-section-wrapper="1"] {
+    min-width: 0;
+}
+
+.cosmic-render-shell img,
+.cosmic-render-shell video,
+.cosmic-render-shell iframe {
+    max-width: 100%;
+}
+
+.cosmic-render-shell h1,
+.cosmic-render-shell h2,
+.cosmic-render-shell h3,
+.cosmic-render-shell h4,
+.cosmic-render-shell h5,
+.cosmic-render-shell h6,
+.cosmic-render-shell p,
+.cosmic-render-shell a,
+.cosmic-render-shell button {
+    overflow-wrap: anywhere;
+}
+
+/* Cross-surface semantic contrast. Several expansion Sparks intentionally use
+ * spans for editorial headings, so h1-h6-only guards are not sufficient. */
+[data-cosmic-resolved-theme="primary"] {
+    --cosmic-current-text: var(--cosmic-color-on-dark, var(--cosmic-on-primary, #f8fafc));
+    --cosmic-current-muted: var(--cosmic-on-primary-muted, rgba(248, 250, 252, 0.78));
+}
+
+[data-cosmic-resolved-theme="primary"] :is(
+    h1, h2, h3, h4, h5, h6,
+    .x-heading, .b2-heading, .b3-heading, .b4-heading, .b5-heading
+):not([data-cosmic-preserve-heading-color]) {
+    color: var(--cosmic-current-text) !important;
+}
+
+[data-cosmic-resolved-theme="primary"] :is(
+    .x-eyebrow, .x-intro,
+    .b2-eyebrow, .b2-intro,
+    .b3-eyebrow, .b3-intro,
+    .b4-eyebrow, .b4-intro,
+    .b5-eyebrow, .b5-intro
+) {
+    color: var(--cosmic-current-muted) !important;
+}
+
+[data-cosmic-resolved-theme="light"] {
+    --cosmic-current-text: var(--cosmic-on-surface, #172033);
+    --cosmic-current-muted: var(--cosmic-on-surface-muted, #64748b);
+}
+
+@media (max-width: 1024px) {
+    [data-cosmic-button],
+    .cosmic-button {
+        min-height: var(--cosmic-button-height-tablet);
+        padding-inline: var(--cosmic-button-px-tablet);
+        max-width: 100%;
+    }
+
+    [data-cosmic-form-field],
+    .cosmic-form-field {
+        min-height: var(--cosmic-input-height-tablet);
+    }
+
+    [data-cosmic-layout="card"] {
+        padding: var(--cosmic-card-padding-tablet);
+    }
+}
+
+@media (max-width: 767px) {
+    [data-cosmic-button],
+    .cosmic-button {
+        min-height: var(--cosmic-button-height-mobile);
+        padding-inline: var(--cosmic-button-px-mobile);
+        white-space: normal;
+        text-align: center;
+    }
+
+    [data-cosmic-form-field],
+    .cosmic-form-field {
+        min-height: var(--cosmic-input-height-mobile);
+    }
+
+    [data-cosmic-layout="card"] {
+        padding: var(--cosmic-card-padding-mobile);
+    }
+
+    [data-cosmic-layout="grid"] > *,
+    .cosmic-render-shell [class*="grid-cols-4"],
+    .cosmic-render-shell [class*="grid-cols-3"] {
+        min-width: 0;
+    }
+}

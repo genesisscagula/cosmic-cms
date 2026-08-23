@@ -1,0 +1,49 @@
+{
+  "version": 2,
+  "memory_layers": {
+    "brand": [
+      "theme_family",
+      "custom_brand_theme",
+      "heading_color",
+      "accent_direction"
+    ],
+    "typography": [
+      "font_display",
+      "font_body",
+      "typography"
+    ],
+    "components": [
+      "components",
+      "button_treatment",
+      "card_treatment",
+      "image_treatment",
+      "form_treatment"
+    ],
+    "layout": [
+      "section_layout",
+      "spacing_rhythm",
+      "container_behavior"
+    ],
+    "media": [
+      "media_direction",
+      "image_style",
+      "object_fit"
+    ],
+    "tone": [
+      "content_tone",
+      "design_direction",
+      "page_style"
+    ]
+  },
+  "rules": [
+    "Site DNA is website-level memory, not per-page memory.",
+    "Explicit user requests override remembered DNA.",
+    "Local element/section edits do not rewrite website DNA unless explicitly global.",
+    "Successful global token/theme/rebrand operations may update DNA.",
+    "Failed operations never become authoritative DNA.",
+    "Partial execution only persists verified global parts.",
+    "Sibling pages inherit DNA but may use different compatible Sparks and composition.",
+    "DNA stores concise durable decisions, not conversation transcripts.",
+    "Unknown values stay absent rather than being invented."
+  ]
+}

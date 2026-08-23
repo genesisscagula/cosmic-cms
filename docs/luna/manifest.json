@@ -1,0 +1,210 @@
+{
+  "version": 2,
+  "status": "canonical_documentation_foundation",
+  "runtime_registry": "resources/luna/capabilities.json",
+  "runtime_grounding_router": "App\\Services\\LunaKnowledgeRouter",
+  "documents": [
+    {
+      "file": "README.md",
+      "purpose": "Luna Documentation \u2014 Canonical Source of Truth"
+    },
+    {
+      "file": "PRODUCT.md",
+      "purpose": "Cosmic CMS Product and Luna"
+    },
+    {
+      "file": "CAPABILITIES.md",
+      "purpose": "Luna Capabilities"
+    },
+    {
+      "file": "BUILDER.md",
+      "purpose": "Builder Rules"
+    },
+    {
+      "file": "DESIGN_SYSTEM.md",
+      "purpose": "Centralized Design System"
+    },
+    {
+      "file": "HEADER_FOOTER.md",
+      "purpose": "Global Header and Footer"
+    },
+    {
+      "file": "MEDIA.md",
+      "purpose": "Media Rules"
+    },
+    {
+      "file": "PAGES.md",
+      "purpose": "Pages and Sparks"
+    },
+    {
+      "file": "TRIAL.md",
+      "purpose": "Trial / Staging Behavior"
+    },
+    {
+      "file": "PUBLISHING.md",
+      "purpose": "Publishing, Export, and Live Output"
+    },
+    {
+      "file": "CREDITS.md",
+      "purpose": "Credits and Billing Behavior"
+    },
+    {
+      "file": "CONVERSATION.md",
+      "purpose": "Luna Conversation Policy"
+    },
+    {
+      "file": "GUARDRAILS.md",
+      "purpose": "Luna Guardrails"
+    },
+    {
+      "file": "LIMITATIONS.md",
+      "purpose": "Documented Limitations"
+    },
+    {
+      "file": "QA.md",
+      "purpose": "Luna QA Checklist"
+    },
+    {
+      "file": "CAPABILITY_REGISTRY.md",
+      "purpose": "Capability Registry"
+    },
+    {
+      "file": "BATCH_3_GROUNDING_ROUTER.md",
+      "purpose": "Batch 3 Grounding Router"
+    },
+    {
+      "file": "BATCH_4_LEGACY_REPLY_CLEANUP.md",
+      "purpose": "Batch 4 Legacy Reply Cleanup"
+    },
+    {
+      "file": "BATCH_5_PENDING_PLAN_CONFIRMATION.md",
+      "purpose": "Batch 5 Pending Plan Confirmation"
+    },
+    {
+      "file": "BATCH_6_CONTEXTUAL_AI_UNIFIED_CHAT.md",
+      "purpose": "Batch 6 Contextual AI Unified Chat"
+    },
+    {
+      "file": "BATCH_6_1_INTENT_METADATA_ROUTER.md",
+      "purpose": "English Intent Index and Capability Metadata Router"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_1_PAGE_COMPOSITION.md",
+      "purpose": "Website Intelligence Batch 1 Page Composition Engine"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_2_DESIGN_CONTINUITY.md",
+      "purpose": "Website Intelligence Batch 2 Design Continuity"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_3_CONTENT_INTELLIGENCE.md",
+      "purpose": "Website Intelligence Batch 3 Content Intelligence"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_4_RESPONSIVE_INTELLIGENCE.md",
+      "purpose": "Website Intelligence Batch 4 Responsive Intelligence"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_5_VISUAL_QA.md",
+      "purpose": "Website Intelligence Batch 5 Visual QA Engine"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_6_SCOPE_INTELLIGENCE.md",
+      "purpose": "Website Intelligence Batch 6 Scope Intelligence"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_7_SMART_SPARK_EDITING.md",
+      "purpose": "Website Intelligence Batch 7 Smart Spark Editing"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_8_BUILDER_LIVE_PARITY.md",
+      "purpose": "Website Intelligence Batch 8 Builder Live Parity"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_9_EXECUTION_VERIFICATION.md",
+      "purpose": "Website Intelligence Batch 9 Execution Verification"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_10_SITE_DESIGN_DNA.md",
+      "purpose": "Website Intelligence Batch 10 Site Memory Design DNA"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_11_DESIGN_CRITIC.md",
+      "purpose": "Website Intelligence Batch 11 Design Critic"
+    },
+    {
+      "file": "WEBSITE_INTELLIGENCE_BATCH_12_SELF_CORRECTION_RECOVERY.md",
+      "purpose": "Website Intelligence Batch 12 Self-Correction Recovery"
+    },
+    {
+      "file": "SCHEMA_FIRST_INTENT_GATEWAY.md",
+      "purpose": "Canonical Schema-First Luna Intent Gateway"
+    },
+    {
+      "file": "CHAT_ACTION_ROUTER_BATCH_1.md",
+      "purpose": "Two-state Chat vs Action routing architecture"
+    },
+    {
+      "file": "LUNA_EXECUTION_PIPELINE_BATCHES_1_3.md",
+      "purpose": "Verified direct-action execution pipeline"
+    }
+  ],
+  "authority": [
+    "server_security_validation_permissions_billing",
+    "capability_registry_when_available",
+    "canonical_luna_docs"
+  ],
+  "runtime_registry_service": "App\\Services\\LunaCapabilityRegistry",
+  "grounded_surfaces": [
+    "public_global_luna",
+    "authenticated_global_luna",
+    "trial_page_luna",
+    "builder_page_luna"
+  ],
+  "legacy_reply_cleanup": "implemented_batch_4",
+  "conversation_reply_authority": "LunaNaturalReplyService + canonical knowledge + verified backend facts",
+  "next_conversation_batch": "batch_6_contextual_ai_icon_unified_chat",
+  "pending_plan_confirmation": "destructive_delete_only",
+  "large_creative_confirmation_status": "disabled",
+  "contextual_ai_icon_unified_chat": "implemented_batch_6",
+  "contextual_ai_icon_status": "supported",
+  "legacy_green_context_bubble": "removed",
+  "english_intent_index": "implemented_batch_6_1",
+  "capability_metadata_routing": "implemented_batch_6_1",
+  "intent_index_file": "resources/luna/intent_index.json",
+  "local_conversation_credit_behavior": "0 mutation credits / route API then natural reply API",
+  "website_intelligence_phase": "active",
+  "website_intelligence_batch_1": "page_composition_engine",
+  "page_composition_contract": "resources/luna/page_composition.json",
+  "website_intelligence_batch_2": "design_continuity",
+  "design_continuity_contract": "resources/luna/design_continuity.json",
+  "website_intelligence_batch_3": "content_intelligence",
+  "content_intelligence_contract": "resources/luna/content_intelligence.json",
+  "website_intelligence_batch_4": "responsive_intelligence",
+  "responsive_intelligence_contract": "resources/luna/responsive_intelligence.json",
+  "website_intelligence_batch_5": "visual_qa_engine",
+  "visual_qa_contract": "resources/luna/visual_qa.json",
+  "website_intelligence_batch_6": "scope_intelligence",
+  "scope_intelligence_contract": "resources/luna/scope_intelligence.json",
+  "website_intelligence_batch_7": "smart_spark_editing",
+  "smart_spark_editing_contract": "resources/luna/smart_spark_editing.json",
+  "website_intelligence_batch_8": "builder_live_parity",
+  "render_contract": "2026.08-b8",
+  "registered_renderer_coverage": "321/321",
+  "render_parity_contract": "resources/luna/render_parity.json",
+  "website_intelligence_batch_9": "execution_verification",
+  "execution_verification_contract": "resources/luna/execution_verification.json",
+  "website_intelligence_batch_10": "site_memory_design_dna",
+  "site_design_dna_contract": "resources/luna/site_design_dna.json",
+  "website_intelligence_batch_11": "design_critic",
+  "design_critic_contract": "resources/luna/design_critic.json",
+  "website_intelligence_batch_12": "self_correction_recovery",
+  "self_correction_contract": "resources/luna/self_correction_recovery.json",
+  "schema_first_intent_gateway": "v4-two-stage",
+  "canonical_intent_schema": "resources/luna/canonical_intent_schema.json",
+  "chat_action_router_batch_1": "v1",
+  "conversation_contract": "v2-chat-action",
+  "conversation_docs_batch_3": "v1",
+  "chat_action_simplification_batch_4": "complete",
+  "chat_action_simplification_series": "4/4 complete"
+}

@@ -1,0 +1,253 @@
+{
+  "version": 1,
+  "language": "en",
+  "intents": [
+    {
+      "id": "conversation.greeting",
+      "category": "conversation",
+      "priority": 100,
+      "terminal": true,
+      "patterns": [
+        "^(?:hi|hello|hey|hiya|howdy)[!. ]*$",
+        "^(?:good\\s+(?:morning|afternoon|evening))[!. ]*$",
+        "^(?:hello|hey)\\s+(?:luna|there)[!. ]*$"
+      ],
+      "tags": [
+        "greeting",
+        "small-talk",
+        "conversation"
+      ],
+      "aliases": [
+        "hi",
+        "hello",
+        "hey",
+        "good morning",
+        "good afternoon",
+        "good evening"
+      ],
+      "route": "local_reply",
+      "mutation": false,
+      "ai_required": false,
+      "credit_behavior": "zero",
+      "reply": "Hey! What would you like to work on?"
+    },
+    {
+      "id": "conversation.thanks",
+      "category": "conversation",
+      "priority": 98,
+      "terminal": true,
+      "patterns": [
+        "^(?:thanks|thank\\s+you|thanks\\s+a\\s+lot|many\\s+thanks|cheers)[!. ]*$"
+      ],
+      "tags": [
+        "thanks",
+        "acknowledgement",
+        "conversation"
+      ],
+      "aliases": [
+        "thanks",
+        "thank you",
+        "cheers"
+      ],
+      "route": "local_reply",
+      "mutation": false,
+      "ai_required": false,
+      "credit_behavior": "zero",
+      "reply": "You’re welcome. What would you like to work on next?"
+    },
+    {
+      "id": "conversation.acknowledgement",
+      "category": "conversation",
+      "priority": 95,
+      "terminal": true,
+      "patterns": [
+        "^(?:ok|okay|got\\s+it|understood|all\\s+right|alright)[!. ]*$"
+      ],
+      "tags": [
+        "acknowledgement",
+        "conversation"
+      ],
+      "aliases": [
+        "ok",
+        "okay",
+        "got it",
+        "understood"
+      ],
+      "route": "local_reply",
+      "mutation": false,
+      "ai_required": false,
+      "credit_behavior": "zero",
+      "reply": "Got it. What would you like me to work on?"
+    },
+    {
+      "id": "conversation.confirmation",
+      "category": "conversation",
+      "priority": 110,
+      "terminal": true,
+      "patterns": [
+        "^(?:yes|yep|yeah|sure|proceed|continue|go\\s+ahead|do\\s+it|yes\\s+please|please\\s+proceed)[!. ]*$"
+      ],
+      "tags": [
+        "confirmation",
+        "pending-action",
+        "conversation"
+      ],
+      "aliases": [
+        "yes",
+        "proceed",
+        "continue",
+        "go ahead",
+        "do it"
+      ],
+      "route": "pending_confirmation",
+      "mutation": false,
+      "ai_required": false,
+      "credit_behavior": "zero",
+      "reply": null
+    },
+    {
+      "id": "conversation.cancellation",
+      "category": "conversation",
+      "priority": 110,
+      "terminal": true,
+      "patterns": [
+        "^(?:no|nope|cancel|stop|never\\s*mind|not\\s+now|do\\s+not|don['’]t)[!. ]*$"
+      ],
+      "tags": [
+        "cancel",
+        "negative",
+        "pending-action",
+        "conversation"
+      ],
+      "aliases": [
+        "no",
+        "cancel",
+        "stop",
+        "never mind",
+        "not now"
+      ],
+      "route": "pending_cancellation",
+      "mutation": false,
+      "ai_required": false,
+      "credit_behavior": "zero",
+      "reply": null
+    },
+    {
+      "id": "conversation.capability_question",
+      "category": "conversation",
+      "priority": 90,
+      "terminal": false,
+      "patterns": [
+        "^(?:what|which)\\s+(?:all\\s+)?(?:can|could)\\s+(?:you|luna)\\b",
+        "^(?:can|could|would)\\s+(?:you|luna)\\b",
+        "^(?:do|does)\\s+(?:you|luna|cosmic\\s+cms)\\s+(?:support|allow|have)\\b",
+        "^(?:is|are)\\s+(?:it|this|there)\\s+(?:possible|supported|available)\\b",
+        "\\bwhat\\s+(?:can|could)\\s+luna\\s+do\\b",
+        "\\b(?:capabilities|limitations|limits)\\b"
+      ],
+      "tags": [
+        "capability",
+        "support",
+        "limits",
+        "question"
+      ],
+      "aliases": [
+        "what can you do",
+        "can you",
+        "do you support",
+        "is it possible",
+        "capabilities",
+        "limitations"
+      ],
+      "route": "knowledge",
+      "mutation": false,
+      "ai_required": true,
+      "credit_behavior": "zero"
+    },
+    {
+      "id": "conversation.help_question",
+      "category": "conversation",
+      "priority": 80,
+      "terminal": false,
+      "patterns": [
+        "^(?:how\\s+do\\s+i|how\\s+can\\s+i|where\\s+(?:can|do)\\s+i|how\\s+does\\s+(?:this|it)\\s+work)\\b",
+        "^(?:help|help\\s+me)\\b"
+      ],
+      "tags": [
+        "help",
+        "how-to",
+        "navigation",
+        "question"
+      ],
+      "aliases": [
+        "how do i",
+        "how can i",
+        "where can i",
+        "how does this work",
+        "help"
+      ],
+      "route": "knowledge",
+      "mutation": false,
+      "ai_required": true,
+      "credit_behavior": "zero"
+    },
+    {
+      "id": "action.website",
+      "category": "pages",
+      "priority": 70,
+      "terminal": false,
+      "patterns": [
+        "\\b(?:build|create|generate|design|redesign|revamp|rebrand)\\b.{0,80}\\b(?:website|site|homepage|home\\s+page|landing\\s+page)\\b"
+      ],
+      "tags": [
+        "build",
+        "website",
+        "page",
+        "generate",
+        "design"
+      ],
+      "aliases": [
+        "build website",
+        "create website",
+        "generate site",
+        "design homepage",
+        "landing page"
+      ],
+      "route": "action",
+      "mutation": true,
+      "ai_required": true,
+      "credit_behavior": "runtime"
+    },
+    {
+      "id": "action.edit",
+      "category": "builder",
+      "priority": 60,
+      "terminal": false,
+      "patterns": [
+        "\\b(?:change|update|edit|replace|add|remove|delete|move|reorder|redesign|make)\\b"
+      ],
+      "tags": [
+        "edit",
+        "change",
+        "update",
+        "builder",
+        "mutation"
+      ],
+      "aliases": [
+        "change",
+        "update",
+        "edit",
+        "replace",
+        "add",
+        "remove",
+        "delete",
+        "move",
+        "reorder"
+      ],
+      "route": "action",
+      "mutation": true,
+      "ai_required": true,
+      "credit_behavior": "runtime"
+    }
+  ]
+}

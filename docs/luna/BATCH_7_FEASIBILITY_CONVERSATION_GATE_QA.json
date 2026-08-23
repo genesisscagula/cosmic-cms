@@ -1,0 +1,20 @@
+{
+  "batch": 7,
+  "patches": 5,
+  "status": "PASS_STATIC_QA",
+  "patch_list": [
+    "Feasibility classifier",
+    "Docs-first capability decision",
+    "Recommendation/alternative conversation layer",
+    "Hard execution gate",
+    "Confirmation handoff for meaningful Builder mutations"
+  ],
+  "runtime_tests": [
+    "What can you do?",
+    "Can you create a header mega menu?",
+    "Can you create a mega footer?",
+    "Build me a luxury automotive service website with 6 sections.",
+    "Proceed",
+    "Cancel"
+  ]
+}

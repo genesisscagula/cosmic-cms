@@ -1,0 +1,17 @@
+{
+  "batch": "6.1",
+  "scope": "English intent index + capability tags/aliases/doc refs + fast local matcher",
+  "status": "PASS_STATIC_QA",
+  "patches": 4,
+  "expected_tests": {
+    "hello": "local greeting / 0 credits / no mutation",
+    "thanks": "local acknowledgement / 0 credits / no mutation",
+    "what can you do?": "knowledge/capability route / no mutation",
+    "can you create a mega menu?": "header mega-menu docs/capability route / no mutation",
+    "how do I edit my logo?": "help/knowledge route / no mutation",
+    "proceed": "pending confirmation route only",
+    "cancel": "pending cancellation route only",
+    "build me a luxury hotel website": "action + pending-plan confirmation",
+    "change this heading to About Us": "action route"
+  }
+}

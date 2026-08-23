@@ -1,0 +1,352 @@
+{
+  "version": 1,
+  "page_intents": {
+    "home": {
+      "aliases": [
+        "home",
+        "homepage",
+        "landing page",
+        "main page"
+      ],
+      "required_roles": [
+        "hero",
+        "value",
+        "services",
+        "proof",
+        "conversion"
+      ],
+      "optional_roles": [
+        "story",
+        "process",
+        "gallery",
+        "faq"
+      ],
+      "preferred_count": [
+        6,
+        8
+      ]
+    },
+    "about": {
+      "aliases": [
+        "about",
+        "about us",
+        "our story"
+      ],
+      "required_roles": [
+        "hero",
+        "story",
+        "proof",
+        "conversion"
+      ],
+      "optional_roles": [
+        "team",
+        "values",
+        "process",
+        "stats"
+      ],
+      "preferred_count": [
+        5,
+        7
+      ]
+    },
+    "services": {
+      "aliases": [
+        "services",
+        "our services",
+        "solutions",
+        "what we do"
+      ],
+      "required_roles": [
+        "hero",
+        "services",
+        "proof",
+        "conversion"
+      ],
+      "optional_roles": [
+        "process",
+        "comparison",
+        "faq"
+      ],
+      "preferred_count": [
+        5,
+        7
+      ]
+    },
+    "contact": {
+      "aliases": [
+        "contact",
+        "contact us",
+        "get in touch"
+      ],
+      "required_roles": [
+        "hero",
+        "contact"
+      ],
+      "optional_roles": [
+        "proof",
+        "faq",
+        "location"
+      ],
+      "preferred_count": [
+        3,
+        5
+      ]
+    },
+    "pricing": {
+      "aliases": [
+        "pricing",
+        "plans",
+        "packages"
+      ],
+      "required_roles": [
+        "hero",
+        "pricing",
+        "proof",
+        "conversion"
+      ],
+      "optional_roles": [
+        "comparison",
+        "faq"
+      ],
+      "preferred_count": [
+        4,
+        6
+      ]
+    },
+    "work": {
+      "aliases": [
+        "work",
+        "portfolio",
+        "projects",
+        "case studies"
+      ],
+      "required_roles": [
+        "hero",
+        "gallery",
+        "proof",
+        "conversion"
+      ],
+      "optional_roles": [
+        "process",
+        "stats"
+      ],
+      "preferred_count": [
+        4,
+        7
+      ]
+    },
+    "team": {
+      "aliases": [
+        "team",
+        "people",
+        "leadership"
+      ],
+      "required_roles": [
+        "hero",
+        "team",
+        "proof",
+        "conversion"
+      ],
+      "optional_roles": [
+        "story",
+        "values"
+      ],
+      "preferred_count": [
+        4,
+        6
+      ]
+    }
+  },
+  "industries": {
+    "automotive": {
+      "aliases": [
+        "automotive",
+        "auto repair",
+        "car service",
+        "mechanic",
+        "vehicle service"
+      ],
+      "priorities": [
+        "services",
+        "proof",
+        "process",
+        "conversion"
+      ],
+      "content": [
+        "services",
+        "trust",
+        "booking",
+        "location"
+      ],
+      "avoid": [
+        "pricing-first"
+      ]
+    },
+    "hospitality": {
+      "aliases": [
+        "hotel",
+        "resort",
+        "hospitality",
+        "accommodation"
+      ],
+      "priorities": [
+        "hero",
+        "gallery",
+        "experience",
+        "proof",
+        "conversion"
+      ],
+      "content": [
+        "rooms",
+        "amenities",
+        "experience",
+        "location",
+        "booking"
+      ],
+      "avoid": [
+        "dense-card-rhythm"
+      ]
+    },
+    "restaurant": {
+      "aliases": [
+        "restaurant",
+        "cafe",
+        "coffee",
+        "bakery",
+        "dining"
+      ],
+      "priorities": [
+        "hero",
+        "gallery",
+        "services",
+        "proof",
+        "conversion"
+      ],
+      "content": [
+        "menu",
+        "food",
+        "story",
+        "location",
+        "booking"
+      ],
+      "avoid": [
+        "corporate-comparison"
+      ]
+    },
+    "professional-services": {
+      "aliases": [
+        "consulting",
+        "finance",
+        "law",
+        "accounting",
+        "professional services"
+      ],
+      "priorities": [
+        "hero",
+        "services",
+        "proof",
+        "process",
+        "conversion"
+      ],
+      "content": [
+        "expertise",
+        "trust",
+        "process",
+        "consultation"
+      ],
+      "avoid": [
+        "visual-effects-first"
+      ]
+    },
+    "construction": {
+      "aliases": [
+        "construction",
+        "builder",
+        "contractor",
+        "renovation"
+      ],
+      "priorities": [
+        "hero",
+        "services",
+        "gallery",
+        "proof",
+        "process",
+        "conversion"
+      ],
+      "content": [
+        "services",
+        "projects",
+        "process",
+        "trust",
+        "quote"
+      ],
+      "avoid": [
+        "pricing-first"
+      ]
+    },
+    "technology": {
+      "aliases": [
+        "saas",
+        "software",
+        "technology",
+        "ai",
+        "app"
+      ],
+      "priorities": [
+        "hero",
+        "value",
+        "services",
+        "proof",
+        "pricing",
+        "conversion"
+      ],
+      "content": [
+        "product",
+        "features",
+        "proof",
+        "pricing",
+        "demo"
+      ],
+      "avoid": [
+        "generic-agency-flow"
+      ]
+    },
+    "health": {
+      "aliases": [
+        "medical",
+        "clinic",
+        "dental",
+        "dentist",
+        "wellness",
+        "fitness"
+      ],
+      "priorities": [
+        "hero",
+        "services",
+        "proof",
+        "process",
+        "contact"
+      ],
+      "content": [
+        "services",
+        "trust",
+        "team",
+        "appointment"
+      ],
+      "avoid": [
+        "unsupported-medical-claims"
+      ]
+    }
+  },
+  "rhythm": {
+    "rules": [
+      "one opening hero",
+      "avoid more than two dense card/grid sections consecutively",
+      "alternate information-heavy sections with media/story/proof when compatible",
+      "place proof before or near the primary conversion close",
+      "finish with a useful conversion/contact action rather than decorative filler",
+      "do not add pricing unless the page intent or user brief calls for pricing",
+      "do not add FAQ merely to fill section count"
+    ]
+  }
+}

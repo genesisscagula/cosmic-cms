@@ -1,0 +1,30 @@
+{
+  "batch": "Schema-First Intent Gateway v1",
+  "status": "PASS_STATIC_QA",
+  "architecture": "User -> canonical schema -> docs/clarification/action -> confirmation -> execution",
+  "regression_conversation": [
+    {
+      "user": "Hello Luna, what can you do?",
+      "expected": "capability/chat schema; docs reply only; credit_cost=0; pending_action=false; no mutation"
+    },
+    {
+      "user": "Can you build me a website for my restaurant in Ormoc City?",
+      "expected": "build schema; preserve restaurant + Ormoc entities; clarify only missing build information"
+    },
+    {
+      "user": "Restaurant name is \"Milagrina\" can you build me the home page",
+      "expected": "merge prior intent_context; business_name=Milagrina; action=build_page; target=home; confirmation required"
+    },
+    {
+      "user": "Proceed",
+      "expected": "resume stored canonical_schema and exact pending plan; no reinterpretation"
+    }
+  ],
+  "surfaces": [
+    "builder",
+    "trial_builder",
+    "public_global_luna",
+    "authenticated_global_luna"
+  ],
+  "credit_note": "Intent routing itself does not deduct Cosmic user credits. Informational and clarification responses return 0 credits; existing billable planning/execution remains downstream."
+}

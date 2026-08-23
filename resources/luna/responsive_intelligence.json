@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "breakpoints": {
+    "tablet_max_px": 1024,
+    "mobile_max_px": 767
+  },
+  "defaults": {
+    "section_y": {
+      "desktop": "100px",
+      "tablet": "80px",
+      "mobile": "56px"
+    },
+    "section_x": {
+      "desktop": "28px",
+      "tablet": "24px",
+      "mobile": "20px"
+    },
+    "grid_gap": {
+      "desktop": "24px",
+      "tablet": "20px",
+      "mobile": "16px"
+    },
+    "card_padding": {
+      "desktop": "32px",
+      "tablet": "28px",
+      "mobile": "22px"
+    },
+    "button": {
+      "desktop_height": "52px",
+      "mobile_height": "48px",
+      "desktop_px": "24px",
+      "mobile_px": "18px"
+    }
+  },
+  "rules": [
+    "Desktop composition may be multi-column, but mobile content must retain logical reading order.",
+    "Three- and four-column information grids should collapse progressively; avoid preserving desktop-width cards on mobile.",
+    "Primary and secondary CTAs may sit inline on desktop but should wrap or stack when their labels would overflow.",
+    "Typography must use responsive role tokens rather than fixed desktop pixel sizes.",
+    "Section vertical and horizontal spacing should decrease deliberately on tablet/mobile rather than remain desktop-sized.",
+    "Images and video must preserve useful subject framing; use object-fit cover for photographic cards and contain for logos/brand marks.",
+    "Avoid fixed widths wider than the viewport, horizontal scroll, clipped headings, and off-canvas decorative elements that obscure content.",
+    "Tables/comparisons need an explicit small-screen strategy such as stacking or contained horizontal scrolling.",
+    "Navigation must use the product's responsive header behavior; page Sparks must not invent a second mobile navigation.",
+    "Interactive sliders/carousels need usable touch targets and must not rely on hover-only discovery."
+  ],
+  "risk_tokens": {
+    "grid": [
+      "grid",
+      "cards",
+      "bento",
+      "comparison",
+      "pricing"
+    ],
+    "media": [
+      "gallery",
+      "slider",
+      "video",
+      "parallax",
+      "image_sequence",
+      "before_after"
+    ],
+    "wide": [
+      "horizontal",
+      "marquee",
+      "comparison",
+      "table",
+      "timeline"
+    ],
+    "interactive": [
+      "slider",
+      "carousel",
+      "interactive",
+      "hover",
+      "mouse",
+      "cursor"
+    ]
+  }
+}

@@ -9,6 +9,7 @@ class TrialGeneration extends Model
     protected $fillable = [
         'token',
         'page_id',
+        'website_id',
         'media_pack_id',
         'email',
         'business_name',
@@ -23,6 +24,9 @@ class TrialGeneration extends Model
         'sections',
         'generated_blocks',
         'menu_structure',
+        'bundle_manifest',
+        'bundle_status',
+        'bundle_error',
         'preview_theme',
         'guest_credits',
         'owned_sparks',
@@ -58,6 +62,7 @@ class TrialGeneration extends Model
         'sections' => 'array',
         'generated_blocks' => 'array',
         'menu_structure' => 'array',
+        'bundle_manifest' => 'array',
         'preview_theme' => 'array',
         'guest_credits' => 'integer',
         'owned_sparks' => 'array',
@@ -82,5 +87,10 @@ class TrialGeneration extends Model
     public function page()
     {
         return $this->belongsTo(Page::class);
+    }
+
+    public function website()
+    {
+        return $this->belongsTo(Website::class);
     }
 }

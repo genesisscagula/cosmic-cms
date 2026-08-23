@@ -50,17 +50,26 @@ export const CosmicButtonText = (props) => <Type role="button" lunaTarget="butto
  */
 export const cosmicTypographyVars = (settings = {}) => {
     const roles = ["h1","h2","h3","h4","h5","h6","card-title","stat-title","card-body","lead","body","eyebrow","small","badge","meta","button"];
-    const fields = ["size","line","weight","tracking"];
+    const fields = ["size","line","weight","tracking","color"];
     const vars = {};
 
     if (settings.font_display) vars["--cosmic-font-display"] = String(settings.font_display);
     if (settings.font_body) vars["--cosmic-font-body"] = String(settings.font_body);
+    if (settings.heading_color) vars["--cosmic-color-heading"] = String(settings.heading_color);
+    if (settings.body_color) vars["--cosmic-color-body"] = String(settings.body_color);
+    if (settings.eyebrow_color) vars["--cosmic-color-eyebrow"] = String(settings.eyebrow_color);
 
     roles.forEach((role) => {
         fields.forEach((field) => {
             const key = `${role}_${field}`;
             if (settings[key] !== undefined && settings[key] !== null && settings[key] !== "") {
                 vars[`--cosmic-type-${role}-${field}`] = String(settings[key]);
+            }
+        });
+        ["tablet","mobile"].forEach((breakpoint) => {
+            const key = `${role}_size_${breakpoint}`;
+            if (settings[key] !== undefined && settings[key] !== null && settings[key] !== "") {
+                vars[`--cosmic-type-${role}-size-${breakpoint}`] = String(settings[key]);
             }
         });
     });

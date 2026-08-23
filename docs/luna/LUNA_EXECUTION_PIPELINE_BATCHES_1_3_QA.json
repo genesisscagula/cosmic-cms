@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "scope": "luna_verified_direct_action_batches_1_3",
+  "checks": [
+    {"id": "chat_route_only", "expected": "API 1 returns only chat or action", "status": "pass"},
+    {"id": "chat_reply_stop", "expected": "chat uses the natural reply service and stops", "status": "pass"},
+    {"id": "action_json_only", "expected": "action classification and planning are JSON-only and not user-facing", "status": "pass"},
+    {"id": "build_pipeline", "expected": "design/composition then locked content then apply then verify", "status": "pass"},
+    {"id": "update_pipeline", "expected": "target/change plan then apply then verify", "status": "pass"},
+    {"id": "publish_executor", "expected": "publish is routed to save, health check, and publish executor", "status": "pass"},
+    {"id": "navigation_executor", "expected": "navigation resolves an authorized destination outside the design planner", "status": "pass"},
+    {"id": "no_proceed_layer", "expected": "normal actions have no pending/proceed round trip", "status": "pass"},
+    {"id": "delete_safety_only", "expected": "only destructive delete retains token confirmation", "status": "pass"},
+    {"id": "verified_final_reply", "expected": "action completion copy follows verified execution", "status": "pass"},
+    {"id": "phase_sequence", "expected": "Thinking, Planning, Designing, Building, Checking", "status": "pass"}
+  ]
+}

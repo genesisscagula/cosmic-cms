@@ -1,0 +1,79 @@
+{
+  "version": 1,
+  "mode": "diagnose_then_recommend",
+  "auto_mutate": false,
+  "checks": {
+    "composition": {
+      "weight": 18,
+      "items": [
+        "hero_count",
+        "required_roles",
+        "conversion_close",
+        "dense_section_run"
+      ]
+    },
+    "content": {
+      "weight": 16,
+      "items": [
+        "generic_copy",
+        "repeated_headings",
+        "copy_density"
+      ]
+    },
+    "responsive": {
+      "weight": 18,
+      "items": [
+        "wide_layout_risk",
+        "interactive_touch_risk",
+        "media_small_screen_risk",
+        "grid_small_screen_risk"
+      ]
+    },
+    "design_consistency": {
+      "weight": 18,
+      "items": [
+        "responsive_token_coverage",
+        "radius_consistency",
+        "spacing_consistency",
+        "typography_token_coverage"
+      ]
+    },
+    "accessibility_visual": {
+      "weight": 12,
+      "items": [
+        "missing_alt_text",
+        "empty_link_labels",
+        "empty_button_labels"
+      ]
+    },
+    "media": {
+      "weight": 10,
+      "items": [
+        "missing_media_source",
+        "logo_cover_risk",
+        "image_aspect_risk"
+      ]
+    },
+    "conversion": {
+      "weight": 8,
+      "items": [
+        "missing_primary_action",
+        "excessive_action_labels"
+      ]
+    }
+  },
+  "severity": {
+    "critical": 30,
+    "high": 18,
+    "medium": 8,
+    "low": 1
+  },
+  "rules": [
+    "QA findings do not automatically mutate the page.",
+    "Report concrete findings, not vague aesthetic opinions.",
+    "Prefer global token recommendations for site-wide inconsistency and local recommendations for isolated Spark problems.",
+    "Do not claim pixel-perfect visual inspection from structural data alone.",
+    "A clean structural QA result is not proof of Builder/Live parity; parity is audited separately.",
+    "Never fabricate contrast ratios without computed foreground/background values."
+  ]
+}

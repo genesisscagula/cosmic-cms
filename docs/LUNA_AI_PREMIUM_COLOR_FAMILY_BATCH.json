@@ -1,0 +1,46 @@
+{
+  "batch": "Luna AI Premium Color Family",
+  "status": "PASS_STATIC_QA",
+  "example_prompt": "Can you make the website theme into this brand #224248",
+  "flow": [
+    "Detect explicit HEX rebrand/theme intent.",
+    "Ask Luna planner for a complete premium semantic color family.",
+    "Validate every HEX and force primary/heading/buttonPrimary to the exact user HEX.",
+    "Repair accessibility/separation failures using deterministic premium fallback values.",
+    "Persist the complete family as My Brand and map it into component design tokens.",
+    "Pass the exact stored brand palette into publish/export/live compiler."
+  ],
+  "schema": [
+    "sourceColor",
+    "primary",
+    "primaryHover",
+    "primarySoft",
+    "secondary",
+    "accent",
+    "background",
+    "surface",
+    "surfaceMuted",
+    "heading",
+    "text",
+    "muted",
+    "border",
+    "buttonPrimary",
+    "buttonText",
+    "buttonSecondary",
+    "buttonSecondaryText",
+    "success",
+    "warning",
+    "error",
+    "onPrimary",
+    "onDark",
+    "gradient"
+  ],
+  "guardrails": [
+    "Exact requested HEX cannot drift.",
+    "WCAG-style 4.5 text contrast repair for key text/button pairs.",
+    "Primary/secondary/accent and surface/border separation checks.",
+    "No named-theme operation for an explicit HEX rebrand.",
+    "Deterministic fallback if Luna omits or returns invalid palette values.",
+    "Dark/image hero contrast override remains authoritative."
+  ]
+}

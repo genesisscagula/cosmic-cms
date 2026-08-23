@@ -1,0 +1,28 @@
+{
+  "version": 4,
+  "route_contract": {
+    "api": 1,
+    "allowed_keys": ["intent"],
+    "allowed_values": ["chat", "action"]
+  },
+  "action_classifier_contract": {
+    "api": 2,
+    "output": "json_only",
+    "forbidden_user_facing_keys": ["reply", "message", "response", "suggestion", "question"]
+  },
+  "top_level_intents": ["chat", "action"],
+  "actions": ["none", "build", "update", "publish", "delete", "navigate"],
+  "scopes": ["none", "element", "item", "section", "page", "site", "global_token"],
+  "rules": [
+    "API 1 returns exactly chat or action and no other data.",
+    "chat goes to the natural reply API and then stops without mutation.",
+    "action goes to the structured action classifier whose output is never user-facing.",
+    "build routes through design/composition, locked content generation, apply, and verification.",
+    "update routes through target/change planning, apply, and verification.",
+    "publish and navigation use dedicated executors rather than the design planner.",
+    "All intermediate AI outputs are JSON only.",
+    "Normal build, update, publish, and navigate actions never require a proceed layer.",
+    "Only destructive delete may retain explicit safety confirmation.",
+    "A natural final reply is generated only after execution verification."
+  ]
+}

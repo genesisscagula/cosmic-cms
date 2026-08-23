@@ -1,0 +1,38 @@
+{
+  "version": 1,
+  "mode": "schema_preserving_edit",
+  "rules": [
+    "Prefer editing the current Spark when it can satisfy the request.",
+    "Never replace a Spark for copy-only, media-only, repeater CRUD, or bounded visual-token changes.",
+    "For repeater CRUD, discover the existing collection key and preserve sibling item schema.",
+    "Adding an item clones the nearest valid item shape, then applies only requested fields.",
+    "Removing an item must target an explicit item index or uniquely matched item label/title.",
+    "Element edits apply only to resolved matched paths.",
+    "Unknown edit keys are rejected rather than silently inserted.",
+    "A structural layout/media capability change may replace the Spark only when the current Spark cannot represent it.",
+    "Preserve type, render key, dynamic bindings, and unrelated fields."
+  ],
+  "collection_keys": [
+    "items",
+    "cards",
+    "services",
+    "features",
+    "steps",
+    "slides",
+    "images",
+    "testimonials",
+    "faqs",
+    "team",
+    "plans",
+    "logos",
+    "gallery"
+  ],
+  "protected_keys": [
+    "type",
+    "_renderKey",
+    "dynamic_binding",
+    "binding",
+    "source",
+    "query"
+  ]
+}
