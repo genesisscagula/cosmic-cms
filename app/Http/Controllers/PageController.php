@@ -872,10 +872,10 @@ class PageController extends Controller
                 ? ['enabled' => false, 'currency' => 'USD', 'currency_decimals' => 2, 'products' => [], 'categories' => []]
                 : $this->commerceWorkspacePayload($website),
             'contentWorkspace' => $isTrialMode ? ['types' => []] : ContentWorkspaceController::payload($website),
-            'previewUrl' => $isTrialMode || ! $website->last_preview_deployed_at
+            'previewUrl' => ! $website->last_preview_deployed_at
                 ? null
                 : app(PreviewDeploymentService::class)->urlForPage($website, $page),
-            'previewDeployment' => $isTrialMode ? null : [
+            'previewDeployment' => [
                 'deployed_at' => $website->last_preview_deployed_at?->toISOString(),
                 'error' => $website->preview_deployment_error,
                 'ready' => filled($website->preview_slug) && filled($website->last_preview_deployed_at),
@@ -1194,12 +1194,25 @@ class PageController extends Controller
             app(MediaAssetLifecycleService::class)->queueTrialSave($trial->fresh(['mediaPack', 'page']));
         }
 
+        $trialPreviewUrl=null;
+        $trialPreviewError=null;
+        if($trial!==null){
+            try{
+                $trialPreviewUrl=app(\App\Services\TrialStagingPublisherService::class)->publish($trial->fresh());
+            }catch(Throwable $exception){
+                report($exception);
+                $trialPreviewError='Your changes were saved, but the staging preview could not be refreshed yet.';
+            }
+        }
+
         return response()->json([
             'status' => 'success',
             'credits_spent' => 0,
             'credit_balance' => $trial === null ? $credits->balance($request->user()) : null,
-            'page_status' => 'draft',
-            'message' => 'Draft saved successfully. Theme credits are only charged when publishing.',
+            'page_status' => $trialPreviewUrl?'published':'draft',
+            'preview_url' => $trialPreviewUrl,
+            'preview_error' => $trialPreviewError,
+            'message' => $trialPreviewUrl?'Changes saved and the trial staging site was refreshed.':'Draft saved successfully. Theme credits are only charged when publishing.',
         ]);
     }
 
@@ -1275,7 +1288,7 @@ class PageController extends Controller
         abort_unless(
             $trial->status === 'ready'
             && ! $trial->claimed_at
-            && (int) $trial->page_id === (int) $page->id,
+            && $this->trialOwnsPage($trial, $page),
             404
         );
 
@@ -1309,10 +1322,11 @@ class PageController extends Controller
             $page->publish_error = null;
             $page->save();
 
-            $trial->update([
-                'generated_blocks' => $blocks,
-                'last_saved_at' => now(),
-            ]);
+            $trialUpdate = ['last_saved_at' => now()];
+            if ((int) $trial->page_id === (int) $page->id) {
+                $trialUpdate['generated_blocks'] = $blocks;
+            }
+            $trial->update($trialUpdate);
         });
 
         $balance = $trialCredits->consume($trial, TrialCreditService::PAGE_STYLE, 'page_style', ['style' => $validated['style']]);
@@ -1332,7 +1346,7 @@ class PageController extends Controller
     public function applyTrialTheme(Request $request, TrialGeneration $trial, Page $page, TrialCreditService $trialCredits)
     {
         abort_unless(
-            $trial->status === 'ready' && ! $trial->claimed_at && (int) $trial->page_id === (int) $page->id,
+            $trial->status === 'ready' && ! $trial->claimed_at && $this->trialOwnsPage($trial, $page),
             404
         );
 
@@ -1436,6 +1450,15 @@ class PageController extends Controller
         abort_if($expiresAt->isPast(), 410, 'This trial link has expired.');
 
         return $trial;
+    }
+
+    private function trialOwnsPage(TrialGeneration $trial, Page $page): bool
+    {
+        return (int) $trial->page_id === (int) $page->id
+            || (
+                (int) $trial->website_id > 0
+                && (int) $trial->website_id === (int) $page->website_id
+            );
     }
 
     private function hydrateSavedCustomSparksForPublish(Website $website, array $blocks): array

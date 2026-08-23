@@ -8,6 +8,8 @@
     "Adding an item clones the nearest valid item shape, then applies only requested fields.",
     "Removing an item must target an explicit item index or uniquely matched item label/title.",
     "Element edits apply only to resolved matched paths.",
+    "When an active repeater item is supplied, its item index is authoritative and matching must stay inside that item unless the user explicitly says all, every, or each item in that collection.",
+    "Slider navigation changes selection only; a normal edit targets the currently active slide and never a hidden sibling slide.",
     "Unknown edit keys are rejected rather than silently inserted.",
     "A structural layout/media capability change may replace the Spark only when the current Spark cannot represent it.",
     "Preserve type, render key, dynamic bindings, and unrelated fields."
@@ -26,6 +28,40 @@
     "plans",
     "logos",
     "gallery"
+  ],
+  "request_response_examples": [
+    {
+      "user_possible_request": "Change this slide heading to Summer Menu",
+      "expected_action": "Edit only the matched heading path inside the active slides item.",
+      "luna_response": "Done — I updated the heading on Slide N only."
+    },
+    {
+      "user_possible_request": "Replace this slide image",
+      "expected_action": "Replace only the matched media path inside the active slides item.",
+      "luna_response": "Done — I updated the image on Slide N only."
+    },
+    {
+      "user_possible_request": "Change all slides to use shorter headings",
+      "expected_action": "Apply the requested bounded change across the slides collection because the user explicitly requested all slides.",
+      "luna_response": "Done — I updated all slides."
+    },
+    {
+      "user_possible_request": "Change this card title",
+      "expected_action": "Edit only the selected repeater item's matched title path.",
+      "luna_response": "Done — I updated the title on Card N only."
+    },
+    {
+      "user_possible_request": "Delete this slide",
+      "expected_action": "Request destructive confirmation, then remove only the selected slide while preserving at least one slide.",
+      "luna_response": "Removed Slide N after confirmation."
+    }
+  ],
+  "response_rules": [
+    "A success response must describe the target that the server actually verified.",
+    "For active-item edits, name the item type and one-based item number in the response.",
+    "Never say done, updated, removed, added, or applied when execution verification cannot claim completion.",
+    "A partial result must identify that some requested work was not verified.",
+    "Manual direct edits cost zero credits and should say so in the Builder response."
   ],
   "protected_keys": [
     "type",

@@ -3,6 +3,7 @@
 namespace App\AI\Registries;
 
 use App\AI\Schemas\SchemaManager;
+use Illuminate\Support\Str;
 
 class SparkPlannerRegistry
 {
@@ -422,7 +423,14 @@ class SparkPlannerRegistry
             static fn (string $token): bool => str_contains($slug, $token)
         );
 
-        $imageLed = $containsAny($imageLedTokens)
+        $normalizedDescription = Str::lower($description);
+        $descriptionImageLed = Str::contains($normalizedDescription, [
+            'image-rich', 'image rich', 'image-led', 'image led', 'media-led', 'media led',
+            'photo-led', 'photo led', 'photography-led', 'photography led',
+        ]);
+
+        $imageLed = $descriptionImageLed
+            || $containsAny($imageLedTokens)
             || in_array($slug, ['feature_image_left', 'feature_image_right', 'image_cta_banner', 'hero_background_image', 'hero_editorial_overlay', 'hero_split_image', 'about_office_gallery'], true);
         $motion = $containsAny($motionTokens);
         $data = $containsAny($dataTokens);

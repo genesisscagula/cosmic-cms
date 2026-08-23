@@ -5,6 +5,7 @@ namespace App\Services;
 use App\AI\Schemas\SchemaManager;
 use Illuminate\Support\Str;
 use OpenAI\Laravel\Facades\OpenAI;
+use OpenAI\Exceptions\TransporterException;
 use RuntimeException;
 
 final class LunaTemplatePlannerService
@@ -59,6 +60,9 @@ SELECTION RULES
 - Prefer product-led/bento/dashboard/comparison templates for SaaS, AI and software.
 - Prefer credibility/process/consultation templates for legal, finance, consulting and professional services.
 - Avoid repetitive card/grid-heavy compositions when a more editorial or mixed-media template fits.
+- Image-led does not mean image-only. Prefer roughly 30–55% image-led sections and cap genuinely visual hospitality/work pages at 60%.
+- Never place image-heavy sections consecutively. Alternate them with a compatible story, process, values, statistics, text-led proof, FAQ, location, or contact Spark unless the user explicitly requests one continuous gallery sequence.
+- Break image-heavy runs with a compatible story, process, values, statistics, text-led proof, FAQ, location, or contact Spark. The inserted Spark must still serve the page purpose and industry.
 - Use composition_novelty_score and semantic_roles to distinguish otherwise equally relevant candidates. Prefer the more novel composition when industry, intent, quality and responsiveness are comparable.
 - Do not select a familiar composition merely because its generic tags match more words. Relevance remains first, then page-purpose coverage, then composition novelty.
 - Use media_mode, layout_style, text_density, visual_rhythm, visual_score and quality_score to create a premium balanced result.
@@ -70,7 +74,7 @@ SELECTION RULES
 - Never return a key that is not in the candidate metadata.
 TXT;
 
-        $response = OpenAI::chat()->create([
+        $response = $this->createChatCompletion([
             'model' => config('openai.planner_model', env('OPENAI_MODEL', 'gpt-5-mini')),
             'response_format' => ['type' => 'json_object'],
             'messages' => [
@@ -148,6 +152,36 @@ TXT;
         ];
     }
 
+    /**
+     * Retry only transient transport failures. A reset connection should not
+     * discard a valid public trial before its staged Website can be persisted.
+     */
+    private function createChatCompletion(array $payload): mixed
+    {
+        $attemptLimit = max(1, (int) config('openai.pipeline_stage_attempts', 2));
+        $delayMs = max(100, (int) config('openai.pipeline_retry_delay_ms', 350));
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= $attemptLimit; $attempt++) {
+            try {
+                return OpenAI::chat()->create($payload);
+            } catch (TransporterException $exception) {
+                $lastException = $exception;
+                logger()->warning('[LunaTemplatePlanner] OpenAI transport attempt failed.', [
+                    'attempt' => $attempt,
+                    'attempt_limit' => $attemptLimit,
+                    'message' => $exception->getMessage(),
+                ]);
+
+                if ($attempt < $attemptLimit) {
+                    usleep($delayMs * 1000);
+                }
+            }
+        }
+
+        throw $lastException;
+    }
+
     private function shortlist(string $prompt, array $templates, array $composition=[]): array
     {
         $terms = collect(preg_split('/[^a-z0-9]+/i', Str::lower($prompt)) ?: [])
@@ -179,6 +213,11 @@ TXT;
             $score += ($template['premium_level'] ?? '') === 'signature' ? 2 : 0;
             $score += ((int) ($template['composition_novelty_score'] ?? 50)) / 18;
             $score -= max(0, ((int) ($template['exact_composition_uses'] ?? 1)) - 1) * 2.5;
+            $imageRatio=(float)($template['image_heavy_ratio']??0);
+            $imageRun=(int)($template['max_consecutive_image_heavy']??0);
+            $score -= max(0,$imageRatio-0.60)*42;
+            $score -= max(0,$imageRun-1)*10;
+            $score += min(5,(int)($template['content_mode_count']??0))*1.2;
 
             $audit=$this->composition->audit($template['sections']??[],$composition);
             $requiredCount=max(1,count($composition['required_roles']??[]));

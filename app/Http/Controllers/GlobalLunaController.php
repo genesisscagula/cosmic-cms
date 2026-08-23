@@ -137,7 +137,13 @@ class GlobalLunaController extends Controller
             $facts['relevant_destination']='pricing page is available';
         }
 
-        $reply=$natural->compose($message,$context,$facts);
+        // Trial generation is already authorized and dispatched by the backend.
+        // Keep this acknowledgement deterministic so the public assistant never
+        // contradicts the trial flow with a misleading "no workspace" warning,
+        // and avoid spending another model call before the actual build begins.
+        $reply=$mode==='start_trial'
+            ? 'Got it — I’m creating your full multi-page trial website now.'
+            : $natural->compose($message,$context,$facts);
 
         return response()->json([
             'reply'=>$reply,

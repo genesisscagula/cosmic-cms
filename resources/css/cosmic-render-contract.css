@@ -45,6 +45,8 @@
 
 [data-cosmic-resolved-theme="primary"] :is(
     h1, h2, h3, h4, h5, h6,
+    [data-cosmic-type="h1"], [data-cosmic-type="h2"], [data-cosmic-type="h3"],
+    [data-cosmic-type="h4"], [data-cosmic-type="h5"], [data-cosmic-type="h6"],
     .x-heading, .b2-heading, .b3-heading, .b4-heading, .b5-heading
 ):not([data-cosmic-preserve-heading-color]) {
     color: var(--cosmic-current-text) !important;

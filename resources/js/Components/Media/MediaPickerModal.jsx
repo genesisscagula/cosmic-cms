@@ -18,6 +18,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
     const { props: pageProps } = usePage();
     const resolvedWebsiteId = Number(websiteId || pageProps?.website?.id || pageProps?.currentWebsite?.id || pageProps?.site?.id || 0) || null;
     const [loading, setLoading] = useState(false);
+    const [loadError, setLoadError] = useState('');
     const [uploading, setUploading] = useState(false);
     const [folders, setFolders] = useState([]);
     const [assets, setAssets] = useState([]);
@@ -32,31 +33,71 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
     const [folderPending, setFolderPending] = useState(false);
     const [expandedFolders, setExpandedFolders] = useState(() => new Set());
     const uploadRef = useRef(null);
+    const loadAbortRef = useRef(null);
+    const uploadAbortRef = useRef(null);
+    const loadSequenceRef = useRef(0);
 
     const load = async () => {
         if (!resolvedWebsiteId || !open) return;
+        const sequence = ++loadSequenceRef.current;
+        loadAbortRef.current?.abort();
+        const controller = new AbortController();
+        loadAbortRef.current = controller;
         setLoading(true);
+        setLoadError('');
         try {
             const params = { per_page: 120, sort: 'newest', kind };
             if (folderId !== undefined) params.folder_id = folderId || '';
             if (source) params.source = source;
             if (search.trim()) params.search = search.trim();
-            const response = await axios.get(`/websites/${resolvedWebsiteId}/media-library`, { params, headers: { Accept: 'application/json' } });
+            const response = await axios.get(`/websites/${resolvedWebsiteId}/media-library`, {
+                params,
+                headers: { Accept: 'application/json' },
+                signal: controller.signal,
+                timeout: 15000,
+            });
+            if (sequence !== loadSequenceRef.current) return;
             setFolders(response.data?.folders || []);
             const incoming=response.data?.assets?.data || [];
             setAssets(kind==='video' ? incoming.filter(isVideoAsset) : incoming.filter((asset)=>!isVideoAsset(asset)));
         } catch (error) {
-            showCosmicNotification({ title:'Media Library unavailable', message:error.response?.data?.message || 'Could not load media.', tone:'error' });
-        } finally { setLoading(false); }
+            if (axios.isCancel(error) || error?.code === 'ERR_CANCELED') return;
+            if (sequence !== loadSequenceRef.current) return;
+            const message=error?.code === 'ECONNABORTED'
+                ? 'Media loading took too long. The local server may still be finishing another request.'
+                : (error.response?.data?.message || 'Could not load media.');
+            setLoadError(message);
+            showCosmicNotification({ title:'Media Library unavailable', message, tone:'error' });
+        } finally {
+            if (sequence === loadSequenceRef.current) setLoading(false);
+        }
     };
 
-    useEffect(() => { if (open) { setSelected([]); load(); } }, [open, resolvedWebsiteId, folderId, source, kind]);
+    useEffect(() => {
+        if (open) {
+            setSelected([]);
+            return;
+        }
+        loadSequenceRef.current += 1;
+        loadAbortRef.current?.abort();
+        uploadAbortRef.current?.abort();
+        setLoading(false);
+        setUploading(false);
+        setLoadError('');
+    }, [open]);
+    useEffect(() => {
+        if (!open || !resolvedWebsiteId) return;
+        const timer=setTimeout(load,search.trim()?250:0);
+        return ()=>{
+            clearTimeout(timer);
+            loadAbortRef.current?.abort();
+        };
+    }, [open, resolvedWebsiteId, folderId, source, kind, search]);
     useEffect(() => {
         if (open && !resolvedWebsiteId) {
             showCosmicNotification({ title:'Media Library unavailable', message:'This section is missing its website context. Close and reopen the Builder, then try again.', tone:'error' });
         }
     }, [open, resolvedWebsiteId]);
-    useEffect(() => { if (!open) return; const id=setTimeout(load, 250); return ()=>clearTimeout(id); }, [search]);
     useEffect(() => { if (!open) return; const handler=(e)=>{ if(e.key==='Escape') { if (folderMenu || folderDialog) { setFolderMenu(null); setFolderDialog(null); } else onClose?.(); } }; document.addEventListener('keydown',handler); return()=>document.removeEventListener('keydown',handler); }, [open,onClose]);
 
     const roots = useMemo(() => folders.filter((folder) => !folder.parent_id), [folders]);
@@ -213,6 +254,9 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
     const uploadFiles = async (files) => {
         const list = Array.from(files || []).filter((file)=>isSupportedMediaFile(file, kind));
         if (!list.length) return;
+        uploadAbortRef.current?.abort();
+        const controller=new AbortController();
+        uploadAbortRef.current=controller;
         setUploading(true);
         try {
             let last = null;
@@ -222,15 +266,27 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
                 if (folderId) form.append('folder_id', String(folderId));
                 form.append('source', 'upload');
                 form.append('kind', kind);
-                const response = await axios.post(`/websites/${resolvedWebsiteId}/media-library/assets`, form, { headers:{ Accept:'application/json' } });
+                const response = await axios.post(`/websites/${resolvedWebsiteId}/media-library/assets`, form, {
+                    headers:{ Accept:'application/json' },
+                    signal:controller.signal,
+                    timeout:60000,
+                });
                 last = response.data?.asset || last;
             }
             await load();
             if (last && !multiple) setSelected([last]);
             showCosmicNotification({ title:'Media uploaded', message:list.length === 1 ? `${kind==='video'?'Video':'Image'} added to the Media Library.` : `${list.length} ${kind==='video'?'videos':'images'} added to the Media Library.`, tone:'success' });
         } catch (error) {
-            showCosmicNotification({ title:'Upload failed', message:error.response?.data?.message || `The ${kind==='video'?'video':'image'} could not be uploaded.`, tone:'error' });
-        } finally { setUploading(false); if(uploadRef.current) uploadRef.current.value=''; }
+            if (!(axios.isCancel(error) || error?.code === 'ERR_CANCELED')) {
+                const message=error?.code === 'ECONNABORTED'
+                    ? 'The upload timed out. Please retry after the current Builder request finishes.'
+                    : (error.response?.data?.message || `The ${kind==='video'?'video':'image'} could not be uploaded.`);
+                showCosmicNotification({ title:'Upload failed', message, tone:'error' });
+            }
+        } finally {
+            if(uploadAbortRef.current===controller) setUploading(false);
+            if(uploadRef.current) uploadRef.current.value='';
+        }
     };
 
     if (!open || typeof document === 'undefined') return null;
@@ -263,7 +319,7 @@ export default function MediaPickerModal({ open, websiteId, onClose, onSelect, t
                     <div className="mt-4 flex flex-col gap-2 sm:flex-row"><input value={search} onChange={(e)=>setSearch(e.target.value)} placeholder="Search media…" className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/25 px-3 py-2.5 text-sm text-white outline-none focus:border-violet-400"/><input ref={uploadRef} type="file" multiple accept={kind==='video' ? VIDEO_MEDIA_ACCEPT : IMAGE_MEDIA_ACCEPT} className="hidden" onChange={(e)=>uploadFiles(e.target.files)}/><button type="button" disabled={uploading} onClick={()=>uploadRef.current?.click()} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-50">{uploading?'Uploading…':'↑ Upload'}</button></div>
                 </header>
                 <div className="flex-1 overflow-y-auto p-4 sm:p-5" onDragOver={(e)=>{ const types=[...e.dataTransfer.types]; if (types.includes('Files') && !types.includes('application/x-cosmic-media')) e.preventDefault(); }} onDrop={(e)=>{ const types=[...e.dataTransfer.types]; if (types.includes('application/x-cosmic-media')) { e.preventDefault(); return; } if (types.includes('Files')) { e.preventDefault(); uploadFiles(e.dataTransfer.files); } }}>
-                    {loading ? <div className="grid h-full place-items-center text-sm text-slate-500">Loading media…</div> : assets.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{assets.map((asset)=>{const active=selected.some((item)=>item.uuid===asset.uuid);return <button key={asset.uuid} type="button" draggable onDragStart={(event)=>dragStart(event, asset)} onClick={()=>toggle(asset)} onDoubleClick={()=>{onSelect?.(multiple?[asset]:asset);onClose?.();}} className={`group cursor-grab overflow-hidden rounded-2xl border text-left transition active:cursor-grabbing ${active?'border-violet-400 ring-2 ring-violet-500/20':'border-white/10 hover:border-white/25'}`}><div className="aspect-square overflow-hidden bg-black/25">{isVideoAsset(asset) ? <video src={asset.url} muted playsInline preload="metadata" className="h-full w-full object-cover"/> : <img src={asset.url} draggable={false} alt={asset.alt_text || asset.original_name || ''} className={`h-full w-full transition duration-300 ${isSvgAsset(asset) ? "object-contain p-3" : "object-cover group-hover:scale-[1.02]"}`}/>}</div><div className="p-2.5"><p className="truncate text-xs font-semibold text-white">{asset.original_name}</p><p className="mt-1 truncate text-[10px] uppercase tracking-wide text-slate-600">{sourceLabel(asset.source)}</p></div></button>;})}</div> : <div className="grid h-full min-h-64 place-items-center rounded-2xl border border-dashed border-white/10 text-center"><div><div className="text-4xl">🖼️</div><p className="mt-3 text-sm font-semibold text-white">{kind==='video' ? 'No videos here yet' : 'No images here yet'}</p><p className="mt-1 text-xs text-slate-500">Upload or generate media and it will appear here.</p></div></div>}
+                    {loading ? <div className="grid h-full place-items-center text-sm text-slate-500">Loading media…</div> : loadError ? <div className="grid h-full min-h-64 place-items-center rounded-2xl border border-rose-400/20 bg-rose-400/[0.04] p-6 text-center"><div><p className="text-sm font-semibold text-white">Media did not finish loading</p><p className="mt-2 max-w-md text-xs leading-5 text-slate-400">{loadError}</p><button type="button" onClick={load} className="mt-4 rounded-xl bg-violet-500 px-4 py-2 text-xs font-bold text-white">Retry</button></div></div> : assets.length ? <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5">{assets.map((asset)=>{const active=selected.some((item)=>item.uuid===asset.uuid);return <button key={asset.uuid} type="button" draggable onDragStart={(event)=>dragStart(event, asset)} onClick={()=>toggle(asset)} onDoubleClick={()=>{onSelect?.(multiple?[asset]:asset);onClose?.();}} className={`group cursor-grab overflow-hidden rounded-2xl border text-left transition active:cursor-grabbing ${active?'border-violet-400 ring-2 ring-violet-500/20':'border-white/10 hover:border-white/25'}`}><div className="aspect-square overflow-hidden bg-black/25">{isVideoAsset(asset) ? <video src={asset.url} muted playsInline preload="metadata" className="h-full w-full object-cover"/> : <img src={asset.url} draggable={false} alt={asset.alt_text || asset.original_name || ''} className={`h-full w-full transition duration-300 ${isSvgAsset(asset) ? "object-contain p-3" : "object-cover group-hover:scale-[1.02]"}`}/>}</div><div className="p-2.5"><p className="truncate text-xs font-semibold text-white">{asset.original_name}</p><p className="mt-1 truncate text-[10px] uppercase tracking-wide text-slate-600">{sourceLabel(asset.source)}</p></div></button>;})}</div> : <div className="grid h-full min-h-64 place-items-center rounded-2xl border border-dashed border-white/10 text-center"><div><div className="text-4xl">🖼️</div><p className="mt-3 text-sm font-semibold text-white">{kind==='video' ? 'No videos here yet' : 'No images here yet'}</p><p className="mt-1 text-xs text-slate-500">Upload or generate media and it will appear here.</p></div></div>}
                 </div>
                 <footer className="flex items-center justify-between gap-3 border-t border-white/10 p-4"><p className="text-xs text-slate-500">{selected.length ? `${selected.length} selected` : (kind==='video' ? 'Select a video to continue' : 'Select an image to continue')}</p><div className="flex gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-semibold text-slate-300">Cancel</button><button type="button" disabled={!selected.length} onClick={()=>{onSelect?.(multiple?selected:selected[0]);onClose?.();}} className="rounded-xl bg-violet-500 px-4 py-2.5 text-sm font-bold text-white disabled:opacity-40">Use {multiple ? (kind==='video' ? 'Videos' : 'Images') : (kind==='video' ? 'Video' : 'Image')}</button></div></footer>
             </section>

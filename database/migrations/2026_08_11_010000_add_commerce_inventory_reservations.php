@@ -17,6 +17,7 @@ return new class extends Migration
 
     public function up(): void
     {
+        $created = false;
         if (! Schema::hasTable('commerce_inventory_reservations')) {
             Schema::create('commerce_inventory_reservations', function (Blueprint $table) {
                 $table->id();
@@ -37,7 +38,17 @@ return new class extends Migration
                 $table->index(['commerce_product_id', 'status', 'expires_at'], 'commerce_inventory_reservations_product_index');
                 $table->index(['commerce_product_variant_id', 'status', 'expires_at'], 'commerce_inventory_reservations_variant_index');
                 $table->index(['commerce_order_id', 'status'], 'commerce_inv_res_order_status_idx');
+                $table->foreign('website_id', 'commerce_inv_res_website_fk')->references('id')->on('websites')->cascadeOnDelete();
+                $table->foreign('commerce_order_id', 'commerce_inv_res_order_fk')->references('id')->on('commerce_orders')->cascadeOnDelete();
+                $table->foreign('commerce_order_item_id', 'commerce_inv_res_item_fk')->references('id')->on('commerce_order_items')->cascadeOnDelete();
+                $table->foreign('commerce_product_id', 'commerce_inv_res_product_fk')->references('id')->on('commerce_products')->nullOnDelete();
+                $table->foreign('commerce_product_variant_id', 'commerce_inv_res_variant_fk')->references('id')->on('commerce_product_variants')->nullOnDelete();
             });
+            $created = true;
+        }
+
+        if ($created || ! in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
         }
 
         $foreignKeys = [

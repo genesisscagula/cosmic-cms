@@ -109,6 +109,6 @@ class InitialTrialLogoService
             ."Infer a tasteful visual direction from this brief: ".mb_substr((string) ($trial->brand_prompt ?: $trial->prompt), 0, 900).". "
             ."Match the FINAL {$themeKey} website theme exactly: use {$primary} as the dominant visible color and {$accent} as the supporting accent. Do not invent unrelated hues. The header background is {$headerBackground}; keep every visible mark fully opaque and high-contrast against it. "
             ."Distinctive professional icon, transparent background, no watermark, no mockup, no scene. "
-            ."Compose it for the 650 × 200 (3.25:1) Cosmic header frame using contain, never cover. Keep roughly 10–15% transparent safety padding on every side; scale the whole symbol down proportionally if needed. Nothing may touch or cross the safe-area edges.";
+            ."Compose it for the 650 × 200 (3.25:1) Cosmic header frame using contain, never cover. Keep roughly 6–10% transparent safety padding on every side. Make the symbol substantial at header size—roughly 74–86% of the usable frame height—and do not place a tiny mark in a mostly empty canvas. Nothing may touch or cross the safe-area edges.";
     }
 }

@@ -112,6 +112,11 @@ final class VisualQueryBuilder
         return match (true) {
             str_contains($type, 'hero') => 'wide cinematic exterior',
             str_contains($context, 'team') || str_contains($context, 'leadership') => 'authentic people portrait',
+            str_contains($context, 'menu') || str_contains($context, 'dish') || str_contains($context, 'food') => 'signature plated cuisine close detail',
+            str_contains($context, 'restaurant_story') || str_contains($context, 'brand_story') => 'chef craft behind the scenes',
+            str_contains($context, 'atmosphere') => 'architectural dining interior ambience',
+            str_contains($context, 'location') || str_contains($context, 'visit') => 'welcoming storefront neighborhood arrival',
+            str_contains($context, 'reservation') => 'guests sharing a special dining occasion',
             str_contains($context, 'service') => 'service in action',
             str_contains($context, 'feature') => 'editorial lifestyle detail',
             str_contains($context, 'gallery') || str_contains($context, 'portfolio') => 'editorial portfolio photography',
@@ -119,7 +124,7 @@ final class VisualQueryBuilder
             str_contains($context, 'testimonial') => 'happy customer lifestyle',
             str_contains($context, 'process') => 'behind the scenes experience',
             str_contains($context, 'pricing') => 'premium customer experience',
-            str_contains($context, 'contact') || str_contains($context, 'cta') => 'welcoming customer experience',
+            str_contains($context, 'contact') || str_contains($context, 'cta') => 'welcoming human customer experience',
             $this->containsAny($prompt, ['yacht', 'cruise', 'sailing']) => 'cinematic ocean lifestyle',
             default => 'editorial photography',
         };

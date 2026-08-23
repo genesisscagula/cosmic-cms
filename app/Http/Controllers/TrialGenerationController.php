@@ -18,12 +18,14 @@ use App\Services\InitialTrialLogoService;
 use App\Services\LunaPexelsVideoService;
 use App\Services\LunaSiteBundlePlannerService;
 use App\Services\TrialSiteBundleService;
+use App\Services\TrialStagingPublisherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\Str;
+use Illuminate\Validation\ValidationException;
 use Inertia\Inertia;
 use OpenAI\Exceptions\TransporterException;
 
@@ -82,6 +84,7 @@ class TrialGenerationController extends Controller
         private readonly LunaPexelsVideoService $lunaVideos,
         private readonly LunaSiteBundlePlannerService $siteBundlePlanner,
         private readonly TrialSiteBundleService $trialSiteBundles,
+        private readonly TrialStagingPublisherService $trialStagingPublisher,
     ) {
     }
 
@@ -270,7 +273,14 @@ class TrialGenerationController extends Controller
 
             // Home is immediately usable. Remaining pages build after the HTTP
             // response so a five-page trial never recreates the old timeout.
-            BuildTrialSiteBundleJob::dispatchAfterResponse($trial->id);
+            foreach ((array) data_get($trial->fresh()->bundle_manifest, 'pages', []) as $bundlePage) {
+                if (! ($bundlePage['is_home'] ?? false) && (int) ($bundlePage['page_id'] ?? 0) > 0) {
+                    BuildTrialSiteBundleJob::dispatchAfterResponse($trial->id, (int) $bundlePage['page_id']);
+                }
+            }
+            if($trial->fresh()->bundle_status==='ready'){
+                try{$this->trialStagingPublisher->publish($trial->fresh());}catch(\Throwable $exception){report($exception);}
+            }
 
             Log::info('[MediaPack] Trial remote preview ready; local download deferred until purchase.', [
                 'media_pack_id' => $mediaPack->id,
@@ -419,8 +429,21 @@ class TrialGenerationController extends Controller
             'email' => ['required', 'email:rfc', 'max:255'],
         ]);
 
-        $email = Str::lower($validated['email']);
+        $email = Str::lower(trim($validated['email']));
         $previousEmail = Str::lower((string) $trial->email);
+        $emailAlreadyOwnsAnotherTrial = TrialGeneration::query()
+            ->whereKeyNot($trial->id)
+            ->whereRaw('LOWER(email) = ?', [$email])
+            ->where('status', 'ready')
+            ->whereNotNull('email_captured_at')
+            ->exists();
+
+        if ($emailAlreadyOwnsAnotherTrial) {
+            throw ValidationException::withMessages([
+                'email' => 'This email already has a trial website. Enter another email address.',
+            ]);
+        }
+
         $isNewLeadEmail = $previousEmail !== $email || blank($trial->email_captured_at);
         $welcomeAlreadySentToThisEmail = $trial->welcome_email_sent_at
             && Str::lower((string) $trial->welcome_email_address) === $email;
@@ -480,7 +503,14 @@ class TrialGenerationController extends Controller
                 )
             )
             : (array) $trial->preview_theme;
-        $freshMenuStructure = IndustryMenuRegistry::for($profile['industry']);
+        $freshBundlePlan = $this->siteBundlePlanner->plan($validated['prompt'], $profile['industry']);
+        $freshMenuStructure = collect($freshBundlePlan['pages'] ?? [])->map(fn (array $page) => [
+            'title' => (string) $page['title'],
+            'slug' => (string) $page['slug'],
+            'is_home' => (bool) ($page['is_home'] ?? false),
+            'sort_order' => (int) ($page['sort_order'] ?? 1),
+            'page_type' => (string) ($page['page_type'] ?? 'standard'),
+        ])->values()->all();
         $freshBrandContext = $this->trialBrandContext->build($profile, $validated['prompt']);
 
         try {
@@ -522,13 +552,8 @@ class TrialGenerationController extends Controller
             $freshThemeSettings['overlay_header_on_banner'] = false;
             $newToken = (string) Str::uuid();
 
-            DB::transaction(function () use ($trial, $generated, $validated, $newToken, $profile, $freshThemeSettings, $freshMenuStructure, $freshBrandContext) {
-                $trial->page()->lockForUpdate()->firstOrFail()->update([
-                    'title' => $profile['business_name'],
-                    'blocks' => $generated['blocks'],
-                    'status' => 'draft',
-                    'publish_error' => null,
-                ]);
+            DB::transaction(function () use ($trial, $generated, $validated, $newToken, $profile, $freshThemeSettings, $freshMenuStructure, $freshBundlePlan, $freshBrandContext) {
+                $this->trialSiteBundles->rebuild($trial, $profile, $freshBundlePlan, $generated, $freshThemeSettings);
 
                 $remoteImages = array_values($generated['remote_images'] ?? []);
                 $targetImageCount = min(10, max(0, (int) ($generated['target_image_count'] ?? 0)));
@@ -595,6 +620,15 @@ class TrialGenerationController extends Controller
             });
 
             $trial->refresh();
+
+            foreach ((array) data_get($trial->bundle_manifest, 'pages', []) as $bundlePage) {
+                if (! ($bundlePage['is_home'] ?? false) && (int) ($bundlePage['page_id'] ?? 0) > 0) {
+                    BuildTrialSiteBundleJob::dispatchAfterResponse($trial->id, (int) $bundlePage['page_id']);
+                }
+            }
+            if($trial->fresh()->bundle_status==='ready'){
+                try{$this->trialStagingPublisher->publish($trial->fresh());}catch(\Throwable $exception){report($exception);}
+            }
 
             // Patch 5: a full regeneration creates a fresh logo + favicon after the
             // new prompt, brand context and theme are committed. AI logos are

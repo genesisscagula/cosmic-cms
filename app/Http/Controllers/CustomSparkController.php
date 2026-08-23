@@ -6,6 +6,7 @@ use App\Helpers\CmsHtmlCompiler;
 use App\AI\Schemas\SchemaManager;
 use App\Support\PageStyleRegistry;
 use App\Models\CustomSpark;
+use App\Models\Page;
 use App\Models\Website;
 use App\Models\TrialGeneration;
 use App\Jobs\BuildVisualFirstCustomPageJob;
@@ -2093,18 +2094,41 @@ PROMPT;
             'target_scope'=>['nullable','in:page,section,header,footer'],
             'target_index'=>['nullable','integer','min:0','max:100'],
             'element_context'=>['nullable','string','max:6000'],
+            'target_item_index'=>['nullable','integer','min:0','max:100'],
+            'target_item_mode'=>['nullable','in:repeater_item'],
+            'target_collection_key'=>['nullable','string','max:80'],
             'target_resolved_theme'=>['nullable','string','max:40'],
             'confirmed'=>['nullable','boolean'],
             'pending_action_token'=>['nullable','string','max:100'],
+            'current_page_id'=>['nullable','integer','min:1'],
         ]);
         $blocks=json_decode($validated['blocks'],true);
         $header=json_decode((string)($validated['header']??'{}'),true);
         $footer=json_decode((string)($validated['footer']??'{}'),true);
         if(!is_array($blocks)) throw ValidationException::withMessages(['blocks'=>'The page could not be prepared for Luna.']);
+        $currentPage=null;
+        if(!empty($validated['current_page_id'])){
+            $currentPage=Page::query()->find((int)$validated['current_page_id']);
+            abort_unless(
+                $currentPage
+                && (
+                    (int)$trial->page_id===(int)$currentPage->id
+                    || ((int)$trial->website_id>0 && (int)$trial->website_id===(int)$currentPage->website_id)
+                ),
+                404,
+                'This page is not part of the trial website.'
+            );
+        }
         $siteMemory=json_decode((string)($validated['site_memory']??'{}'),true);
         if(!is_array($siteMemory))$siteMemory=[];
         $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
         if(!is_array($elementContext))$elementContext=[];
+        if(!isset($elementContext['itemIndex']) && isset($validated['target_item_index'])){
+            $elementContext['itemIndex']=(int)$validated['target_item_index'];
+        }
+        if(!isset($elementContext['collectionKey']) && !empty($validated['target_collection_key'])){
+            $elementContext['collectionKey']=(string)$validated['target_collection_key'];
+        }
 
         $scope=(string)($validated['target_scope']??'page');
         $targetIndex=$scope==='section'?(int)($validated['target_index']??-1):-1;
@@ -2148,6 +2172,9 @@ PROMPT;
                 'ui_scope'=>$scope,
                 'target_index'=>$targetIndex,
                 'has_blocks'=>count($blocks)>0,
+                'current_page_id'=>$currentPage?->id,
+                'current_page_title'=>$currentPage?->title,
+                'current_page_slug'=>$currentPage?->slug,
             ];
             $intentRoute=$intentGateway->route($prompt,$siteMemory,$routeContext);
             $canonicalIntent=($intentRoute['intent']??'chat')==='action'
@@ -2331,6 +2358,21 @@ PROMPT;
                 'applied_operations'=>[],
             ]);
         }
+        if($namedTheme=$this->lunaStandaloneNamedThemeKey($prompt)){
+            $siteMemory['theme_context']=['primary'=>$namedTheme,'scope'=>'site','status'=>'applied'];
+            return response()->json([
+                'reply'=>'Applied the '.Str::headline($namedTheme).' theme across the website.',
+                'blocks'=>$blocks,
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'theme_key'=>$namedTheme,
+                'page_style'=>null,
+                'credit_cost'=>0,
+                'credit_balance'=>$trialCredits->balance($trial),
+                'site_memory'=>$siteMemory,
+                'applied_operations'=>[['action'=>'theme','theme_key'=>$namedTheme,'verified'=>true]],
+            ]);
+        }
         $backgroundRemove=Str::contains($lower,['remove background image','remove the background image','remove background photo','no background image','clear background image']);
         $backgroundDarker=Str::contains($lower,['make background darker','darken the background','darker overlay','stronger overlay']);
         $backgroundLighter=Str::contains($lower,['make background lighter','lighten the background','lighter overlay','softer overlay']);
@@ -2507,26 +2549,15 @@ PROMPT;
 
         $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
         if(!is_array($elementContext))$elementContext=[];
+        if(!isset($elementContext['itemIndex']) && isset($validated['target_item_index'])){
+            $elementContext['itemIndex']=(int)$validated['target_item_index'];
+        }
+        if(!isset($elementContext['collectionKey']) && !empty($validated['target_collection_key'])){
+            $elementContext['collectionKey']=(string)$validated['target_collection_key'];
+        }
         if($namedTargetOverrodeSelection)$elementContext=[];
         if($elementContext && $selected){
-            $needles=array_values(array_filter([
-                trim((string)($elementContext['currentValue']??'')),
-                trim((string)($elementContext['url']??'')),
-            ]));
-            $paths=[];
-            $walk=function($value,$path='') use (&$walk,&$paths,$needles){
-                if(!is_array($value))return;
-                foreach($value as $key=>$item){
-                    $next=$path===''?(string)$key:$path.'.'.$key;
-                    if(is_scalar($item)){
-                        foreach($needles as $needle){
-                            if($needle!=='' && trim((string)$item)===$needle){$paths[]=$next;break;}
-                        }
-                    } elseif(is_array($item)){$walk($item,$next);}
-                }
-            };
-            $walk($selected);
-            $elementContext['matched_paths']=array_values(array_unique($paths));
+            $elementContext['matched_paths']=$smartSparkEditing->resolveMatchedPaths($selected,$elementContext,$prompt);
         }
 
         $system='You are Luna, the invisible website editor. Return JSON only: {"operations":[{"action":"edit|replace|insert_before|insert_after|delete|move|theme","index":0,"to_index":0,"spark_key":"registered key when needed","theme_key":"","changes":{},"instruction":""}],"header_changes":{},"footer_changes":{},"brand_color_family":null,"page_style":null}. Use ONLY Spark keys from the supplied catalog. Rank candidates by requested aliases/media/capabilities FIRST, selected-section semantic intent/category SECOND, then layout/style/industry/position fit. Never default to Hero merely because Hero also supports the requested media; preserve the selected section role unless the user explicitly asks to change it. For simple edits use edit and only existing schema keys. REPEATER/LIST CRUD IS NON-STRUCTURAL:
@@ -2578,6 +2609,9 @@ For the compatible premium Services family (services_bento_premium, services_edi
         $ops=array_values(array_slice(is_array($plan['operations']??null)?$plan['operations']:[],0,12));
         if($explicitBrandPrimary){
             $ops=array_values(array_filter($ops,fn($op)=>!(is_array($op)&&($op['action']??'')==='theme')));
+        } elseif($requestedThemeKey=$this->lunaRequestedThemeKey($prompt)) {
+            $ops=array_values(array_filter($ops,fn($op)=>!(is_array($op)&&($op['action']??'')==='theme')));
+            $ops[]=['action'=>'theme','theme_key'=>$requestedThemeKey];
         }
 
         // Deterministic structural correction: natural-language positioning commands
@@ -3024,6 +3058,12 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'page_style_changed'=>$trialPageStyle!==null,
             ]);
         }
+        $verifiedTargetReply=$smartSparkEditing->verifiedTargetReply(
+            $elementContext,
+            $prompt,
+            (string)($executionVerificationResult['status']??'failed')
+        );
+        if($verifiedTargetReply!==null)$reply=$verifiedTargetReply;
         return response()->json([
             'reply'=>$reply,
             'blocks'=>$next,
@@ -3508,6 +3548,11 @@ For the compatible premium Services family (services_bento_premium, services_edi
             'change brand colors','change the brand colours','change brand colours',
         ])) return true;
 
+        if(
+            preg_match('/\b(change|switch|apply|use|set|replace)\b/i',$q)
+            && preg_match('/\b(theme|palette|colou?r scheme|brand colou?rs?)\b/i',$q)
+        ) return true;
+
         $themeNames=['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
         foreach($themeNames as $theme){
             if(preg_match('/\b(?:use|switch\s+to|change\s+to|make\s+(?:the\s+)?(?:theme|colors?|colours?|palette)\s+)'.preg_quote($theme,'/').'\b/i',$q)){
@@ -3516,6 +3561,39 @@ For the compatible premium Services family (services_bento_premium, services_edi
         }
 
         return false;
+    }
+
+    /** Resolve a requested built-in theme without relying on planner wording. */
+    private function lunaRequestedThemeKey(string $prompt): ?string
+    {
+        if(!$this->lunaExplicitThemeChangeIntent($prompt)) return null;
+
+        $themes=['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
+        $matches=[];
+        foreach($themes as $theme){
+            if(preg_match_all('/\b'.preg_quote($theme,'/').'\b/i',$prompt,$found,PREG_OFFSET_CAPTURE)){
+                foreach($found[0] as $hit) $matches[]=['key'=>$theme,'offset'=>(int)$hit[1]];
+            }
+        }
+        if($matches===[]) return null;
+
+        usort($matches,fn($a,$b)=>$b['offset']<=>$a['offset']);
+        return $matches[0]['key'];
+    }
+
+    private function lunaStandaloneNamedThemeKey(string $prompt): ?string
+    {
+        $key=$this->lunaRequestedThemeKey($prompt);
+        if($key===null) return null;
+
+        $q=Str::lower($prompt);
+        if(Str::contains($q,[' and ',' also ',' plus ',' then ',' as well'])) return null;
+        if(Str::contains($q,[
+            'heading','copy','text','image','photo','logo','font','typography','spacing',
+            'layout','section','button','navigation','header','footer','publish','delete',
+        ])) return null;
+
+        return $key;
     }
 
     /** Resolve only known, authorized Builder destinations. */
@@ -3594,6 +3672,9 @@ For the compatible premium Services family (services_bento_premium, services_edi
             'target_scope'=>['nullable','in:page,section,header,footer'],
             'target_index'=>['nullable','integer','min:0','max:100'],
             'element_context'=>['nullable','string','max:6000'],
+            'target_item_index'=>['nullable','integer','min:0','max:100'],
+            'target_item_mode'=>['nullable','in:repeater_item'],
+            'target_collection_key'=>['nullable','string','max:80'],
             'target_resolved_theme'=>['nullable','string','max:40'],
             'confirmed'=>['nullable','boolean'],
             'pending_action_token'=>['nullable','string','max:100'],
@@ -3616,6 +3697,12 @@ For the compatible premium Services family (services_bento_premium, services_edi
         if(!is_array($components))$components=[];
         $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
         if(!is_array($elementContext))$elementContext=[];
+        if(!isset($elementContext['itemIndex']) && isset($validated['target_item_index'])){
+            $elementContext['itemIndex']=(int)$validated['target_item_index'];
+        }
+        if(!isset($elementContext['collectionKey']) && !empty($validated['target_collection_key'])){
+            $elementContext['collectionKey']=(string)$validated['target_collection_key'];
+        }
         if(!is_array($blocks)) {
             throw ValidationException::withMessages(['blocks'=>'The current page could not be prepared for Luna.']);
         }
@@ -4147,6 +4234,22 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'applied_operations'=>[],
             ]);
         }
+        if($namedTheme=$this->lunaStandaloneNamedThemeKey((string)$validated['prompt'])){
+            $siteMemory['theme_context']=['primary'=>$namedTheme,'scope'=>'site','status'=>'applied'];
+            return response()->json([
+                'reply'=>'Applied the '.Str::headline($namedTheme).' theme across the website.',
+                'mode'=>'reply',
+                'credit_cost'=>0,
+                'credit_balance'=>$user ? $credits->balance($user) : null,
+                'blocks'=>$blocks,
+                'header'=>is_array($header)?$header:[],
+                'footer'=>is_array($footer)?$footer:[],
+                'theme_key'=>$namedTheme,
+                'page_style'=>null,
+                'site_memory'=>$siteMemory,
+                'applied_operations'=>[['action'=>'theme','theme_key'=>$namedTheme,'verified'=>true]],
+            ]);
+        }
         $backgroundRemove=Str::contains($normalizedPrompt,['remove background image','remove the background image','remove background photo','no background image','clear background image']);
         $backgroundDarker=Str::contains($normalizedPrompt,['make background darker','darken the background','darker overlay','stronger overlay']);
         $backgroundLighter=Str::contains($normalizedPrompt,['make background lighter','lighten the background','lighter overlay','softer overlay']);
@@ -4522,24 +4625,7 @@ EXISTING WEBSITE BRAND CONSTRAINT: Preserve the current website theme '{$current
         $catalogJson=json_encode($usable,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
         if($namedTargetOverrodeSelection)$elementContext=[];
         if($elementContext && $scope==='section' && isset($blocks[$targetIndex])){
-            $needles=array_values(array_filter([
-                trim((string)($elementContext['currentValue']??'')),
-                trim((string)($elementContext['url']??'')),
-            ]));
-            $paths=[];
-            $walk=function($value,$path='') use (&$walk,&$paths,$needles){
-                if(!is_array($value))return;
-                foreach($value as $key=>$item){
-                    $next=$path===''?(string)$key:$path.'.'.$key;
-                    if(is_scalar($item)){
-                        foreach($needles as $needle){
-                            if($needle!=='' && trim((string)$item)===$needle){$paths[]=$next;break;}
-                        }
-                    } elseif(is_array($item)){$walk($item,$next);}
-                }
-            };
-            $walk($blocks[$targetIndex]);
-            $elementContext['matched_paths']=array_values(array_unique($paths));
+            $elementContext['matched_paths']=$smartSparkEditing->resolveMatchedPaths($blocks[$targetIndex],$elementContext,(string)$validated['prompt']);
         }
         $targetContext=$scope==='section' && isset($blocks[$targetIndex])
             ? json_encode($blocks[$targetIndex],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)
@@ -4696,6 +4782,9 @@ PROMPT;
         $explicitBrandPrimary=$this->lunaExplicitBrandColor((string)$validated['prompt']);
         if($explicitBrandPrimary){
             $operations=array_values(array_filter($operations,fn($op)=>!(is_array($op)&&($op['action']??'')==='theme')));
+        } elseif($requestedThemeKey=$this->lunaRequestedThemeKey((string)$validated['prompt'])) {
+            $operations=array_values(array_filter($operations,fn($op)=>!(is_array($op)&&($op['action']??'')==='theme')));
+            $operations[]=['action'=>'theme','theme_key'=>$requestedThemeKey];
         }
         if($scope==='section' && isset($blocks[$targetIndex])){
             $moveTo=null;
@@ -5300,11 +5389,15 @@ PROMPT;
         $allowedThemes=['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
         $themeKey=null;
         if($explicitThemeChange){
+            $themeKey=$this->lunaRequestedThemeKey((string)$validated['prompt']);
             foreach($operations as $operation){
-                if(($operation['action']??'')==='theme' && in_array(($operation['theme_key']??''),$allowedThemes,true)){
+                if($themeKey===null && ($operation['action']??'')==='theme' && in_array(($operation['theme_key']??''),$allowedThemes,true)){
                     $themeKey=(string)$operation['theme_key'];
                     break;
                 }
+            }
+            if($themeKey!==null && !collect($applied)->contains(fn($item)=>($item['action']??'')==='theme')){
+                $applied[]=['action'=>'theme','theme_key'=>$themeKey,'verified'=>true];
             }
         } else {
             // Hard server guard: model creativity may redesign layout/content, but
@@ -5485,6 +5578,12 @@ PROMPT;
                 'page_style_changed'=>$pageStyle!==null,
             ]);
         }
+        $verifiedTargetReply=$smartSparkEditing->verifiedTargetReply(
+            $elementContext,
+            (string)$validated['prompt'],
+            (string)($executionVerificationResult['status']??'failed')
+        );
+        if($verifiedTargetReply!==null)$reply=$verifiedTargetReply;
 
         return response()->json([
             'reply'=>$reply,

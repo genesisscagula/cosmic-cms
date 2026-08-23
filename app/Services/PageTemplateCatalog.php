@@ -9,7 +9,12 @@ class PageTemplateCatalog
 
     public static function all(): array
     {
-        return [
+        static $balanced = null;
+        if (is_array($balanced)) {
+            return $balanced;
+        }
+
+        $templates = [
             [
                 'key' => 'parallax-authority', 'name' => 'Parallax Authority',
                 'description' => 'A high-impact business landing page with parallax depth, proof, services and a strong close.',
@@ -3840,7 +3845,7 @@ class PageTemplateCatalog
                 'hero_media_mode' => 'image',
                 'overlay_header_recommended' => true,
                 'overlay_header_default' => true,
-                'sections' => ['hero_ken_burns_premium', 'restaurant_signature_dishes_premium', 'restaurant_story_menu_premium', 'restaurant_atmosphere_gallery_premium', 'testimonials_featured_story_premium', 'restaurant_reservation_cta_premium'],
+                'sections' => ['hero_ken_burns_premium', 'about_mission_grid', 'restaurant_signature_dishes_premium', 'stats_modern', 'testimonials_editorial_quotes_premium', 'contact_details', 'restaurant_reservation_cta_premium'],
             ],
             [
                 'key' => 'travel-cinematic-journal', 'name' => 'Travel Cinematic Journal', 'price_credits' => 240,
@@ -4646,7 +4651,7 @@ class PageTemplateCatalog
                 'hero_media_mode' => 'image',
                 'overlay_header_recommended' => true,
                 'overlay_header_default' => true,
-                'sections' => ['hero_ken_burns_premium', 'restaurant_story_menu_premium', 'brand_value_cards_premium', 'gallery_image_rail_premium', 'location_photo_cards_premium', 'cta_image_split_premium'],
+                'sections' => ['hero_ken_burns_premium', 'services_minimal_luxury', 'restaurant_story_menu_premium', 'about_mission_grid', 'gallery_image_rail_premium', 'cta_gradient_premium'],
             ],
             [
                 'key' => 'bakery-artisan-story', 'name' => 'Bakery Artisan Story', 'price_credits' => 240,
@@ -4996,7 +5001,7 @@ class PageTemplateCatalog
                 'hero_media_mode' => 'slider',
                 'overlay_header_recommended' => true,
                 'overlay_header_default' => true,
-                'sections' => ['hero_crossfade_gallery_premium', 'travel_destination_story_premium', 'travel_itinerary_visual_premium', 'content_visual_quote_premium', 'gallery_image_rail_premium', 'cta_image_split_premium'],
+                'sections' => ['hero_crossfade_gallery_premium', 'travel_destination_story_premium', 'services_horizontal', 'process_timeline', 'testimonials_editorial_quotes_premium', 'contact_split_premium'],
             ],
             [
                 'key' => 'roofer-project-proof', 'name' => 'Roofer Project Proof', 'price_credits' => 240,
@@ -5556,7 +5561,7 @@ class PageTemplateCatalog
                 'hero_media_mode' => 'slider',
                 'overlay_header_recommended' => true,
                 'overlay_header_default' => true,
-                'sections' => ['hero_cinematic_slider_premium', 'hotel_room_collection_premium', 'hotel_experience_cards_premium', 'location_city_spotlight_premium', 'proof_metric_gallery_premium', 'cta_background_media_premium'],
+                'sections' => ['hero_cinematic_slider_premium', 'hotel_room_collection_premium', 'services_feature_comparison', 'process_timeline', 'testimonials_editorial_quotes_premium', 'contact_split_premium'],
             ],
             [
                 'key' => 'trade-school-career-path', 'name' => 'Trade School Career Path', 'price_credits' => 240,
@@ -6623,6 +6628,8 @@ class PageTemplateCatalog
                 'sections' => ['hero_background_image', 'content_editorial_image_stack_premium', 'services_visual_directory_premium', 'features_image_index_premium', 'proof_case_story_premium', 'cta_floating_panel_premium'],
             ],
         ];
+
+        return $balanced = app(TemplateCompositionBalancer::class)->balanceAll($templates);
     }
 
     public static function plannerIndex(): array

@@ -77,12 +77,123 @@ final class LunaSmartSparkEditingService
         return ['block'=>$next,'collection'=>$collectionKey,'action'=>'repeater_remove','item_index'=>$index];
     }
 
+    public function resolveMatchedPaths(array $block,array $elementContext=[],string $prompt=''): array
+    {
+        $needles=array_values(array_filter([
+            trim((string)($elementContext['currentValue']??'')),
+            trim((string)($elementContext['url']??'')),
+        ],fn(string $value)=>$value!==''));
+        if($needles===[])return [];
+
+        $paths=[];
+        $walk=function($value,string $path='') use (&$walk,&$paths,$needles): void {
+            if(!is_array($value))return;
+            foreach($value as $key=>$item){
+                $next=$path===''?(string)$key:$path.'.'.$key;
+                if(is_scalar($item)){
+                    foreach($needles as $needle){
+                        if(trim((string)$item)===$needle){$paths[]=$next;break;}
+                    }
+                }elseif(is_array($item)){
+                    $walk($item,$next);
+                }
+            }
+        };
+
+        $collectionKey=$this->collectionKey($block,$elementContext);
+        $itemIndex=$this->itemIndex($elementContext);
+        $wholeCollection=$this->requestsWholeCollection($prompt,$collectionKey);
+        if(!$wholeCollection && $collectionKey!==null && $itemIndex!==null){
+            $items=$block[$collectionKey]??null;
+            if(is_array($items) && isset($items[$itemIndex]) && is_array($items[$itemIndex])){
+                $walk($items[$itemIndex],$collectionKey.'.'.$itemIndex);
+                $scopedPaths=array_values(array_unique($paths));
+                if($scopedPaths!==[]) return $scopedPaths;
+
+                // A visually broad wrapper can be mistaken for a repeater card
+                // (for example, a section-level CTA below a card grid). Recover
+                // only when every rendered value identifies one unique stored
+                // field in the complete block. Ambiguous repeated copy remains
+                // unresolved rather than changing a sibling card by accident.
+                $fallback=[];
+                foreach($needles as $needle){
+                    $needlePaths=[];
+                    $findNeedle=function($value,string $path='') use (&$findNeedle,&$needlePaths,$needle): void {
+                        if(!is_array($value)) return;
+                        foreach($value as $key=>$item){
+                            $next=$path===''?(string)$key:$path.'.'.$key;
+                            if(is_scalar($item) && trim((string)$item)===$needle) $needlePaths[]=$next;
+                            elseif(is_array($item)) $findNeedle($item,$next);
+                        }
+                    };
+                    $findNeedle($block);
+                    $needlePaths=array_values(array_unique($needlePaths));
+                    if(count($needlePaths)>1) return [];
+                    if(count($needlePaths)===1) $fallback[]=$needlePaths[0];
+                }
+                return array_values(array_unique($fallback));
+            }
+        }
+
+        $fieldPrefix=trim((string)($elementContext['fieldPrefix']??$elementContext['field_prefix']??''));
+        if(!$wholeCollection && $fieldPrefix!==''){
+            $scoped=array_filter($block,fn($value,$key)=>Str::startsWith((string)$key,$fieldPrefix),ARRAY_FILTER_USE_BOTH);
+            $walk($scoped);
+            return array_values(array_unique($paths));
+        }
+
+        $walk($block);
+        return array_values(array_unique($paths));
+    }
+
+    public function responseTarget(array $elementContext=[],string $prompt=''): ?array
+    {
+        $collection=trim((string)($elementContext['collectionKey']??$elementContext['collection_key']??''));
+        $index=$this->itemIndex($elementContext);
+        $type=Str::lower(trim((string)($elementContext['type']??'content')));
+        if($collection==='' || $index===null)return null;
+
+        $names=[
+            'slides'=>'slide','cards'=>'card','services'=>'service','features'=>'feature',
+            'steps'=>'step','testimonials'=>'testimonial','faqs'=>'FAQ','team'=>'team member',
+            'plans'=>'plan','logos'=>'logo','gallery'=>'gallery item','items'=>'item',
+        ];
+        $singular=$names[$collection]??Str::singular(str_replace('_',' ',$collection));
+        $whole=$this->requestsWholeCollection($prompt,$collection);
+        $label=$whole?'all '.str_replace('_',' ',$collection):Str::ucfirst($singular).' '.($index+1);
+        return [
+            'collection'=>$collection,
+            'item_index'=>$index,
+            'item_number'=>$index+1,
+            'type'=>$type!==''?$type:'content',
+            'whole_collection'=>$whole,
+            'label'=>$label,
+        ];
+    }
+
+    public function verifiedTargetReply(array $elementContext,string $prompt,string $status): ?string
+    {
+        $target=$this->responseTarget($elementContext,$prompt);
+        if($target===null)return null;
+        $label=$target['label'];
+        $type=str_replace(['background image','image'],['image','image'],(string)$target['type']);
+        $description=in_array($type,['heading','text','label','button','image'],true)?$type.' on '.$label:$label;
+
+        return match($status){
+            'complete'=>"Done — I updated {$description} only.",
+            'partial'=>"I updated part of {$description}, but at least one requested change could not be verified.",
+            default=>"I couldn't verify a change to {$description}, so I didn't claim it was completed.",
+        };
+    }
+
     public function contractDirective(): string
     {
         return "SMART SPARK EDIT CONTRACT\n".json_encode([
             'mode'=>$this->contract['mode']??'schema_preserving_edit',
             'rules'=>$this->contract['rules']??[],
             'collection_keys'=>$this->contract['collection_keys']??[],
+            'request_response_examples'=>$this->contract['request_response_examples']??[],
+            'response_rules'=>$this->contract['response_rules']??[],
         ],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
     }
 
@@ -109,6 +220,16 @@ final class LunaSmartSparkEditingService
             if(isset($context[$key])&&is_numeric($context[$key]))return (int)$context[$key];
         }
         return null;
+    }
+
+    private function requestsWholeCollection(string $prompt,?string $collectionKey): bool
+    {
+        if($collectionKey===null || trim($prompt)==='')return false;
+        $q=Str::lower($prompt);
+        $collection=preg_quote(Str::lower(str_replace('_',' ',$collectionKey)),'/');
+        $singular=preg_quote(Str::lower(Str::singular(str_replace('_',' ',$collectionKey))),'/');
+        return (bool)preg_match('/\b(?:all|every|each)\s+(?:the\s+)?(?:'.$collection.'|'.$singular.')\b/u',$q)
+            || (bool)preg_match('/\bacross\s+(?:all|every)\s+(?:the\s+)?(?:'.$collection.'|'.$singular.')\b/u',$q);
     }
 
     private function clearIdentityFields(array $item): array

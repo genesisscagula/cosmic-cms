@@ -132,6 +132,129 @@ final class TrialSiteBundleService
         });
     }
 
+    /**
+     * Replace an unclaimed trial's complete page architecture after the visitor
+     * explicitly requests a full regeneration. Existing matching page records
+     * are reused; obsolete trial-only pages are removed inside the transaction.
+     */
+    public function rebuild(
+        TrialGeneration $trial,
+        array $profile,
+        array $bundlePlan,
+        array $homeGeneration,
+        array $theme,
+    ): Page {
+        return DB::transaction(function () use ($trial, $profile, $bundlePlan, $homeGeneration, $theme): Page {
+            $trial = TrialGeneration::query()->lockForUpdate()->findOrFail($trial->id);
+            if ($trial->claimed_at || ! $trial->website_id) {
+                throw new RuntimeException('Only an active staged trial can be regenerated.');
+            }
+
+            $website = Website::query()->lockForUpdate()->findOrFail($trial->website_id);
+            $currentHome = Page::query()->lockForUpdate()->findOrFail($trial->page_id);
+            $existingBySlug = $website->pages()->get()->keyBy('slug');
+            $manifestPages = [];
+            $desiredPageIds = [];
+
+            foreach (array_values($bundlePlan['pages'] ?? []) as $index => $recipe) {
+                $isHome = (bool) ($recipe['is_home'] ?? $index === 0);
+                $slug = $isHome ? 'home' : (string) $recipe['slug'];
+                $page = $isHome ? $currentHome : $existingBySlug->get($slug);
+
+                if (! $page) {
+                    $page = $website->pages()->create([
+                        'title' => (string) $recipe['title'],
+                        'slug' => $slug,
+                        'parent_id' => null,
+                        'sort_order' => $index + 1,
+                        'page_type' => (string) ($recipe['page_type'] ?? 'standard'),
+                        'blocks' => [],
+                        'status' => 'draft',
+                    ]);
+                }
+
+                $page->forceFill([
+                    'title' => (string) $recipe['title'],
+                    'slug' => $slug,
+                    'parent_id' => null,
+                    'sort_order' => $index + 1,
+                    'page_type' => (string) ($recipe['page_type'] ?? 'standard'),
+                    'blocks' => $isHome ? array_values($homeGeneration['blocks'] ?? []) : [],
+                    'status' => 'draft',
+                    'published_blocks' => null,
+                    'published_html' => null,
+                    'published_at' => null,
+                    'last_published_at' => null,
+                    'publish_error' => null,
+                ])->save();
+
+                $desiredPageIds[] = $page->id;
+                $manifestPages[] = [
+                    ...$recipe,
+                    'page_id' => $page->id,
+                    'build_status' => $isHome ? 'ready' : 'queued',
+                    'built_at' => $isHome ? now()->toIso8601String() : null,
+                    'build_error' => null,
+                ];
+            }
+
+            if ($manifestPages === []) {
+                throw new RuntimeException('The selected Luna bundle has no pages.');
+            }
+
+            $website->pages()->whereNotIn('id', $desiredPageIds)->delete();
+            $menu = collect($manifestPages)->map(fn (array $page) => [
+                'label' => (string) $page['title'],
+                'url' => (string) $page['slug'],
+            ])->values()->all();
+            $header = is_array($website->global_header) ? $website->global_header : [];
+            $header['logo_text'] = (string) $profile['business_name'];
+            $header['menu'] = $menu;
+            $header['cta_url'] = 'contact';
+            $footer = is_array($website->global_footer) ? $website->global_footer : [];
+            $footer['logo_text'] = (string) $profile['business_name'];
+            $footer['copyright'] = '© '.now()->year.' '.$profile['business_name'].'. All rights reserved.';
+
+            $website->forceFill([
+                'name' => (string) $profile['business_name'],
+                'industry' => (string) $profile['industry'],
+                'location' => (string) $profile['location'],
+                'business_description' => (string) $profile['business_description'],
+                'theme_settings' => $theme,
+                'global_header' => $header,
+                'global_footer' => $footer,
+            ])->save();
+
+            $manifest = [
+                ...$bundlePlan,
+                'pages' => $manifestPages,
+                'staging_website_id' => $website->id,
+                'staging_owner_email' => (string) data_get($trial->bundle_manifest, 'staging_owner_email'),
+                'regenerated_at' => now()->toIso8601String(),
+            ];
+            $menuStructure = collect($manifestPages)->map(fn (array $page) => [
+                'title' => $page['title'],
+                'slug' => $page['slug'],
+                'is_home' => (bool) $page['is_home'],
+                'sort_order' => (int) $page['sort_order'],
+                'page_type' => (string) ($page['page_type'] ?? 'standard'),
+                'page_id' => $page['page_id'],
+            ])->values()->all();
+
+            $trial->forceFill([
+                'page_id' => (int) $manifestPages[0]['page_id'],
+                'menu_structure' => $menuStructure,
+                'bundle_manifest' => $manifest,
+                'bundle_status' => count($manifestPages) > 1 ? 'queued' : 'ready',
+                'bundle_error' => null,
+                'sections' => $homeGeneration['sections'] ?? [],
+                'generated_blocks' => $homeGeneration['blocks'] ?? [],
+            ])->save();
+
+            return Page::query()->findOrFail((int) $manifestPages[0]['page_id']);
+        });
+    }
+
     private function stagingOwner(): User
     {
         $email = Str::lower(trim((string) config('cosmic.trial_website_owner_email')));

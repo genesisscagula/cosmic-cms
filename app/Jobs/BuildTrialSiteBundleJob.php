@@ -6,6 +6,7 @@ use App\Models\Page;
 use App\Models\TrialGeneration;
 use App\Services\AiPageGenerationService;
 use App\Services\LunaPexelsVideoService;
+use App\Services\TrialStagingPublisherService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,15 +21,18 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 1;
-    public int $timeout = 1200;
+    public int $timeout = 600;
 
-    public function __construct(public int $trialId)
+    public function __construct(public int $trialId, public int $pageId)
     {
+        // Public trial pages are intentionally asynchronous even when a local
+        // environment keeps QUEUE_CONNECTION=sync for unrelated jobs.
+        $this->onConnection('database');
         $this->onQueue((string) config('cosmic-queue.queues.ai_builds', 'ai-builds'));
         $this->afterCommit();
     }
 
-    public function handle(AiPageGenerationService $generator, LunaPexelsVideoService $videos): void
+    public function handle(AiPageGenerationService $generator, LunaPexelsVideoService $videos, TrialStagingPublisherService $staging): void
     {
         $trial = TrialGeneration::query()->find($this->trialId);
         if (! $trial || $trial->claimed_at || $trial->status !== 'ready') {
@@ -36,68 +40,65 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
         }
 
         $trial->forceFill(['bundle_status' => 'building', 'bundle_error' => null])->save();
-        $failures = [];
-
-        foreach ((array) data_get($trial->bundle_manifest, 'pages', []) as $recipe) {
-            if (($recipe['is_home'] ?? false) || ($recipe['build_status'] ?? '') === 'ready') {
-                continue;
-            }
-
-            $page = Page::query()
-                ->where('website_id', $trial->website_id)
-                ->find((int) ($recipe['page_id'] ?? 0));
-            if (! $page) {
-                $failures[] = ($recipe['title'] ?? 'Page').': missing page record';
-                $this->markPage($trial->id, (int) ($recipe['page_id'] ?? 0), 'failed', 'Page record is missing.');
-                continue;
-            }
-            if (is_array($page->blocks) && $page->blocks !== []) {
-                $this->markPage($trial->id, $page->id, 'ready');
-                continue;
-            }
-
-            try {
-                $prompt = $this->pagePrompt($trial, $recipe);
-                $blocks = $generator->imagesWithoutRemoteDownloads(
-                    fn () => $generator->generateBlocks($prompt, array_values($recipe['sections'] ?? []))
-                );
-                $blocks = $videos->apply($prompt, $blocks);
-                $remote = $generator->applyStartPageRemoteImages($prompt, $blocks);
-                $blocks = array_values($remote['blocks'] ?? $blocks);
-
-                DB::transaction(function () use ($trial, $page, $blocks, $remote): void {
-                    $lockedPage = Page::query()->lockForUpdate()->findOrFail($page->id);
-                    if (! is_array($lockedPage->blocks) || $lockedPage->blocks === []) {
-                        $lockedPage->forceFill([
-                            'blocks' => $blocks,
-                            'status' => 'draft',
-                            'publish_error' => null,
-                        ])->save();
-                    }
-                    $this->mergeMedia($trial->id, $remote);
-                    $this->markPage($trial->id, $page->id, 'ready');
-                });
-            } catch (Throwable $exception) {
-                report($exception);
-                $failures[] = $page->title.': '.$exception->getMessage();
-                $this->markPage($trial->id, $page->id, 'failed', $exception->getMessage());
-            }
+        $recipe = collect((array) data_get($trial->bundle_manifest, 'pages', []))
+            ->first(fn (array $page) => (int) ($page['page_id'] ?? 0) === $this->pageId);
+        if (! is_array($recipe) || ($recipe['is_home'] ?? false)) {
+            return;
         }
 
+        $page = Page::query()->where('website_id', $trial->website_id)->find($this->pageId);
+        if (! $page) {
+            $this->markPage($trial->id, $this->pageId, 'failed', 'Page record is missing.');
+            $this->refreshBundleStatus($trial->id);
+            return;
+        }
+        if (is_array($page->blocks) && $page->blocks !== []) {
+            $this->markPage($trial->id, $page->id, 'ready');
+            if($this->refreshBundleStatus($trial->id)==='ready'){
+                try{$staging->publish($trial->fresh());}catch(Throwable $exception){report($exception);}
+            }
+            return;
+        }
+
+        try {
+            $prompt = $this->pagePrompt($trial, $recipe);
+            $blocks = $generator->imagesWithoutRemoteDownloads(
+                fn () => $generator->generateBlocks($prompt, array_values($recipe['sections'] ?? []))
+            );
+            $blocks = $videos->apply($prompt, $blocks);
+            $remote = $generator->applyStartPageRemoteImages($prompt, $blocks);
+            $blocks = array_values($remote['blocks'] ?? $blocks);
+
+            DB::transaction(function () use ($trial, $page, $blocks, $remote): void {
+                $lockedPage = Page::query()->lockForUpdate()->findOrFail($page->id);
+                if (! is_array($lockedPage->blocks) || $lockedPage->blocks === []) {
+                    $lockedPage->forceFill([
+                        'blocks' => $blocks,
+                        'status' => 'draft',
+                        'publish_error' => null,
+                    ])->save();
+                }
+                $this->mergeMedia($trial->id, $remote);
+                $this->markPage($trial->id, $page->id, 'ready');
+            });
+        } catch (Throwable $exception) {
+            report($exception);
+            $this->markPage($trial->id, $page->id, 'failed', $exception->getMessage());
+        }
+
+        $bundleStatus=$this->refreshBundleStatus($trial->id);
         $fresh = TrialGeneration::query()->find($trial->id);
+        if($bundleStatus==='ready' && $fresh){
+            try{$staging->publish($fresh);}catch(Throwable $exception){report($exception);}
+        }
         $statuses = collect(data_get($fresh?->bundle_manifest, 'pages', []))->pluck('build_status');
-        $ready = $statuses->every(fn ($status) => $status === 'ready');
-        $fresh?->forceFill([
-            'bundle_status' => $ready ? 'ready' : ($statuses->contains('ready') ? 'partial' : 'failed'),
-            'bundle_error' => $failures === [] ? null : implode("\n", array_slice($failures, 0, 5)),
-        ])->save();
 
         Log::info('[TrialSiteBundle] Background bundle build finished.', [
             'trial_id' => $trial->id,
             'bundle_key' => data_get($trial->bundle_manifest, 'bundle_key'),
-            'pages' => $statuses->count(),
+            'page_id' => $page->id,
             'ready' => $statuses->filter(fn ($status) => $status === 'ready')->count(),
-            'failures' => count($failures),
+            'total' => $statuses->count(),
         ]);
     }
 
@@ -166,5 +167,29 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
                 'updated_at' => now()->toIso8601String(),
             ],
         ])->save();
+    }
+
+    private function refreshBundleStatus(int $trialId): string
+    {
+        $trial = TrialGeneration::query()->lockForUpdate()->find($trialId);
+        if (! $trial) {
+            return 'missing';
+        }
+
+        $pages = collect(data_get($trial->bundle_manifest, 'pages', []));
+        $statuses = $pages->pluck('build_status');
+        $errors = $pages->pluck('build_error')->filter()->take(5)->implode("\n");
+        $status = match (true) {
+            $statuses->every(fn ($value) => $value === 'ready') => 'ready',
+            $statuses->contains(fn ($value) => in_array($value, ['queued', 'building'], true)) => 'building',
+            $statuses->contains('ready') => 'partial',
+            default => 'failed',
+        };
+
+        $trial->forceFill([
+            'bundle_status' => $status,
+            'bundle_error' => $errors !== '' ? $errors : null,
+        ])->save();
+        return $status;
     }
 }

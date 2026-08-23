@@ -33,6 +33,9 @@ const STATUS_LABELS = {
     completed: 'Completed',
     failed: 'Failed',
     expired: 'Expired',
+    generated_trial: 'Trial ready',
+    building_trial: 'Building pages',
+    partial_trial: 'Needs page retry',
 };
 
 function StatCard({ label, value, detail }) {
@@ -83,12 +86,12 @@ function LeadTable({ leads }) {
                 <div>
                     <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-300">Owner CRM</p>
                     <h2 className="mt-3 text-3xl font-bold text-white">Start & pricing signups</h2>
-                    <p className="mt-2 text-sm text-slate-400">Saved trial leads plus registered pricing/onboarding accounts, latest first.</p>
+                    <p className="mt-2 text-sm text-slate-400">Every Luna staging website, captured lead, and registered pricing account—latest first.</p>
                 </div>
                 <div className="grid gap-2 sm:grid-cols-3 xl:w-[680px]">
                     <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Search email, business, plan…" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-sm text-white outline-none placeholder:text-slate-600 focus:border-emerald-400/50" />
                     <select value={source} onChange={(e) => setSource(e.target.value)} className="rounded-xl border border-white/10 bg-[#111318] px-3 py-2.5 text-sm text-slate-300">
-                        <option value="all">All sources</option><option value="start">Start page</option><option value="pricing">Pricing page</option>
+                        <option value="all">All sources</option><option value="start">Luna trial</option><option value="pricing">Pricing page</option>
                     </select>
                     <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-white/10 bg-[#111318] px-3 py-2.5 text-sm text-slate-300">
                         <option value="all">All statuses</option>{statuses.map((item) => <option key={item} value={item}>{STATUS_LABELS[item] || item.replaceAll('_', ' ')}</option>)}
@@ -104,7 +107,7 @@ function LeadTable({ leads }) {
                             {filtered.map((lead) => <tr key={lead.key} className="border-t border-white/[0.07] text-slate-300">
                                 <td className="px-4 py-4"><div className="font-semibold text-white">{lead.email}</div>{lead.name !== '—' && <div className="mt-0.5 text-xs text-slate-500">{lead.name}</div>}</td>
                                 <td className="px-4 py-4"><div className="font-medium text-slate-200">{lead.business_name}</div><div className="mt-0.5 text-xs text-slate-500">{lead.industry}{lead.location && lead.location !== '—' ? ` · ${lead.location}` : ''}</div></td>
-                                <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${lead.source === 'start' ? 'bg-cyan-400/10 text-cyan-300' : 'bg-violet-400/10 text-violet-300'}`}>{lead.source === 'start' ? 'Start' : 'Pricing'}</span></td>
+                                <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${lead.source === 'start' ? 'bg-cyan-400/10 text-cyan-300' : 'bg-violet-400/10 text-violet-300'}`}>{lead.source === 'start' ? 'Luna trial' : 'Pricing'}</span></td>
                                 <td className="px-4 py-4 text-sm capitalize text-slate-300">{lead.selected_plan ? lead.selected_plan.replaceAll('_', ' ') : '—'}</td>
                                 <td className="px-4 py-4"><span className={`rounded-full px-2.5 py-1 text-xs font-bold ${lead.status === 'active' ? 'bg-emerald-400/10 text-emerald-300' : lead.status === 'failed' || lead.status === 'expired' ? 'bg-rose-400/10 text-rose-300' : 'bg-amber-400/10 text-amber-300'}`}>{STATUS_LABELS[lead.status] || String(lead.status || 'unknown').replaceAll('_', ' ')}</span></td>
                                 <td className="whitespace-nowrap px-4 py-4 text-xs text-slate-500">{lead.created_at_label || '—'}</td>
@@ -127,7 +130,7 @@ function LeadTable({ leads }) {
                                                     rel="noreferrer"
                                                     className="inline-flex rounded-lg border border-cyan-300/20 bg-cyan-300/10 px-3 py-1.5 text-xs font-bold text-cyan-200 transition hover:bg-cyan-300/15 hover:text-white"
                                                 >
-                                                    Open trial
+                                                    Open staging
                                                 </a>
                                                 <button
                                                     type="button"
@@ -137,6 +140,11 @@ function LeadTable({ leads }) {
                                                     {copiedKey === lead.key ? 'Copied!' : 'Copy link'}
                                                 </button>
                                             </div>
+                                            <p className="mt-2 text-[11px] text-slate-500">
+                                                {lead.page_count || 1} page{Number(lead.page_count || 1) === 1 ? '' : 's'}
+                                                {lead.bundle_status ? ` · ${String(lead.bundle_status).replaceAll('_', ' ')}` : ''}
+                                                {' · Regenerate inside Builder'}
+                                            </p>
                                         </div>
                                     ) : <span className="text-xs text-slate-700">No trial link</span>}
                                 </td>
@@ -202,10 +210,10 @@ export default function SalesIndex({ leads = [], leadStats = {} }) {
                             </p>
                             <div className="mt-8">
                                 <Link
-                                    href={route('start')}
+                                    href="/"
                                     className="inline-flex rounded-xl bg-cyan-400 px-5 py-3 text-sm font-bold text-slate-950 transition hover:bg-cyan-300"
                                 >
-                                    Open Start page
+                                    Open public Luna
                                 </Link>
                             </div>
                         </div>

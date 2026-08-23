@@ -151,11 +151,15 @@ final class ImageSlotResolver
 
         if (str_contains($type, 'case_stud')
             || str_contains($type, 'gallery')
-            || str_contains($type, 'portfolio')) {
+            || str_contains($type, 'portfolio')
+            || str_contains($type, 'location')) {
             return 'gallery';
         }
 
-        if (str_contains($type, 'service') || str_contains($type, 'feature')) {
+        if (str_contains($type, 'service')
+            || str_contains($type, 'feature')
+            || str_contains($type, 'menu')
+            || str_contains($type, 'dish')) {
             return 'services';
         }
 

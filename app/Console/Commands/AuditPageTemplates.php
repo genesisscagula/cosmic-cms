@@ -25,8 +25,13 @@ class AuditPageTemplates extends Command
                 'key' => $template['key'], 'score' => $audit['quality_score'], 'status' => $audit['quality_status'],
                 'sections' => count($template['sections'] ?? []), 'rhythm' => $meta['visual_rhythm'],
                 'media' => $meta['media_mode'], 'novelty' => $profile['composition_novelty_score'] ?? 0,
+                'image_heavy' => $audit['image_heavy_section_count'], 'image_ratio' => $audit['image_heavy_ratio'],
+                'image_run' => $audit['max_consecutive_image_heavy'], 'modes' => $audit['content_mode_count'],
+                'composition_issues' => implode(' ', $audit['composition_issues']),
                 'novelty_level' => $profile['composition_novelty_level'] ?? 'unknown',
                 'exact_uses' => $profile['exact_composition_uses'] ?? 1,
+                'auto_balanced' => (bool) ($template['auto_balanced'] ?? false),
+                'balanced_replacements' => count($template['balanced_replacements'] ?? []),
                 'invalid' => implode(',', $audit['invalid_sections']),
             ];
         });
@@ -40,11 +45,27 @@ class AuditPageTemplates extends Command
             'duplicate_groups' => $diversityReport['exact_duplicate_groups'],
             'average_novelty' => $diversityReport['average_novelty_score'],
             'familiar' => $diversityReport['familiar_templates'],
+            'image_rhythm_review' => $rows->filter(fn ($row) => $row['composition_issues'] !== '')->count(),
+            'auto_balanced' => $rows->where('auto_balanced', true)->count(),
+            'balanced_replacements' => $rows->sum('balanced_replacements'),
         ];
         if ($this->option('json')) { $this->line(json_encode(['summary'=>$summary,'diversity'=>$diversityReport,'templates'=>$rows->values()], JSON_PRETTY_PRINT)); return self::SUCCESS; }
         $this->info('Cosmic Template Audit'); $this->table(array_keys($summary), [array_values($summary)]);
         $issues = $rows->filter(fn ($r) => $r['status'] === 'invalid' || $r['invalid'] !== '');
-        if ($issues->isNotEmpty()) $this->table(['key','score','status','sections','rhythm','media','invalid'], $issues->values()->all());
+        if ($issues->isNotEmpty()) {
+            $this->table(
+                ['key','score','status','sections','rhythm','media','invalid'],
+                $issues->map(fn ($row) => collect($row)->only(['key','score','status','sections','rhythm','media','invalid'])->all())->values()->all()
+            );
+        }
+        $rhythmIssues = $rows->filter(fn ($row) => $row['composition_issues'] !== '');
+        if ($rhythmIssues->isNotEmpty()) {
+            $this->warn('Templates needing image/content rhythm review:');
+            $this->table(
+                ['key','score','status','image_heavy','image_ratio','image_run','modes','composition_issues'],
+                $rhythmIssues->map(fn ($row) => collect($row)->only(['key','score','status','image_heavy','image_ratio','image_run','modes','composition_issues'])->all())->values()->all()
+            );
+        }
         $this->line(sprintf(
             'Diversity: %d/%d registered Sparks used; %d unique compositions; %d exact duplicate groups; average novelty %.1f.',
             $diversityReport['unique_sparks_used'],

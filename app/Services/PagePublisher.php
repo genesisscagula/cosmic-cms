@@ -385,7 +385,10 @@ class PagePublisher
             return ['commerce' => [], 'commerce_runtime_endpoint' => ''];
         }
 
-        $currency = strtoupper((string) ($settings->currency ?: config('cosmic-commerce.default_currency', 'USD')));
+        // Most trial/service websites do not have a Commerce settings row yet.
+        // Publishing those sites must still export an empty storefront context
+        // using Cosmic's default currency instead of dereferencing null.
+        $currency = strtoupper((string) ($settings?->currency ?: config('cosmic-commerce.default_currency', 'USD')));
         $decimals = (int) config("cosmic-commerce.currencies.$currency.decimals", 2);
         $previews = app(PreviewDeploymentService::class);
         $runtimeBase = rtrim((string) config('services.cosmic.asset_base_url', config('app.url')), '/');

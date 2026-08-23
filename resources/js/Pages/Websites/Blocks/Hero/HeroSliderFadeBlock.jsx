@@ -223,6 +223,8 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
         <section
             data-cosmic-media-banner="true"
             data-cosmic-slider-active-index={activeIndex}
+            data-cosmic-active-item-index={activeIndex}
+            data-cosmic-active-item-collection="slides"
             data-cosmic-editable-hero-media="true"
             className="relative isolate overflow-hidden"
             onClick={handleGalleryEdit}
@@ -300,7 +302,8 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
             </div>
 
             <div className="absolute bottom-16 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 sm:bottom-6">
-                <button type="button" data-cosmic-builder-only="true" onClick={addSlide} className="cosmic-hero-slider-add rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Add slide</button>
+                <button type="button" data-cosmic-builder-only="true" data-cosmic-no-luna-hover="true" onClick={() => openEditor(activeIndex)} className="cosmic-hero-slider-edit rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit slide {activeIndex + 1}</button>
+                <button type="button" data-cosmic-builder-only="true" data-cosmic-no-luna-hover="true" onClick={addSlide} className="cosmic-hero-slider-add rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Add slide</button>
             </div>
 
             <div className="absolute bottom-6 right-6 z-40 flex items-center gap-3 sm:right-10 lg:right-14">
@@ -327,6 +330,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                             <button type="button" onClick={closeEditor} className="text-slate-400 hover:!text-white" aria-label="Close editor">×</button>
                         </div>
                         <div className="mt-6 grid gap-4 sm:grid-cols-2">
+                            <label className="grid gap-2 text-sm font-semibold text-slate-200 sm:col-span-2"><span>Image URL</span><input value={draft.image_url || ''} onChange={(event) => setDraft({ ...draft, image_url: event.target.value })} className="rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 !text-white outline-none focus:border-violet-400" /></label>
                             {[
                                 ['eyebrow', 'Eyebrow'],
                                 ['heading', 'Heading'],

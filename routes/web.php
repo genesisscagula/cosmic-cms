@@ -40,6 +40,7 @@ use App\Http\Controllers\AppearancePreferenceController;
 use App\Http\Controllers\QueueDashboardController;
 use App\Http\Controllers\CosmicPublicChatController;
 use App\Http\Controllers\CosmicChatInboxController;
+use App\Http\Controllers\FeedbackReportController;
 use App\Http\Controllers\CommerceCheckoutController;
 use App\Http\Controllers\CommerceCustomerController;
 use App\Http\Controllers\CommerceRuntimeController;
@@ -70,6 +71,10 @@ Route::post('/support/chat/lead', [CosmicPublicChatController::class, 'captureLe
 Route::post('/luna/public-chat', [GlobalLunaController::class, 'publicChat'])
     ->middleware(['throttle:30,1', \App\Http\Middleware\RejectOversizedRequest::class . ':32'])
     ->name('luna.public.chat');
+
+Route::post('/trials/{trial:token}/feedback', [FeedbackReportController::class, 'storeTrial'])
+    ->middleware(['throttle:10,1', \App\Http\Middleware\RejectOversizedRequest::class . ':9216'])
+    ->name('trial-feedback.store');
 
 // Public media delivery for structured Posts / Updates. This avoids depending on public/storage symlinks.
 Route::get('/websites/{website}/content/media/{filename}', [ContentWorkspaceController::class, 'showMedia'])
@@ -475,6 +480,14 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
             ->middleware('throttle:30,1')
             ->name('admin.chat.takeover');
     });
+    Route::prefix('admin/feedback')->middleware(\App\Http\Middleware\EnsurePlatformOwner::class)->group(function () {
+        Route::get('/', [FeedbackReportController::class, 'index'])->name('admin.feedback.index');
+        Route::get('/{feedbackReport}/screenshot', [FeedbackReportController::class, 'screenshot'])->name('admin.feedback.screenshot');
+        Route::get('/{feedbackReport}', [FeedbackReportController::class, 'show'])->name('admin.feedback.show');
+        Route::patch('/{feedbackReport}', [FeedbackReportController::class, 'update'])
+            ->middleware('throttle:60,1')
+            ->name('admin.feedback.update');
+    });
     Route::get('/admin/queues', [QueueDashboardController::class, 'index'])->name('admin.queues.index');
     Route::get('/admin/queues/status', [QueueDashboardController::class, 'status'])->name('admin.queues.status');
     Route::post('/admin/queues/retry-failed', [QueueDashboardController::class, 'retryFailed'])->middleware('throttle:10,1')->name('admin.queues.retry-failed');
@@ -499,6 +512,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::get('/sales', [SalesController::class, 'index'])
         ->middleware(\App\Http\Middleware\EnsurePlatformOwner::class)
         ->name('sales.index');
+    Route::post('/feedback', [FeedbackReportController::class, 'store'])
+        ->middleware(['throttle:10,1', \App\Http\Middleware\RejectOversizedRequest::class . ':9216'])
+        ->name('feedback.store');
     Route::get('/credits', [CreditController::class, 'index'])->name('credits.index');
     Route::post('/luna/chat', [GlobalLunaController::class, 'chat'])->middleware('throttle:cosmic-ai')->name('luna.global.chat');
     Route::post('/luna/explain-error', [GlobalLunaController::class, 'explainError'])->middleware('throttle:cosmic-ai')->name('luna.global.explain-error');

@@ -716,7 +716,50 @@ class AiPageGenerationService
             return trim($baseQuery.' project case study '.($slotIndex + 1));
         }
 
-        return $baseQuery;
+        $normalizedType = Str::lower($type);
+        $variants = match (true) {
+            Str::contains($normalizedType, ['menu', 'dish', 'food']) => [
+                'signature plated dish close up',
+                'chef plating in working kitchen',
+                'seasonal ingredients tactile detail',
+                'shared table with distinct dishes',
+            ],
+            Str::contains($normalizedType, ['atmosphere', 'gallery']) => [
+                'wide dining room establishing view',
+                'intimate table setting detail',
+                'architectural interior material detail',
+                'evening hospitality ambience with guests',
+            ],
+            Str::contains($normalizedType, ['location', 'visit', 'map']) => [
+                'restaurant storefront exterior',
+                'neighborhood streetscape context',
+                'welcoming entrance arrival detail',
+                'recognizable nearby landmark',
+            ],
+            Str::contains($normalizedType, ['story', 'brand', 'about']) => [
+                'chef or maker at work',
+                'hospitality team candid moment',
+                'artisan preparation close detail',
+                'guest experience documentary scene',
+            ],
+            Str::contains($normalizedType, ['reservation', 'contact', 'cta']) => [
+                'friends dining together naturally',
+                'special occasion table gathering',
+                'welcoming host greeting guests',
+                'evening exterior invitation',
+            ],
+            default => [
+                'wide establishing scene',
+                'authentic human interaction',
+                'close material detail',
+                'behind the scenes working moment',
+                'finished customer experience',
+            ],
+        };
+
+        $variant = $variants[$slotIndex % count($variants)];
+
+        return trim($baseQuery.' '.$variant);
     }
 
     private function imageRoleForBlock(string $type): string
@@ -724,8 +767,8 @@ class AiPageGenerationService
         return match (true) {
             str_starts_with($type, 'hero_') => 'hero',
             str_contains($type, 'team') || str_contains($type, 'testimonial') => 'people',
-            str_contains($type, 'gallery') || str_contains($type, 'portfolio') || str_contains($type, 'case_stud') => 'gallery',
-            str_contains($type, 'service') || str_contains($type, 'feature') => 'services',
+            str_contains($type, 'gallery') || str_contains($type, 'portfolio') || str_contains($type, 'case_stud') || str_contains($type, 'location') => 'gallery',
+            str_contains($type, 'service') || str_contains($type, 'feature') || str_contains($type, 'menu') || str_contains($type, 'dish') => 'services',
             default => 'general',
         };
     }

@@ -342,6 +342,9 @@
     "rules": [
       "one opening hero",
       "avoid more than two dense card/grid sections consecutively",
+      "never place image-heavy sections consecutively; alternate them with a compatible text, data, process, proof, location, or contact Spark unless the user explicitly requests one continuous gallery sequence",
+      "keep image-heavy sections near 30-55 percent and never above 60 percent, including hospitality and portfolio pages",
+      "image-led does not mean image-only; mix compatible story, process, values, statistics, text-led proof, location, or contact Sparks into visual pages",
       "alternate information-heavy sections with media/story/proof when compatible",
       "place proof before or near the primary conversion close",
       "finish with a useful conversion/contact action rather than decorative filler",

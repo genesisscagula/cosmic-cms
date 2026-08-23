@@ -8,7 +8,7 @@ final class LunaPageCompositionService
 {
     private array $rules;
 
-    public function __construct()
+    public function __construct(private readonly TemplateQualityAuditor $qualityAuditor)
     {
         $path=resource_path('luna/page_composition.json');
         $decoded=is_file($path)?json_decode((string)file_get_contents($path),true):[];
@@ -60,6 +60,18 @@ final class LunaPageCompositionService
             }else{$denseRun=0;}
         }
 
+        $imageProfile=$this->qualityAuditor->imageProfile($sections);
+        $visualIntent=in_array((string)($context['industry']??''),['restaurant','hospitality'],true)
+            || (string)($context['page_intent']??'')==='work';
+        $ratioLimit=$visualIntent?0.60:0.55;
+        $runLimit=1;
+        if(($imageProfile['ratio']??0)>$ratioLimit){
+            $issues[]=sprintf('Image-heavy section ratio is %.0f%%; mix in a compatible story, information, process, or proof Spark.',($imageProfile['ratio']??0)*100);
+        }
+        if(($imageProfile['max_consecutive']??0)>$runLimit){
+            $issues[]='Too many image-heavy sections are consecutive; break the run with a compatible non-image Spark.';
+        }
+
         $last=$roles ? $roles[array_key_last($roles)] : null;
         if(!in_array($last,['conversion','contact','pricing'],true)){
             $issues[]='The page does not end with a clear conversion/contact role.';
@@ -68,6 +80,7 @@ final class LunaPageCompositionService
         return [
             'pass'=>$issues===[],
             'roles'=>$roles,
+            'image_profile'=>$imageProfile,
             'issues'=>$issues,
         ];
     }
@@ -114,7 +127,7 @@ final class LunaPageCompositionService
             Str::contains($s,['testimonial','review','stats','achievement','client_logo'])=>'proof',
             Str::contains($s,['contact','lead_','cta_','image_cta','booking'])=>'conversion',
             Str::contains($s,['pricing','package'])=>'pricing',
-            Str::contains($s,['service','feature'])=>'services',
+            Str::contains($s,['service','feature','menu','dish','room_collection','treatment','program'])=>'services',
             Str::contains($s,['portfolio','case_stud','gallery','project'])=>'gallery',
             Str::contains($s,['process','timeline','workflow','steps'])=>'process',
             Str::contains($s,['team','leadership'])=>'team',

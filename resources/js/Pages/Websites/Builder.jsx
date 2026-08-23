@@ -388,6 +388,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [lunaHoverTarget, setLunaHoverTarget] = useState(null);
     const [lunaMessages, setLunaMessages] = useState([]);
     const [lunaUndoStack, setLunaUndoStack] = useState([]);
+    const [feedbackOpen, setFeedbackOpen] = useState(false);
+    const [feedbackCategory, setFeedbackCategory] = useState('bug');
+    const [feedbackDescription, setFeedbackDescription] = useState('');
+    const [feedbackScreenshot, setFeedbackScreenshot] = useState(null);
+    const [feedbackBusy, setFeedbackBusy] = useState(false);
+    const [feedbackError, setFeedbackError] = useState('');
     const lunaMessagesEndRef = useRef(null);
     const lunaPromptRef = useRef(null);
     const [lunaStatus, setLunaStatus] = useState('Ready');
@@ -434,10 +440,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [previewDeploymentError, setPreviewDeploymentError] = useState(initialPreviewDeployment?.error || '');
     const [saveError, setSaveError] = useState('');
     const [hasUnsavedTheme, setHasUnsavedTheme] = useState(false);
-    const [showTrialEmailModal, setShowTrialEmailModal] = useState(false);
+    const [showTrialEmailModal, setShowTrialEmailModal] = useState(() => Boolean(
+        trialMode && trialToken && !trialExperience?.email_captured
+    ));
     const [trialEmail, setTrialEmail] = useState(trialExperience?.email || '');
     const [trialEmailCaptured, setTrialEmailCaptured] = useState(Boolean(trialExperience?.email_captured));
     const [trialEmailSaving, setTrialEmailSaving] = useState(false);
+    const [trialEmailError, setTrialEmailError] = useState('');
     const [trialPurchasePending, setTrialPurchasePending] = useState(false);
     const [showRegenerateModal, setShowRegenerateModal] = useState(false);
     const [regeneratePrompt, setRegeneratePrompt] = useState('');
@@ -800,22 +809,99 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             context.drawImage(image, 0, 0, width, height);
 
             const pixels = context.getImageData(0, 0, width, height);
-            let left = width;
-            let top = height;
-            let right = -1;
-            let bottom = -1;
             const alphaThreshold = 8;
+            const scanVisibleBounds = () => {
+                let left = width;
+                let top = height;
+                let right = -1;
+                let bottom = -1;
+                for (let y = 0; y < height; y += 1) {
+                    for (let x = 0; x < width; x += 1) {
+                        const alpha = pixels.data[((y * width) + x) * 4 + 3];
+                        if (alpha <= alphaThreshold) continue;
+                        left = Math.min(left, x);
+                        top = Math.min(top, y);
+                        right = Math.max(right, x);
+                        bottom = Math.max(bottom, y);
+                    }
+                }
+                return { left, top, right, bottom };
+            };
 
-            for (let y = 0; y < height; y += 1) {
-                for (let x = 0; x < width; x += 1) {
-                    const alpha = pixels.data[((y * width) + x) * 4 + 3];
-                    if (alpha <= alphaThreshold) continue;
-                    left = Math.min(left, x);
-                    top = Math.min(top, y);
-                    right = Math.max(right, x);
-                    bottom = Math.max(bottom, y);
+            let bounds = scanVisibleBounds();
+
+            // A few image responses contain an opaque blank canvas even when
+            // transparent output was requested. Alpha-only trimming cannot see
+            // that whitespace. Remove only background-colored pixels connected
+            // to an outer edge; enclosed light details in the logo stay intact.
+            const visibleWidthBefore = Math.max(0, bounds.right - bounds.left + 1);
+            const visibleHeightBefore = Math.max(0, bounds.bottom - bounds.top + 1);
+            const fillsCanvas = visibleWidthBefore >= width * 0.96 && visibleHeightBefore >= height * 0.96;
+            if (fillsCanvas) {
+                const sampleStep = Math.max(1, Math.floor(Math.min(width, height) / 96));
+                const samples = [];
+                const addSample = (x, y) => {
+                    const offset = ((y * width) + x) * 4;
+                    if (pixels.data[offset + 3] <= 220) return;
+                    samples.push([pixels.data[offset], pixels.data[offset + 1], pixels.data[offset + 2]]);
+                };
+                for (let x = 0; x < width; x += sampleStep) {
+                    addSample(x, 0);
+                    addSample(x, height - 1);
+                }
+                for (let y = 0; y < height; y += sampleStep) {
+                    addSample(0, y);
+                    addSample(width - 1, y);
+                }
+
+                if (samples.length >= 8) {
+                    const background = [0, 1, 2].map((channel) => Math.round(
+                        samples.reduce((sum, sample) => sum + sample[channel], 0) / samples.length
+                    ));
+                    const isBorderBackground = (pixelIndex) => {
+                        const offset = pixelIndex * 4;
+                        if (pixels.data[offset + 3] <= alphaThreshold) return false;
+                        const dr = Math.abs(pixels.data[offset] - background[0]);
+                        const dg = Math.abs(pixels.data[offset + 1] - background[1]);
+                        const db = Math.abs(pixels.data[offset + 2] - background[2]);
+                        return Math.max(dr, dg, db) <= 42 && Math.sqrt((dr * dr) + (dg * dg) + (db * db)) <= 66;
+                    };
+                    const pixelCount = width * height;
+                    const visited = new Uint8Array(pixelCount);
+                    const queue = new Int32Array(pixelCount);
+                    let head = 0;
+                    let tail = 0;
+                    const enqueue = (x, y) => {
+                        if (x < 0 || y < 0 || x >= width || y >= height) return;
+                        const index = (y * width) + x;
+                        if (visited[index] || !isBorderBackground(index)) return;
+                        visited[index] = 1;
+                        queue[tail++] = index;
+                    };
+                    for (let x = 0; x < width; x += 1) {
+                        enqueue(x, 0);
+                        enqueue(x, height - 1);
+                    }
+                    for (let y = 0; y < height; y += 1) {
+                        enqueue(0, y);
+                        enqueue(width - 1, y);
+                    }
+                    while (head < tail) {
+                        const index = queue[head++];
+                        pixels.data[(index * 4) + 3] = 0;
+                        const x = index % width;
+                        const y = Math.floor(index / width);
+                        enqueue(x - 1, y);
+                        enqueue(x + 1, y);
+                        enqueue(x, y - 1);
+                        enqueue(x, y + 1);
+                    }
+                    context.putImageData(pixels, 0, 0);
+                    bounds = scanVisibleBounds();
                 }
             }
+
+            const { left, top, right, bottom } = bounds;
 
             if (right < left || bottom < top) return url;
 
@@ -864,7 +950,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
 
     useEffect(() => {
-        if (!trialMode || !trialToken || !trialEmailCaptured || trialLogoCropConfirmed) return;
+        if (!trialMode || !trialToken || trialLogoCropConfirmed) return;
         if (trialLogoCropPromptedRef.current || showTrialEmailModal || logoCropOpen) return;
 
         const logoUrl = trialExperience?.logo_url || data.global_header?.logo_image_url;
@@ -1327,51 +1413,35 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 form.append('website_id', website.id);
                 response = await axios.post(route('websites.logo.upload'), form);
             }
-            if (file.type === 'image/svg+xml') {
-                applyTrialLogo(response.data.url);
-                setLogoSyncState('logo_changed');
-                setGlobalSelections((prev) => ({
-                    ...prev,
-                    brand_original_logo_url: response.data.url,
-                    brand_active_logo_url: response.data.url,
-                    brand_logo_variants: {},
-                    logo_theme_sync_state: 'logo_changed',
-                    logo_theme_sync_source: 'upload',
-                    logo_theme_synced_theme: null,
-                    ...(response.data?.is_majority_white ? { overlay_header_on_banner: true } : {}),
+            if (!response.data?.url) throw new Error('The uploaded logo did not return a usable image URL.');
+
+            // Every manual format—including SVG—must pass through the same crop
+            // contract. The browser rasterizes SVG safely for framing, so a huge
+            // transparent artboard can no longer produce a tiny header logo.
+            setLogoSyncState('logo_changed');
+            setPendingSvgLogoMatch(null);
+            setGlobalSelections((prev) => ({
+                ...prev,
+                brand_original_logo_url: response.data.url,
+                brand_active_logo_url: response.data.url,
+                brand_logo_variants: {},
+                logo_theme_sync_state: 'logo_changed',
+                logo_theme_sync_source: 'upload',
+                logo_theme_synced_theme: null,
+                ...(response.data?.is_majority_white ? { overlay_header_on_banner: true } : {}),
+            }));
+
+            if (response.data?.is_majority_white) {
+                setData((current) => ({
+                    ...current,
+                    global_header: {
+                        ...(current.global_header || {}),
+                        overlay_header_on_banner: true,
+                    },
                 }));
-
-                // SVG uploads are free and keep the original artwork. If the
-                // uploaded SVG is predominantly white/light, make it visible by
-                // enabling header overlay locally. /start generation itself still
-                // defaults overlay OFF; this only reacts to an explicit upload.
-                if (response.data?.is_majority_white) {
-                    setData((current) => ({
-                        ...current,
-                        global_header: {
-                            ...(current.global_header || {}),
-                            overlay_header_on_banner: true,
-                        },
-                    }));
-                    showCosmicNotification({
-                        title: 'White logo detected',
-                        message: 'Overlay Header was enabled automatically so your light logo stays visible. You can turn it off anytime.',
-                        tone: 'success',
-                    });
-                }
-
-                setHasUnsavedTheme(true);
-                // Never auto-spend credits after an SVG upload. Offer the user a
-                // deliberate 50-credit Logo → Theme adaptation instead.
-                setPendingSvgLogoMatch(response.data.url);
-            } else {
-                // Raster uploads remain user-controlled: crop first, then the
-                // confirmed crop becomes the source for automatic theme analysis.
-                setLogoSyncState('logo_changed');
-                setGlobalSelections((prev) => ({ ...prev, logo_theme_sync_state: 'logo_changed', logo_theme_sync_source: 'upload', logo_theme_synced_theme: null }));
-                setHasUnsavedTheme(true);
-                await openLogoCrop(response.data.url, logoCompanyName || data.global_header?.logo_text, { sourceKind: 'upload' });
             }
+            setHasUnsavedTheme(true);
+            await openLogoCrop(response.data.url, logoCompanyName || data.global_header?.logo_text, { sourceKind: 'upload' });
         } catch (error) {
             showCosmicNotification({ title: 'Unable to upload logo', message: error.response?.data?.message || 'Please try another logo file.', tone: 'error' });
         } finally {
@@ -1609,13 +1679,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             if(Number.isFinite(Number(response?.data?.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
             if(Number.isFinite(Number(response?.data?.balance))) setCreditBalance(Number(response.data.balance));
             setLogoCompanyName(name);
-            setData((current)=>({
-                ...current,
-                global_header:{...(current.global_header||{}),logo_image_url:url,logo_text:name,logo_filter:'none'},
-                global_footer:{...(current.global_footer||{}),logo_image_url:url,logo_text:name,logo_filter:'none'},
-            }));
-            setLunaMessages((messages)=>[...messages,{role:'assistant',text:`Logo ready — I applied “${name}” to the site header and footer.`}]);
-            setHasUnsavedTheme(true);
+            await openLogoCrop(url,name,{sourceKind:'ai',entryPrompt:false,autoAdaptTheme:false});
             return true;
         }catch(error){
             const message=error?.response?.data?.message || error?.message || 'I could not generate the logo right now.';
@@ -2131,6 +2195,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             });
 
             setPageStatus(response.data.page_status || 'draft');
+            if(response.data.preview_url) setPreviewUrl(response.data.preview_url);
+            setPreviewDeploymentError(response.data.preview_error || '');
+            if(response.data.preview_url) setPreviewDeployedAt(new Date().toISOString());
             setCreditBalance(response.data.credit_balance);
             setPublishError('');
             setDefaults();
@@ -2235,9 +2302,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         event.preventDefault();
         if (!trialEmail.trim()) return;
         setTrialEmailSaving(true);
+        setTrialEmailError('');
         setSaveError('');
         try {
             await axios.post(route('trial-generations.email.capture', trialToken), { email: trialEmail.trim() });
+            setTrialEmailError('');
             setTrialEmailCaptured(true);
             setShowTrialEmailModal(false);
             const saved = await saveDraft({ skipEmailGate: true });
@@ -2255,9 +2324,58 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 setTrialPurchasePending(false);
             }
         } catch (error) {
-            setSaveError(error.response?.data?.message || 'We could not save your email. Please try again.');
+            const message = error.response?.data?.errors?.email?.[0]
+                || error.response?.data?.message
+                || 'We could not save your email. Please try again.';
+            setTrialEmailError(message);
+            setSaveError(message);
         } finally {
             setTrialEmailSaving(false);
+        }
+    };
+
+    const submitBuilderFeedback = async (event) => {
+        event.preventDefault();
+        if (feedbackBusy || feedbackDescription.trim().length < 5) return;
+        setFeedbackBusy(true);
+        setFeedbackError('');
+
+        try {
+            const payload = new FormData();
+            payload.append('category', feedbackCategory);
+            payload.append('description', feedbackDescription.trim());
+            payload.append('page_id', String(page.id));
+            payload.append('source_url', window.location.href);
+            payload.append('context[page_title]', String(page.title || ''));
+            payload.append('context[page_slug]', String(page.slug || ''));
+            payload.append('context[luna_scope]', String(lunaScope?.label || 'Whole Page'));
+            payload.append('context[builder_mode]', trialMode ? 'trial' : 'authenticated');
+            payload.append('context[blocks_count]', String(Array.isArray(data.blocks) ? data.blocks.length : 0));
+            payload.append('context[viewport_width]', String(window.innerWidth || 0));
+            payload.append('context[viewport_height]', String(window.innerHeight || 0));
+            if (feedbackScreenshot) payload.append('screenshot', feedbackScreenshot);
+
+            const endpoint = trialMode
+                ? route('trial-feedback.store', trialToken)
+                : route('feedback.store');
+            const response = await axios.post(endpoint, payload);
+
+            setFeedbackOpen(false);
+            setFeedbackCategory('bug');
+            setFeedbackDescription('');
+            setFeedbackScreenshot(null);
+            showCosmicNotification({
+                title: 'Feedback sent',
+                message: response.data?.message || 'Your report was sent to the Cosmic team.',
+                tone: 'success',
+            });
+        } catch (error) {
+            const validationMessage = error.response?.data?.errors
+                ? Object.values(error.response.data.errors).flat().join(' ')
+                : '';
+            setFeedbackError(validationMessage || error.response?.data?.message || 'We could not send your feedback. Please try again.');
+        } finally {
+            setFeedbackBusy(false);
         }
     };
 
@@ -3287,15 +3405,57 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         return null;
     };
 
+    const resolveLunaItemTarget = (root, target, block) => {
+        if (!(root instanceof Element) || !(target instanceof Element)) return null;
+        const repeater=findPrimaryRepeater(block);
+        if(!repeater) return null;
+
+        const repeaterKey=String(repeater.path?.[repeater.path.length-1]||'');
+        const activeNode=target.closest('[data-cosmic-active-item-index],[data-cosmic-slider-active-index]')
+            || root.querySelector('[data-cosmic-active-item-index],[data-cosmic-slider-active-index]');
+        if(activeNode && root.contains(activeNode)){
+            const rawIndex=activeNode.getAttribute('data-cosmic-active-item-index')
+                ?? activeNode.getAttribute('data-cosmic-slider-active-index');
+            const index=Number(rawIndex);
+            const collectionKey=String(
+                activeNode.getAttribute('data-cosmic-active-item-collection')
+                || (activeNode.hasAttribute('data-cosmic-slider-active-index')?'slides':repeaterKey)
+            );
+            if(Number.isInteger(index) && index>=0 && index<repeater.items.length && collectionKey===repeaterKey){
+                return {index,count:repeater.items.length,collectionKey,mode:'active'};
+            }
+        }
+
+        const card=detectLunaRepeaterCard(root,target);
+        if(card && Number(card.count)===Number(repeater.items.length)){
+            // A broad layout wrapper can have the same child count as a block's
+            // repeater even when the clicked control is a section-level CTA.
+            // Confirm the visual card contains the identity copy of exactly one
+            // stored repeater item before assigning an item index.
+            const cardText=String(card.text||'').replace(/\s+/g,' ').trim().toLowerCase();
+            const matchingItems=repeater.items.map((item,index)=>{
+                const identities=['title','heading','label','name','question']
+                    .map((key)=>String(item?.[key]||'').replace(/\s+/g,' ').trim().toLowerCase())
+                    .filter((value)=>value.length>=2);
+                return identities.some((value)=>cardText.includes(value))?index:null;
+            }).filter((index)=>Number.isInteger(index));
+            if(matchingItems.length===1){
+                return {index:matchingItems[0],count:Number(card.count),collectionKey:repeaterKey,mode:'card',card};
+            }
+        }
+        return null;
+    };
+
     const openLunaHoverTarget = (hoverTarget) => {
         if (!hoverTarget) return;
-        const { blockIndex, type='section', currentValue='', url='', itemIndex=null, itemCount=null } = hoverTarget;
+        const { blockIndex, type='section', currentValue='', url='', itemIndex=null, itemCount=null, collectionKey='' } = hoverTarget;
         const isSection = type === 'section';
         const isCard = type === 'card';
         const sectionTitle=BlockRegistry[data.blocks?.[blockIndex]?.type]?.schema?.title || data.blocks?.[blockIndex]?.heading || 'Selected Section';
-        const label = isSection ? sectionTitle : (isCard ? `Card ${Number(itemIndex)+1} · ${sectionTitle}` : `${type.charAt(0).toUpperCase()+type.slice(1)} · Section ${blockIndex+1}`);
+        const itemName=collectionKey==='slides'?'Slide':collectionKey==='testimonials'?'Testimonial':collectionKey==='faqs'?'FAQ':isCard?'Card':'Item';
+        const label = isSection ? sectionTitle : (Number.isInteger(Number(itemIndex)) ? `${itemName} ${Number(itemIndex)+1} · ${sectionTitle}` : `${type.charAt(0).toUpperCase()+type.slice(1)} · Section ${blockIndex+1}`);
         setLunaScope({ type:'section', blockIndex, label });
-        setLunaElementTarget(isSection ? null : { type, currentValue, url, itemIndex, itemCount });
+        setLunaElementTarget(isSection ? null : { type, currentValue, url, itemIndex, itemCount, collectionKey });
         setLunaManualOpen(false);
         setLunaDirectText((isSection||isCard) ? '' : String(currentValue||''));
         setLunaDirectLink((isSection||isCard) ? '' : String(url||''));
@@ -3313,11 +3473,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             const sectionNode = source?.closest?.('[data-luna-section-index]');
             const blockIndex = Number(sectionNode?.getAttribute?.('data-luna-section-index'));
             if (!Number.isInteger(blockIndex) || blockIndex < 0) return;
-            const card=sectionNode && source ? detectLunaRepeaterCard(sectionNode,source) : null;
-            const repeaterForTarget=findPrimaryRepeater(data.blocks?.[blockIndex]);
-            const cardMatchesRepeater=Boolean(card && repeaterForTarget && Number(card.count)===Number(repeaterForTarget.items?.length));
-            const itemIndex=cardMatchesRepeater?Number(card.index):null;
-            const itemCount=cardMatchesRepeater?Number(card.count):null;
+            const itemTarget=sectionNode && source ? resolveLunaItemTarget(sectionNode,source,data.blocks?.[blockIndex]) : null;
+            const itemIndex=itemTarget?Number(itemTarget.index):null;
+            const itemCount=itemTarget?Number(itemTarget.count):null;
+            const collectionKey=String(itemTarget?.collectionKey||'');
 
             const type = String(detail.type || 'element');
             const currentValue = String(detail.currentValue || '').slice(0, 1200);
@@ -3336,13 +3495,15 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 blockType: String(detail.blockType || ''),
                 itemIndex,
                 itemCount,
+                collectionKey,
             });
             setLunaManualOpen(false);
             setLunaDirectText(currentValue);
             setLunaDirectLink(String(detail.url || ''));
             setPageAiError('');
             setPageAiPrompt('');
-            announceLunaContext(`${label} · Section ${blockIndex + 1}`,{manual:true,focus:true});
+            const itemName=collectionKey==='slides'?'Slide':collectionKey==='testimonials'?'Testimonial':collectionKey==='faqs'?'FAQ':'Item';
+            announceLunaContext(itemTarget?`${label} · ${itemName} ${itemIndex+1}`:`${label} · Section ${blockIndex + 1}`,{manual:true,focus:true});
         };
 
         window.addEventListener('cosmic:luna-target', handleLunaTarget);
@@ -3420,6 +3581,23 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             };
             return {value:walk(source),replaced};
         };
+        const countMatches=(source)=>{
+            let count=0;
+            const walk=(value,key='')=>{
+                if(Array.isArray(value)){ value.forEach((item)=>walk(item)); return; }
+                if(value && typeof value==='object'){
+                    Object.entries(value).forEach(([childKey,childValue])=>{
+                        if(typeof childValue==='string' && mediaKey.test(childKey)){
+                            const existing=normalizeMediaComparable(childValue);
+                            const equivalent=wanted && (existing===wanted || existing.endsWith(wanted) || wanted.endsWith(existing));
+                            if(equivalent) count+=1;
+                        }else walk(childValue,childKey);
+                    });
+                }
+            };
+            walk(source);
+            return count;
+        };
 
         const block=data.blocks[index];
         let next=block;
@@ -3436,7 +3614,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             }
         }
 
-        if(!replaced && !hasItemTarget){
+        // Recover safely from a false-positive card heuristic only when the
+        // rendered image maps to exactly one field in the entire section.
+        if(!replaced && (!hasItemTarget || countMatches(block)===1)){
             const result=replaceInside(block);
             next=result.value;
             replaced=result.replaced;
@@ -3474,10 +3654,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         }
         if(replaceFirstSelectedMedia(asset.url)){
             setPageAiPrompt('');
+            setPageAiError('');
             setLunaMessages((messages)=>[...messages,{role:'assistant',text:'I used the selected Media Library image here.'}]);
+            showCosmicNotification({title:'Image updated',message:'The selected Media Library image was applied.',tone:'success',mode:'toast',duration:2400});
         }else{
-            setPageAiPrompt('Use this Media Library image for the selected image.');
-            setLunaElementTarget((current)=>current?{...current,attachedMediaUrl:asset.url,attachedMediaId:asset.id||null}:current);
+            setPageAiError('I could not map the selected image to one unique content field. Re-select the exact image and try again.');
+            showCosmicNotification({title:'Image not applied',message:'Cosmic could not identify one unique image field for this selection.',tone:'error'});
         }
     };
 
@@ -3627,17 +3809,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             : await axios.post(route('websites.logo.generate',website.id),{company_name:companyName,primary:themeKey,primary_hex:primaryHex});
         const url=response.data?.url;
         if(!url)throw new Error('Luna generated a logo but no usable URL was returned.');
-        const logoFieldPath=String(lunaElementTarget?.fieldPath||'');
-        const headerOnly=logoFieldPath==='header.logo_image_url';
-        const footerOnly=logoFieldPath==='footer.logo_image_url';
-        setData((current)=>({
-            ...current,
-            ...(!footerOnly ? {global_header:{...(current.global_header||{}),logo_image_url:url,logo_height:52,logo_max_width:240}} : {}),
-            ...(!headerOnly ? {global_footer:{...(current.global_footer||{}),logo_image_url:url,logo_height:48,logo_max_width:240}} : {}),
-        }));
         const balance=response.data?.credit_balance ?? response.data?.balance;
         if(Number.isFinite(Number(balance)))setCreditBalance(Number(balance));
-        setLunaElementTarget((current)=>current?{...current,currentValue:url}:current);
+        setLogoCompanyName(companyName);
+        await openLogoCrop(url,companyName,{sourceKind:'ai',entryPrompt:false,autoAdaptTheme:false});
         return {url,cost:Number(response.data?.cost||50)};
     };
 
@@ -3672,6 +3847,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         const urlKey=/(^|_)(url|href|link)$/i;
         const buttonUrlKey=/(button|btn|cta|action).*?(url|href|link)$/i;
 
+        const normalizeScalar=(value)=>String(value??'').replace(/\s+/g,' ').trim();
+        const wantedComparable=normalizeScalar(wanted);
         const replaceInsideObject=(source)=>{
             let changed=false;
             const walk=(node)=>{
@@ -3679,11 +3856,13 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 if(node && typeof node==='object'){
                     const out={...node};
                     const entries=Object.entries(node);
-                    const matchingKey=entries.find(([key,value])=>typeof value==='string' && String(value)===wanted && !urlKey.test(key))?.[0];
+                    const matchingKey=entries.find(([key,value])=>typeof value==='string' && normalizeScalar(value)===wantedComparable && !urlKey.test(key))?.[0];
                     if(!changed && matchingKey){
                         out[matchingKey]=nextValue;
                         if(nextUrl!==null){
-                            const siblingUrl=entries.find(([key,value])=>typeof value==='string' && (buttonUrlKey.test(key)||urlKey.test(key)))?.[0];
+                            const pairedUrlKey=matchingKey.replace(/(?:label|text)$/i,'url');
+                            const siblingUrl=entries.find(([key,value])=>typeof value==='string' && key===pairedUrlKey)?.[0]
+                                || entries.find(([key,value])=>typeof value==='string' && (buttonUrlKey.test(key)||urlKey.test(key)))?.[0];
                             if(siblingUrl) out[siblingUrl]=nextUrl;
                         }
                         changed=true;
@@ -3695,6 +3874,19 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 return node;
             };
             return {value:walk(source),changed};
+        };
+        const countScalarMatches=(source)=>{
+            let count=0;
+            const walk=(node)=>{
+                if(Array.isArray(node)){ node.forEach(walk); return; }
+                if(!node || typeof node!=='object') return;
+                Object.entries(node).forEach(([key,value])=>{
+                    if(typeof value==='string' && !urlKey.test(key) && normalizeScalar(value)===wantedComparable) count+=1;
+                    else if(value && typeof value==='object') walk(value);
+                });
+            };
+            walk(source);
+            return count;
         };
 
         const block=data.blocks[index];
@@ -3714,8 +3906,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             }
         }
 
-        // Non-repeater elements retain the legacy value-matching fallback.
-        if(!changed && !hasItemTarget){
+        // A section CTA can be misidentified as Item 1 by visual layout
+        // heuristics. Fall back to the whole block only when its value is unique,
+        // so cloned/repeated copy never causes an accidental sibling edit.
+        if(!changed && (!hasItemTarget || countScalarMatches(block)===1)){
             const result=replaceInsideObject(block);
             next=result.value;
             changed=result.changed;
@@ -3776,7 +3970,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             return;
         }
         setPageAiError('');
-        setLunaMessages((messages)=>[...messages,{role:'assistant',text:`${type==='button'?'Button':'Content'} updated directly. · 0 credits`}]);
+        const itemNumber=Number(lunaElementTarget?.itemIndex)+1;
+        const itemName=lunaElementTarget?.collectionKey==='slides'?'Slide':lunaElementTarget?.collectionKey==='testimonials'?'Testimonial':lunaElementTarget?.collectionKey==='faqs'?'FAQ':'Item';
+        const targetSuffix=lunaElementTarget?.itemIndex!==null && lunaElementTarget?.itemIndex!==undefined && Number.isInteger(Number(lunaElementTarget.itemIndex))?` on ${itemName} ${itemNumber} only`:'';
+        setLunaMessages((messages)=>[...messages,{role:'assistant',text:`${type==='button'?'Button':'Content'}${targetSuffix} updated directly. · 0 credits`}]);
         showCosmicNotification({title:'Saved',message:'The selected content was updated.',tone:'success',mode:'toast',duration:2200});
     };
 
@@ -4212,7 +4409,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 setPageAiBusy(true);
                 if (directPrompt === null) setLunaMessages((messages)=>[...messages,{role:'user',text:prompt,scope:lunaScope.label}]);
                 setLunaStatus('Generating your logo…');
-                try { const result=await runLunaGeneratedLogo(prompt); setLunaMessages((messages)=>[...messages,{role:'assistant',text:`I generated and applied the new logo${result.cost>0?` · ${result.cost} credits`:''}.`}]); setLunaStatus('Done'); }
+                try { const result=await runLunaGeneratedLogo(prompt); setLunaMessages((messages)=>[...messages,{role:'assistant',text:`I generated the new logo${result.cost>0?` · ${result.cost} credits`:''}. Review its framing in the crop window, then choose Save Logo to apply it.`}]); setLunaStatus('Ready for crop'); }
                 catch(error){ setPageAiError(error.response?.data?.message || error.message || 'Unable to generate the logo.'); setLunaStatus('Ready'); }
                 finally { setPageAiBusy(false); }
                 return;
@@ -4259,7 +4456,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             form.append('section_layout', JSON.stringify(globalSelections?.section_layout || {}));
             form.append('components', JSON.stringify(globalSelections?.components || {}));
             form.append('site_memory', JSON.stringify(lunaSiteMemory || {}));
-            if (!trialMode && page?.id) form.append('current_page_id', String(page.id));
+            if (page?.id) form.append('current_page_id', String(page.id));
             form.append('target_scope', lunaScope.type === 'section' ? 'section' : lunaScope.type === 'header' ? 'header' : lunaScope.type === 'footer' ? 'footer' : 'page');
             if(lunaScope.type==='header'){
                 form.append('shell_context', 'global_header_brand_theme_logo_navigation_page_redesign');
@@ -4280,6 +4477,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 if(Number.isInteger(Number(lunaElementTarget.itemIndex)) && Number(lunaElementTarget.itemIndex)>=0){
                     form.append('target_item_index', String(Number(lunaElementTarget.itemIndex)));
                     form.append('target_item_mode', 'repeater_item');
+                    if(lunaElementTarget.collectionKey){
+                        form.append('target_collection_key', String(lunaElementTarget.collectionKey));
+                    }
                 }
             }
             if (confirmed) form.append('confirmed', '1');
@@ -4358,7 +4558,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             if (response.header) setData('global_header', response.header);
             if (response.footer) setData('global_footer', response.footer);
             if (response.logo_company_name) {
-                await runLunaLogoGeneration(response.logo_company_name);
+                const logoReadyForCrop=await runLunaLogoGeneration(response.logo_company_name);
+                if(logoReadyForCrop){
+                    response.reply='I generated the logo. Review its framing in the crop window, then choose Save Logo to apply it to the header and footer.';
+                }
             }
             if (response.theme_key) {
                 setGlobalSelections((current)=>({...current,primary:response.theme_key}));
@@ -4824,6 +5027,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
     </div>
     <div className="flex items-center gap-1">
       <button type="button" onClick={undoLastLunaChange} disabled={!lunaUndoStack.length||pageAiBusy} className="rounded-lg border border-white/10 px-2 py-1.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30">↶ Undo</button>
+      <button type="button" onClick={()=>{setFeedbackError('');setFeedbackOpen(true);}} className="rounded-lg border border-white/10 px-2 py-1.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 hover:text-white" title="Report a bug or share feedback">⚑ Feedback</button>
       <button type="button" onClick={()=>setLunaChatOpen(false)} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white">×</button>
     </div>
   </div>
@@ -5144,6 +5348,22 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 </button>
                             )}
 
+                            {trialMode && (previewUrl ? (
+                                <a
+                                    href={previewUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="cosmic-trial-preview inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-sky-200 bg-sky-50 px-3 text-xs font-semibold text-sky-800 transition hover:bg-sky-100 focus:outline-none focus:ring-2 focus:ring-sky-300"
+                                    title={previewIsStale?'Save changes to refresh the staging preview.':'Open the complete staging website in a new tab.'}
+                                >
+                                    Preview site <span aria-hidden="true" className="ml-1">↗</span>
+                                </a>
+                            ) : (
+                                <span className="inline-flex h-9 shrink-0 cursor-wait items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-500" title="The full staging site appears when all trial pages finish building.">
+                                    Preparing preview…
+                                </span>
+                            ))}
+
                             {capabilities.canSave && (!capabilities.canPublish || trialMode) && (
                                 <form onSubmit={handleSubmit} className={trialMode ? 'xl:ml-auto' : ''}>
                                     <button
@@ -5442,10 +5662,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     }
                                     const explicit=target.closest('[data-luna-target]');
                                     const semantic=explicit || target.closest('h1,h2,h3,h4,h5,h6,p,button,a,img,[role="button"]');
-                                    const card=detectLunaRepeaterCard(root,target);
-                                    const repeaterForHover=findPrimaryRepeater(data.blocks?.[index]);
-                                    const cardMatchesRepeater=Boolean(card && repeaterForHover && Number(card.count)===Number(repeaterForHover.items?.length));
-                                    const preferCard=Boolean(cardMatchesRepeater && (!semantic || semantic===card.node || target===card.node));
+                                    const itemTarget=resolveLunaItemTarget(root,target,data.blocks?.[index]);
+                                    const card=itemTarget?.mode==='card'?itemTarget.card:null;
+                                    const preferCard=Boolean(card && (!semantic || semantic===card.node || target===card.node));
                                     const node=preferCard ? card.node : (semantic && root.contains(semantic) ? semantic : root);
                                     const tag=node===root ? '' : (node.tagName?.toLowerCase?.()||'');
                                     const explicitType=node===root ? '' : String(node.getAttribute?.('data-luna-target')||'');
@@ -5456,12 +5675,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     // Even when the user targets text/button/image inside a card,
                                     // retain the parent repeater item index so direct edits cannot
                                     // accidentally mutate an earlier cloned sibling with the same copy.
-                                    const itemIndex=cardMatchesRepeater?Number(card?.index):null;
-                                    const itemCount=cardMatchesRepeater?Number(card?.count):null;
+                                    const itemIndex=itemTarget?Number(itemTarget.index):null;
+                                    const itemCount=itemTarget?Number(itemTarget.count):null;
+                                    const collectionKey=String(itemTarget?.collectionKey||'');
                                     const rr=root.getBoundingClientRect(); const nr=node.getBoundingClientRect();
                                     const top=Math.max(8,Math.min(root.clientHeight-42,(node===root?12:nr.top-rr.top+8)));
                                     const left=Math.max(8,Math.min(root.clientWidth-42,(node===root?root.clientWidth-46:nr.right-rr.left-26)));
-                                    setLunaHoverTarget((current)=> current && current.blockIndex===index && current.type===type && current.currentValue===currentValue && current.itemIndex===itemIndex && Math.abs(current.top-top)<2 && Math.abs(current.left-left)<2 ? current : {blockIndex:index,type,currentValue,url,itemIndex,itemCount,top,left});
+                                    setLunaHoverTarget((current)=> current && current.blockIndex===index && current.type===type && current.currentValue===currentValue && current.itemIndex===itemIndex && current.collectionKey===collectionKey && Math.abs(current.top-top)<2 && Math.abs(current.left-left)<2 ? current : {blockIndex:index,type,currentValue,url,itemIndex,itemCount,collectionKey,top,left});
                                 }}
                                 onMouseLeave={()=>setLunaHoverTarget((current)=>current?.blockIndex===index?null:current)}
                                 onClick={(event)=>{
@@ -6079,6 +6299,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 onSelect={(asset) => {
                     if (!asset?.url) return;
                     setLunaMediaLibraryOpen(false);
+                    if(lunaElementTarget?.type==='logo'){
+                        openLogoCrop(
+                            asset.url,
+                            logoCompanyName || data.global_header?.logo_text || website?.name,
+                            {sourceKind:'upload',entryPrompt:false,autoAdaptTheme:false},
+                        );
+                        return;
+                    }
                     if(lunaMediaLibraryPurpose==='section-background-image'){
                         applyLunaUniversalImage(asset.url);
                         setLunaMediaLibraryPurpose('element');
@@ -6158,6 +6386,25 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                         <span className="cosmic-logo-upload-help mt-1 block text-xs font-medium text-slate-600">{trialMode ? 'SVG, PNG, JPG or WebP up to 2 MB.' : 'Choose an existing logo or upload a new one in Media Library.'}</span>
                                     </button>
                                     <input ref={logoUploadRef} type="file" accept=".svg,.png,.jpg,.jpeg,.webp,image/svg+xml,image/png,image/jpeg,image/webp" onChange={uploadTrialLogo} className="hidden" />
+                                    {data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png') && (
+                                        <button
+                                            type="button"
+                                            disabled={logoBusy}
+                                            onClick={() => openLogoCrop(
+                                                data.global_header.logo_image_url,
+                                                logoCompanyName || data.global_header?.logo_text || website?.name,
+                                                {
+                                                    sourceKind: trialMode && ['ai','ai-neutral','ai-theme-match'].includes(String(trialExperience?.logo_source || '')) ? 'ai' : 'upload',
+                                                    entryPrompt: false,
+                                                    autoAdaptTheme: false,
+                                                }
+                                            )}
+                                            className="cosmic-logo-adjust-crop-card sm:col-span-2 min-h-[72px] w-full rounded-xl border border-slate-300 bg-slate-50 px-5 py-4 text-left text-slate-900 transition hover:border-emerald-400 hover:bg-emerald-50 disabled:opacity-60"
+                                        >
+                                            <span className="block text-sm font-bold">⌗ Adjust Current Crop & Size</span>
+                                            <span className="mt-1 block text-xs text-slate-600">Remove empty canvas, reposition the full logo, and save one consistent header/footer asset.</span>
+                                        </button>
+                                    )}
                                     {globalSelections?.brand_original_logo_url && String(globalSelections.brand_original_logo_url) !== String(data.global_header?.logo_image_url || '') && (
                                         <button type="button" disabled={logoBusy} onClick={restoreOriginalLogo} className="cosmic-logo-restore-card sm:col-span-2 min-h-[72px] w-full rounded-xl border px-5 py-4 text-left transition">
                                             <span className="cosmic-logo-restore-title block text-sm font-bold">↶ Restore Original Logo</span>
@@ -6241,13 +6488,75 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 </div>
             )}
 
+            {feedbackOpen && (
+                <div className="fixed inset-0 z-[10070] flex items-center justify-center bg-slate-950/70 p-4 backdrop-blur-sm" onMouseDown={(event)=>{if(event.target===event.currentTarget&&!feedbackBusy)setFeedbackOpen(false);}}>
+                    <form onSubmit={submitBuilderFeedback} className="w-full max-w-lg overflow-hidden rounded-2xl border border-slate-200 bg-white text-slate-900 shadow-2xl">
+                        <div className="flex items-start justify-between gap-4 border-b border-slate-200 px-6 py-5">
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[.2em] text-emerald-600">Cosmic feedback</p>
+                                <h2 className="mt-1 text-xl font-bold text-slate-950">How can we make Builder better?</h2>
+                                <p className="mt-1 text-sm leading-5 text-slate-500">Your current page and Builder context are included automatically.</p>
+                            </div>
+                            <button type="button" disabled={feedbackBusy} onClick={()=>setFeedbackOpen(false)} className="h-9 w-9 shrink-0 rounded-lg text-slate-400 hover:bg-slate-100 hover:text-slate-700 disabled:opacity-40" aria-label="Close feedback dialog">×</button>
+                        </div>
+
+                        <div className="space-y-5 p-6">
+                            <fieldset>
+                                <legend className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Type</legend>
+                                <div className="mt-2 grid grid-cols-3 gap-2">
+                                    {[
+                                        ['bug','🐞','Bug'],
+                                        ['suggestion','✦','Suggestion'],
+                                        ['feedback','💬','Feedback'],
+                                    ].map(([value,icon,label])=><button key={value} type="button" onClick={()=>setFeedbackCategory(value)} className={`rounded-xl border px-3 py-3 text-xs font-bold transition ${feedbackCategory===value?'border-emerald-500 bg-emerald-50 text-emerald-800 ring-2 ring-emerald-100':'border-slate-200 bg-white text-slate-600 hover:bg-slate-50'}`}><span className="mr-1" aria-hidden="true">{icon}</span>{label}</button>)}
+                                </div>
+                            </fieldset>
+
+                            <div>
+                                <label htmlFor="cosmic-feedback-description" className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Description</label>
+                                <textarea id="cosmic-feedback-description" required minLength={5} maxLength={5000} rows={6} value={feedbackDescription} onChange={(event)=>{setFeedbackDescription(event.target.value);setFeedbackError('');}} placeholder="What happened, what did you expect, or what would you like us to improve?" className="mt-2 w-full resize-y rounded-xl border border-slate-300 bg-white px-4 py-3 text-sm leading-6 text-slate-900 outline-none transition placeholder:text-slate-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" autoFocus />
+                                <div className="mt-1 flex justify-end text-[10px] text-slate-400">{feedbackDescription.length}/5000</div>
+                            </div>
+
+                            <div>
+                                <p className="text-xs font-bold uppercase tracking-[.14em] text-slate-500">Screenshot <span className="font-medium normal-case tracking-normal text-slate-400">(optional)</span></p>
+                                <label className="mt-2 flex cursor-pointer items-center justify-between gap-3 rounded-xl border border-dashed border-slate-300 bg-slate-50 px-4 py-3 transition hover:border-emerald-400 hover:bg-emerald-50/40">
+                                    <span className="min-w-0">
+                                        <span className="block truncate text-sm font-semibold text-slate-700">{feedbackScreenshot?.name || 'Attach a screenshot'}</span>
+                                        <span className="mt-0.5 block text-xs text-slate-500">PNG, JPG, or WebP · up to 8 MB</span>
+                                    </span>
+                                    <span className="shrink-0 rounded-lg bg-white px-3 py-2 text-xs font-bold text-slate-700 shadow-sm ring-1 ring-slate-200">Choose file</span>
+                                    <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(event)=>{
+                                        const file=event.target.files?.[0]||null;
+                                        if(file&&file.size>8*1024*1024){setFeedbackScreenshot(null);setFeedbackError('Screenshot must be 8 MB or smaller.');event.target.value='';return;}
+                                        setFeedbackScreenshot(file);setFeedbackError('');
+                                    }}/>
+                                </label>
+                                {feedbackScreenshot && <button type="button" onClick={()=>setFeedbackScreenshot(null)} className="mt-2 text-xs font-semibold text-rose-600 hover:text-rose-500">Remove screenshot</button>}
+                            </div>
+
+                            {feedbackError && <p className="rounded-xl bg-rose-50 px-4 py-3 text-sm font-medium text-rose-700" role="alert">{feedbackError}</p>}
+                        </div>
+
+                        <div className="flex items-center justify-between gap-3 border-t border-slate-200 bg-slate-50 px-6 py-4">
+                            <p className="text-[11px] text-slate-500">Sent privately to the Cosmic team.</p>
+                            <div className="flex gap-2">
+                                <button type="button" disabled={feedbackBusy} onClick={()=>setFeedbackOpen(false)} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 disabled:opacity-40">Cancel</button>
+                                <button type="submit" disabled={feedbackBusy||feedbackDescription.trim().length<5} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-500 disabled:cursor-not-allowed disabled:opacity-45">{feedbackBusy?'Sending…':'Send feedback'}</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            )}
+
             {showTrialEmailModal && (
                 <div className="fixed inset-0 z-[200] flex items-center justify-center bg-slate-950/65 p-4 backdrop-blur-sm">
                     <form onSubmit={captureTrialEmailAndSave} className="w-full max-w-md rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl">
                         <p className="text-xs font-bold uppercase tracking-[0.22em] text-emerald-600">Save your website</p>
                         <h2 className="mt-2 text-xl font-bold text-slate-950">Enter your email to save this trial</h2>
                         <p className="mt-2 text-sm leading-6 text-slate-500">Your email is required when saving. We’ll also use it for your private Builder link. If you close this now, we’ll only ask again when you click Save.</p>
-                        <input type="email" required autoFocus value={trialEmail} onChange={(event) => setTrialEmail(event.target.value)} placeholder="you@business.com" className="mt-5 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+                        <input type="email" required autoFocus value={trialEmail} onChange={(event) => { setTrialEmail(event.target.value); setTrialEmailError(''); }} placeholder="you@business.com" className="mt-5 w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-slate-950 outline-none transition focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100" />
+                        {trialEmailError && <p className="mt-2 text-sm font-medium text-rose-600">{trialEmailError}</p>}
                         <div className="mt-5 flex justify-end gap-3">
                             <button type="button" onClick={() => { setShowTrialEmailModal(false); setTrialPurchasePending(false); }} className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Close</button>
                             <button type="submit" disabled={trialEmailSaving} className="rounded-lg bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 disabled:opacity-50">{trialEmailSaving ? 'Saving…' : 'Save'}</button>

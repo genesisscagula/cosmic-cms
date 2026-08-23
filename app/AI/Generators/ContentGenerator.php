@@ -7,6 +7,8 @@ use App\Services\LunaPageCompositionService;
 use App\Services\LunaContentIntelligenceService;
 use App\Services\LunaResponsiveIntelligenceService;
 
+use Illuminate\Support\Facades\Log;
+use OpenAI\Exceptions\TransporterException;
 use OpenAI\Laravel\Facades\OpenAI;
 
 class ContentGenerator
@@ -73,7 +75,7 @@ class ContentGenerator
                 ],
             ];
 
-            $response = OpenAI::chat()->create([
+            $response = $this->createChatCompletion([
                 'model' => config('openai.content_model', env('OPENAI_MODEL', 'gpt-5-mini')),
                 'response_format' => ['type' => 'json_object'],
                 'messages' => $messages,
@@ -116,6 +118,37 @@ class ContentGenerator
             "AI content generator failed to return the required JSON envelope after {$attemptLimit} attempt(s). " .
             ($lastJsonError ?: 'Unknown JSON response error.')
         );
+    }
+
+    /**
+     * JSON repair attempts and network recovery are separate concerns. Retry a
+     * reset connection with the exact same request before consuming a JSON
+     * repair attempt or failing the complete website build.
+     */
+    private function createChatCompletion(array $payload): mixed
+    {
+        $attemptLimit = max(1, (int) config('openai.pipeline_stage_attempts', 2));
+        $delayMs = max(100, (int) config('openai.pipeline_retry_delay_ms', 350));
+        $lastException = null;
+
+        for ($attempt = 1; $attempt <= $attemptLimit; $attempt++) {
+            try {
+                return OpenAI::chat()->create($payload);
+            } catch (TransporterException $exception) {
+                $lastException = $exception;
+                Log::warning('[ContentGenerator] OpenAI transport attempt failed.', [
+                    'attempt' => $attempt,
+                    'attempt_limit' => $attemptLimit,
+                    'message' => $exception->getMessage(),
+                ]);
+
+                if ($attempt < $attemptLimit) {
+                    usleep($delayMs * 1000);
+                }
+            }
+        }
+
+        throw $lastException;
     }
 
     /**

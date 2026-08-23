@@ -17,6 +17,7 @@ return new class extends Migration
 
     public function up(): void
     {
+        $created = false;
         if (! Schema::hasTable('commerce_inventory_adjustments')) {
             Schema::create('commerce_inventory_adjustments', function (Blueprint $table) {
                 $table->id();
@@ -36,7 +37,20 @@ return new class extends Migration
                 $table->index(['website_id', 'created_at']);
                 $table->index(['commerce_product_id', 'commerce_product_variant_id'], 'commerce_inv_adj_product_variant_idx');
                 $table->index(['commerce_order_id', 'reason'], 'commerce_inv_adj_order_reason_idx');
+                $table->foreign('website_id', 'commerce_inv_adj_website_fk')->references('id')->on('websites')->cascadeOnDelete();
+                $table->foreign('commerce_product_id', 'commerce_inv_adj_product_fk')->references('id')->on('commerce_products')->cascadeOnDelete();
+                $table->foreign('commerce_product_variant_id', 'commerce_inv_adj_variant_fk')->references('id')->on('commerce_product_variants')->nullOnDelete();
+                $table->foreign('commerce_order_id', 'commerce_inv_adj_order_fk')->references('id')->on('commerce_orders')->nullOnDelete();
+                $table->foreign('user_id', 'commerce_inv_adj_user_fk')->references('id')->on('users')->nullOnDelete();
             });
+            $created = true;
+        }
+
+        // Fresh databases already received the constraints in CREATE TABLE.
+        // The information_schema repair below is only for legacy MariaDB/MySQL
+        // installs where an older attempt may have left a partial table.
+        if ($created || ! in_array(DB::connection()->getDriverName(), ['mysql', 'mariadb'], true)) {
+            return;
         }
 
         // Repair-safe: a previous failed migration may have created the table

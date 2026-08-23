@@ -56,6 +56,14 @@ export default function AuthenticatedLayout({ header, children }) {
                                         💬 Customer Chats
                                     </NavLink>
                                 )}
+                                {isPlatformOwner && (
+                                    <NavLink
+                                        href={route('admin.feedback.index')}
+                                        active={route().current('admin.feedback.*')}
+                                    >
+                                        🚩 Feedback
+                                    </NavLink>
+                                )}
                             </div>
                         </div>
 
@@ -175,6 +183,14 @@ export default function AuthenticatedLayout({ header, children }) {
                                 active={route().current('admin.chat.*')}
                             >
                                 💬 Customer Chats
+                            </ResponsiveNavLink>
+                        )}
+                        {isPlatformOwner && (
+                            <ResponsiveNavLink
+                                href={route('admin.feedback.index')}
+                                active={route().current('admin.feedback.*')}
+                            >
+                                🚩 Feedback
                             </ResponsiveNavLink>
                         )}
                     </div>

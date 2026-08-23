@@ -481,7 +481,12 @@ class WorkspaceProvisioningService
             $moved[] = $sourcePage->slug;
         }
 
-        if ($sourceWebsite) {
+        if ($sourceWebsite && $sourceWebsite->pages()->doesntExist()) {
+            // The buyer now owns the complete generated site in the paid
+            // workspace. Remove the empty staging shell so the platform owner's
+            // dashboard does not accumulate claimed trial placeholders.
+            $sourceWebsite->delete();
+        } elseif ($sourceWebsite) {
             $settings = is_array($sourceWebsite->settings) ? $sourceWebsite->settings : [];
             $settings['trial_bundle_claim'] = [
                 'paid_website_id' => $website->id,

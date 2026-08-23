@@ -14,6 +14,7 @@ class AiPipelineOrchestrator
     public function __construct(
         private readonly VisualIntentAnalyzer $visualAnalyzer,
         private readonly SparkPlanner $sparkPlanner,
+        private readonly ContentGenerator $contentGenerator,
         private readonly AiCacheManager $cache,
     ) {
     }
@@ -48,7 +49,7 @@ class AiPipelineOrchestrator
 
     public function generateContent(string $prompt, array $sections): array
     {
-        return $this->runStage('content_generation', fn () => (new ContentGenerator())->generate($prompt, $sections));
+        return $this->runStage('content_generation', fn () => $this->contentGenerator->generate($prompt, $sections));
     }
 
     private function runStage(string $stage, callable $callback): mixed

@@ -4,6 +4,7 @@ return [
     'queues' => [
         'mail' => env('COSMIC_MAIL_QUEUE', 'mail'),
         'maintenance' => env('COSMIC_MAINTENANCE_QUEUE', 'maintenance'),
+        'ai_builds' => env('COSMIC_AI_QUEUE', 'ai'),
     ],
     'health' => [
         'max_pending_jobs' => (int) env('COSMIC_QUEUE_MAX_PENDING', 500),

@@ -196,9 +196,13 @@ PROMPT;
         )??$message);
 
         if($clean==='' || preg_match('/^(hello|hi|hey)[.! ]*$/i',$clean)) return 'chat';
+
+        // Concrete mutation verbs win even when phrased politely as a question:
+        // "Can you change the theme to charcoal?" is executable work, not a
+        // capability enquiry. Pure "what/do you support" questions remain chat.
+        if(preg_match('/\b(build|create|make|generate|design|change|update|edit|rewrite|replace|redesign|rebrand|adjust|increase|decrease|add|remove|apply|use|set|publish|go live|delete|open|go to|take me to|navigate)\b/i',$clean)) return 'action';
         if(preg_match('/\b(what can you do|what are your capabilities|what can luna do|what do you support|do you support|is .* supported)\b/i',$clean)) return 'chat';
         if(preg_match('/^(how do i|how can i|help me|help with|where can i|what is|why|when|who)\b/i',$clean)) return 'chat';
-        if(preg_match('/\b(build|create|make|generate|design|change|update|edit|rewrite|replace|redesign|rebrand|adjust|increase|decrease|add|remove|apply|use|set|publish|go live|delete|open|go to|take me to|navigate)\b/i',$clean)) return 'action';
         if(($prior['intent']??null)==='action' && (
             preg_match('/\b(this|that|it|same|page|section|heading|image|theme|everywhere|whole|sitewide)\b/i',$clean)
             || preg_match('/#[0-9a-f]{3,6}\b/i',$clean)

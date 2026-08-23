@@ -6835,8 +6835,11 @@ body .cosmic-start-quick-idea.rounded-full.border {
 /* Dark/image hero contrast wins over global heading brand color. */
 .cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is(h1,h2,h3,h4,h5,h6),
 .cosmic-render-shell[data-cosmic-layout-mode="immersive"] section[class*="text-white"] :is(h1,h2,h3,h4,h5,h6),
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]),
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"] section[class*="text-white"] :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]),
 .cosmic-render-shell[data-cosmic-layout-mode="hero"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6),
-.cosmic-render-shell[data-cosmic-layout-mode="immersive"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6) {
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6),
+.cosmic-render-shell[data-cosmic-resolved-theme="primary"] :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) {
     color:var(--cosmic-color-on-dark,#fff) !important;
 }
 .cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is(p,li,[data-cosmic-type="eyebrow"]),
@@ -9365,4 +9368,3 @@ header.cosmic-header-overlay,
 .cosmic-website-preview [data-cosmic-spark] [class~="rounded-full"] {
     border-radius: 9999px !important;
 }
-
