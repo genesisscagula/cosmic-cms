@@ -7,6 +7,16 @@ class BlockPricingRegistry
     public static function all(): array
     {
         return [
+            // Distinctive Expansion Batch 6 — low-image signature systems
+            'about_chapter_index_premium' => ['label' => 'Chapter Index', 'category' => 'signature', 'credits' => 135],
+            'services_orbit_map_premium' => ['label' => 'Services Orbit Map', 'category' => 'signature', 'credits' => 140],
+            'process_constellation_premium' => ['label' => 'Process Constellation', 'category' => 'signature', 'credits' => 135],
+            'proof_metric_staircase_premium' => ['label' => 'Proof Staircase', 'category' => 'signature', 'credits' => 135],
+            'trust_evidence_ledger_premium' => ['label' => 'Evidence Ledger', 'category' => 'signature', 'credits' => 135],
+            'faq_decision_tree_premium' => ['label' => 'FAQ Decision Tree', 'category' => 'signature', 'credits' => 130],
+            'cta_ticket_premium' => ['label' => 'Ticket CTA', 'category' => 'signature', 'credits' => 130],
+            'contact_availability_board_premium' => ['label' => 'Contact Availability Board', 'category' => 'signature', 'credits' => 135],
+
             // Premium Expansion Batch 5
             'content_editorial_image_stack_premium' => ['label' => 'Editorial Image Stack', 'category' => 'signature', 'credits' => 135],
             'content_asymmetric_story_premium' => ['label' => 'Asymmetric Story', 'category' => 'signature', 'credits' => 135],
@@ -307,7 +317,7 @@ class BlockPricingRegistry
             'pricing_agency_premium' => ['label' => 'Agency Pricing', 'category' => 'signature', 'credits' => 150],
             'pricing_feature_matrix_premium' => ['label' => 'Feature Matrix', 'category' => 'signature', 'credits' => 150],
             'cta_glass_premium' => ['label' => 'Glass CTA', 'category' => 'signature', 'credits' => 125],
-            'cta_gradient_premium' => ['label' => 'Gradient CTA', 'category' => 'signature', 'credits' => 125],
+            'cta_gradient_premium' => ['label' => 'Layered CTA', 'category' => 'signature', 'credits' => 125],
             'cta_newsletter_premium' => ['label' => 'Newsletter CTA', 'category' => 'signature', 'credits' => 125],
             'cta_book_demo_premium' => ['label' => 'Book Demo CTA', 'category' => 'signature', 'credits' => 130],
             'cta_calendly_premium' => ['label' => 'Calendly CTA', 'category' => 'signature', 'credits' => 130],

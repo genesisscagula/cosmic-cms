@@ -1,5 +1,5 @@
 {
-  "version": 2,
+  "version": 3,
   "statuses": [
     "complete",
     "partial",
@@ -16,6 +16,10 @@
     "Verification compares planned action, target index/scope, and relevant target metadata where available.",
     "Verification reports unmatched planned operations; it does not silently invent a repair.",
     "Credits remain governed by the billing layer; this verifier controls truthfulness, not pricing.",
-    "Build, update, publish, and navigation executors expose verification results before any final action reply."
+    "Build, update, publish, and navigation executors expose verification results before any final action reply.",
+    "Canonical V5 compound operations are verified individually; one successful sibling operation cannot mask another failed operation.",
+    "Read-only QA audit never mutates. Audit-and-repair must be followed by post-repair QA before Luna may claim full completion.",
+    "If post-repair QA still contains critical/high findings, execution is downgraded from complete to partial.",
+    "Operation IDs, domain, scope, target identity, and operation aliases are used when available to prevent false-positive verification."
   ]
 }

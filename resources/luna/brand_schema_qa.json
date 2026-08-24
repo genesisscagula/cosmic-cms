@@ -1,0 +1,93 @@
+{
+  "version": 1,
+  "purpose": "Brand schema / Luna design-guard acceptance matrix",
+  "custom_hex_cases": [
+    {
+      "hex": "#FFD400",
+      "label": "bright-yellow"
+    },
+    {
+      "hex": "#39FF14",
+      "label": "neon-green"
+    },
+    {
+      "hex": "#FF2D95",
+      "label": "hot-pink"
+    },
+    {
+      "hex": "#C46A3A",
+      "label": "burnt-orange"
+    },
+    {
+      "hex": "#F7F6F2",
+      "label": "near-white"
+    },
+    {
+      "hex": "#111111",
+      "label": "near-black"
+    }
+  ],
+  "required_palette_roles": [
+    "primary",
+    "secondary",
+    "accent",
+    "surface",
+    "surface_alt",
+    "accent_tint",
+    "neutral_dark",
+    "heading",
+    "body",
+    "muted",
+    "on_primary",
+    "on_surface",
+    "on_surface_alt",
+    "on_accent_tint",
+    "on_dark",
+    "button_primary",
+    "button_text"
+  ],
+  "contrast_requirements": {
+    "normal_text": 4.5,
+    "large_text": 3.0
+  },
+  "scope_cases": [
+    {
+      "request": "Change this button to green",
+      "expected_scope": "selected_element",
+      "must_not_change": [
+        "brand primary",
+        "theme",
+        "other buttons"
+      ]
+    },
+    {
+      "request": "Change all buttons to green",
+      "expected_scope": "global_button_role",
+      "must_not_change": [
+        "brand primary",
+        "section backgrounds"
+      ]
+    },
+    {
+      "request": "Use green as the website brand color",
+      "expected_scope": "brand",
+      "must_change": [
+        "semantic brand palette"
+      ]
+    },
+    {
+      "request": "Make this heading violet",
+      "expected_scope": "selected_element",
+      "must_not_change": [
+        "theme",
+        "other headings"
+      ]
+    }
+  ],
+  "parity_surfaces": [
+    "Builder",
+    "Preview",
+    "Export",
+    "Live"
+  ]
+}

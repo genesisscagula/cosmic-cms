@@ -20,6 +20,7 @@ use App\Services\MediaAssetLifecycleService;
 use App\Services\MediaAssetSafetyService;
 use App\Services\WebsiteHealthService;
 use App\Services\TrialCreditService;
+use App\Services\RegisteredSiteBundleService;
 use App\Support\PageStyleRegistry;
 use App\Services\BlogSparkRegistry;
 use App\Cosmic\Pricing\ActionPricing;
@@ -30,7 +31,7 @@ use Throwable;
 
 class PageController extends Controller
 {
-    public function index(Website $website)
+    public function index(Website $website, RegisteredSiteBundleService $starterSites)
     {
         $this->authorize('view', $website);
 
@@ -54,6 +55,7 @@ class PageController extends Controller
             'globalFooterBlock' => $website->global_footer,
             'commerce' => $this->commerceWorkspacePayload($website),
             'contentWorkspace' => ContentWorkspaceController::payload($website),
+            'starterSite' => $starterSites->workspacePayload($website, $user),
         ]);
     }
 
@@ -861,6 +863,19 @@ class PageController extends Controller
             : null;
         $isWebsiteEditor = $websiteAccessRole === 'website_editor';
 
+        $builderPreviewUrl = null;
+        if ($isTrialMode && $trial) {
+            try {
+                $builderPreviewUrl = app(\App\Services\TrialStagingPublisherService::class)->existingUrl($trial);
+            } catch (Throwable $exception) {
+                // The Builder status poll retries staging repair without blocking
+                // the initial page render.
+                report($exception);
+            }
+        } elseif ($website->last_preview_deployed_at) {
+            $builderPreviewUrl = app(PreviewDeploymentService::class)->urlForPage($website, $page);
+        }
+
         return Inertia::render('Websites/Builder', [
             // Builder is token-aware and intentionally lives outside the normal
             // authenticated route group, so pass theme access explicitly instead
@@ -872,9 +887,7 @@ class PageController extends Controller
                 ? ['enabled' => false, 'currency' => 'USD', 'currency_decimals' => 2, 'products' => [], 'categories' => []]
                 : $this->commerceWorkspacePayload($website),
             'contentWorkspace' => $isTrialMode ? ['types' => []] : ContentWorkspaceController::payload($website),
-            'previewUrl' => ! $website->last_preview_deployed_at
-                ? null
-                : app(PreviewDeploymentService::class)->urlForPage($website, $page),
+            'previewUrl' => $builderPreviewUrl,
             'previewDeployment' => [
                 'deployed_at' => $website->last_preview_deployed_at?->toISOString(),
                 'error' => $website->preview_deployment_error,

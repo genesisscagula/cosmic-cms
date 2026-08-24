@@ -122,6 +122,216 @@ class LunaQualityContractsTest extends TestCase
         $this->assertNull($method->invoke($controller, 'Change the theme to emerald and make the heading smaller.'));
     }
 
+    public function test_whole_page_hero_heading_request_updates_the_hero_h1_locally(): void
+    {
+        $controller = app(\App\Http\Controllers\CustomSparkController::class);
+        $method = new \ReflectionMethod($controller, 'lunaTypographyAction');
+        $blocks = [
+            ['type' => 'hero_cinematic_slider_premium', 'heading' => 'Clear Materials. Better Builds.'],
+            ['type' => 'services_bento_premium', 'heading' => 'Glass for every project'],
+        ];
+
+        $result = $method->invoke(
+            $controller,
+            "Make the hero heading slightly smaller.\n[V5 action hints: update hero typography across the site]",
+            'page',
+            -1,
+            $blocks,
+            []
+        );
+
+        $this->assertSame('clamp(2.7rem,5.4vw,5.175rem)', $result['blocks'][0]['luna_typography_overrides']['h1_size']);
+        $this->assertArrayNotHasKey('luna_typography_overrides', $result['blocks'][1]);
+        $this->assertSame([], $result['typography_settings']);
+        $this->assertSame('typography_local', $result['applied_operations'][0]['action']);
+        $this->assertSame(0, $result['applied_operations'][0]['index']);
+        $this->assertSame('h1', $result['applied_operations'][0]['role']);
+
+        $misclassified = $method->invoke(
+            $controller,
+            'Make the hero heading smaller.',
+            'page',
+            -1,
+            $blocks,
+            [],
+            [
+                'intent' => 'action', 'action' => 'update', 'domain' => 'typography',
+                'leaf_operation' => 'font_size', 'operation' => 'update', 'scope' => 'section',
+                'target' => ['type' => 'heading', 'key' => 'hero.heading', 'level' => 'h2'],
+                'changes' => ['relative_size' => ['direction' => 'decrease', 'amount' => 'slight']],
+            ]
+        );
+        $this->assertSame('h1', $misclassified['applied_operations'][0]['role']);
+        $this->assertArrayHasKey('h1_size', $misclassified['blocks'][0]['luna_typography_overrides']);
+        $this->assertArrayNotHasKey('h2_size', $misclassified['blocks'][0]['luna_typography_overrides']);
+    }
+
+    public function test_contextual_typography_followups_scale_the_verified_local_value(): void
+    {
+        $controller = app(\App\Http\Controllers\CustomSparkController::class);
+        $method = new \ReflectionMethod($controller, 'lunaTypographyAction');
+        $blocks = [
+            [
+                'type' => 'hero_cinematic_slider_premium',
+                'heading' => 'Clear Materials. Better Builds.',
+                'luna_typography_overrides' => ['h1_size' => 'clamp(2.7rem,5.4vw,5.175rem)'],
+            ],
+            ['type' => 'services_bento_premium', 'heading' => 'Glass for every project'],
+        ];
+        $canonical = [
+            'intent' => 'action',
+            'action' => 'update',
+            'domain' => 'typography',
+            'leaf_operation' => 'font_size',
+            'operation' => 'update',
+            'scope' => 'section',
+            'target' => ['type' => 'heading', 'key' => 'hero.h1', 'label' => 'hero heading', 'index' => 0, 'level' => 'h1'],
+            'changes' => ['relative_size' => ['direction' => 'decrease', 'amount' => 'slight']],
+        ];
+
+        $smaller = $method->invoke($controller, 'A little more.', 'page', -1, $blocks, [], $canonical);
+        $this->assertSame('clamp(2.43rem,4.86vw,4.658rem)', $smaller['blocks'][0]['luna_typography_overrides']['h1_size']);
+        $this->assertSame('clamp(2.7rem,5.4vw,5.175rem)', $smaller['before_value']);
+
+        $canonical['changes']['relative_size']['direction'] = 'increase';
+        $larger = $method->invoke($controller, 'Too much.', 'page', -1, $smaller['blocks'], [], $canonical);
+        $this->assertSame('clamp(2.722rem,5.443vw,5.217rem)', $larger['blocks'][0]['luna_typography_overrides']['h1_size']);
+
+        $canonical['target'] = ['type' => 'heading', 'tagName' => 'H2', 'index' => 1];
+        $canonical['changes']['relative_size']['direction'] = 'decrease';
+        $sameHere = $method->invoke($controller, 'Same for this heading.', 'section', 1, $larger['blocks'], [], $canonical);
+        $this->assertSame('clamp(2.025rem,3.645vw,3.6rem)', $sameHere['blocks'][1]['luna_typography_overrides']['h2_size']);
+        $this->assertSame(1, $sameHere['applied_operations'][0]['index']);
+    }
+
+    public function test_verified_typography_executor_supplies_context_even_when_router_domain_is_generic(): void
+    {
+        $controller = app(\App\Http\Controllers\CustomSparkController::class);
+        $actionMethod = new \ReflectionMethod($controller, 'lunaTypographyAction');
+        $verifyMethod = new \ReflectionMethod($controller, 'lunaVerifyTypographyAction');
+        $blocks = [
+            ['type' => 'hero_cinematic_slider_premium', 'heading' => 'Clear Materials. Better Builds.'],
+        ];
+        $genericCanonical = [
+            'intent' => 'action', 'action' => 'update', 'domain' => 'element',
+            'leaf_operation' => 'update', 'operation' => 'update', 'scope' => 'page',
+            'target' => ['type' => 'element', 'key' => 'heading'], 'changes' => [],
+        ];
+        $result = $actionMethod->invoke(
+            $controller, 'Make the hero heading smaller.', 'page', -1, $blocks, [], $genericCanonical
+        );
+        $verified = $verifyMethod->invoke(
+            $controller,
+            $result,
+            $blocks,
+            [],
+            $genericCanonical,
+            app(\App\Services\LunaExecutionVerificationService::class),
+            app(\App\Services\LunaContextStateService::class),
+            [],
+            ['surface' => 'builder', 'current_page_id' => 182, 'ui_scope' => 'page', 'target_index' => -1]
+        );
+
+        $this->assertSame('complete', $verified['execution_verification']['status']);
+        $last = $verified['site_memory']['context_state']['last_verified_action'];
+        $this->assertSame('typography', $last['domain']);
+        $this->assertSame('decrease', $last['changes']['relative_size']['direction']);
+        $this->assertSame('hero.h1', $last['target']['key']);
+        $this->assertStringContainsString('slightly smaller', $verified['reply']);
+        $resolved = app(\App\Services\LunaContextResolverService::class)->resolve(
+            'A little more.',
+            ['current' => ['page_id' => 182], 'last_verified_action' => $last],
+            []
+        );
+        $this->assertTrue($resolved['execution_allowed']);
+        $this->assertSame('decrease', $resolved['inherit']['changes']['relative_size']['direction']);
+
+        $reverseCanonical = $genericCanonical;
+        $reverseCanonical['domain'] = 'typography';
+        $reverseCanonical['leaf_operation'] = 'font_size';
+        $reverseCanonical['scope'] = 'section';
+        $reverseCanonical['target'] = $last['target'];
+        $reverseCanonical['changes'] = ['relative_size' => ['direction' => 'increase', 'amount' => 'slight']];
+        $reverseResult = $actionMethod->invoke(
+            $controller, 'Too much.', 'page', -1, $verified['blocks'], [], $reverseCanonical
+        );
+        $reverseVerified = $verifyMethod->invoke(
+            $controller,
+            $reverseResult,
+            $verified['blocks'],
+            [],
+            $reverseCanonical,
+            app(\App\Services\LunaExecutionVerificationService::class),
+            app(\App\Services\LunaContextStateService::class),
+            $verified['site_memory'],
+            ['surface' => 'builder', 'current_page_id' => 182]
+        );
+        $this->assertStringContainsString('slightly larger', $reverseVerified['reply']);
+        $this->assertStringNotContainsString('smaller', $reverseVerified['reply']);
+    }
+
+    public function test_noop_typography_executor_cannot_claim_success_or_replace_verified_context(): void
+    {
+        $controller = app(\App\Http\Controllers\CustomSparkController::class);
+        $verifyMethod = new \ReflectionMethod($controller, 'lunaVerifyTypographyAction');
+        $value = 'clamp(2.7rem,5.4vw,5.175rem)';
+        $blocks = [[
+            'type' => 'hero_cinematic_slider_premium',
+            'luna_typography_overrides' => ['h1_size' => $value],
+        ]];
+        $result = [
+            'reply' => 'Updated only this section h1 size.',
+            'blocks' => $blocks,
+            'typography_settings' => [],
+            'before_value' => $value,
+            'after_value' => $value,
+            'relative_direction' => 'decrease',
+            'applied_operations' => [[
+                'action' => 'typography_local', 'index' => 0, 'role' => 'h1',
+                'property' => 'size', 'value' => $value,
+            ]],
+        ];
+        $canonical = [
+            'intent' => 'action', 'action' => 'update', 'domain' => 'typography',
+            'leaf_operation' => 'font_size', 'operation' => 'update', 'scope' => 'section',
+            'target' => ['type' => 'heading', 'key' => 'hero.h1'],
+            'changes' => ['relative_size' => ['direction' => 'decrease', 'amount' => 'slight']],
+        ];
+
+        $verified = $verifyMethod->invoke(
+            $controller, $result, $blocks, [], $canonical,
+            app(\App\Services\LunaExecutionVerificationService::class),
+            app(\App\Services\LunaContextStateService::class),
+            [],
+            ['surface' => 'builder', 'current_page_id' => 182]
+        );
+
+        $this->assertSame('failed', $verified['execution_verification']['status']);
+        $this->assertFalse($verified['execution_verification']['can_claim_complete']);
+        $this->assertSame([], $verified['applied_operations']);
+        $this->assertNull($verified['site_memory']['context_state']['last_verified_action']);
+        $this->assertStringContainsString('did not mark it as complete', $verified['reply']);
+    }
+
+    public function test_explicit_all_h2_request_still_updates_the_global_token(): void
+    {
+        $controller = app(\App\Http\Controllers\CustomSparkController::class);
+        $method = new \ReflectionMethod($controller, 'lunaTypographyAction');
+
+        $result = $method->invoke(
+            $controller,
+            'Make all H2 headings smaller across the site.',
+            'page',
+            -1,
+            [['type' => 'hero_cinematic_slider_premium'], ['type' => 'services_bento_premium']],
+            []
+        );
+
+        $this->assertSame('clamp(2.025rem,3.645vw,3.6rem)', $result['typography_settings']['h2_size']);
+        $this->assertSame('typography_global', $result['applied_operations'][0]['action']);
+        $this->assertSame('h2', $result['applied_operations'][0]['role']);
+    }
+
     public function test_restaurant_evening_template_has_a_balanced_image_content_rhythm(): void
     {
         $template = PageTemplateCatalog::find('restaurant-evening-story');

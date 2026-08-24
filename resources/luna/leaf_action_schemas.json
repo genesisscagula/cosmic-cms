@@ -1,0 +1,168 @@
+{
+  "version": 1,
+  "description": "Finite leaf operations per Luna action domain. leaf_operation is canonical for routing; executor_operation preserves compatibility with existing V5 executors.",
+  "domains": {
+    "theme": {
+      "leaf_operations": {
+        "switch_family": {"executor_operation": "update", "required_changes": [], "optional_changes": ["family"]},
+        "set_family": {"executor_operation": "update", "required_changes": ["family"], "optional_changes": []},
+        "set_custom_hex": {"executor_operation": "update", "required_changes": ["color"], "optional_changes": ["pattern"]},
+        "adjust_palette": {"executor_operation": "update", "required_changes": [], "optional_changes": ["primary", "secondary", "accent", "surface", "text"]}
+      }
+    },
+    "typography": {
+      "leaf_operations": {
+        "font_size": {"executor_operation": "update", "required_changes": [], "optional_changes": ["value", "relative_size"]},
+        "font_family": {"executor_operation": "update", "required_changes": ["font_family"], "optional_changes": []},
+        "font_weight": {"executor_operation": "update", "required_changes": [], "optional_changes": ["font_weight", "direction"]},
+        "line_height": {"executor_operation": "update", "required_changes": [], "optional_changes": ["line_height", "direction"]},
+        "letter_spacing": {"executor_operation": "update", "required_changes": [], "optional_changes": ["letter_spacing", "direction"]},
+        "text_align": {"executor_operation": "update", "required_changes": ["alignment"], "optional_changes": []}
+      }
+    },
+    "layout": {
+      "leaf_operations": {
+        "padding": {"executor_operation": "update", "required_changes": [], "optional_changes": ["padding", "direction"]},
+        "margin": {"executor_operation": "update", "required_changes": [], "optional_changes": ["margin", "direction"]},
+        "gap": {"executor_operation": "update", "required_changes": [], "optional_changes": ["gap", "direction"]},
+        "columns": {"executor_operation": "update", "required_changes": [], "optional_changes": ["columns"]},
+        "container_width": {"executor_operation": "update", "required_changes": [], "optional_changes": ["width"]},
+        "section_height": {"executor_operation": "update", "required_changes": [], "optional_changes": ["height", "direction"]},
+        "alignment": {"executor_operation": "update", "required_changes": ["alignment"], "optional_changes": []},
+        "reorder": {"executor_operation": "reorder", "required_changes": [], "optional_changes": ["from", "to"]},
+        "move": {"executor_operation": "move", "required_changes": [], "optional_changes": ["direction", "to"]},
+        "redesign": {"executor_operation": "redesign", "required_changes": [], "optional_changes": ["layout_style"]}
+      }
+    },
+    "design": {
+      "leaf_operations": {
+        "background": {"executor_operation": "update", "required_changes": [], "optional_changes": ["color", "background"]},
+        "border_radius": {"executor_operation": "update", "required_changes": [], "optional_changes": ["radius", "direction"]},
+        "border": {"executor_operation": "update", "required_changes": [], "optional_changes": ["border"]},
+        "shadow": {"executor_operation": "update", "required_changes": [], "optional_changes": ["shadow", "direction"]},
+        "opacity": {"executor_operation": "update", "required_changes": [], "optional_changes": ["opacity", "direction"]},
+        "overlay": {"executor_operation": "update", "required_changes": [], "optional_changes": ["overlay", "opacity"]}
+      }
+    },
+    "content": {
+      "leaf_operations": {
+        "rewrite": {"executor_operation": "update", "required_changes": [], "optional_changes": ["text", "tone"]},
+        "replace_text": {"executor_operation": "replace", "required_changes": ["text"], "optional_changes": []},
+        "add_item": {"executor_operation": "add", "required_changes": [], "optional_changes": ["count", "content"]},
+        "remove_item": {"executor_operation": "remove", "required_changes": [], "optional_changes": ["index"]},
+        "duplicate_item": {"executor_operation": "duplicate", "required_changes": [], "optional_changes": ["index"]},
+        "reorder_items": {"executor_operation": "reorder", "required_changes": [], "optional_changes": ["from", "to"]}
+      }
+    },
+    "media": {
+      "leaf_operations": {
+        "replace_image": {"executor_operation": "replace", "required_changes": [], "optional_changes": ["image_url", "media_role", "source"]},
+        "remove_image": {"executor_operation": "remove", "required_changes": [], "optional_changes": ["media_role"]},
+        "generate_image": {"executor_operation": "generate", "required_changes": [], "optional_changes": ["prompt", "media_role"]},
+        "select_library_image": {"executor_operation": "search", "required_changes": [], "optional_changes": ["query", "media_role"]},
+        "replace_video": {"executor_operation": "replace", "required_changes": [], "optional_changes": ["video_url", "media_role", "source"]},
+        "remove_video": {"executor_operation": "remove", "required_changes": [], "optional_changes": ["media_role"]},
+        "logo": {"executor_operation": "update", "required_changes": [], "optional_changes": ["image_url", "source"]}
+      }
+    },
+    "header": {
+      "leaf_operations": {
+        "logo": {"executor_operation": "update", "required_changes": [], "optional_changes": ["image_url"]},
+        "overlay": {"executor_operation": "update", "required_changes": [], "optional_changes": ["enabled"]},
+        "sticky": {"executor_operation": "update", "required_changes": [], "optional_changes": ["enabled"]},
+        "cta": {"executor_operation": "update", "required_changes": [], "optional_changes": ["label", "url"]},
+        "redesign": {"executor_operation": "redesign", "required_changes": [], "optional_changes": []}
+      }
+    },
+    "navigation": {
+      "leaf_operations": {
+        "add_link": {"executor_operation": "add", "required_changes": [], "optional_changes": ["label", "url"]},
+        "remove_link": {"executor_operation": "remove", "required_changes": [], "optional_changes": ["label", "index"]},
+        "rename_link": {"executor_operation": "update", "required_changes": ["label"], "optional_changes": ["new_label"]},
+        "reorder_links": {"executor_operation": "reorder", "required_changes": [], "optional_changes": ["from", "to"]},
+        "add_submenu": {"executor_operation": "add", "required_changes": [], "optional_changes": ["parent", "label", "url"]},
+        "navigate": {"executor_operation": "navigate", "required_changes": [], "optional_changes": []}
+      }
+    },
+    "footer": {
+      "leaf_operations": {
+        "update_content": {"executor_operation": "update", "required_changes": [], "optional_changes": ["text", "links"]},
+        "add_column": {"executor_operation": "add", "required_changes": [], "optional_changes": ["title", "links"]},
+        "remove_column": {"executor_operation": "remove", "required_changes": [], "optional_changes": ["index", "label"]},
+        "social_links": {"executor_operation": "update", "required_changes": [], "optional_changes": ["social_links"]},
+        "redesign": {"executor_operation": "redesign", "required_changes": [], "optional_changes": []}
+      }
+    },
+    "form": {
+      "leaf_operations": {
+        "add_field": {"executor_operation": "add", "required_changes": [], "optional_changes": ["field_type", "label", "required"]},
+        "remove_field": {"executor_operation": "remove", "required_changes": [], "optional_changes": ["field", "index"]},
+        "update_field": {"executor_operation": "update", "required_changes": [], "optional_changes": ["label", "placeholder", "required"]},
+        "reorder_fields": {"executor_operation": "reorder", "required_changes": [], "optional_changes": ["from", "to"]},
+        "recipient": {"executor_operation": "configure", "required_changes": ["recipient"], "optional_changes": []},
+        "submit_cta": {"executor_operation": "update", "required_changes": [], "optional_changes": ["label"]}
+      }
+    },
+    "seo": {
+      "leaf_operations": {
+        "title": {"executor_operation": "configure", "required_changes": ["seo_title"], "optional_changes": []},
+        "meta_description": {"executor_operation": "configure", "required_changes": ["meta_description"], "optional_changes": []},
+        "slug": {"executor_operation": "configure", "required_changes": ["slug"], "optional_changes": []},
+        "og_image": {"executor_operation": "configure", "required_changes": ["og_image"], "optional_changes": []},
+        "canonical": {"executor_operation": "configure", "required_changes": ["canonical_url"], "optional_changes": []},
+        "indexing": {"executor_operation": "configure", "required_changes": ["indexing"], "optional_changes": []}
+      }
+    },
+    "settings": {
+      "leaf_operations": {
+        "business_name": {"executor_operation": "configure", "required_changes": ["business_name"], "optional_changes": []},
+        "contact_email": {"executor_operation": "configure", "required_changes": ["contact_email"], "optional_changes": []},
+        "contact_phone": {"executor_operation": "configure", "required_changes": ["contact_phone"], "optional_changes": []},
+        "address": {"executor_operation": "configure", "required_changes": ["address"], "optional_changes": []},
+        "location": {"executor_operation": "configure", "required_changes": ["location"], "optional_changes": []},
+        "industry": {"executor_operation": "configure", "required_changes": ["industry"], "optional_changes": []},
+        "favicon": {"executor_operation": "configure", "required_changes": ["favicon"] , "optional_changes": []}
+      }
+    },
+    "responsive": {
+      "leaf_operations": {
+        "columns": {"executor_operation": "update", "required_changes": ["breakpoint", "columns"], "optional_changes": []},
+        "spacing": {"executor_operation": "update", "required_changes": ["breakpoint"], "optional_changes": ["padding", "margin", "gap", "direction"]},
+        "typography": {"executor_operation": "update", "required_changes": ["breakpoint"], "optional_changes": ["font_size", "relative_size"]},
+        "visibility": {"executor_operation": "update", "required_changes": ["breakpoint", "visible"], "optional_changes": []},
+        "alignment": {"executor_operation": "update", "required_changes": ["breakpoint", "alignment"], "optional_changes": []}
+      }
+    },
+    "post": {
+      "leaf_operations": {
+        "create_post": {"executor_operation": "create", "required_changes": [], "optional_changes": ["title", "slug", "excerpt", "content", "status", "category", "tags", "image_url"]},
+        "update_post": {"executor_operation": "update", "required_changes": [], "optional_changes": ["title", "slug", "excerpt", "content", "status", "category", "tags", "image_url"]},
+        "create_category": {"executor_operation": "create", "required_changes": [], "optional_changes": ["title", "slug"]},
+        "create_tag": {"executor_operation": "create", "required_changes": [], "optional_changes": ["title", "slug"]},
+        "publish_post": {"executor_operation": "configure", "required_changes": [], "optional_changes": ["status"]}
+      }
+    },
+    "commerce": {
+      "leaf_operations": {
+        "create_product": {"executor_operation": "create", "required_changes": [], "optional_changes": ["title", "slug", "sku", "price", "sale_price", "status", "stock_quantity", "categories", "featured_image_url"]},
+        "update_product": {"executor_operation": "update", "required_changes": [], "optional_changes": ["title", "slug", "sku", "price", "sale_price", "status", "stock_quantity", "categories", "featured_image_url"]},
+        "price": {"executor_operation": "configure", "required_changes": [], "optional_changes": ["price", "sale_price"]},
+        "inventory": {"executor_operation": "configure", "required_changes": [], "optional_changes": ["stock_quantity", "track_inventory", "allow_backorders"]},
+        "categories": {"executor_operation": "configure", "required_changes": ["categories"], "optional_changes": []},
+        "variant": {"executor_operation": "update", "required_changes": [], "optional_changes": ["sku", "price", "sale_price", "stock_quantity", "status"]},
+        "create_category": {"executor_operation": "create", "required_changes": [], "optional_changes": ["title", "slug"]}
+      }
+    },
+    "qa": {
+      "leaf_operations": {
+        "audit": {"executor_operation": "inspect", "required_changes": [], "optional_changes": ["checks"]},
+        "audit_and_repair": {"executor_operation": "audit_and_repair", "required_changes": [], "optional_changes": ["checks"]}
+      }
+    },
+    "site": {"leaf_operations": {"update": {"executor_operation": "update", "required_changes": [], "optional_changes": []}, "inspect": {"executor_operation": "inspect", "required_changes": [], "optional_changes": []}, "delete": {"executor_operation": "delete", "required_changes": [], "optional_changes": []}}},
+    "page": {"leaf_operations": {"create": {"executor_operation": "create", "required_changes": [], "optional_changes": ["title", "slug"]}, "update": {"executor_operation": "update", "required_changes": [], "optional_changes": []}, "duplicate": {"executor_operation": "duplicate", "required_changes": [], "optional_changes": []}, "inspect": {"executor_operation": "inspect", "required_changes": [], "optional_changes": []}, "delete": {"executor_operation": "delete", "required_changes": [], "optional_changes": []}}},
+    "section": {"leaf_operations": {"add": {"executor_operation": "add", "required_changes": [], "optional_changes": ["type"]}, "update": {"executor_operation": "update", "required_changes": [], "optional_changes": []}, "duplicate": {"executor_operation": "duplicate", "required_changes": [], "optional_changes": []}, "remove": {"executor_operation": "remove", "required_changes": [], "optional_changes": []}, "reorder": {"executor_operation": "reorder", "required_changes": [], "optional_changes": ["from", "to"]}, "redesign": {"executor_operation": "redesign", "required_changes": [], "optional_changes": []}, "inspect": {"executor_operation": "inspect", "required_changes": [], "optional_changes": []}}},
+    "element": {"leaf_operations": {"update": {"executor_operation": "update", "required_changes": [], "optional_changes": []}, "replace": {"executor_operation": "replace", "required_changes": [], "optional_changes": []}, "inspect": {"executor_operation": "inspect", "required_changes": [], "optional_changes": []}}},
+    "publishing": {"leaf_operations": {"publish": {"executor_operation": "publish", "required_changes": [], "optional_changes": []}, "republish": {"executor_operation": "publish", "required_changes": [], "optional_changes": []}}}
+  }
+}

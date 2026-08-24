@@ -10,6 +10,11 @@ class Page extends Model
     protected $fillable = [
         'title',
         'slug',
+        'seo_title',
+        'meta_description',
+        'og_image_url',
+        'canonical_url',
+        'is_indexable',
         'parent_id',
         'sort_order',
         'page_type',
@@ -30,6 +35,7 @@ class Page extends Model
         'published_blocks' => 'array',
         'published_at' => 'datetime',
         'last_published_at' => 'datetime',
+        'is_indexable' => 'boolean',
     ];
 
     // Relasyon: Ang Page nag-depende sa iyang Website

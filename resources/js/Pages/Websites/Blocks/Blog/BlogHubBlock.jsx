@@ -6,6 +6,7 @@ import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
 import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
 import MediaPickerModal from "@/Components/Media/MediaPickerModal";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 export const BlogHubSchema = {
     type: "blog_hub",
@@ -439,82 +440,82 @@ export function BlogHubBlock({
     const deletePost = () => requestDeletePost(editingPost);
 
     return (
-        <section className={`group/repeatable-section px-6 py-16 sm:px-8 lg:px-12 lg:py-24 ${theme.bg} transition-colors duration-500`}>
-            <div className="mx-auto max-w-7xl">
+        <section className={sparkTw(block, "b10_blog_1", `group/repeatable-section px-6 py-16 sm:px-8 lg:px-12 lg:py-24 ${theme.bg} transition-colors duration-500`)}>
+            <div className={sparkTw(block, "b10_blog_2", "mx-auto max-w-7xl")}>
                 {showIntro && (
-                    <div className="max-w-3xl">
-                        <EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[0.28em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                        <EditableText value={data.heading} cosmicType="h2" className={`mt-4 block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
-                        <EditableText value={data.text} isTextArea className={`mt-5 block max-w-2xl text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />
+                    <div className={sparkTw(block, "b10_blog_3", "max-w-3xl")}>
+                        <EditableText value={data.eyebrow} className={sparkTw(block, "b10_blog_4", `block text-xs font-semibold uppercase tracking-[0.28em] ${theme.sub}`)} onSave={(eyebrow) => onUpdate({ eyebrow })} />
+                        <EditableText value={data.heading} cosmicType="h2" className={sparkTw(block, "b10_blog_5", `mt-4 block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`)} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.text} isTextArea className={sparkTw(block, "b10_blog_6", `mt-5 block max-w-2xl text-base leading-7 ${theme.sub}`)} onSave={(text) => onUpdate({ text })} />
                     </div>
                 )}
 
                 {viewingPost ? (
-                    <article className={`group relative ${showIntro ? "mt-12" : ""} mx-auto w-full max-w-6xl`}>
-                        <button type="button" onClick={() => setViewingPost(null)} className={`mb-5 text-sm font-semibold hover:underline ${theme.text}`}>← Back to all posts</button>
-                        {viewingPost.image_url && <img src={viewingPost.image_url} alt={viewingPost.title} className="max-h-[620px] w-full rounded-[15px] object-cover" />}
-                        <div className="mx-auto max-w-4xl py-10 sm:py-14">
-                            <div className={`text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`}>{viewingPost.category || "Article"}{viewingPost.published_at ? ` · ${new Date(viewingPost.published_at).toLocaleDateString()}` : ""}</div>
-                            <h1 className={`mt-4 text-4xl font-bold leading-tight tracking-tight sm:text-5xl ${theme.text}`}>{viewingPost.title}</h1>
-                            {viewingPost.excerpt && <p className={`mt-5 text-lg leading-8 ${theme.sub}`}>{viewingPost.excerpt}</p>}
-                            <div className={`prose prose-slate mt-9 max-w-none text-base leading-8 [&_p]:mb-5 [&_h2]:mb-4 [&_h2]:mt-9 [&_h2]:text-3xl [&_h3]:mb-3 [&_h3]:mt-7 [&_h3]:text-2xl [&_ul]:mb-5 [&_ul]:pl-6 [&_ol]:mb-5 [&_ol]:pl-6 [&_blockquote]:my-6 ${theme.text}`} dangerouslySetInnerHTML={{ __html: viewingPost.content || viewingPost.excerpt || "This article is ready for content." }} />
-                            {Array.isArray(viewingPost.tags) && viewingPost.tags.length > 0 && <div className="mt-10 flex flex-wrap gap-2">{viewingPost.tags.map((tag) => <span key={tag} className={`rounded-full border px-3 py-1 text-xs ${theme.border} ${theme.sub}`}>#{tag}</span>)}</div>}
-                            {isBuilder && <button type="button" onClick={() => openComposer(viewingPost)} className={`mt-10 text-sm font-semibold hover:underline ${theme.text}`}>Edit this post</button>}
+                    <article className={sparkTw(block, "b10_blog_7", `group relative ${showIntro ? "mt-12" : ""} mx-auto w-full max-w-6xl`)}>
+                        <button type="button" onClick={() => setViewingPost(null)} className={sparkTw(block, "b10_blog_8", `mb-5 text-sm font-semibold hover:underline ${theme.text}`)}>← Back to all posts</button>
+                        {viewingPost.image_url && <img src={viewingPost.image_url} alt={viewingPost.title} className={sparkTw(block, "b10_blog_9", "max-h-[620px] w-full rounded-[15px] object-cover")} />}
+                        <div className={sparkTw(block, "b10_blog_10", "mx-auto max-w-4xl py-10 sm:py-14")}>
+                            <div className={sparkTw(block, "b10_blog_11", `text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`)}>{viewingPost.category || "Article"}{viewingPost.published_at ? ` · ${new Date(viewingPost.published_at).toLocaleDateString()}` : ""}</div>
+                            <h1 className={sparkTw(block, "b10_blog_12", `mt-4 text-4xl font-bold leading-tight tracking-tight sm:text-5xl ${theme.text}`)}>{viewingPost.title}</h1>
+                            {viewingPost.excerpt && <p className={sparkTw(block, "b10_blog_13", `mt-5 text-lg leading-8 ${theme.sub}`)}>{viewingPost.excerpt}</p>}
+                            <div className={sparkTw(block, "b10_blog_14", `prose prose-slate mt-9 max-w-none text-base leading-8 [&_p]:mb-5 [&_h2]:mb-4 [&_h2]:mt-9 [&_h2]:text-3xl [&_h3]:mb-3 [&_h3]:mt-7 [&_h3]:text-2xl [&_ul]:mb-5 [&_ul]:pl-6 [&_ol]:mb-5 [&_ol]:pl-6 [&_blockquote]:my-6 ${theme.text}`)} dangerouslySetInnerHTML={{ __html: viewingPost.content || viewingPost.excerpt || "This article is ready for content." }} />
+                            {Array.isArray(viewingPost.tags) && viewingPost.tags.length > 0 && <div className={sparkTw(block, "b10_blog_15", "mt-10 flex flex-wrap gap-2")}>{viewingPost.tags.map((tag) => <span key={tag} className={sparkTw(block, "b10_blog_16", `rounded-full border px-3 py-1 text-xs ${theme.border} ${theme.sub}`)}>#{tag}</span>)}</div>}
+                            {isBuilder && <button type="button" onClick={() => openComposer(viewingPost)} className={sparkTw(block, "b10_blog_17", `mt-10 text-sm font-semibold hover:underline ${theme.text}`)}>Edit this post</button>}
                         </div>
                     </article>
                 ) : (
                     <>
-                <article className={`group relative ${showIntro ? "mt-12" : ""} group relative grid overflow-hidden rounded-3xl border ${theme.border} ${theme.card} ${variant === "blog-cards-02" ? "md:grid-cols-[.8fr_1.2fr]" : variant === "blog-cards-03" ? "md:grid-cols-1" : "md:grid-cols-2"}`}>
+                <article className={sparkTw(block, "b10_blog_18", `group relative ${showIntro ? "mt-12" : ""} group relative grid overflow-hidden rounded-3xl border ${theme.border} ${theme.card} ${variant === "blog-cards-02" ? "md:grid-cols-[.8fr_1.2fr]" : variant === "blog-cards-03" ? "md:grid-cols-1" : "md:grid-cols-2"}`)}>
                     {hasSavedPosts && isBuilder && <RepeatableRemoveButton hoverScope="card" overlay onRemove={() => requestDeletePost(featuredPost)} label="Delete featured post" />}
                     {hasSavedPosts ? (
-                        <img src={featuredPost.image_url || "/storage/cms-images/background/background-1.avif"} alt={featuredPost.title || "Featured article"} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`} />
+                        <img src={featuredPost.image_url || "/storage/cms-images/background/background-1.avif"} alt={featuredPost.title || "Featured article"} className={sparkTw(block, "b10_blog_19", `h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`)} />
                     ) : (
-                        <EditableImage websiteId={resolvedBlogWebsiteId} blockIndex={blockIndex} src={data.featured.image_url} alt={data.featured.title} className={`h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`} onSave={(image_url) => updateFeatured("image_url", image_url)} />
+                        <EditableImage websiteId={resolvedBlogWebsiteId} blockIndex={blockIndex} src={data.featured.image_url} alt={data.featured.title} className={sparkTw(block, "b10_blog_20", `h-full w-full object-cover ${variant === "blog-cards-03" ? "h-[240px] sm:h-[340px] lg:h-[420px]" : "min-h-[260px]"}`)} onSave={(image_url) => updateFeatured("image_url", image_url)} />
                     )}
-                    <div className="flex min-h-[260px] flex-col justify-center p-7 sm:p-10">
+                    <div className={sparkTw(block, "b10_blog_21", "flex min-h-[260px] flex-col justify-center p-7 sm:p-10")}>
                         {hasSavedPosts ? (
                             <>
-                                <span className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`}>{featuredPost.category || "Featured article"}</span>
-                                <h3 className={`mt-4 text-3xl font-bold tracking-tight ${theme.text}`}>{featuredPost.title}</h3>
-                                {featuredPost.excerpt && <p className={`mt-4 text-base leading-7 ${theme.sub}`}>{featuredPost.excerpt}</p>}
-                                {isBuilder && <div className="mt-7 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(featuredPost)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit featured post</button></div>}
+                                <span className={sparkTw(block, "b10_blog_22", `block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`)}>{featuredPost.category || "Featured article"}</span>
+                                <h3 className={sparkTw(block, "b10_blog_23", `mt-4 text-3xl font-bold tracking-tight ${theme.text}`)}>{featuredPost.title}</h3>
+                                {featuredPost.excerpt && <p className={sparkTw(block, "b10_blog_24", `mt-4 text-base leading-7 ${theme.sub}`)}>{featuredPost.excerpt}</p>}
+                                {isBuilder && <div className={sparkTw(block, "b10_blog_25", "mt-7 flex items-center gap-4")}><button type="button" onClick={() => setViewingPost(featuredPost)} className={sparkTw(block, "b10_blog_26", `text-sm font-semibold hover:underline ${theme.text}`)}>View post</button><button type="button" onClick={() => openComposer(featuredPost)} className={sparkTw(block, "b10_blog_27", `text-sm font-semibold hover:underline ${theme.text}`)}>Edit featured post</button></div>}
                             </>
                         ) : (
                             <>
-                                <EditableText value={data.featured.category} className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`} onSave={(category) => updateFeatured("category", category)} />
-                                <EditableText value={data.featured.title} className={`mt-4 block text-3xl font-bold tracking-tight ${theme.text}`} onSave={(title) => updateFeatured("title", title)} />
-                                <EditableText value={data.featured.excerpt} isTextArea className={`mt-4 block text-base leading-7 ${theme.sub}`} onSave={(excerpt) => updateFeatured("excerpt", excerpt)} />
-                                <EditableText value={data.featured.cta_label} className={`mt-7 block text-sm font-semibold ${theme.text}`} onSave={(cta_label) => updateFeatured("cta_label", cta_label)} />
+                                <EditableText value={data.featured.category} className={sparkTw(block, "b10_blog_28", `block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`)} onSave={(category) => updateFeatured("category", category)} />
+                                <EditableText value={data.featured.title} className={sparkTw(block, "b10_blog_29", `mt-4 block text-3xl font-bold tracking-tight ${theme.text}`)} onSave={(title) => updateFeatured("title", title)} />
+                                <EditableText value={data.featured.excerpt} isTextArea className={sparkTw(block, "b10_blog_30", `mt-4 block text-base leading-7 ${theme.sub}`)} onSave={(excerpt) => updateFeatured("excerpt", excerpt)} />
+                                <EditableText value={data.featured.cta_label} className={sparkTw(block, "b10_blog_31", `mt-7 block text-sm font-semibold ${theme.text}`)} onSave={(cta_label) => updateFeatured("cta_label", cta_label)} />
                             </>
                         )}
                     </div>
                 </article>
 
-                <div className={`mt-7 grid gap-5 ${variant === "blog-cards-02" ? "lg:grid-cols-2" : variant === "blog-cards-03" ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`}>
+                <div className={sparkTw(block, "b10_blog_32", `mt-7 grid gap-5 ${variant === "blog-cards-02" ? "lg:grid-cols-2" : variant === "blog-cards-03" ? "sm:grid-cols-2 lg:grid-cols-3" : "sm:grid-cols-2 lg:grid-cols-4"}`)}>
                     {visiblePosts.slice(0, 4).map((post, index) => (
-                        <article key={post.id || index} className={`group relative overflow-hidden rounded-2xl border ${theme.border} ${theme.card}`}>
+                        <article key={post.id || index} className={sparkTw(block, "b10_blog_33", `group relative overflow-hidden rounded-2xl border ${theme.border} ${theme.card}`)}>
                             {hasSavedPosts && isBuilder && <RepeatableRemoveButton hoverScope="card" overlay onRemove={() => requestDeletePost(post)} label="Delete post" />}
                             {hasSavedPosts ? (
-                                <img src={post.image_url || "/storage/cms-images/background/background-1.avif"} alt="" className="h-44 w-full object-cover" />
+                                <img src={post.image_url || "/storage/cms-images/background/background-1.avif"} alt="" className={sparkTw(block, "b10_blog_34", "h-44 w-full object-cover")} />
                             ) : (
-                                <EditableImage websiteId={resolvedBlogWebsiteId} blockIndex={blockIndex} src={post.image_url} alt={post.title} className="h-44 w-full object-cover" onSave={(image_url) => updateStarterPost(index, "image_url", image_url)} />
+                                <EditableImage websiteId={resolvedBlogWebsiteId} blockIndex={blockIndex} src={post.image_url} alt={post.title} className={sparkTw(block, "b10_blog_35", "h-44 w-full object-cover")} onSave={(image_url) => updateStarterPost(index, "image_url", image_url)} />
                             )}
-                            <div className="p-5">
+                            <div className={sparkTw(block, "b10_blog_36", "p-5")}>
                                 {hasSavedPosts ? (
                                     <>
-                                        <div className="flex items-center justify-between gap-2">
-                                            <span className={`text-[11px] font-semibold uppercase tracking-[0.2em] ${theme.sub}`}>{post.category || "Article"}</span>
-                                            {isBuilder && <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${post.status === "published" ? "border-emerald-400/30 text-emerald-400" : "border-amber-400/30 text-amber-300"}`}>{post.status}</span>}
+                                        <div className={sparkTw(block, "b10_blog_37", "flex items-center justify-between gap-2")}>
+                                            <span className={sparkTw(block, "b10_blog_38", `text-[11px] font-semibold uppercase tracking-[0.2em] ${theme.sub}`)}>{post.category || "Article"}</span>
+                                            {isBuilder && <span className={sparkTw(block, "b10_blog_39", `rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase ${post.status === "published" ? "border-emerald-400/30 text-emerald-400" : "border-amber-400/30 text-amber-300"}`)}>{post.status}</span>}
                                         </div>
-                                        <h3 className={`mt-3 text-lg font-bold leading-snug ${theme.text}`}>{post.title}</h3>
-                                        {post.excerpt && <p className={`mt-3 text-sm leading-6 ${theme.sub}`}>{post.excerpt}</p>}
-                                        {isBuilder && <div className="mt-4 flex items-center gap-4"><button type="button" onClick={() => setViewingPost(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>View post</button><button type="button" onClick={() => openComposer(post)} className={`text-sm font-semibold hover:underline ${theme.text}`}>Edit post</button></div>}
+                                        <h3 className={sparkTw(block, "b10_blog_40", `mt-3 text-lg font-bold leading-snug ${theme.text}`)}>{post.title}</h3>
+                                        {post.excerpt && <p className={sparkTw(block, "b10_blog_41", `mt-3 text-sm leading-6 ${theme.sub}`)}>{post.excerpt}</p>}
+                                        {isBuilder && <div className={sparkTw(block, "b10_blog_42", "mt-4 flex items-center gap-4")}><button type="button" onClick={() => setViewingPost(post)} className={sparkTw(block, "b10_blog_43", `text-sm font-semibold hover:underline ${theme.text}`)}>View post</button><button type="button" onClick={() => openComposer(post)} className={sparkTw(block, "b10_blog_44", `text-sm font-semibold hover:underline ${theme.text}`)}>Edit post</button></div>}
                                     </>
                                 ) : (
                                     <>
-                                        <EditableText value={post.category || "Article"} className={`block text-[11px] font-semibold uppercase tracking-[0.2em] ${theme.sub}`} onSave={(category) => updateStarterPost(index, "category", category)} />
-                                        <EditableText value={post.title} className={`mt-3 block text-lg font-bold leading-snug ${theme.text}`} onSave={(title) => updateStarterPost(index, "title", title)} />
-                                        <EditableText value={post.excerpt || ""} isTextArea className={`mt-3 block text-sm leading-6 ${theme.sub}`} onSave={(excerpt) => updateStarterPost(index, "excerpt", excerpt)} />
+                                        <EditableText value={post.category || "Article"} className={sparkTw(block, "b10_blog_45", `block text-[11px] font-semibold uppercase tracking-[0.2em] ${theme.sub}`)} onSave={(category) => updateStarterPost(index, "category", category)} />
+                                        <EditableText value={post.title} className={sparkTw(block, "b10_blog_46", `mt-3 block text-lg font-bold leading-snug ${theme.text}`)} onSave={(title) => updateStarterPost(index, "title", title)} />
+                                        <EditableText value={post.excerpt || ""} isTextArea className={sparkTw(block, "b10_blog_47", `mt-3 block text-sm leading-6 ${theme.sub}`)} onSave={(excerpt) => updateStarterPost(index, "excerpt", excerpt)} />
                                     </>
                                 )}
                             </div>
@@ -528,7 +529,7 @@ export function BlogHubBlock({
 
                 {actionNotice && (
                     <ModalPortal>
-                        <div className="fixed bottom-6 right-6 z-[1000001] rounded-xl border border-emerald-400/30 bg-[#18181b] px-4 py-3 text-sm font-semibold text-emerald-300 shadow-2xl">
+                        <div className={sparkTw(block, "b10_blog_48", "fixed bottom-6 right-6 z-[1000001] rounded-xl border border-emerald-400/30 bg-[#18181b] px-4 py-3 text-sm font-semibold text-emerald-300 shadow-2xl")}>
                             ✓ {actionNotice}
                         </div>
                     </ModalPortal>
@@ -536,11 +537,11 @@ export function BlogHubBlock({
 
                 {isAiPromptOpen && (
                     <ModalPortal>
-                    <div className="fixed inset-0 z-[999999] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="dialog" aria-modal="true">
-                        <div className="w-full max-w-xl rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl">
-                            <div className="flex items-start justify-between gap-4"><div><h3 className="text-lg font-semibold text-white">Write this blog post with AI</h3><p className="mt-1 text-sm text-slate-400">Describe the topic, audience, tone, and key points you want included.</p></div><button type="button" onClick={() => setIsAiPromptOpen(false)} className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-2xl leading-none text-slate-400 transition hover:bg-white/10 hover:text-white">×</button></div>
-                            <textarea autoFocus value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows="6" placeholder="Example: Write a practical guide for homeowners choosing a construction company for a renovation..." className="mt-5 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none focus:border-violet-400" />
-                            <div className="mt-4 flex justify-end gap-2"><button type="button" onClick={() => setIsAiPromptOpen(false)} className="px-3 py-2 text-sm text-slate-300">Cancel</button><button type="button" disabled={!aiPrompt.trim() || isGeneratingPost} onClick={generatePostWithAi} className="cosmic-blog-save-button rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isGeneratingPost ? <span className="inline-flex items-center gap-2"><span className="cosmic-loading-spinner h-4 w-4 rounded-full" />Generating article...</span> : "Generate Article · 10 Credits"}</button></div>
+                    <div className={sparkTw(block, "b10_blog_49", "fixed inset-0 z-[999999] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm")} role="dialog" aria-modal="true">
+                        <div className={sparkTw(block, "b10_blog_50", "w-full max-w-xl rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl")}>
+                            <div className={sparkTw(block, "b10_blog_51", "flex items-start justify-between gap-4")}><div><h3 className={sparkTw(block, "b10_blog_52", "text-lg font-semibold text-white")}>Write this blog post with AI</h3><p className={sparkTw(block, "b10_blog_53", "mt-1 text-sm text-slate-400")}>Describe the topic, audience, tone, and key points you want included.</p></div><button type="button" onClick={() => setIsAiPromptOpen(false)} className={sparkTw(block, "b10_blog_54", "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-white/10 text-2xl leading-none text-slate-400 transition hover:bg-white/10 hover:text-white")}>×</button></div>
+                            <textarea autoFocus value={aiPrompt} onChange={(event) => setAiPrompt(event.target.value)} rows="6" placeholder="Example: Write a practical guide for homeowners choosing a construction company for a renovation..." className={sparkTw(block, "b10_blog_55", "mt-5 w-full rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-white outline-none focus:border-violet-400")} />
+                            <div className={sparkTw(block, "b10_blog_56", "mt-4 flex justify-end gap-2")}><button type="button" onClick={() => setIsAiPromptOpen(false)} className={sparkTw(block, "b10_blog_57", "px-3 py-2 text-sm text-slate-300")}>Cancel</button><button type="button" disabled={!aiPrompt.trim() || isGeneratingPost} onClick={generatePostWithAi} className={sparkTw(block, "b10_blog_58", "cosmic-blog-save-button rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50")}>{isGeneratingPost ? <span className={sparkTw(block, "b10_blog_59", "inline-flex items-center gap-2")}><span className={sparkTw(block, "b10_blog_60", "cosmic-loading-spinner h-4 w-4 rounded-full")} />Generating article...</span> : "Generate Article · 10 Credits"}</button></div>
                         </div>
                     </div>
                     </ModalPortal>
@@ -548,13 +549,13 @@ export function BlogHubBlock({
 
                 {confirmation && (
                     <ModalPortal>
-                    <div className="fixed inset-0 z-[1000000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" role="alertdialog" aria-modal="true">
-                        <div className="w-full max-w-md rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl">
-                            <h3 className="text-lg font-semibold text-white">{confirmation.title}</h3>
-                            <p className="mt-2 text-sm leading-6 text-slate-400">{confirmation.message}</p>
-                            <div className="mt-6 flex justify-end gap-2">
-                                <button type="button" onClick={() => setConfirmation(null)} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button>
-                                <button type="button" onClick={confirmation.onConfirm} className={`rounded-lg px-4 py-2 text-sm font-semibold text-white ${confirmation.tone === "danger" ? "bg-red-600 hover:bg-red-500" : "bg-violet-600 hover:bg-violet-500"}`}>{confirmation.confirmLabel}</button>
+                    <div className={sparkTw(block, "b10_blog_61", "fixed inset-0 z-[1000000] flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm")} role="alertdialog" aria-modal="true">
+                        <div className={sparkTw(block, "b10_blog_62", "w-full max-w-md rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl")}>
+                            <h3 className={sparkTw(block, "b10_blog_63", "text-lg font-semibold text-white")}>{confirmation.title}</h3>
+                            <p className={sparkTw(block, "b10_blog_64", "mt-2 text-sm leading-6 text-slate-400")}>{confirmation.message}</p>
+                            <div className={sparkTw(block, "b10_blog_65", "mt-6 flex justify-end gap-2")}>
+                                <button type="button" onClick={() => setConfirmation(null)} className={sparkTw(block, "b10_blog_66", "rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/5")}>Cancel</button>
+                                <button type="button" onClick={confirmation.onConfirm} className={sparkTw(block, "b10_blog_67", `rounded-lg px-4 py-2 text-sm font-semibold text-white ${confirmation.tone === "danger" ? "bg-red-600 hover:bg-red-500" : "bg-violet-600 hover:bg-violet-500"}`)}>{confirmation.confirmLabel}</button>
                             </div>
                         </div>
                     </div>
@@ -572,35 +573,35 @@ export function BlogHubBlock({
 
                 {isComposerOpen && (
                     <ModalPortal>
-                    <div className="fixed inset-0 z-[999998] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm" role="dialog" aria-modal="true" aria-labelledby="blog-post-dialog-title">
-                        <form onSubmit={savePost} className="cosmic-blog-editor-modal cosmic-scrollbar max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl">
-                            <div className="flex items-start justify-between gap-4">
-                                <div><h3 id="blog-post-dialog-title" className="text-lg font-semibold text-white">{editingPost ? "Edit blog post" : "Add blog post"}</h3><p className="mt-1 text-sm text-slate-400">{editingPost ? "Update the article details and publish state." : "Create a draft article for this Blog Hub."}</p></div>
-                                <div className="flex shrink-0 items-center gap-2">
+                    <div className={sparkTw(block, "b10_blog_68", "fixed inset-0 z-[999998] flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm")} role="dialog" aria-modal="true" aria-labelledby="blog-post-dialog-title">
+                        <form onSubmit={savePost} className={sparkTw(block, "b10_blog_69", "cosmic-blog-editor-modal cosmic-scrollbar max-h-[92vh] w-full max-w-5xl overflow-y-auto rounded-2xl border border-white/10 bg-[#18181b] p-6 shadow-2xl")}>
+                            <div className={sparkTw(block, "b10_blog_70", "flex items-start justify-between gap-4")}>
+                                <div><h3 id="blog-post-dialog-title" className={sparkTw(block, "b10_blog_71", "text-lg font-semibold text-white")}>{editingPost ? "Edit blog post" : "Add blog post"}</h3><p className={sparkTw(block, "b10_blog_72", "mt-1 text-sm text-slate-400")}>{editingPost ? "Update the article details and publish state." : "Create a draft article for this Blog Hub."}</p></div>
+                                <div className={sparkTw(block, "b10_blog_73", "flex shrink-0 items-center gap-2")}>
                                     <CosmicStatusSelect
                                         value={postForm.status}
                                         onChange={(status) => setPostForm((current) => ({ ...current, status }))}
                                     />
-                                    <button type="button" onClick={closeComposer} className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 text-2xl leading-none text-slate-400 transition hover:border-white/20 hover:bg-white/10 hover:text-white" aria-label="Close">×</button>
+                                    <button type="button" onClick={closeComposer} className={sparkTw(block, "b10_blog_74", "flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-white/10 text-2xl leading-none text-slate-400 transition hover:border-white/20 hover:bg-white/10 hover:text-white")} aria-label="Close">×</button>
                                 </div>
                             </div>
-                            <button type="button" onClick={() => setIsAiPromptOpen(true)} className="cosmic-blog-ai-button mt-5 w-full rounded-xl border border-violet-400/40 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20">✨ Write with AI · 10 Credits</button>
-                            <div className="mt-5 grid gap-3">
-                                <input required value={postForm.title} onChange={(event) => setPostForm({ ...postForm, title: event.target.value })} placeholder="Post title" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
-                                <input value={postForm.category} onChange={(event) => setPostForm({ ...postForm, category: event.target.value })} placeholder="Categories, separated by commas" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
-                                <input value={postForm.tags} onChange={(event) => setPostForm({ ...postForm, tags: event.target.value })} placeholder="Tags, separated by commas" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
-                                <div className="cosmic-blog-image-panel rounded-xl border border-white/10 bg-black/20 p-3">
-                                    <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={uploadFeaturedImage} />
-                                    {postForm.image_url ? <img src={postForm.image_url} alt="Featured preview" className="h-36 w-full rounded-lg object-cover" /> : <div className="cosmic-blog-image-empty flex h-28 items-center justify-center rounded-lg border border-dashed border-white/15 text-sm text-slate-500">No featured image selected</div>}
-                                    <div className="mt-3 flex flex-wrap gap-2">{!trialMode && <button type="button" onClick={() => setMediaLibraryOpen(true)} className="rounded-lg bg-violet-500 px-3 py-2 text-sm font-semibold text-white">Media Library</button>}<button type="button" disabled={isUploadingImage} onClick={() => imageInputRef.current?.click()} className="cosmic-blog-image-button rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isUploadingImage ? "Uploading..." : "Upload New"}</button>{postForm.image_url && <button type="button" onClick={() => setPostForm({ ...postForm, image_url: "" })} className="px-3 py-2 text-sm text-slate-300">Remove</button>}</div>
+                            <button type="button" onClick={() => setIsAiPromptOpen(true)} className={sparkTw(block, "b10_blog_75", "cosmic-blog-ai-button mt-5 w-full rounded-xl border border-violet-400/40 bg-violet-500/10 px-4 py-3 text-sm font-semibold text-violet-200 transition hover:bg-violet-500/20")}>✨ Write with AI · 10 Credits</button>
+                            <div className={sparkTw(block, "b10_blog_76", "mt-5 grid gap-3")}>
+                                <input required value={postForm.title} onChange={(event) => setPostForm({ ...postForm, title: event.target.value })} placeholder="Post title" className={sparkTw(block, "b10_blog_77", "rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400")} />
+                                <input value={postForm.category} onChange={(event) => setPostForm({ ...postForm, category: event.target.value })} placeholder="Categories, separated by commas" className={sparkTw(block, "b10_blog_78", "rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400")} />
+                                <input value={postForm.tags} onChange={(event) => setPostForm({ ...postForm, tags: event.target.value })} placeholder="Tags, separated by commas" className={sparkTw(block, "b10_blog_79", "rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400")} />
+                                <div className={sparkTw(block, "b10_blog_80", "cosmic-blog-image-panel rounded-xl border border-white/10 bg-black/20 p-3")}>
+                                    <input ref={imageInputRef} type="file" accept="image/*" className={sparkTw(block, "b10_blog_81", "hidden")} onChange={uploadFeaturedImage} />
+                                    {postForm.image_url ? <img src={postForm.image_url} alt="Featured preview" className={sparkTw(block, "b10_blog_82", "h-36 w-full rounded-lg object-cover")} /> : <div className={sparkTw(block, "b10_blog_83", "cosmic-blog-image-empty flex h-28 items-center justify-center rounded-lg border border-dashed border-white/15 text-sm text-slate-500")}>No featured image selected</div>}
+                                    <div className={sparkTw(block, "b10_blog_84", "mt-3 flex flex-wrap gap-2")}>{!trialMode && <button type="button" onClick={() => setMediaLibraryOpen(true)} className={sparkTw(block, "b10_blog_85", "rounded-lg bg-violet-500 px-3 py-2 text-sm font-semibold text-white")}>Media Library</button>}<button type="button" disabled={isUploadingImage} onClick={() => imageInputRef.current?.click()} className={sparkTw(block, "b10_blog_86", "cosmic-blog-image-button rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50")}>{isUploadingImage ? "Uploading..." : "Upload New"}</button>{postForm.image_url && <button type="button" onClick={() => setPostForm({ ...postForm, image_url: "" })} className={sparkTw(block, "b10_blog_87", "px-3 py-2 text-sm text-slate-300")}>Remove</button>}</div>
                                 </div>
-                                <textarea value={postForm.excerpt} onChange={(event) => setPostForm({ ...postForm, excerpt: event.target.value })} placeholder="Short excerpt" rows="3" className="rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400" />
+                                <textarea value={postForm.excerpt} onChange={(event) => setPostForm({ ...postForm, excerpt: event.target.value })} placeholder="Short excerpt" rows="3" className={sparkTw(block, "b10_blog_88", "rounded-xl border border-white/10 bg-black/20 px-3 py-2.5 text-white outline-none focus:border-violet-400")} />
                                 <CosmicRichTextEditor value={postForm.content} onChange={(content) => setPostForm((current) => ({ ...current, content }))} />
                             </div>
-                            {postError && <p className="mt-3 text-sm text-red-300">{postError}</p>}
-                            <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-                                {editingPost ? <button type="button" disabled={isSavingPost} onClick={deletePost} className="text-sm font-semibold text-red-300 hover:text-red-200 disabled:opacity-50">Delete post</button> : <span />}
-                                <div className="flex gap-2"><button type="button" onClick={closeComposer} className="px-3 py-2 text-sm text-slate-300">Cancel</button><button disabled={isSavingPost} className="cosmic-blog-save-button rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50">{isSavingPost ? "Saving..." : editingPost ? "Save post" : "Create draft post"}</button></div>
+                            {postError && <p className={sparkTw(block, "b10_blog_89", "mt-3 text-sm text-red-300")}>{postError}</p>}
+                            <div className={sparkTw(block, "b10_blog_90", "mt-5 flex flex-wrap items-center justify-between gap-2")}>
+                                {editingPost ? <button type="button" disabled={isSavingPost} onClick={deletePost} className={sparkTw(block, "b10_blog_91", "text-sm font-semibold text-red-300 hover:text-red-200 disabled:opacity-50")}>Delete post</button> : <span />}
+                                <div className={sparkTw(block, "b10_blog_92", "flex gap-2")}><button type="button" onClick={closeComposer} className={sparkTw(block, "b10_blog_93", "px-3 py-2 text-sm text-slate-300")}>Cancel</button><button disabled={isSavingPost} className={sparkTw(block, "b10_blog_94", "cosmic-blog-save-button rounded-lg bg-white px-4 py-2 text-sm font-semibold text-slate-950 disabled:opacity-50")}>{isSavingPost ? "Saving..." : editingPost ? "Save post" : "Create draft post"}</button></div>
                             </div>
                         </form>
                     </div>

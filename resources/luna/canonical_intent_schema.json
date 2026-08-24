@@ -1,28 +1,164 @@
 {
-  "version": 4,
+  "version": 7,
   "route_contract": {
     "api": 1,
-    "allowed_keys": ["intent"],
-    "allowed_values": ["chat", "action"]
+    "name": "intent_router",
+    "allowed_keys": [
+      "intent"
+    ],
+    "allowed_values": [
+      "chat",
+      "action"
+    ],
+    "rule": "This is the only decision made by API 1."
   },
   "action_classifier_contract": {
     "api": 2,
-    "output": "json_only",
-    "forbidden_user_facing_keys": ["reply", "message", "response", "suggestion", "question"]
+    "name": "action_family_router",
+    "allowed_keys": [
+      "action"
+    ],
+    "allowed_values": [
+      "build",
+      "update",
+      "inspect",
+      "publish",
+      "delete",
+      "navigate"
+    ],
+    "forbidden_keys": [
+      "domain",
+      "operation",
+      "scope",
+      "target",
+      "changes",
+      "reply",
+      "message",
+      "response",
+      "suggestion",
+      "question"
+    ]
   },
-  "top_level_intents": ["chat", "action"],
-  "actions": ["none", "build", "update", "publish", "delete", "navigate"],
-  "scopes": ["none", "element", "item", "section", "page", "site", "global_token"],
+  "top_level_intents": [
+    "chat",
+    "action"
+  ],
+  "actions": [
+    "none",
+    "build",
+    "update",
+    "inspect",
+    "publish",
+    "delete",
+    "navigate"
+  ],
+  "domains": [
+    "site",
+    "page",
+    "section",
+    "element",
+    "content",
+    "theme",
+    "design",
+    "typography",
+    "layout",
+    "media",
+    "header",
+    "navigation",
+    "footer",
+    "form",
+    "seo",
+    "post",
+    "commerce",
+    "settings",
+    "responsive",
+    "qa",
+    "publishing"
+  ],
+  "operations": [
+    "build",
+    "create",
+    "update",
+    "replace",
+    "redesign",
+    "add",
+    "remove",
+    "duplicate",
+    "reorder",
+    "move",
+    "read",
+    "inspect",
+    "search",
+    "generate",
+    "configure",
+    "publish",
+    "delete",
+    "navigate",
+    "audit_and_repair"
+  ],
+  "scopes": [
+    "none",
+    "element",
+    "item",
+    "section",
+    "page",
+    "site",
+    "global_token"
+  ],
+  "target_contract": {
+    "type": "object|null",
+    "allowed_keys": [
+      "type",
+      "key",
+      "id",
+      "label",
+      "selector",
+      "index",
+      "field",
+      "level"
+    ]
+  },
+  "changes_contract": {
+    "type": "object",
+    "description": "Structured requested mutations or desired values. Empty for read-only inspect/navigation operations."
+  },
+  "compound_contract": {
+    "field": "operations",
+    "type": "array",
+    "description": "One or more structured operations for compound requests. A simple action may contain exactly one operation."
+  },
   "rules": [
     "API 1 returns exactly chat or action and no other data.",
     "chat goes to the natural reply API and then stops without mutation.",
-    "action goes to the structured action classifier whose output is never user-facing.",
+    "action goes to API 2, which returns exactly one action family: build, update, inspect, publish, delete, or navigate.",
+    "API 3 receives the locked action family and resolves domain, operation, scope, structured target, changes, constraints, and compound operations.",
+    "API 3 must choose a finite leaf_operation registered for the selected domain; arbitrary operation names are rejected or normalized.",
+    "API 3 is forbidden from changing the API 2 action family.",
+    "Routing depth for normal action turns is at most three classifier APIs before deterministic/planner execution.",
+    "Every action is represented by action, domain, operation, scope, structured target, changes, constraints, and operations.",
+    "Compound user requests are decomposed into operations[] rather than flattened into vague prose.",
     "build routes through design/composition, locked content generation, apply, and verification.",
     "update routes through target/change planning, apply, and verification.",
+    "inspect is read-only and must never mutate website state.",
     "publish and navigation use dedicated executors rather than the design planner.",
     "All intermediate AI outputs are JSON only.",
-    "Normal build, update, publish, and navigate actions never require a proceed layer.",
+    "Normal build, update, inspect, publish, and navigate actions never require a proceed layer.",
     "Only destructive delete may retain explicit safety confirmation.",
-    "A natural final reply is generated only after execution verification."
-  ]
+    "A natural final reply is generated only after execution verification or verified read-only inspection."
+  ],
+  "domain_router_contract": {
+    "api": 3,
+    "name": "domain_operation_router",
+    "input_requires": [
+      "locked_action_family"
+    ],
+    "output": "canonical_action_json_with_leaf_operation",
+    "rule": "API 3 may resolve domain, operation, scope, target, changes and compound operations but may not change the locked API 2 action family."
+  },
+  "leaf_action_contract": {
+    "source": "resources/luna/leaf_action_schemas.json",
+    "field": "leaf_operation",
+    "rule": "leaf_operation must be one of the finite operations registered for the selected domain. operation remains the backwards-compatible executor operation.",
+    "validation": "required_changes declared by the selected leaf schema must be present before execution."
+  }
 }

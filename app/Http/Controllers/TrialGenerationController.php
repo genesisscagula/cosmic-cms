@@ -405,6 +405,56 @@ class TrialGenerationController extends Controller
         ]);
     }
 
+    public function stagingStatus(TrialGeneration $trial)
+    {
+        abort_unless($trial->status === 'ready' && ! $trial->claimed_at, 404);
+
+        $previewUrl = null;
+        $previewError = null;
+
+        try {
+            // This also repairs trials where deployment finished but the final
+            // manifest staging_url write was interrupted.
+            $previewUrl = $this->trialStagingPublisher->existingUrl($trial);
+
+            if (! $previewUrl && $trial->bundle_status === 'ready') {
+                $previewUrl = $this->trialStagingPublisher->publish($trial->fresh());
+            }
+        } catch (\Throwable $exception) {
+            Log::warning('[TrialStaging] Preview status repair deferred.', [
+                'trial_id' => $trial->id,
+                'message' => $exception->getMessage(),
+            ]);
+            $previewError = 'The website is built, but its staging link is still being prepared.';
+        }
+
+        $trial = $trial->fresh(['website']);
+        $manifestPages = collect(data_get($trial?->bundle_manifest, 'pages', []));
+        $readyPages = $manifestPages->where('build_status', 'ready')->count();
+        $pageCount = $manifestPages->count();
+        $bundleStatus = (string) ($trial?->bundle_status ?? 'missing');
+        $ready = filled($previewUrl);
+
+        return response()->json([
+            'status' => $ready ? 'ready' : $bundleStatus,
+            'bundle_status' => $bundleStatus,
+            'preview_url' => $previewUrl,
+            'preview_ready' => $ready,
+            'ready_pages' => $readyPages,
+            'page_count' => $pageCount,
+            'progress' => $pageCount > 0 ? (int) round(($readyPages / $pageCount) * 100) : 0,
+            'terminal' => $ready || in_array($bundleStatus, ['failed', 'partial'], true),
+            'poll_after_ms' => $bundleStatus === 'ready' ? 5000 : 3000,
+            'preview_error' => $previewError ?: ($trial?->bundle_error ?: null),
+            'message' => match (true) {
+                $ready => 'Your complete staging website is ready.',
+                $bundleStatus === 'ready' => 'All pages are built. Finalizing the staging link.',
+                $bundleStatus === 'failed' => 'Some pages could not be prepared.',
+                default => "Building {$readyPages} of {$pageCount} pages.",
+            },
+        ])->header('Cache-Control', 'no-store, private');
+    }
+
     public function selectPlan(Request $request, TrialGeneration $trial)
     {
         abort_unless($trial->status === 'ready' && ! $trial->claimed_at, 404);

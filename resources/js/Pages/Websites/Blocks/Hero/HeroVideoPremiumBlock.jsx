@@ -8,6 +8,7 @@ import { getEffectiveTheme } from "../../../../theme/Theme";
 import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 export const HeroVideoPremiumSchema = {
     type: "hero_video_premium",
@@ -85,52 +86,52 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
 
     return (
         <>
-            <section data-cosmic-media-banner="true" className={`relative isolate cursor-pointer overflow-hidden ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
-                <div className="absolute inset-0">
-                    <img src={data.poster_image_url} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover sm:hidden" />
+            <section data-cosmic-media-banner="true" className={sparkTw(block, "section", `relative isolate cursor-pointer overflow-hidden ${theme.bg}`)} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+                <div className={sparkTw(block, "wrapper", "absolute inset-0")}>
+                    <img src={data.poster_image_url} alt="" aria-hidden="true" className={sparkTw(block, "image", "absolute inset-0 h-full w-full object-cover sm:hidden")} />
                     {embeddedVideoUrl ? (
                         <iframe
                             src={embeddedVideoUrl}
                             title="Premium background video"
                             allow="autoplay; fullscreen; picture-in-picture"
-                            className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0 sm:block"
+                            className={sparkTw(block, "wrapper_2", "pointer-events-none absolute left-1/2 top-1/2 hidden h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0 sm:block")}
                         />
                     ) : (
-                        <video className="hidden h-full w-full object-cover sm:block" autoPlay muted loop playsInline preload="metadata" poster={data.poster_image_url}>
+                        <video className={sparkTw(block, "video", "hidden h-full w-full object-cover sm:block")} autoPlay muted loop playsInline preload="metadata" poster={data.poster_image_url}>
                             <source src={data.video_url} type="video/mp4" />
                         </video>
                     )}
                     <div
-                        className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayBase}`}
+                        className={sparkTw(block, "wrapper_3", `pointer-events-none absolute inset-0 ${mediaStyle.overlayBase}`)}
                         style={isLightMediaTheme ? undefined : { backgroundColor: mediaOverlay.overlayColor, opacity: 0.48 }}
                     />
-                    <div className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayX}`} />
-                    <div className={`pointer-events-none absolute inset-0 ${mediaStyle.overlayY}`} />
+                    <div className={sparkTw(block, "wrapper_4", `pointer-events-none absolute inset-0 ${mediaStyle.overlayX}`)} />
+                    <div className={sparkTw(block, "wrapper_5", `pointer-events-none absolute inset-0 ${mediaStyle.overlayY}`)} />
                 </div>
 
-                <button type="button" aria-label="Edit background video" onPointerDown={openVideoEditor} className="absolute inset-0 z-[5] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300" />
+                <button type="button" aria-label="Edit background video" onPointerDown={openVideoEditor} className={sparkTw(block, "button", "absolute inset-0 z-[5] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300")} />
 
-                <div className="pointer-events-none relative z-10 mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14" style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
-                    <div className={`pointer-events-auto flex items-center justify-between border-b pb-5 ${mediaStyle.topBorder}`}>
-                        <EditableText value={data.eyebrow} className={`text-[11px] font-bold uppercase tracking-[.34em] ${mediaStyle.eyebrow}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                        <EditableText value={data.media_badge} cosmicType="badge" className={`rounded-full border px-4 py-2 text-[11px] font-semibold backdrop-blur-md ${mediaStyle.badge}`} onSave={(media_badge) => onUpdate({ media_badge })} />
+                <div className={sparkTw(block, "wrapper_6", "pointer-events-none relative z-10 mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14")} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+                    <div className={sparkTw(block, "wrapper_7", `pointer-events-auto flex items-center justify-between border-b pb-5 ${mediaStyle.topBorder}`)}>
+                        <EditableText value={data.eyebrow} className={sparkTw(block, "text", `text-[11px] font-bold uppercase tracking-[.34em] ${mediaStyle.eyebrow}`)} onSave={(eyebrow) => onUpdate({ eyebrow })} />
+                        <EditableText value={data.media_badge} cosmicType="badge" className={sparkTw(block, "text_2", `rounded-full border px-4 py-2 text-[11px] font-semibold backdrop-blur-md ${mediaStyle.badge}`)} onSave={(media_badge) => onUpdate({ media_badge })} />
                     </div>
 
-                    <div className="pointer-events-auto max-w-4xl py-0">
-                        <EditableText value={data.heading} cosmicType="h1" className={`block max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`} onSave={(heading) => onUpdate({ heading })} />
-                        <EditableText value={data.text} isTextArea className={`mt-7 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${mediaStyle.body}`} onSave={(text) => onUpdate({ text })} />
-                        <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                            <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label, primary_url) => onUpdate({ primary_label, primary_url })} />
-                            <EditableButton label={data.secondary_label} url={data.secondary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold backdrop-blur-sm transition ${mediaStyle.secondary}`} onSave={(secondary_label, secondary_url) => onUpdate({ secondary_label, secondary_url })} />
+                    <div className={sparkTw(block, "wrapper_8", "pointer-events-auto max-w-4xl py-0")}>
+                        <EditableText value={data.heading} cosmicType="h1" className={sparkTw(block, "text_3", `block max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`)} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.text} isTextArea className={sparkTw(block, "text_4", `mt-7 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${mediaStyle.body}`)} onSave={(text) => onUpdate({ text })} />
+                        <div className={sparkTw(block, "wrapper_9", "mt-9 flex flex-col gap-3 sm:flex-row")}>
+                            <EditableButton label={data.primary_label} url={data.primary_url} className={sparkTw(block, "button_2", `inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`)} onSave={(primary_label, primary_url) => onUpdate({ primary_label, primary_url })} />
+                            <EditableButton label={data.secondary_label} url={data.secondary_url} className={sparkTw(block, "button_3", `inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold backdrop-blur-sm transition ${mediaStyle.secondary}`)} onSave={(secondary_label, secondary_url) => onUpdate({ secondary_label, secondary_url })} />
                         </div>
                     </div>
 
-                    <div className={`pointer-events-auto flex items-end justify-between gap-5 border-t pt-5 ${mediaStyle.footerBorder}`}>
-                        <div className="flex items-center gap-4">
-                            <EditableText value={data.scroll_label} className={`text-xs font-semibold uppercase tracking-[.2em] ${mediaStyle.scroll}`} onSave={(scroll_label) => onUpdate({ scroll_label })} />
+                    <div className={sparkTw(block, "wrapper_10", `pointer-events-auto flex items-end justify-between gap-5 border-t pt-5 ${mediaStyle.footerBorder}`)}>
+                        <div className={sparkTw(block, "wrapper_11", "flex items-center gap-4")}>
+                            <EditableText value={data.scroll_label} className={sparkTw(block, "text_5", `text-xs font-semibold uppercase tracking-[.2em] ${mediaStyle.scroll}`)} onSave={(scroll_label) => onUpdate({ scroll_label })} />
                         </div>
-                        <div data-editable-media data-cosmic-no-luna-hover="true" className={`hidden w-40 overflow-hidden rounded-xl border shadow-xl sm:block ${mediaStyle.posterCard}`}>
-                            <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.poster_image_url} className="aspect-video w-full object-cover opacity-85" onSave={(poster_image_url) => onUpdate({ poster_image_url })} />
+                        <div data-editable-media data-cosmic-no-luna-hover="true" className={sparkTw(block, "wrapper_12", `hidden w-40 overflow-hidden rounded-xl border shadow-xl sm:block ${mediaStyle.posterCard}`)}>
+                            <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.poster_image_url} className={sparkTw(block, "image_2", "aspect-video w-full object-cover opacity-85")} onSave={(poster_image_url) => onUpdate({ poster_image_url })} />
                         </div>
                     </div>
                 </div>

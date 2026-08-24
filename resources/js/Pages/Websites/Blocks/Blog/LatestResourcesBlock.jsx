@@ -3,6 +3,7 @@ import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeAt } from "../Shared/RepeatableControls";
 
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 export const LatestResourcesSchema = {
     type: "latest_resources",
     title: "Latest Resources",
@@ -37,35 +38,35 @@ export function LatestResourcesBlock({ block, onUpdate, globalTheme }) {
     const updateResourceButton = (index, cta_label, cta_url) => onUpdate({ resources: data.resources.map((resource, resourceIndex) => resourceIndex === index ? { ...resource, cta_label, cta_url } : resource) });
 
     const card = (resource, index, compact = false) => (
-        <article key={index} className={`group relative border ${theme.border} ${theme.card} shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${compact ? "grid gap-4 rounded-2xl p-6 sm:grid-cols-[130px_1fr]" : "rounded-2xl p-7 sm:p-8"}`}>
+        <article key={index} className={sparkTw(block, "auto_1", `group relative border ${theme.border} ${theme.card} shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg ${compact ? "grid gap-4 rounded-2xl p-6 sm:grid-cols-[130px_1fr]" : "rounded-2xl p-7 sm:p-8"}`)}>
             <RepeatableRemoveButton hoverScope="card"
                 overlay
                 onRemove={() => onUpdate({ resources: removeAt(data.resources, index, 1) })}
                 disabled={data.resources.length <= 1}
                 label="Remove resource"
             />
-            {compact && <div className={`flex min-h-28 items-center justify-center rounded-xl ${theme.bg} text-3xl font-black ${theme.sub}`}>0{index + 1}</div>}
+            {compact && <div className={sparkTw(block, "auto_2", `flex min-h-28 items-center justify-center rounded-xl ${theme.bg} text-3xl font-black ${theme.sub}`)}>0{index + 1}</div>}
             <div>
-                <EditableText value={resource.eyebrow} className={`block text-[11px] font-semibold uppercase tracking-[0.22em] ${theme.sub}`} onSave={(eyebrow) => updateResource(index, "eyebrow", eyebrow)} />
-                <EditableText value={resource.title} className={`mt-4 block text-2xl font-bold leading-tight tracking-tight ${theme.text}`} onSave={(title) => updateResource(index, "title", title)} />
-                <EditableText value={resource.text} isTextArea className={`mt-4 block text-sm leading-6 ${theme.sub}`} onSave={(text) => updateResource(index, "text", text)} />
-                <EditableButton label={resource.cta_label} url={resource.cta_url} className={`mt-7 inline-flex text-sm font-semibold ${theme.text} underline underline-offset-4 transition`} onSave={(cta_label, cta_url) => updateResourceButton(index, cta_label, cta_url)} />
+                <EditableText value={resource.eyebrow} className={sparkTw(block, "auto_3", `block text-[11px] font-semibold uppercase tracking-[0.22em] ${theme.sub}`)} onSave={(eyebrow) => updateResource(index, "eyebrow", eyebrow)} />
+                <EditableText value={resource.title} className={sparkTw(block, "auto_4", `mt-4 block text-2xl font-bold leading-tight tracking-tight ${theme.text}`)} onSave={(title) => updateResource(index, "title", title)} />
+                <EditableText value={resource.text} isTextArea className={sparkTw(block, "auto_5", `mt-4 block text-sm leading-6 ${theme.sub}`)} onSave={(text) => updateResource(index, "text", text)} />
+                <EditableButton label={resource.cta_label} url={resource.cta_url} className={sparkTw(block, "auto_6", `mt-7 inline-flex text-sm font-semibold ${theme.text} underline underline-offset-4 transition`)} onSave={(cta_label, cta_url) => updateResourceButton(index, cta_label, cta_url)} />
             </div>
         </article>
     );
 
     return (
-        <section className={`group/repeatable-section ${theme.bg} ${theme.text} px-6 py-16 transition-colors duration-500 sm:px-8 lg:px-12 lg:py-24`}>
-            <div className="mx-auto max-w-7xl">
-                <div className={variant === "resources-02" ? "mx-auto max-w-3xl text-center" : variant === "resources-03" ? "grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-start" : ""}>
-                    <div className="max-w-3xl">
-                        <EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[0.28em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                        <EditableText value={data.heading} cosmicType="h2" className={`mt-4 block text-4xl font-bold leading-[1.05] tracking-tight ${theme.text} sm:text-5xl lg:text-[3.75rem]`} onSave={(heading) => onUpdate({ heading })} />
-                        <EditableText value={data.text} isTextArea className={`mt-5 block max-w-2xl text-base leading-7 ${theme.sub} ${variant === "resources-02" ? "mx-auto" : ""}`} onSave={(text) => onUpdate({ text })} />
+        <section className={sparkTw(block, "auto_7", `group/repeatable-section ${theme.bg} ${theme.text} px-6 py-16 transition-colors duration-500 sm:px-8 lg:px-12 lg:py-24`)}>
+            <div className={sparkTw(block, "auto_8", "mx-auto max-w-7xl")}>
+                <div className={sparkTw(block, "auto_9", variant === "resources-02" ? "mx-auto max-w-3xl text-center" : variant === "resources-03" ? "grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-start" : "")}>
+                    <div className={sparkTw(block, "auto_10", "max-w-3xl")}>
+                        <EditableText value={data.eyebrow} className={sparkTw(block, "auto_11", `block text-xs font-semibold uppercase tracking-[0.28em] ${theme.sub}`)} onSave={(eyebrow) => onUpdate({ eyebrow })} />
+                        <EditableText value={data.heading} cosmicType="h2" className={sparkTw(block, "auto_12", `mt-4 block text-4xl font-bold leading-[1.05] tracking-tight ${theme.text} sm:text-5xl lg:text-[3.75rem]`)} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.text} isTextArea className={sparkTw(block, "auto_13", `mt-5 block max-w-2xl text-base leading-7 ${theme.sub} ${variant === "resources-02" ? "mx-auto" : ""}`)} onSave={(text) => onUpdate({ text })} />
                     </div>
-                    {variant === "resources-03" && <div className="grid gap-4">{data.resources.map((resource, index) => card(resource, index, true))}</div>}
+                    {variant === "resources-03" && <div className={sparkTw(block, "auto_14", "grid gap-4")}>{data.resources.map((resource, index) => card(resource, index, true))}</div>}
                 </div>
-                {variant !== "resources-03" && <div className={`mt-10 grid gap-5 ${variant === "resources-02" ? "mx-auto max-w-4xl" : "md:grid-cols-2"}`}>{data.resources.map((resource, index) => card(resource, index, variant === "resources-02"))}</div>}
+                {variant !== "resources-03" && <div className={sparkTw(block, "auto_15", `mt-10 grid gap-5 ${variant === "resources-02" ? "mx-auto max-w-4xl" : "md:grid-cols-2"}`)}>{data.resources.map((resource, index) => card(resource, index, variant === "resources-02"))}</div>}
                 <RepeatableControls
                     onAdd={() => data.resources.length < 6 && onUpdate({ resources: cloneLast(data.resources, LatestResourcesSchema.defaults.resources[0]) })}
                     onRemove={() => onUpdate({ resources: removeAt(data.resources, data.resources.length - 1, 1) })}

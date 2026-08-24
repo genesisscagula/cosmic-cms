@@ -86,7 +86,7 @@ export function DarkCyanHeader({ block, overlay = false, overlayTone = 'light', 
     } : undefined;
 
     return (
-        <header id={overlay ? 'cosmic-overlay-header' : undefined} style={overlayStyle} className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${overlay ? 'px-[3.5rem] pt-[3.25rem] pb-[2.5rem]' : 'px-5 py-5 sm:px-6 sm:py-6'} lg:flex-nowrap transition-colors duration-500`}>
+        <header id={overlay ? 'cosmic-overlay-header' : undefined} style={overlayStyle} className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 ${overlay ? 'border-0 px-[3.5rem] pt-[3.25rem] pb-[2.5rem]' : 'border-b px-5 py-5 sm:px-6 sm:py-6'} lg:flex-nowrap transition-colors duration-500`}>
             {logoImageUrl ? (
                 <HeaderLogoEditor
                     imageUrl={logoImageUrl}
@@ -168,13 +168,16 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
         border: '0',
         boxShadow: 'none',
     } : (overlay && overlayCtaTreatment === 'gradient' ? {
-        background: '#fff',
-        color: overlayVisuals.primary,
-        WebkitTextFillColor: overlayVisuals.primary,
-        border: `1px solid ${overlayVisuals.border}`,
+        // Overlay headers still use the active brand primary for the CTA.
+        // Header contrast may change nav/logo tone, but it must not wash the CTA to white.
+        background: overlayVisuals.primary,
+        backgroundColor: overlayVisuals.primary,
+        color: '#ffffff',
+        WebkitTextFillColor: '#ffffff',
+        border: `1px solid ${overlayVisuals.primary}`,
         boxShadow: 'none',
         '--cosmic-overlay-cta-primary': overlayVisuals.primary,
-        '--cosmic-overlay-cta-border': overlayVisuals.border,
+        '--cosmic-overlay-cta-border': overlayVisuals.primary,
     } : undefined);
 
     const logoImageUrl = typeof block.logo_image_url === 'string' ? block.logo_image_url.trim() : '';
@@ -182,7 +185,7 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
     const logoMaxWidth = Math.min(300, Math.max(180, Number(block.logo_max_width || 240)));
 
     return (
-        <header id={overlay ? 'cosmic-overlay-header' : undefined} style={overlayStyle} className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 border-b ${customShell ? 'border-transparent py-3' : (overlay ? 'border-transparent px-[3.5rem] pt-[3.25rem] pb-[2.5rem]' : 'border-slate-200 px-5 py-5 sm:px-6 sm:py-6')} lg:flex-nowrap`}>
+        <header id={overlay ? 'cosmic-overlay-header' : undefined} style={overlayStyle} className={`w-full ${theme} flex flex-wrap items-center justify-between gap-3 ${overlay ? 'border-0' : 'border-b'} ${customShell ? 'border-transparent py-3' : (overlay ? 'px-[3.5rem] pt-[3.25rem] pb-[2.5rem]' : 'border-slate-200 px-5 py-5 sm:px-6 sm:py-6')} lg:flex-nowrap`}>
             {logoImageUrl ? (
                 <HeaderLogoEditor
                     imageUrl={logoImageUrl}
@@ -220,7 +223,7 @@ export function GlassmorphismHeader({ block, overlay = false, overlayTone = 'lig
                     onAi={onCtaAi}
                     style={overlayCtaStyle}
                     className={`cosmic-header-cta ${overlayCtaTreatment === 'gradient' ? 'cosmic-overlay-gradient-cta' : 'cosmic-header-cta-primary'} ${overlayCtaTreatment === 'gradient' ? '' : `${primaryTheme.bg} ${primaryTheme.text}`} px-7 py-3 shrink-0 rounded-full text-sm font-semibold cursor-pointer hover:opacity-90 transition`}
-                    textClass={overlayCtaTreatment === 'gradient' ? 'cosmic-overlay-header-cta-label !text-current font-bold' : 'text-white font-bold'}
+                    textClass='text-white font-bold'
                 />
             </nav>
         </header>

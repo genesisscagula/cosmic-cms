@@ -2,6 +2,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { getHeroThemeState } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 
 export const HeroCenteredCTASchema = {
@@ -100,26 +101,26 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
 
         <section
             data-cosmic-hero-theme={heroState.requestedTheme}
-            className={`relative flex min-h-[500px] w-full items-center overflow-hidden border-b px-7 py-20 text-center sm:min-h-[560px] sm:px-10 sm:py-24 lg:min-h-[620px] lg:px-12 lg:py-28 ${theme.bg} ${theme.border} transition-colors duration-500`}
+            className={sparkTw(block, "section", `relative flex min-h-[500px] w-full items-center overflow-hidden border-b px-7 py-20 text-center sm:min-h-[560px] sm:px-10 sm:py-24 lg:min-h-[620px] lg:px-12 lg:py-28 ${theme.bg} ${theme.border} transition-colors duration-500`)}
         >
 
-            <div className="absolute
+            <div className={sparkTw(block, "b10_1", "absolute
                 inset-0
-                overflow-hidden">
+                overflow-hidden")}>
 
-                <div className={`absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full opacity-[0.13] blur-[140px] ${primaryTheme.bg}`} />
+                <div className={sparkTw(block, "wrapper", `absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full opacity-[0.13] blur-[140px] ${primaryTheme.bg}`)} />
 
-                <div className={`absolute -bottom-40 -right-32 h-[32rem] w-[32rem] rounded-full opacity-[0.1] blur-[150px] ${primaryTheme.bg}`} />
+                <div className={sparkTw(block, "wrapper_2", `absolute -bottom-40 -right-32 h-[32rem] w-[32rem] rounded-full opacity-[0.1] blur-[150px] ${primaryTheme.bg}`)} />
 
-                <div className={`absolute inset-x-[12%] top-0 border-t ${theme.border} opacity-70`} />
+                <div className={sparkTw(block, "wrapper_3", `absolute inset-x-[12%] top-0 border-t ${theme.border} opacity-70`)} />
 
             </div>
 
-            <div className="relative z-10 mx-auto flex max-w-5xl flex-col items-center space-y-7">
+            <div className={sparkTw(block, "wrapper_4", "relative z-10 mx-auto flex max-w-5xl flex-col items-center space-y-7")}>
 
                 <EditableText
                     value={data.tagline}
-                    className={`block text-xs font-semibold uppercase tracking-[0.32em] ${theme.sub}`}
+                    className={sparkTw(block, "text", `block text-xs font-semibold uppercase tracking-[0.32em] ${theme.sub}`)}
                     onSave={(val) =>
                         onUpdate({
                             tagline: val
@@ -129,7 +130,7 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
 
                 <EditableText
                     value={data.heading} cosmicType="h1"
-                    className={`block max-w-5xl text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`}
+                    className={sparkTw(block, "text_2", `block max-w-5xl text-4xl font-bold leading-[1.02] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${theme.text}`)}
                     onSave={(val) =>
                         onUpdate({
                             heading: val
@@ -140,7 +141,7 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
                 <EditableText
                     value={data.subheading}
                     isTextArea={true}
-                    className={`mx-auto block max-w-3xl text-base leading-7 sm:text-lg sm:leading-8 ${theme.sub}`}
+                    className={sparkTw(block, "text_3", `mx-auto block max-w-3xl text-base leading-7 sm:text-lg sm:leading-8 ${theme.sub}`)}
                     onSave={(val) =>
                         onUpdate({
                             subheading: val,
@@ -152,7 +153,7 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
                 <EditableButton
                     label={data.button_label}
                     url={data.button_url}
-                    className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-lg transition hover:opacity-90 ${primaryButtonStyle}`}
+                    className={sparkTw(block, "button", `inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-lg transition hover:opacity-90 ${primaryButtonStyle}`)}
                     onSave={(label, url) =>
                         onUpdate({
                             button_label: label,

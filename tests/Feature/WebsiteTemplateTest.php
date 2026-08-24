@@ -27,12 +27,13 @@ class WebsiteTemplateTest extends TestCase
         $page = $website->pages()->where('slug', 'home')->firstOrFail();
 
         $response->assertRedirect(route('pages.index', $website));
-        $this->assertSame('violet', $website->theme_settings['primary']);
+        $this->assertSame('my-brand', $website->theme_settings['primary']);
+        $this->assertSame('violet', $website->theme_settings['custom_brand_theme']['base_family']);
         $this->assertSame('North Star Studio', $website->global_header['logo_text']);
         $this->assertSame('draft', $page->status);
-        $this->assertCount(8, $page->blocks);
-        $this->assertSame('hero_background_image', $page->blocks[0]['type']);
-        $this->assertSame('stats_modern', $page->blocks[7]['type']);
+        $this->assertCount(6, $page->blocks);
+        $this->assertSame('hero_bento_premium', $page->blocks[0]['type']);
+        $this->assertSame('hero_centered_cta', $page->blocks[5]['type']);
     }
 
     public function test_unknown_template_is_rejected_without_creating_a_website(): void
@@ -94,8 +95,12 @@ class WebsiteTemplateTest extends TestCase
         ])->assertRedirect();
 
         $website = $user->websites()->firstOrFail();
-        $this->assertSame('midnight', $website->theme_settings['primary']);
-        $this->assertCount(8, $website->pages()->firstOrFail()->blocks);
+        $this->assertSame('my-brand', $website->theme_settings['primary']);
+        $this->assertSame('midnight', $website->theme_settings['custom_brand_theme']['base_family']);
+        $blocks = $website->pages()->firstOrFail()->blocks;
+        $this->assertCount(6, $blocks);
+        $this->assertSame('hero_editorial_overlay', $blocks[0]['type']);
+        $this->assertSame('image_cta_banner', $blocks[5]['type']);
     }
 
     public function test_an_owner_can_delete_a_website_and_its_pages(): void

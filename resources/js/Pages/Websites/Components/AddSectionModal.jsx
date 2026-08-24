@@ -8,6 +8,7 @@ import useInfiniteReveal from '../../../Hooks/useInfiniteReveal';
 import BlockPreviewCard from "./BlockPreviewCard";
 import { BlockRegistry } from "./SparkRegistry";
 import { BlockRegistry as BuilderBlockRegistry } from "../BlockRegistry";
+import { createSparkTailwindRuntime } from "../Blocks/Shared/sparkTailwindRuntime";
 import { colorFamilies, installCustomBrandTheme } from "../../../theme/colorFamilies";
 
 const categoryFor = (type) => {
@@ -149,6 +150,7 @@ export function ActualSparkPreview({ spark, previewVariant = "white", websiteThe
                 block={block}
                 blockIndex={blockIndex}
                 globalTheme={normalizedTheme}
+                tailwind={createSparkTailwindRuntime(block)}
                 onUpdate={() => {}}
                 blogPosts={[]}
                 blogWebsiteId={null}

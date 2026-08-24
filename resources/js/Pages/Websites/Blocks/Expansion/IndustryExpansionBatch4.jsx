@@ -1,5 +1,6 @@
 import React from "react";
 
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 const mediaUrl=(value)=>String(value||"").trim();
 const themeVars=(resolved)=>{
     const primary=String(resolved||"").toLowerCase()==="primary";
@@ -15,24 +16,24 @@ const themeVars=(resolved)=>{
 const IndustrySection=({block,variant,family})=>{
  const items=Array.isArray(block?.items)?block.items:[];
  const resolved=block?.resolvedTheme||block?.theme||"light";
- return <section className={`group/repeatable-section cosmic-b4 b4-${family} b4-${variant}`} style={themeVars(resolved)}>
-   <div className="b4-shell">
-      <div className="b4-head">
-        <span data-cosmic-luna-display="text" data-luna-target="label" className="b4-eyebrow">{block?.eyebrow}</span>
-        <span data-cosmic-luna-display="text" data-cosmic-type="h2" data-luna-target="heading" className="b4-heading">{block?.heading}</span>
-        <span data-cosmic-luna-display="text" data-cosmic-type="lead" data-luna-target="text" className="b4-intro">{block?.text}</span>
+ return <section className={sparkTw(block, "auto_1", `group/repeatable-section cosmic-b4 b4-${family} b4-${variant}`)} style={themeVars(resolved)}>
+   <div className={sparkTw(block, "auto_2", "b4-shell")}>
+      <div className={sparkTw(block, "auto_3", "b4-head")}>
+        <span data-cosmic-luna-display="text" data-luna-target="label" className={sparkTw(block, "auto_4", "b4-eyebrow")}>{block?.eyebrow}</span>
+        <span data-cosmic-luna-display="text" data-cosmic-type="h2" data-luna-target="heading" className={sparkTw(block, "auto_5", "b4-heading")}>{block?.heading}</span>
+        <span data-cosmic-luna-display="text" data-cosmic-type="lead" data-luna-target="text" className={sparkTw(block, "auto_6", "b4-intro")}>{block?.text}</span>
       </div>
-      <div className="b4-grid">{items.map((item,index)=><article className="b4-card group relative" key={`${item?.title||"item"}-${index}`}>
-        <div data-cosmic-luna-display="image" data-luna-target="image" className="b4-img">{mediaUrl(item?.image_url)?<img src={mediaUrl(item?.image_url)} alt="" className="h-full w-full object-cover pointer-events-none"/>:<div className="h-full min-h-[15rem] w-full bg-[var(--b4-surface)]"/>}</div>
-        <div className="b4-copy">
-          <span className="b4-label">{item?.label || String(index+1).padStart(2,"0")}</span>
-          <span data-cosmic-luna-display="text" data-cosmic-type="card-title" data-luna-target="heading" className="b4-title">{item?.title}</span>
-          <span data-cosmic-luna-display="text" data-cosmic-type="card-body" data-luna-target="text" className="b4-text">{item?.text}</span>
+      <div className={sparkTw(block, "auto_7", "b4-grid")}>{items.map((item,index)=><article className={sparkTw(block, "auto_8", "b4-card group relative")} key={`${item?.title||"item"}-${index}`}>
+        <div data-cosmic-luna-display="image" data-luna-target="image" className={sparkTw(block, "auto_9", "b4-img")}>{mediaUrl(item?.image_url)?<img src={mediaUrl(item?.image_url)} alt="" className={sparkTw(block, "auto_10", "h-full w-full object-cover pointer-events-none")}/>:<div className={sparkTw(block, "auto_11", "h-full min-h-[15rem] w-full bg-[var(--b4-surface)]")}/>}</div>
+        <div className={sparkTw(block, "auto_12", "b4-copy")}>
+          <span className={sparkTw(block, "auto_13", "b4-label")}>{item?.label || String(index+1).padStart(2,"0")}</span>
+          <span data-cosmic-luna-display="text" data-cosmic-type="card-title" data-luna-target="heading" className={sparkTw(block, "auto_14", "b4-title")}>{item?.title}</span>
+          <span data-cosmic-luna-display="text" data-cosmic-type="card-body" data-luna-target="text" className={sparkTw(block, "auto_15", "b4-text")}>{item?.text}</span>
         </div>
       </article>)}</div>
-      <div className="b4-actions">
-        {block?.button_label&&<a className="b4-primary" href={block?.button_url||"#"} data-cosmic-luna-display="button" data-luna-target="button">{block.button_label}</a>}
-        {block?.secondary_label&&<a className="b4-secondary" href={block?.secondary_url||"#"} data-cosmic-luna-display="button" data-luna-target="button">{block.secondary_label}</a>}
+      <div className={sparkTw(block, "auto_16", "b4-actions")}>
+        {block?.button_label&&<a className={sparkTw(block, "auto_17", "b4-primary")} href={block?.button_url||"#"} data-cosmic-luna-display="button" data-luna-target="button">{block.button_label}</a>}
+        {block?.secondary_label&&<a className={sparkTw(block, "auto_18", "b4-secondary")} href={block?.secondary_url||"#"} data-cosmic-luna-display="button" data-luna-target="button">{block.secondary_label}</a>}
       </div>
    </div>
    <style>{`

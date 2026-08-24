@@ -9,6 +9,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 
 
@@ -187,6 +188,9 @@ export function HeroBackgroundImageBlock({
     const heroHeight = {
         medium: "min-h-[500px]",
         large: "min-h-[650px]",
+        // Compatibility for pages generated before the height enum was
+        // normalized. The export compiler maps the same legacy value here.
+        xl: "min-h-[650px]",
         screen: ""
     };
 
@@ -215,7 +219,7 @@ export function HeroBackgroundImageBlock({
 
         <section data-cosmic-editable-hero-media="true"
             data-cosmic-media-banner="true"
-            className={`
+            className={sparkTw(block, "section", `
                 relative
                 overflow-hidden
                 flex
@@ -223,7 +227,7 @@ export function HeroBackgroundImageBlock({
                 items-center
 
                 ${heroHeight[data.height]}
-            `}
+            `)}
             onClick={handleSectionImageEdit}
             style={data.height === "screen" ? {minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"} : undefined}
         >
@@ -237,14 +241,14 @@ export function HeroBackgroundImageBlock({
             src={data.image_url}
             showOverlay={false}
             isBackground
-            className="
+            className={sparkTw(block, "b10_1", "
                 absolute
                 inset-0
                 w-full
                 h-full
                 overflow-hidden
                 z-20
-            "
+            ")}
             onSave={(value) =>
                 onUpdate({
                     image_url: value
@@ -255,12 +259,12 @@ export function HeroBackgroundImageBlock({
             {/* Overlay */}
 
             <div
-                className={`
+                className={sparkTw(block, "wrapper", `
                     absolute
                     inset-0
                     z-[25]
                     pointer-events-none
-                `}
+                `)}
                 style={{
                     backgroundColor: overlayColor,
                     opacity: effectiveOverlayOpacity / 100
@@ -270,7 +274,7 @@ export function HeroBackgroundImageBlock({
             {/* Content */}
 
             <div
-            className={`
+            className={sparkTw(block, "wrapper_2", `
                 relative
                 z-[25]
                 w-full
@@ -285,18 +289,18 @@ export function HeroBackgroundImageBlock({
                 flex-col
                 justify-center
                 ${alignment[data.textAlign]}
-            `}
+            `)}
         >
 
                 <EditableText
                     value={data.tagline}
-                    className={`
+                    className={sparkTw(block, "text", `
                         text-sm
                         uppercase
                         tracking-[0.35em]
                         font-semibold
                         ${mediaStyle.tagline}
-                    `}
+                    `)}
                     onSave={(val) =>
                         onUpdate({
                             tagline: val
@@ -306,7 +310,7 @@ export function HeroBackgroundImageBlock({
 
                 <EditableText
                     value={data.heading} cosmicType="h1"
-                    className={`
+                    className={sparkTw(block, "text_2", `
                         mt-6
                         text-4xl
                         sm:text-5xl
@@ -316,7 +320,7 @@ export function HeroBackgroundImageBlock({
                         leading-tight
                         break-words
                         ${mediaStyle.heading}
-                    `}
+                    `)}
                     onSave={(val) =>
                         onUpdate({
                             heading: val
@@ -327,7 +331,7 @@ export function HeroBackgroundImageBlock({
                 <EditableText
                     value={data.text}
                     isTextArea={true}
-                    className={`
+                    className={sparkTw(block, "text_3", `
                         mt-6
                         sm:mt-8
                         max-w-2xl
@@ -336,7 +340,7 @@ export function HeroBackgroundImageBlock({
                         leading-7
                         sm:leading-8
                         ${mediaStyle.body}
-                    `}
+                    `)}
                     onSave={(val) =>
                         onUpdate({
                             text: val
@@ -344,12 +348,12 @@ export function HeroBackgroundImageBlock({
                     }
                 />
 
-                <div className="mt-8 sm:mt-12">
+                <div className={sparkTw(block, "wrapper_3", "mt-8 sm:mt-12")}>
 
                     <EditableButton
                         label={data.button_label}
                         url={data.button_url}
-                        className={`
+                        className={sparkTw(block, "button", `
                             inline-flex
                             w-full
                             sm:w-auto
@@ -363,7 +367,7 @@ export function HeroBackgroundImageBlock({
                             duration-200
                             ${buttonStyle.bg}
                             ${buttonStyle.text}
-                        `}
+                        `)}
                         onSave={(label, url) =>
                             onUpdate({
                                 button_label: label,

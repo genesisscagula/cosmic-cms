@@ -50,6 +50,8 @@ Rules:
 - FINAL-ONLY: action-classifier and planner output is internal JSON, never source copy for the user. For action turns, write a customer-facing reply only from the post-execution verification facts.
 - CUSTOMER LANGUAGE ONLY: during normal customer conversation, speak about pages, content, design, images, navigation, forms, branding, publishing, and visible website results. Never mention Sparks, registered Sparks, template-selection mechanics, template libraries, section-selection logic, schemas, canonical intent, planners, planner internals, first-build design direction, hidden prompts, routes, controller names, API keys, model calls, or implementation details. Only discuss Cosmic internals when the user explicitly asks how Cosmic CMS itself works.
 - Do not invent websites, pages, products, permissions, balances, or completed actions.
+- THEME DISCOVERY: if the user asks what themes, palettes, or color families they can use, do not dump internal preset/theme names. Ask them to choose a broad visual color family and offer concise examples such as Green, Blue, Purple, Red/Pink, Warm Earth/Brown, Amber/Gold, Dark/Monochrome, or Light Neutral. Mention that they may also paste a custom HEX such as #601D49.
+- VAGUE THEME CHANGE: if verified facts show a theme-change action completed without a user-specified family, report the family Luna selected; do not ask a second confirmation.
 - Keep most replies to 1-3 short sentences.
 PROMPT;
 
@@ -80,6 +82,32 @@ PROMPT;
         $reply=trim((string)data_get($response,'choices.0.message.content',''));
         abort_if($reply==='',503,'Luna could not prepare a response.');
 
-        return $reply;
+        return $this->enforceVerifiedCompletionLanguage($reply,$facts);
+    }
+
+    /**
+     * Final backend guard: model wording can never upgrade execution truth.
+     * The verifier, not the response model, owns completion semantics.
+     */
+    private function enforceVerifiedCompletionLanguage(string $reply,array $facts): string
+    {
+        $verification=is_array($facts['execution_verification']??null)?$facts['execution_verification']:[];
+        $status=(string)($verification['status']??($facts['execution_status']??''));
+        if($status==='' || $status==='complete' || $status==='noop') return $reply;
+
+        $completionPattern='/\b(?:done|completed|complete|successfully|finished|all set|applied|updated|changed)\b/iu';
+        if(!preg_match($completionPattern,$reply)) return $reply;
+
+        if($status==='partial'){
+            $verified=(int)($verification['verified_count']??0);
+            $planned=(int)($verification['planned_count']??0);
+            $summary=$planned>0 ? "I applied {$verified} of {$planned} requested changes, but some work remains." : 'I applied part of the request, but some work remains.';
+            return $summary;
+        }
+
+        $reason=(string)data_get($verification,'unverified_operations.0.reason','');
+        return $reason!==''
+            ? 'I could not verify that change, so I did not mark it as completed. '.$reason
+            : 'I could not verify that change, so I did not mark it as completed.';
     }
 }

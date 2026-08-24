@@ -7,6 +7,7 @@ import { getEffectiveTheme } from '../../../../theme/Theme';
 import { getHeroThemeState, resolveHeroThemeRequest } from '../../../../theme/heroTheme';
 import { colorFamilies } from '../../../../theme/colorFamilies';
 import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 const DEFAULT_SLIDES = [
     {
@@ -226,7 +227,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
             data-cosmic-active-item-index={activeIndex}
             data-cosmic-active-item-collection="slides"
             data-cosmic-editable-hero-media="true"
-            className="relative isolate overflow-hidden"
+            className={sparkTw(block, "section", "relative isolate overflow-hidden")}
             onClick={handleGalleryEdit}
             onMouseEnter={() => setPaused(true)}
             onMouseLeave={() => setPaused(false)}
@@ -240,7 +241,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
             {slides.map((slide, index) => (
                 <div
                     key={`hero-slider-${index}`}
-                    className={`absolute inset-0 transition-opacity duration-700 ${index === activeIndex ? 'z-10 opacity-100' : 'z-0 opacity-0'}`}
+                    className={sparkTw(block, "wrapper", `absolute inset-0 transition-opacity duration-700 ${index === activeIndex ? 'z-10 opacity-100' : 'z-0 opacity-0'}`)}
                     aria-hidden={index !== activeIndex}
                 >
                     <EditableImage
@@ -250,36 +251,36 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                         src={slide.image_url}
                         showOverlay={false}
                         isBackground
-                        className="absolute inset-0 h-full w-full overflow-hidden"
+                        className={sparkTw(block, "b10_1", "absolute inset-0 h-full w-full overflow-hidden")}
                         onSave={(value) => updateSlide(index, { image_url: value })}
                     />
                 </div>
             ))}
 
-            <div className="absolute inset-0 z-20" style={{ backgroundColor: overlayColor, opacity: sliderMediaStyle.overlayOpacity }} />
-            <div className={`absolute inset-0 z-20 bg-gradient-to-r ${sliderMediaStyle.gradientX}`} />
-            <div className={`absolute inset-0 z-20 bg-gradient-to-t ${sliderMediaStyle.gradientY}`} />
+            <div className={sparkTw(block, "wrapper_2", "absolute inset-0 z-20")} style={{ backgroundColor: overlayColor, opacity: sliderMediaStyle.overlayOpacity }} />
+            <div className={sparkTw(block, "wrapper_3", `absolute inset-0 z-20 bg-gradient-to-r ${sliderMediaStyle.gradientX}`)} />
+            <div className={sparkTw(block, "wrapper_4", `absolute inset-0 z-20 bg-gradient-to-t ${sliderMediaStyle.gradientY}`)} />
 
-            <div className="relative z-30 mx-auto flex max-w-7xl items-center px-6 py-0 sm:px-10 lg:px-14" style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
-                <div className={`max-w-3xl ${sliderMediaStyle.textWrap}`} aria-live="polite">
+            <div className={sparkTw(block, "wrapper_5", "relative z-30 mx-auto flex max-w-7xl items-center px-6 py-0 sm:px-10 lg:px-14")} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+                <div className={sparkTw(block, "wrapper_6", `max-w-3xl ${sliderMediaStyle.textWrap}`)} aria-live="polite">
                     {activeSlide.eyebrow && (
-                        <p className={`mb-5 text-xs font-bold uppercase tracking-[0.32em] sm:text-sm ${sliderMediaStyle.eyebrow}`}>
+                        <p className={sparkTw(block, "body", `mb-5 text-xs font-bold uppercase tracking-[0.32em] sm:text-sm ${sliderMediaStyle.eyebrow}`)}>
                             {activeSlide.eyebrow}
                         </p>
                     )}
-                    <h2 className="max-w-3xl text-[3rem] font-bold leading-[0.98] tracking-[-0.04em] sm:text-[4rem] lg:text-[5rem]">
+                    <h2 className={sparkTw(block, "heading", "max-w-3xl text-[3rem] font-bold leading-[0.98] tracking-[-0.04em] sm:text-[4rem] lg:text-[5rem]")}>
                         {activeSlide.heading}
                     </h2>
-                    <p className={`mt-7 max-w-2xl text-base leading-8 sm:text-lg ${sliderMediaStyle.body}`}>
+                    <p className={sparkTw(block, "body_2", `mt-7 max-w-2xl text-base leading-8 sm:text-lg ${sliderMediaStyle.body}`)}>
                         {activeSlide.description}
                     </p>
-                    <div className="mt-9 flex flex-wrap gap-3">
+                    <div className={sparkTw(block, "wrapper_7", "mt-9 flex flex-wrap gap-3")}>
                         {ctas.map((cta, index) => (
                             <a
                                 key={`hero-slider-cta-${index}`}
                                 href={cta.url}
                                 onClick={(event) => event.preventDefault()}
-                                className={`rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 ${index === 0 ? sliderMediaStyle.primary : sliderMediaStyle.secondary}`}
+                                className={sparkTw(block, "b10_2", `rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 ${index === 0 ? sliderMediaStyle.primary : sliderMediaStyle.secondary}`)}
                             >
                                 {cta.text}
                             </a>
@@ -288,25 +289,25 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                 </div>
             </div>
 
-            <div className="absolute bottom-6 left-6 z-40 flex items-center gap-2 sm:left-10 lg:left-14" aria-label="Choose slide">
+            <div className={sparkTw(block, "wrapper_8", "absolute bottom-6 left-6 z-40 flex items-center gap-2 sm:left-10 lg:left-14")} aria-label="Choose slide">
                 {slides.map((_, index) => (
                     <button
                         key={`dot-${index}`}
                         type="button"
                         onClick={() => setActiveIndex(index)}
-                        className={`h-2.5 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white ${index === activeIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/70'}`}
+                        className={sparkTw(block, "b10_3", `h-2.5 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white ${index === activeIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/70'}`)}
                         data-cosmic-slider-nav="dot" aria-label={`Show slide ${index + 1}`}
                         aria-current={index === activeIndex ? 'true' : undefined}
                     />
                 ))}
             </div>
 
-            <div className="absolute bottom-16 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 sm:bottom-6">
+            <div className={sparkTw(block, "wrapper_9", "absolute bottom-16 left-1/2 z-40 flex -translate-x-1/2 items-center gap-2 sm:bottom-6")}>
                 <button type="button" data-cosmic-builder-only="true" data-cosmic-no-luna-hover="true" onClick={() => openEditor(activeIndex)} className="cosmic-hero-slider-edit rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Edit slide {activeIndex + 1}</button>
-                <button type="button" data-cosmic-builder-only="true" data-cosmic-no-luna-hover="true" onClick={addSlide} className="cosmic-hero-slider-add rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white">Add slide</button>
+                <button type="button" data-cosmic-builder-only="true" data-cosmic-no-luna-hover="true" onClick={addSlide} className={sparkTw(block, "button", "cosmic-hero-slider-add rounded-full border border-white/45 bg-black/60 px-4 py-2 text-xs font-bold !text-white shadow-sm backdrop-blur hover:bg-black/75 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white")}>Add slide</button>
             </div>
 
-            <div className="absolute bottom-6 right-6 z-40 flex items-center gap-3 sm:right-10 lg:right-14">
+            <div className={sparkTw(block, "wrapper_10", "absolute bottom-6 right-6 z-40 flex items-center gap-3 sm:right-10 lg:right-14")}>
                 {floatingCta && (
                     <a
                         href={floatingCta.url}
@@ -316,21 +317,21 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                         {floatingCta.text}
                     </a>
                 )}
-                <button type="button" onClick={previous} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" data-cosmic-slider-nav="previous" aria-label="Previous slide">←</button>
-                <button type="button" onClick={next} className="grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white" data-cosmic-slider-nav="next" aria-label="Next slide">→</button>
+                <button type="button" onClick={previous} className={sparkTw(block, "button_2", "grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white")} data-cosmic-slider-nav="previous" aria-label="Previous slide">←</button>
+                <button type="button" onClick={next} className={sparkTw(block, "button_3", "grid h-10 w-10 place-items-center rounded-full border border-white/25 bg-black/35 !text-white backdrop-blur hover:bg-black/55 focus-visible:outline focus-visible:outline-2 focus-visible:outline-white")} data-cosmic-slider-nav="next" aria-label="Next slide">→</button>
             </div>
 
             <EditableImageGallery ref={galleryRef} websiteId={websiteId} images={slides.map((slide)=>slide.image_url).filter(Boolean)} maxItems={12} title="Hero slider images" onSave={saveGalleryImages} />
 
             {editingIndex !== null && draft && createPortal(
-                <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEditor(); }}>
-                    <div className="cosmic-hero-slider-editor max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151518] p-6 !text-white shadow-2xl" role="dialog" aria-modal="true" aria-labelledby="hero-slider-edit-title">
-                        <div className="flex items-start justify-between gap-4">
-                            <div><p className="text-xs font-bold uppercase tracking-[0.22em] text-violet-300">Hero slider</p><h3 id="hero-slider-edit-title" className="mt-1 text-xl font-bold">Edit slide {editingIndex + 1}</h3></div>
-                            <button type="button" onClick={closeEditor} className="text-slate-400 hover:!text-white" aria-label="Close editor">×</button>
+                <div className={sparkTw(block, "wrapper_11", "fixed inset-0 z-[10000] flex items-center justify-center bg-black/75 p-4 backdrop-blur-sm")} role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closeEditor(); }}>
+                    <div className={sparkTw(block, "wrapper_12", "cosmic-hero-slider-editor max-h-[90vh] w-full max-w-3xl overflow-y-auto rounded-2xl border border-white/10 bg-[#151518] p-6 !text-white shadow-2xl")} role="dialog" aria-modal="true" aria-labelledby="hero-slider-edit-title">
+                        <div className={sparkTw(block, "wrapper_13", "flex items-start justify-between gap-4")}>
+                            <div><p className={sparkTw(block, "body_3", "text-xs font-bold uppercase tracking-[0.22em] text-violet-300")}>Hero slider</p><h3 id="hero-slider-edit-title" className={sparkTw(block, "subheading", "mt-1 text-xl font-bold")}>Edit slide {editingIndex + 1}</h3></div>
+                            <button type="button" onClick={closeEditor} className={sparkTw(block, "button_4", "text-slate-400 hover:!text-white")} aria-label="Close editor">×</button>
                         </div>
-                        <div className="mt-6 grid gap-4 sm:grid-cols-2">
-                            <label className="grid gap-2 text-sm font-semibold text-slate-200 sm:col-span-2"><span>Image URL</span><input value={draft.image_url || ''} onChange={(event) => setDraft({ ...draft, image_url: event.target.value })} className="rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 !text-white outline-none focus:border-violet-400" /></label>
+                        <div className={sparkTw(block, "wrapper_14", "mt-6 grid gap-4 sm:grid-cols-2")}>
+                            <label className={sparkTw(block, "wrapper_15", "grid gap-2 text-sm font-semibold text-slate-200 sm:col-span-2")}><span>Image URL</span><input value={draft.image_url || ''} onChange={(event) => setDraft({ ...draft, image_url: event.target.value })} className="rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 !text-white outline-none focus:border-violet-400" /></label>
                             {[
                                 ['eyebrow', 'Eyebrow'],
                                 ['heading', 'Heading'],
@@ -339,13 +340,13 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                                 ['button_3_text', 'Button 3 text'], ['button_3_url', 'Button 3 URL'],
                                 ['button_4_text', 'Button 4 text'], ['button_4_url', 'Button 4 URL'],
                             ].map(([key, label]) => (
-                                <label key={key} className="grid gap-2 text-sm font-semibold text-slate-200"><span>{label}</span><input value={draft[key] || ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} className="rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 !text-white outline-none focus:border-violet-400" /></label>
+                                <label key={key} className={sparkTw(block, "wrapper_16", "grid gap-2 text-sm font-semibold text-slate-200")}><span>{label}</span><input value={draft[key] || ''} onChange={(event) => setDraft({ ...draft, [key]: event.target.value })} className="rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 !text-white outline-none focus:border-violet-400" /></label>
                             ))}
-                            <label className="grid gap-2 text-sm font-semibold text-slate-200 sm:col-span-2"><span>Description</span><textarea rows="4" value={draft.description || ''} onChange={(event) => setDraft({ ...draft, description: event.target.value })} className="resize-y rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 !text-white outline-none focus:border-violet-400" /></label>
+                            <label className={sparkTw(block, "wrapper_17", "grid gap-2 text-sm font-semibold text-slate-200 sm:col-span-2")}><span>Description</span><textarea rows="4" value={draft.description || ''} onChange={(event) => setDraft({ ...draft, description: event.target.value })} className="resize-y rounded-lg border border-white/10 bg-black/25 px-3 py-2.5 !text-white outline-none focus:border-violet-400" /></label>
                         </div>
-                        <div className="mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5">
+                        <div className={sparkTw(block, "wrapper_18", "mt-6 flex flex-wrap items-center justify-between gap-3 border-t border-white/10 pt-5")}>
                             <button type="button" onClick={() => deleteSlide(editingIndex)} disabled={slides.length <= 1} className="cosmic-hero-slider-delete rounded-lg border border-rose-500 bg-rose-600 px-4 py-2 text-sm font-bold !text-white hover:bg-rose-500 disabled:cursor-not-allowed disabled:border-slate-600 disabled:bg-slate-700 disabled:!text-slate-400 disabled:opacity-80">Delete slide</button>
-                            <div className="flex gap-2"><button type="button" onClick={closeEditor} className="rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/5">Cancel</button><button type="button" onClick={saveEditor} className="rounded-lg bg-white px-5 py-2 text-sm font-bold !text-slate-950 hover:bg-slate-100">Save slide</button></div>
+                            <div className={sparkTw(block, "wrapper_19", "flex gap-2")}><button type="button" onClick={closeEditor} className={sparkTw(block, "button_5", "rounded-lg px-4 py-2 text-sm font-semibold text-slate-300 hover:bg-white/5")}>Cancel</button><button type="button" onClick={saveEditor} className={sparkTw(block, "button_6", "rounded-lg bg-white px-5 py-2 text-sm font-bold !text-slate-950 hover:bg-slate-100")}>Save slide</button></div>
                         </div>
                     </div>
                 </div>,

@@ -5912,7 +5912,11 @@ body .cosmic-start-quick-idea.rounded-full.border {
     --cosmic-color-body: var(--cosmic-text, #0f172a);
     --cosmic-color-muted: var(--cosmic-text-muted, #64748b);
     --cosmic-color-border: var(--cosmic-border, #dce8e1);
+    --cosmic-color-border-strong: #cbd5e1;
     --cosmic-color-on-primary: #ffffff;
+    --cosmic-color-on-secondary: #ffffff;
+    --cosmic-color-on-accent: #0f172a;
+    --cosmic-color-on-surface: var(--cosmic-color-body);
     --cosmic-color-on-dark: #ffffff;
     --cosmic-color-on-light: #0f172a;
 
@@ -5960,6 +5964,21 @@ body .cosmic-start-quick-idea.rounded-full.border {
 [data-cosmic-type="h5"], .cosmic-type-h5 { color: var(--cosmic-local-h5-color, var(--cosmic-color-h5)); }
 [data-cosmic-type="h6"], .cosmic-type-h6 { color: var(--cosmic-local-h6-color, var(--cosmic-color-h6)); }
 [data-cosmic-type="eyebrow"], .cosmic-type-eyebrow { color: var(--cosmic-local-eyebrow-color, var(--cosmic-color-eyebrow)); }
+
+/* Section treatments use semantic variables so custom HEX themes cannot leak
+   hard-coded family colors into Builder, preview, export or live rendering. */
+.cosmic-bg-page { background: var(--cosmic-color-page); }
+.cosmic-bg-white { background: var(--cosmic-bg-white, #FEFEFD); }
+.cosmic-bg-surface { background: var(--cosmic-color-surface); }
+.cosmic-bg-accent { background: var(--cosmic-brand-accent); }
+.cosmic-bg-accent-soft { background: color-mix(in srgb, var(--cosmic-brand-accent) 12%, var(--cosmic-color-surface)); }
+.cosmic-text-heading { color: var(--cosmic-color-heading); }
+.cosmic-text-on-surface { color: var(--cosmic-color-on-surface); }
+.cosmic-text-on-surface-muted { color: var(--cosmic-color-muted); }
+.cosmic-border-on-surface { border-color: var(--cosmic-color-border); }
+.cosmic-text-on-accent { color: var(--cosmic-color-on-accent); }
+.cosmic-text-on-accent-muted { color: color-mix(in srgb, var(--cosmic-color-on-accent) 72%, transparent); }
+.cosmic-border-on-accent { border-color: color-mix(in srgb, var(--cosmic-color-on-accent) 24%, transparent); }
 
 /* Opt-in semantic component primitives used during the migration batch. */
 [data-cosmic-radius="button"] { border-radius: var(--cosmic-local-button-radius, var(--cosmic-radius-button)); }
@@ -6215,6 +6234,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
    Batch 2: tokens/classes only. Full Spark migration follows in Batch 3.
    ================================================================== */
 :root {
+    --cosmic-bg-white:#FEFEFD;
     --cosmic-bg-surface:#FFFFFF;
     --cosmic-bg-primary:#243447;
     --cosmic-bg-primary-surface:#30475E;
@@ -6234,6 +6254,9 @@ body .cosmic-start-quick-idea.rounded-full.border {
     --cosmic-bg-overlay-cinematic-soft:.72;
 }
 
+.cosmic-bg-white {
+    background:var(--cosmic-local-bg-white,var(--cosmic-bg-white));
+}
 .cosmic-bg-surface {
     background:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface));
 }
@@ -6292,6 +6315,8 @@ body .cosmic-start-quick-idea.rounded-full.border {
 
 /* Semantic hooks for future Sparks and generated/custom sections. */
 [data-cosmic-background-state="light"] { --cosmic-background-state:light; }
+[data-cosmic-background-state="white"] { --cosmic-background-state:white; }
+[data-cosmic-background-state="surface"] { --cosmic-background-state:surface; }
 [data-cosmic-background-state="primary"] { --cosmic-background-state:primary; }
 [data-cosmic-overlay-mode="light"] { --cosmic-overlay-mode:light; }
 [data-cosmic-overlay-mode="primary"] { --cosmic-overlay-mode:primary; }
@@ -6315,7 +6340,11 @@ body .cosmic-start-quick-idea.rounded-full.border {
     --cosmic-current-text:var(--cosmic-on-primary);
     --cosmic-current-muted:var(--cosmic-on-primary-muted);
 }
-.cosmic-render-shell[data-cosmic-resolved-theme="light"]{
+:is(
+    .cosmic-render-shell[data-cosmic-resolved-theme="light"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="white"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="surface"]
+){
     --cosmic-current-text:var(--cosmic-on-surface);
     --cosmic-current-muted:var(--cosmic-on-surface-muted);
 }
@@ -6425,9 +6454,20 @@ body .cosmic-start-quick-idea.rounded-full.border {
     background-color:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary)) !important;
 }
 
-/* Surface/light sections stay genuinely light even when image/video media is added;
-   universal media itself is painted on the outer render shell. */
-.cosmic-render-shell[data-cosmic-resolved-theme="light"]
+/* White and surface are separate semantic states. White stays neutral while
+   surface receives a light tint derived from the active family. */
+:is(
+    .cosmic-render-shell[data-cosmic-resolved-theme="white"]
+)
+> .cosmic-render-content
+> section:not([class*="bg-black"]):not([class*="bg-slate-9"]) {
+    --cosmic-surface-background:var(--cosmic-local-bg-white,var(--cosmic-bg-white));
+    background-color:var(--cosmic-local-bg-white,var(--cosmic-bg-white)) !important;
+}
+:is(
+    .cosmic-render-shell[data-cosmic-resolved-theme="light"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="surface"]
+)
 > .cosmic-render-content
 > section:not([class*="bg-black"]):not([class*="bg-slate-9"]) {
     --cosmic-surface-background:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface));
@@ -6444,7 +6484,11 @@ body .cosmic-start-quick-idea.rounded-full.border {
 }
 
 /* Universal image/video overlays use a semantic overlay layer instead of Spark colors. */
-.cosmic-universal-background-host[data-cosmic-background-state="light"] {
+:is(
+    .cosmic-universal-background-host[data-cosmic-background-state="light"],
+    .cosmic-universal-background-host[data-cosmic-background-state="white"],
+    .cosmic-universal-background-host[data-cosmic-background-state="surface"]
+) {
     --cosmic-active-overlay-mode:light;
 }
 .cosmic-universal-background-host[data-cosmic-background-state="primary"] {
@@ -6698,6 +6742,47 @@ body .cosmic-start-quick-idea.rounded-full.border {
     color:var(--cosmic-local-card-heading,var(--cosmic-card-heading));
 }
 
+/* A selected Spark may semantically switch all of its card-like surfaces to
+   dark. This compatibility selector covers registered legacy Sparks that use
+   rounded+border markup as well as newer data-cosmic-card components. The
+   foreground is coupled to the surface token so a background mutation can
+   never leave headings/body copy unreadable. */
+.cosmic-render-shell[data-cosmic-card-surface="dark"] :is(
+    [data-cosmic-card],
+    .cosmic-card,
+    div[class*="rounded"][class*="border"],
+    article[class*="rounded"][class*="border"],
+    li[class*="rounded"][class*="border"]
+):not(.rounded-full):not([data-cosmic-preserve-surface]) {
+    background:var(--cosmic-local-card-bg) !important;
+    border-color:var(--cosmic-local-card-border) !important;
+    color:var(--cosmic-local-card-text) !important;
+}
+.cosmic-render-shell[data-cosmic-card-surface="dark"] :is(
+    [data-cosmic-card],
+    .cosmic-card,
+    div[class*="rounded"][class*="border"],
+    article[class*="rounded"][class*="border"],
+    li[class*="rounded"][class*="border"]
+):not(.rounded-full):not([data-cosmic-preserve-surface]) :is(
+    h2,h3,h4,h5,h6,[data-cosmic-type="card-title"]
+) {
+    color:var(--cosmic-local-card-heading) !important;
+    -webkit-text-fill-color:var(--cosmic-local-card-heading) !important;
+}
+.cosmic-render-shell[data-cosmic-card-surface="dark"] :is(
+    [data-cosmic-card],
+    .cosmic-card,
+    div[class*="rounded"][class*="border"],
+    article[class*="rounded"][class*="border"],
+    li[class*="rounded"][class*="border"]
+):not(.rounded-full):not([data-cosmic-preserve-surface]) :is(
+    p,a,button,[contenteditable="true"],.cosmic-editable-text
+) {
+    color:var(--cosmic-local-card-text) !important;
+    -webkit-text-fill-color:var(--cosmic-local-card-text) !important;
+}
+
 /* Media */
 [data-cosmic-media],
 .cosmic-media {
@@ -6818,8 +6903,12 @@ body .cosmic-start-quick-idea.rounded-full.border {
    H1-H6 follow the active primary/brand color on light/default surfaces.
    Dark/primary/image hero contrast rules below intentionally override this.
    ================================================================== */
-.cosmic-render-shell[data-cosmic-resolved-theme="light"] :is(h1,h2,h3,h4,h5,h6):not([data-cosmic-preserve-heading-color]),
-.cosmic-render-shell:not([data-cosmic-resolved-theme="primary"]):not([data-cosmic-background-state="primary"]) :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) {
+:is(
+    .cosmic-render-shell[data-cosmic-resolved-theme="light"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="white"],
+    .cosmic-render-shell[data-cosmic-resolved-theme="surface"]
+) :is(h1,h2,h3,h4,h5,h6):not([data-cosmic-preserve-heading-color]):not([class*="text-white"]):not([class*="-50"]):not([class*="-100"]):not([class*="-200"]):not(:where([class*="text-white"] *,[class*="text-blue-50"] *,[class*="text-slate-50"] *,[class*="text-gray-50"] *,[class*="text-zinc-50"] *,[class*="text-neutral-50"] *,[class*="text-"][class*="-50"] *,[class*="text-"][class*="-100"] *,[class*="text-"][class*="-200"] *)),
+.cosmic-render-shell:not([data-cosmic-resolved-theme="primary"]):not([data-cosmic-background-state="primary"]) :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]):not([class*="text-white"]):not([class*="-50"]):not([class*="-100"]):not([class*="-200"]):not(:where([class*="text-white"] *,[class*="text-"][class*="-50"] *,[class*="text-"][class*="-100"] *,[class*="text-"][class*="-200"] *)) {
     color:var(--cosmic-local-heading-color,var(--cosmic-color-heading,var(--cosmic-brand-primary,var(--cosmic-primary,#243447)))) !important;
 }
 

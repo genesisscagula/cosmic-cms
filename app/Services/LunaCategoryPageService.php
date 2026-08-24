@@ -22,9 +22,9 @@ class LunaCategoryPageService
         return $this->templatePlanner->plan($prompt)['sections'];
     }
 
-    public function planDetailed(string $prompt): array
+    public function planDetailed(string $prompt, ?array $allowedTemplateKeys = null): array
     {
-        return $this->templatePlanner->plan($prompt);
+        return $this->templatePlanner->plan($prompt, $allowedTemplateKeys);
     }
 
     public function generate(string $prompt, array $sections): array

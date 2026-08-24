@@ -2,6 +2,7 @@ import { EditableText } from "../Shared/EditableText";
 import { EditableImage } from "../Shared/EditableImage";
 import { usePage } from "@inertiajs/react";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 const sharedDefaults = {
     eyebrow: "Explore more",
@@ -42,12 +43,12 @@ function themeFor(block, globalTheme) {
     return getEffectiveTheme(selected, globalTheme);
 }
 
-function CTA({ data, theme }) {
+function CTA({ block, data, theme }) {
     if (!data.button_label) return null;
     return (
         <a
             href={data.button_url || "#"}
-            className={`mt-7 inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-bold transition hover:-translate-y-0.5 ${theme.card} ${theme.text} ${theme.border}`}
+            className={sparkTw(block, "button", `mt-7 inline-flex min-h-11 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-bold transition hover:-translate-y-0.5 ${theme.card} ${theme.text} ${theme.border}`)}
             onClick={(event) => event.preventDefault()}
         >
             {data.button_label}
@@ -60,14 +61,14 @@ export function MiniHeroMinimalBlock({ block, onUpdate, globalTheme }) {
     const theme = themeFor(data, globalTheme);
 
     return (
-        <section className={`relative overflow-hidden border-b px-6 py-14 sm:px-8 sm:py-16 lg:px-12 lg:py-20 ${theme.bg} ${theme.border}`}>
-            <div className={`pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full opacity-10 blur-3xl ${theme.card}`} />
-            <div className="relative mx-auto max-w-7xl">
-                <div className="max-w-3xl">
-                    <EditableText value={data.eyebrow} className={`block text-xs font-bold uppercase tracking-[0.24em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                    <EditableText value={data.heading} cosmicType="h2" className={`mt-3 block text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
-                    <EditableText value={data.text} isTextArea className={`mt-4 block max-w-2xl text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />
-                    <CTA data={data} theme={theme} />
+        <section className={sparkTw(block, "section", `relative overflow-hidden border-b px-6 py-14 sm:px-8 sm:py-16 lg:px-12 lg:py-20 ${theme.bg} ${theme.border}`)}>
+            <div className={sparkTw(block, "wrapper", `pointer-events-none absolute -right-20 -top-24 h-64 w-64 rounded-full opacity-10 blur-3xl ${theme.card}`)} />
+            <div className={sparkTw(block, "wrapper_2", "relative mx-auto max-w-7xl")}>
+                <div className={sparkTw(block, "wrapper_3", "max-w-3xl")}>
+                    <EditableText value={data.eyebrow} className={sparkTw(block, "text", `block text-xs font-bold uppercase tracking-[0.24em] ${theme.sub}`)} onSave={(eyebrow) => onUpdate({ eyebrow })} />
+                    <EditableText value={data.heading} cosmicType="h2" className={sparkTw(block, "text_2", `mt-3 block text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl ${theme.text}`)} onSave={(heading) => onUpdate({ heading })} />
+                    <EditableText value={data.text} isTextArea className={sparkTw(block, "text_3", `mt-4 block max-w-2xl text-base leading-7 ${theme.sub}`)} onSave={(text) => onUpdate({ text })} />
+                    <CTA block={block} data={data} theme={theme} />
                 </div>
             </div>
         </section>
@@ -81,16 +82,16 @@ export function MiniHeroSplitBlock({ block, blockIndex, onUpdate, globalTheme })
     const websiteId = props.page?.website_id || props.website?.id;
 
     return (
-        <section className={`border-b px-6 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14 ${theme.bg} ${theme.border}`}>
-            <div className="mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_.95fr] lg:gap-12">
-                <div className="max-w-2xl">
-                    <EditableText value={data.eyebrow} className={`block text-xs font-bold uppercase tracking-[0.24em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                    <EditableText value={data.heading} cosmicType="h2" className={`mt-3 block text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
-                    <EditableText value={data.text} isTextArea className={`mt-4 block text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />
-                    <CTA data={data} theme={theme} />
+        <section className={sparkTw(block, "section_2", `border-b px-6 py-10 sm:px-8 sm:py-12 lg:px-12 lg:py-14 ${theme.bg} ${theme.border}`)}>
+            <div className={sparkTw(block, "wrapper_4", "mx-auto grid max-w-7xl items-center gap-8 lg:grid-cols-[1.05fr_.95fr] lg:gap-12")}>
+                <div className={sparkTw(block, "wrapper_5", "max-w-2xl")}>
+                    <EditableText value={data.eyebrow} className={sparkTw(block, "text_4", `block text-xs font-bold uppercase tracking-[0.24em] ${theme.sub}`)} onSave={(eyebrow) => onUpdate({ eyebrow })} />
+                    <EditableText value={data.heading} cosmicType="h2" className={sparkTw(block, "text_5", `mt-3 block text-4xl font-semibold leading-[1.02] tracking-tight sm:text-5xl ${theme.text}`)} onSave={(heading) => onUpdate({ heading })} />
+                    <EditableText value={data.text} isTextArea className={sparkTw(block, "text_6", `mt-4 block text-base leading-7 ${theme.sub}`)} onSave={(text) => onUpdate({ text })} />
+                    <CTA block={block} data={data} theme={theme} />
                 </div>
-                <div className={`overflow-hidden rounded-[1.75rem] border p-2 shadow-xl ${theme.card} ${theme.border}`}>
-                    <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} className="h-56 w-full rounded-[1.35rem] object-cover sm:h-64 lg:h-72" imageQuery={data.image_alt || data.heading} blockType={block.type} onSave={(image_url) => onUpdate({ image_url })} />
+                <div className={sparkTw(block, "wrapper_6", `overflow-hidden rounded-[1.75rem] border p-2 shadow-xl ${theme.card} ${theme.border}`)}>
+                    <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} className={sparkTw(block, "image", "h-56 w-full rounded-[1.35rem] object-cover sm:h-64 lg:h-72")} imageQuery={data.image_alt || data.heading} blockType={block.type} onSave={(image_url) => onUpdate({ image_url })} />
                 </div>
             </div>
         </section>
@@ -104,18 +105,18 @@ export function MiniHeroPromoBlock({ block, blockIndex, onUpdate, globalTheme })
     const websiteId = props.page?.website_id || props.website?.id;
 
     return (
-        <section className={`border-b px-6 py-10 sm:px-8 lg:px-12 lg:py-12 ${theme.bg} ${theme.border}`}>
-            <div className="mx-auto max-w-7xl">
-                <div className={`relative overflow-hidden rounded-[2rem] border p-7 shadow-xl sm:p-9 lg:p-11 ${theme.card} ${theme.border}`}>
-                    <div className="absolute inset-y-0 right-0 hidden w-[38%] lg:block">
-                        <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} showOverlay={false} isBackground className="h-full w-full object-cover opacity-20" imageQuery={data.heading} blockType={block.type} onSave={(image_url) => onUpdate({ image_url })} />
-                        <div className={`absolute inset-0 bg-gradient-to-r from-transparent to-transparent`} />
+        <section className={sparkTw(block, "section_3", `border-b px-6 py-10 sm:px-8 lg:px-12 lg:py-12 ${theme.bg} ${theme.border}`)}>
+            <div className={sparkTw(block, "wrapper_7", "mx-auto max-w-7xl")}>
+                <div className={sparkTw(block, "wrapper_8", `relative overflow-hidden rounded-[2rem] border p-7 shadow-xl sm:p-9 lg:p-11 ${theme.card} ${theme.border}`)}>
+                    <div className={sparkTw(block, "wrapper_9", "absolute inset-y-0 right-0 hidden w-[38%] lg:block")}>
+                        <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} showOverlay={false} isBackground className={sparkTw(block, "image_2", "h-full w-full object-cover opacity-20")} imageQuery={data.heading} blockType={block.type} onSave={(image_url) => onUpdate({ image_url })} />
+                        <div className={sparkTw(block, "wrapper_10", `absolute inset-0 bg-gradient-to-r from-transparent to-transparent`)} />
                     </div>
-                    <div className="relative max-w-3xl">
-                        <EditableText value={data.eyebrow} className={`block text-xs font-bold uppercase tracking-[0.24em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                        <EditableText value={data.heading} cosmicType="h2" className={`mt-3 block text-3xl font-semibold leading-[1.04] tracking-tight sm:text-4xl lg:text-5xl ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
-                        <EditableText value={data.text} isTextArea className={`mt-4 block max-w-2xl text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />
-                        <CTA data={data} theme={theme} />
+                    <div className={sparkTw(block, "wrapper_11", "relative max-w-3xl")}>
+                        <EditableText value={data.eyebrow} className={sparkTw(block, "text_7", `block text-xs font-bold uppercase tracking-[0.24em] ${theme.sub}`)} onSave={(eyebrow) => onUpdate({ eyebrow })} />
+                        <EditableText value={data.heading} cosmicType="h2" className={sparkTw(block, "text_8", `mt-3 block text-3xl font-semibold leading-[1.04] tracking-tight sm:text-4xl lg:text-5xl ${theme.text}`)} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.text} isTextArea className={sparkTw(block, "text_9", `mt-4 block max-w-2xl text-base leading-7 ${theme.sub}`)} onSave={(text) => onUpdate({ text })} />
+                        <CTA block={block} data={data} theme={theme} />
                     </div>
                 </div>
             </div>

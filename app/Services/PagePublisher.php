@@ -74,7 +74,7 @@ class PagePublisher
             ->orderBy('parent_id')
             ->orderBy('sort_order')
             ->orderBy('id')
-            ->get(['id', 'parent_id', 'title', 'slug', 'page_type', 'page_style', 'published_page_style', 'published_html', 'published_blocks', 'blocks']);
+            ->get(['id', 'parent_id', 'title', 'slug', 'page_type', 'page_style', 'published_page_style', 'published_html', 'published_blocks', 'blocks', 'seo_title', 'meta_description', 'og_image_url', 'canonical_url', 'is_indexable']);
 
         $publishedPostsByPage = $website->blogPosts()
             ->where('status', 'published')
@@ -146,8 +146,12 @@ class PagePublisher
                         ->all();
 
                     $pagePackage = [[
-                        'title' => $page->title,
+                        'title' => $page->seo_title ?: $page->title,
                         'slug' => $page->slug,
+                        'meta_description' => $page->meta_description,
+                        'og_image' => $page->og_image_url,
+                        'canonical_url' => $page->canonical_url,
+                        'is_indexable' => (bool) $page->is_indexable,
                         'page_style' => $publishedShellStyle,
                         // Every page gets its own directory. This makes
                         // parent/child routes predictable: /about/team/.

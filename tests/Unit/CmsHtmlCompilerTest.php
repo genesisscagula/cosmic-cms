@@ -8,27 +8,6 @@ use Tests\TestCase;
 
 class CmsHtmlCompilerTest extends TestCase
 {
-    private const ACTIVE_BLOCK_TYPES = [
-        'contact_form_modern',
-        'hero_headline',
-        'hero_floating_cards',
-        'hero_background_image',
-        'hero_editorial_overlay',
-        'hero_split_image',
-        'hero_video_style',
-        'hero_video_background',
-        'image_cta_banner',
-        'hero_centered_cta',
-        'feature_image_left',
-        'feature_image_right',
-        'services_cards',
-        'services_bento',
-        'process_timeline',
-        'testimonials_carousel',
-        'pricing_cards',
-        'stats_modern',
-        'team_modern',
-    ];
     protected function setUp(): void
     {
         parent::setUp();
@@ -48,6 +27,26 @@ class CmsHtmlCompilerTest extends TestCase
         ], 'emerald');
 
         $this->assertStringContainsString("background-image:url('{$imageUrl}')", $html);
+    }
+
+    public function test_fluid_local_h1_override_is_preserved_in_static_output(): void
+    {
+        $html = CmsHtmlCompiler::compile([[
+            'type' => 'hero_headline',
+            'heading' => 'A smaller fluid heading',
+            'luna_typography_overrides' => [
+                'h1_size' => 'clamp(2.7rem,5.4vw,5.175rem)',
+            ],
+        ]], 'midnight');
+
+        $this->assertStringContainsString(
+            '--cosmic-local-h1-size:clamp(2.7rem,5.4vw,5.175rem);',
+            $html
+        );
+        $this->assertStringNotContainsString(
+            '.cosmic-luna-design-host h1,.cosmic-luna-design-host h2,.cosmic-luna-design-host h3{font-size:min(var(--cosmic-local-h2-size',
+            $html
+        );
     }
 
     public function test_hero_video_background_uses_a_poster_fallback_and_compiles_youtube_as_a_background_embed(): void
@@ -91,6 +90,33 @@ class CmsHtmlCompilerTest extends TestCase
 
         $this->assertStringContainsString('src=\'https://cms.example.test/storage/websites/1/logos/brand-mark.png\'', $html);
         $this->assertStringContainsString('alt=\'North Star Studio\'', $html);
+    }
+
+    public function test_overlay_header_has_no_divider_but_solid_header_keeps_one(): void
+    {
+        $overlay = CmsHtmlCompiler::compile([[
+            'type' => 'glassmorphism_header',
+            'overlay_header_on_banner' => true,
+            'menu' => [],
+        ]], 'emerald');
+        $solid = CmsHtmlCompiler::compile([[
+            'type' => 'glassmorphism_header',
+            'overlay_header_on_banner' => false,
+            'menu' => [],
+        ]], 'emerald');
+
+        $this->assertMatchesRegularExpression(
+            "/<header[^>]+data-cosmic-overlay-header='true'[^>]+class='[^']*border-0[^']*'/",
+            $overlay
+        );
+        $this->assertDoesNotMatchRegularExpression(
+            "/<header[^>]+data-cosmic-overlay-header='true'[^>]+class='[^']*\\bborder-b\\b[^']*'/",
+            $overlay
+        );
+        $this->assertMatchesRegularExpression(
+            "/<header[^>]+data-cosmic-overlay-header='false'[^>]+class='[^']*\\bborder-b\\b[^']*'/",
+            $solid
+        );
     }
 
     public function test_blog_hub_uses_static_asset_urls_for_default_and_published_card_images(): void
@@ -222,16 +248,16 @@ class CmsHtmlCompilerTest extends TestCase
             ],
         ], 'emerald');
 
-        $this->assertStringContainsString("style='opacity:0.83333333333333;'", $html);
+        $this->assertStringContainsString('opacity:0.46;', $html);
     }
 
-    public function test_legacy_xl_hero_height_matches_the_builder_height(): void
+    public function test_legacy_xl_hero_height_normalizes_to_the_builder_large_height(): void
     {
         $html = CmsHtmlCompiler::compile([
             ['type' => 'hero_background_image', 'height' => 'xl'],
         ], 'emerald');
 
-        $this->assertStringContainsString('min-h-[90vh]', $html);
+        $this->assertStringContainsString('min-h-[650px]', $html);
     }
 
     public function test_featured_pricing_cards_use_a_real_theme_badge_class(): void
@@ -253,8 +279,8 @@ class CmsHtmlCompilerTest extends TestCase
             ],
         ], 'emerald');
 
-        $this->assertStringNotContainsString('bg-primary', $html);
-        $this->assertStringNotContainsString('ring-primary', $html);
+        $this->assertDoesNotMatchRegularExpression('/class=[\'\"][^\'\"]*\\bbg-primary\\b[^\'\"]*[\'\"]/', $html);
+        $this->assertDoesNotMatchRegularExpression('/class=[\'\"][^\'\"]*\\bring-primary\\b[^\'\"]*[\'\"]/', $html);
         $this->assertStringContainsString('bg-[#0B5D4B]', $html);
         $this->assertStringContainsString('inline-flex whitespace-nowrap rounded-full', $html);
         $this->assertStringContainsString('p-7 lg:p-8', $html);
@@ -293,12 +319,75 @@ class CmsHtmlCompilerTest extends TestCase
 
     public function test_every_active_builder_block_has_ai_and_compiler_coverage(): void
     {
-        $this->assertEqualsCanonicalizing(self::ACTIVE_BLOCK_TYPES, array_keys(SchemaManager::map()));
+        $activeBlockTypes = array_keys(SchemaManager::map());
 
-        foreach (self::ACTIVE_BLOCK_TYPES as $type) {
+        $this->assertCount(329, $activeBlockTypes);
+
+        foreach ($activeBlockTypes as $type) {
             $html = CmsHtmlCompiler::compile([['type' => $type]], 'emerald');
 
             $this->assertNotSame('', $html, "{$type} must compile for the static site.");
+        }
+    }
+
+    public function test_local_card_radius_override_is_emitted_for_static_preview_export_and_live(): void
+    {
+        foreach (['services_bento', 'pricing_cards', 'team_modern'] as $type) {
+            $html = CmsHtmlCompiler::compile([[
+                'type' => $type,
+                'luna_design_overrides' => ['card_radius' => 16],
+                'luna_component_overrides' => ['card_radius' => '32px'],
+            ]], 'emerald');
+
+            $this->assertStringContainsString("data-cosmic-component-overrides='1'", $html, $type);
+            $this->assertStringContainsString('--cosmic-local-card-radius:32px;', $html, $type);
+            $this->assertStringContainsString('--luna-card-radius:32px;', $html, $type);
+            $this->assertStringNotContainsString('--luna-card-radius:16px;', $html, $type);
+        }
+    }
+
+    public function test_dark_card_surface_emits_the_same_contrast_contract_for_static_output(): void
+    {
+        foreach (['services_bento', 'pricing_cards', 'team_modern'] as $type) {
+            $html = CmsHtmlCompiler::compile([[
+                'type' => $type,
+                'luna_component_overrides' => ['card_surface' => 'dark'],
+            ]], 'terracotta');
+
+            $this->assertStringContainsString("data-cosmic-card-surface='dark'", $html, $type);
+            $this->assertStringContainsString('--cosmic-local-card-bg:var(--cosmic-bg-primary-surface', $html, $type);
+            $this->assertStringContainsString('--cosmic-local-card-heading:var(--cosmic-color-on-dark', $html, $type);
+            $this->assertStringContainsString('--cosmic-local-card-text:color-mix(', $html, $type);
+            $this->assertStringContainsString('--cosmic-local-card-border:color-mix(', $html, $type);
+        }
+    }
+
+    public function test_primary_faq_uses_on_primary_copy_and_on_surface_card_copy(): void
+    {
+        foreach (['faq_accordion', 'faq_accordion_pro'] as $type) {
+            $html = CmsHtmlCompiler::compile([[ 
+                'type' => $type,
+                'theme' => 'primary',
+                'heading' => 'Primary FAQ heading',
+                'text' => 'Primary FAQ introduction',
+                'faqs' => [[
+                    'question' => 'Surface question',
+                    'answer' => 'Surface answer',
+                ]],
+            ]], 'emerald');
+
+            $this->assertStringContainsString('text-white/75', $html, $type);
+            $this->assertMatchesRegularExpression(
+                "/<h2 class='[^']*text-white[^']*'>Primary FAQ heading<\\/h2>/",
+                $html,
+                $type
+            );
+            $this->assertMatchesRegularExpression(
+                "/<summary class='[^']*text-slate-900[^']*'>/",
+                $html,
+                $type
+            );
+            $this->assertStringContainsString('bg-[#F8F8F7]', $html, $type);
         }
     }
 }

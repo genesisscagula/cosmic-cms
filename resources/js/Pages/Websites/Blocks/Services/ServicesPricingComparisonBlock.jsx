@@ -3,6 +3,7 @@ import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { BoundedCountControls } from "../Shared/RepeatableControls";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 export const ServicesPricingComparisonSchema = {
     type: "services_pricing_comparison",
@@ -53,31 +54,31 @@ export function ServicesPricingComparisonBlock({ block, onUpdate, globalTheme })
         { key:"pro", name:data.pro_name, price:data.pro_price, period:data.pro_period, description:data.pro_description, label:data.pro_button_label, url:data.pro_button_url },
     ];
     const save=(key)=>(value)=>onUpdate({[key]:value});
-    return <section className={`group/repeatable-section relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
-        <div className="mx-auto max-w-7xl">
-            <div className="max-w-3xl">
-                <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${muted}`} onSave={save('eyebrow')}/>
-                <EditableText value={data.heading} cosmicType="h2" className={`mt-5 block text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl ${theme.text}`} onSave={save('heading')}/>
-                <EditableText value={data.text} isTextArea className={`mt-5 block max-w-2xl text-base leading-7 sm:text-lg ${muted}`} onSave={save('text')}/>
+    return <section className={sparkTw(block, "section", `group/repeatable-section relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`)}>
+        <div className={sparkTw(block, "wrapper", "mx-auto max-w-7xl")}>
+            <div className={sparkTw(block, "wrapper_2", "max-w-3xl")}>
+                <EditableText value={data.eyebrow} className={sparkTw(block, "text", `text-xs font-bold uppercase tracking-[.28em] ${muted}`)} onSave={save('eyebrow')}/>
+                <EditableText value={data.heading} cosmicType="h2" className={sparkTw(block, "text_2", `mt-5 block text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl ${theme.text}`)} onSave={save('heading')}/>
+                <EditableText value={data.text} isTextArea className={sparkTw(block, "text_3", `mt-5 block max-w-2xl text-base leading-7 sm:text-lg ${muted}`)} onSave={save('text')}/>
             </div>
-            <div className="mt-12 overflow-hidden rounded-[2rem] border shadow-sm" style={{borderColor:'currentColor'}}>
-                <div className={`grid lg:grid-cols-[1.15fr_repeat(3,1fr)] ${baseCard}`}>
-                    <div className={`hidden border-b p-6 lg:block ${border}`}><span className={`text-xs font-bold uppercase tracking-[.22em] ${muted}`}>Compare packages</span></div>
-                    {plans.map((plan)=><article key={plan.key} className={`relative border-b p-6 sm:p-7 ${border} ${plan.featured?featuredCard:baseCard}`}>
-                        {plan.featured && <EditableText value={data.growth_badge} className={`mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] ${primaryTheme.bg} ${primaryTheme.text}`} onSave={save('growth_badge')}/>} 
-                        <EditableText value={plan.name} className="block text-xl font-semibold" onSave={save(`${plan.key}_name`)}/>
-                        <div className="mt-4 flex items-end gap-2"><EditableText value={plan.price} className="block text-4xl font-semibold tracking-[-.04em]" onSave={save(`${plan.key}_price`)}/><EditableText value={plan.period} className={`mb-1 text-xs font-semibold uppercase tracking-wider ${plan.featured?featuredMuted:muted}`} onSave={save(`${plan.key}_period`)}/></div>
-                        <EditableText value={plan.description} isTextArea className={`mt-4 block text-sm leading-6 ${plan.featured?featuredMuted:muted}`} onSave={save(`${plan.key}_description`)}/>
-                        <EditableButton label={plan.label} url={plan.url} className={`mt-6 inline-flex min-h-[46px] w-full items-center justify-center rounded-full px-5 text-sm font-bold ${plan.featured?featuredButton:normalButton}`} onSave={(label,url)=>onUpdate({[`${plan.key}_button_label`]:label,[`${plan.key}_button_url`]:url})}/>
+            <div className={sparkTw(block, "wrapper_3", "mt-12 overflow-hidden rounded-[2rem] border shadow-sm")} style={{borderColor:'currentColor'}}>
+                <div className={sparkTw(block, "wrapper_4", `grid lg:grid-cols-[1.15fr_repeat(3,1fr)] ${baseCard}`)}>
+                    <div className={sparkTw(block, "wrapper_5", `hidden border-b p-6 lg:block ${border}`)}><span className={sparkTw(block, "label", `text-xs font-bold uppercase tracking-[.22em] ${muted}`)}>Compare packages</span></div>
+                    {plans.map((plan)=><article key={plan.key} className={sparkTw(block, "card", `relative border-b p-6 sm:p-7 ${border} ${plan.featured?featuredCard:baseCard}`)}>
+                        {plan.featured && <EditableText value={data.growth_badge} className={sparkTw(block, "text_4", `mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] ${primaryTheme.bg} ${primaryTheme.text}`)} onSave={save('growth_badge')}/>} 
+                        <EditableText value={plan.name} className={sparkTw(block, "text_5", "block text-xl font-semibold")} onSave={save(`${plan.key}_name`)}/>
+                        <div className={sparkTw(block, "wrapper_6", "mt-4 flex items-end gap-2")}><EditableText value={plan.price} className={sparkTw(block, "text_6", "block text-4xl font-semibold tracking-[-.04em]")} onSave={save(`${plan.key}_price`)}/><EditableText value={plan.period} className={sparkTw(block, "text_7", `mb-1 text-xs font-semibold uppercase tracking-wider ${plan.featured?featuredMuted:muted}`)} onSave={save(`${plan.key}_period`)}/></div>
+                        <EditableText value={plan.description} isTextArea className={sparkTw(block, "text_8", `mt-4 block text-sm leading-6 ${plan.featured?featuredMuted:muted}`)} onSave={save(`${plan.key}_description`)}/>
+                        <EditableButton label={plan.label} url={plan.url} className={sparkTw(block, "button", `mt-6 inline-flex min-h-[46px] w-full items-center justify-center rounded-full px-5 text-sm font-bold ${plan.featured?featuredButton:normalButton}`)} onSave={(label,url)=>onUpdate({[`${plan.key}_button_label`]:label,[`${plan.key}_button_url`]:url})}/>
                     </article>)}
-                    {rows.map((row,index)=><div key={row.label} className="contents">
-                        <div className={`border-b p-5 lg:p-6 ${border} ${baseCard}`}><EditableText value={data[row.label]} className="text-sm font-semibold" onSave={save(row.label)}/></div>
-                        {['starter','growth','pro'].map((key)=><div key={key} className={`border-b p-5 text-sm lg:p-6 ${border} ${key==='growth'?featuredCard:baseCard}`}><EditableText value={data[row[key]]} className={`font-semibold ${key==='growth'?featuredMuted:''}`} onSave={save(row[key])}/></div>)}
+                    {rows.map((row,index)=><div key={row.label} className={sparkTw(block, "wrapper_7", "contents")}>
+                        <div className={sparkTw(block, "wrapper_8", `border-b p-5 lg:p-6 ${border} ${baseCard}`)}><EditableText value={data[row.label]} className={sparkTw(block, "text_9", "text-sm font-semibold")} onSave={save(row.label)}/></div>
+                        {['starter','growth','pro'].map((key)=><div key={key} className={sparkTw(block, "wrapper_9", `border-b p-5 text-sm lg:p-6 ${border} ${key==='growth'?featuredCard:baseCard}`)}><EditableText value={data[row[key]]} className={sparkTw(block, "text_10", `font-semibold ${key==='growth'?featuredMuted:''}`)} onSave={save(row[key])}/></div>)}
                     </div>)}
                 </div>
             </div>
             <BoundedCountControls count={rowCount} min={1} max={6} addLabel="Add comparison row" removeLabel="Remove last row" onChange={comparison_row_count=>onUpdate({comparison_row_count})}/>
-            <EditableText value={data.footnote} isTextArea className={`mx-auto mt-6 block max-w-3xl text-center text-xs leading-5 ${muted}`} onSave={save('footnote')}/>
+            <EditableText value={data.footnote} isTextArea className={sparkTw(block, "text_11", `mx-auto mt-6 block max-w-3xl text-center text-xs leading-5 ${muted}`)} onSave={save('footnote')}/>
         </div>
     </section>;
 }

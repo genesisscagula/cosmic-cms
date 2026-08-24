@@ -900,6 +900,48 @@ PROMPT;
     TXT;
     }
 
+    private function distinctiveSystemPremiumSchema(): string
+    {
+        return <<<TXT
+
+    about_chapter_index_premium
+
+    - type = about_chapter_index_premium
+    - theme = auto
+    - eyebrow
+    - heading
+    - text
+    - button_label
+    - button_url
+    - secondary_label
+    - secondary_url
+    - core_label (optional; concise central label for orbit layouts)
+    - core_title (optional; concise central promise for orbit layouts)
+    - action_note (optional; concise CTA-side note)
+    - items (array of 4 relevant items; use exactly 6 for services_orbit_map_premium and exactly 3 for cta_ticket_premium)
+
+    Each item contains:
+    - label
+    - title
+    - text
+    - value (optional; only for supplied verified metrics, otherwise use a qualitative word)
+    - meta (short supporting category or status)
+
+    Requirements:
+    - Preserve the requested business, page intent, and industry context.
+    - Treat the Spark as a low-image information system; do not add image fields.
+    - Use concise, specific copy and make each item meaningfully different.
+    - For proof_metric_staircase_premium, never invent figures; use qualitative values unless the user supplied verified metrics.
+    - For trust_evidence_ledger_premium, connect each claim to a real process, policy, detail, or user-supplied proof.
+    - For faq_decision_tree_premium, organize questions around visitor decisions rather than generic filler.
+    - For contact_availability_board_premium, never invent hours, addresses, phone numbers, emails, availability, or response times.
+    - Do not invent awards, clients, certifications, guarantees, outcomes, or named people.
+    - button_url and secondary_url must be # when no destination is supplied.
+    - Do not use markdown, placeholder text, or lorem ipsum.
+
+    TXT;
+    }
+
     private function brandValueCardsPremiumSchema(): string
     {
         return <<<TXT

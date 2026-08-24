@@ -9,6 +9,7 @@ import { EditableVideoSource } from "../Shared/EditableVideoSource";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 export const HeroVideoBackgroundSchema = {
     type: "hero_video_background",
@@ -150,18 +151,18 @@ export function HeroVideoBackgroundBlock({
     return (
         <section
             data-cosmic-media-banner="true"
-            className={`relative isolate min-h-[680px] cursor-pointer overflow-hidden ${theme.bg}`}
+            className={sparkTw(block, "section", `relative isolate min-h-[680px] cursor-pointer overflow-hidden ${theme.bg}`)}
         >
-            <div className="absolute inset-0">
+            <div className={sparkTw(block, "wrapper", "absolute inset-0")}>
                 {embeddedVideoUrl ? (
-                    <div className="absolute inset-0 overflow-hidden">
-                        <img src={posterImageUrl} alt="" aria-hidden="true" className="absolute inset-0 h-full w-full object-cover sm:hidden" />
+                    <div className={sparkTw(block, "wrapper_2", "absolute inset-0 overflow-hidden")}>
+                        <img src={posterImageUrl} alt="" aria-hidden="true" className={sparkTw(block, "image", "absolute inset-0 h-full w-full object-cover sm:hidden")} />
                         <iframe
                             key={embeddedVideoUrl}
                             src={embeddedVideoUrl}
                             title="Background video"
                             allow="autoplay; fullscreen; picture-in-picture"
-                            className="pointer-events-none absolute left-1/2 top-1/2 hidden h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0 sm:block"
+                            className={sparkTw(block, "wrapper_3", "pointer-events-none absolute left-1/2 top-1/2 hidden h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0 sm:block")}
                         />
                     </div>
                 ) : (
@@ -170,7 +171,7 @@ export function HeroVideoBackgroundBlock({
                             src={posterImageUrl}
                             alt=""
                             aria-hidden="true"
-                            className="absolute inset-0 h-full w-full object-cover sm:hidden"
+                            className={sparkTw(block, "image_2", "absolute inset-0 h-full w-full object-cover sm:hidden")}
                         />
                         <video
                             key={videoUrl}
@@ -180,7 +181,7 @@ export function HeroVideoBackgroundBlock({
                             playsInline
                             preload="metadata"
                             poster={posterImageUrl}
-                            className="hidden h-full w-full object-cover sm:block"
+                            className={sparkTw(block, "video", "hidden h-full w-full object-cover sm:block")}
                         >
                             <source src={videoUrl} type="video/mp4" />
                         </video>
@@ -189,33 +190,33 @@ export function HeroVideoBackgroundBlock({
 
                 {/* Keep the video readable while letting the website's active primary family tint the hero. */}
                 <div
-                    className={`absolute inset-0 ${mediaStyle.overlay}`}
+                    className={sparkTw(block, "wrapper_4", `absolute inset-0 ${mediaStyle.overlay}`)}
                     style={isLightMediaTheme ? undefined : { backgroundColor: mediaOverlay.overlayColor, opacity: 0.50 }}
                 />
 
                 <div
-                    className={`absolute inset-0 bg-gradient-to-r ${mediaStyle.gradientX}`}
+                    className={sparkTw(block, "wrapper_5", `absolute inset-0 bg-gradient-to-r ${mediaStyle.gradientX}`)}
                 />
 
-                <div className={`absolute inset-0 bg-gradient-to-t ${mediaStyle.gradientY}`} />
+                <div className={sparkTw(block, "wrapper_6", `absolute inset-0 bg-gradient-to-t ${mediaStyle.gradientY}`)} />
             </div>
 
             <button
                 type="button"
                 aria-label="Edit background video"
                 onPointerDown={openVideoEditor}
-                className="absolute inset-0 z-[5] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300"
+                className={sparkTw(block, "button", "absolute inset-0 z-[5] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300")}
             />
 
             <div
-                className={`pointer-events-none absolute -left-40 top-16 h-96 w-96 rounded-full ${primaryTheme.bg} opacity-[0.18] blur-[150px]`}
+                className={sparkTw(block, "wrapper_7", `pointer-events-none absolute -left-40 top-16 h-96 w-96 rounded-full ${primaryTheme.bg} opacity-[0.18] blur-[150px]`)}
             />
 
-            <div className="pointer-events-none relative z-10 mx-auto flex max-w-7xl items-center px-7 py-0 sm:px-10 lg:px-12" style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
-                <div className="pointer-events-auto max-w-3xl">
+            <div className={sparkTw(block, "wrapper_8", "pointer-events-none relative z-10 mx-auto flex max-w-7xl items-center px-7 py-0 sm:px-10 lg:px-12")} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+                <div className={sparkTw(block, "wrapper_9", "pointer-events-auto max-w-3xl")}>
                     <EditableText
                         value={data.tagline}
-                        className={`block text-xs font-semibold uppercase tracking-[0.34em] ${mediaStyle.tagline}`}
+                        className={sparkTw(block, "text", `block text-xs font-semibold uppercase tracking-[0.34em] ${mediaStyle.tagline}`)}
                         onSave={(tagline) =>
                             onUpdate({ tagline })
                         }
@@ -223,7 +224,7 @@ export function HeroVideoBackgroundBlock({
 
                     <EditableText
                         value={data.heading} cosmicType="h1"
-                        className={`mt-6 block text-4xl font-bold leading-[0.98] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`}
+                        className={sparkTw(block, "text_2", `mt-6 block text-4xl font-bold leading-[0.98] tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`)}
                         onSave={(heading) =>
                             onUpdate({ heading })
                         }
@@ -232,17 +233,17 @@ export function HeroVideoBackgroundBlock({
                     <EditableText
                         value={data.text}
                         isTextArea
-                        className={`mt-7 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${mediaStyle.body}`}
+                        className={sparkTw(block, "text_3", `mt-7 block max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 ${mediaStyle.body}`)}
                         onSave={(text) =>
                             onUpdate({ text })
                         }
                     />
 
-                    <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:items-center">
+                    <div className={sparkTw(block, "wrapper_10", "mt-9 flex flex-col gap-3 sm:flex-row sm:items-center")}>
                         <EditableButton
                             label={data.primary_label}
                             url={data.primary_url}
-                            className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-xl transition hover:-translate-y-0.5 hover:opacity-90 ${primaryTheme.bg} !text-white`}
+                            className={sparkTw(block, "button_2", `inline-flex min-h-[52px] items-center justify-center rounded-full px-8 font-bold shadow-xl transition hover:-translate-y-0.5 hover:opacity-90 ${primaryTheme.bg} !text-white`)}
                             onSave={(
                                 primary_label,
                                 primary_url
@@ -257,7 +258,7 @@ export function HeroVideoBackgroundBlock({
                         <EditableButton
                             label={data.secondary_label}
                             url={data.secondary_url}
-                            className={`inline-flex min-h-[52px] items-center justify-center rounded-full border px-8 font-bold backdrop-blur transition ${mediaStyle.secondary}`}
+                            className={sparkTw(block, "button_3", `inline-flex min-h-[52px] items-center justify-center rounded-full border px-8 font-bold backdrop-blur transition ${mediaStyle.secondary}`)}
                             onSave={(
                                 secondary_label,
                                 secondary_url
@@ -270,10 +271,10 @@ export function HeroVideoBackgroundBlock({
                         />
                     </div>
 
-                    <div className="mt-10 flex flex-wrap items-center gap-4">
-                        <div className={`flex items-center gap-3 rounded-full border px-4 py-2.5 backdrop-blur ${mediaStyle.pill}`}>
+                    <div className={sparkTw(block, "wrapper_11", "mt-10 flex flex-wrap items-center gap-4")}>
+                        <div className={sparkTw(block, "wrapper_12", `flex items-center gap-3 rounded-full border px-4 py-2.5 backdrop-blur ${mediaStyle.pill}`)}>
                             <span
-                                className={`flex h-8 w-8 items-center justify-center rounded-full ${primaryTheme.bg} !text-white`}
+                                className={sparkTw(block, "label", `flex h-8 w-8 items-center justify-center rounded-full ${primaryTheme.bg} !text-white`)}
                             >
                                 ▶
                             </span>
@@ -281,7 +282,7 @@ export function HeroVideoBackgroundBlock({
                             <EditableText
                                 value={data.video_badge}
                                 cosmicType="badge"
-                                className={`block text-sm font-semibold ${mediaStyle.pillText}`}
+                                className={sparkTw(block, "text_4", `block text-sm font-semibold ${mediaStyle.pillText}`)}
                                 onSave={(video_badge) =>
                                     onUpdate({
                                         video_badge,
@@ -293,16 +294,16 @@ export function HeroVideoBackgroundBlock({
                 </div>
             </div>
 
-            <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10">
-                <div className="mx-auto flex max-w-7xl items-end justify-between gap-6 px-7 pb-7 sm:px-10 lg:px-12">
-                    <div className={`pointer-events-auto flex items-center gap-3 ${mediaStyle.scroll}`}>
-                        <span className={`flex h-9 w-6 items-start justify-center rounded-full border p-1.5 ${mediaStyle.scrollBorder}`}>
-                            <span className={`h-1.5 w-1.5 rounded-full ${mediaStyle.scrollDot}`} />
+            <div className={sparkTw(block, "wrapper_13", "pointer-events-none absolute bottom-0 left-0 right-0 z-10")}>
+                <div className={sparkTw(block, "wrapper_14", "mx-auto flex max-w-7xl items-end justify-between gap-6 px-7 pb-7 sm:px-10 lg:px-12")}>
+                    <div className={sparkTw(block, "wrapper_15", `pointer-events-auto flex items-center gap-3 ${mediaStyle.scroll}`)}>
+                        <span className={sparkTw(block, "label_2", `flex h-9 w-6 items-start justify-center rounded-full border p-1.5 ${mediaStyle.scrollBorder}`)}>
+                            <span className={sparkTw(block, "label_3", `h-1.5 w-1.5 rounded-full ${mediaStyle.scrollDot}`)} />
                         </span>
 
                         <EditableText
                             value={data.scroll_label}
-                            className="block text-xs font-semibold uppercase tracking-[0.24em]"
+                            className={sparkTw(block, "text_5", "block text-xs font-semibold uppercase tracking-[0.24em]")}
                             onSave={(scroll_label) =>
                                 onUpdate({
                                     scroll_label,
@@ -311,12 +312,12 @@ export function HeroVideoBackgroundBlock({
                         />
                     </div>
 
-                    <div data-editable-media data-cosmic-no-luna-hover="true" className={`pointer-events-auto hidden w-48 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur sm:block ${mediaStyle.mediaCard}`}>
+                    <div data-editable-media data-cosmic-no-luna-hover="true" className={sparkTw(block, "wrapper_16", `pointer-events-auto hidden w-48 overflow-hidden rounded-2xl border shadow-2xl backdrop-blur sm:block ${mediaStyle.mediaCard}`)}>
                         <EditableImage
                             websiteId={websiteId}
                             blockIndex={blockIndex}
                             src={posterImageUrl}
-                            className="aspect-video w-full object-cover opacity-80"
+                            className={sparkTw(block, "image_3", "aspect-video w-full object-cover opacity-80")}
                             onSave={(poster_image_url) =>
                                 onUpdate({
                                     poster_image_url,

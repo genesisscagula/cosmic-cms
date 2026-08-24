@@ -7,10 +7,19 @@ export const cosmicBackgroundVars = (family = {}, settings = {}) => {
     const palette = family?.palette || {};
     const gradient = palette?.gradient || family?.gradient || {};
     const angle = clamp(settings.gradient_angle ?? gradient.angle, 0, 360, 135);
+    const primary = String(settings.primary || palette.background || palette.primary || "#243447");
+    const white = String(settings.white || "#FEFEFD");
+    const surface = String(
+        settings.surface
+        || palette.surfaceMuted
+        || palette.surface_muted
+        || `color-mix(in srgb, ${primary} 9%, ${white})`
+    );
 
     return {
-        "--cosmic-bg-surface": String(settings.surface || "#FFFFFF"),
-        "--cosmic-bg-primary": String(settings.primary || palette.background || palette.primary || "#243447"),
+        "--cosmic-bg-white": white,
+        "--cosmic-bg-surface": surface,
+        "--cosmic-bg-primary": primary,
         "--cosmic-bg-primary-surface": String(settings.primary_surface || palette.surface || palette.background || "#30475E"),
         "--cosmic-bg-accent": String(settings.accent || palette.accent || gradient.glow || "#60A5FA"),
         "--cosmic-bg-gradient-from": String(settings.gradient_from || gradient.from || palette.background || palette.primary || "#243447"),

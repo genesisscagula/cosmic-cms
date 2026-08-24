@@ -39,6 +39,8 @@ class ContactFormPublishingTest extends TestCase
         $this->assertStringContainsString('Choose a service', $html);
         $this->assertStringContainsString('Consultation', $html);
         $this->assertStringContainsString("name='consent'", $html);
-        $this->assertStringContainsString('background-color:#334b67', $html);
+        // Select options now use the shared semantic dark treatment instead
+        // of the removed controller-local hardcoded blue.
+        $this->assertStringContainsString('background-color:#0f172a', $html);
     }
 }

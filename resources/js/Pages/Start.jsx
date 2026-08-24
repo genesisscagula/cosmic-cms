@@ -6,6 +6,7 @@ import CosmicBrandMark from '@/Components/CosmicBrandMark';
 import SeoHead from '@/Components/Seo/SeoHead';
 import { trackCosmicEvent } from '@/Analytics/tracking';
 import PublicHeader from '@/Components/Public/PublicHeader';
+import { handoffToBuilder, normalizeBuilderUrl } from '@/Support/builderHandoff';
 
 const fieldClass = 'mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-violet-400 focus:ring-2 focus:ring-violet-400/20';
 
@@ -360,13 +361,7 @@ export default function Start({ trial }) {
             // cached config returns an absolute builder URL from a mismatched APP_URL.
             // Relative URLs are already ideal; absolute same-app URLs are reduced to
             // pathname/search/hash before navigating.
-            let navigationUrl = builderUrl;
-            try {
-                const parsedBuilderUrl = new URL(builderUrl, window.location.origin);
-                navigationUrl = `${parsedBuilderUrl.pathname}${parsedBuilderUrl.search}${parsedBuilderUrl.hash}`;
-            } catch (urlError) {
-                console.warn('Could not normalize Builder URL; using raw value.', urlError);
-            }
+            const navigationUrl = normalizeBuilderUrl(builderUrl);
 
             trackCosmicEvent('trial_created', {
                 source: 'start_page',
@@ -378,8 +373,7 @@ export default function Start({ trial }) {
             setLoadingProgress(100);
             await new Promise((resolve) => window.setTimeout(resolve, 320));
 
-            // Use native navigation so Inertia state cannot hold the loading overlay.
-            window.location.href = navigationUrl;
+            handoffToBuilder(navigationUrl, { router });
         } catch (requestError) {
             const responseErrors = requestError.response?.data?.errors;
             const message = responseErrors?.prompt?.[0]

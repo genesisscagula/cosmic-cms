@@ -47,6 +47,7 @@ use App\Http\Controllers\CommerceRuntimeController;
 use App\Http\Controllers\AiTextController;
 use App\Http\Controllers\MediaLibraryController;
 use App\Http\Controllers\WebsiteHealthController;
+use App\Http\Controllers\StarterSiteController;
 use App\Models\Page;
 use Illuminate\Foundation\Application;
 use Illuminate\Http\Request;
@@ -388,6 +389,9 @@ Route::post('/trials/{trial:token}/regenerate', [TrialGenerationController::clas
 Route::get('/trials/{trial:token}/media-pack', [TrialGenerationController::class, 'mediaPackStatus'])
     ->middleware('throttle:30,1')
     ->name('trial-generations.media-pack.status');
+Route::get('/trials/{trial:token}/staging-status', [TrialGenerationController::class, 'stagingStatus'])
+    ->middleware('throttle:30,1')
+    ->name('trial-generations.staging.status');
 Route::post('/trials/{trial:token}/branding/logo/upload', [TrialBrandingController::class, 'uploadLogo'])
     ->middleware(['throttle:10,1', \App\Http\Middleware\RejectOversizedRequest::class . ':3072'])
     ->name('trial-branding.logo.upload');
@@ -564,6 +568,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::get('/websites/{website}/custom-sparks/by-key/{key}/chat', [CustomSparkController::class, 'chatHistory'])->name('custom-sparks.chat-history');
     Route::post('/websites/{website}/custom-sparks/by-key/{key}/chat', [CustomSparkController::class, 'chat'])->middleware('throttle:cosmic-ai')->name('custom-sparks.chat');
     Route::post('/websites/{website}/custom-page-ai', [CustomSparkController::class, 'pageChat'])->middleware('throttle:cosmic-ai')->name('custom-page-ai.chat');
+    Route::post('/websites/{website}/starter-site/plan', [StarterSiteController::class, 'plan'])->middleware('throttle:20,1')->name('starter-sites.plan');
+    Route::post('/websites/{website}/starter-site/install', [StarterSiteController::class, 'install'])->middleware('throttle:cosmic-ai')->name('starter-sites.install');
+    Route::get('/websites/{website}/starter-site/status', [StarterSiteController::class, 'status'])->middleware('throttle:60,1')->name('starter-sites.status');
     Route::post('/sparks/{key}/unlock', [SparkController::class, 'unlockKey'])->name('sparks.unlock');
     Route::delete('/sparks/{key}/owned', [SparkController::class, 'removeOwned'])->name('sparks.owned.destroy');
     Route::post('/sparks/{key}/favorite', [SparkController::class, 'toggleFavorite'])->name('sparks.favorite.toggle');

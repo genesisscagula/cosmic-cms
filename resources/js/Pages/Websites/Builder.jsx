@@ -15,8 +15,10 @@ import GeneratePageModal from "./Components/GeneratePageModal";
 
 import ThemeSelector from "./Theme/ThemeSelector";
 import { colorFamilies, installCustomBrandTheme } from "../../theme/colorFamilies";
+import { resolveSemanticPalette } from "../../theme/semanticPalette";
 
 import { BlockRegistry } from "./BlockRegistry";
+import { createSparkTailwindRuntime } from "./Blocks/Shared/sparkTailwindRuntime";
 import { cosmicTypographyVars } from "./Components/CosmicTypography";
 import { cosmicSectionVars, cosmicLocalSectionVars } from "./Components/CosmicSection";
 import { cosmicBackgroundVars, cosmicLocalBackgroundVars, cosmicOverlayForState } from "./Components/CosmicBackground";
@@ -314,12 +316,24 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     padding-right: var(--luna-section-px, revert) !important;
                     min-height: var(--luna-section-min-height, revert) !important;
                 }
-                .cosmic-luna-design-host h1,
-                .cosmic-luna-design-host h2,
+                .cosmic-luna-design-host h1 {
+                    font-size: var(--cosmic-local-h1-size, var(--cosmic-type-h1-size)) !important;
+                    line-height: var(--cosmic-local-h1-line, var(--cosmic-type-h1-line)) !important;
+                    letter-spacing: var(--cosmic-local-h1-tracking, var(--cosmic-type-h1-tracking)) !important;
+                    text-align: var(--luna-text-align, revert) !important;
+                    overflow-wrap: anywhere;
+                }
+                .cosmic-luna-design-host h2 {
+                    font-size: var(--cosmic-local-h2-size, var(--cosmic-type-h2-size)) !important;
+                    line-height: var(--cosmic-local-h2-line, var(--cosmic-type-h2-line)) !important;
+                    letter-spacing: var(--cosmic-local-h2-tracking, var(--cosmic-type-h2-tracking)) !important;
+                    text-align: var(--luna-text-align, revert) !important;
+                    overflow-wrap: anywhere;
+                }
                 .cosmic-luna-design-host h3 {
-                    font-size: var(--luna-heading-size, revert) !important;
-                    line-height: var(--luna-heading-line, revert) !important;
-                    letter-spacing: var(--luna-letter-spacing, revert) !important;
+                    font-size: var(--cosmic-local-h3-size, var(--cosmic-type-h3-size)) !important;
+                    line-height: var(--cosmic-local-h3-line, var(--cosmic-type-h3-line)) !important;
+                    letter-spacing: var(--cosmic-local-h3-tracking, var(--cosmic-type-h3-tracking)) !important;
                     text-align: var(--luna-text-align, revert) !important;
                     overflow-wrap: anywhere;
                 }
@@ -345,11 +359,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                         padding-left: min(var(--luna-section-px, 24px), 40px) !important;
                         padding-right: min(var(--luna-section-px, 24px), 40px) !important;
                     }
-                    .cosmic-luna-design-host h1,
-                    .cosmic-luna-design-host h2,
-                    .cosmic-luna-design-host h3 {
-                        font-size: min(var(--luna-heading-size, 52px), 64px) !important;
-                    }
+                    .cosmic-luna-design-host h1 { font-size: min(var(--cosmic-local-h1-size, var(--cosmic-type-h1-size)), 64px) !important; }
+                    .cosmic-luna-design-host h2 { font-size: min(var(--cosmic-local-h2-size, var(--cosmic-type-h2-size)), 64px) !important; }
+                    .cosmic-luna-design-host h3 { font-size: min(var(--cosmic-local-h3-size, var(--cosmic-type-h3-size)), 64px) !important; }
                 }
             `;
             document.head.appendChild(style);
@@ -438,6 +450,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [previewUrl, setPreviewUrl] = useState(initialPreviewUrl);
     const [previewDeployedAt, setPreviewDeployedAt] = useState(initialPreviewDeployment?.deployed_at || null);
     const [previewDeploymentError, setPreviewDeploymentError] = useState(initialPreviewDeployment?.error || '');
+    const [trialPreviewStatus, setTrialPreviewStatus] = useState({ readyPages: 0, pageCount: 0, message: '' });
     const [saveError, setSaveError] = useState('');
     const [hasUnsavedTheme, setHasUnsavedTheme] = useState(false);
     const [showTrialEmailModal, setShowTrialEmailModal] = useState(() => Boolean(
@@ -545,6 +558,63 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             setCreditBalance(resolvedBalance);
         }
     }, [cosmicPricing?.balance, trialExperience?.guest_credits, trialMode, setCreditBalance]);
+
+    useEffect(() => {
+        if (!trialMode || !trialToken || previewUrl) return undefined;
+
+        let cancelled = false;
+        let timer = null;
+        let attempts = 0;
+
+        const pollStagingPreview = async () => {
+            attempts += 1;
+
+            try {
+                const { data: status } = await axios.get(
+                    `/trials/${encodeURIComponent(trialToken)}/staging-status`,
+                    { headers: { Accept: 'application/json' } },
+                );
+
+                if (cancelled) return;
+
+                setTrialPreviewStatus({
+                    readyPages: Number(status?.ready_pages || 0),
+                    pageCount: Number(status?.page_count || 0),
+                    message: String(status?.message || ''),
+                });
+
+                if (status?.preview_url) {
+                    setPreviewUrl(status.preview_url);
+                    setPreviewDeployedAt(new Date().toISOString());
+                    setPreviewDeploymentError('');
+                    return;
+                }
+
+                if (status?.preview_error) {
+                    setPreviewDeploymentError(String(status.preview_error));
+                }
+                if (status?.terminal) return;
+
+                const delay = Math.max(2500, Number(status?.poll_after_ms || 3000));
+                if (attempts < 120) timer = window.setTimeout(pollStagingPreview, delay);
+            } catch (error) {
+                if (cancelled) return;
+
+                // A transient queue/reload race must not permanently strand the
+                // button. Back off, then retry for the duration of a normal build.
+                const retryAfter = Number(error?.response?.headers?.['retry-after'] || 0);
+                const delay = retryAfter > 0 ? retryAfter * 1000 : Math.min(10000, 2500 + attempts * 250);
+                if (attempts < 120) timer = window.setTimeout(pollStagingPreview, delay);
+            }
+        };
+
+        pollStagingPreview();
+
+        return () => {
+            cancelled = true;
+            if (timer) window.clearTimeout(timer);
+        };
+    }, [previewUrl, trialMode, trialToken]);
 
     useEffect(() => {
         const warnBeforeLeaving = (event) => {
@@ -2994,13 +3064,19 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         || (firstBlockType.includes('slider') && Array.isArray(firstBlock?.slides) && firstBlock.slides.some((slide) => slide?.image_url || slide?.image || slide?.background_image || slide?.background_image_url))
     ));
 
-    const overlaySurfaceThemeKey = firstResolvedThemeKey === 'primary' || firstResolvedThemeKey === 'accent'
-        ? activePrimaryThemeKey
-        : firstResolvedThemeKey === 'surface'
-            ? 'stone'
-            : (firstResolvedThemeKey || activePrimaryThemeKey);
-    const overlaySurfacePalette = colorFamilies[overlaySurfaceThemeKey]?.palette || {};
-    const overlaySurfaceHex = String(overlaySurfacePalette.background || '#243447');
+    const overlaySurfaceThemeKey = firstResolvedThemeKey || 'primary';
+    const overlaySemanticPalette = resolveSemanticPalette(
+        ['primary', 'accent', 'surface', 'white'].includes(overlaySurfaceThemeKey)
+            ? activePrimaryThemeKey
+            : overlaySurfaceThemeKey,
+        globalSelections || {},
+    );
+    const overlaySurfaceHex = String(({
+        primary: overlaySemanticPalette.primary,
+        accent: overlaySemanticPalette.accent,
+        surface: overlaySemanticPalette.surface,
+        white: overlaySemanticPalette.white,
+    })[overlaySurfaceThemeKey] || overlaySemanticPalette.primary || '#243447');
     useEffect(() => {
         if (!customSparkBusy) return undefined;
         const timer = window.setInterval(() => {
@@ -4429,7 +4505,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         const updateIntent = /\b(change|update|edit|rewrite|replace|redesign|rebrand|adjust|increase|decrease|add|remove|make this|make the|make all)\b/i.test(prompt);
         const publishIntent = /\b(publish|go live|make .* live)\b/i.test(prompt);
         const navigateIntent = /\b(open|go to|take me to|navigate to)\b/i.test(prompt);
-        const actionIntent = buildIntent || updateIntent || publishIntent || navigateIntent;
+        const inspectIntent = /\b(inspect|check|audit)\b/i.test(prompt);
+        const deleteIntent = /\b(delete)\b/i.test(prompt);
+        const actionIntent = buildIntent || updateIntent || inspectIntent || publishIntent || deleteIntent || navigateIntent;
         const phases = buildIntent
             ? ['Thinking…','Planning…','Designing…','Building…','Checking…']
             : updateIntent
@@ -4472,8 +4550,33 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     form.append('target_resolved_theme', String(resolveBlockTheme(targetBlock,lunaScope.blockIndex) || 'auto'));
                 }
             }
+            let requestElementContext = lunaElementTarget ? { ...lunaElementTarget } : {};
+            if (lunaScope.type === 'section' && Number.isInteger(lunaScope.blockIndex)) {
+                const sectionNode = document.querySelector(`[data-luna-section-index="${lunaScope.blockIndex}"]`);
+                if (sectionNode) {
+                    const seen = new Set();
+                    const inventory = [];
+                    sectionNode.querySelectorAll('[class*="cosmic-tw-slot--"]').forEach((node) => {
+                        if (!(node instanceof Element) || inventory.length >= 80) return;
+                        const marker = Array.from(node.classList).find((token)=>token.startsWith('cosmic-tw-slot--'));
+                        const slot = marker ? marker.slice('cosmic-tw-slot--'.length) : '';
+                        if (!slot) return;
+                        const classes = Array.from(node.classList).filter((token)=>!token.startsWith('cosmic-tw-slot--')).join(' ');
+                        const role = String(node.getAttribute('data-luna-target') || node.getAttribute('data-cosmic-luna-display') || '');
+                        const text = String(node.textContent || '').replace(/\s+/g,' ').trim().slice(0,90);
+                        const key = `${slot}|${node.tagName}|${classes}|${role}|${text}`;
+                        if (seen.has(key)) return;
+                        seen.add(key);
+                        inventory.push({ slot, tag:node.tagName.toLowerCase(), role, classes, text });
+                    });
+                    requestElementContext.tailwindInventory = inventory;
+                }
+            }
             if (lunaElementTarget && !(videoIntent && lunaScope.type==='section')) {
-                form.append('element_context', JSON.stringify(lunaElementTarget));
+                const activeNode = document.activeElement instanceof Element ? document.activeElement : null;
+                const marker = activeNode ? Array.from(activeNode.classList).find((token)=>token.startsWith('cosmic-tw-slot--')) : null;
+                if (marker) requestElementContext.tailwindSlot = marker.slice('cosmic-tw-slot--'.length);
+                form.append('element_context', JSON.stringify(requestElementContext));
                 if(Number.isInteger(Number(lunaElementTarget.itemIndex)) && Number(lunaElementTarget.itemIndex)>=0){
                     form.append('target_item_index', String(Number(lunaElementTarget.itemIndex)));
                     form.append('target_item_mode', 'repeater_item');
@@ -4481,6 +4584,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         form.append('target_collection_key', String(lunaElementTarget.collectionKey));
                     }
                 }
+            }
+            if (!lunaElementTarget && lunaScope.type === 'section' && Object.keys(requestElementContext).length) {
+                form.append('element_context', JSON.stringify(requestElementContext));
             }
             if (confirmed) form.append('confirmed', '1');
             if (pendingActionToken) form.append('pending_action_token', String(pendingActionToken));
@@ -4572,7 +4678,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 const customTheme={
                     key:'my-brand',
                     name:'My Brand',
-                    mode:'light',
+                    mode:family.mode || response.brand_theme_mode || 'dark',
                     palette:{
                         sourceColor:family.sourceColor || family.primary,
                         primary:family.primary,
@@ -4583,7 +4689,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         background:family.background,
                         surface:family.surface,
                         surfaceMuted:family.surfaceMuted,
-                        surfaceText:family.text,
+                        surfaceText:family.surfaceText || family.text,
                         heading:family.heading || family.primary,
                         text:family.text,
                         muted:family.muted,
@@ -4713,6 +4819,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             builderMode: true,
 
             blockIndex: index,
+            tailwind: createSparkTailwindRuntime(block),
             blogPosts,
             blogWebsiteId: website.id,
             blogPageId: page.id,
@@ -4752,6 +4859,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 : (colorFamilies[activeFamilyKey] || colorFamilies.midnight);
             const activePalette=activeFamily?.palette || {};
             const activeGradient=activePalette?.gradient || activeFamily?.gradient || {};
+            const semanticPalette=resolveSemanticPalette(activeFamilyKey,globalSelections || {});
             const localSection=block?.luna_section_overrides || {};
             const localSectionVars=cosmicLocalSectionVars(localSection);
             const localBackground=block?.luna_background_overrides || {};
@@ -4759,6 +4867,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             const localTypography=block?.luna_typography_overrides || {};
             const localComponent=block?.luna_component_overrides || {};
             const localComponentVars=cosmicLocalComponentVars(localComponent);
+            const localCardSurface=localComponent?.card_surface === 'dark' ? 'dark' : null;
+            const localCardSurfaceVars=localCardSurface === 'dark' ? {
+                '--cosmic-local-card-bg':'var(--cosmic-bg-primary-surface,var(--cosmic-brand-primary,#0f172a))',
+                '--cosmic-local-card-heading':'var(--cosmic-color-on-dark,#f8fafc)',
+                '--cosmic-local-card-text':'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 82%,transparent)',
+                '--cosmic-local-card-border':'color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 24%,transparent)',
+            } : {};
             const localTypographyVars=Object.fromEntries(
                 Object.entries(localTypography)
                     .filter(([,value])=>value!==null&&value!==undefined&&value!=='')
@@ -4771,21 +4886,44 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 ...cosmicComponentVars(globalSelections?.components || {}),
                 ...localSectionVars,
                 ...localComponentVars,
+                ...localCardSurfaceVars,
                 ...localBackgroundVars,
                 ...localTypographyVars,
-                '--cosmic-primary': activePalette.background || activePalette.primary || '#243447',
-                '--cosmic-surface': activePalette.surface || activePalette.background || '#30475E',
-                '--cosmic-accent': activePalette.accent || activeGradient.glow || '#60A5FA',
-                '--cosmic-brand-primary': activePalette.primary || activePalette.background || '#243447',
-                '--cosmic-brand-secondary': activePalette.secondary || activePalette.muted || '#475569',
-                '--cosmic-brand-accent': activePalette.accent || activeGradient.glow || '#60A5FA',
-                '--cosmic-color-heading': activePalette.primary || activePalette.background || '#243447',
-                '--cosmic-color-body': activePalette.surfaceText || activePalette.text || '#0f172a',
-                '--cosmic-color-muted': activePalette.muted || '#64748b',
-                '--cosmic-color-border': activePalette.border || '#dce8e1',
-                '--cosmic-color-surface': activePalette.surface || activePalette.background || '#ffffff',
-                '--cosmic-color-page': activePalette.background || '#f7faf8',
-                '--cosmic-color-on-primary': activePalette.buttonText || activePalette.button_text || '#ffffff',
+                '--cosmic-primary': semanticPalette.primary,
+                '--cosmic-surface': semanticPalette.brand_surface,
+                '--cosmic-accent': semanticPalette.accent,
+                '--cosmic-bg-white': semanticPalette.white,
+                // Old section composition stays intact. The `surface` role is
+                // now a light tint derived from the exact primary brand color.
+                '--cosmic-bg-surface': semanticPalette.surface,
+                '--cosmic-bg-primary': semanticPalette.primary,
+                '--cosmic-bg-primary-surface': semanticPalette.brand_surface,
+                '--cosmic-bg-accent': semanticPalette.accent,
+                '--cosmic-brand-primary': semanticPalette.primary,
+                '--cosmic-brand-secondary': semanticPalette.secondary,
+                '--cosmic-brand-accent': semanticPalette.accent,
+                '--cosmic-color-heading': semanticPalette.heading,
+                '--cosmic-color-body': semanticPalette.body,
+                '--cosmic-color-muted': semanticPalette.muted,
+                '--cosmic-color-border': semanticPalette.border,
+                '--cosmic-color-border-strong': semanticPalette.border_strong,
+                '--cosmic-color-surface': semanticPalette.surface,
+                '--cosmic-color-surface-alt': semanticPalette.surface_alt,
+                '--cosmic-color-page': semanticPalette.page,
+                '--cosmic-color-on-primary': semanticPalette.on_primary,
+                '--cosmic-color-on-secondary': semanticPalette.on_secondary,
+                '--cosmic-color-on-accent': semanticPalette.on_accent,
+                '--cosmic-color-on-surface': semanticPalette.on_surface,
+                '--cosmic-color-on-dark': semanticPalette.on_dark,
+                '--cosmic-button-primary-bg': semanticPalette.button_primary,
+                '--cosmic-button-primary-text': semanticPalette.button_text,
+                '--cosmic-button-secondary-bg': semanticPalette.button_secondary,
+                '--cosmic-button-secondary-text': semanticPalette.button_secondary_text,
+                '--cosmic-link-color': semanticPalette.primary,
+                '--cosmic-link-hover': semanticPalette.primary_hover,
+                '--cosmic-color-success': semanticPalette.success,
+                '--cosmic-color-warning': semanticPalette.warning,
+                '--cosmic-color-error': semanticPalette.error,
                 '--cosmic-gradient-from': 'var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from))',
                 '--cosmic-gradient-via': 'var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))',
                 '--cosmic-gradient-to': 'var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to))',
@@ -4842,9 +4980,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     '--luna-content-gap':`${clampNumber(design.content_gap,0,96,24)}px`,
                     '--cosmic-local-section-gap':`${clampNumber(design.content_gap,0,96,24)}px`,
                 }:{}),
-                ...(design.card_radius!=null?{
-                    '--luna-card-radius':`${clampNumber(design.card_radius,0,64,16)}px`,
-                    '--cosmic-local-card-radius':`${clampNumber(design.card_radius,0,64,16)}px`,
+                ...((design.card_radius!=null || localComponent.card_radius!=null)?{
+                    '--luna-card-radius':localComponent.card_radius!=null
+                        ? String(localComponent.card_radius)
+                        : `${clampNumber(design.card_radius,0,64,16)}px`,
+                    ...(localComponent.card_radius==null?{
+                        '--cosmic-local-card-radius':`${clampNumber(design.card_radius,0,64,16)}px`,
+                    }:{}),
                 }:{}),
                 ...(design.image_radius!=null?{
                     '--luna-image-radius':`${clampNumber(design.image_radius,0,64,16)}px`,
@@ -4870,7 +5012,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     data-cosmic-design-system="1"
                     data-cosmic-block-index={index}
                     data-cosmic-block-type={block.type}
+                    data-cosmic-tailwind-schema={block?.luna_tailwind_schema?.slots && Object.keys(block.luna_tailwind_schema.slots).length ? 'schema_backed' : 'legacy_fallback'}
                     data-cosmic-resolved-theme={resolvedTheme}
+                    data-cosmic-card-surface={localCardSurface || undefined}
                     data-cosmic-universal-background={universalEnabled ? '1' : undefined}
                     data-cosmic-background-type={universalEnabled ? universalType : undefined}
                     data-cosmic-background-state={universalState}
@@ -5359,8 +5503,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     Preview site <span aria-hidden="true" className="ml-1">↗</span>
                                 </a>
                             ) : (
-                                <span className="inline-flex h-9 shrink-0 cursor-wait items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-500" title="The full staging site appears when all trial pages finish building.">
-                                    Preparing preview…
+                                <span className="inline-flex h-9 shrink-0 cursor-wait items-center justify-center rounded-lg border border-slate-200 bg-slate-50 px-3 text-xs font-semibold text-slate-500" title={previewDeploymentError || trialPreviewStatus.message || 'The full staging site appears when all trial pages finish building.'}>
+                                    {trialPreviewStatus.pageCount > 0 && trialPreviewStatus.readyPages >= trialPreviewStatus.pageCount
+                                        ? 'Finalizing preview…'
+                                        : 'Preparing preview…'}
+                                    {trialPreviewStatus.pageCount > 0 && trialPreviewStatus.readyPages < trialPreviewStatus.pageCount
+                                        ? ` ${trialPreviewStatus.readyPages}/${trialPreviewStatus.pageCount}`
+                                        : ''}
                                 </span>
                             ))}
 

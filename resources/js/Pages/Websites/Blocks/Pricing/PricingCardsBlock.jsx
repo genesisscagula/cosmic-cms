@@ -7,6 +7,7 @@ import { RepeatableControls, RepeatableRemoveButton } from "../Shared/Repeatable
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 
 
@@ -368,18 +369,18 @@ export function PricingCardsBlock({
 
         <section
             data-cosmic-pricing-state={isPrimarySection ? "primary" : (effectiveSectionTheme || "auto")}
-            className={`group/repeatable-section group/pricing-section relative px-6 py-20 sm:px-8 lg:py-24 ${theme.bg} transition-colors duration-500`}
+            className={sparkTw(block, "auto_1", `group/repeatable-section group/pricing-section relative px-6 py-20 sm:px-8 lg:py-24 ${theme.bg} transition-colors duration-500`)}
         >
 
-            <div className="max-w-7xl mx-auto">
+            <div className={sparkTw(block, "auto_2", "max-w-7xl mx-auto")}>
 
                 {/* Header */}
 
-                <div className="text-center max-w-3xl mx-auto mb-12 sm:mb-14">
+                <div className={sparkTw(block, "auto_3", "text-center max-w-3xl mx-auto mb-12 sm:mb-14")}>
 
                     <EditableText
                         value={data.tagline}
-                        className={`block text-xs font-semibold uppercase tracking-[0.35em] ${theme.sub}`}
+                        className={sparkTw(block, "auto_4", `block text-xs font-semibold uppercase tracking-[0.35em] ${theme.sub}`)}
                         onSave={(val) =>
                             onUpdate({
                                 tagline: val
@@ -389,7 +390,7 @@ export function PricingCardsBlock({
 
                     <EditableText
                         value={data.heading} cosmicType="h2"
-                        className={`block mt-5 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
+                        className={sparkTw(block, "auto_5", `block mt-5 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`)}
                         onSave={(val) =>
                             onUpdate({
                                 heading: val
@@ -400,7 +401,7 @@ export function PricingCardsBlock({
                     <EditableText
                         value={data.text}
                         isTextArea={true}
-                        className={`block mt-6 text-lg leading-8 ${theme.sub}`}
+                        className={sparkTw(block, "auto_6", `block mt-6 text-lg leading-8 ${theme.sub}`)}
                         onSave={(val) =>
                             onUpdate({
                                 text: val
@@ -412,13 +413,13 @@ export function PricingCardsBlock({
 
                 {/* Plans */}
 
-                <div className="grid gap-6 md:grid-cols-3 lg:gap-7">
+                <div className={sparkTw(block, "auto_7", "grid gap-6 md:grid-cols-3 lg:gap-7")}>
 
                     {data.plans.map((plan, index) => (
 
                         <div
                             key={index}
-                            className={`
+                            className={sparkTw(block, "auto_8", `
                                 relative
                                 rounded-3xl
                                 border
@@ -432,7 +433,7 @@ export function PricingCardsBlock({
                                 hover:shadow-2xl
                                 group/pricing-card
                                 ${plan.featured ? "scale-105 ring-2 ring-white/40" : ""}
-                            `}
+                            `)}
                         >
 
                             <RepeatableRemoveButton
@@ -445,9 +446,9 @@ export function PricingCardsBlock({
 
                             {plan.badge && (
 
-                            <div className="absolute -top-3 left-1/2 z-10 -translate-x-1/2">
+                            <div className={sparkTw(block, "auto_9", "absolute -top-3 left-1/2 z-10 -translate-x-1/2")}>
 
-                                    <span className={`inline-flex whitespace-nowrap rounded-full px-3 py-1.5 ${primaryTheme.bg} ${primaryTheme.text} text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm`}>
+                                    <span className={sparkTw(block, "auto_10", `inline-flex whitespace-nowrap rounded-full px-3 py-1.5 ${primaryTheme.bg} ${primaryTheme.text} text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm`)}>
 
                                         <EditableText
                                             value={plan.badge}
@@ -466,17 +467,17 @@ export function PricingCardsBlock({
 
                             <EditableText
                                 value={plan.title}
-                                className={`block text-2xl font-bold ${theme.text}`}
+                                className={sparkTw(block, "auto_11", `block text-2xl font-bold ${theme.text}`)}
                                 onSave={(val) =>
                                     updatePlan(index, "title", val)
                                 }
                             />
 
-                            <div className="mt-5 flex items-end gap-2">
+                            <div className={sparkTw(block, "auto_12", "mt-5 flex items-end gap-2")}>
 
                                 <EditableText
                                     value={plan.price}
-                                className={`block text-4xl font-bold sm:text-5xl ${theme.text}`}
+                                className={sparkTw(block, "auto_13", `block text-4xl font-bold sm:text-5xl ${theme.text}`)}
                                     onSave={(val) =>
                                         updatePlan(index, "price", val)
                                     }
@@ -484,7 +485,7 @@ export function PricingCardsBlock({
 
                                 <EditableText
                                     value={plan.period}
-                                    className={`block mb-2 ${theme.sub}`}
+                                    className={sparkTw(block, "auto_14", `block mb-2 ${theme.sub}`)}
                                     onSave={(val) =>
                                         updatePlan(index, "period", val)
                                     }
@@ -495,7 +496,7 @@ export function PricingCardsBlock({
                             <EditableText
                                 value={plan.description}
                                 isTextArea={true}
-                            className={`block mt-5 leading-7 ${theme.sub}`}
+                            className={sparkTw(block, "auto_15", `block mt-5 leading-7 ${theme.sub}`)}
                                 onSave={(val) =>
                                     updatePlan(index, "description", val)
                                 }
@@ -503,17 +504,17 @@ export function PricingCardsBlock({
 
                             {/* Features */}
 
-                            <div className="mt-7 space-y-3">
+                            <div className={sparkTw(block, "auto_16", "mt-7 space-y-3")}>
 
                                 {plan.features.map((feature, featureIndex) => (
 
                                     <div
                                         key={featureIndex}
-                                        className="group/pricing-feature relative flex items-center gap-3 pr-10"
+                                        className={sparkTw(block, "auto_17", "group/pricing-feature relative flex items-center gap-3 pr-10")}
                                     >
 
                                         <svg
-										    className={`w-5 h-5 ${isPrimarySection ? "text-white" : theme.text}`} data-cosmic-state-icon
+										    className={sparkTw(block, "auto_18", `w-5 h-5 ${isPrimarySection ? "text-white" : theme.text}`)} data-cosmic-state-icon
 										    fill="none"
 										    stroke="currentColor"
 										    strokeWidth="2.5"
@@ -528,7 +529,7 @@ export function PricingCardsBlock({
 
                                         <EditableText
                                             value={feature.text}
-                                            className={`${theme.text}`}
+                                            className={sparkTw(block, "auto_19", `${theme.text}`)}
                                             onSave={(val) =>
                                                 updateFeature(
                                                     index,
@@ -560,19 +561,19 @@ export function PricingCardsBlock({
                                 addLabel="Add feature"
                                 removeLabel="Remove last feature"
                                 showRemove={false}
-                                className="justify-start"
+                                className={sparkTw(block, "auto_20", "justify-start")}
                                 hoverScope="pricing-card"
                                 addButtonClassName={`${theme.text}`}
                             />
 
                             {/* Button */}
 
-                            <div className="mt-8">
+                            <div className={sparkTw(block, "auto_21", "mt-8")}>
 
                                 <EditableButton
 								    label={plan.button_label}
 								    url={plan.button_url}
-								    className={`
+								    className={sparkTw(block, "auto_22", `
 								        w-full
 								        inline-flex
 								        items-center
@@ -585,7 +586,7 @@ export function PricingCardsBlock({
 								        duration-200
 								        ${buttonStyle.bg}
 								        ${buttonStyle.text}
-								    `}
+								    `)}
 								    onSave={(label, url) => {
 								        updatePlan(index, "button_label", label);
 								        updatePlan(index, "button_url", url);
@@ -607,7 +608,7 @@ export function PricingCardsBlock({
                     addLabel="Add pricing plan"
                     hoverScope="pricing-section"
                     addButtonClassName={`${theme.text}`}
-                    className="justify-start"
+                    className={sparkTw(block, "auto_23", "justify-start")}
                 />
 
             </div>

@@ -1,0 +1,26 @@
+{
+  "version": 5,
+  "batch": 5,
+  "families": {
+    "post": {
+      "operations": ["create", "update", "publish", "draft", "delete"],
+      "targets": ["post", "title", "slug", "excerpt", "content", "category", "tags", "featured_image", "status"],
+      "notes": "Explicit manual post CRUD is deterministic. AI-authored long-form post generation continues through the existing metered blog generator. Delete requires destructive confirmation."
+    },
+    "commerce": {
+      "operations": ["create", "update", "configure", "publish", "archive", "delete"],
+      "targets": ["product", "product_category", "title", "slug", "sku", "price", "sale_price", "inventory", "stock_quantity", "backorders", "categories", "featured_image", "status", "type", "fulfillment_type"],
+      "notes": "Explicit catalog CRUD uses existing Commerce models/services and plan gates. Product/category delete requires destructive confirmation. AI-authored descriptions remain on metered generators."
+    }
+  },
+  "billing": {
+    "deterministic_crud": 0,
+    "ai_generation": "existing action pricing",
+    "rule": "Manual structured data mutations cost 0 credits. Charge only when a billable AI/API generation request is actually made."
+  },
+  "safety": {
+    "destructive_delete_confirmation": true,
+    "cross_website_targeting": false,
+    "commerce_plan_gate": true
+  }
+}

@@ -7,6 +7,7 @@ import { getEffectiveTheme } from "../../../../theme/Theme";
 import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { resolveMediaOverlay } from "../../../../theme/mediaOverlay";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 export const HeroLuxuryFullscreenSchema = {
     type: "hero_luxury_fullscreen",
@@ -72,30 +73,30 @@ export function HeroLuxuryFullscreenBlock({ block, blockIndex, onUpdate, globalT
     };
 
     return (
-        <section onClick={handleImageEdit} data-cosmic-media-banner="true" className={`relative overflow-hidden ${theme.bg}`} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
-            <EditableImage ref={imageRef} websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} isBackground className="absolute inset-0 h-full w-full object-cover" onSave={(image_url)=>onUpdate({image_url})} />
+        <section onClick={handleImageEdit} data-cosmic-media-banner="true" className={sparkTw(block, "section", `relative overflow-hidden ${theme.bg}`)} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+            <EditableImage ref={imageRef} websiteId={websiteId} blockIndex={blockIndex} src={data.image_url} isBackground className={sparkTw(block, "image", "absolute inset-0 h-full w-full object-cover")} onSave={(image_url)=>onUpdate({image_url})} />
             <div
-                className="pointer-events-none absolute inset-0"
+                className={sparkTw(block, "wrapper", "pointer-events-none absolute inset-0")}
                 style={{ backgroundColor: overlayColor, opacity: isLightMediaTheme ? 0.96 : 0.52 }}
             />
-            <div className={`pointer-events-none absolute inset-0 ${isLightMediaTheme ? "bg-gradient-to-r from-white/72 via-white/48 to-white/24" : "bg-gradient-to-r from-slate-950/30 via-transparent to-transparent"}`} />
-            <div className={`pointer-events-none absolute inset-0 ${isLightMediaTheme ? "bg-gradient-to-t from-white/56 via-white/20 to-white/24" : "bg-gradient-to-t from-slate-950/34 via-transparent to-slate-950/8"}`} />
-            <div className="relative mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14" style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
-                <div className={`flex items-center justify-between border-b pb-5 ${copy.border}`}>
-                    <EditableText value={data.eyebrow} className={`text-[11px] font-bold uppercase tracking-[.34em] ${copy.eyebrow}`} onSave={(eyebrow)=>onUpdate({eyebrow})}/>
-                    <EditableText value={data.edition_label} className={`text-xs font-medium ${copy.edition}`} onSave={(edition_label)=>onUpdate({edition_label})}/>
+            <div className={sparkTw(block, "wrapper_2", `pointer-events-none absolute inset-0 ${isLightMediaTheme ? "bg-gradient-to-r from-white/72 via-white/48 to-white/24" : "bg-gradient-to-r from-slate-950/30 via-transparent to-transparent"}`)} />
+            <div className={sparkTw(block, "wrapper_3", `pointer-events-none absolute inset-0 ${isLightMediaTheme ? "bg-gradient-to-t from-white/56 via-white/20 to-white/24" : "bg-gradient-to-t from-slate-950/34 via-transparent to-slate-950/8"}`)} />
+            <div className={sparkTw(block, "wrapper_4", "relative mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14")} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+                <div className={sparkTw(block, "wrapper_5", `flex items-center justify-between border-b pb-5 ${copy.border}`)}>
+                    <EditableText value={data.eyebrow} className={sparkTw(block, "text", `text-[11px] font-bold uppercase tracking-[.34em] ${copy.eyebrow}`)} onSave={(eyebrow)=>onUpdate({eyebrow})}/>
+                    <EditableText value={data.edition_label} className={sparkTw(block, "text_2", `text-xs font-medium ${copy.edition}`)} onSave={(edition_label)=>onUpdate({edition_label})}/>
                 </div>
-                <div className="max-w-5xl py-0">
-                    <EditableText value={data.heading} cosmicType="h1" className={`block max-w-5xl text-4xl font-medium leading-[.96] tracking-[-.05em] sm:text-5xl lg:text-6xl xl:text-7xl ${copy.heading}`} onSave={(heading)=>onUpdate({heading})}/>
-                    <EditableText value={data.text} isTextArea className={`mt-7 block max-w-xl text-base leading-7 sm:text-lg sm:leading-8 ${copy.body}`} onSave={(text)=>onUpdate({text})}/>
-                    <div className="mt-9 flex flex-col gap-3 sm:flex-row">
-                        <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`} onSave={(primary_label,primary_url)=>onUpdate({primary_label,primary_url})}/>
-                        <EditableButton label={data.secondary_label} url={data.secondary_url} className={`inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold ${copy.secondary}`} onSave={(secondary_label,secondary_url)=>onUpdate({secondary_label,secondary_url})}/>
+                <div className={sparkTw(block, "wrapper_6", "max-w-5xl py-0")}>
+                    <EditableText value={data.heading} cosmicType="h1" className={sparkTw(block, "text_3", `block max-w-5xl text-4xl font-medium leading-[.96] tracking-[-.05em] sm:text-5xl lg:text-6xl xl:text-7xl ${copy.heading}`)} onSave={(heading)=>onUpdate({heading})}/>
+                    <EditableText value={data.text} isTextArea className={sparkTw(block, "text_4", `mt-7 block max-w-xl text-base leading-7 sm:text-lg sm:leading-8 ${copy.body}`)} onSave={(text)=>onUpdate({text})}/>
+                    <div className={sparkTw(block, "wrapper_7", "mt-9 flex flex-col gap-3 sm:flex-row")}>
+                        <EditableButton label={data.primary_label} url={data.primary_url} className={sparkTw(block, "button", `inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold ${primaryButton}`)} onSave={(primary_label,primary_url)=>onUpdate({primary_label,primary_url})}/>
+                        <EditableButton label={data.secondary_label} url={data.secondary_url} className={sparkTw(block, "button_2", `inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold ${copy.secondary}`)} onSave={(secondary_label,secondary_url)=>onUpdate({secondary_label,secondary_url})}/>
                     </div>
                 </div>
-                <div className={`flex items-end justify-between border-t pt-5 ${copy.border}`}>
-                    <EditableText value={data.location_label} className={`text-xs font-semibold uppercase tracking-[.2em] ${copy.location}`} onSave={(location_label)=>onUpdate({location_label})}/>
-                    <span className={`h-10 w-px ${copy.divider}`} />
+                <div className={sparkTw(block, "wrapper_8", `flex items-end justify-between border-t pt-5 ${copy.border}`)}>
+                    <EditableText value={data.location_label} className={sparkTw(block, "text_5", `text-xs font-semibold uppercase tracking-[.2em] ${copy.location}`)} onSave={(location_label)=>onUpdate({location_label})}/>
+                    <span className={sparkTw(block, "label", `h-10 w-px ${copy.divider}`)} />
                 </div>
             </div>
         </section>

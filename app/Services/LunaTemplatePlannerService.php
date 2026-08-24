@@ -16,13 +16,23 @@ final class LunaTemplatePlannerService
     ) {}
 
     /** @return array{template_key:string,template_name:string,sections:array,theme:string,industry:string,design_direction:string,media_direction:string,planner:string,metadata_candidates:int} */
-    public function plan(string $prompt): array
+    public function plan(string $prompt, ?array $allowedTemplateKeys = null): array
     {
         $composition=$this->composition->plannerDirective($prompt);
         $responsiveContract=$this->responsive->plannerDirective();
-        $candidates = $this->shortlist($prompt, PageTemplateCatalog::plannerIndex(),$composition['context']);
+        $templateIndex = PageTemplateCatalog::plannerIndex();
+        if (is_array($allowedTemplateKeys) && $allowedTemplateKeys !== []) {
+            $allowed = array_fill_keys(array_values(array_filter(array_map('strval', $allowedTemplateKeys))), true);
+            $templateIndex = array_values(array_filter(
+                $templateIndex,
+                fn (array $template): bool => isset($allowed[(string) ($template['key'] ?? '')]),
+            ));
+        }
+        $candidates = $this->shortlist($prompt, $templateIndex,$composition['context']);
         if ($candidates === []) {
-            throw new RuntimeException('No Cosmic page templates are available to Luna.');
+            throw new RuntimeException(is_array($allowedTemplateKeys)
+                ? 'The current site bundle has no compatible registered page templates.'
+                : 'No Cosmic page templates are available to Luna.');
         }
 
         $catalogJson = json_encode($candidates, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);

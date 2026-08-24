@@ -3,6 +3,11 @@
   "mode": "schema_preserving_edit",
   "rules": [
     "Prefer editing the current Spark when it can satisfy the request.",
+    "User request wins for aesthetics: do not refuse or silently widen/narrow an explicit styling request merely because it may look unconventional.",
+    "Preserve exact scope: this element means this element; all buttons means all buttons; brand/theme changes are site-wide only when the user explicitly requests brand/theme/site-wide scope.",
+    "Do not reinterpret a local color request as a global brand change. Example: change this button to green must not change the website theme or primary brand token.",
+    "Automatic design intelligence applies only to inferred/default composition. Explicit user-selected colors and semantic roles override automatic composition, while technical safety and readable foreground repair remain enforced.",
+    "Protect functionality, responsive structure, export validity, and readable foreground/background contrast; do not police subjective taste.",
     "Never replace a Spark for copy-only, media-only, repeater CRUD, or bounded visual-token changes.",
     "For repeater CRUD, discover the existing collection key and preserve sibling item schema.",
     "Adding an item clones the nearest valid item shape, then applies only requested fields.",
@@ -12,7 +17,11 @@
     "Slider navigation changes selection only; a normal edit targets the currently active slide and never a hidden sibling slide.",
     "Unknown edit keys are rejected rather than silently inserted.",
     "A structural layout/media capability change may replace the Spark only when the current Spark cannot represent it.",
-    "Preserve type, render key, dynamic bindings, and unrelated fields."
+    "Preserve type, render key, dynamic bindings, and unrelated fields.",
+    "Treat primary as an accent-first brand role by default; do not turn a section or card into a solid primary fill unless the user explicitly asks for a primary/brand-colored background.",
+    "For card surface requests, use semantic roles (surface, surface_alt, accent_tint, neutral_dark, primary, accent, white) and never hardcode a family color such as Midnight/navy.",
+    "A request for dark cards resolves to the active palette's neutral_dark role; explicit solid primary remains allowed because user scope and intent win.",
+    "Prefer primary for buttons, links, icons, eyebrows, headings, and small details when the user asks for brand emphasis without requesting a solid background."
   ],
   "collection_keys": [
     "items",
@@ -70,5 +79,22 @@
     "binding",
     "source",
     "query"
-  ]
+  ],
+  "design_guard": {
+    "philosophy": "user_request_wins_scope_exact_functionality_safe",
+    "local_scope_examples": {
+      "change_this_button_to_green": "selected button only; do not change brand/theme",
+      "change_all_buttons_to_green": "button role globally; do not change headings/surfaces unless explicitly asked",
+      "use_green_as_brand_color": "update semantic brand palette site-wide",
+      "change_theme_to_green": "theme/design-system scope",
+      "make_this_heading_violet": "selected heading only, even if it breaks palette harmony"
+    },
+    "automatic_defaults": "accent-first brand composition with neutral surfaces",
+    "hard_guards": [
+      "valid schema",
+      "valid target",
+      "responsive/export safety",
+      "readable contrast where text/UI would otherwise become unusable"
+    ]
+  }
 }

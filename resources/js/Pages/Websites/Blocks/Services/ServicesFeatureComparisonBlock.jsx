@@ -3,6 +3,7 @@ import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 export const ServicesFeatureComparisonSchema = {
     type: "services_feature_comparison",
@@ -58,42 +59,42 @@ export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme })
         { key: "option_three", featured: false },
     ];
 
-    return <section className={`group/repeatable-section relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`}>
-        <div className="mx-auto max-w-7xl">
-            <div className="max-w-3xl">
-                <EditableText value={data.eyebrow} className={`text-xs font-bold uppercase tracking-[.28em] ${muted}`} onSave={save("eyebrow")} />
-                <EditableText value={data.heading} cosmicType="h2" className={`mt-5 block text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl ${theme.text}`} onSave={save("heading")} />
-                <EditableText value={data.text} isTextArea className={`mt-5 block max-w-2xl text-base leading-7 sm:text-lg ${muted}`} onSave={save("text")} />
+    return <section className={sparkTw(block, "section", `group/repeatable-section relative overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 ${theme.bg}`)}>
+        <div className={sparkTw(block, "wrapper", "mx-auto max-w-7xl")}>
+            <div className={sparkTw(block, "wrapper_2", "max-w-3xl")}>
+                <EditableText value={data.eyebrow} className={sparkTw(block, "text", `text-xs font-bold uppercase tracking-[.28em] ${muted}`)} onSave={save("eyebrow")} />
+                <EditableText value={data.heading} cosmicType="h2" className={sparkTw(block, "text_2", `mt-5 block text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl ${theme.text}`)} onSave={save("heading")} />
+                <EditableText value={data.text} isTextArea className={sparkTw(block, "text_3", `mt-5 block max-w-2xl text-base leading-7 sm:text-lg ${muted}`)} onSave={save("text")} />
             </div>
 
-            <div className={`mt-12 overflow-hidden rounded-[2rem] border shadow-sm ${border}`}>
-                <div className={`grid lg:grid-cols-[1.15fr_repeat(3,1fr)] ${baseCard}`}>
-                    <div className={`hidden border-b p-6 lg:block ${border}`}>
-                        <span className={`text-xs font-bold uppercase tracking-[.22em] ${muted}`}>Capabilities</span>
+            <div className={sparkTw(block, "wrapper_3", `mt-12 overflow-hidden rounded-[2rem] border shadow-sm ${border}`)}>
+                <div className={sparkTw(block, "wrapper_4", `grid lg:grid-cols-[1.15fr_repeat(3,1fr)] ${baseCard}`)}>
+                    <div className={sparkTw(block, "wrapper_5", `hidden border-b p-6 lg:block ${border}`)}>
+                        <span className={sparkTw(block, "label", `text-xs font-bold uppercase tracking-[.22em] ${muted}`)}>Capabilities</span>
                     </div>
-                    {options.map((option) => <article key={option.key} className={`group relative relative border-b p-6 sm:p-7 ${border} ${option.featured ? featuredCard : baseCard}`}>
-                        {option.featured && <EditableText value={data.option_two_badge} className={`mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] ${primaryTheme.bg} ${primaryTheme.text}`} onSave={save("option_two_badge")} />}
-                        <EditableText value={data[`${option.key}_kicker`]} className={`block text-[11px] font-bold uppercase tracking-[.2em] ${option.featured && !isPrimary ? "text-white/65" : muted}`} onSave={save(`${option.key}_kicker`)} />
-                        <EditableText value={data[`${option.key}_name`]} className="mt-3 block text-2xl font-semibold tracking-[-.03em]" onSave={save(`${option.key}_name`)} />
-                        <EditableText value={data[`${option.key}_text`]} isTextArea className={`mt-4 block text-sm leading-6 ${option.featured && !isPrimary ? "text-white/65" : muted}`} onSave={save(`${option.key}_text`)} />
+                    {options.map((option) => <article key={option.key} data-cosmic-contrast-surface={option.featured && !isPrimary ? "brand" : undefined} className={sparkTw(block, "card", `group relative border-b p-6 sm:p-7 ${border} ${option.featured ? featuredCard : baseCard}`)}>
+                        {option.featured && <EditableText value={data.option_two_badge} className={sparkTw(block, "text_4", `mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] ${primaryTheme.bg} ${primaryTheme.text}`)} onSave={save("option_two_badge")} />}
+                        <EditableText value={data[`${option.key}_kicker`]} className={sparkTw(block, "text_5", `block text-[11px] font-bold uppercase tracking-[.2em] ${option.featured && !isPrimary ? "text-white/65" : muted}`)} onSave={save(`${option.key}_kicker`)} />
+                        <EditableText value={data[`${option.key}_name`]} data-cosmic-preserve-heading-color={option.featured && !isPrimary ? "1" : undefined} className={sparkTw(block, "text_6", "mt-3 block text-2xl font-semibold tracking-[-.03em]")} onSave={save(`${option.key}_name`)} />
+                        <EditableText value={data[`${option.key}_text`]} isTextArea className={sparkTw(block, "text_7", `mt-4 block text-sm leading-6 ${option.featured && !isPrimary ? "text-white/65" : muted}`)} onSave={save(`${option.key}_text`)} />
                     </article>)}
 
-                    {words.map((word, rowIndex) => <div key={word} className="group relative contents">
-                        <div className={`group relative border-b p-5 pr-12 lg:p-6 lg:pr-12 ${border} ${baseCard}`}>
+                    {words.map((word, rowIndex) => <div key={word} className={sparkTw(block, "wrapper_6", "group relative contents")}>
+                        <div className={sparkTw(block, "wrapper_7", `group relative border-b p-5 pr-12 lg:p-6 lg:pr-12 ${border} ${baseCard}`)}>
                             <RepeatableRemoveButton hoverScope="item" overlay placement="row" label="Remove feature row" disabled={rowCount<=1} onRemove={()=>{const all=["one","two","three","four","five","six","seven","eight"];const patch={feature_row_count:rowCount-1};for(let x=rowIndex;x<rowCount-1;x++){const a=all[x],b=all[x+1];patch[`feature_${a}`]=data[`feature_${b}`]??"";options.forEach(({key})=>{patch[`${key}_${a}`]=data[`${key}_${b}`]??"";});}onUpdate(patch)}} />
-                            <EditableText value={data[`feature_${word}`]} className="text-sm font-semibold" onSave={save(`feature_${word}`)} />
+                            <EditableText value={data[`feature_${word}`]} className={sparkTw(block, "text_8", "text-sm font-semibold")} onSave={save(`feature_${word}`)} />
                         </div>
-                        {options.map((option) => <div key={`${word}-${option.key}`} className={`group relative border-b p-5 text-sm lg:p-6 ${border} ${option.featured ? featuredCard : baseCard}`}>
-                            <EditableText value={data[`${option.key}_${word}`]} className={option.featured && !isPrimary ? "font-semibold text-white" : "font-semibold"} onSave={save(`${option.key}_${word}`)} />
+                        {options.map((option) => <div key={`${word}-${option.key}`} data-cosmic-contrast-surface={option.featured && !isPrimary ? "brand" : undefined} className={sparkTw(block, "wrapper_8", `group relative border-b p-5 text-sm lg:p-6 ${border} ${option.featured ? featuredCard : baseCard}`)}>
+                            <EditableText value={data[`${option.key}_${word}`]} className={sparkTw(block, "feature_value", option.featured && !isPrimary ? "font-semibold text-white" : "font-semibold")} onSave={save(`${option.key}_${word}`)} />
                         </div>)}
                     </div>)}
                 </div>
             </div>
 
             <RepeatableControls onAdd={()=>rowCount<8&&onUpdate({feature_row_count:rowCount+1})} canAdd={rowCount<8} showRemove={false} addLabel="Add feature row"/>
-            <div className="mt-8 flex flex-col items-center gap-4 text-center">
-                <EditableButton label={data.primary_label} url={data.primary_url} className={`inline-flex min-h-[48px] items-center justify-center rounded-full px-7 text-sm font-bold ${buttonClass}`} onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })} />
-                <EditableText value={data.footnote} isTextArea className={`max-w-3xl text-xs leading-5 ${muted}`} onSave={save("footnote")} />
+            <div className={sparkTw(block, "wrapper_9", "mt-8 flex flex-col items-center gap-4 text-center")}>
+                <EditableButton label={data.primary_label} url={data.primary_url} className={sparkTw(block, "button", `inline-flex min-h-[48px] items-center justify-center rounded-full px-7 text-sm font-bold ${buttonClass}`)} onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })} />
+                <EditableText value={data.footnote} isTextArea className={sparkTw(block, "text_9", `max-w-3xl text-xs leading-5 ${muted}`)} onSave={save("footnote")} />
             </div>
         </div>
     </section>;

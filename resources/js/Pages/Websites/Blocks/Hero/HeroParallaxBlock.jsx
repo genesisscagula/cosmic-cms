@@ -7,6 +7,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 export const HeroParallaxSchema = {
     type: "hero_parallax",
@@ -173,12 +174,12 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
         <section
             data-cosmic-media-banner="true"
             ref={sectionRef}
-            className={`relative isolate flex cursor-pointer overflow-hidden py-0 ${heroHeight}`}
+            className={sparkTw(block, "section", `relative isolate flex cursor-pointer overflow-hidden py-0 ${heroHeight}`)}
             onClick={handleSectionImageEdit}
             style={data.height === "screen" ? {minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"} : undefined}
         >
             <div
-                className="cosmic-parallax-media absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform"
+                className={sparkTw(block, "wrapper", "cosmic-parallax-media absolute -inset-y-[18%] inset-x-0 z-0 will-change-transform")}
                 style={{ transform: "translate3d(0, 0, 0) scale(1.14)" }}
             >
                 <EditableImage
@@ -188,63 +189,63 @@ export function HeroParallaxBlock({ block, blockIndex, onUpdate, globalTheme }) 
                     src={data.image_url}
                     showOverlay={false}
                     isBackground
-                    className="absolute inset-0 h-full w-full overflow-hidden"
+                    className={sparkTw(block, "image", "absolute inset-0 h-full w-full overflow-hidden")}
                     onSave={(value) => onUpdate({ image_url: value })}
                 />
             </div>
 
-            <div className="absolute inset-0 z-10" style={{ backgroundColor: overlayColor, opacity: effectiveOverlayOpacity / 100 }} />
-            <div className={`absolute inset-0 z-10 bg-gradient-to-t ${mediaStyle.gradient} ${data.contentAlign === "right" ? "bg-gradient-to-l" : data.contentAlign === "left" ? "bg-gradient-to-r" : ""}`} />
+            <div className={sparkTw(block, "wrapper_2", "absolute inset-0 z-10")} style={{ backgroundColor: overlayColor, opacity: effectiveOverlayOpacity / 100 }} />
+            <div className={sparkTw(block, "wrapper_3", `absolute inset-0 z-10 bg-gradient-to-t ${mediaStyle.gradient} ${data.contentAlign === "right" ? "bg-gradient-to-l" : data.contentAlign === "left" ? "bg-gradient-to-r" : ""}`)} />
 
             <div
                 ref={contentRef}
-                className={`relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-4 transition-opacity duration-150 sm:px-6 lg:px-8 ${alignment[data.contentAlign] || alignment.left}`}
+                className={sparkTw(block, "wrapper_4", `relative z-20 mx-auto flex w-full max-w-7xl flex-col justify-center px-4 transition-opacity duration-150 sm:px-6 lg:px-8 ${alignment[data.contentAlign] || alignment.left}`)}
                 style={{ transform: "translate3d(0, 0, 0)", willChange: "transform, opacity" }}
             >
-                <div className={contentWidth}>
-                    <div className={`inline-flex items-center gap-3 rounded-full border px-4 py-2 backdrop-blur-md ${mediaStyle.badge}`}>
-                        <span className={`h-2 w-2 rounded-full ${primaryTheme.bg}`} />
+                <div className={sparkTw(block, "b10_1", contentWidth)}>
+                    <div className={sparkTw(block, "wrapper_5", `inline-flex items-center gap-3 rounded-full border px-4 py-2 backdrop-blur-md ${mediaStyle.badge}`)}>
+                        <span className={sparkTw(block, "label", `h-2 w-2 rounded-full ${primaryTheme.bg}`)} />
                         <EditableText
                             value={data.eyebrow}
-                            className={`text-xs font-bold uppercase tracking-[0.28em] ${mediaStyle.eyebrow}`}
+                            className={sparkTw(block, "text", `text-xs font-bold uppercase tracking-[0.28em] ${mediaStyle.eyebrow}`)}
                             onSave={(value) => onUpdate({ eyebrow: value })}
                         />
                     </div>
 
                     <EditableText
                         value={data.heading} cosmicType="h1"
-                        className={`mt-7 text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`}
+                        className={sparkTw(block, "text_2", `mt-7 text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${mediaStyle.heading}`)}
                         onSave={(value) => onUpdate({ heading: value })}
                     />
 
                     <EditableText
                         value={data.text}
                         isTextArea
-                        className={`mt-7 text-base leading-8 sm:text-lg ${mediaStyle.body} ${data.contentAlign === "center" ? "mx-auto max-w-2xl" : "max-w-2xl"}`}
+                        className={sparkTw(block, "text_3", `mt-7 text-base leading-8 sm:text-lg ${mediaStyle.body} ${data.contentAlign === "center" ? "mx-auto max-w-2xl" : "max-w-2xl"}`)}
                         onSave={(value) => onUpdate({ text: value })}
                     />
 
-                    <div className={`mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row ${data.contentAlign === "center" ? "justify-center" : data.contentAlign === "right" ? "justify-end" : "justify-start"}`}>
+                    <div className={sparkTw(block, "wrapper_6", `mt-10 flex w-full flex-col gap-3 sm:w-auto sm:flex-row ${data.contentAlign === "center" ? "justify-center" : data.contentAlign === "right" ? "justify-end" : "justify-start"}`)}>
                         <EditableButton
                             label={data.primary_label}
                             url={data.primary_url}
-                            className={`inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition hover:-translate-y-0.5 ${primaryTheme.bg} !text-white`}
+                            className={sparkTw(block, "button", `inline-flex min-h-[54px] items-center justify-center rounded-full px-8 font-bold transition hover:-translate-y-0.5 ${primaryTheme.bg} !text-white`)}
                             onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })}
                         />
                         <EditableButton
                             label={data.secondary_label}
                             url={data.secondary_url}
-                            className={`inline-flex min-h-[54px] items-center justify-center rounded-full border px-8 font-bold backdrop-blur-md transition ${mediaStyle.secondary}`}
+                            className={sparkTw(block, "button_2", `inline-flex min-h-[54px] items-center justify-center rounded-full border px-8 font-bold backdrop-blur-md transition ${mediaStyle.secondary}`)}
                             onSave={(label, url) => onUpdate({ secondary_label: label, secondary_url: url })}
                         />
                     </div>
                 </div>
             </div>
 
-            <div className={`pointer-events-none absolute bottom-7 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 sm:flex ${mediaStyle.scroll}`}>
-                <span className="text-[10px] font-bold uppercase tracking-[0.32em]">{data.scroll_label}</span>
-                <span className={`relative h-10 w-px overflow-hidden ${mediaStyle.scrollLine}`}>
-                    <span className={`absolute left-0 top-0 h-4 w-px animate-bounce ${mediaStyle.scrollDot}`} />
+            <div className={sparkTw(block, "wrapper_7", `pointer-events-none absolute bottom-7 left-1/2 z-20 hidden -translate-x-1/2 flex-col items-center gap-3 sm:flex ${mediaStyle.scroll}`)}>
+                <span className={sparkTw(block, "label_2", "text-[10px] font-bold uppercase tracking-[0.32em]")}>{data.scroll_label}</span>
+                <span className={sparkTw(block, "label_3", `relative h-10 w-px overflow-hidden ${mediaStyle.scrollLine}`)}>
+                    <span className={sparkTw(block, "label_4", `absolute left-0 top-0 h-4 w-px animate-bounce ${mediaStyle.scrollDot}`)} />
                 </span>
             </div>
 

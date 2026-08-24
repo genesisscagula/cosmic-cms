@@ -1,5 +1,6 @@
 import React from "react";
 
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 const escUrl=(value)=>String(value||"").trim();
 const themeVars=(resolved)=>{
     const primary=String(resolved||"").toLowerCase()==="primary";
@@ -12,21 +13,21 @@ const themeVars=(resolved)=>{
         "--x-accent":"var(--cosmic-accent,#60A5FA)",
     };
 };
-const CardImage=({item,className=""})=>{const src=escUrl(item?.image_url);return <div data-cosmic-luna-display="image" data-luna-target="image" className={`x-img ${className}`}>{src?<img src={src} alt="" className="h-full w-full object-cover pointer-events-none"/>:<div className="h-full min-h-[15rem] w-full bg-[var(--x-surface)]"/>}</div>};
-const Copy=({item,index})=><div className="x-card-copy"><span className="x-index">{String(index+1).padStart(2,"0")}</span><span data-cosmic-luna-display="text" data-cosmic-type="card-title" data-luna-target="heading" className="x-title">{item?.title}</span><span data-cosmic-luna-display="text" data-cosmic-type="card-body" data-luna-target="text" className="x-text">{item?.text}</span></div>;
+const CardImage=({item,className="",block})=>{const src=escUrl(item?.image_url);return <div data-cosmic-luna-display="image" data-luna-target="image" className={sparkTw(block, "auto_2", `x-img ${className}`)}>{src?<img src={src} alt="" className={sparkTw(block, "auto_3", "h-full w-full object-cover pointer-events-none")}/>:<div className={sparkTw(block, "auto_4", "h-full min-h-[15rem] w-full bg-[var(--x-surface)]")}/>}</div>};
+const Copy=({item,index,block})=><div className={sparkTw(block, "auto_5", "x-card-copy")}><span className={sparkTw(block, "auto_6", "x-index")}>{String(index+1).padStart(2,"0")}</span><span data-cosmic-luna-display="text" data-cosmic-type="card-title" data-luna-target="heading" className={sparkTw(block, "auto_7", "x-title")}>{item?.title}</span><span data-cosmic-luna-display="text" data-cosmic-type="card-body" data-luna-target="text" className={sparkTw(block, "auto_8", "x-text")}>{item?.text}</span></div>;
 
 const ExpansionSection=({block,variant})=>{
  const items=Array.isArray(block?.items)?block.items:[];
  const resolved=block?.resolvedTheme||block?.theme||"light";
- return <section className={`group/repeatable-section cosmic-image-rich x-${variant}`} style={themeVars(resolved)}>
-   <div className="x-shell">
-    <div className="x-head">
-      <span data-cosmic-luna-display="text" data-luna-target="label" className="x-eyebrow">{block?.eyebrow}</span>
-      <span data-cosmic-luna-display="text" data-cosmic-type="h2" data-luna-target="heading" className="x-heading">{block?.heading}</span>
-      <span data-cosmic-luna-display="text" data-cosmic-type="lead" data-luna-target="text" className="x-intro">{block?.text}</span>
+ return <section className={sparkTw(block, "auto_9", `group/repeatable-section cosmic-image-rich x-${variant}`)} style={themeVars(resolved)}>
+   <div className={sparkTw(block, "auto_10", "x-shell")}>
+    <div className={sparkTw(block, "auto_11", "x-head")}>
+      <span data-cosmic-luna-display="text" data-luna-target="label" className={sparkTw(block, "auto_12", "x-eyebrow")}>{block?.eyebrow}</span>
+      <span data-cosmic-luna-display="text" data-cosmic-type="h2" data-luna-target="heading" className={sparkTw(block, "auto_13", "x-heading")}>{block?.heading}</span>
+      <span data-cosmic-luna-display="text" data-cosmic-type="lead" data-luna-target="text" className={sparkTw(block, "auto_14", "x-intro")}>{block?.text}</span>
     </div>
-    <div className="x-grid">{items.map((item,index)=><article className="x-card group relative" key={`${item?.title||"item"}-${index}`}><CardImage item={item}/><Copy item={item} index={index}/></article>)}</div>
-    {block?.button_label&&<a className="x-cta" href={block?.button_url||"#"} data-cosmic-luna-display="button" data-luna-target="button">{block.button_label}</a>}
+    <div className={sparkTw(block, "auto_15", "x-grid")}>{items.map((item,index)=><article className={sparkTw(block, "auto_16", "x-card group relative")} key={`${item?.title||"item"}-${index}`}><CardImage item={item} block={block}/><Copy item={item} index={index} block={block}/></article>)}</div>
+    {block?.button_label&&<a className={sparkTw(block, "auto_17", "x-cta")} href={block?.button_url||"#"} data-cosmic-luna-display="button" data-luna-target="button">{block.button_label}</a>}
    </div>
    <style>{`
     .cosmic-image-rich{background:var(--x-bg);color:var(--x-text);padding:7rem 1.75rem}

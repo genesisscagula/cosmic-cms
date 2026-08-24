@@ -1,5 +1,6 @@
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 export const ContactDetailsSchema = {
     type: "contact_details", title: "Contact Details", category: "Contact",
@@ -18,17 +19,17 @@ export function ContactDetailsBlock({ block, onUpdate, globalTheme }) {
     const data = { ...ContactDetailsSchema.defaults, ...block };
     const items = [["Email", "email"], ["Phone", "phone"], ["Visit", "address"], ["Hours", "hours"]];
 
-    return <section className={`px-6 py-16 sm:px-8 lg:py-20 ${theme.bg} transition-colors duration-500`}>
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-2 lg:gap-16">
-            <div className="space-y-4">
-                {data.eyebrow && <EditableText value={data.eyebrow} className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`} onSave={(eyebrow) => onUpdate({ eyebrow })} />}
-                <EditableText value={data.heading} cosmicType="h2" className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`} onSave={(heading) => onUpdate({ heading })} />
-                <EditableText value={data.text} isTextArea className={`block max-w-xl text-base leading-7 ${theme.sub}`} onSave={(text) => onUpdate({ text })} />
+    return <section className={sparkTw(block, "auto_1", `px-6 py-16 sm:px-8 lg:py-20 ${theme.bg} transition-colors duration-500`)}>
+        <div className={sparkTw(block, "auto_2", "mx-auto grid max-w-7xl gap-10 lg:grid-cols-2 lg:gap-16")}>
+            <div className={sparkTw(block, "auto_3", "space-y-4")}>
+                {data.eyebrow && <EditableText value={data.eyebrow} className={sparkTw(block, "auto_4", `block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`)} onSave={(eyebrow) => onUpdate({ eyebrow })} />}
+                <EditableText value={data.heading} cosmicType="h2" className={sparkTw(block, "auto_5", `block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`)} onSave={(heading) => onUpdate({ heading })} />
+                <EditableText value={data.text} isTextArea className={sparkTw(block, "auto_6", `block max-w-xl text-base leading-7 ${theme.sub}`)} onSave={(text) => onUpdate({ text })} />
             </div>
-            <div className={`grid overflow-hidden rounded-2xl border sm:grid-cols-2 ${theme.border} ${theme.card}`}>
-                {items.map(([label, key], index) => <div key={key} className={`min-h-36 p-6 ${index < 2 ? "border-b" : ""} ${index % 2 === 0 ? "sm:border-r" : ""} ${theme.border}`}>
-                    <span className={`block text-xs font-semibold uppercase tracking-[0.18em] ${theme.sub}`}>{label}</span>
-                    <EditableText value={data[key]} isTextArea={key === "address"} className={`mt-4 block text-base font-semibold leading-6 ${theme.text}`} onSave={(value) => onUpdate({ [key]: value })} />
+            <div className={sparkTw(block, "auto_7", `grid overflow-hidden rounded-2xl border sm:grid-cols-2 ${theme.border} ${theme.card}`)}>
+                {items.map(([label, key], index) => <div key={key} className={sparkTw(block, "auto_8", `min-h-36 p-6 ${index < 2 ? "border-b" : ""} ${index % 2 === 0 ? "sm:border-r" : ""} ${theme.border}`)}>
+                    <span className={sparkTw(block, "auto_9", `block text-xs font-semibold uppercase tracking-[0.18em] ${theme.sub}`)}>{label}</span>
+                    <EditableText value={data[key]} isTextArea={key === "address"} className={sparkTw(block, "auto_10", `mt-4 block text-base font-semibold leading-6 ${theme.text}`)} onSave={(value) => onUpdate({ [key]: value })} />
                 </div>)}
             </div>
         </div>

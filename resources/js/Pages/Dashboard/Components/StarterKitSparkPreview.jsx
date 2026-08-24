@@ -116,7 +116,7 @@ const sparkLabels = {
     hero_centered_cta: "Centered CTA",
     image_cta_banner: "Image CTA",
     cta_glass_premium: "Glass CTA",
-    cta_gradient_premium: "Gradient CTA",
+    cta_gradient_premium: "Layered CTA",
     cta_newsletter_premium: "Newsletter CTA",
     cta_book_demo_premium: "Book Demo CTA",
     cta_calendly_premium: "Calendly CTA",

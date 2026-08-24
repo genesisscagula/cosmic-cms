@@ -230,8 +230,22 @@ final class GeneratedContentValidator
     private function specs(): array
     {
         $card = ['icon' => 'string', 'title' => 'string', 'desc' => 'string'];
+        $distinctiveItem = ['label' => 'string', 'title' => 'string', 'text' => 'string', 'value' => 'string', 'meta' => 'string'];
+        $distinctiveBase = [
+            'eyebrow' => 'string', 'heading' => 'string', 'text' => 'string',
+            'button_label' => 'string', 'button_url' => 'url',
+            'secondary_label' => 'string', 'secondary_url' => 'url',
+        ];
 
         return [
+            'about_chapter_index_premium' => [...$distinctiveBase, 'items' => ['count' => 4, 'items' => $distinctiveItem]],
+            'services_orbit_map_premium' => [...$distinctiveBase, 'core_label' => 'string', 'core_title' => 'string', 'items' => ['count' => 6, 'items' => $distinctiveItem]],
+            'process_constellation_premium' => [...$distinctiveBase, 'items' => ['count' => 4, 'items' => $distinctiveItem]],
+            'proof_metric_staircase_premium' => [...$distinctiveBase, 'items' => ['count' => 4, 'items' => $distinctiveItem]],
+            'trust_evidence_ledger_premium' => [...$distinctiveBase, 'items' => ['count' => 4, 'items' => $distinctiveItem]],
+            'faq_decision_tree_premium' => [...$distinctiveBase, 'items' => ['count' => 4, 'items' => $distinctiveItem]],
+            'cta_ticket_premium' => [...$distinctiveBase, 'action_note' => 'string', 'items' => ['count' => 3, 'items' => $distinctiveItem]],
+            'contact_availability_board_premium' => [...$distinctiveBase, 'items' => ['count' => 4, 'items' => $distinctiveItem]],
             'hero_headline' => ['subtitle'=>'string','heading'=>'string','text'=>'string','btn1_label'=>'string','btn1_url'=>'url','btn2_label'=>'string','btn2_url'=>'url'],
             'feature_image_left' => ['category'=>'string','heading'=>'string','text'=>'string','button_label'=>'string','button_url'=>'url','image_url'=>'image'],
             'feature_image_right' => ['category'=>'string','heading'=>'string','text'=>'string','button_label'=>'string','button_url'=>'url','image_url'=>'image'],

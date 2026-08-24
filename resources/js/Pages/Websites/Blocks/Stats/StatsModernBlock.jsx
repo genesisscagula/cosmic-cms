@@ -1,6 +1,7 @@
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeAt } from "../Shared/RepeatableControls";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 export const StatsModernSchema = {
     type: "stats_modern",
@@ -57,52 +58,52 @@ export function StatsModernBlock({ block, onUpdate, globalTheme }) {
     };
 
     return (
-        <section className={`group/repeatable-section px-6 py-16 sm:px-8 lg:py-20 ${theme.bg} transition-colors duration-500`}>
-            <div className="mx-auto max-w-7xl">
-                <div className="mb-10 max-w-2xl space-y-4 sm:mb-12">
+        <section className={sparkTw(block, "auto_1", `group/repeatable-section px-6 py-16 sm:px-8 lg:py-20 ${theme.bg} transition-colors duration-500`)}>
+            <div className={sparkTw(block, "auto_2", "mx-auto max-w-7xl")}>
+                <div className={sparkTw(block, "auto_3", "mb-10 max-w-2xl space-y-4 sm:mb-12")}>
                     {data.eyebrow && (
                         <EditableText
                             value={data.eyebrow}
-                            className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`}
+                            className={sparkTw(block, "auto_4", `block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`)}
                             onSave={(eyebrow) => onUpdate({ eyebrow })}
                         />
                     )}
                     <EditableText
                         value={data.heading} cosmicType="h2"
-                        className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
+                        className={sparkTw(block, "auto_5", `block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`)}
                         onSave={(heading) => onUpdate({ heading })}
                     />
                     {data.text && (
                         <EditableText
                             value={data.text}
                             isTextArea
-                            className={`block max-w-xl text-base leading-7 ${theme.sub}`}
+                            className={sparkTw(block, "auto_6", `block max-w-xl text-base leading-7 ${theme.sub}`)}
                             onSave={(text) => onUpdate({ text })}
                         />
                     )}
                 </div>
 
-                <div className={`grid grid-cols-1 border-y ${theme.border} sm:grid-cols-2 lg:grid-cols-4`}>
+                <div className={sparkTw(block, "auto_7", `grid grid-cols-1 border-y ${theme.border} sm:grid-cols-2 lg:grid-cols-4`)}>
                     {data.metrics.slice(0, 4).map((metric, index) => (
                         <article
                             key={index}
-                            className={`group relative min-w-0 border-b p-6 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 lg:p-7 ${theme.border}`}
+                            className={sparkTw(block, "auto_8", `group relative min-w-0 border-b p-6 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 lg:p-7 ${theme.border}`)}
                         >
                             <EditableText
                                 value={metric.value}
-                                className={`block text-3xl font-bold tracking-tight sm:text-4xl ${theme.text}`}
+                                className={sparkTw(block, "auto_9", `block text-3xl font-bold tracking-tight sm:text-4xl ${theme.text}`)}
                                 onSave={(value) => updateMetric(index, "value", value)}
                             />
                             <EditableText
                                 value={metric.label}
-                                className={`mt-3 block text-sm font-semibold ${theme.text}`}
+                                className={sparkTw(block, "auto_10", `mt-3 block text-sm font-semibold ${theme.text}`)}
                                 onSave={(label) => updateMetric(index, "label", label)}
                             />
                             {metric.description && (
                                 <EditableText
                                     value={metric.description}
                                     isTextArea
-                                    className={`mt-2 block text-sm leading-6 ${theme.sub}`}
+                                    className={sparkTw(block, "auto_11", `mt-2 block text-sm leading-6 ${theme.sub}`)}
                                     onSave={(description) => updateMetric(index, "description", description)}
                                 />
                             )}

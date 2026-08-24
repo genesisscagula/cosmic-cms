@@ -7,6 +7,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeAt } from "../Shared/RepeatableControls";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 
 export const ProcessTimelineSchema = {
@@ -143,21 +144,21 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
     return (
 
         <section
-            className={`group/repeatable-section relative py-32 px-7 overflow-hidden ${theme.bg} transition-colors duration-500`}
+            className={sparkTw(block, "auto_1", `group/repeatable-section relative py-32 px-7 overflow-hidden ${theme.bg} transition-colors duration-500`)}
         >
 
             <div
-                className="absolute top-0 right-[-180px] h-[420px] w-[420px] rounded-full blur-[170px] pointer-events-none"
+                className={sparkTw(block, "auto_2", "absolute top-0 right-[-180px] h-[420px] w-[420px] rounded-full blur-[170px] pointer-events-none")}
                 style={{ backgroundColor: themeGlow }}
             />
 
-            <div className="max-w-7xl mx-auto">
+            <div className={sparkTw(block, "auto_3", "max-w-7xl mx-auto")}>
 
-                <div className="text-center max-w-3xl mx-auto mb-20 space-y-6">
+                <div className={sparkTw(block, "auto_4", "text-center max-w-3xl mx-auto mb-20 space-y-6")}>
 
                     <EditableText
                         value={data.category}
-                        className={`block text-xs font-semibold uppercase tracking-[0.30em] ${theme.sub}`}
+                        className={sparkTw(block, "auto_5", `block text-xs font-semibold uppercase tracking-[0.30em] ${theme.sub}`)}
                         onSave={(val) =>
                             onUpdate({
                                 category: val
@@ -167,7 +168,7 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
 
                     <EditableText
                         value={data.heading} cosmicType="h2"
-                        className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
+                        className={sparkTw(block, "auto_6", `block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`)}
                         onSave={(val) =>
                             onUpdate({
                                 heading: val
@@ -177,7 +178,7 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
 
                     <EditableText
                         value={data.text}
-                        className={`block text-lg leading-8 ${theme.sub}`}
+                        className={sparkTw(block, "auto_7", `block text-lg leading-8 ${theme.sub}`)}
                         onSave={(val) =>
                             onUpdate({
                                 text: val
@@ -187,30 +188,30 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
 
                 </div>
 
-                <div className="grid md:grid-cols-4 gap-10">
+                <div className={sparkTw(block, "auto_8", "grid md:grid-cols-4 gap-10")}>
 
                     {data.steps.map((step, index) => (
 
                         <div
                             key={index}
-                            className={`group relative rounded-3xl ${theme.card} p-8 border ${theme.border}`}
+                            className={sparkTw(block, "auto_9", `group relative rounded-3xl ${theme.card} p-8 border ${theme.border}`)}
                         >
 
                             <EditableText
                                 value={step.number}
-                                className={`block text-5xl font-bold opacity-20 mb-6 ${theme.text}`}
+                                className={sparkTw(block, "auto_10", `block text-5xl font-bold opacity-20 mb-6 ${theme.text}`)}
                                 onSave={(val) => updateStep(index, "number", val)}
                             />
 
                             <EditableText
                                 value={step.title}
-                                className={`block text-2xl font-bold mb-4 ${theme.text}`}
+                                className={sparkTw(block, "auto_11", `block text-2xl font-bold mb-4 ${theme.text}`)}
                                 onSave={(val) => updateStep(index, "title", val)}
                             />
 
                             <EditableText
                                 value={step.text}
-                                className={`block leading-7 ${theme.sub}`}
+                                className={sparkTw(block, "auto_12", `block leading-7 ${theme.sub}`)}
                                 onSave={(val) => updateStep(index, "text", val)}
                             />
 

@@ -10,8 +10,26 @@ export function getSectionBackgroundClass(themeKey, treatment = "subtle") {
 }
 
 function withPremiumSectionBackground(family, key, treatment = "subtle") {
-    if (!family || LIGHT_THEME_KEYS.has(key)) return family;
-    return { ...family, bg: getSectionBackgroundClass(key, treatment), solidBg: family.bg, themeKey: key };
+    if (!family) return family;
+    // The effective theme contract must stay surface-neutral: Builder, preview,
+    // export and live all receive the family's exact background. Sparks that are
+    // intentionally gradient-based opt in through getSectionBackgroundClass().
+    return { ...family, solidBg: family.bg, themeKey: key };
+}
+
+function withSemanticTreatment(family, key, backgroundClass, foreground = "surface") {
+    const onColor = foreground === "accent" ? "accent" : "surface";
+    return {
+        ...family,
+        bg: backgroundClass,
+        solidBg: backgroundClass,
+        card: foreground === "accent" ? "cosmic-bg-accent-soft" : "cosmic-bg-surface",
+        surface: foreground === "accent" ? "cosmic-bg-accent-soft" : "cosmic-bg-surface",
+        text: `cosmic-text-on-${onColor}`,
+        sub: `cosmic-text-on-${onColor}-muted`,
+        border: `cosmic-border-on-${onColor}`,
+        themeKey: key,
+    };
 }
 
 
@@ -28,17 +46,17 @@ export function getEffectiveTheme(theme, globalTheme) {
 
     // White section
     if (theme === "white") {
-        return colorFamilies.white;
+        return withSemanticTreatment(colorFamilies.white, "white", "cosmic-bg-white");
     }
 
     // Surface section
     if (theme === "surface") {
-        return colorFamilies.stone;
+        return withSemanticTreatment(colorFamilies.stone, "surface", "cosmic-bg-surface");
     }
 
-    // Accent (for now use the site's primary color)
+    // Accent is a first-class semantic treatment, not a second spelling of primary.
     if (theme === "accent") {
-        return withPremiumSectionBackground(colorFamilies[primary] || colorFamilies.midnight, primary);
+        return withSemanticTreatment(colorFamilies[primary] || colorFamilies.midnight, "accent", "cosmic-bg-accent", "accent");
     }
 
     // If theme is already a real color family
@@ -49,4 +67,29 @@ export function getEffectiveTheme(theme, globalTheme) {
     // Fallback
     return withPremiumSectionBackground(colorFamilies[primary] || colorFamilies.midnight, primary);
 
+}
+
+/**
+ * Resolve a section's outer foreground separately from the foreground used by
+ * nested surface cards. A PRIMARY section needs on-primary copy, while its
+ * white/surface cards still need on-surface copy. Keeping both roles explicit
+ * prevents family text tokens from being reused on the wrong background.
+ */
+export function getSectionSurfaceThemes(theme, globalTheme) {
+    const section = getEffectiveTheme(theme, globalTheme);
+
+    if (theme !== "primary") {
+        return { section, surface: section, isPrimary: false };
+    }
+
+    return {
+        isPrimary: true,
+        section: {
+            ...section,
+            text: "text-white",
+            sub: "text-white/75",
+            border: "border-white/20",
+        },
+        surface: getEffectiveTheme("white", globalTheme),
+    };
 }

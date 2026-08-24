@@ -6,6 +6,7 @@ import { EditableImage } from "../Shared/EditableImage";
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 
 export const FeatureImageRightSchema = {
@@ -109,26 +110,26 @@ export function FeatureImageRightBlock({ block, blockIndex, onUpdate, globalThem
 
     return (
         <section
-            className={`relative py-32 px-7 overflow-hidden ${theme.bg} transition-colors duration-500`}
+            className={sparkTw(block, "section", `relative py-32 px-7 overflow-hidden ${theme.bg} transition-colors duration-500`)}
         >
 
             {/* Background Glow */}
             <div
-                className="absolute top-10 right-[-180px] h-[450px] w-[450px] rounded-full blur-[170px] pointer-events-none"
+                className={sparkTw(block, "wrapper", "absolute top-10 right-[-180px] h-[450px] w-[450px] rounded-full blur-[170px] pointer-events-none")}
                 style={{ backgroundColor: themeGlow }}
             />
 
-            <div className="max-w-7xl mx-auto flex flex-col md:flex-row-reverse items-center justify-between gap-20">
+            <div className={sparkTw(block, "wrapper_2", "max-w-7xl mx-auto flex flex-col md:flex-row-reverse items-center justify-between gap-20")}>
 
                 {/* Image */}
-                <div className="w-full md:w-1/2">
-                    <div className="rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 transition-transform duration-500 hover:scale-[1.02]">
+                <div className={sparkTw(block, "wrapper_3", "w-full md:w-1/2")}>
+                    <div className={sparkTw(block, "wrapper_4", "rounded-3xl overflow-hidden shadow-2xl ring-1 ring-white/10 transition-transform duration-500 hover:scale-[1.02]")}>
 
                         <EditableImage
                             websiteId={websiteId}
                             blockIndex={blockIndex}
                             src={data.image_url}
-                            className="w-full h-auto object-cover"
+                            className={sparkTw(block, "image", "w-full h-auto object-cover")}
                             onSave={(url) =>
                                 onUpdate({
                                     image_url: url
@@ -140,11 +141,11 @@ export function FeatureImageRightBlock({ block, blockIndex, onUpdate, globalThem
                 </div>
 
                 {/* Content */}
-                <div className="w-full md:w-1/2 space-y-8">
+                <div className={sparkTw(block, "wrapper_5", "w-full md:w-1/2 space-y-8")}>
 
                     <EditableText
                         value={data.category}
-                        className={`block text-xs font-semibold uppercase tracking-[0.30em] ${theme.sub}`}
+                        className={sparkTw(block, "text", `block text-xs font-semibold uppercase tracking-[0.30em] ${theme.sub}`)}
                         onSave={(val) =>
                             onUpdate({
                                 category: val
@@ -154,7 +155,7 @@ export function FeatureImageRightBlock({ block, blockIndex, onUpdate, globalThem
 
                     <EditableText
                         value={data.heading} cosmicType="h2"
-                        className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
+                        className={sparkTw(block, "text_2", `block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`)}
                         onSave={(val) =>
                             onUpdate({
                                 heading: val
@@ -164,7 +165,7 @@ export function FeatureImageRightBlock({ block, blockIndex, onUpdate, globalThem
 
                     <EditableText
                         value={data.text}
-                        className={`block text-lg leading-8 max-w-xl ${theme.sub}`}
+                        className={sparkTw(block, "text_3", `block text-lg leading-8 max-w-xl ${theme.sub}`)}
                         onSave={(val) =>
                             onUpdate({
                                 text: val
@@ -175,7 +176,7 @@ export function FeatureImageRightBlock({ block, blockIndex, onUpdate, globalThem
                     <EditableButton
                         label={data.button_label}
                         url={data.button_url}
-                        className={`inline-flex items-center gap-2 font-semibold transition-all duration-300 hover:gap-3 ${theme.text}`}
+                        className={sparkTw(block, "button", `inline-flex items-center gap-2 font-semibold transition-all duration-300 hover:gap-3 ${theme.text}`)}
                         onSave={(label, url) =>
                             onUpdate({
                                 button_label: label,

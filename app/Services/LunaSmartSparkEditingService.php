@@ -9,7 +9,7 @@ final class LunaSmartSparkEditingService
 {
     private array $contract;
 
-    public function __construct()
+    public function __construct(private readonly SparkEditMutationValidator $validator)
     {
         $path=resource_path('luna/smart_spark_editing.json');
         $decoded=is_file($path)?json_decode((string)file_get_contents($path),true):[];
@@ -19,6 +19,15 @@ final class LunaSmartSparkEditingService
     public function sanitizeEdit(array $block,array $changes,array $elementContext=[]): array
     {
         foreach($this->contract['protected_keys']??[] as $key) unset($changes[$key]);
+        $target=(string)($elementContext['type']??$elementContext['target']??'');
+        $validated=$this->validator->validateChanges(
+            (string)($block['type']??''),
+            $block,
+            $changes,
+            $target!==''?$target:null,
+        );
+        $changes=$validated['changes'];
+        $rejected=$validated['rejected'];
 
         $matched=$this->matchedPaths($elementContext);
         if($matched!==[]){
@@ -33,11 +42,11 @@ final class LunaSmartSparkEditingService
                     Arr::set($next,$path,$changes[$leaf]);$applied[]=$path;
                 }
             }
-            return ['block'=>$next,'paths'=>$applied,'mode'=>'element'];
+            return ['block'=>$next,'paths'=>$applied,'mode'=>'element','rejected'=>$rejected];
         }
 
         $safe=array_intersect_key($changes,$block);
-        return ['block'=>array_merge($block,$safe),'paths'=>array_keys($safe),'mode'=>'block'];
+        return ['block'=>array_merge($block,$safe),'paths'=>array_keys($safe),'mode'=>'block','rejected'=>$rejected];
     }
 
     public function applyRepeaterIntent(string $prompt,array $block,array $elementContext=[]): ?array

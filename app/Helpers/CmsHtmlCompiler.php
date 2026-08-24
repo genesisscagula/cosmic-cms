@@ -2,6 +2,7 @@
 
 namespace App\Helpers;
 
+use App\Services\ThemeColorResolver;
 use App\Support\PageStyleRegistry;
 use Illuminate\Support\Str;
 
@@ -36,6 +37,17 @@ class CmsHtmlCompiler
         );
 
         return self::$themeCatalog = is_array($catalog) ? $catalog : [];
+    }
+
+    /**
+     * Batch 2 renderer bridge for per-Spark Tailwind schemas. Spark renderers can
+     * migrate slot-by-slot without changing unmigrated output: absent schema slots
+     * return the legacy class string verbatim.
+     */
+    private static function sparkTw(array $block, string $slot, string $legacyClasses = ''): string
+    {
+        return app(\App\Services\SparkTailwindSchemaContract::class)
+            ->resolveSlot($block, $slot, $legacyClasses);
     }
 
     private static function getTheme($key)
@@ -74,9 +86,9 @@ class CmsHtmlCompiler
     }
 
     /**
-     * Blend the active media theme with slate for a premium branded overlay.
-     * Colored themes keep most of their identity; neutral/dark families lean
-     * further into slate. White/surface/stone are handled separately as a wash.
+     * Match the Builder media contract exactly: light sections use a white wash,
+     * while dark/media sections use the active family background without adding
+     * an unrelated slate tint.
      */
     private static function mediaOverlayColor(string $resolvedTheme, string $primaryColor): string
     {
@@ -88,38 +100,7 @@ class CmsHtmlCompiler
         $themes = $catalog['families'] ?? [];
         $themeKey = isset($themes[$resolvedTheme]) ? $resolvedTheme : $primaryColor;
         $theme = $themes[$themeKey] ?? $themes['midnight'] ?? [];
-        $primaryHex = (string) ($theme['palette']['background'] ?? '#243447');
-        $neutralDarkThemes = ['midnight', 'obsidian', 'void', 'charcoal', 'asphalt', 'navy', 'slate', 'dark'];
-        $primaryWeight = in_array($themeKey, $neutralDarkThemes, true) ? 0.35 : 0.72;
-
-        return self::blendHexColors($primaryHex, '#020617', $primaryWeight);
-    }
-
-    private static function blendHexColors(string $primaryHex, string $neutralHex, float $primaryWeight): string
-    {
-        $normalize = static function (string $hex): string {
-            $hex = trim($hex);
-            if (preg_match('/^#[0-9a-f]{6}$/i', $hex)) {
-                return strtolower($hex);
-            }
-            if (preg_match('/^#([0-9a-f])([0-9a-f])([0-9a-f])$/i', $hex, $matches)) {
-                return '#' . strtolower($matches[1] . $matches[1] . $matches[2] . $matches[2] . $matches[3] . $matches[3]);
-            }
-            return '#243447';
-        };
-
-        $primary = $normalize($primaryHex);
-        $neutral = $normalize($neutralHex);
-        $weight = max(0.0, min(1.0, $primaryWeight));
-        $channels = [];
-
-        foreach ([1, 3, 5] as $offset) {
-            $a = hexdec(substr($primary, $offset, 2));
-            $b = hexdec(substr($neutral, $offset, 2));
-            $channels[] = (int) round(($a * $weight) + ($b * (1 - $weight)));
-        }
-
-        return sprintf('#%02x%02x%02x', $channels[0], $channels[1], $channels[2]);
+        return (string) ($theme['palette']['background'] ?? '#243447');
     }
 
     /**
@@ -915,6 +896,17 @@ JS;
                     $html .= self::premiumExpansionBatch5Html($type, $block, $theme);
                     break;
 
+                case 'about_chapter_index_premium':
+                case 'services_orbit_map_premium':
+                case 'process_constellation_premium':
+                case 'proof_metric_staircase_premium':
+                case 'trust_evidence_ledger_premium':
+                case 'faq_decision_tree_premium':
+                case 'cta_ticket_premium':
+                case 'contact_availability_board_premium':
+                    $html .= self::distinctiveExpansionBatch6Html($type, $block, $theme);
+                    break;
+
                 case 'restaurant_signature_dishes_premium':
                 case 'restaurant_story_menu_premium':
                 case 'restaurant_atmosphere_gallery_premium':
@@ -1340,6 +1332,7 @@ JS;
                 case 'agency_project_pipeline_premium':
                 case 'agency_client_reviews_premium':
                 case 'agency_website_reports_premium':
+                    $variant = $type;
                     $eyebrow=e($block['eyebrow']??'AGENCY'); $heading=e($block['heading']??'Built for agencies that manage more than one moving part.'); $text=e($block['text']??'Present real agency capabilities clearly.');
                     $items=is_array($block['items']??null)?array_values($block['items']):[];
                     if(empty($items)){
@@ -1430,6 +1423,10 @@ JS;
                 $eyebrow = e($block['eyebrow'] ?? 'Helpful answers');
                 $heading = e($block['heading'] ?? 'Questions, answered clearly');
                 $text = e($block['text'] ?? 'Everything visitors need to know before taking the next step.');
+                $faqIsPrimary = $blockTheme === 'primary';
+                $faqSectionText = $faqIsPrimary ? 'text-white' : $theme['text'];
+                $faqSectionSub = $faqIsPrimary ? 'text-white/75' : $theme['sub'];
+                $faqCardTheme = $faqIsPrimary ? self::getTheme('white') : $theme;
                 $faqs = is_array($block['faqs'] ?? null) ? array_values($block['faqs']) : [];
                 if (empty($faqs)) {
                     $faqs = [
@@ -1443,9 +1440,9 @@ JS;
                 foreach ($faqs as $faq) {
                     $question = e($faq['question'] ?? 'Question');
                     $answer = e($faq['answer'] ?? 'Answer');
-                    $faqMarkup .= "<details class='group border-b p-5 last:border-b-0 sm:p-6 {$theme['border']}'><summary class='flex cursor-pointer list-none items-center justify-between gap-5 text-base font-semibold {$theme['text']}'><span>{$question}</span><span class='text-xl transition group-open:rotate-45'>+</span></summary><p class='pt-4 text-sm leading-6 {$theme['sub']}'>{$answer}</p></details>";
+                    $faqMarkup .= "<details class='group border-b p-5 last:border-b-0 sm:p-6 {$faqCardTheme['border']}'><summary class='flex cursor-pointer list-none items-center justify-between gap-5 text-base font-semibold {$faqCardTheme['text']}'><span>{$question}</span><span class='text-xl transition group-open:rotate-45'>+</span></summary><p class='pt-4 text-sm leading-6 {$faqCardTheme['sub']}'>{$answer}</p></details>";
                 }
-                $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16'><div><p class='text-xs font-semibold uppercase tracking-[0.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-xl text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='overflow-hidden rounded-2xl border {$theme['border']} {$theme['card']}'>{$faqMarkup}</div></div></section>";
+                $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16'><div><p class='text-xs font-semibold uppercase tracking-[0.22em] {$faqSectionSub}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$faqSectionText}'>{$heading}</h2><p class='mt-5 max-w-xl text-base leading-7 {$faqSectionSub}'>{$text}</p></div><div class='overflow-hidden rounded-2xl border {$faqCardTheme['border']} {$faqCardTheme['card']}'>{$faqMarkup}</div></div></section>";
                 break;
 
                 case 'sales_comparison_premium':
@@ -1455,6 +1452,7 @@ JS;
                 case 'sales_guarantee_premium':
                 case 'sales_trust_premium':
                 case 'sales_integrations_premium':
+                    $variant = $type;
                     $eyebrow=e($block['eyebrow']??'COMPARE'); $heading=e($block['heading']??'Make the decision easier to understand.'); $text=e($block['text']??'Use factual supplied information.');
                     $items=is_array($block['items']??null)?array_values($block['items']):[];
                     if(!$items){
@@ -1477,9 +1475,10 @@ JS;
 
                 case 'faq_accordion_pro':
                     $eyebrow=e($block['eyebrow']??'Frequently asked'); $heading=e($block['heading']??'Answers without the fine-print feeling.'); $text=e($block['text']??'Clear answers for the questions that matter most.');
+                    $faqIsPrimary=$blockTheme==='primary'; $faqSectionText=$faqIsPrimary?'text-white':$theme['text']; $faqSectionSub=$faqIsPrimary?'text-white/75':$theme['sub']; $faqCardTheme=$faqIsPrimary?self::getTheme('white'):$theme;
                     $faqs=is_array($block['faqs']??null)?array_values($block['faqs']):[]; if(!$faqs){$faqs=[['question'=>'What should I know before getting started?','answer'=>'Add the real information visitors need before they take the next step.'],['question'=>'How does the process work?','answer'=>'Explain the real process clearly and accurately.']];}
-                    $items=''; foreach($faqs as $i=>$faq){$q=e($faq['question']??'Question');$a=e($faq['answer']??'Answer');$n=str_pad((string)($i+1),2,'0',STR_PAD_LEFT);$items.="<details class='group border-b p-6 last:border-b-0 {$theme['border']}'><summary class='flex cursor-pointer list-none items-start gap-5 font-semibold {$theme['text']}'><span class='pt-1 text-xs {$theme['sub']}'>{$n}</span><span class='flex-1'>{$q}</span><span class='text-xl'>+</span></summary><p class='pl-9 pt-4 text-sm leading-7 {$theme['sub']}'>{$a}</p></details>";}
-                    $html.="<section class='px-6 py-20 sm:px-8 lg:py-28 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.8fr_1.2fr] lg:gap-20'><div><p class='text-xs font-bold uppercase tracking-[.24em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold tracking-tight sm:text-5xl {$theme['text']}'>{$heading}</h2><p class='mt-4 text-base leading-7 {$theme['sub']}'>{$text}</p></div><div class='overflow-hidden rounded-[2rem] border {$theme['border']} {$theme['card']}'>{$items}</div></div></section>";
+                    $items=''; foreach($faqs as $i=>$faq){$q=e($faq['question']??'Question');$a=e($faq['answer']??'Answer');$n=str_pad((string)($i+1),2,'0',STR_PAD_LEFT);$items.="<details class='group border-b p-6 last:border-b-0 {$faqCardTheme['border']}'><summary class='flex cursor-pointer list-none items-start gap-5 font-semibold {$faqCardTheme['text']}'><span class='pt-1 text-xs {$faqCardTheme['sub']}'>{$n}</span><span class='flex-1'>{$q}</span><span class='text-xl'>+</span></summary><p class='pl-9 pt-4 text-sm leading-7 {$faqCardTheme['sub']}'>{$a}</p></details>";}
+                    $html.="<section class='px-6 py-20 sm:px-8 lg:py-28 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-12 lg:grid-cols-[.8fr_1.2fr] lg:gap-20'><div><p class='text-xs font-bold uppercase tracking-[.24em] {$faqSectionSub}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold tracking-tight sm:text-5xl {$faqSectionText}'>{$heading}</h2><p class='mt-4 text-base leading-7 {$faqSectionSub}'>{$text}</p></div><div class='overflow-hidden rounded-[2rem] border {$faqCardTheme['border']} {$faqCardTheme['card']}'>{$items}</div></div></section>";
                     break;
 
                 case 'faq_search_premium':
@@ -1969,7 +1968,7 @@ HTML;
                 $overlayToneClass = $customShell
                     ? 'cosmic-custom-shell-header'
                     : ($premiumOverlayHeader
-                        ? 'cosmic-overlay-tone-light cosmic-overlay-cta-gradient'
+                        ? 'cosmic-overlay-tone-light cosmic-overlay-cta-primary'
                         : 'cosmic-overlay-tone-dark cosmic-overlay-cta-primary');
                 $overlayHeaderClass = $overlayHeader
                     ? "cosmic-static-overlay-header {$overlayToneClass} absolute inset-x-0 top-0 border-transparent bg-transparent shadow-none"
@@ -1979,6 +1978,7 @@ HTML;
                 // the same component while letting the first Spark sit behind it.
                 $headerBg = 'bg-white';
                 $headerBorder = $customShell ? 'border-transparent' : 'border-slate-200';
+                $headerDividerClass = $overlayHeader ? 'border-0' : "border-b {$headerBorder}";
                 $headerText = $customShell ? '' : 'text-slate-900';
                 $menuText = $customShell ? '' : 'text-slate-600';
                 $customHeaderInlineStyle = $customShell
@@ -2001,7 +2001,7 @@ HTML;
                 $overlayCtaInlineStyle = $customShell
                     ? "background:{$customCtaBg};background-color:{$customCtaBg};border:0;color:{$customCtaColor};-webkit-text-fill-color:{$customCtaColor};border-radius:{$customCtaRadius}px;box-shadow:none"
                     : ($overlayHeader
-                        ? "background:#fff;background-color:#fff;border:1px solid color-mix(in srgb,{$headerPrimary} 50%,transparent);color:{$headerPrimary};-webkit-text-fill-color:{$headerPrimary};box-shadow:none"
+                        ? "background:{$headerPrimary};background-color:{$headerPrimary};border:1px solid {$headerPrimary};color:#fff;-webkit-text-fill-color:#fff;box-shadow:none"
                         : 'background:var(--p,var(--cosmic-primary,#243447));background-color:var(--p,var(--cosmic-primary,#243447));border-color:var(--p,var(--cosmic-primary,#243447));color:#fff;-webkit-text-fill-color:#fff');
 
                 $renderDesktopMenu = function (array $items, int $depth = 0) use (&$renderDesktopMenu, $menuText, $customMenuInlineStyle): string {
@@ -2219,13 +2219,13 @@ HTML;
                     }
                     header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-cta-gradient > nav > a.cosmic-primary-cta,
                     header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-cta-gradient > nav > a.cosmic-primary-cta * {
-                        color:{$headerPrimary} !important;
-                        -webkit-text-fill-color:{$headerPrimary} !important;
+                        color:#fff !important;
+                        -webkit-text-fill-color:#fff !important;
                     }
                     header.cosmic-static-header.cosmic-static-overlay-header[data-cosmic-premium-overlay-header='true'].cosmic-overlay-cta-gradient > nav > a.cosmic-primary-cta {
-                        background:#fff !important;
-                        background-color:#fff !important;
-                        border:1px solid color-mix(in srgb,{$headerPrimary} 50%,transparent) !important;
+                        background:{$headerPrimary} !important;
+                        background-color:{$headerPrimary} !important;
+                        border:1px solid {$headerPrimary} !important;
                         box-shadow:none !important;
                     }
                     .cosmic-static-overlay-header.cosmic-overlay-cta-primary > nav > a {
@@ -2233,7 +2233,7 @@ HTML;
                     }
                 </style>
 
-                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-page-style='" . e(self::$currentPageStyle) . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' data-cosmic-premium-overlay-header='" . ($premiumOverlayHeader ? "true" : "false") . "' style='{$customHeaderInlineStyle}' class='cosmic-static-header {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 border-b {$headerBorder} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
+                <header data-cosmic-overlay-header='" . ($overlayHeader ? "true" : "false") . "' data-cosmic-page-style='" . e(self::$currentPageStyle) . "' data-cosmic-primary-overlay-allowed='" . ($overlayPrimaryAllowed ? "true" : "false") . "' data-cosmic-premium-overlay-header='" . ($premiumOverlayHeader ? "true" : "false") . "' style='{$customHeaderInlineStyle}' class='cosmic-static-header {$overlayHeaderClass} z-50 flex w-full items-center justify-between gap-6 {$headerDividerClass} px-6 py-4 sm:px-[5%] lg:px-[7%]'>
                     <a href='/' style='{$overlayLogoSurfaceStyle}' class='relative z-[72] text-xl font-extrabold tracking-wide {$headerText}' aria-label='{$logoText} home'>
                         {$logo}
                     </a>
@@ -2323,8 +2323,8 @@ HTML;
 
                                 staticHeader.classList.toggle('cosmic-overlay-tone-light', useLightHeader);
                                 staticHeader.classList.toggle('cosmic-overlay-tone-dark', !useLightHeader);
-                                staticHeader.classList.toggle('cosmic-overlay-cta-gradient', useLightHeader);
-                                staticHeader.classList.toggle('cosmic-overlay-cta-primary', !useLightHeader);
+                                staticHeader.classList.remove('cosmic-overlay-cta-gradient');
+                                staticHeader.classList.add('cosmic-overlay-cta-primary');
 
                                 const syncOverlaySpacing = () => {
                                     const headerHeight = Math.ceil(staticHeader.getBoundingClientRect().height || 0);
@@ -2607,19 +2607,19 @@ HTML;
                     : 'text-slate-900';
                 $heroHeadlineGlow = e((string) (self::getTheme($primaryColor ?: 'midnight')['gradient']['glowSoft'] ?? 'rgba(96,165,250,.18)'));
                 $html .= "
-                <section class='relative w-full px-6 py-0 sm:px-[8%] {$theme['bg']} overflow-hidden transition-colors duration-500'>
-                    <div class='absolute top-0 right-0 w-[500px] h-[500px] rounded-full opacity-30 blur-[120px]' style='background:radial-gradient(circle, {$heroHeadlineGlow}, transparent 68%)'></div>
+                <section class='" . self::sparkTw($block, 'section', "relative w-full px-6 py-0 sm:px-[8%] {$theme['bg']} overflow-hidden transition-colors duration-500") . "'>
+                    <div class='" . self::sparkTw($block, 'wrapper', 'absolute top-0 right-0 w-[500px] h-[500px] rounded-full opacity-30 blur-[120px]') . "' style='background:radial-gradient(circle, {$heroHeadlineGlow}, transparent 68%)'></div>
                     
-                    <div class='relative z-10 max-w-4xl'>
-                        <span class='font-bold tracking-widest uppercase text-sm block {$theme['sub']}'>{$subtitle}</span>
-                        <h1 class='mt-6 text-4xl font-extrabold leading-[1.02] sm:text-5xl lg:text-6xl xl:text-7xl block {$theme['text']}'>{$heading}</h1>
-                        <div class='mt-6 max-w-2xl text-base sm:mt-8 sm:text-xl {$theme['sub']}'>{$text}</div>
+                    <div class='" . self::sparkTw($block, 'wrapper_2', 'relative z-10 max-w-4xl') . "'>
+                        <span class='" . self::sparkTw($block, 'label', "font-bold tracking-widest uppercase text-sm block {$theme['sub']}") . "'>{$subtitle}</span>
+                        <h1 class='" . self::sparkTw($block, 'heading', "mt-6 text-4xl font-extrabold leading-[1.02] sm:text-5xl lg:text-6xl xl:text-7xl block {$theme['text']}") . "'>{$heading}</h1>
+                        <div class='" . self::sparkTw($block, 'wrapper_3', "mt-6 max-w-2xl text-base sm:mt-8 sm:text-xl {$theme['sub']}") . "'>{$text}</div>
 
-                        <div class='mt-8 flex flex-col items-stretch gap-3 sm:mt-12 sm:flex-row sm:items-center sm:gap-4'>
-                            <a href='#' class='w-full rounded-full px-8 py-4 text-center font-bold transition !opacity-100 sm:w-auto {$btnBg} {$btnText}'>
+                        <div class='" . self::sparkTw($block, 'wrapper_4', 'mt-8 flex flex-col items-stretch gap-3 sm:mt-12 sm:flex-row sm:items-center sm:gap-4') . "'>
+                            <a href='#' class='" . self::sparkTw($block, 'button', "w-full rounded-full px-8 py-4 text-center font-bold transition !opacity-100 sm:w-auto {$btnBg} {$btnText}") . "'>
                                 " . e($block['btn1_label'] ?? 'Get Started') . "
                             </a>
-                            <a href='#' class='w-full rounded-full border px-8 py-4 text-center font-bold transition sm:w-auto {$theme['border']} {$theme['text']}'>
+                            <a href='#' class='" . self::sparkTw($block, 'button_2', "w-full rounded-full border px-8 py-4 text-center font-bold transition sm:w-auto {$theme['border']} {$theme['text']}") . "'>
                                 " . e($block['btn2_label'] ?? 'View Docs') . "
                             </a>
                         </div>
@@ -2788,7 +2788,9 @@ HTML;
                     $cardClass = $featured ? $featuredCard : $baseCard;
                     $badge = $featured ? "<span class='mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] {$primaryTheme['bg']} text-white'>".e($d['option_two_badge'])."</span>" : '';
                     $cardMuted = $featured && !$isPrimarySection ? 'text-white/70' : $muted;
-                    $optionsHtml .= "<article class='relative border-b p-6 sm:p-7 {$border} {$cardClass}'>{$badge}<span class='block text-[11px] font-bold uppercase tracking-[.2em] {$cardMuted}'>".e($d[$key.'_kicker'])."</span><h3 class='mt-3 text-2xl font-semibold tracking-[-.03em]'>".e($d[$key.'_name'])."</h3><p class='mt-4 text-sm leading-6 {$cardMuted}'>".e($d[$key.'_text'])."</p></article>";
+                    $contrastSurface = $featured && !$isPrimarySection ? " data-cosmic-contrast-surface='brand'" : '';
+                    $preserveHeading = $featured && !$isPrimarySection ? " data-cosmic-preserve-heading-color='1'" : '';
+                    $optionsHtml .= "<article{$contrastSurface} class='relative border-b p-6 sm:p-7 {$border} {$cardClass}'>{$badge}<span class='block text-[11px] font-bold uppercase tracking-[.2em] {$cardMuted}'>".e($d[$key.'_kicker'])."</span><h3{$preserveHeading} class='mt-3 text-2xl font-semibold tracking-[-.03em]'>".e($d[$key.'_name'])."</h3><p class='mt-4 text-sm leading-6 {$cardMuted}'>".e($d[$key.'_text'])."</p></article>";
                 }
                 $rowsHtml = '';
                 $featureRowCount=max(1,min(8,(int)($d['feature_row_count']??8)));
@@ -2797,7 +2799,8 @@ HTML;
                     foreach ($options as [$key, $featured]) {
                         $cardClass = $featured ? $featuredCard : $baseCard;
                         $valueText = $featured && !$isPrimarySection ? 'text-white' : '';
-                        $rowsHtml .= "<div class='border-b p-5 text-sm font-semibold lg:p-6 {$border} {$cardClass} {$valueText}'>".e($d[$key.'_'.$word])."</div>";
+                        $contrastSurface = $featured && !$isPrimarySection ? " data-cosmic-contrast-surface='brand'" : '';
+                        $rowsHtml .= "<div{$contrastSurface} class='border-b p-5 text-sm font-semibold lg:p-6 {$border} {$cardClass} {$valueText}'>".e($d[$key.'_'.$word])."</div>";
                     }
                     $rowsHtml .= "</div>";
                 }
@@ -3475,7 +3478,9 @@ HTML;
                 $heroHeight = match ($height) {
                     'medium' => 'min-h-[500px]',
                     'large' => 'min-h-[650px]',
-                    // Legacy AI output used xl; the Builder renders it at 90vh.
+                    // Legacy AI output used xl. Normalize it to the current
+                    // Builder-safe large contract instead of reviving a second
+                    // viewport-height behavior.
                     'xl' => 'min-h-[650px]',
                     default => '',
                 };
@@ -3742,8 +3747,9 @@ HTML;
                     $imageUrl = e(self::staticAssetUrl((string) ($block['image_url'] ?? '/storage/cms-images/background/background-1.avif')));
                     $overlayOpacity = max(20, min(90, (int) ($block['overlayOpacity'] ?? 64)));
                     $parallaxSpeed = max(8, min(40, (int) ($block['parallaxSpeed'] ?? 24)));
-                    $contentAlign = in_array(($block['contentAlign'] ?? 'left'), ['left', 'center', 'right'], true)
-                        ? $block['contentAlign']
+                    $requestedContentAlign = (string) ($block['contentAlign'] ?? 'left');
+                    $contentAlign = in_array($requestedContentAlign, ['left', 'center', 'right'], true)
+                        ? $requestedContentAlign
                         : 'left';
                     $height = ($block['height'] ?? 'screen') === 'large' ? 'large' : 'screen';
                     $scrollLabel = e($block['scroll_label'] ?? 'Scroll to explore');
@@ -4371,19 +4377,10 @@ HTML;
                 case 'cta_countdown_premium':
                 case 'cta_limited_offer_premium':
                     $eyebrow=e($block['eyebrow'] ?? 'NEXT STEP'); $heading=e($block['heading'] ?? 'Ready to move forward?'); $text=e($block['text'] ?? 'Give visitors one clear action.'); $label=e($block['primary_label'] ?? 'Get started'); $rawPrimaryUrl=trim((string) ($block['primary_url'] ?? '')); $variant=$block['type'] ?? 'cta_glass_premium'; $fallbackPrimaryUrl=match($variant){'cta_free_trial_premium'=>'/start','cta_newsletter_premium'=>'https://example.com/newsletter','cta_limited_offer_premium'=>'https://example.com/offer','cta_book_demo_premium'=>'https://example.com/demo',default=>'https://example.com'}; $url=e(($rawPrimaryUrl === '' || $rawPrimaryUrl === '#') ? $fallbackPrimaryUrl : $rawPrimaryUrl); $primaryTheme=self::getTheme($primaryColor);
-                    $ctaGradient = is_array($primaryTheme['gradient'] ?? null) ? $primaryTheme['gradient'] : [];
-                    $ctaGradientFrom = e((string) ($ctaGradient['from'] ?? '#071426'));
-                    $ctaGradientVia = e((string) ($ctaGradient['via'] ?? '#111936'));
-                    $ctaGradientTo = e((string) ($ctaGradient['to'] ?? '#28164D'));
-                    $ctaGradientGlow = e((string) ($ctaGradient['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
-                    $ctaGradientAngle = (float) ($ctaGradient['angle'] ?? 120);
-                    $ctaSectionBg = $variant === 'cta_gradient_premium' ? 'text-white' : $theme['bg'];
-                    $ctaGradientStyle = $variant === 'cta_gradient_premium' ? " style='background:linear-gradient({$ctaGradientAngle}deg,{$ctaGradientFrom},{$ctaGradientVia},{$ctaGradientTo})'" : '';
-                    $ctaGlow = $variant === 'cta_gradient_premium' ? "<div class='pointer-events-none absolute inset-0' style='background:radial-gradient(circle at 78% 18%,{$ctaGradientGlow},transparent 34%)'></div>" : '';
-                    $html .= "<section class='relative overflow-hidden px-6 py-20 sm:px-8 lg:py-24 {$ctaSectionBg}'{$ctaGradientStyle}>{$ctaGlow}<div class='relative mx-auto max-w-6xl'>";
+                    $html .= "<section class='relative overflow-hidden px-6 py-20 sm:px-8 lg:py-24 {$theme['bg']}'><div class='relative mx-auto max-w-6xl'>";
                     if ($variant === 'cta_gradient_premium') {
                         $secondary=e($block['secondary_label'] ?? 'Learn more'); $secondaryUrl=e($block['secondary_url'] ?? '#');
-                        $html .= "<div class='grid items-end gap-8 rounded-[2.25rem] border border-white/15 bg-white/5 p-8 text-white shadow-2xl backdrop-blur sm:p-12 lg:grid-cols-[1fr_auto]'><span class='text-xs font-bold uppercase tracking-[.24em] text-white/70'>{$eyebrow}</span><h2 class='mt-5 max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl'>{$heading}</h2><p class='mt-5 max-w-2xl leading-7 text-white/75'>{$text}</p><div class='mt-8 flex flex-wrap gap-3'><a href='{$url}' class='rounded-full bg-white px-6 py-3 text-sm font-bold text-slate-950'>{$label}</a><a href='{$secondaryUrl}' class='rounded-full border border-white/30 px-6 py-3 text-sm font-bold text-white'>{$secondary}</a></div></div>";
+                        $html .= "<div class='grid items-end gap-8 rounded-[2.25rem] border p-8 shadow-xl sm:p-12 lg:grid-cols-[1fr_auto] {$theme['border']} {$theme['card']}'><div><span class='text-xs font-bold uppercase tracking-[.24em] {$theme['sub']}'>{$eyebrow}</span><h2 class='mt-5 max-w-4xl text-4xl font-bold tracking-tight sm:text-5xl {$theme['text']}'>{$heading}</h2><p class='mt-5 max-w-2xl leading-7 {$theme['sub']}'>{$text}</p></div><div class='mt-8 flex flex-wrap gap-3'><a href='{$url}' class='rounded-full px-6 py-3 text-sm font-bold {$primaryTheme['bg']} {$primaryTheme['text']}'>{$label}</a><a href='{$secondaryUrl}' class='rounded-full border px-6 py-3 text-sm font-bold {$theme['border']} {$theme['text']}'>{$secondary}</a></div></div>";
                     } elseif ($variant === 'cta_newsletter_premium') {
                         $placeholder=e($block['input_placeholder'] ?? 'Email address'); $privacy=e($block['privacy_note'] ?? 'Add your real privacy details before publishing.'); $rawNewsletterUrl=trim((string) ($block['primary_url'] ?? '')); $newsletterUrl=e(($rawNewsletterUrl === '' || $rawNewsletterUrl === '#') ? 'https://example.com/newsletter' : $rawNewsletterUrl);
                         $html .= "<div class='grid gap-8 rounded-[2rem] border p-8 sm:p-12 lg:grid-cols-2 lg:items-center {$theme['border']} {$theme['card']}'><div><span class='text-xs font-bold uppercase tracking-[.24em] {$theme['sub']}'>{$eyebrow}</span><h2 class='mt-5 text-4xl font-bold {$theme['text']}'>{$heading}</h2><p class='mt-5 leading-7 {$theme['sub']}'>{$text}</p></div><div><form action='{$newsletterUrl}' method='get' class='flex gap-2 rounded-2xl border p-2 {$theme['border']} {$theme['bg']}'><input required type='email' name='email' aria-label='Email address' placeholder='{$placeholder}' class='min-w-0 flex-1 bg-transparent px-3 py-2 {$theme['text']}'/><button type='submit' class='rounded-xl {$primaryTheme['bg']} {$primaryTheme['text']} px-5 py-3 text-sm font-bold'>{$label}</button></form><p class='mt-3 text-xs {$theme['sub']}'>{$privacy}</p></div></div>";
@@ -4488,15 +4485,25 @@ HTML;
 
                     if ($variant === 'pricing_comparison_premium') {
                         $names = [e($block['plan_one_name'] ?? 'Starter'), e($block['plan_two_name'] ?? 'Growth'), e($block['plan_three_name'] ?? 'Pro')];
-                        $rows = ['one','two','three','four','five','six'];
+                        $comparisonDefaults = [
+                            'one' => ['Projects', '3', 'Unlimited', 'Unlimited'],
+                            'two' => ['Team members', '1', '5', 'Unlimited'],
+                            'three' => ['Priority support', 'Standard', 'Priority', 'Dedicated'],
+                            'four' => ['Analytics', 'Basic', 'Advanced', 'Advanced + exports'],
+                            'five' => ['Custom branding', '—', 'Included', 'Included'],
+                            'six' => ['Best for', 'Individuals', 'Growing teams', 'Agencies & scale'],
+                        ];
                         $html .= "<div class='mt-12 overflow-hidden rounded-3xl border {$theme['border']}'><div class='grid lg:grid-cols-4'><div class='hidden p-6 lg:block {$theme['card']} {$theme['text']}'>Compare plans</div>";
                         foreach ($names as $name) { $html .= "<div class='p-6 font-semibold {$theme['card']} {$theme['text']}'>{$name}</div>"; }
-                        foreach ($rows as $row) {
-                            $feature = e($block['feature_'.$row] ?? ucfirst($row).' feature');
+                        foreach ($comparisonDefaults as $row => [$defaultFeature, $defaultOne, $defaultTwo, $defaultThree]) {
+                            $feature = e($block['feature_'.$row] ?? $defaultFeature);
                             $html .= "<div class='border-t p-5 text-sm font-semibold {$theme['border']} {$theme['card']} {$theme['text']}'>{$feature}</div>";
-                            foreach (['one','two','three'] as $plan) { $value=e($block[$plan.'_'.$row] ?? 'Included'); $html .= "<div class='border-t p-5 text-sm {$theme['border']} {$theme['card']} {$theme['text']}'>{$value}</div>"; }
+                            foreach (['one' => $defaultOne, 'two' => $defaultTwo, 'three' => $defaultThree] as $plan => $defaultValue) {
+                                $value=e($block[$plan.'_'.$row] ?? $defaultValue);
+                                $html .= "<div class='border-t p-5 text-sm {$theme['border']} {$theme['card']} {$theme['text']}'>{$value}</div>";
+                            }
                         }
-                        $foot=e($block['footnote'] ?? 'Replace placeholder pricing and inclusions with your actual offer details.');
+                        $foot=e($block['footnote'] ?? 'Pricing and inclusions are editable placeholders and should be replaced with your actual offer details.');
                         $html .= "</div><p class='p-5 text-xs {$theme['sub']}'>{$foot}</p></div>";
                     } elseif ($variant === 'pricing_toggle_premium') {
                         $toggleId='cosmic-pricing-toggle-'.$index.'-'.substr(md5(json_encode($block)),0,8);
@@ -5547,10 +5554,10 @@ HTML;
                     }
 
                     $html .= "<style>
-#{$motionId}.cosmic-motion2-hero{position:relative;isolation:isolate;overflow:hidden;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));background:#020617;color:#fff}#{$motionId} .cosmic-motion2-copy-wrap{position:relative;z-index:4;display:flex;align-items:center;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));width:100%;max-width:80rem;margin:0 auto;padding:0 3rem}#{$motionId} .cosmic-motion2-copy{max-width:48rem}#{$motionId} .cosmic-motion2-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$motionId} h1{margin-top:1.5rem;font-size:clamp(2.25rem,4.6vw,4.5rem)!important;line-height:.98;letter-spacing:-.045em;font-weight:700}#{$motionId} .cosmic-motion2-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.75)}#{$motionId} .cosmic-motion2-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$motionId} .cosmic-motion2-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$motionId} .cosmic-motion2-primary{background:#fff;color:#0f172a}#{$motionId} .cosmic-motion2-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(10px)}#{$motionId} .cosmic-motion2-overlay{position:absolute;inset:0;background:#020617;z-index:2}#{$motionId} .cosmic-motion2-media-gradient{position:absolute;inset:0;z-index:3;background:linear-gradient(90deg,rgba(2,6,23,.72),rgba(2,6,23,.18),rgba(2,6,23,.04))}
+#{$motionId}.cosmic-motion2-hero{position:relative;isolation:isolate;overflow:hidden;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));background:{$primaryBgHex};color:#fff}#{$motionId} .cosmic-motion2-copy-wrap{position:relative;z-index:4;display:flex;align-items:center;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));width:100%;max-width:80rem;margin:0 auto;padding:0 3rem}#{$motionId} .cosmic-motion2-copy{max-width:48rem}#{$motionId} .cosmic-motion2-eyebrow{font-size:.75rem;letter-spacing:.32em;font-weight:800;text-transform:uppercase;color:rgba(255,255,255,.7)}#{$motionId} h1{margin-top:1.5rem;font-size:clamp(2.25rem,4.6vw,4.5rem)!important;line-height:.98;letter-spacing:-.045em;font-weight:700}#{$motionId} .cosmic-motion2-body{margin-top:1.75rem;max-width:42rem;font-size:clamp(1rem,1.5vw,1.15rem);line-height:1.85;color:rgba(255,255,255,.75)}#{$motionId} .cosmic-motion2-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2.25rem}#{$motionId} .cosmic-motion2-actions a{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:.9rem 1.5rem;font-size:.875rem;font-weight:800;text-decoration:none}#{$motionId} .cosmic-motion2-primary{background:#fff;color:#0f172a}#{$motionId} .cosmic-motion2-secondary{border:1px solid rgba(255,255,255,.3);background:rgba(255,255,255,.1);color:#fff;backdrop-filter:blur(10px)}#{$motionId} .cosmic-motion2-overlay{position:absolute;inset:0;background:{$overlayHex};z-index:2}#{$motionId} .cosmic-motion2-media-gradient{position:absolute;inset:0;z-index:3;background:linear-gradient(90deg,color-mix(in srgb,{$overlayHex} 72%,transparent),color-mix(in srgb,{$overlayHex} 18%,transparent),color-mix(in srgb,{$overlayHex} 4%,transparent))}
 #{$motionId} .cosmic-motion2-scroll-media{position:absolute;inset:0;overflow:hidden;will-change:transform;transform:scale(1.04)}#{$motionId} .cosmic-motion2-scroll-media img{width:100%;height:100%;object-fit:cover}#{$motionId}.cosmic-motion2-reveal .cosmic-motion2-scroll-media{clip-path:inset(8% 4% 8% 4% round 28px)}
-#{$motionId} .cosmic-motion2-video{position:absolute;inset:0;overflow:hidden;background:#0f172a}#{$motionId} .cosmic-motion2-video video{width:100%;height:100%;object-fit:cover}#{$motionId}.cosmic-motion2-video-split{display:grid;grid-template-columns:.9fr 1.1fr;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-copy-wrap{grid-column:1;grid-row:1;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-video{position:relative;grid-column:2;grid-row:1;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-media-gradient{background:linear-gradient(90deg,rgba(2,6,23,.25),rgba(2,6,23,.02))}
-#{$motionId}.cosmic-motion2-pinned{position:relative;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));background:#020617;color:#fff}#{$motionId} .cosmic-motion2-sticky{position:relative;height:calc(100svh - var(--cosmic-header-flow-offset,0px));overflow:hidden;isolation:isolate}#{$motionId} .cosmic-motion2-story-media{position:absolute;inset:0;opacity:0;transform:scale(1.04);transition:opacity .7s ease,transform .7s ease}#{$motionId} .cosmic-motion2-story-media.is-active{opacity:1;transform:scale(1)}#{$motionId} .cosmic-motion2-story-media img{width:100%;height:100%;object-fit:cover}#{$motionId} .cosmic-motion2-dots{position:absolute;right:2rem;bottom:2rem;z-index:5;display:flex;gap:.5rem}#{$motionId} .cosmic-motion2-dots span{display:block;width:20px;height:4px;border-radius:999px;background:rgba(255,255,255,.3);transition:.35s ease}#{$motionId} .cosmic-motion2-dots span.is-active{width:48px;background:#fff}
+#{$motionId} .cosmic-motion2-video{position:absolute;inset:0;overflow:hidden;background:{$primaryBgHex}}#{$motionId} .cosmic-motion2-video video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}#{$motionId}.cosmic-motion2-video-split{display:grid;grid-template-columns:.9fr 1.1fr;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-copy-wrap{grid-column:1;grid-row:1;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-video{position:relative;grid-column:2;grid-row:1;min-height:760px}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-media-gradient{background:linear-gradient(90deg,color-mix(in srgb,{$overlayHex} 25%,transparent),color-mix(in srgb,{$overlayHex} 2%,transparent))}
+#{$motionId}.cosmic-motion2-pinned{position:relative;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));background:{$primaryBgHex};color:#fff}#{$motionId} .cosmic-motion2-sticky{position:relative;height:calc(100svh - var(--cosmic-header-flow-offset,0px));overflow:hidden;isolation:isolate}#{$motionId} .cosmic-motion2-story-media{position:absolute;inset:0;opacity:0;transform:scale(1.04);transition:opacity .7s ease,transform .7s ease}#{$motionId} .cosmic-motion2-story-media.is-active{opacity:1;transform:scale(1)}#{$motionId} .cosmic-motion2-story-media img{width:100%;height:100%;object-fit:cover}#{$motionId} .cosmic-motion2-dots{position:absolute;right:2rem;bottom:2rem;z-index:5;display:flex;gap:.5rem}#{$motionId} .cosmic-motion2-dots span{display:block;width:20px;height:4px;border-radius:999px;background:rgba(255,255,255,.3);transition:.35s ease}#{$motionId} .cosmic-motion2-dots span.is-active{width:48px;background:#fff}
 @keyframes cosmicAurora{$motionId}{0%,100%{transform:translate3d(-8%,-5%,0) rotate(-8deg) scale(1)}50%{transform:translate3d(10%,8%,0) rotate(8deg) scale(1.12)}}@keyframes cosmicMesh{$motionId}{0%,100%{transform:translate3d(-4%,-3%,0) scale(1)}33%{transform:translate3d(7%,-5%,0) scale(1.08)}66%{transform:translate3d(2%,8%,0) scale(1.13)}}#{$motionId}.cosmic-motion2-gradient{background:linear-gradient(var(--cg-angle),var(--cg-from),var(--cg-via),var(--cg-to))}#{$motionId} .cosmic-motion2-shade{position:absolute;inset:0;z-index:2;background:linear-gradient(180deg,rgba(2,6,23,.06),rgba(2,6,23,.68))}#{$motionId} .cosmic-motion2-aurora{position:absolute;border-radius:50%;filter:blur(90px);will-change:transform}#{$motionId} .cosmic-motion2-aurora-a{left:-15%;top:-35%;width:75%;height:90%;background:var(--cg-glow-strong);animation:cosmicAurora{$motionId} 14s ease-in-out infinite}#{$motionId} .cosmic-motion2-aurora-b{right:-15%;bottom:-30%;width:70%;height:85%;background:color-mix(in srgb,var(--cg-via) 72%,transparent);animation:cosmicAurora{$motionId} 18s ease-in-out infinite reverse}#{$motionId} .cosmic-motion2-aurora-c{left:40%;top:25%;width:45%;height:45%;background:var(--cg-glow-soft);filter:blur(100px)}#{$motionId} .cosmic-motion2-mesh{position:absolute;inset:-25%;opacity:.88;filter:blur(58px);background:radial-gradient(circle at 20% 25%,var(--cg-glow-strong),transparent 28%),radial-gradient(circle at 75% 20%,var(--cg-glow-soft),transparent 31%),radial-gradient(circle at 65% 78%,color-mix(in srgb,var(--cg-via) 75%,transparent),transparent 30%),radial-gradient(circle at 25% 80%,color-mix(in srgb,var(--cg-to) 72%,transparent),transparent 28%);animation:cosmicMesh{$motionId} 16s ease-in-out infinite}#{$motionId} .cosmic-motion2-grid{position:absolute;inset:0;background-image: none;background-size:56px 56px}
 #{$motionId}.cosmic-motion2-light,#{$motionId}.cosmic-motion2-pinned.cosmic-motion2-light{background:#fff;color:#0f172a}#{$motionId}.cosmic-motion2-light .cosmic-motion2-eyebrow{color:#64748b}#{$motionId}.cosmic-motion2-light .cosmic-motion2-body{color:#475569}#{$motionId}.cosmic-motion2-light .cosmic-motion2-primary{background:var(--cosmic-primary-bg,#0f766e);color:#fff}#{$motionId}.cosmic-motion2-light .cosmic-motion2-secondary{border-color:#cbd5e1;background:rgba(255,255,255,.72);color:#0f172a}#{$motionId}.cosmic-motion2-light .cosmic-motion2-media-gradient{background:linear-gradient(90deg,rgba(255,255,255,.78),rgba(255,255,255,.34),rgba(255,255,255,.12))}#{$motionId}.cosmic-motion2-light.cosmic-motion2-gradient{background:#fff!important}#{$motionId}.cosmic-motion2-light .cosmic-motion2-aurora,#{$motionId}.cosmic-motion2-light .cosmic-motion2-mesh,#{$motionId}.cosmic-motion2-light .cosmic-motion2-grid{opacity:.10!important}#{$motionId}.cosmic-motion2-light .cosmic-motion2-shade{background:rgba(255,255,255,.92)}#{$motionId}.cosmic-motion2-light .cosmic-motion2-dots span{background:rgba(100,116,139,.35)}#{$motionId}.cosmic-motion2-light .cosmic-motion2-dots span.is-active{background:#334155}
 @media(max-width:900px){#{$motionId} .cosmic-motion2-copy-wrap{padding:0 1.5rem}#{$motionId}.cosmic-motion2-video-split{display:block;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-video{position:absolute;inset:0;min-height:0}#{$motionId}.cosmic-motion2-video-split .cosmic-motion2-copy-wrap{min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$motionId}.cosmic-motion2-pinned{min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))}#{$motionId} .cosmic-motion2-sticky{height:calc(100svh - var(--cosmic-header-flow-offset,0px))}}
@@ -5698,6 +5705,7 @@ HTML;
             }
 
             $design = is_array($block['luna_design_overrides'] ?? null) ? $block['luna_design_overrides'] : [];
+            $canonicalLocalComponent = is_array($block['luna_component_overrides'] ?? null) ? $block['luna_component_overrides'] : [];
             $blockTypeLower = Str::lower((string)($block['type'] ?? ''));
             $heroNeedsDefaultPadding = (($index === 0) || Str::contains($blockTypeLower, ['hero','banner']))
                 && !Str::contains($blockTypeLower, ['fullscreen','cinematic'])
@@ -5715,6 +5723,10 @@ HTML;
                 foreach($limits as $key=>[$min,$max]){
                     if(isset($design[$key])&&is_numeric($design[$key]))$safe[$key]=max($min,min($max,(float)$design[$key]));
                 }
+                // Canonical component overrides own their token. Legacy Luna
+                // design fields remain read-compatible but must not win by
+                // being declared on a closer nested wrapper.
+                if(array_key_exists('card_radius',$canonicalLocalComponent)) unset($safe['card_radius']);
                 $vars='';
                 $map=[
                     'heading_size'=>['--luna-heading-size','px'],'body_size'=>['--luna-body-size','px'],
@@ -5725,6 +5737,7 @@ HTML;
                     'content_max_width'=>['--luna-content-max','px'],'section_min_height'=>['--luna-section-min-height','px'],
                 ];
                 foreach($safe as $key=>$value){[$var,$unit]=$map[$key];$vars.=$var.':'.$value.$unit.';';}
+                if(isset($safe['card_radius']))$vars.='--cosmic-local-card-radius:'.$safe['card_radius'].'px;';
                 if(isset($safe['heading_size'])){
                     $heading=(float)$safe['heading_size'];
                     $vars.='--cosmic-local-h1-size:'.$heading.'px;--cosmic-local-h2-size:'.$heading.'px;--cosmic-local-h3-size:'.max(16,min(72,$heading*.62)).'px;';
@@ -5750,7 +5763,7 @@ HTML;
                 }
                 $align=in_array(($design['text_align']??''),['left','center','right'],true)?$design['text_align']:'';
                 if($align!=='')$vars.='--luna-text-align:'.$align.';';
-                $css="<style>.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py,revert)!important;padding-bottom:var(--luna-section-py,revert)!important;padding-left:var(--luna-section-px,revert)!important;padding-right:var(--luna-section-px,revert)!important;min-height:var(--luna-section-min-height,revert)!important}.cosmic-luna-design-host h1{font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size))!important;line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line))!important;letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking))!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host h2{font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size))!important;line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line))!important;letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking))!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host p,.cosmic-luna-design-host li{font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size))!important;line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line))!important}.cosmic-luna-design-host img{border-radius:var(--luna-image-radius,revert)!important}@media(max-width:1024px){.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important}}@media(max-width:767px){.cosmic-luna-design-host h1,.cosmic-luna-design-host h2,.cosmic-luna-design-host h3{font-size:min(var(--cosmic-local-h2-size,var(--cosmic-type-h2-size)),64px)!important}.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important}}</style>";
+                $css="<style>.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py,revert)!important;padding-bottom:var(--luna-section-py,revert)!important;padding-left:var(--luna-section-px,revert)!important;padding-right:var(--luna-section-px,revert)!important;min-height:var(--luna-section-min-height,revert)!important}.cosmic-luna-design-host h1{font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size))!important;line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line))!important;letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking))!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host h2{font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size))!important;line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line))!important;letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking))!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host p,.cosmic-luna-design-host li{font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size))!important;line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line))!important}.cosmic-luna-design-host img{border-radius:var(--luna-image-radius,revert)!important}@media(max-width:1024px){.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important}}@media(max-width:767px){.cosmic-luna-design-host h1{font-size:min(var(--cosmic-local-h1-size,var(--cosmic-type-h1-size)),64px)!important}.cosmic-luna-design-host h2{font-size:min(var(--cosmic-local-h2-size,var(--cosmic-type-h2-size)),64px)!important}.cosmic-luna-design-host h3{font-size:min(var(--cosmic-local-h3-size,var(--cosmic-type-h3-size)),64px)!important}.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important}}</style>";
                 $fragment="<div class='cosmic-luna-design-host' data-luna-design='1' style=\"".e($vars)."\">{$css}{$fragment}</div>";
                 $html=substr($html,0,$fragmentStart).$fragment;
             }
@@ -5818,7 +5831,9 @@ HTML;
                     if(!preg_match('/^(h1|h2|h3|h4|h5|h6|card-title|stat-title|card-body|lead|body|eyebrow|small|badge|meta|button)_(size|line|weight|tracking)$/',(string)$key,$m))continue;
                     if(!in_array($m[1],$allowedRoles,true)||!in_array($m[2],$allowedProps,true))continue;
                     $raw=trim((string)$value);
-                    if($raw===''||!preg_match('/^-?[0-9.]+(?:px|rem|em|%)?$/i',$raw))continue;
+                    $safeScalar=preg_match('/^-?[0-9.]+(?:px|rem|em|%)?$/i',$raw)===1;
+                    $safeClamp=$m[2]==='size' && preg_match('/^clamp\(\s*[0-9.]+(?:px|rem)\s*,\s*[0-9.]+vw\s*,\s*[0-9.]+(?:px|rem)\s*\)$/i',$raw)===1;
+                    if($raw===''||(!$safeScalar&&!$safeClamp))continue;
                     $localVars.='--cosmic-local-'.$m[1].'-'.$m[2].':'.$raw.';';
                 }
                 if($localVars!==''){
@@ -5827,19 +5842,61 @@ HTML;
                 }
             }
 
+            $localComponent=is_array($block['luna_component_overrides']??null)?$block['luna_component_overrides']:[];
+            if($fragment!=='' && $localComponent!==[]){
+                $componentVars='';
+                $componentAttributes="data-cosmic-component-overrides='1'";
+                $componentMap=[
+                    'button_height'=>'--cosmic-local-button-height',
+                    'button_px'=>'--cosmic-local-button-px',
+                    'button_radius'=>'--cosmic-local-button-radius',
+                    'button_weight'=>'--cosmic-local-button-weight',
+                    'input_height'=>'--cosmic-local-input-height',
+                    'input_px'=>'--cosmic-local-input-px',
+                    'input_radius'=>'--cosmic-local-input-radius',
+                    'card_radius'=>'--cosmic-local-card-radius',
+                    'card_padding'=>'--cosmic-local-card-padding',
+                    'image_radius'=>'--cosmic-local-image-radius',
+                    'modal_radius'=>'--cosmic-local-modal-radius',
+                    'section_radius'=>'--cosmic-local-section-radius',
+                ];
+                foreach($componentMap as $key=>$var){
+                    if(!isset($localComponent[$key])||!is_scalar($localComponent[$key]))continue;
+                    $raw=trim((string)$localComponent[$key]);
+                    if($raw===''||!preg_match('/^-?[0-9.]+(?:px|rem|em|%)?$/i',$raw))continue;
+                    $componentVars.=$var.':'.$raw.';';
+                    if($key==='card_radius')$componentVars.='--luna-card-radius:'.$raw.';';
+                    if($key==='image_radius')$componentVars.='--luna-image-radius:'.$raw.';';
+                }
+                if(($localComponent['card_surface']??null)==='dark'){
+                    $componentVars.='--cosmic-local-card-bg:var(--cosmic-bg-primary-surface,var(--cosmic-brand-primary,#0f172a));';
+                    $componentVars.='--cosmic-local-card-heading:var(--cosmic-color-on-dark,#f8fafc);';
+                    $componentVars.='--cosmic-local-card-text:color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 82%,transparent);';
+                    $componentVars.='--cosmic-local-card-border:color-mix(in srgb,var(--cosmic-color-on-dark,#f8fafc) 24%,transparent);';
+                    $componentAttributes.=" data-cosmic-card-surface='dark'";
+                }
+                if($componentVars!==''){
+                    $fragment="<div class='cosmic-local-component-host cosmic-render-shell' {$componentAttributes} style=\"".e($componentVars)."\">{$fragment}</div>";
+                    $html=substr($html,0,$fragmentStart).$fragment;
+                }
+            }
+
             if ($fragment !== '' && preg_match('/<section\b/i', $fragment)) {
-                // Builder uses a two-state semantic surface contract. Preserve the
-                // white/surface distinction in the renderer itself, but expose both
-                // as "light" to shared contrast/layout CSS so Preview/Export/Live
-                // apply the same rules as Builder.
-                $semanticTheme = $blockTheme === 'primary' ? 'primary' : 'light';
+                // Preserve Builder's exact semantic state so white/surface rhythm
+                // survives Preview, Export and Live instead of collapsing to light.
+                $semanticTheme = in_array($blockTheme, ['primary', 'white', 'surface'], true)
+                    ? $blockTheme
+                    : ($blockTheme === 'light' ? 'light' : 'primary');
                 $semanticTheme = e($semanticTheme);
                 $semanticType = e((string) ($block['type'] ?? ''));
                 $semanticIndex = (int) $index;
                 $renderContractVersion = e(self::renderContractVersion());
+                $tailwindSchemaState = is_array($block['luna_tailwind_schema']['slots'] ?? null) && $block['luna_tailwind_schema']['slots'] !== []
+                    ? 'schema_backed'
+                    : 'legacy_fallback';
                 $taggedFragment = preg_replace(
                     '/<section(?![^>]*data-cosmic-spark)/i',
-                    "<section data-cosmic-spark='1' data-cosmic-render-contract='{$renderContractVersion}' data-cosmic-block-index='{$semanticIndex}' data-cosmic-resolved-theme='{$semanticTheme}' data-cosmic-block-type='{$semanticType}'",
+                    "<section data-cosmic-spark='1' data-cosmic-render-contract='{$renderContractVersion}' data-cosmic-tailwind-schema='{$tailwindSchemaState}' data-cosmic-block-index='{$semanticIndex}' data-cosmic-resolved-theme='{$semanticTheme}' data-cosmic-block-type='{$semanticType}'",
                     $fragment,
                     1
                 );
@@ -5917,7 +5974,8 @@ CSS;
 --cosmic-on-surface-muted:#64748B;
 --cosmic-heading-primary:#243447;
 --cosmic-color-heading:var(--cosmic-heading-primary);
---cosmic-bg-surface:#FFFFFF;
+--cosmic-bg-white:#FEFEFD;
+--cosmic-bg-surface:#F1F5F9;
 --cosmic-bg-primary:#243447;
 --cosmic-bg-primary-surface:#30475E;
 --cosmic-bg-accent:#60A5FA;
@@ -5933,6 +5991,7 @@ CSS;
 --cosmic-bg-overlay-cinematic-strong:.92;
 --cosmic-bg-overlay-cinematic-soft:.72
 }
+.cosmic-bg-white{background:var(--cosmic-local-bg-white,var(--cosmic-bg-white))}
 .cosmic-bg-surface{background:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface))}
 .cosmic-bg-primary{background:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary))}
 .cosmic-bg-primary-gradient{background:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)),var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)),var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)))}
@@ -5941,11 +6000,15 @@ CSS;
 .cosmic-bg-overlay-cinematic{background:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),color-mix(in srgb,var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) calc(var(--cosmic-local-overlay-cinematic-strong,var(--cosmic-bg-overlay-cinematic-strong))*100%),#020617),color-mix(in srgb,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) calc(var(--cosmic-local-overlay-cinematic-soft,var(--cosmic-bg-overlay-cinematic-soft))*100%),var(--cosmic-local-gradient-glow,var(--cosmic-bg-gradient-glow))))}
 section[data-cosmic-spark='1']{--cosmic-section-from:var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from));--cosmic-section-mid:var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via));--cosmic-section-to:var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to));--cosmic-section-angle:var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle))}
 section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary']:not(.cosmic-theme-gradient){background-color:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary))!important}
-section[data-cosmic-spark='1'][data-cosmic-resolved-theme='light']:not([class*='bg-black']):not([class*='bg-slate-9']){background-color:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface))!important}
+section[data-cosmic-spark='1'][data-cosmic-resolved-theme='white']:not([class*='bg-black']):not([class*='bg-slate-9']){background-color:var(--cosmic-local-bg-white,var(--cosmic-bg-white))!important}
+section[data-cosmic-spark='1']:is([data-cosmic-resolved-theme='light'],[data-cosmic-resolved-theme='surface']):not([class*='bg-black']):not([class*='bg-slate-9']){background-color:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface))!important}
 section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary']{--cosmic-current-text:var(--cosmic-on-primary);--cosmic-current-muted:var(--cosmic-on-primary-muted)}
-section[data-cosmic-spark='1'][data-cosmic-resolved-theme='light']{--cosmic-current-text:var(--cosmic-on-surface);--cosmic-current-muted:var(--cosmic-on-surface-muted)}
-section[data-cosmic-spark='1'][data-cosmic-resolved-theme='light'] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type='h1'],[data-cosmic-type='h2'],[data-cosmic-type='h3'],[data-cosmic-type='h4'],[data-cosmic-type='h5'],[data-cosmic-type='h6']):not([data-cosmic-preserve-heading-color]){color:var(--cosmic-local-heading-color,var(--cosmic-color-heading,var(--cosmic-heading-primary,#243447)))!important}
+section[data-cosmic-spark='1']:is([data-cosmic-resolved-theme='light'],[data-cosmic-resolved-theme='white'],[data-cosmic-resolved-theme='surface']){--cosmic-current-text:var(--cosmic-on-surface);--cosmic-current-muted:var(--cosmic-on-surface-muted)}
+section[data-cosmic-spark='1']:is([data-cosmic-resolved-theme='light'],[data-cosmic-resolved-theme='white'],[data-cosmic-resolved-theme='surface']) :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type='h1'],[data-cosmic-type='h2'],[data-cosmic-type='h3'],[data-cosmic-type='h4'],[data-cosmic-type='h5'],[data-cosmic-type='h6']):not([data-cosmic-preserve-heading-color]):not([class*='text-white']):not([class*='-50']):not([class*='-100']):not([class*='-200']):not(:where([class*='text-white'] *,[class*='text-blue-50'] *,[class*='text-slate-50'] *,[class*='text-gray-50'] *,[class*='text-zinc-50'] *,[class*='text-neutral-50'] *,[class*='text-'][class*='-50'] *,[class*='text-'][class*='-100'] *,[class*='text-'][class*='-200'] *)){color:var(--cosmic-local-heading-color,var(--cosmic-color-heading,var(--cosmic-heading-primary,#243447)))!important}
 section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary'] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type='h1'],[data-cosmic-type='h2'],[data-cosmic-type='h3'],[data-cosmic-type='h4'],[data-cosmic-type='h5'],[data-cosmic-type='h6']):not([data-cosmic-preserve-heading-color]){color:var(--cosmic-color-on-dark,var(--cosmic-on-primary,#F8FAFC))!important}
+/* Exact class-token matching avoids treating unrelated opacity/transition
+   utilities on light cards as dark highlighted foregrounds. */
+section[data-cosmic-spark='1'] article:is([class~='text-white'],[class~='text-amber-50'],[class~='text-blue-50'],[class~='text-emerald-50'],[class~='text-fuchsia-50'],[class~='text-indigo-50'],[class~='text-lime-50'],[class~='text-neutral-100'],[class~='text-orange-50'],[class~='text-rose-50'],[class~='text-slate-50'],[class~='text-slate-100'],[class~='text-teal-50'],[class~='text-violet-50'],:has(:is(h1,h2,h3,h4,h5,h6,p,span,blockquote,li):is([class~='text-white'],[class~='text-amber-50'],[class~='text-blue-50'],[class~='text-emerald-50'],[class~='text-fuchsia-50'],[class~='text-indigo-50'],[class~='text-lime-50'],[class~='text-neutral-100'],[class~='text-orange-50'],[class~='text-rose-50'],[class~='text-slate-50'],[class~='text-slate-100'],[class~='text-teal-50'],[class~='text-violet-50']))) :is(h1,h2,h3,h4,h5,h6,p,span,blockquote,li){color:var(--cosmic-color-on-secondary,var(--cosmic-color-on-dark,#FFFFFF))!important}
 section[data-cosmic-spark='1'].cosmic-theme-gradient{background-color:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary));background-image:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 0%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 100%)!important;background-size:100% 100%}
 section[data-cosmic-spark='1'].cosmic-theme-gradient--subtle{background-image:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),color-mix(in srgb,var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 72%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))) 0%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,color-mix(in srgb,var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 70%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))) 100%)!important}
 section[data-cosmic-spark='1'].cosmic-theme-gradient--deep{background-image:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 0%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 100%)!important}
@@ -6111,20 +6174,19 @@ CSS;
         $globalBackground=is_array($context['background_style']??null)?$context['background_style']:[];
         $activeTheme=self::getTheme($primaryColor ?: 'midnight');
         $contextBrandPalette=is_array($context['brand_palette']??null)?$context['brand_palette']:[];
-        $activePalette=$primaryColor==='my-brand' && $contextBrandPalette!==[]
-            ? $contextBrandPalette
-            : (is_array($activeTheme['palette']??null)?$activeTheme['palette']:[]);
-        $activeGradient=is_array($activePalette['gradient']??null)
-            ? $activePalette['gradient']
-            : (is_array($activeTheme['gradient']??null)?$activeTheme['gradient']:[]);
+        $activePalette=app(ThemeColorResolver::class)->resolve(
+            $primaryColor ?: 'midnight',
+            ['brand_palette'=>$contextBrandPalette],
+        );
+        $activeGradient=is_array($activePalette['gradient']??null)?$activePalette['gradient']:[];
         $globalBackground=array_merge([
-            'heading_primary'=>$activePalette['primary']??$activePalette['background']??'#243447',
-            'primary'=>$activePalette['background']??$activePalette['primary']??'#243447',
-            'primary_surface'=>$activePalette['surface']??$activePalette['background']??'#30475E',
+            'heading_primary'=>$activePalette['heading']??$activePalette['primary']??'#243447',
+            'primary'=>$activePalette['primary']??'#243447',
+            'primary_surface'=>$activePalette['brand_surface']??$activePalette['secondary']??'#30475E',
             'accent'=>$activePalette['accent']??$activeGradient['glow']??'#60A5FA',
-            'gradient_from'=>$activeGradient['from']??$activePalette['background']??'#071426',
-            'gradient_via'=>$activeGradient['via']??$activePalette['surface']??'#111936',
-            'gradient_to'=>$activeGradient['to']??$activePalette['background']??'#28164D',
+            'gradient_from'=>$activeGradient['from']??$activePalette['primary']??'#071426',
+            'gradient_via'=>$activeGradient['via']??$activePalette['secondary']??'#111936',
+            'gradient_to'=>$activeGradient['to']??$activePalette['primary']??'#28164D',
             'gradient_glow'=>$activeGradient['glow']??$activePalette['accent']??'#7C3AED',
             'gradient_angle'=>$activeGradient['angle']??135,
         ],$globalBackground);
@@ -6162,32 +6224,43 @@ CSS;
         }
         $globalBackgroundCss=$globalBackgroundVars!==''?"<style data-cosmic-background-overlay-settings>:root{{$globalBackgroundVars}}</style>":'';
 
-        $paletteHex=static fn($value,$fallback)=>preg_match('/^#[0-9A-Fa-f]{6}$/',(string)$value)?Str::upper((string)$value):$fallback;
-        $semanticPrimary=$paletteHex($activePalette['primary']??null,'#243447');
-        $semanticHeading=$paletteHex($activePalette['heading']??null,$semanticPrimary);
-        $semanticText=$paletteHex($activePalette['text']??$activePalette['surfaceText']??null,'#0F172A');
-        $semanticMuted=$paletteHex($activePalette['muted']??null,'#64748B');
-        $semanticSurface=$paletteHex($activePalette['surface']??null,'#FFFFFF');
-        $semanticSurfaceMuted=$paletteHex($activePalette['surfaceMuted']??$activePalette['surface_muted']??null,'#F1F5F9');
-        $semanticBorder=$paletteHex($activePalette['border']??null,'#CBD5E1');
-        $semanticAccent=$paletteHex($activePalette['accent']??null,'#60A5FA');
-        $semanticPrimaryHover=$paletteHex($activePalette['primaryHover']??$activePalette['buttonHover']??null,$semanticPrimary);
-        $semanticButtonPrimary=$paletteHex($activePalette['buttonPrimary']??null,$semanticPrimary);
-        $semanticButtonText=$paletteHex($activePalette['buttonText']??$activePalette['onPrimary']??null,'#FFFFFF');
-        $semanticButtonSecondary=$paletteHex($activePalette['buttonSecondary']??null,$semanticSurfaceMuted);
-        $semanticButtonSecondaryText=$paletteHex($activePalette['buttonSecondaryText']??null,$semanticPrimary);
-        $semanticSuccess=$paletteHex($activePalette['success']??null,'#237A57');
-        $semanticWarning=$paletteHex($activePalette['warning']??null,'#A86D22');
-        $semanticError=$paletteHex($activePalette['error']??null,'#B44949');
-        $semanticOnDark=$paletteHex($activePalette['onDark']??null,'#FFFFFF');
+        $semanticPrimary=$activePalette['primary'];
+        $semanticHeading=$activePalette['heading'];
+        $semanticText=$activePalette['body'];
+        $semanticMuted=$activePalette['muted'];
+        $semanticWhite=$activePalette['white'];
+        $semanticPage=$activePalette['page'];
+        $surfaceOverride=preg_match('/^#[0-9A-Fa-f]{6}$/',(string)($globalBackground['surface']??''))?Str::upper((string)$globalBackground['surface']):'';
+        $semanticSurface=$surfaceOverride!==''?$surfaceOverride:$activePalette['surface'];
+        $semanticBrandSurface=$activePalette['brand_surface'];
+        $semanticSurfaceMuted=$activePalette['surface_alt'];
+        $semanticBorder=$activePalette['border'];
+        $semanticBorderStrong=$activePalette['border_strong'];
+        $semanticSecondary=$activePalette['secondary'];
+        $semanticAccent=$activePalette['accent'];
+        $semanticPrimaryHover=$activePalette['primary_hover'];
+        $semanticButtonPrimary=$activePalette['button_primary'];
+        $semanticButtonText=$activePalette['button_text'];
+        $semanticButtonSecondary=$activePalette['button_secondary'];
+        $semanticButtonSecondaryText=$activePalette['button_secondary_text'];
+        $semanticSuccess=$activePalette['success'];
+        $semanticWarning=$activePalette['warning'];
+        $semanticError=$activePalette['error'];
+        $semanticOnPrimary=$activePalette['on_primary'];
+        $semanticOnSecondary=$activePalette['on_secondary'];
+        $semanticOnAccent=$activePalette['on_accent'];
+        $semanticOnSurface=$activePalette['on_surface'];
+        $semanticOnDark=$activePalette['on_dark'];
         $semanticPaletteCss="<style data-cosmic-semantic-palette>:root{".
             "--cosmic-brand-primary:{$semanticPrimary};".
+            "--cosmic-brand-secondary:{$semanticSecondary};--cosmic-brand-accent:{$semanticAccent};".
             "--cosmic-color-heading:{$semanticHeading};".
             "--cosmic-color-h1:{$semanticHeading};--cosmic-color-h2:{$semanticHeading};--cosmic-color-h3:{$semanticHeading};--cosmic-color-h4:{$semanticHeading};--cosmic-color-h5:{$semanticHeading};--cosmic-color-h6:{$semanticHeading};".
             "--cosmic-color-body:{$semanticText};--cosmic-color-muted:{$semanticMuted};".
-            "--cosmic-color-surface:{$semanticSurface};--cosmic-color-surface-alt:{$semanticSurfaceMuted};--cosmic-color-border:{$semanticBorder};".
-            "--cosmic-brand-accent:{$semanticAccent};--cosmic-color-success:{$semanticSuccess};--cosmic-color-warning:{$semanticWarning};--cosmic-color-error:{$semanticError};".
-            "--cosmic-color-on-dark:{$semanticOnDark};--cosmic-button-primary-bg:{$semanticButtonPrimary};--cosmic-button-primary-text:{$semanticButtonText};".
+            "--cosmic-color-page:{$semanticPage};--cosmic-color-surface:{$semanticSurface};--cosmic-color-surface-alt:{$semanticSurfaceMuted};--cosmic-color-border:{$semanticBorder};--cosmic-color-border-strong:{$semanticBorderStrong};".
+            "--cosmic-bg-white:{$semanticWhite};--cosmic-bg-surface:{$semanticSurface};--cosmic-bg-primary:{$semanticPrimary};--cosmic-bg-primary-surface:{$semanticBrandSurface};--cosmic-bg-accent:{$semanticAccent};".
+            "--cosmic-color-success:{$semanticSuccess};--cosmic-color-warning:{$semanticWarning};--cosmic-color-error:{$semanticError};".
+            "--cosmic-color-on-primary:{$semanticOnPrimary};--cosmic-color-on-secondary:{$semanticOnSecondary};--cosmic-color-on-accent:{$semanticOnAccent};--cosmic-color-on-surface:{$semanticOnSurface};--cosmic-color-on-dark:{$semanticOnDark};--cosmic-button-primary-bg:{$semanticButtonPrimary};--cosmic-button-primary-text:{$semanticButtonText};".
             "--cosmic-button-secondary-bg:{$semanticButtonSecondary};--cosmic-button-secondary-text:{$semanticButtonSecondaryText};".
             "--cosmic-link-color:{$semanticPrimary};--cosmic-link-hover:{$semanticPrimaryHover}".
             "}</style>";
@@ -7137,6 +7210,119 @@ CSS;
 CSS;
 
         return "<section id='{$id}' class='cosmic-b5 b5-".e($family)." b5-".e($variant)."'><div class='b5-shell'><div class='b5-head'><span class='b5-eyebrow'>{$eyebrow}</span><span class='b5-heading'>{$heading}</span><span class='b5-intro'>{$intro}</span></div><div class='b5-grid'>{$cards}</div><div class='b5-actions'><a class='b5-primary' href='{$buttonUrl}'>{$button}</a><a class='b5-secondary' href='{$secondaryUrl}'>{$secondary}</a></div></div>{$css}</section>";
+    }
+
+    private static function distinctiveExpansionBatch6Html(string $type, array $block, array $theme): string
+    {
+        $variants = [
+            'about_chapter_index_premium' => 'chapters',
+            'services_orbit_map_premium' => 'orbit',
+            'process_constellation_premium' => 'constellation',
+            'proof_metric_staircase_premium' => 'staircase',
+            'trust_evidence_ledger_premium' => 'ledger',
+            'faq_decision_tree_premium' => 'tree',
+            'cta_ticket_premium' => 'ticket',
+            'contact_availability_board_premium' => 'board',
+        ];
+
+        $variant = $variants[$type] ?? 'board';
+        $resolved = strtolower((string) ($block['resolvedTheme'] ?? $block['theme'] ?? ''));
+        $primary = in_array($resolved, ['primary', 'dark', 'midnight', 'obsidian', 'charcoal', 'navy'], true);
+        $palette = is_array($theme['palette'] ?? null) ? $theme['palette'] : [];
+        $bg = $primary ? (string) ($palette['background'] ?? '#243447') : (string) ($palette['surface'] ?? '#ffffff');
+        $surface = $primary ? (string) ($palette['surface'] ?? $palette['card'] ?? '#30475E') : '#f7f8fa';
+        $text = $primary ? '#f8fafc' : (string) ($palette['text'] ?? '#172033');
+        $muted = $primary ? 'rgba(248,250,252,.74)' : (string) ($palette['muted'] ?? '#64748b');
+        $accent = (string) ($palette['accent'] ?? '#60A5FA');
+        $border = $primary ? 'rgba(248,250,252,.18)' : 'rgba(15,23,42,.13)';
+
+        $eyebrow = e((string) ($block['eyebrow'] ?? ''));
+        $heading = e((string) ($block['heading'] ?? ''));
+        $intro = e((string) ($block['text'] ?? ''));
+        $button = e((string) ($block['button_label'] ?? 'Start a conversation'));
+        $buttonUrl = e((string) ($block['button_url'] ?? '#'));
+        $secondary = e((string) ($block['secondary_label'] ?? 'Explore the details'));
+        $secondaryUrl = e((string) ($block['secondary_url'] ?? '#'));
+        $items = is_array($block['items'] ?? null) ? array_values($block['items']) : [];
+
+        $cards = '';
+        foreach ($items as $index => $item) {
+            if (! is_array($item)) {
+                continue;
+            }
+            $label = e((string) ($item['label'] ?? str_pad((string) ($index + 1), 2, '0', STR_PAD_LEFT)));
+            $value = trim((string) ($item['value'] ?? ''));
+            $valueHtml = $value !== '' ? "<span class='b6-value'>".e($value).'</span>' : '';
+            $title = e((string) ($item['title'] ?? ''));
+            $copy = e((string) ($item['text'] ?? ''));
+            $meta = trim((string) ($item['meta'] ?? ''));
+            $metaHtml = $meta !== '' ? "<span class='b6-meta'>".e($meta).'</span>' : '';
+            $cards .= "<article class='b6-item b6-item-".($index + 1)."'><span class='b6-label'>{$label}</span>{$valueHtml}<span class='b6-title'>{$title}</span><span class='b6-copy'>{$copy}</span>{$metaHtml}</article>";
+        }
+
+        $header = "<div class='b6-head'><span class='b6-eyebrow'>{$eyebrow}</span><span class='b6-heading'>{$heading}</span><span class='b6-intro'>{$intro}</span></div>";
+        $actions = "<div class='b6-actions'><a class='b6-primary' href='{$buttonUrl}'>{$button}</a><a class='b6-secondary' href='{$secondaryUrl}'>{$secondary}</a></div>";
+
+        if ($variant === 'chapters') {
+            $body = "<div class='b6-chapter-layout'>{$header}<div class='b6-grid'>{$cards}</div></div>";
+        } elseif ($variant === 'orbit') {
+            $coreLabel = e((string) ($block['core_label'] ?? 'Connected offer'));
+            $coreTitle = e((string) ($block['core_title'] ?? $block['heading'] ?? 'Built around the customer'));
+            $body = "{$header}<div class='b6-grid'><div class='b6-orbit-core'><span class='b6-label'>{$coreLabel}</span><span class='b6-title'>{$coreTitle}</span></div>{$cards}</div>";
+        } elseif ($variant === 'ticket') {
+            $note = e((string) ($block['action_note'] ?? 'Ready when you are'));
+            $tags = '';
+            foreach ($items as $item) {
+                if (is_array($item) && trim((string) ($item['title'] ?? '')) !== '') {
+                    $tags .= "<span class='b6-ticket-tag'>".e((string) $item['title']).'</span>';
+                }
+            }
+            $body = "<div class='b6-ticket-layout'><div>{$header}<div class='b6-ticket-tags'>{$tags}</div></div><div class='b6-ticket-action'><span class='b6-label'>{$note}</span>{$actions}</div></div>";
+        } else {
+            $body = "{$header}<div class='b6-grid'>{$cards}</div>".($variant === 'board' ? $actions : '');
+        }
+
+        $id = 'cosmic-b6-'.substr(sha1($type.'|'.$heading.'|'.count($items)), 0, 12);
+        $css = <<<CSS
+<style>
+#{$id}{--b6-bg:{$bg};--b6-surface:{$surface};--b6-text:{$text};--b6-muted:{$muted};--b6-border:{$border};--b6-accent:{$accent};position:relative;overflow:hidden;background:var(--b6-bg);color:var(--b6-text);padding:7rem 1.75rem}
+#{$id} *{box-sizing:border-box}#{$id} .b6-shell{width:100%;max-width:88rem;margin:0 auto}#{$id} .b6-head{max-width:52rem}
+#{$id} .b6-eyebrow,#{$id} .b6-label{display:block;color:var(--b6-muted);font-size:.72rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase}
+#{$id} .b6-heading{display:block;margin-top:1rem;font-size:clamp(2.45rem,5vw,4.8rem);font-weight:700;line-height:.97;letter-spacing:-.05em}
+#{$id} .b6-intro{display:block;max-width:45rem;margin-top:1.25rem;color:var(--b6-muted);font-size:1.05rem;line-height:1.8}
+#{$id} .b6-item{position:relative;min-width:0;border:1px solid var(--b6-border);background:var(--b6-surface);padding:1.5rem;overflow-wrap:anywhere}
+#{$id} .b6-title,#{$id} .b6-value{display:block}#{$id} .b6-title{margin-top:.7rem;font-size:1.35rem;font-weight:700;line-height:1.12;letter-spacing:-.025em}
+#{$id} .b6-value{margin:.75rem 0 -.25rem;font-size:clamp(2.4rem,4vw,4.5rem);font-weight:700;line-height:.9;letter-spacing:-.055em;color:var(--b6-accent)}
+#{$id} .b6-copy{display:block;margin-top:.75rem;color:var(--b6-muted);line-height:1.7}#{$id} .b6-meta{display:block;margin-top:1.25rem;padding-top:1rem;border-top:1px solid var(--b6-border);color:var(--b6-muted)}
+#{$id} .b6-actions{display:flex;flex-wrap:wrap;gap:.75rem;margin-top:2rem}#{$id} .b6-primary,#{$id} .b6-secondary{display:inline-flex;min-height:50px;align-items:center;justify-content:center;border-radius:999px;padding:.8rem 1.5rem;font-weight:800}
+#{$id} .b6-primary{background:var(--b6-text);color:var(--b6-bg)}#{$id} .b6-secondary{border:1px solid var(--b6-border);color:var(--b6-text)}
+
+#{$id}.b6-chapters .b6-chapter-layout{display:grid;grid-template-columns:.72fr 1.28fr;gap:clamp(3rem,8vw,8rem);align-items:start}#{$id}.b6-chapters .b6-head{position:sticky;top:8rem}#{$id}.b6-chapters .b6-grid{border-top:1px solid var(--b6-border)}
+#{$id}.b6-chapters .b6-item{display:grid;grid-template-columns:6rem .7fr 1.3fr;gap:1.5rem;align-items:start;border-width:0 0 1px;background:transparent;padding:2rem 0}#{$id}.b6-chapters .b6-title,#{$id}.b6-chapters .b6-copy{margin:0}
+
+#{$id}.b6-orbit .b6-grid{position:relative;display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;max-width:68rem;margin:4rem auto 0}#{$id}.b6-orbit .b6-grid:before{content:"";position:absolute;inset:12% 16%;border:1px dashed var(--b6-border);border-radius:50%}
+#{$id}.b6-orbit .b6-orbit-core{z-index:2;grid-column:2;grid-row:2;display:grid;min-height:12rem;place-content:center;border:1px solid var(--b6-accent);border-radius:50%;background:var(--b6-bg);padding:2rem;text-align:center}
+#{$id}.b6-orbit .b6-item{z-index:2;border-radius:1.5rem}#{$id}.b6-orbit .b6-item-1{grid-column:1;grid-row:1}#{$id}.b6-orbit .b6-item-2{grid-column:2;grid-row:1}#{$id}.b6-orbit .b6-item-3{grid-column:3;grid-row:1}#{$id}.b6-orbit .b6-item-4{grid-column:1;grid-row:3}#{$id}.b6-orbit .b6-item-5{grid-column:2;grid-row:3}#{$id}.b6-orbit .b6-item-6{grid-column:3;grid-row:3}
+
+#{$id}.b6-constellation .b6-grid{position:relative;display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:4rem}#{$id}.b6-constellation .b6-grid:before{content:"";position:absolute;left:5%;right:5%;top:2.15rem;height:1px;background:linear-gradient(90deg,transparent,var(--b6-accent),transparent);opacity:.55}
+#{$id}.b6-constellation .b6-item{border-width:0;background:transparent;padding:0 1.25rem 1.5rem}#{$id}.b6-constellation .b6-label{display:grid;width:4.3rem;height:4.3rem;place-items:center;border:1px solid var(--b6-border);border-radius:50%;background:var(--b6-bg);color:var(--b6-text)}
+
+#{$id}.b6-staircase .b6-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:1rem;margin-top:4rem;align-items:start}#{$id}.b6-staircase .b6-item{min-height:18rem;border-radius:1.5rem}#{$id}.b6-staircase .b6-item-2{margin-top:2rem}#{$id}.b6-staircase .b6-item-3{margin-top:4rem}#{$id}.b6-staircase .b6-item-4{margin-top:6rem}
+
+#{$id}.b6-ledger .b6-grid{margin-top:4rem;border-top:1px solid var(--b6-border)}#{$id}.b6-ledger .b6-item,#{$id}.b6-board .b6-item{display:grid;grid-template-columns:8rem .8fr 1.2fr 9rem;gap:1.5rem;align-items:center;border-width:0 0 1px;background:transparent;padding:1.35rem 0}#{$id}.b6-ledger .b6-title,#{$id}.b6-ledger .b6-copy,#{$id}.b6-ledger .b6-meta,#{$id}.b6-board .b6-title,#{$id}.b6-board .b6-copy,#{$id}.b6-board .b6-meta{margin:0;padding:0;border:0}#{$id}.b6-ledger .b6-meta,#{$id}.b6-board .b6-meta{text-align:right}
+
+#{$id}.b6-tree .b6-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:1.25rem;margin-top:4rem;padding-left:4rem}#{$id}.b6-tree .b6-item{border-radius:1.5rem}#{$id}.b6-tree .b6-item:before{content:"";position:absolute;right:100%;top:2rem;width:4rem;border-top:1px solid var(--b6-border)}#{$id}.b6-tree .b6-item-3,#{$id}.b6-tree .b6-item-4{margin-left:3rem}
+
+#{$id}.b6-ticket .b6-ticket-layout{position:relative;display:grid;grid-template-columns:1.3fr .7fr;overflow:hidden;border:1px solid var(--b6-border);border-radius:2rem;background:var(--b6-surface)}#{$id}.b6-ticket .b6-ticket-layout>div{padding:clamp(2rem,5vw,4.5rem)}#{$id}.b6-ticket .b6-ticket-action{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;border-left:1px dashed var(--b6-border)}#{$id}.b6-ticket .b6-actions{flex-direction:column}#{$id} .b6-ticket-tags{display:flex;flex-wrap:wrap;gap:.55rem;margin-top:2rem}#{$id} .b6-ticket-tag{border:1px solid var(--b6-border);border-radius:999px;padding:.5rem .8rem;color:var(--b6-muted)}
+
+#{$id}.b6-board .b6-grid{margin-top:4rem;overflow:hidden;border:1px solid var(--b6-border);border-radius:1.75rem}#{$id}.b6-board .b6-item{padding:1.35rem 1.5rem}#{$id}.b6-board .b6-item:last-child{border-bottom:0}#{$id}.b6-board .b6-meta{color:var(--b6-accent)}
+
+@media(max-width:900px){#{$id}{padding:5rem 1.25rem}#{$id}.b6-chapters .b6-chapter-layout{grid-template-columns:1fr}#{$id}.b6-chapters .b6-head{position:static}#{$id}.b6-orbit .b6-grid{grid-template-columns:repeat(2,1fr)}#{$id}.b6-orbit .b6-grid:before{display:none}#{$id}.b6-orbit .b6-orbit-core{grid-column:1/-1;grid-row:auto;border-radius:1.75rem}#{$id}.b6-orbit .b6-item{grid-column:auto!important;grid-row:auto!important}#{$id}.b6-constellation .b6-grid,#{$id}.b6-staircase .b6-grid{grid-template-columns:repeat(2,1fr)}#{$id}.b6-staircase .b6-item{margin-top:0!important}#{$id}.b6-ticket .b6-ticket-layout{grid-template-columns:1fr}#{$id}.b6-ticket .b6-ticket-action{border-top:1px dashed var(--b6-border);border-left:0}#{$id}.b6-ledger .b6-item,#{$id}.b6-board .b6-item{grid-template-columns:6rem 1fr 1.4fr}#{$id}.b6-ledger .b6-meta,#{$id}.b6-board .b6-meta{grid-column:2/-1;text-align:left}}
+@media(max-width:640px){#{$id}{padding:4rem 1rem}#{$id}.b6-chapters .b6-item{grid-template-columns:4rem 1fr}#{$id}.b6-chapters .b6-copy{grid-column:2}#{$id}.b6-orbit .b6-grid,#{$id}.b6-constellation .b6-grid,#{$id}.b6-staircase .b6-grid,#{$id}.b6-tree .b6-grid{grid-template-columns:1fr}#{$id}.b6-tree .b6-grid{padding-left:1.25rem}#{$id}.b6-tree .b6-item{margin-left:0!important}#{$id}.b6-ledger .b6-item,#{$id}.b6-board .b6-item{grid-template-columns:1fr;gap:.55rem}#{$id}.b6-ledger .b6-meta,#{$id}.b6-board .b6-meta{grid-column:auto}#{$id} .b6-heading{overflow-wrap:anywhere}}
+</style>
+CSS;
+
+        return "<section id='{$id}' class='cosmic-b6 b6-".e($variant)."'><div class='b6-shell'>{$body}</div>{$css}</section>";
     }
 
 

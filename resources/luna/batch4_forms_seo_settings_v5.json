@@ -1,0 +1,25 @@
+{
+  "version": 5,
+  "batch": 4,
+  "families": {
+    "form": {
+      "operations": ["update", "add", "remove", "reorder", "configure"],
+      "targets": ["field", "label", "placeholder", "required", "button", "recipient"],
+      "notes": "Recipient changes are deterministic site settings; structural form field changes use the registered Builder block schema."
+    },
+    "seo": {
+      "operations": ["update", "configure"],
+      "targets": ["title", "meta_description", "slug", "og_image", "canonical_url", "indexing"],
+      "persistence": "page"
+    },
+    "settings": {
+      "operations": ["update", "configure"],
+      "targets": ["site_name", "business_name", "contact_email", "contact_phone", "location", "address", "industry", "favicon"],
+      "persistence": "website"
+    }
+  },
+  "billing": {
+    "deterministic_updates": 0,
+    "rule": "No credits are charged unless an actual billable AI/API request is made."
+  }
+}

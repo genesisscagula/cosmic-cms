@@ -3,6 +3,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { RepeatableControls, RepeatableRemoveButton, removeAt } from "../Shared/RepeatableControls";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 const TEAM_MEMBER_PRESETS = [
     {
@@ -149,60 +150,60 @@ export function TeamModernBlock({ block, blockIndex, onUpdate, globalTheme }) {
     };
 
     return (
-        <section className={`group/repeatable-section px-6 py-16 sm:px-8 lg:py-20 ${theme.bg} transition-colors duration-500`}>
-            <div className="mx-auto max-w-7xl">
-                <div className="mb-10 max-w-2xl space-y-4 sm:mb-12">
+        <section className={sparkTw(block, "auto_1", `group/repeatable-section px-6 py-16 sm:px-8 lg:py-20 ${theme.bg} transition-colors duration-500`)}>
+            <div className={sparkTw(block, "auto_2", "mx-auto max-w-7xl")}>
+                <div className={sparkTw(block, "auto_3", "mb-10 max-w-2xl space-y-4 sm:mb-12")}>
                     {data.eyebrow && (
                         <EditableText
                             value={data.eyebrow}
-                            className={`block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`}
+                            className={sparkTw(block, "auto_4", `block text-xs font-semibold uppercase tracking-[0.22em] ${theme.sub}`)}
                             onSave={(eyebrow) => onUpdate({ eyebrow })}
                         />
                     )}
                     <EditableText
                         value={data.heading} cosmicType="h2"
-                        className={`block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
+                        className={sparkTw(block, "auto_5", `block text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] ${theme.text}`)}
                         onSave={(heading) => onUpdate({ heading })}
                     />
                     {data.text && (
                         <EditableText
                             value={data.text}
                             isTextArea
-                            className={`block max-w-xl text-base leading-7 ${theme.sub}`}
+                            className={sparkTw(block, "auto_6", `block max-w-xl text-base leading-7 ${theme.sub}`)}
                             onSave={(text) => onUpdate({ text })}
                         />
                     )}
                 </div>
 
-                <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+                <div className={sparkTw(block, "auto_7", "grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4")}>
                     {data.members.map((member, index) => (
                         <article
                             key={index}
-                            className={`group relative overflow-hidden rounded-2xl border ${theme.border} ${theme.card}`}
+                            className={sparkTw(block, "auto_8", `group relative overflow-hidden rounded-2xl border ${theme.border} ${theme.card}`)}
                         >
                             <EditableImage
                                 websiteId={website?.id}
                                 blockIndex={blockIndex}
                                 src={member.image_url || TEAM_MEMBER_PRESETS[index % TEAM_MEMBER_PRESETS.length].image_url}
-                                className="aspect-[4/3] w-full"
+                                className={sparkTw(block, "auto_9", "aspect-[4/3] w-full")}
                                 onSave={(image_url) => updateMember(index, "image_url", image_url)}
                             />
-                            <div className="space-y-2 p-5">
+                            <div className={sparkTw(block, "auto_10", "space-y-2 p-5")}>
                                 <EditableText
                                     value={member.name}
-                                    className={`block text-base font-semibold ${theme.text}`}
+                                    className={sparkTw(block, "auto_11", `block text-base font-semibold ${theme.text}`)}
                                     onSave={(name) => updateMember(index, "name", name)}
                                 />
                                 <EditableText
                                     value={member.role}
-                                    className={`block text-sm font-medium ${theme.sub}`}
+                                    className={sparkTw(block, "auto_12", `block text-sm font-medium ${theme.sub}`)}
                                     onSave={(role) => updateMember(index, "role", role)}
                                 />
                                 {member.bio && (
                                     <EditableText
                                         value={member.bio}
                                         isTextArea
-                                        className={`block pt-1 text-sm leading-6 ${theme.sub}`}
+                                        className={sparkTw(block, "auto_13", `block pt-1 text-sm leading-6 ${theme.sub}`)}
                                         onSave={(bio) => updateMember(index, "bio", bio)}
                                     />
                                 )}

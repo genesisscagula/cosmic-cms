@@ -31,23 +31,14 @@ class LunaPendingActionService
 
     public function shouldConfirmLarge(string $message, string $scope='page'): bool
     {
+        // Canonical Action Schema V5 removed the legacy large-creative proceed layer.
+        // This compatibility method now gates destructive deletion only.
         $q=Str::lower(trim($message));
         if($q==='') return false;
 
-        if(Str::contains($q,[
+        return Str::contains($q,[
             'delete','remove this page','delete page','delete website','remove website'
-        ])) return true;
-
-        $broadBuild=(bool)preg_match('/\b(build|create|design|generate|make)\b.{0,70}\b(website|site|homepage|landing page)\b/i',$message);
-        $broadRedesign=(bool)preg_match('/\b(redesign|rebrand|revamp|redo|rework|transform)\b.{0,80}\b(website|site|whole site|entire site|whole page|entire page|homepage)\b/i',$message);
-        $themeFamily=Str::contains($q,['rebrand the site','rebrand website','entire theme','whole theme','site-wide theme','sitewide theme']);
-        $explicitHexRebrand=(bool)preg_match('/#[0-9a-f]{3,6}\b/i',$message)
-            && Str::contains($q,['theme','brand','palette','color family','colour family','website color','website colour']);
-        $multiPage=Str::contains($q,['all pages','entire website','whole website','full website','complete website','5 pages','five pages']);
-
-        if($scope==='section' && !$broadBuild && !$multiPage && !$themeFamily && !$explicitHexRebrand) return false;
-
-        return $broadBuild || $broadRedesign || $themeFamily || $explicitHexRebrand || $multiPage;
+        ]);
     }
 
     public function put(string $actorKey, array $payload, int $ttlSeconds=1800): string

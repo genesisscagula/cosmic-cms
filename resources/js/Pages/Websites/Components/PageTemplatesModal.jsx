@@ -3,6 +3,7 @@ import { memo, useDeferredValue, useEffect, useMemo, useRef, useState } from 're
 import { showCosmicNotification } from '../../../Components/CosmicNotification';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { BlockRegistry } from '../BlockRegistry';
+import { createSparkTailwindRuntime } from '../Blocks/Shared/sparkTailwindRuntime';
 import ThemeSelector from '../Theme/ThemeSelector';
 import useInfiniteReveal from '../../../Hooks/useInfiniteReveal';
 
@@ -42,6 +43,7 @@ const TemplateMiniPreview = memo(function TemplateMiniPreview({ template, websit
                             block={block}
                             blockIndex={index}
                             globalTheme={websiteTheme}
+                            tailwind={createSparkTailwindRuntime(block)}
                             onUpdate={() => {}}
                             blogPosts={[]}
                         />
@@ -722,6 +724,7 @@ export default function PageTemplatesModal({
                                             block={block}
                                             blockIndex={index}
                                             globalTheme={websiteTheme}
+                                            tailwind={createSparkTailwindRuntime(block)}
                                             onUpdate={() => {}}
                                             blogPosts={[]}
                                         />

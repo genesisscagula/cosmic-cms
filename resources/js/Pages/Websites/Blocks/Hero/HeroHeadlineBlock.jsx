@@ -7,6 +7,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 
 export const HeroHeadlineSchema = {
@@ -118,43 +119,43 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
 
     return (
         <section
-            className={`relative w-full px-6 py-20 sm:px-[8%] sm:py-24 ${theme.bg} overflow-hidden transition-colors duration-500`}
+            className={sparkTw(block, "section", `relative w-full px-6 py-20 sm:px-[8%] sm:py-24 ${theme.bg} overflow-hidden transition-colors duration-500`)}
         >
 
             {/* Background */}
-            <div className="absolute top-[-120px] right-[-120px] w-[650px] h-[650px] rounded-full bg-gradient-to-br from-white/25 via-white/10 to-transparent blur-[180px]" />
+            <div className={sparkTw(block, "wrapper", "absolute top-[-120px] right-[-120px] w-[650px] h-[650px] rounded-full bg-gradient-to-br from-white/25 via-white/10 to-transparent blur-[180px]")} />
 
-            <div className="relative z-10 max-w-4xl">
+            <div className={sparkTw(block, "wrapper_2", "relative z-10 max-w-4xl")}>
 
                 <EditableText
                     value={data.subtitle}
-                    className={`font-bold tracking-widest uppercase text-sm block ${theme.sub}`}
+                    className={sparkTw(block, "text", `font-bold tracking-widest uppercase text-sm block ${theme.sub}`)}
                     onSave={(val) => onUpdate({ subtitle: val })}
                 />
 
-                <h1 className="mt-6 text-4xl font-extrabold leading-[1.02] sm:text-5xl lg:text-6xl xl:text-7xl">
+                <h1 className={sparkTw(block, "heading", "mt-6 text-4xl font-extrabold leading-[1.02] sm:text-5xl lg:text-6xl xl:text-7xl")}>
                     <EditableText
                         value={data.heading} cosmicType="h1"
-                        className={`block ${theme.text}`}
+                        className={sparkTw(block, "text_2", `block ${theme.text}`)}
                         onSave={(val) => onUpdate({ heading: val })}
                     />
                 </h1>
 
-                <div className="mt-6 max-w-2xl text-base sm:mt-8 sm:text-xl">
+                <div className={sparkTw(block, "wrapper_3", "mt-6 max-w-2xl text-base sm:mt-8 sm:text-xl")}>
                     <EditableText
                         value={data.text}
-                        className={`block ${theme.sub}`}
+                        className={sparkTw(block, "text_3", `block ${theme.sub}`)}
                         onSave={(val) => onUpdate({ text: val })}
                     />
                 </div>
 
-                <div className="mt-8 flex flex-col items-stretch gap-3 sm:mt-12 sm:flex-row sm:items-center sm:gap-4">
+                <div className={sparkTw(block, "wrapper_4", "mt-8 flex flex-col items-stretch gap-3 sm:mt-12 sm:flex-row sm:items-center sm:gap-4")}>
 
                     {/* Primary CTA */}
                     <EditableButton
                         label={data.btn1_label}
                         url={data.btn1_url}
-                        className={`
+                        className={sparkTw(block, "button", `
                             inline-flex w-full items-center justify-center sm:w-auto
                             min-h-[52px] px-8
                             rounded-full
@@ -162,7 +163,7 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
                             transition-all duration-200
                             ${buttonStyle.bg}
                             ${buttonStyle.text}
-                        `}
+                        `)}
                         onSave={(label, url) =>
                             onUpdate({
                                 btn1_label: label,
@@ -175,7 +176,7 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
                     <EditableButton
                         label={data.btn2_label}
                         url={data.btn2_url}
-                        className={`
+                        className={sparkTw(block, "button_2", `
                             inline-flex w-full items-center justify-center sm:w-auto
                             min-h-[52px] px-8
                             rounded-full
@@ -184,7 +185,7 @@ export function HeroHeadlineBlock({ block, blockIndex, onUpdate, globalTheme }) 
                             transition-all duration-200
                             ${theme.border || "border-slate-700"}
                             ${theme.text}
-                        `}
+                        `)}
                         onSave={(label, url) =>
                             onUpdate({
                                 btn2_label: label,

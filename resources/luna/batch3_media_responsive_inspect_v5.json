@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "batch": 3,
+  "capabilities": {
+    "inspect": {
+      "read_only": true,
+      "credit_cost": 0,
+      "surfaces": ["builder", "trial_builder"],
+      "targets": ["page", "section", "element", "typography", "layout", "media", "header", "footer"],
+      "rule": "Inspection must use current supplied Builder state and must never mutate or claim a mutation."
+    },
+    "media": {
+      "operations": ["inspect", "replace", "remove", "search", "generate", "configure"],
+      "roles": ["image", "background_image", "video", "background_video", "logo"],
+      "rule": "Preserve unrelated media and section structure unless replacement/redesign is explicit."
+    },
+    "responsive": {
+      "operations": ["inspect", "update", "configure"],
+      "breakpoints": ["desktop", "tablet", "mobile"],
+      "rule": "Responsive changes must remain inside Cosmic's supported design-token/layout system and preserve Builder/live parity."
+    }
+  }
+}

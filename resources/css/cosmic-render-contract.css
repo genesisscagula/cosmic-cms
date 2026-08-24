@@ -36,6 +36,69 @@
     overflow-wrap: anywhere;
 }
 
+/* Shared semantic typography contract. Section-local Luna edits write these
+ * role-specific variables on the section wrapper; Builder, preview, export and
+ * live must all consume the same variables instead of a generic heading size. */
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h1, [data-cosmic-type="h1"]) {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display)) !important;
+    font-size: var(--cosmic-local-h1-size, var(--cosmic-type-h1-size)) !important;
+    line-height: var(--cosmic-local-h1-line, var(--cosmic-type-h1-line)) !important;
+    font-weight: var(--cosmic-local-h1-weight, var(--cosmic-type-h1-weight)) !important;
+    letter-spacing: var(--cosmic-local-h1-tracking, var(--cosmic-type-h1-tracking)) !important;
+}
+
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h2, [data-cosmic-type="h2"]) {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display)) !important;
+    font-size: var(--cosmic-local-h2-size, var(--cosmic-type-h2-size)) !important;
+    line-height: var(--cosmic-local-h2-line, var(--cosmic-type-h2-line)) !important;
+    font-weight: var(--cosmic-local-h2-weight, var(--cosmic-type-h2-weight)) !important;
+    letter-spacing: var(--cosmic-local-h2-tracking, var(--cosmic-type-h2-tracking)) !important;
+}
+
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h3, [data-cosmic-type="h3"]) {
+    font-family: var(--cosmic-local-font-display, var(--cosmic-font-display)) !important;
+    font-size: var(--cosmic-local-h3-size, var(--cosmic-type-h3-size)) !important;
+    line-height: var(--cosmic-local-h3-line, var(--cosmic-type-h3-line)) !important;
+    font-weight: var(--cosmic-local-h3-weight, var(--cosmic-type-h3-weight)) !important;
+    letter-spacing: var(--cosmic-local-h3-tracking, var(--cosmic-type-h3-tracking)) !important;
+}
+
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h4, [data-cosmic-type="h4"]) {
+    font-size: var(--cosmic-local-h4-size, var(--cosmic-type-h4-size)) !important;
+    line-height: var(--cosmic-local-h4-line, var(--cosmic-type-h4-line)) !important;
+    font-weight: var(--cosmic-local-h4-weight, var(--cosmic-type-h4-weight)) !important;
+    letter-spacing: var(--cosmic-local-h4-tracking, var(--cosmic-type-h4-tracking)) !important;
+}
+
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h5, [data-cosmic-type="h5"]) {
+    font-size: var(--cosmic-local-h5-size, var(--cosmic-type-h5-size)) !important;
+    line-height: var(--cosmic-local-h5-line, var(--cosmic-type-h5-line)) !important;
+    font-weight: var(--cosmic-local-h5-weight, var(--cosmic-type-h5-weight)) !important;
+    letter-spacing: var(--cosmic-local-h5-tracking, var(--cosmic-type-h5-tracking)) !important;
+}
+
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h6, [data-cosmic-type="h6"]) {
+    font-size: var(--cosmic-local-h6-size, var(--cosmic-type-h6-size)) !important;
+    line-height: var(--cosmic-local-h6-line, var(--cosmic-type-h6-line)) !important;
+    font-weight: var(--cosmic-local-h6-weight, var(--cosmic-type-h6-weight)) !important;
+    letter-spacing: var(--cosmic-local-h6-tracking, var(--cosmic-type-h6-tracking)) !important;
+}
+
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(p, li, [data-cosmic-type="body"], [data-luna-target="text"]:not([data-cosmic-type])) {
+    font-family: var(--cosmic-local-font-body, var(--cosmic-font-body)) !important;
+    font-size: var(--cosmic-local-body-size, var(--cosmic-type-body-size)) !important;
+    line-height: var(--cosmic-local-body-line, var(--cosmic-type-body-line)) !important;
+    font-weight: var(--cosmic-local-body-weight, var(--cosmic-type-body-weight)) !important;
+    letter-spacing: var(--cosmic-local-body-tracking, var(--cosmic-type-body-tracking)) !important;
+}
+
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(a, button, [role="button"], [data-cosmic-type="button"]) {
+    font-size: var(--cosmic-local-button-size, var(--cosmic-type-button-size)) !important;
+    line-height: var(--cosmic-local-button-line, var(--cosmic-type-button-line)) !important;
+    font-weight: var(--cosmic-local-button-weight, var(--cosmic-type-button-weight)) !important;
+    letter-spacing: var(--cosmic-local-button-tracking, var(--cosmic-type-button-tracking)) !important;
+}
+
 /* Cross-surface semantic contrast. Several expansion Sparks intentionally use
  * spans for editorial headings, so h1-h6-only guards are not sufficient. */
 [data-cosmic-resolved-theme="primary"] {
@@ -62,9 +125,53 @@
     color: var(--cosmic-current-muted) !important;
 }
 
-[data-cosmic-resolved-theme="light"] {
+:is(
+    [data-cosmic-resolved-theme="light"],
+    [data-cosmic-resolved-theme="white"],
+    [data-cosmic-resolved-theme="surface"]
+) {
     --cosmic-current-text: var(--cosmic-on-surface, #172033);
     --cosmic-current-muted: var(--cosmic-on-surface-muted, #64748b);
+}
+
+/* A light section may contain a nested brand/dark card. Marking that surface
+ * keeps its local contrast authoritative even when global light-surface heading
+ * rules are loaded later in the Builder and static export bundles. */
+.cosmic-render-shell[data-cosmic-resolved-theme] [data-cosmic-contrast-surface="brand"] {
+    --cosmic-current-text: var(--cosmic-color-on-dark, var(--cosmic-on-primary, #f8fafc));
+    --cosmic-current-muted: var(--cosmic-on-primary-muted, rgba(248, 250, 252, 0.76));
+    color: var(--cosmic-current-text);
+}
+
+.cosmic-render-shell[data-cosmic-resolved-theme] [data-cosmic-contrast-surface="brand"] :is(
+    h1, h2, h3, h4, h5, h6,
+    [data-cosmic-type="h1"], [data-cosmic-type="h2"], [data-cosmic-type="h3"],
+    [data-cosmic-type="h4"], [data-cosmic-type="h5"], [data-cosmic-type="h6"],
+    [data-luna-target="heading"]
+) {
+    color: var(--cosmic-current-text) !important;
+    -webkit-text-fill-color: var(--cosmic-current-text) !important;
+}
+
+/* Backward-compatible contrast for registered Sparks that predate the brand
+ * marker. Exact class-token matching is intentional: broad `class*=-100`
+ * selectors also match unrelated transition/opacity utilities on light cards. */
+[data-cosmic-spark="1"] article:is(
+    [class~="text-white"], [class~="text-amber-50"], [class~="text-blue-50"],
+    [class~="text-emerald-50"], [class~="text-fuchsia-50"], [class~="text-indigo-50"],
+    [class~="text-lime-50"], [class~="text-neutral-100"], [class~="text-orange-50"],
+    [class~="text-rose-50"], [class~="text-slate-50"], [class~="text-slate-100"],
+    [class~="text-teal-50"], [class~="text-violet-50"],
+    :has(:is(h1,h2,h3,h4,h5,h6,p,span,blockquote,li):is(
+        [class~="text-white"], [class~="text-amber-50"], [class~="text-blue-50"],
+        [class~="text-emerald-50"], [class~="text-fuchsia-50"], [class~="text-indigo-50"],
+        [class~="text-lime-50"], [class~="text-neutral-100"], [class~="text-orange-50"],
+        [class~="text-rose-50"], [class~="text-slate-50"], [class~="text-slate-100"],
+        [class~="text-teal-50"], [class~="text-violet-50"]
+    ))
+) :is(h1,h2,h3,h4,h5,h6,p,span,blockquote,li) {
+    color: var(--cosmic-color-on-secondary, var(--cosmic-color-on-dark, #fff)) !important;
+    -webkit-text-fill-color: var(--cosmic-color-on-secondary, var(--cosmic-color-on-dark, #fff)) !important;
 }
 
 @media (max-width: 1024px) {
@@ -108,4 +215,48 @@
     .cosmic-render-shell [class*="grid-cols-3"] {
         min-width: 0;
     }
+}
+
+/* Luna semantic card surface capability. User scope wins, but color
+ * resolution stays semantic. The generic host targets registered card markers
+ * only; Sparks that have not opted into card markers keep their authored CSS. */
+[data-cosmic-card-treatment="neutral_dark"], [data-cosmic-card-treatment="dark"] {
+    --cosmic-card-role-bg: var(--cosmic-color-neutral-dark, var(--cosmic-color-dark, #171717));
+    --cosmic-card-role-fg: var(--cosmic-color-on-dark, #fff);
+}
+[data-cosmic-card-treatment="primary"] {
+    --cosmic-card-role-bg: var(--cosmic-brand-primary, var(--cosmic-bg-primary));
+    --cosmic-card-role-fg: var(--cosmic-color-on-primary, #fff);
+}
+[data-cosmic-card-treatment="accent"] {
+    --cosmic-card-role-bg: var(--cosmic-brand-accent, var(--cosmic-bg-accent));
+    --cosmic-card-role-fg: var(--cosmic-color-on-accent, #fff);
+}
+[data-cosmic-card-treatment="surface"] {
+    --cosmic-card-role-bg: var(--cosmic-color-surface, #fff);
+    --cosmic-card-role-fg: var(--cosmic-color-on-surface, var(--cosmic-color-body, #172033));
+}
+[data-cosmic-card-treatment="surface_alt"] {
+    --cosmic-card-role-bg: var(--cosmic-color-surface-alt, var(--cosmic-color-surface, #fff));
+    --cosmic-card-role-fg: var(--cosmic-color-on-surface-alt, var(--cosmic-color-body, #172033));
+}
+[data-cosmic-card-treatment="accent_tint"] {
+    --cosmic-card-role-bg: var(--cosmic-color-accent-tint, var(--cosmic-color-surface-alt, #fff));
+    --cosmic-card-role-fg: var(--cosmic-color-on-accent-tint, var(--cosmic-color-body, #172033));
+}
+[data-cosmic-card-treatment="white"] {
+    --cosmic-card-role-bg: var(--cosmic-color-white, #fff);
+    --cosmic-card-role-fg: var(--cosmic-color-body, var(--cosmic-color-on-surface, #172033));
+}
+[data-cosmic-card-treatment] :is([data-cosmic-card="1"], [data-cosmic-radius="card"]) {
+    --cosmic-card-treatment-fg: var(--cosmic-card-role-fg, currentColor);
+    background: var(--cosmic-card-role-bg, var(--cosmic-color-surface, #fff)) !important;
+    color: var(--cosmic-card-treatment-fg) !important;
+    border-color: color-mix(in srgb, var(--cosmic-card-treatment-fg) 20%, transparent) !important;
+}
+[data-cosmic-card-treatment] :is([data-cosmic-card="1"], [data-cosmic-radius="card"]) :is(
+    h1,h2,h3,h4,h5,h6,p,span,a,button,[data-cosmic-type],[data-luna-target]
+) {
+    color: var(--cosmic-card-treatment-fg, currentColor) !important;
+    -webkit-text-fill-color: var(--cosmic-card-treatment-fg, currentColor) !important;
 }

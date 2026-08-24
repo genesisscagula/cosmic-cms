@@ -265,7 +265,7 @@ class SparkPlannerRegistry
             'hero_centered_cta' => ['category' => 'cta', 'description' => 'Simple centered call-to-action section.'],
             'image_cta_banner' => ['category' => 'cta', 'description' => 'Visual image-backed call-to-action banner.'],
             'cta_glass_premium' => ['category' => 'cta', 'description' => 'Pro-only frosted glass call-to-action card with layered premium depth.'],
-            'cta_gradient_premium' => ['category' => 'cta', 'description' => 'Pro-only bold gradient call-to-action with high-contrast conversion hierarchy.'],
+            'cta_gradient_premium' => ['category' => 'cta', 'description' => 'Pro-only layered call-to-action with a high-contrast conversion hierarchy that follows the semantic page surface.'],
             'cta_newsletter_premium' => ['category' => 'cta', 'description' => 'Pro-only newsletter signup call-to-action with compact trust/support copy.'],
             'cta_book_demo_premium' => ['category' => 'cta', 'description' => 'Pro-only demo-booking call-to-action with scheduling-oriented details and sales handoff.'],
             'cta_calendly_premium' => ['category' => 'cta', 'description' => 'Pro-only calendar-style scheduling CTA for a supplied Calendly or booking URL; never invent availability.'],

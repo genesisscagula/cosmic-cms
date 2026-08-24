@@ -7,6 +7,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { RepeatableControls, RepeatableRemoveButton, cloneLast } from "../Shared/RepeatableControls";
+import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 
 export const ServicesBentoSchema = {
@@ -200,31 +201,31 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
     return (
 
         <section
-            className={`group/repeatable-section w-full py-32 px-7 md:px-8 transition-colors duration-500 ${theme.bg}`}
+            className={sparkTw(block, "section", `group/repeatable-section w-full py-32 px-7 md:px-8 transition-colors duration-500 ${theme.bg}`)}
         >
 
-            <div className="max-w-7xl mx-auto">
+            <div className={sparkTw(block, "wrapper", "max-w-7xl mx-auto")}>
 
                 {/* Header */}
 
-                <div className="max-w-3xl mb-20">
+                <div className={sparkTw(block, "wrapper_2", "max-w-3xl mb-20")}>
 
                     <EditableText
                         value={data.tagline}
-                        className={`text-xs font-semibold tracking-[0.35em] uppercase ${theme.text} opacity-70 block`}
+                        className={sparkTw(block, "text", `text-xs font-semibold tracking-[0.35em] uppercase ${theme.text} opacity-70 block`)}
                         onSave={(val) => onUpdate({ tagline: val })}
                     />
 
                     <EditableText
                         value={data.heading} cosmicType="h2"
-                        className={`mt-5 block text-4xl font-bold tracking-tight leading-[1.05] sm:text-5xl lg:text-[3.75rem] ${theme.text}`}
+                        className={sparkTw(block, "text_2", `mt-5 block text-4xl font-bold tracking-tight leading-[1.05] sm:text-5xl lg:text-[3.75rem] ${theme.text}`)}
                         onSave={(val) => onUpdate({ heading: val })}
                     />
 
                     <EditableText
                         value={data.description}
                         isTextArea
-                        className={`mt-6 text-lg leading-8 ${theme.sub} block`}
+                        className={sparkTw(block, "text_3", `mt-6 text-lg leading-8 ${theme.sub} block`)}
                         onSave={(val) =>
                             onUpdate({
                                 description: val
@@ -236,13 +237,14 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
 
                 {/* Bento Rows */}
 
-                <div className="space-y-6">
+                <div className={sparkTw(block, "wrapper_3", "cosmic-section-stack space-y-6")}>
 
                     {services.map((service, index) => (
 
                         <div
                             key={index}
-                            className={`
+                            data-cosmic-card="1"
+                            className={sparkTw(block, "wrapper_4", `
                                 group
                                 ${theme.card}
                                 border
@@ -259,7 +261,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                                 duration-300
                                 hover:shadow-2xl
                                 hover:-translate-y-1
-                            `}
+                            `)}
                         >
 
                             <RepeatableRemoveButton hoverScope="card" onRemove={() => onUpdate({ services: services.filter((_, idx) => idx !== index) })} disabled={services.length <= 1} label="Remove service" overlay />
@@ -267,23 +269,12 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                             {/* Icon */}
 
                             <div
-                                className="
-                                    w-20
-                                    h-20
-                                    rounded-3xl
-                                    cosmic-adaptive-icon-tile
-                                    border
-                                    flex
-                                    items-center
-                                    justify-center
-                                    text-4xl
-                                    shrink-0
-                                "
+                                className={sparkTw(block, "icon_tile", "w-20 h-20 rounded-3xl cosmic-adaptive-icon-tile border flex items-center justify-center text-4xl shrink-0")}
                             >
 
                                 <EditableText
                                     value={service.icon}
-                                    className="text-4xl"
+                                    className={sparkTw(block, "text_4", "text-4xl")}
                                     onSave={(val) =>
                                         updateService(index, "icon", val)
                                     }
@@ -293,11 +284,11 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
 
                             {/* Content */}
 
-                            <div className="flex-grow">
+                            <div className={sparkTw(block, "wrapper_5", "flex-grow")}>
 
                                 <EditableText
                                     value={service.title}
-                                    className={`text-3xl font-bold ${theme.text} block`}
+                                    className={sparkTw(block, "text_5", `text-3xl font-bold ${theme.text} block`)}
                                     onSave={(val) =>
                                         updateService(index, "title", val)
                                     }
@@ -306,7 +297,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                                 <EditableText
                                     value={service.desc}
                                     isTextArea
-                                    className={`mt-3 text-lg leading-8 ${theme.sub} block`}
+                                    className={sparkTw(block, "text_6", `mt-3 text-lg leading-8 ${theme.sub} block`)}
                                     onSave={(val) =>
                                         updateService(index, "desc", val)
                                     }
@@ -316,7 +307,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
 
                             {/* CTA */}
 
-                            <div className="shrink-0">
+                            <div className={sparkTw(block, "wrapper_6", "shrink-0")}>
 
                                 <EditableButton
                                     label={service.cta_label || "Learn More"}
@@ -326,7 +317,7 @@ export function ServicesBentoBlock({ block, onUpdate, globalTheme }) {
                                         updated[index] = { ...updated[index], cta_label: label, cta_url: url };
                                         onUpdate({ services: updated });
                                     }}
-                                    className={`inline-flex items-center gap-2 text-sm font-semibold ${theme.text}`}
+                                    className={sparkTw(block, "button_2", `inline-flex items-center gap-2 text-sm font-semibold ${theme.text}`)}
                                 />
 
                             </div>

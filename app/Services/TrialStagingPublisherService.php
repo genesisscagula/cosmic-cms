@@ -17,6 +17,43 @@ final class TrialStagingPublisherService
         private readonly PreviewDeploymentService $previews,
     ) {}
 
+    /**
+     * Return the stable trial preview URL when deployment already succeeded.
+     *
+     * Older/in-flight jobs can finish PreviewDeploymentService::deploy() and
+     * then be interrupted before writing bundle_manifest.staging_url. Repairing
+     * that final pointer here prevents an already-published site from remaining
+     * stuck behind the Builder's "Preparing preview" state.
+     */
+    public function existingUrl(TrialGeneration $trial): ?string
+    {
+        $trial = TrialGeneration::query()->with('website.pages')->find($trial->id);
+        if (! $trial || ! $trial->website) {
+            return null;
+        }
+
+        $storedUrl = data_get($trial->bundle_manifest, 'staging_url');
+        if (is_string($storedUrl) && trim($storedUrl) !== '') {
+            return $storedUrl;
+        }
+
+        $website = $trial->website;
+        if (! filled($website->preview_slug) || ! filled($website->last_preview_deployed_at)) {
+            return null;
+        }
+
+        $home = $website->pages->firstWhere('id', (int) $trial->page_id)
+            ?? $website->pages->sortBy([['sort_order', 'asc'], ['id', 'asc']])->first();
+        if (! $home) {
+            return null;
+        }
+
+        $url = $this->previews->urlForPage($website, $home);
+        $this->rememberStagingUrl($trial->id, $url, $website->last_preview_deployed_at?->toIso8601String());
+
+        return $url;
+    }
+
     /** Publish a complete unclaimed trial bundle to its no-index staging site. */
     public function publish(TrialGeneration $trial): ?string
     {
@@ -69,13 +106,24 @@ final class TrialStagingPublisherService
             if(!$home)throw new RuntimeException('Trial staging Home page is missing.');
             $url=$this->previews->urlForPage($website->fresh(),$home);
 
-            $freshTrial=TrialGeneration::query()->find($trial->id);
-            $manifest=is_array($freshTrial?->bundle_manifest)?$freshTrial->bundle_manifest:[];
-            $manifest['staging_url']=$url;
-            $manifest['staged_at']=now()->toIso8601String();
-            $freshTrial?->forceFill(['bundle_manifest'=>$manifest])->save();
+            $this->rememberStagingUrl($trial->id, $url);
 
             return $url;
+        });
+    }
+
+    private function rememberStagingUrl(int $trialId, string $url, ?string $stagedAt = null): void
+    {
+        DB::transaction(function () use ($trialId, $url, $stagedAt): void {
+            $trial = TrialGeneration::query()->lockForUpdate()->find($trialId);
+            if (! $trial) {
+                return;
+            }
+
+            $manifest = is_array($trial->bundle_manifest) ? $trial->bundle_manifest : [];
+            $manifest['staging_url'] = $url;
+            $manifest['staged_at'] = $stagedAt ?: now()->toIso8601String();
+            $trial->forceFill(['bundle_manifest' => $manifest])->save();
         });
     }
 

@@ -19,9 +19,9 @@ final class TemplateQualityAuditor
         $duplicateSections = count($sections) !== count(array_unique($sections));
         $heroCount = count(array_filter($sections, fn ($s) => str_starts_with($s, 'hero_')));
         $hasClose = collect($sections)->contains(fn ($s) => str_starts_with($s, 'cta_') || str_starts_with($s, 'contact_') || str_starts_with($s, 'lead_') || $s === 'image_cta_banner');
-        $proofCount = collect($sections)->filter(fn ($s) => str_starts_with($s, 'testimonials_') || str_starts_with($s, 'stats_') || str_starts_with($s, 'portfolio_') || str_starts_with($s, 'case_stud'))->count();
+        $proofCount = collect($sections)->filter(fn ($s) => str_starts_with($s, 'testimonials_') || str_starts_with($s, 'stats_') || str_starts_with($s, 'portfolio_') || str_starts_with($s, 'case_stud') || str_starts_with($s, 'proof_') || str_starts_with($s, 'trust_'))->count();
         $denseCount = collect($sections)->filter(fn ($s) => str_contains($s, 'cards') || str_contains($s, 'grid') || str_contains($s, 'comparison') || str_contains($s, 'pricing'))->count();
-        $mediaCount = collect($sections)->filter(fn ($s) => str_contains($s, 'image') || str_contains($s, 'portfolio') || str_contains($s, 'video') || str_contains($s, 'gallery') || str_contains($s, 'slider'))->count();
+        $mediaCount = collect($sections)->filter(fn ($s) => Str::contains($s, ['image', 'portfolio', 'video', 'gallery', 'slider', 'parallax', 'fullscreen', 'editorial_overlay', 'background_image']))->count();
         $imageProfile = $this->imageProfile($sections);
         $modeProfile = $this->modeProfile($sections);
 
