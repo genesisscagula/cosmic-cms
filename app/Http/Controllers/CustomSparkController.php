@@ -44,6 +44,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use Throwable;
@@ -2012,6 +2013,7 @@ PROMPT;
         SparkEditCapabilityRegistry $sparkEditCapabilities,
         \App\Services\SparkEditCapabilityExecutor $sparkEditCapabilityExecutor,
         \App\Services\LunaTailwindMutationService $tailwindMutations,
+        \App\Services\LunaSparkSchemaEditorService $sparkSchemaEditor,
         LunaRenderParityService $renderParity,
         LunaExecutionVerificationService $executionVerification,
         LunaSiteDesignDnaService $siteDna,
@@ -2031,6 +2033,7 @@ PROMPT;
 
         $validated=$request->validate([
             'prompt'=>['required','string','max:6000'],
+            'conversation'=>['nullable','string','max:180000'],
             'blocks'=>['required','string','max:350000'],
             'header'=>['nullable','string','max:80000'],
             'footer'=>['nullable','string','max:120000'],
@@ -2072,6 +2075,7 @@ PROMPT;
         if(!is_array($siteMemory))$siteMemory=[];
         $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
         if(!is_array($elementContext))$elementContext=[];
+        $builderConversation=$this->lunaBuilderConversation((string)($validated['conversation']??''));
         if(!isset($elementContext['itemIndex']) && isset($validated['target_item_index'])){
             $elementContext['itemIndex']=(int)$validated['target_item_index'];
         }
@@ -2121,10 +2125,20 @@ PROMPT;
                 'ui_scope'=>$scope,
                 'target_index'=>$targetIndex,
                 'has_blocks'=>count($blocks)>0,
+                'page_sparks'=>array_values(array_map(
+                    fn($block,$index)=>[
+                        'index'=>$index,
+                        'type'=>is_array($block)?(string)($block['type']??''):'',
+                        'label'=>is_array($block)?Str::limit(trim((string)($block['heading']??$block['title']??$block['eyebrow']??$block['type']??'')),80,''):'',
+                    ],
+                    $blocks,
+                    array_keys($blocks)
+                )),
                 'current_page_id'=>$currentPage?->id,
                 'current_page_title'=>$currentPage?->title,
                 'current_page_slug'=>$currentPage?->slug,
                 'element_context'=>$elementContext,
+                'conversation'=>$builderConversation,
             ];
             $siteMemory=$contextState->attach($siteMemory,$routeContext);
             $routeContext['context_state']=$contextState->routingContext($siteMemory,$routeContext);
@@ -2134,11 +2148,14 @@ PROMPT;
                 : ['intent'=>'chat'];
         }
 
-        // Structural section commands are executable actions even when phrased
-        // conversationally (for example, "can you change the hero to slider"
-        // or "can you make this section better"). Do not let capability/chat
-        // routing downgrade an explicit mutation into a proposal-only reply.
-        if(!$resumePendingPlan && $sparkEditCapabilities->isStructuralRequest($prompt,is_array($canonicalIntent)?$canonicalIntent:[])){
+        // API 1 owns the chat | action boundary. Legacy structural detection may
+        // refine an already-routed ACTION, but it must never promote CHAT into
+        // ACTION behind the router's back.
+        if(
+            !$resumePendingPlan
+            && (($canonicalIntent['intent']??'chat')==='action')
+            && $sparkEditCapabilities->isStructuralRequest($prompt,is_array($canonicalIntent)?$canonicalIntent:[])
+        ){
             $structuralLower=Str::lower($prompt);
             $structuralOperation=Str::contains($structuralLower,['move ','move this','reorder']) ? 'move'
                 : (Str::contains($structuralLower,['add ','insert ','create ']) ? 'add'
@@ -2324,14 +2341,16 @@ PROMPT;
         // size that was never written to page state.
         $trialTypography=json_decode((string)($validated['typography']??'{}'),true);
         if(!is_array($trialTypography))$trialTypography=[];
-        $trialTypographyAction=$this->lunaTypographyAction(
-            $prompt,
-            $scope,
-            $targetIndex,
-            $blocks,
-            $trialTypography,
-            $canonicalIntent
-        );
+        $trialTypographyAction=data_get($canonicalIntent,'routing.menu_scope')==='sparks'
+            ? null
+            : $this->lunaTypographyAction(
+                $prompt,
+                $scope,
+                $targetIndex,
+                $blocks,
+                $trialTypography,
+                $canonicalIntent
+            );
         if(is_array($trialTypographyAction)){
             $trialTypographyAction=$this->lunaVerifyTypographyAction(
                 $trialTypographyAction,
@@ -2363,7 +2382,7 @@ PROMPT;
         }
 
         $lower=Str::lower($prompt);
-        if($scope==='header'){
+        if(data_get($canonicalIntent,'routing.menu_scope')!=='sparks' && $scope==='header'){
             $shellAction=$this->lunaHeaderScopeAction($coreActionPrompt,is_array($header)?$header:[],$siteMemory);
             if(is_array($shellAction)){
                 return response()->json([
@@ -2390,7 +2409,7 @@ PROMPT;
                 ]);
             }
         }
-        if($guardrailReply=$this->lunaUnsupportedLowLevelDesignRequest($prompt)){
+        if(data_get($canonicalIntent,'routing.menu_scope')!=='sparks' && ($guardrailReply=$this->lunaUnsupportedLowLevelDesignRequest($prompt))){
             return response()->json([
                 'reply'=>$trialNaturalReplyFromFacts([
                     'action_completed'=>false,
@@ -2409,7 +2428,7 @@ PROMPT;
                 'applied_operations'=>[],
             ]);
         }
-        if($namedTheme=$this->lunaStandaloneNamedThemeKey($prompt)){
+        if(data_get($canonicalIntent,'routing.menu_scope')==='theme' && ($namedTheme=$this->lunaStandaloneNamedThemeKey($prompt))){
             $siteMemory['theme_context']=['primary'=>$namedTheme,'scope'=>'site','status'=>'applied'];
             return response()->json([
                 'reply'=>'Applied the '.Str::headline($namedTheme).' theme across the website.',
@@ -2424,7 +2443,7 @@ PROMPT;
                 'applied_operations'=>[['action'=>'theme','theme_key'=>$namedTheme,'verified'=>true]],
             ]);
         }
-        if($automaticTheme=$this->lunaAutomaticThemeKey($prompt,json_decode((string)($validated['theme']??'{}'),true)?:[],(string)($trial->industry??''))){
+        if(data_get($canonicalIntent,'routing.menu_scope')==='theme' && ($automaticTheme=$this->lunaAutomaticThemeKey($prompt,json_decode((string)($validated['theme']??'{}'),true)?:[],(string)($trial->industry??'')))){
             $siteMemory['theme_context']=['primary'=>$automaticTheme,'scope'=>'site','status'=>'applied','source'=>'luna_auto_family'];
             return response()->json([
                 'reply'=>'Applied a '.Str::headline($automaticTheme).' color family across the website.',
@@ -2482,6 +2501,13 @@ PROMPT;
         // Relative art direction on a selected section stays local.
         if($artDirectionIntent && $scope!=='section')$designGlobalIntent=true;
         $siteMemory=$this->lunaUpdatedSiteMemory((string)$validated['prompt'],$siteMemory,is_array($theme??null)?$theme:[]);
+        // Whole-page requests that explicitly name a section (hero/services/etc.)
+        // get a deterministic section index before capability/Tailwind planning.
+        // This lets Luna use only that Spark's rendered Tailwind inventory.
+        if($scope==='page'){
+            $namedPageTargetIndex=$this->lunaNamedBlockTargetIndex((string)$validated['prompt'],$blocks);
+            if($namedPageTargetIndex!==null)$targetIndex=$namedPageTargetIndex;
+        }
 
 
         // If the user explicitly names a different section, that name overrides
@@ -2606,13 +2632,30 @@ PROMPT;
 
         $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
         if(!is_array($elementContext))$elementContext=[];
+        $builderConversation=$this->lunaBuilderConversation((string)($validated['conversation']??''));
         if(!isset($elementContext['itemIndex']) && isset($validated['target_item_index'])){
             $elementContext['itemIndex']=(int)$validated['target_item_index'];
         }
         if(!isset($elementContext['collectionKey']) && !empty($validated['target_collection_key'])){
             $elementContext['collectionKey']=(string)$validated['target_collection_key'];
         }
-        if($namedTargetOverrodeSelection)$elementContext=[];
+        if($namedTargetOverrodeSelection){
+            // Clear stale clicked-element targeting when a named page section (for example
+            // "hero") overrides the previous selection, but preserve the request-scoped
+            // Tailwind inventory collected for that newly resolved Spark. Without this,
+            // Whole Page visual edits reach the planner with zero legal rendered slots and
+            // verification correctly reports no website-state change.
+            $tailwindContext=array_intersect_key($elementContext,[
+                'tailwindInventory'=>true,
+                'tailwind_inventory'=>true,
+                'tailwindPageInventory'=>true,
+                'tailwindTargetIndex'=>true,
+                'tailwindTargetName'=>true,
+                'tailwindSlot'=>true,
+                'tailwind_slot'=>true,
+            ]);
+            $elementContext=$tailwindContext;
+        }
         if($elementContext && $selected){
             $elementContext['matched_paths']=$smartSparkEditing->resolveMatchedPaths($selected,$elementContext,$prompt);
         }
@@ -2624,12 +2667,17 @@ PROMPT;
             is_array($canonicalIntent)?$canonicalIntent:[],
         );
         $usable=is_array($editCapabilityPayload['catalog']??null)?$editCapabilityPayload['catalog']:[];
+        if($scope==='page' && is_array($elementContext['tailwindPageInventory']??null)){
+            $pageInventory=$elementContext['tailwindPageInventory'];
+            $resolvedInventory=$pageInventory[$targetIndex]??$pageInventory[(string)$targetIndex]??null;
+            if(is_array($resolvedInventory)) $elementContext['tailwindInventory']=$resolvedInventory;
+        }
         $tailwindEditContext=$selected ? $tailwindMutations->plannerContext($selected,$elementContext) : [];
 
         $system='You are Luna, the invisible website editor. Return JSON only: {"operations":[{"action":"edit|replace|insert_before|insert_after|delete|move|theme","index":0,"to_index":0,"spark_key":"registered key when needed","theme_key":"","changes":{},"tailwind_mutations":[{"slot":"rendered slot id","add":["Tailwind utility"],"remove":["conflicting current utility"]}],"instruction":""}],"header_changes":{},"footer_changes":{},"brand_color_family":null,"page_style":null}. Use ONLY Spark keys from the supplied catalog. Rank candidates by requested aliases/media/capabilities FIRST, selected-section semantic intent/category SECOND, then layout/style/industry/position fit. Never default to Hero merely because Hero also supports the requested media; preserve the selected section role unless the user explicitly asks to change it. For simple edits use edit and only existing schema keys. REPEATER/LIST CRUD IS NON-STRUCTURAL:
 For the compatible premium Services family (services_bento_premium, services_editorial_premium, services_showcase_premium, services_minimal_luxury, services_contrast_premium, services_split_premium, services_grid_premium, services_feature_premium), treat featured_* as item 1 and service_two_* through service_seven_* as items 2–7. service_count controls visible services. "Add N services" MUST use edit, increase service_count by N up to 7, and fill the newly exposed sequential service_*_title/text/number fields with relevant content. "Remove the least important service" MUST use edit, compact the remaining service fields in order, decrement service_count, and preserve the layout. requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. FOOTER CONTRACT: footer_changes may update logo metadata, copyright, privacy/terms labels+URLs, contact {email,phone,address}, social_links [{label,url}], mega_enabled, and mega_footer {enabled,theme,tagline,primary_label,primary_url,columns:[{title,items:[{label,url}]}]}. Preserve unrelated footer fields. Footer columns max 4, items max 6 each, social links max 6. Footer-only requests must not mutate header or body sections. HEADER NAVIGATION CONTRACT: header_changes.menu is the complete resulting menu array. Each item is {"label":"...","url":"...","children":[...]}; children may nest to 3 levels total. For add/remove/rename/reorder/submenu requests, preserve unrelated items and return the complete updated menu. Header navigation is always plain dropdown navigation; do not create or enable mega menus. Never invent a page URL when the user did not provide one; use an existing matching menu/page target or "#". Header manual-equivalent navigation structure changes are valid shell changes. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs. COLOR FAMILY DESIGN: when the user supplies an explicit HEX and asks to make/change the website theme, brand, colors, or color family around it, keep that exact HEX as `brand_color_family.primary` and design a tasteful premium semantic family around it. Return `brand_color_family` with this schema: {"sourceColor":"#RRGGBB","primary":"#RRGGBB","primaryHover":"#RRGGBB","primarySoft":"#RRGGBB","secondary":"#RRGGBB","accent":"#RRGGBB","background":"#RRGGBB","surface":"#RRGGBB","surfaceMuted":"#RRGGBB","heading":"#RRGGBB","text":"#RRGGBB","muted":"#RRGGBB","border":"#RRGGBB","buttonPrimary":"#RRGGBB","buttonText":"#RRGGBB","buttonSecondary":"#RRGGBB","buttonSecondaryText":"#RRGGBB","success":"#RRGGBB","warning":"#RRGGBB","error":"#RRGGBB","onPrimary":"#RRGGBB","onDark":"#RRGGBB","gradient":{"from":"#RRGGBB","via":"#RRGGBB","to":"#RRGGBB","glow":"#RRGGBB","angle":125}}. Aim for premium restraint: harmonious surfaces, readable body text, meaningful accent separation, and no random rainbow palette. For a DARK supplied HEX, the exact primary may own the hero and headings with contrast-safe light foregrounds. For a LIGHT supplied HEX, preserve the exact HEX as the brand/CTA anchor but use a derived dark secondary for headings and a dark hero so light buttons remain clearly visible. The server enforces one of these two patterns and may repair unsafe palette values.  DOCUMENTATION GROUNDING: You receive a LUNA KNOWLEDGE PACKET containing relevant canonical Cosmic CMS documentation and capability records. Product/capability claims MUST be grounded in that packet. If a capability is unsupported, planned, or limited, say so accurately and offer the documented fallback. If the packet does not establish support, do not invent support. A capability question is informational: return a useful natural reply and NO operations/header/footer/theme/page-style mutation. Server runtime guards remain authoritative. THEME INTELLIGENCE: choose a theme only when the user explicitly asks for a theme/color-family change or when a first-build planner specifically requests one. If the user directly asks to change/switch the theme without naming a family, choose one suitable different color family now and emit a theme operation; do not ask which theme or ask for confirmation. Never choose midnight as a generic/default theme; use midnight only when the user explicitly asks for midnight/night styling. For vague style directions that are not explicit theme-change requests, preserve the current site theme and redesign within that family. REQUEST INTELLIGENCE: distinguish content edits from structural redesigns. Text/image/link/name/label changes edit the existing Spark. Add/remove/reorder list or card items edits the repeater. Requests for another layout, redesign, slider, video hero, split, grid, mosaic, testimonial style, or different section type are structural and may replace with the closest registered Spark. Global typography/spacing/background requests are handled by the design-token router; section-specific requests should remain local. Header overlay/logo/nav requests belong to the global header, not the body Spark. If a request contains multiple compatible actions, complete all applicable actions in order. ';
         $system="INTERNAL TARGET/CHANGE PLANNER. Intermediate output is JSON only. Never return reply, message, response, suggestion, question, confirmation copy, or any user-facing text.\n".$system;
-        $system.="\nLAZY SPARK CONTRACT: For mode=selected_spark, edit only the selected Spark through its declared modules and do not emit structural operations. For mode=structural_catalog, structural operations may use only supplied catalog keys.\nTAILWIND MUTATION CONTRACT: For specific visual styling requests on a selected section/element, prefer operation.tailwind_mutations using only slot ids in TAILWIND EDIT CONTEXT.rendered_slots. Preserve unrelated classes. Remove conflicting current utilities before adding replacements. Never emit raw CSS or rewrite markup. Content edits remain in changes.";
+        $system.="\nLAZY SPARK CONTRACT: For mode=selected_spark, edit only the selected Spark through its declared modules and do not emit structural operations. For mode=structural_catalog, structural operations may use only supplied catalog keys.\nTAILWIND MUTATION CONTRACT: For specific visual styling requests, prefer operation.tailwind_mutations using only slot ids in TAILWIND EDIT CONTEXT.rendered_slots. Resolve natural target words through each rendered slot's semantic aliases. Plurals/groups such as buttons/CTAs mean mutate every matching button/cta slot in the resolved section; singular primary/secondary button means only that matching slot. Preserve unrelated classes. Remove conflicting current utilities before adding replacements. Never emit raw CSS or rewrite markup. Content edits remain in changes.";
         if($resumePendingPlan && is_array($resumePendingPlan['plan']??null)){
             $plan=$resumePendingPlan['plan'];
         }else{
@@ -2897,6 +2945,18 @@ For the compatible premium Services family (services_bento_premium, services_edi
             $ops=array_values($resumePendingPlan['operations']);
         }
 
+        // Nested router Batch 4: Spark schema edits do not depend on the legacy
+        // planner producing a micro-edit operation. API 3 already locked the target.
+        $nestedSparkTarget=data_get($canonicalIntent,'routing.spark_target');
+        if(data_get($canonicalIntent,'routing.menu_scope')==='sparks' && is_array($nestedSparkTarget)){
+            $nestedIndex=(int)($nestedSparkTarget['index']??-1);
+            if($nestedIndex>=0 && isset($blocks[$nestedIndex])){
+                $ops=[['action'=>'edit','index'=>$nestedIndex,'changes'=>[]]];
+                $scope='section';
+                $targetIndex=$nestedIndex;
+            }
+        }
+
         $pricing=$lunaPricing->estimate($prompt,$ops,$scope);
         $cost=(int)($pricing['credits']??0);
         // Batch 2 direct execution: trial build/update actions execute immediately.
@@ -2954,16 +3014,67 @@ For the compatible premium Services family (services_bento_premium, services_edi
         }
         if($cost>0)$trialCredits->ensureCanSpend($trial,$cost,'This Luna change');
 
-        $keys=collect($usable)->pluck('key')->flip(); $next=array_values($blocks); $beforeFingerprint=hash('sha256',json_encode($next,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:''); $applied=[];
+        $keys=collect($usable)->pluck('key')->flip(); $next=array_values($blocks); $fullSchemaEdited=false; $beforeFingerprint=hash('sha256',json_encode($next,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:''); $applied=[];
         foreach($ops as $op){
             if(!is_array($op))continue;$action=(string)($op['action']??'');$i=(int)($op['index']??-1);
             if($scope==='section'&&!in_array($action,['insert_before','insert_after'],true)&&$i!==$targetIndex)continue;
             if($action==='edit'&&isset($next[$i])&&(is_array($op['changes']??null)||is_array($op['tailwind_mutations']??null))){
                 $changes=is_array($op['changes']??null)?$op['changes']:[];unset($changes['type'],$changes['_renderKey']);
+
+                // API 4 full-schema editor owns Spark edits in the new nested route.
+                // Run it once for the exact API-3-selected Spark and bypass the
+                // legacy micro-mutation/repeater path when it returns a valid schema.
+                $sparkTarget=data_get($canonicalIntent,'routing.spark_target');
+                if(!$fullSchemaEdited && data_get($canonicalIntent,'routing.menu_scope')==='sparks'
+                    && is_array($sparkTarget) && (int)($sparkTarget['index']??-1)===$i){
+                    $schemaResult=$sparkSchemaEditor->edit($prompt,$next[$i],$sparkTarget,$elementContext,$builderConversation);
+                    if(($schemaResult['ok']??false)===true){
+                        $next[$i]=$schemaResult['block'];
+                        $fullSchemaEdited=true;
+                        if(($schemaResult['changed']??false)===true){
+                            $applied[]=[
+                                'action'=>'spark_full_schema_edit',
+                                'index'=>$i,
+                                'spark_type'=>$sparkTarget['type'],
+                                'diff'=>$schemaResult['diff']??[],
+                                'before_fingerprint'=>$schemaResult['before_fingerprint']??null,
+                                'after_fingerprint'=>$schemaResult['after_fingerprint']??null,
+                                'verified'=>true,
+                            ];
+                        }
+                        continue;
+                    }
+                    Log::warning('Luna full Spark schema edit rejected',[
+                        'trial_id'=>$trial->id??null,
+                        'spark_type'=>$next[$i]['type']??null,
+                        'index'=>$i,
+                        'reason'=>$schemaResult['reason']??'unknown',
+                        'details'=>array_diff_key($schemaResult,['block'=>true,'editable'=>true,'tailwind'=>true]),
+                    ]);
+                    // Fail closed for the nested Sparks path. Never fall back to
+                    // the old alias/micro-mutation engine after API 4 rejects.
+                    $fullSchemaEdited=true;
+                    continue;
+                }
+
                 $tailwindResult=$tailwindMutations->apply($next[$i],is_array($op['tailwind_mutations']??null)?$op['tailwind_mutations']:[],$elementContext);
                 if(($tailwindResult['applied']??[])!==[]){
                     $next[$i]=$tailwindResult['block'];
                     $applied[]=['action'=>'tailwind_edit','index'=>$i,'mutations'=>$tailwindResult['applied'],'verified'=>true];
+                }
+                if(($tailwindResult['rejected']??[])!==[]){
+                    Log::warning('Luna Tailwind mutation rejected', [
+                        'website_id'=>$website->id ?? null,
+                        'page_id'=>$page->id ?? null,
+                        'spark_type'=>$next[$i]['type'] ?? null,
+                        'index'=>$i,
+                        'rejected'=>$tailwindResult['rejected'],
+                        'requested_mutations'=>$op['tailwind_mutations'] ?? [],
+                        'rendered_slots'=>array_values(array_filter(array_map(
+                            fn($row)=>is_array($row)?($row['slot']??null):null,
+                            is_array($elementContext['tailwindInventory']??null)?$elementContext['tailwindInventory']:[]
+                        ))),
+                    ]);
                 }
                 if($changes===[]) continue;
                 $repeaterResult=$smartSparkEditing->applyRepeaterIntent($prompt,$next[$i],$elementContext);
@@ -3728,6 +3839,28 @@ For the compatible premium Services family (services_bento_premium, services_edi
      * prompt is preserved, but schema values become authoritative enough that
      * executors no longer depend on exact user phrasing alone.
      */
+    /**
+     * Ephemeral Builder conversation supplied by the current browser tab.
+     * Never persisted here; refresh naturally starts a new conversation.
+     */
+    private function lunaBuilderConversation(string $json): array
+    {
+        $decoded=json_decode($json,true);
+        if(!is_array($decoded)) return [];
+
+        $out=[];
+        foreach($decoded as $turn){
+            if(!is_array($turn)) continue;
+            $role=(string)($turn['role']??'');
+            if(!in_array($role,['user','assistant'],true)) continue;
+            $content=trim((string)($turn['content']??$turn['text']??''));
+            if($content==='') continue;
+            $out[]=['role'=>$role,'content'=>Str::limit($content,6000,'')];
+            if(count($out)>=120) break;
+        }
+        return $out;
+    }
+
     private function lunaCoreActionExecutionPrompt(string $prompt, array $canonicalIntent): string
     {
         if (($canonicalIntent['intent'] ?? '') !== 'action') return $prompt;
@@ -3837,6 +3970,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
         SparkEditCapabilityRegistry $sparkEditCapabilities,
         \App\Services\SparkEditCapabilityExecutor $sparkEditCapabilityExecutor,
         \App\Services\LunaTailwindMutationService $tailwindMutations,
+        \App\Services\LunaSparkSchemaEditorService $sparkSchemaEditor,
         LunaRenderParityService $renderParity,
         LunaExecutionVerificationService $executionVerification,
         LunaSiteDesignDnaService $siteDna,
@@ -3858,6 +3992,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
 
         $validated=$request->validate([
             'prompt'=>['required','string','max:6000'],
+            'conversation'=>['nullable','string','max:180000'],
             'blocks'=>['required','string','max:350000'],
             'header'=>['nullable','string','max:80000'],
             'footer'=>['nullable','string','max:120000'],
@@ -3895,6 +4030,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
         if(!is_array($components))$components=[];
         $elementContext=json_decode((string)($validated['element_context']??'{}'),true);
         if(!is_array($elementContext))$elementContext=[];
+        $builderConversation=$this->lunaBuilderConversation((string)($validated['conversation']??''));
         if(!isset($elementContext['itemIndex']) && isset($validated['target_item_index'])){
             $elementContext['itemIndex']=(int)$validated['target_item_index'];
         }
@@ -3952,10 +4088,20 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'ui_scope'=>$scope,
                 'target_index'=>$targetIndex,
                 'has_blocks'=>count($blocks)>0,
+                'page_sparks'=>array_values(array_map(
+                    fn($block,$index)=>[
+                        'index'=>$index,
+                        'type'=>is_array($block)?(string)($block['type']??''):'',
+                        'label'=>is_array($block)?Str::limit(trim((string)($block['heading']??$block['title']??$block['eyebrow']??$block['type']??'')),80,''):'',
+                    ],
+                    $blocks,
+                    array_keys($blocks)
+                )),
                 'website_id'=>$website->id,
                 'website_name'=>$website->name,
                 'current_page_id'=>$validated['current_page_id']??null,
                 'element_context'=>$elementContext,
+                'conversation'=>$builderConversation,
             ];
             $siteMemory=$contextState->attach($siteMemory,$routeContext);
             $siteMemory=$contextState->invalidateForNavigation($siteMemory,$routeContext);
@@ -3966,11 +4112,14 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 : ['intent'=>'chat'];
         }
 
-        // Structural section commands are executable actions even when phrased
-        // conversationally (for example, "can you change the hero to slider"
-        // or "can you make this section better"). Do not let capability/chat
-        // routing downgrade an explicit mutation into a proposal-only reply.
-        if(!$resumePendingPlan && $sparkEditCapabilities->isStructuralRequest($prompt,is_array($canonicalIntent)?$canonicalIntent:[])){
+        // API 1 owns the chat | action boundary. Legacy structural detection may
+        // refine an already-routed ACTION, but it must never promote CHAT into
+        // ACTION behind the router's back.
+        if(
+            !$resumePendingPlan
+            && (($canonicalIntent['intent']??'chat')==='action')
+            && $sparkEditCapabilities->isStructuralRequest($prompt,is_array($canonicalIntent)?$canonicalIntent:[])
+        ){
             $structuralLower=Str::lower($prompt);
             $structuralOperation=Str::contains($structuralLower,['move ','move this','reorder']) ? 'move'
                 : (Str::contains($structuralLower,['add ','insert ','create ']) ? 'add'
@@ -4564,14 +4713,16 @@ For the compatible premium Services family (services_bento_premium, services_edi
 
         // Typography commands are deterministic and cost 0 credits because they
         // update existing design tokens without making an AI/API request.
-        $typographyAction=$this->lunaTypographyAction(
-            $coreActionPrompt,
-            $scope,
-            $targetIndex,
-            $blocks,
-            $typography,
-            $canonicalIntent
-        );
+        $typographyAction=data_get($canonicalIntent,'routing.menu_scope')==='sparks'
+            ? null
+            : $this->lunaTypographyAction(
+                $coreActionPrompt,
+                $scope,
+                $targetIndex,
+                $blocks,
+                $typography,
+                $canonicalIntent
+            );
         if(is_array($typographyAction)){
             $typographyAction=$this->lunaVerifyTypographyAction(
                 $typographyAction,
@@ -4743,7 +4894,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
             }
         }
 
-        if($scope==='header'){
+        if(data_get($canonicalIntent,'routing.menu_scope')!=='sparks' && $scope==='header'){
             $shellAction=$this->lunaHeaderScopeAction($coreActionPrompt,is_array($header)?$header:[],$siteMemory);
             if(is_array($shellAction)){
                 return response()->json([
@@ -4771,7 +4922,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
             }
         }
 
-        if($scope==='header'){
+        if(data_get($canonicalIntent,'routing.menu_scope')!=='sparks' && $scope==='header'){
             $pageNavAction=$this->lunaPageNavigationAction((string)$validated['prompt'],$website,is_array($header)?$header:[]);
             if(is_array($pageNavAction)){
                 return response()->json([
@@ -4793,7 +4944,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 ]);
             }
         }
-        if($guardrailReply=$this->lunaUnsupportedLowLevelDesignRequest((string)$validated['prompt'])){
+        if(data_get($canonicalIntent,'routing.menu_scope')!=='sparks' && ($guardrailReply=$this->lunaUnsupportedLowLevelDesignRequest((string)$validated['prompt']))){
             return response()->json([
                 'reply'=>$naturalReplyFromFacts([
                     'action_completed'=>false,
@@ -4812,7 +4963,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'applied_operations'=>[],
             ]);
         }
-        if($namedTheme=$this->lunaStandaloneNamedThemeKey((string)$validated['prompt'])){
+        if(data_get($canonicalIntent,'routing.menu_scope')==='theme' && ($namedTheme=$this->lunaStandaloneNamedThemeKey((string)$validated['prompt']))){
             $siteMemory['theme_context']=['primary'=>$namedTheme,'scope'=>'site','status'=>'applied'];
             return response()->json([
                 'reply'=>'Applied the '.Str::headline($namedTheme).' theme across the website.',
@@ -4828,7 +4979,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'applied_operations'=>[['action'=>'theme','theme_key'=>$namedTheme,'verified'=>true]],
             ]);
         }
-        if($automaticTheme=$this->lunaAutomaticThemeKey((string)$validated['prompt'],is_array($theme)?$theme:[],(string)($website->industry??''))){
+        if(data_get($canonicalIntent,'routing.menu_scope')==='theme' && ($automaticTheme=$this->lunaAutomaticThemeKey((string)$validated['prompt'],is_array($theme)?$theme:[],(string)($website->industry??'')))){
             $siteMemory['theme_context']=['primary'=>$automaticTheme,'scope'=>'site','status'=>'applied','source'=>'luna_auto_family'];
             return response()->json([
                 'reply'=>'Applied a '.Str::headline($automaticTheme).' color family across the website.',
@@ -4858,6 +5009,13 @@ $resolvedMutationScope=(string)($scopeResolution['scope']??$scope);
         // Relative art direction inherits the resolved scope; explicit local wording never widens.
         if($artDirectionIntent && in_array($resolvedMutationScope,['element','item','section'],true))$designGlobalIntent=false;
         $siteMemory=$this->lunaUpdatedSiteMemory((string)$validated['prompt'],$siteMemory,is_array($theme??null)?$theme:[]);
+        // Whole-page requests that explicitly name a section (hero/services/etc.)
+        // get a deterministic section index before capability/Tailwind planning.
+        // This lets Luna use only that Spark's rendered Tailwind inventory.
+        if($scope==='page'){
+            $namedPageTargetIndex=$this->lunaNamedBlockTargetIndex((string)$validated['prompt'],$blocks);
+            if($namedPageTargetIndex!==null)$targetIndex=$namedPageTargetIndex;
+        }
 
 
         $promptForTarget=trim((string)$validated['prompt']);
@@ -5207,7 +5365,23 @@ EXISTING WEBSITE BRAND CONSTRAINT: Preserve the current website theme '{$current
         // Plans gate product capabilities (standard pages / Posts & Updates / Commerce),
         // not visual Spark or template quality.
         $usable=[];
-        if($namedTargetOverrodeSelection)$elementContext=[];
+        if($namedTargetOverrodeSelection){
+            // Clear stale clicked-element targeting when a named page section (for example
+            // "hero") overrides the previous selection, but preserve the request-scoped
+            // Tailwind inventory collected for that newly resolved Spark. Without this,
+            // Whole Page visual edits reach the planner with zero legal rendered slots and
+            // verification correctly reports no website-state change.
+            $tailwindContext=array_intersect_key($elementContext,[
+                'tailwindInventory'=>true,
+                'tailwind_inventory'=>true,
+                'tailwindPageInventory'=>true,
+                'tailwindTargetIndex'=>true,
+                'tailwindTargetName'=>true,
+                'tailwindSlot'=>true,
+                'tailwind_slot'=>true,
+            ]);
+            $elementContext=$tailwindContext;
+        }
         if($elementContext && $scope==='section' && isset($blocks[$targetIndex])){
             $elementContext['matched_paths']=$smartSparkEditing->resolveMatchedPaths($blocks[$targetIndex],$elementContext,(string)$validated['prompt']);
         }
@@ -5220,6 +5394,11 @@ EXISTING WEBSITE BRAND CONSTRAINT: Preserve the current website theme '{$current
             is_array($canonicalIntent)?$canonicalIntent:[],
         );
         $usable=is_array($editCapabilityPayload['catalog']??null)?$editCapabilityPayload['catalog']:[];
+        if($scope==='page' && is_array($elementContext['tailwindPageInventory']??null)){
+            $pageInventory=$elementContext['tailwindPageInventory'];
+            $resolvedInventory=$pageInventory[$targetIndex]??$pageInventory[(string)$targetIndex]??null;
+            if(is_array($resolvedInventory)) $elementContext['tailwindInventory']=$resolvedInventory;
+        }
         $tailwindEditContext=$selectedCapabilityBlock ? $tailwindMutations->plannerContext($selectedCapabilityBlock,$elementContext) : [];
         $catalogJson=json_encode($usable,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE);
         $targetContext=$scope==='section' && isset($blocks[$targetIndex])
@@ -5314,7 +5493,7 @@ RULES:
 - Never delete content unless the user asks.
 - Never claim success in reply unless the JSON contains the operation/state change that performs the request.
 PROMPT;
-        $system.="\nLAZY SPARK CONTRACT: For mode=selected_spark, edit only the selected Spark through its declared modules and do not emit structural operations. For mode=structural_catalog, structural operations may use only supplied catalog keys.\nTAILWIND MUTATION CONTRACT: For specific visual styling requests on a selected section/element, prefer operation.tailwind_mutations using only slot ids in TAILWIND EDIT CONTEXT.rendered_slots. Preserve unrelated classes. Remove conflicting current utilities before adding replacements. Never emit raw CSS or rewrite markup. Content edits remain in changes.";
+        $system.="\nLAZY SPARK CONTRACT: For mode=selected_spark, edit only the selected Spark through its declared modules and do not emit structural operations. For mode=structural_catalog, structural operations may use only supplied catalog keys.\nTAILWIND MUTATION CONTRACT: For specific visual styling requests, prefer operation.tailwind_mutations using only slot ids in TAILWIND EDIT CONTEXT.rendered_slots. Resolve natural target words through each rendered slot's semantic aliases. Plurals/groups such as buttons/CTAs mean mutate every matching button/cta slot in the resolved section; singular primary/secondary button means only that matching slot. Preserve unrelated classes. Remove conflicting current utilities before adding replacements. Never emit raw CSS or rewrite markup. Content edits remain in changes.";
 
         if($resumePendingPlan && is_array($resumePendingPlan['plan']??null)){
             $plan=$resumePendingPlan['plan'];
@@ -5584,6 +5763,18 @@ PROMPT;
             $operations=array_values($resumePendingPlan['operations']);
         }
 
+        // Nested router Batch 4: API 4 owns edits for the exact API-3-selected
+        // Spark. Do not require the old mutation planner to invent an edit plan.
+        $nestedSparkTarget=data_get($canonicalIntent,'routing.spark_target');
+        if(data_get($canonicalIntent,'routing.menu_scope')==='sparks' && is_array($nestedSparkTarget)){
+            $nestedIndex=(int)($nestedSparkTarget['index']??-1);
+            if($nestedIndex>=0 && isset($blocks[$nestedIndex])){
+                $operations=[['action'=>'edit','index'=>$nestedIndex,'changes'=>[]]];
+                $scope='section';
+                $targetIndex=$nestedIndex;
+            }
+        }
+
         // Batch 12 recovery uses the exact final operation plan. It never asks the
         // model to reinterpret the request during recovery.
         $recoveryPlannedOperations=$operations;
@@ -5654,6 +5845,7 @@ PROMPT;
         }
         $catalogKeys=collect($usable)->pluck('key')->flip();
         $nextBlocks=array_values($blocks);
+        $fullSchemaEdited=false;
         $beforeFingerprint=hash('sha256',json_encode($nextBlocks,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)?:'');
         $applied=[];
 
@@ -5670,6 +5862,41 @@ PROMPT;
                 $current=$nextBlocks[$index];
                 $changes=is_array($operation['changes']??null)?$operation['changes']:[];
                 unset($changes['type'],$changes['_renderKey']);
+
+                $sparkTarget=data_get($canonicalIntent,'routing.spark_target');
+                if(!$fullSchemaEdited && data_get($canonicalIntent,'routing.menu_scope')==='sparks'
+                    && is_array($sparkTarget) && (int)($sparkTarget['index']??-1)===$index){
+                    $schemaResult=$sparkSchemaEditor->edit($prompt,$current,$sparkTarget,$elementContext,$builderConversation);
+                    if(($schemaResult['ok']??false)===true){
+                        $current=$schemaResult['block'];
+                        $nextBlocks[$index]=$current;
+                        $fullSchemaEdited=true;
+                        if(($schemaResult['changed']??false)===true){
+                            $applied[]=[
+                                'action'=>'spark_full_schema_edit',
+                                'index'=>$index,
+                                'spark_type'=>$sparkTarget['type'],
+                                'diff'=>$schemaResult['diff']??[],
+                                'before_fingerprint'=>$schemaResult['before_fingerprint']??null,
+                                'after_fingerprint'=>$schemaResult['after_fingerprint']??null,
+                                'verified'=>true,
+                            ];
+                        }
+                        continue;
+                    }
+                    Log::warning('Luna full Spark schema edit rejected',[
+                        'website_id'=>$website->id,
+                        'spark_type'=>$current['type']??null,
+                        'index'=>$index,
+                        'reason'=>$schemaResult['reason']??'unknown',
+                        'details'=>array_diff_key($schemaResult,['block'=>true,'editable'=>true,'tailwind'=>true]),
+                    ]);
+                    // Nested Spark edits are fail-closed: a rejected full schema
+                    // is never reinterpreted by the old mutation engine.
+                    $fullSchemaEdited=true;
+                    continue;
+                }
+
                 $tailwindResult=$tailwindMutations->apply($current,is_array($operation['tailwind_mutations']??null)?$operation['tailwind_mutations']:[],$elementContext);
                 if(($tailwindResult['applied']??[])!==[]){
                     $current=$tailwindResult['block'];

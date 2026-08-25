@@ -280,7 +280,11 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                                 key={`hero-slider-cta-${index}`}
                                 href={cta.url}
                                 onClick={(event) => event.preventDefault()}
-                                className={sparkTw(block, "b10_2", `rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 ${index === 0 ? sliderMediaStyle.primary : sliderMediaStyle.secondary}`)}
+                                className={sparkTw(
+                                    block,
+                                    index === 0 ? "primary_button" : `secondary_button_${index}`,
+                                    `rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 ${index === 0 ? sliderMediaStyle.primary : sliderMediaStyle.secondary}`,
+                                )}
                             >
                                 {cta.text}
                             </a>
@@ -312,7 +316,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                     <a
                         href={floatingCta.url}
                         onClick={(event) => event.preventDefault()}
-                        className={`mr-1 rounded-full px-4 py-2 text-xs font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${CTA_STYLES[3]}`}
+                        className={sparkTw(block, "floating_button", `mr-1 rounded-full px-4 py-2 text-xs font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${CTA_STYLES[3]}`)}
                     >
                         {floatingCta.text}
                     </a>

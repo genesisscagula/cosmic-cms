@@ -241,14 +241,14 @@ export function HeroBackgroundImageBlock({
             src={data.image_url}
             showOverlay={false}
             isBackground
-            className={sparkTw(block, "b10_1", "
+            className={sparkTw(block, "b10_1", `
                 absolute
                 inset-0
                 w-full
                 h-full
                 overflow-hidden
                 z-20
-            ")}
+            `)}
             onSave={(value) =>
                 onUpdate({
                     image_url: value

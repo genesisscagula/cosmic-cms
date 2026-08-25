@@ -24,12 +24,18 @@ final class LunaTailwindMutationService
             $slot = $this->contract->normalizeSlot((string) ($row['slot'] ?? ''));
             if ($slot === '' || ! preg_match((string) config('spark-tailwind-schema.slot_pattern'), $slot)) continue;
             $classResult = $this->validator->validateClasses((string) ($row['classes'] ?? ''));
+            $tag = Str::lower(substr((string) ($row['tag'] ?? ''), 0, 20));
+            $role = Str::lower(substr((string) ($row['role'] ?? ''), 0, 30));
+            $text = Str::limit(trim(preg_replace('/\s+/', ' ', (string) ($row['text'] ?? ''))), 90, '');
+            $classes = implode(' ', $classResult['classes']);
+            $aliases = $this->semanticAliases($slot, $tag, $role, $classes, $text);
             $clean[] = [
                 'slot' => $slot,
-                'tag' => Str::lower(substr((string) ($row['tag'] ?? ''), 0, 20)),
-                'role' => Str::lower(substr((string) ($row['role'] ?? ''), 0, 30)),
-                'classes' => implode(' ', $classResult['classes']),
-                'text' => Str::limit(trim(preg_replace('/\s+/', ' ', (string) ($row['text'] ?? ''))), 90, ''),
+                'tag' => $tag,
+                'role' => $role,
+                'aliases' => $aliases,
+                'classes' => $classes,
+                'text' => $text,
             ];
         }
 
@@ -49,6 +55,7 @@ final class LunaTailwindMutationService
             ],
             'rules' => [
                 'Patch only slots present in rendered_slots or clicked_slot.',
+                'Use aliases to map natural language targets. If the user says plural buttons/CTAs/cards/images, mutate every matching rendered slot in this one resolved Spark instance; if singular primary/secondary/specific, mutate only that slot.',
                 'Use remove for conflicting current utilities and add for replacements. The server also deterministically removes same-family conflicts at the exact same variant scope.',
                 'Preserve unrelated utilities, responsive variants, theme classes, and layout structure.',
                 'For relative follow-ups such as slightly/little more, inspect rendered current classes and move one restrained Tailwind step from the CURRENT rendered value, never from the original Spark default.',
@@ -56,6 +63,45 @@ final class LunaTailwindMutationService
                 'Do not emit CSS, HTML, JavaScript, style attributes, or class strings outside add/remove token arrays.',
             ],
         ];
+    }
+
+
+    /** Natural-language aliases are hints only; the slot id remains the mutation boundary. */
+    private function semanticAliases(string $slot, string $tag, string $role, string $classes, string $text): array
+    {
+        $haystack = Str::lower(trim($slot.' '.$tag.' '.$role.' '.$classes.' '.$text));
+        $aliases = [];
+        $add = function (string ...$values) use (&$aliases): void {
+            foreach ($values as $value) if ($value !== '' && ! in_array($value, $aliases, true)) $aliases[] = $value;
+        };
+
+        // Buttons/CTAs must be identified semantically, never merely because a
+        // wrapper has spacing utilities such as px-* / py-*.
+        $isButton = in_array($tag, ['button', 'a'], true)
+            || Str::contains($slot, ['button', 'cta'])
+            || Str::contains($role, ['button', 'cta', 'call to action']);
+        if ($isButton) {
+            $add('button', 'buttons', 'cta', 'call to action');
+            if (
+                Str::contains($slot, ['secondary_button', 'secondary_cta', 'button_2'])
+                || Str::contains($role, ['secondary'])
+            ) {
+                $add('secondary button', 'secondary cta');
+            } elseif (
+                Str::contains($slot, ['primary_button', 'primary_cta', 'button_1'])
+                || Str::contains($role, ['primary'])
+            ) {
+                $add('primary button', 'primary cta');
+            }
+        }
+        if (preg_match('/^h[1-6]$/', $tag) || Str::contains($haystack, ['heading','headline','title'])) $add('heading','headline','title');
+        if ($tag === 'img' || Str::contains($haystack, ['image','object-cover','object-contain','aspect-'])) $add('image','photo','media');
+        if ($tag === 'section' || $slot === 'section') $add('section','section wrapper');
+        if (Str::contains($haystack, ['card','rounded','shadow']) && ! in_array($tag, ['button','a'], true)) $add('card','cards','panel');
+        if (Str::contains($haystack, ['grid','gap-','flex'])) $add('layout','container','wrapper','gap');
+        if ($tag === 'p' || Str::contains($haystack, ['body','description','paragraph'])) $add('body text','paragraph','description');
+
+        return array_slice($aliases, 0, 12);
     }
 
     public function apply(array $block, array $mutations, array $elementContext = []): array

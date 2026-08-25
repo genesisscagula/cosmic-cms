@@ -39,7 +39,7 @@
 /* Shared semantic typography contract. Section-local Luna edits write these
  * role-specific variables on the section wrapper; Builder, preview, export and
  * live must all consume the same variables instead of a generic heading size. */
-:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h1, [data-cosmic-type="h1"]) {
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h1, [data-cosmic-type="h1"]):not([class*="cosmic-tw-slot--"]) {
     font-family: var(--cosmic-local-font-display, var(--cosmic-font-display)) !important;
     font-size: var(--cosmic-local-h1-size, var(--cosmic-type-h1-size)) !important;
     line-height: var(--cosmic-local-h1-line, var(--cosmic-type-h1-line)) !important;
@@ -47,7 +47,7 @@
     letter-spacing: var(--cosmic-local-h1-tracking, var(--cosmic-type-h1-tracking)) !important;
 }
 
-:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h2, [data-cosmic-type="h2"]) {
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h2, [data-cosmic-type="h2"]):not([class*="cosmic-tw-slot--"]) {
     font-family: var(--cosmic-local-font-display, var(--cosmic-font-display)) !important;
     font-size: var(--cosmic-local-h2-size, var(--cosmic-type-h2-size)) !important;
     line-height: var(--cosmic-local-h2-line, var(--cosmic-type-h2-line)) !important;
@@ -55,7 +55,7 @@
     letter-spacing: var(--cosmic-local-h2-tracking, var(--cosmic-type-h2-tracking)) !important;
 }
 
-:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h3, [data-cosmic-type="h3"]) {
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h3, [data-cosmic-type="h3"]):not([class*="cosmic-tw-slot--"]) {
     font-family: var(--cosmic-local-font-display, var(--cosmic-font-display)) !important;
     font-size: var(--cosmic-local-h3-size, var(--cosmic-type-h3-size)) !important;
     line-height: var(--cosmic-local-h3-line, var(--cosmic-type-h3-line)) !important;
@@ -63,28 +63,28 @@
     letter-spacing: var(--cosmic-local-h3-tracking, var(--cosmic-type-h3-tracking)) !important;
 }
 
-:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h4, [data-cosmic-type="h4"]) {
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h4, [data-cosmic-type="h4"]):not([class*="cosmic-tw-slot--"]) {
     font-size: var(--cosmic-local-h4-size, var(--cosmic-type-h4-size)) !important;
     line-height: var(--cosmic-local-h4-line, var(--cosmic-type-h4-line)) !important;
     font-weight: var(--cosmic-local-h4-weight, var(--cosmic-type-h4-weight)) !important;
     letter-spacing: var(--cosmic-local-h4-tracking, var(--cosmic-type-h4-tracking)) !important;
 }
 
-:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h5, [data-cosmic-type="h5"]) {
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h5, [data-cosmic-type="h5"]):not([class*="cosmic-tw-slot--"]) {
     font-size: var(--cosmic-local-h5-size, var(--cosmic-type-h5-size)) !important;
     line-height: var(--cosmic-local-h5-line, var(--cosmic-type-h5-line)) !important;
     font-weight: var(--cosmic-local-h5-weight, var(--cosmic-type-h5-weight)) !important;
     letter-spacing: var(--cosmic-local-h5-tracking, var(--cosmic-type-h5-tracking)) !important;
 }
 
-:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h6, [data-cosmic-type="h6"]) {
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(h6, [data-cosmic-type="h6"]):not([class*="cosmic-tw-slot--"]) {
     font-size: var(--cosmic-local-h6-size, var(--cosmic-type-h6-size)) !important;
     line-height: var(--cosmic-local-h6-line, var(--cosmic-type-h6-line)) !important;
     font-weight: var(--cosmic-local-h6-weight, var(--cosmic-type-h6-weight)) !important;
     letter-spacing: var(--cosmic-local-h6-tracking, var(--cosmic-type-h6-tracking)) !important;
 }
 
-:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(p, li, [data-cosmic-type="body"], [data-luna-target="text"]:not([data-cosmic-type])) {
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(p, li, [data-cosmic-type="body"], [data-luna-target="text"]:not([data-cosmic-type])):not([class*="cosmic-tw-slot--"]) {
     font-family: var(--cosmic-local-font-body, var(--cosmic-font-body)) !important;
     font-size: var(--cosmic-local-body-size, var(--cosmic-type-body-size)) !important;
     line-height: var(--cosmic-local-body-line, var(--cosmic-type-body-line)) !important;
@@ -92,7 +92,7 @@
     letter-spacing: var(--cosmic-local-body-tracking, var(--cosmic-type-body-tracking)) !important;
 }
 
-:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(a, button, [role="button"], [data-cosmic-type="button"]) {
+:is(.cosmic-render-shell, .cosmic-local-typography-host) :is(a, button, [role="button"], [data-cosmic-type="button"]):not([class*="cosmic-tw-slot--"]) {
     font-size: var(--cosmic-local-button-size, var(--cosmic-type-button-size)) !important;
     line-height: var(--cosmic-local-button-line, var(--cosmic-type-button-line)) !important;
     font-weight: var(--cosmic-local-button-weight, var(--cosmic-type-button-weight)) !important;
@@ -111,7 +111,7 @@
     [data-cosmic-type="h1"], [data-cosmic-type="h2"], [data-cosmic-type="h3"],
     [data-cosmic-type="h4"], [data-cosmic-type="h5"], [data-cosmic-type="h6"],
     .x-heading, .b2-heading, .b3-heading, .b4-heading, .b5-heading
-):not([data-cosmic-preserve-heading-color]) {
+):not([data-cosmic-preserve-heading-color]):not([class*="cosmic-tw-slot--"]) {
     color: var(--cosmic-current-text) !important;
 }
 
@@ -148,7 +148,7 @@
     [data-cosmic-type="h1"], [data-cosmic-type="h2"], [data-cosmic-type="h3"],
     [data-cosmic-type="h4"], [data-cosmic-type="h5"], [data-cosmic-type="h6"],
     [data-luna-target="heading"]
-) {
+):not([class*="cosmic-tw-slot--"]) {
     color: var(--cosmic-current-text) !important;
     -webkit-text-fill-color: var(--cosmic-current-text) !important;
 }
@@ -169,44 +169,44 @@
         [class~="text-rose-50"], [class~="text-slate-50"], [class~="text-slate-100"],
         [class~="text-teal-50"], [class~="text-violet-50"]
     ))
-) :is(h1,h2,h3,h4,h5,h6,p,span,blockquote,li) {
+) :is(h1,h2,h3,h4,h5,h6,p,span,blockquote,li):not([class*="cosmic-tw-slot--"]) {
     color: var(--cosmic-color-on-secondary, var(--cosmic-color-on-dark, #fff)) !important;
     -webkit-text-fill-color: var(--cosmic-color-on-secondary, var(--cosmic-color-on-dark, #fff)) !important;
 }
 
 @media (max-width: 1024px) {
-    [data-cosmic-button],
-    .cosmic-button {
+    [data-cosmic-button]:not([class*="cosmic-tw-slot--"]),
+    .cosmic-button:not([class*="cosmic-tw-slot--"]) {
         min-height: var(--cosmic-button-height-tablet);
         padding-inline: var(--cosmic-button-px-tablet);
         max-width: 100%;
     }
 
-    [data-cosmic-form-field],
-    .cosmic-form-field {
+    [data-cosmic-form-field]:not([class*="cosmic-tw-slot--"]),
+    .cosmic-form-field:not([class*="cosmic-tw-slot--"]) {
         min-height: var(--cosmic-input-height-tablet);
     }
 
-    [data-cosmic-layout="card"] {
+    [data-cosmic-layout="card"]:not([class*="cosmic-tw-slot--"]) {
         padding: var(--cosmic-card-padding-tablet);
     }
 }
 
 @media (max-width: 767px) {
-    [data-cosmic-button],
-    .cosmic-button {
+    [data-cosmic-button]:not([class*="cosmic-tw-slot--"]),
+    .cosmic-button:not([class*="cosmic-tw-slot--"]) {
         min-height: var(--cosmic-button-height-mobile);
         padding-inline: var(--cosmic-button-px-mobile);
         white-space: normal;
         text-align: center;
     }
 
-    [data-cosmic-form-field],
-    .cosmic-form-field {
+    [data-cosmic-form-field]:not([class*="cosmic-tw-slot--"]),
+    .cosmic-form-field:not([class*="cosmic-tw-slot--"]) {
         min-height: var(--cosmic-input-height-mobile);
     }
 
-    [data-cosmic-layout="card"] {
+    [data-cosmic-layout="card"]:not([class*="cosmic-tw-slot--"]) {
         padding: var(--cosmic-card-padding-mobile);
     }
 
@@ -248,7 +248,7 @@
     --cosmic-card-role-bg: var(--cosmic-color-white, #fff);
     --cosmic-card-role-fg: var(--cosmic-color-body, var(--cosmic-color-on-surface, #172033));
 }
-[data-cosmic-card-treatment] :is([data-cosmic-card="1"], [data-cosmic-radius="card"]) {
+[data-cosmic-card-treatment] :is([data-cosmic-card="1"], [data-cosmic-radius="card"]):not([class*="cosmic-tw-slot--"]) {
     --cosmic-card-treatment-fg: var(--cosmic-card-role-fg, currentColor);
     background: var(--cosmic-card-role-bg, var(--cosmic-color-surface, #fff)) !important;
     color: var(--cosmic-card-treatment-fg) !important;
@@ -256,7 +256,7 @@
 }
 [data-cosmic-card-treatment] :is([data-cosmic-card="1"], [data-cosmic-radius="card"]) :is(
     h1,h2,h3,h4,h5,h6,p,span,a,button,[data-cosmic-type],[data-luna-target]
-) {
+):not([class*="cosmic-tw-slot--"]) {
     color: var(--cosmic-card-treatment-fg, currentColor) !important;
     -webkit-text-fill-color: var(--cosmic-card-treatment-fg, currentColor) !important;
 }

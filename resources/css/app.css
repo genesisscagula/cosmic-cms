@@ -436,9 +436,9 @@ body { background: var(--cosmic-bg); color: var(--cosmic-text); }
 :root[data-theme="light"] body > [data-headlessui-portal] .border-white\/20 {
     border-color: #dce8e1 !important;
 }
-:root[data-theme="light"] body > [data-headlessui-portal] input,
-:root[data-theme="light"] body > [data-headlessui-portal] select,
-:root[data-theme="light"] body > [data-headlessui-portal] textarea {
+:root[data-theme="light"] body > [data-headlessui-portal] input:not([data-cosmic-preview-isolation="true"] *),
+:root[data-theme="light"] body > [data-headlessui-portal] select:not([data-cosmic-preview-isolation="true"] *),
+:root[data-theme="light"] body > [data-headlessui-portal] textarea:not([data-cosmic-preview-isolation="true"] *) {
     background: #fff !important;
     border-color: #cbdad2 !important;
     color: #0f172a !important;
@@ -1460,14 +1460,14 @@ html[data-theme] .cosmic-app-shell main {
    ================================================================== */
 /* Native selects: reserve space for the arrow and keep it away from text. */
 :root[data-theme="light"] select,
-:root[data-theme="dark"] select {
+:root[data-theme="dark"] select:not(.cosmic-preview-isolation *) {
     min-height: 42px;
     padding-right: 2.75rem !important;
     background-position: right .9rem center !important;
     background-size: 1rem 1rem !important;
     text-overflow: ellipsis;
 }
-:root[data-theme="light"] select {
+:root[data-theme="light"] select:not(.cosmic-preview-isolation *) {
     color: #334155 !important;
     background-color: #fff !important;
     border-color: #cfded6 !important;
@@ -3692,17 +3692,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
 .cosmic-spark-preview-modal .cosmic-spark-preview-stage .cosmic-spark-preview-content {
     color-scheme: normal;
 }
-.cosmic-spark-preview-modal .cosmic-spark-preview-stage .cosmic-spark-preview-content[data-preview-variant="primary"] {
-    background-color: var(--cosmic-preview-bg) !important;
-}
-.cosmic-spark-preview-modal .cosmic-spark-preview-stage .cosmic-spark-preview-content[data-preview-variant="white"] {
-    background-color: var(--cosmic-preview-bg) !important;
-}
-.cosmic-spark-preview-modal .cosmic-spark-preview-stage .cosmic-spark-preview-content[data-preview-variant="surface"] {
-    background-color: var(--cosmic-preview-bg) !important;
-}
-
-
+/* Tailwind ownership: Spark preview backgrounds are not rewritten by preview chrome. */
 /* ================================================================
    SP-HF4 — Spark preview appearance toggle active state
    Parent-scoped so light-mode dialog normalization cannot erase the
@@ -6363,7 +6353,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
    ================================================================== */
 .cosmic-render-shell[data-cosmic-layout-mode="standard"]
 > .cosmic-render-content
-> section {
+> section:not([class*="cosmic-tw-slot--"]) {
     padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py))) !important;
     padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py))) !important;
     padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
@@ -6371,7 +6361,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
 }
 .cosmic-render-shell[data-cosmic-layout-mode="hero"]
 > .cosmic-render-content
-> section {
+> section:not([class*="cosmic-tw-slot--"]) {
     padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py))) !important;
     padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py))) !important;
     padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
@@ -6379,7 +6369,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
 }
 .cosmic-render-shell[data-cosmic-layout-mode="immersive"]
 > .cosmic-render-content
-> section {
+> section:not([class*="cosmic-tw-slot--"]) {
     padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
     padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
 }
@@ -6388,7 +6378,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
 .cosmic-render-shell
 > .cosmic-render-content
 > section
-> :is(div,article)[class*="mx-auto"][class*="max-w-"] {
+> :is(div,article)[class*="mx-auto"][class*="max-w-"]:not([class*="cosmic-tw-slot--"]) {
     width:100%;
     max-width:var(--cosmic-local-section-container,var(--cosmic-section-container)) !important;
     margin-left:auto !important;
@@ -6404,10 +6394,10 @@ body .cosmic-start-quick-idea.rounded-full.border {
 @media (max-width:1024px) {
     .cosmic-render-shell[data-cosmic-layout-mode="standard"]
     > .cosmic-render-content
-    > section,
+    > section:not([class*="cosmic-tw-slot--"]),
     .cosmic-render-shell[data-cosmic-layout-mode="hero"]
     > .cosmic-render-content
-    > section {
+    > section:not([class*="cosmic-tw-slot--"]) {
         padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet))) !important;
         padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet))) !important;
         padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)) !important;
@@ -6417,10 +6407,10 @@ body .cosmic-start-quick-idea.rounded-full.border {
 @media (max-width:767px) {
     .cosmic-render-shell[data-cosmic-layout-mode="standard"]
     > .cosmic-render-content
-    > section,
+    > section:not([class*="cosmic-tw-slot--"]),
     .cosmic-render-shell[data-cosmic-layout-mode="hero"]
     > .cosmic-render-content
-    > section {
+    > section:not([class*="cosmic-tw-slot--"]) {
         padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile))) !important;
         padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile))) !important;
         padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;
@@ -6428,7 +6418,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
     }
     .cosmic-render-shell[data-cosmic-layout-mode="immersive"]
     > .cosmic-render-content
-    > section {
+    > section:not([class*="cosmic-tw-slot--"]) {
         padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;
         padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;
     }
@@ -6450,7 +6440,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
    Background images are preserved because only background-color is normalized. */
 .cosmic-render-shell[data-cosmic-resolved-theme="primary"]
 > .cosmic-render-content
-> section:not(.cosmic-theme-gradient) {
+> section:not(.cosmic-theme-gradient):not([class*="cosmic-tw-slot--"]) {
     background-color:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary)) !important;
 }
 
@@ -6460,7 +6450,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
     .cosmic-render-shell[data-cosmic-resolved-theme="white"]
 )
 > .cosmic-render-content
-> section:not([class*="bg-black"]):not([class*="bg-slate-9"]) {
+> section:not([class*="bg-black"]):not([class*="bg-slate-9"]):not([class*="cosmic-tw-slot--"]) {
     --cosmic-surface-background:var(--cosmic-local-bg-white,var(--cosmic-bg-white));
     background-color:var(--cosmic-local-bg-white,var(--cosmic-bg-white)) !important;
 }
@@ -6469,7 +6459,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
     .cosmic-render-shell[data-cosmic-resolved-theme="surface"]
 )
 > .cosmic-render-content
-> section:not([class*="bg-black"]):not([class*="bg-slate-9"]) {
+> section:not([class*="bg-black"]):not([class*="bg-slate-9"]):not([class*="cosmic-tw-slot--"]) {
     --cosmic-surface-background:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface));
     background-color:var(--cosmic-local-bg-surface,var(--cosmic-bg-surface)) !important;
 }
@@ -6738,7 +6728,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
     padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding));
     box-shadow:var(--cosmic-local-card-shadow,var(--cosmic-card-shadow));
 }
-[data-cosmic-card] :is(h2,h3,h4,h5,h6,[data-cosmic-type="card-title"]) {
+[data-cosmic-card] :is(h2,h3,h4,h5,h6,[data-cosmic-type="card-title"]):not([class*="cosmic-tw-slot--"]) {
     color:var(--cosmic-local-card-heading,var(--cosmic-card-heading));
 }
 
@@ -6753,7 +6743,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
     div[class*="rounded"][class*="border"],
     article[class*="rounded"][class*="border"],
     li[class*="rounded"][class*="border"]
-):not(.rounded-full):not([data-cosmic-preserve-surface]) {
+):not(.rounded-full):not([data-cosmic-preserve-surface]):not([class*="cosmic-tw-slot--"]) {
     background:var(--cosmic-local-card-bg) !important;
     border-color:var(--cosmic-local-card-border) !important;
     color:var(--cosmic-local-card-text) !important;
@@ -6764,9 +6754,9 @@ body .cosmic-start-quick-idea.rounded-full.border {
     div[class*="rounded"][class*="border"],
     article[class*="rounded"][class*="border"],
     li[class*="rounded"][class*="border"]
-):not(.rounded-full):not([data-cosmic-preserve-surface]) :is(
+):not(.rounded-full):not([data-cosmic-preserve-surface]):not([class*="cosmic-tw-slot--"]) :is(
     h2,h3,h4,h5,h6,[data-cosmic-type="card-title"]
-) {
+):not([class*="cosmic-tw-slot--"]) {
     color:var(--cosmic-local-card-heading) !important;
     -webkit-text-fill-color:var(--cosmic-local-card-heading) !important;
 }
@@ -6776,9 +6766,9 @@ body .cosmic-start-quick-idea.rounded-full.border {
     div[class*="rounded"][class*="border"],
     article[class*="rounded"][class*="border"],
     li[class*="rounded"][class*="border"]
-):not(.rounded-full):not([data-cosmic-preserve-surface]) :is(
+):not(.rounded-full):not([data-cosmic-preserve-surface]):not([class*="cosmic-tw-slot--"]) :is(
     p,a,button,[contenteditable="true"],.cosmic-editable-text
-) {
+):not([class*="cosmic-tw-slot--"]) {
     color:var(--cosmic-local-card-text) !important;
     -webkit-text-fill-color:var(--cosmic-local-card-text) !important;
 }
@@ -6830,45 +6820,45 @@ body .cosmic-start-quick-idea.rounded-full.border {
 /* Legacy rounded utilities now inherit the centralized radius family inside
    website render shells. Pills/circles and intentionally asymmetric shapes
    are not touched. */
-.cosmic-render-shell :is(.rounded,.rounded-md,.rounded-lg,.rounded-xl,.rounded-2xl,.rounded-3xl):not(.rounded-full):not([data-cosmic-preserve-radius]) {
+.cosmic-render-shell :is(.rounded,.rounded-md,.rounded-lg,.rounded-xl,.rounded-2xl,.rounded-3xl):not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
     border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card)) !important;
 }
-.cosmic-render-shell :is(img.rounded,img.rounded-md,img.rounded-lg,img.rounded-xl,img.rounded-2xl,img.rounded-3xl):not(.rounded-full):not([data-cosmic-preserve-radius]) {
+.cosmic-render-shell :is(img.rounded,img.rounded-md,img.rounded-lg,img.rounded-xl,img.rounded-2xl,img.rounded-3xl):not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
     border-radius:var(--cosmic-local-image-radius,var(--cosmic-radius-image)) !important;
 }
 
 /* Legacy shadows consume the semantic scale. Strong cinematic/glow-specific
    custom shadows remain untouched because only standard Tailwind shadow roles
    are mapped. */
-.cosmic-render-shell .shadow-sm:not([data-cosmic-preserve-shadow]) { box-shadow:var(--cosmic-shadow-sm) !important; }
-.cosmic-render-shell :is(.shadow,.shadow-md):not([data-cosmic-preserve-shadow]) { box-shadow:var(--cosmic-shadow-md) !important; }
-.cosmic-render-shell :is(.shadow-lg,.shadow-xl,.shadow-2xl):not([data-cosmic-preserve-shadow]) { box-shadow:var(--cosmic-shadow-lg) !important; }
+.cosmic-render-shell .shadow-sm:not([data-cosmic-preserve-shadow]):not([class*="cosmic-tw-slot--"]) { box-shadow:var(--cosmic-shadow-sm) !important; }
+.cosmic-render-shell :is(.shadow,.shadow-md):not([data-cosmic-preserve-shadow]):not([class*="cosmic-tw-slot--"]) { box-shadow:var(--cosmic-shadow-md) !important; }
+.cosmic-render-shell :is(.shadow-lg,.shadow-xl,.shadow-2xl):not([data-cosmic-preserve-shadow]):not([class*="cosmic-tw-slot--"]) { box-shadow:var(--cosmic-shadow-lg) !important; }
 
 /* Buttons/CTA anchors: radius and sizing can be controlled globally even for
    legacy Sparks. Avoid icon-only circular controls and navigation anchors. */
-.cosmic-render-shell :is(button,a)[class*="px-"][class*="py-"]:not(.rounded-full):not([aria-label]):not([data-cosmic-preserve-button]) {
+.cosmic-render-shell :is(button,a)[class*="px-"][class*="py-"]:not(.rounded-full):not([aria-label]):not([data-cosmic-preserve-button]):not([class*="cosmic-tw-slot--"]) {
     border-radius:var(--cosmic-local-button-radius,var(--cosmic-radius-button)) !important;
     font-weight:var(--cosmic-local-button-weight,var(--cosmic-button-font-weight));
 }
 
 /* Form controls. This is deliberately type-based rather than every input so
    checkboxes/radios/file controls keep native/specialized shapes. */
-.cosmic-render-shell :is(input[type="text"],input[type="email"],input[type="tel"],input[type="url"],input[type="number"],input[type="search"],input:not([type]),textarea,select):not([data-cosmic-preserve-form]) {
+.cosmic-render-shell :is(input[type="text"],input[type="email"],input[type="tel"],input[type="url"],input[type="number"],input[type="search"],input:not([type]),textarea,select):not([data-cosmic-preserve-form]):not([class*="cosmic-tw-slot--"]) {
     border-radius:var(--cosmic-local-input-radius,var(--cosmic-radius-input)) !important;
 }
 
 /* Standard card-like surfaces can opt out with data-cosmic-preserve-radius.
    We map common rounded+border/shadow combinations rather than every div. */
-.cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {
+.cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
     border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card)) !important;
 }
-.cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="shadow"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {
+.cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="shadow"]:not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
     border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card)) !important;
 }
 
 /* Images with explicit rounded utilities inherit media radius. Background
    images, fullscreen video and edge-to-edge media are intentionally excluded. */
-.cosmic-render-shell img[class*="rounded"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {
+.cosmic-render-shell img[class*="rounded"]:not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
     border-radius:var(--cosmic-local-image-radius,var(--cosmic-radius-image)) !important;
 }
 
@@ -6888,12 +6878,12 @@ body .cosmic-start-quick-idea.rounded-full.border {
 
 /* Responsive component migration. */
 @media (max-width:1024px) {
-    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {
+    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
         --cosmic-card-padding:var(--cosmic-space-card-tablet);
     }
 }
 @media (max-width:767px) {
-    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {
+    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
         --cosmic-card-padding:var(--cosmic-space-card-mobile);
     }
 }
@@ -6907,8 +6897,8 @@ body .cosmic-start-quick-idea.rounded-full.border {
     .cosmic-render-shell[data-cosmic-resolved-theme="light"],
     .cosmic-render-shell[data-cosmic-resolved-theme="white"],
     .cosmic-render-shell[data-cosmic-resolved-theme="surface"]
-) :is(h1,h2,h3,h4,h5,h6):not([data-cosmic-preserve-heading-color]):not([class*="text-white"]):not([class*="-50"]):not([class*="-100"]):not([class*="-200"]):not(:where([class*="text-white"] *,[class*="text-blue-50"] *,[class*="text-slate-50"] *,[class*="text-gray-50"] *,[class*="text-zinc-50"] *,[class*="text-neutral-50"] *,[class*="text-"][class*="-50"] *,[class*="text-"][class*="-100"] *,[class*="text-"][class*="-200"] *)),
-.cosmic-render-shell:not([data-cosmic-resolved-theme="primary"]):not([data-cosmic-background-state="primary"]) :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]):not([class*="text-white"]):not([class*="-50"]):not([class*="-100"]):not([class*="-200"]):not(:where([class*="text-white"] *,[class*="text-"][class*="-50"] *,[class*="text-"][class*="-100"] *,[class*="text-"][class*="-200"] *)) {
+) :is(h1,h2,h3,h4,h5,h6):not([data-cosmic-preserve-heading-color]):not([class*="cosmic-tw-slot--"]):not([class*="text-white"]):not([class*="-50"]):not([class*="-100"]):not([class*="-200"]):not(:where([class*="text-white"] *,[class*="text-blue-50"] *,[class*="text-slate-50"] *,[class*="text-gray-50"] *,[class*="text-zinc-50"] *,[class*="text-neutral-50"] *,[class*="text-"][class*="-50"] *,[class*="text-"][class*="-100"] *,[class*="text-"][class*="-200"] *)),
+.cosmic-render-shell:not([data-cosmic-resolved-theme="primary"]):not([data-cosmic-background-state="primary"]) :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]):not([class*="cosmic-tw-slot--"]):not([class*="text-white"]):not([class*="-50"]):not([class*="-100"]):not([class*="-200"]):not(:where([class*="text-white"] *,[class*="text-"][class*="-50"] *,[class*="text-"][class*="-100"] *,[class*="text-"][class*="-200"] *)) {
     color:var(--cosmic-local-heading-color,var(--cosmic-color-heading,var(--cosmic-brand-primary,var(--cosmic-primary,#243447)))) !important;
 }
 
@@ -6922,31 +6912,31 @@ body .cosmic-start-quick-idea.rounded-full.border {
 }
 
 /* Dark/image hero contrast wins over global heading brand color. */
-.cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is(h1,h2,h3,h4,h5,h6),
-.cosmic-render-shell[data-cosmic-layout-mode="immersive"] section[class*="text-white"] :is(h1,h2,h3,h4,h5,h6),
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is(h1,h2,h3,h4,h5,h6):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"] section[class*="text-white"] :is(h1,h2,h3,h4,h5,h6):not([class*="cosmic-tw-slot--"]),
 .cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]),
 .cosmic-render-shell[data-cosmic-layout-mode="immersive"] section[class*="text-white"] :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]),
-.cosmic-render-shell[data-cosmic-layout-mode="hero"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6),
-.cosmic-render-shell[data-cosmic-layout-mode="immersive"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6),
+.cosmic-render-shell[data-cosmic-layout-mode="hero"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6):not([class*="cosmic-tw-slot--"]),
 .cosmic-render-shell[data-cosmic-resolved-theme="primary"] :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) {
     color:var(--cosmic-color-on-dark,#fff) !important;
 }
-.cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is(p,li,[data-cosmic-type="eyebrow"]),
-.cosmic-render-shell[data-cosmic-layout-mode="immersive"] section[class*="text-white"] :is(p,li,[data-cosmic-type="eyebrow"]),
-.cosmic-render-shell[data-cosmic-layout-mode="hero"][data-cosmic-background-state="primary"] :is(p,li,[data-cosmic-type="eyebrow"]),
-.cosmic-render-shell[data-cosmic-layout-mode="immersive"][data-cosmic-background-state="primary"] :is(p,li,[data-cosmic-type="eyebrow"]) {
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is(p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"] section[class*="text-white"] :is(p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell[data-cosmic-layout-mode="hero"][data-cosmic-background-state="primary"] :is(p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell[data-cosmic-layout-mode="immersive"][data-cosmic-background-state="primary"] :is(p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]) {
     color:var(--cosmic-on-primary-muted,rgba(255,255,255,.86)) !important;
 }
 
 /* All ordinary content media inherits the centralized image radius.
    Immersive/full-bleed media and explicit opt-outs remain untouched. */
-.cosmic-render-shell[data-cosmic-layout-mode="standard"] img:not(.rounded-full):not([data-cosmic-preserve-radius]),
-.cosmic-render-shell[data-cosmic-layout-mode="hero"] img:not(.rounded-full):not([data-cosmic-preserve-radius]):not(.absolute) {
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] img:not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell[data-cosmic-layout-mode="hero"] img:not(.rounded-full):not([data-cosmic-preserve-radius]):not(.absolute):not([class*="cosmic-tw-slot--"]) {
     border-radius:var(--cosmic-local-image-radius,var(--cosmic-radius-image,24px)) !important;
 }
 
 /* Keep media box behavior identical across Builder and exported markup. */
-.cosmic-render-shell img:not([data-cosmic-preserve-fit]) {
+.cosmic-render-shell img:not([data-cosmic-preserve-fit]):not([class*="cosmic-tw-slot--"]) {
     object-fit:var(--cosmic-local-media-object-fit,var(--cosmic-media-object-fit,cover));
 }
 
@@ -7048,29 +7038,29 @@ body .cosmic-start-quick-idea.rounded-full.border {
    Apply the centralized semantic contract to every rendered Spark.
    Scoped to website render shells only so Builder controls are untouched.
    ================================================================== */
-.cosmic-render-shell :is(h1,[data-cosmic-type="h1"]) {
+.cosmic-render-shell :is(h1,[data-cosmic-type="h1"]):not([class*="cosmic-tw-slot--"]) {
     font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
     font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size)) !important;
     line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line)) !important;
     font-weight:var(--cosmic-local-h1-weight,var(--cosmic-type-h1-weight)) !important;
     letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking)) !important;
 }
-.cosmic-render-shell :is(h2,[data-cosmic-type="h2"]) {
+.cosmic-render-shell :is(h2,[data-cosmic-type="h2"]):not([class*="cosmic-tw-slot--"]) {
     font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
     font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size)) !important;
     line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line)) !important;
     font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight)) !important;
     letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking)) !important;
 }
-.cosmic-render-shell :is(h3,[data-cosmic-type="h3"]),
-.cosmic-render-shell [data-luna-target="heading"]:not([data-cosmic-type]):not(h1):not(h2):not(h4):not(h5):not(h6) {
+.cosmic-render-shell :is(h3,[data-cosmic-type="h3"]):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell [data-luna-target="heading"]:not([data-cosmic-type]):not(h1):not(h2):not(h4):not(h5):not(h6):not([class*="cosmic-tw-slot--"]) {
     font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
     font-size:var(--cosmic-local-h3-size,var(--cosmic-type-h3-size)) !important;
     line-height:var(--cosmic-local-h3-line,var(--cosmic-type-h3-line)) !important;
     font-weight:var(--cosmic-local-h3-weight,var(--cosmic-type-h3-weight)) !important;
     letter-spacing:var(--cosmic-local-h3-tracking,var(--cosmic-type-h3-tracking)) !important;
 }
-.cosmic-render-shell :is(h4,[data-cosmic-type="h4"]) {
+.cosmic-render-shell :is(h4,[data-cosmic-type="h4"]):not([class*="cosmic-tw-slot--"]) {
     font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
     font-size:var(--cosmic-local-h4-size,var(--cosmic-type-h4-size)) !important;
     line-height:var(--cosmic-local-h4-line,var(--cosmic-type-h4-line)) !important;
@@ -7078,41 +7068,41 @@ body .cosmic-start-quick-idea.rounded-full.border {
     letter-spacing:var(--cosmic-local-h4-tracking,var(--cosmic-type-h4-tracking)) !important;
 }
 
-.cosmic-render-shell :is(h5,[data-cosmic-type="h5"]) {
+.cosmic-render-shell :is(h5,[data-cosmic-type="h5"]):not([class*="cosmic-tw-slot--"]) {
     font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
     font-size:var(--cosmic-local-h5-size,var(--cosmic-type-h5-size)) !important;
     line-height:var(--cosmic-local-h5-line,var(--cosmic-type-h5-line)) !important;
     font-weight:var(--cosmic-local-h5-weight,var(--cosmic-type-h5-weight)) !important;
     letter-spacing:var(--cosmic-local-h5-tracking,var(--cosmic-type-h5-tracking)) !important;
 }
-.cosmic-render-shell :is(h6,[data-cosmic-type="h6"]) {
+.cosmic-render-shell :is(h6,[data-cosmic-type="h6"]):not([class*="cosmic-tw-slot--"]) {
     font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
     font-size:var(--cosmic-local-h6-size,var(--cosmic-type-h6-size)) !important;
     line-height:var(--cosmic-local-h6-line,var(--cosmic-type-h6-line)) !important;
     font-weight:var(--cosmic-local-h6-weight,var(--cosmic-type-h6-weight)) !important;
     letter-spacing:var(--cosmic-local-h6-tracking,var(--cosmic-type-h6-tracking)) !important;
 }
-.cosmic-render-shell :is(article,[data-repeatable-item],[data-cosmic-repeatable-item]) [data-luna-target="heading"]:not([data-cosmic-type]) {
+.cosmic-render-shell :is(article,[data-repeatable-item],[data-cosmic-repeatable-item]) [data-luna-target="heading"]:not([data-cosmic-type]):not([class*="cosmic-tw-slot--"]) {
     font-size:var(--cosmic-local-card-title-size,var(--cosmic-type-card-title-size)) !important;
     line-height:var(--cosmic-local-card-title-line,var(--cosmic-type-card-title-line)) !important;
 }
-.cosmic-render-shell :is(p,li,[data-cosmic-type="body"],[data-luna-target="text"]:not([data-cosmic-type])) {
+.cosmic-render-shell :is(p,li,[data-cosmic-type="body"],[data-luna-target="text"]:not([data-cosmic-type])):not([class*="cosmic-tw-slot--"]) {
     font-family:var(--cosmic-local-font-body,var(--cosmic-font-body)) !important;
     font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size)) !important;
     line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line)) !important;
     font-weight:var(--cosmic-local-body-weight,var(--cosmic-type-body-weight)) !important;
     letter-spacing:var(--cosmic-local-body-tracking,var(--cosmic-type-body-tracking)) !important;
 }
-.cosmic-render-shell[data-cosmic-block-type^="hero_"] [data-luna-target="text"]:not([data-cosmic-type]),
-.cosmic-render-shell[data-cosmic-block-type="hero"] [data-luna-target="text"]:not([data-cosmic-type]),
-.cosmic-render-shell [data-cosmic-type="lead"] {
+.cosmic-render-shell[data-cosmic-block-type^="hero_"] [data-luna-target="text"]:not([data-cosmic-type]):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell[data-cosmic-block-type="hero"] [data-luna-target="text"]:not([data-cosmic-type]):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell [data-cosmic-type="lead"]:not([class*="cosmic-tw-slot--"]) {
     font-size:var(--cosmic-local-lead-size,var(--cosmic-type-lead-size)) !important;
     line-height:var(--cosmic-local-lead-line,var(--cosmic-type-lead-line)) !important;
     font-weight:var(--cosmic-local-lead-weight,var(--cosmic-type-lead-weight)) !important;
     letter-spacing:var(--cosmic-local-lead-tracking,var(--cosmic-type-lead-tracking)) !important;
 }
-.cosmic-render-shell [data-luna-target="label"]:not([data-cosmic-type]),
-.cosmic-render-shell [data-cosmic-type="eyebrow"] {
+.cosmic-render-shell [data-luna-target="label"]:not([data-cosmic-type]):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell [data-cosmic-type="eyebrow"]:not([class*="cosmic-tw-slot--"]) {
     font-family:var(--cosmic-local-font-body,var(--cosmic-font-body)) !important;
     font-size:var(--cosmic-local-eyebrow-size,var(--cosmic-type-eyebrow-size)) !important;
     line-height:var(--cosmic-local-eyebrow-line,var(--cosmic-type-eyebrow-line)) !important;
@@ -7120,13 +7110,13 @@ body .cosmic-start-quick-idea.rounded-full.border {
     letter-spacing:var(--cosmic-local-eyebrow-tracking,var(--cosmic-type-eyebrow-tracking)) !important;
 }
 .cosmic-render-shell :is(article,[data-repeatable-item],[data-cosmic-repeatable-item]) [data-luna-target="label"]:not([data-cosmic-type]),
-.cosmic-render-shell [data-cosmic-type="small"] {
+.cosmic-render-shell [data-cosmic-type="small"]:not([class*="cosmic-tw-slot--"]) {
     font-size:var(--cosmic-local-small-size,var(--cosmic-type-small-size)) !important;
     line-height:var(--cosmic-local-small-line,var(--cosmic-type-small-line)) !important;
     font-weight:var(--cosmic-local-small-weight,var(--cosmic-type-small-weight)) !important;
     letter-spacing:var(--cosmic-local-small-tracking,var(--cosmic-type-small-tracking)) !important;
 }
-.cosmic-render-shell :is(a,button,[role="button"],[data-cosmic-luna-display="button"],[data-cosmic-type="button"]) {
+.cosmic-render-shell :is(a,button,[role="button"],[data-cosmic-luna-display="button"],[data-cosmic-type="button"]):not([class*="cosmic-tw-slot--"]) {
     font-family:var(--cosmic-local-font-body,var(--cosmic-font-body)) !important;
     font-size:var(--cosmic-local-button-size,var(--cosmic-type-button-size)) !important;
     line-height:var(--cosmic-local-button-line,var(--cosmic-type-button-line)) !important;
@@ -7135,7 +7125,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
 }
 /* Special art-directed typography remains compatible through section-local
    variables rather than hard-coded global exceptions. */
-.cosmic-render-shell [data-cosmic-type-lock="1"] {
+.cosmic-render-shell [data-cosmic-type-lock="1"]:not([class*="cosmic-tw-slot--"]) {
     font-size:var(--cosmic-local-locked-size,revert) !important;
     line-height:var(--cosmic-local-locked-line,revert) !important;
     font-weight:var(--cosmic-local-locked-weight,revert) !important;
@@ -9441,13 +9431,7 @@ header.cosmic-header-overlay,
 }
 
 
-/* Cosmic website CTA parity: EditableButton is a span in Builder previews.
-   Website content only; dashboard/admin controls are intentionally excluded. */
-.cosmic-builder-canvas [data-cosmic-luna-display="button"],
-.cosmic-spark-preview-stage [data-cosmic-luna-display="button"],
-.cosmic-website-preview [data-cosmic-luna-display="button"] {
-    border-radius: 100px !important;
-}
+/* Tailwind ownership: website CTA radius is owned by the Spark schema/classes. */
 
 
 /* Spark authored pill contract. Tailwind's rounded-full may be absent/overridden

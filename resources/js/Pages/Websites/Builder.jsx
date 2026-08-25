@@ -399,6 +399,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [lunaElementTarget, setLunaElementTarget] = useState(null);
     const [lunaHoverTarget, setLunaHoverTarget] = useState(null);
     const [lunaMessages, setLunaMessages] = useState([]);
+    // Ephemeral Builder-session conversation. It intentionally lives only in
+    // React memory: a browser refresh starts a clean Luna conversation.
+    const lunaSessionConversationRef = useRef([]);
     const [lunaUndoStack, setLunaUndoStack] = useState([]);
     const [feedbackOpen, setFeedbackOpen] = useState(false);
     const [feedbackCategory, setFeedbackCategory] = useState('bug');
@@ -1754,6 +1757,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         }catch(error){
             const message=error?.response?.data?.message || error?.message || 'I could not generate the logo right now.';
             setPageAiError(message);
+            rememberLunaAssistantReply(message);
             setLunaMessages((messages)=>[...messages,{role:'assistant',text:message}]);
             return false;
         }finally{
@@ -4499,6 +4503,22 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         // neutral Thinking. We only advance into action phases when the prompt
         // clearly looks executable; conversational prompts stay on Thinking.
         setLunaStatus('Thinking…');
+        const sanitizeLunaSessionTurn = (turn) => {
+            const role = turn?.role === 'assistant' ? 'assistant' : turn?.role === 'user' ? 'user' : null;
+            const content = String(turn?.content ?? turn?.text ?? '').trim();
+            if (!role || !content) return null;
+            return { role, content:content.slice(0,6000) };
+        };
+        const existingSessionConversation = Array.isArray(lunaSessionConversationRef.current)
+            ? lunaSessionConversationRef.current.map(sanitizeLunaSessionTurn).filter(Boolean)
+            : [];
+        const requestConversation = [
+            ...existingSessionConversation,
+            { role:'user', content:prompt },
+        ];
+        // Keep UI and AI session history separate: UI messages can contain
+        // confirmation metadata/chrome, while Luna receives only role+content.
+        lunaSessionConversationRef.current = requestConversation;
         if (directPrompt === null) setLunaMessages((messages)=>[...messages,{role:'user',text:prompt,scope:lunaScope.label}]);
         const imageIntent = /image|photo|photography|picture|unsplash|background image/i.test(prompt);
         const buildIntent = /\b(build|create|generate|design|make)\b.{0,100}\b(website|site|homepage|home page|landing page|page)\b/i.test(prompt);
@@ -4522,9 +4542,20 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             lunaPhaseIndex=Math.min(lunaPhaseIndex+1,phases.length-1);
             setLunaStatus(phases[lunaPhaseIndex]);
         },1800) : null;
+        const rememberLunaAssistantReply = (text) => {
+            const content=String(text||'').trim();
+            if(!content) return;
+            lunaSessionConversationRef.current=[
+                ...(Array.isArray(lunaSessionConversationRef.current)?lunaSessionConversationRef.current:[]),
+                {role:'assistant',content:content.slice(0,6000)},
+            ];
+        };
         try {
             const form = new FormData();
             form.append('prompt', prompt);
+            // Send the complete current Builder-session conversation to every
+            // Luna routing/edit API. Backend remains a validator/executor.
+            form.append('conversation', JSON.stringify(requestConversation));
             form.append('blocks', JSON.stringify(stripClientBlockFields(data.blocks || [])));
             form.append('header', JSON.stringify(data.global_header || {}));
             form.append('footer', JSON.stringify(data.global_footer || {}));
@@ -4533,7 +4564,58 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             form.append('background_style', JSON.stringify(globalSelections?.background_style || {}));
             form.append('section_layout', JSON.stringify(globalSelections?.section_layout || {}));
             form.append('components', JSON.stringify(globalSelections?.components || {}));
-            form.append('site_memory', JSON.stringify(lunaSiteMemory || {}));
+            const compactLunaSiteMemoryForRequest = (memory, maxChars = 18000) => {
+                const source = memory && typeof memory === 'object' ? memory : {};
+                const compactValue = (value, depth = 0) => {
+                    if (depth > 5) return undefined;
+                    if (typeof value === 'string') return value.slice(0, 900);
+                    if (typeof value === 'number' || typeof value === 'boolean' || value === null) return value;
+                    if (Array.isArray(value)) return value.slice(-8).map((item)=>compactValue(item, depth + 1)).filter((item)=>item !== undefined);
+                    if (!value || typeof value !== 'object') return undefined;
+                    const out = {};
+                    Object.entries(value).slice(-32).forEach(([key, item]) => {
+                        if (['verified_operations','verified_plans','failed_operations','before','after'].includes(key)) return;
+                        const next = compactValue(item, depth + 1);
+                        if (next !== undefined) out[key] = next;
+                    });
+                    return out;
+                };
+                let compact = compactValue(source) || {};
+                let encoded = JSON.stringify(compact);
+                if (encoded.length <= maxChars) return compact;
+                const preferred = ['design_direction','spacing','corners','heading_scale','theme_primary','theme_context','routing_context','context_state','responsive','visual_qa','design_critic','last_direction_at'];
+                compact = Object.fromEntries(preferred.filter((key)=>Object.prototype.hasOwnProperty.call(compact,key)).map((key)=>[key,compact[key]]));
+                encoded = JSON.stringify(compact);
+                if (encoded.length <= maxChars) return compact;
+                if (compact.context_state?.last_verified_action) {
+                    compact.context_state.last_verified_action = {
+                        action: compact.context_state.last_verified_action.action,
+                        domain: compact.context_state.last_verified_action.domain,
+                        leaf_operation: compact.context_state.last_verified_action.leaf_operation,
+                        operation: compact.context_state.last_verified_action.operation,
+                        scope: compact.context_state.last_verified_action.scope,
+                        target: compact.context_state.last_verified_action.target,
+                        page_id: compact.context_state.last_verified_action.page_id,
+                        section_index: compact.context_state.last_verified_action.section_index,
+                        verified_at: compact.context_state.last_verified_action.verified_at,
+                    };
+                }
+                if (JSON.stringify(compact).length <= maxChars) return compact;
+                return {
+                    design_direction: compact.design_direction,
+                    spacing: compact.spacing,
+                    corners: compact.corners,
+                    heading_scale: compact.heading_scale,
+                    theme_primary: compact.theme_primary,
+                    theme_context: compact.theme_context,
+                    context_state: compact.context_state ? {
+                        current: compact.context_state.current,
+                        last_verified_action: compact.context_state.last_verified_action,
+                    } : undefined,
+                    last_direction_at: compact.last_direction_at,
+                };
+            };
+            form.append('site_memory', JSON.stringify(compactLunaSiteMemoryForRequest(lunaSiteMemory || {})));
             if (page?.id) form.append('current_page_id', String(page.id));
             form.append('target_scope', lunaScope.type === 'section' ? 'section' : lunaScope.type === 'header' ? 'header' : lunaScope.type === 'footer' ? 'footer' : 'page');
             if(lunaScope.type==='header'){
@@ -4551,25 +4633,78 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 }
             }
             let requestElementContext = lunaElementTarget ? { ...lunaElementTarget } : {};
+            const collectTailwindInventory = (sectionNode, limit = 80) => {
+                const seen = new Set();
+                const inventory = [];
+                if (!sectionNode) return inventory;
+                sectionNode.querySelectorAll('[class*="cosmic-tw-slot--"]').forEach((node) => {
+                    if (!(node instanceof Element) || inventory.length >= limit) return;
+                    const marker = Array.from(node.classList).find((token)=>token.startsWith('cosmic-tw-slot--'));
+                    const slot = marker ? marker.slice('cosmic-tw-slot--'.length) : '';
+                    if (!slot) return;
+                    const classes = Array.from(node.classList).filter((token)=>!token.startsWith('cosmic-tw-slot--')).join(' ');
+                    const role = String(node.getAttribute('data-luna-target') || node.getAttribute('data-cosmic-luna-display') || '');
+                    const text = String(node.textContent || '').replace(/\s+/g,' ').trim().slice(0,90);
+                    const key = `${slot}|${node.tagName}|${classes}|${role}|${text}`;
+                    if (seen.has(key)) return;
+                    seen.add(key);
+                    inventory.push({ slot, tag:node.tagName.toLowerCase(), role, classes, text });
+                });
+                return inventory;
+            };
             if (lunaScope.type === 'section' && Number.isInteger(lunaScope.blockIndex)) {
                 const sectionNode = document.querySelector(`[data-luna-section-index="${lunaScope.blockIndex}"]`);
-                if (sectionNode) {
-                    const seen = new Set();
-                    const inventory = [];
-                    sectionNode.querySelectorAll('[class*="cosmic-tw-slot--"]').forEach((node) => {
-                        if (!(node instanceof Element) || inventory.length >= 80) return;
-                        const marker = Array.from(node.classList).find((token)=>token.startsWith('cosmic-tw-slot--'));
-                        const slot = marker ? marker.slice('cosmic-tw-slot--'.length) : '';
-                        if (!slot) return;
-                        const classes = Array.from(node.classList).filter((token)=>!token.startsWith('cosmic-tw-slot--')).join(' ');
-                        const role = String(node.getAttribute('data-luna-target') || node.getAttribute('data-cosmic-luna-display') || '');
-                        const text = String(node.textContent || '').replace(/\s+/g,' ').trim().slice(0,90);
-                        const key = `${slot}|${node.tagName}|${classes}|${role}|${text}`;
-                        if (seen.has(key)) return;
-                        seen.add(key);
-                        inventory.push({ slot, tag:node.tagName.toLowerCase(), role, classes, text });
+                const inventory = collectTailwindInventory(sectionNode, 80);
+                if (inventory.length) requestElementContext.tailwindInventory = inventory;
+            } else if (lunaScope.type === 'page') {
+                // Whole-page styling requests only need the named target section's
+                // rendered Tailwind vocabulary. Avoid shipping every section inventory:
+                // it bloats request context and can push persistent Luna memory over limits.
+                const targetAliases = [
+                    ['hero',['hero','banner','masthead']],
+                    ['services',['services','service']],
+                    ['testimonials',['testimonials','testimonial','reviews','review']],
+                    ['pricing',['pricing','price','plans']],
+                    ['faq',['faq','questions']],
+                    ['contact',['contact','enquiry','inquiry']],
+                    ['cta',['cta','call to action']],
+                    ['gallery',['gallery','portfolio','projects','work']],
+                    ['process',['process','steps','timeline']],
+                    ['team',['team','people','staff']],
+                    ['about',['about','story']],
+                ];
+                const lowerPrompt = prompt.toLowerCase();
+                const requestedTarget = targetAliases.find(([,aliases])=>aliases.some((alias)=>lowerPrompt.includes(alias)))?.[0] || null;
+                let candidateIndex = -1;
+                if (requestedTarget) {
+                    candidateIndex = (data.blocks || []).findIndex((block) => {
+                        const haystack = `${block?.type || ''} ${block?.heading || block?.title || block?.eyebrow || ''}`.toLowerCase();
+                        const aliases = targetAliases.find(([name])=>name===requestedTarget)?.[1] || [];
+                        return aliases.some((alias)=>haystack.includes(alias));
                     });
-                    requestElementContext.tailwindInventory = inventory;
+                } else {
+                    // Follow-up turns ("a little more", "same on mobile") have no
+                    // section noun. Reuse the last verified/routed Spark index so
+                    // API 4 still receives the FULL rendered schema for that exact
+                    // current Spark without sending every page section.
+                    const priorIndex = Number(
+                        lunaSiteMemory?.context_state?.last_verified_action?.routing?.spark_target?.index
+                        ?? lunaSiteMemory?.context_state?.last_verified_action?.target?.index
+                        ?? lunaSiteMemory?.routing_context?.spark_target?.index
+                        ?? lunaSiteMemory?.routing_context?.target?.index
+                    );
+                    if (Number.isInteger(priorIndex) && priorIndex >= 0 && priorIndex < (data.blocks || []).length) {
+                        candidateIndex = priorIndex;
+                    }
+                }
+                if (candidateIndex >= 0) {
+                    const sectionNode = document.querySelector(`[data-luna-section-index="${candidateIndex}"]`);
+                    const inventory = collectTailwindInventory(sectionNode, 80);
+                    if (inventory.length) {
+                        requestElementContext.tailwindInventory = inventory;
+                        requestElementContext.tailwindTargetIndex = candidateIndex;
+                        if (requestedTarget) requestElementContext.tailwindTargetName = requestedTarget;
+                    }
                 }
             }
             if (lunaElementTarget && !(videoIntent && lunaScope.type==='section')) {
@@ -4585,7 +4720,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     }
                 }
             }
-            if (!lunaElementTarget && lunaScope.type === 'section' && Object.keys(requestElementContext).length) {
+            if (!lunaElementTarget && ['section','page'].includes(lunaScope.type) && Object.keys(requestElementContext).length) {
                 form.append('element_context', JSON.stringify(requestElementContext));
             }
             if (confirmed) form.append('confirmed', '1');
@@ -4603,9 +4738,11 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 setLunaStatus('Waiting for confirmation');
                 if (Number.isFinite(Number(response.credit_balance))) setCreditBalance(Number(response.credit_balance));
                 const planningCost = Number(response.credit_cost || 0);
+                const confirmationReply=`${response.reply || `Delete the selected content for ${response.confirmation_cost || 0} credits?`}${planningCost>0?` · ${planningCost} credits used to plan`:''}`;
+                rememberLunaAssistantReply(confirmationReply);
                 setLunaMessages((messages)=>[...messages,{
                     role:'assistant',
-                    text:`${response.reply || `Delete the selected content for ${response.confirmation_cost || 0} credits?`}${planningCost>0?` · ${planningCost} credits used to plan`:''}`,
+                    text:confirmationReply,
                     confirmation:{prompt,cost:Number(response.confirmation_cost || 0),token:response.pending_action_token || null},
                 }]);
                 return;
@@ -4622,6 +4759,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         : publishResult?.status==='preparing'
                             ? (publishResult.message || 'The page is saved, and Cosmic is preparing it for publishing. Try again in a moment.')
                             : (publishResult?.message || 'Publishing failed. Your previous live version is still available.');
+                rememberLunaAssistantReply(publishReply);
                 setLunaMessages((messages)=>[...messages,{role:'assistant',text:publishReply}]);
                 setLunaStatus('Ready');
                 if (Number.isFinite(Number(response.credit_balance))) setCreditBalance(Number(response.credit_balance));
@@ -4630,7 +4768,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             if (response.mode === 'navigate') {
                 if (lunaStatusTimer) window.clearInterval(lunaStatusTimer);
                 setLunaStatus('Checking…');
-                if(response.reply) setLunaMessages((messages)=>[...messages,{role:'assistant',text:response.reply}]);
+                if(response.reply){
+                    rememberLunaAssistantReply(response.reply);
+                    setLunaMessages((messages)=>[...messages,{role:'assistant',text:response.reply}]);
+                }
                 setLunaStatus('Ready');
                 if(response.navigate_url) router.visit(response.navigate_url);
                 return;
@@ -4781,6 +4922,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             setLunaStatus('Done');
             if (Number.isFinite(Number(response.credit_balance))) setCreditBalance(Number(response.credit_balance));
             const lunaReply = `${response.reply || 'Done.'}${Number(response.credit_cost) > 0 ? ` · ${Number(response.credit_cost)} credits` : ''}`;
+            rememberLunaAssistantReply(lunaReply);
             setLunaMessages((messages)=>[...messages,{role:'assistant',text:lunaReply}]);
         } catch (error) {
             const rawMessage = error?.response?.data?.message || error?.response?.data?.errors?.prompt?.[0] || error?.message || '';
@@ -5657,17 +5799,17 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         .cosmic-overlay-first-spark > .cosmic-builder-spark {
                             position: relative;
                         }
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > section:not([class*="cosmic-tw-slot--"]),
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section:not([class*="cosmic-tw-slot--"]),
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not([class*="cosmic-tw-slot--"]),
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not([class*="cosmic-tw-slot--"]):not([class*="cosmic-tw-slot--"]) {
                             padding-top: calc(var(--cosmic-overlay-header-height, 80px) + var(--cosmic-overlay-first-spark-padding, clamp(3.25rem, 5vw, 5.5rem))) !important;
                         }
                         @media (max-width: 639px) {
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > section:not([class*="cosmic-tw-slot--"]),
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section:not([class*="cosmic-tw-slot--"]),
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not([class*="cosmic-tw-slot--"]),
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not([class*="cosmic-tw-slot--"]):not([class*="cosmic-tw-slot--"]) {
                                 padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 2.75rem)) !important;
                             }
                         }
@@ -5679,10 +5821,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             min-width: 0;
                             overflow-x: clip;
                         }
-                        .cosmic-builder-spark > section,
-                        .cosmic-builder-spark > [data-cosmic-render-shell] > section,
-                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
-                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
+                        .cosmic-builder-spark > section:not([class*="cosmic-tw-slot--"]),
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > section:not([class*="cosmic-tw-slot--"]),
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not([class*="cosmic-tw-slot--"]),
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not([class*="cosmic-tw-slot--"]) {
                             box-sizing: border-box;
                             max-width: 100%;
                             padding-top: 50px !important;
@@ -5700,9 +5842,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         }
                         .cosmic-builder-spark .grid > * { min-width: 0; }
                         .cosmic-builder-spark :is(input,select,textarea,button) { max-width: 100%; }
-                        /* Cosmic default CTA contract: rounded by default in trial + registered builders. */
-                        .cosmic-builder-spark :is(button,a,[role="button"],[data-cosmic-luna-display="button"]) { border-radius: 100px !important; }
-                        .cosmic-builder-spark [data-cosmic-luna-display="button"] { border-radius: 100px !important; overflow: hidden; }
+                        /* Tailwind ownership: customer-facing button radius comes only from Spark classes/schema. */
                         .cosmic-luna-hover-trigger {
                             position:absolute; z-index:85; display:grid; place-items:center; width:34px; height:34px;
                             border:1px solid rgba(255,255,255,.28); border-radius:9999px !important;
@@ -5711,10 +5851,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         }
                         .cosmic-builder-spark:hover > .cosmic-luna-hover-trigger { opacity:1; transform:scale(1); pointer-events:auto; }
                         @media (min-width: 640px) {
-                            .cosmic-builder-spark > section,
-                            .cosmic-builder-spark > [data-cosmic-render-shell] > section,
-                            .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
-                            .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
+                            .cosmic-builder-spark > section:not([class*="cosmic-tw-slot--"]),
+                            .cosmic-builder-spark > [data-cosmic-render-shell] > section:not([class*="cosmic-tw-slot--"]),
+                            .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not([class*="cosmic-tw-slot--"]),
+                            .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not([class*="cosmic-tw-slot--"]) {
                                 padding-top: 80px !important;
                                 padding-bottom: 80px !important;
                             }
@@ -5728,22 +5868,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 -webkit-overflow-scrolling: touch;
                             }
                         }
-                        /* Clean Page Style button contract: primary actions always use the
-                           website primary color, even when a Spark's Tailwind arbitrary-color
-                           class was supplied dynamically by the active theme. */
-                        .cosmic-builder-canvas[data-cosmic-page-style='clean'] .cosmic-builder-spark :is(a,button)[class*='bg-[#'],
-                        .cosmic-builder-canvas[data-cosmic-page-style='clean'] .cosmic-builder-spark :is(a,button)[class*='bg-primary'],
-                        .cosmic-builder-canvas[data-cosmic-page-style='clean'] .cosmic-builder-spark :is(a,button)[class*='bg-[var(--p)]'],
-                        .cosmic-builder-canvas[data-cosmic-page-style='clean'] .cosmic-builder-spark :is(a,button).cosmic-brand-bg {
-                            background: var(--p, var(--cosmic-brand-bg, #243447)) !important;
-                            background-color: var(--p, var(--cosmic-brand-bg, #243447)) !important;
-                            border-color: var(--p, var(--cosmic-brand-bg, #243447)) !important;
-                            color: #fff !important;
-                            -webkit-text-fill-color: #fff !important;
-                            opacity: 1 !important;
-                        }
-                    `}</style>
-                    <div ref={builderCanvasRef} data-cosmic-page-style={normalizedPageStyle} className={`cosmic-builder-canvas mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl lg:w-[min(86vw,1560px)] ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
+                        /* Tailwind ownership: page style never rewrites customer-facing button utilities. */
+`}</style>
+                    <div ref={builderCanvasRef} data-cosmic-preview-isolation="true" data-cosmic-page-style={normalizedPageStyle} className={`cosmic-builder-canvas cosmic-preview-isolation mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl lg:w-[min(86vw,1560px)] ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
                         <div
                             className="relative flex w-full flex-col items-stretch overflow-hidden rounded-[11px]"
                             style={{

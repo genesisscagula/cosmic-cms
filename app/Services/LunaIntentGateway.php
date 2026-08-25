@@ -2,7 +2,9 @@
 
 namespace App\Services;
 
+use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 
 final class LunaIntentGateway
 {
@@ -32,17 +34,30 @@ final class LunaIntentGateway
         $prior=$this->priorContext($siteMemory);
         $resolution=$this->contextResolver->resolve($message,$prior,$context);
         if(($resolution['is_followup']??false)===true) $prior['resolved_followup']=$resolution;
-        // Dimension 1 / API 1: always keep the model choice tiny: chat | action.
-        // Local routing is a safety/fallback layer, not a replacement for the API call.
-        $localIntent=$this->localRoute($message,$prior);
+        // Dimension 1 / API 1 is deliberately authoritative and tiny:
+        // the model may choose only chat | action. No scope, target, mutation,
+        // confirmation, or user-facing reply is permitted at this stage.
+        //
+        // Local regex routing remains only as an outage/failure fallback. It must
+        // never override a valid API-1 decision; otherwise this first menu is not
+        // actually a model-selected routing boundary.
         $aiIntent=$this->aiRoute($message,$prior,$context);
-        $intent=$aiIntent ?? $localIntent;
-        if(($resolution['is_followup']??false)===true && ($resolution['execution_allowed']??false)===true) $intent='action';
+        $source='api';
+        if(!in_array($aiIntent,['chat','action'],true)){
+            $aiIntent=$this->localRoute($message,$prior);
+            $source='local_fallback';
+        }
 
-        // Explicit executable language wins if the probabilistic router ever regresses.
-        if($localIntent==='action') $intent='action';
+        $intent=$aiIntent==='action'?'action':'chat';
 
-        return ['intent'=>$intent==='action'?'action':'chat'];
+        Log::debug('[LunaRouter] API 1 resolved', [
+            'intent'=>$intent,
+            'source'=>$source,
+            'surface'=>(string)($context['surface']??''),
+            'followup'=>(bool)($resolution['is_followup']??false),
+        ]);
+
+        return ['intent'=>$intent];
     }
 
     /**
@@ -56,18 +71,61 @@ final class LunaIntentGateway
         $prior=$this->priorContext($siteMemory);
         $resolution=$this->contextResolver->resolve($message,$prior,$context);
         if(($resolution['is_followup']??false)===true) $prior['resolved_followup']=$resolution;
-        // Dimension 2 / API 2: choose only the action family. No domain/target yet.
-        $localFamily=$this->localActionFamily($message);
-        $actionFamily=$this->aiActionFamily($message,$prior,$context) ?? $localFamily;
-        if(!in_array($actionFamily,['build','update','inspect','publish','delete','navigate'],true)) $actionFamily=$localFamily;
+        // API 2: choose only the high-level CMS scope/menu. It must not decide
+        // the concrete operation, target Spark, mutation, or user-facing reply.
+        $localScope=$this->localActionScope($message,$prior,$context);
+        $aiScope=$this->aiActionScope($message,$prior,$context);
+        $actionScope=$aiScope ?? $localScope;
+        if(!in_array($actionScope,$this->actionScopes(),true)) $actionScope=$localScope;
 
-        // Dimension 3 / API 3: resolve domain + atomic operation + target/change schema
-        // while the already-chosen action family is locked and cannot drift.
-        $schema=$this->aiDomainSchema($message,$actionFamily,$prior,$context)
-            ?? $this->localActionSchema($message,$prior,$context,$actionFamily);
+        Log::debug('[LunaRouter] API 2 resolved', [
+            'scope'=>$actionScope,
+            'source'=>$aiScope!==null?'api':'local_fallback',
+            'surface'=>(string)($context['surface']??''),
+        ]);
+
+        // API 3 exists only for the Sparks menu. It receives the actual Spark
+        // instances on the current page and chooses exactly one target instance.
+        $sparkTarget=null;
+        if($actionScope==='sparks'){
+            $pageSparks=$this->normalizePageSparkMenu($context['page_sparks']??[]);
+            $sparkTarget=$this->aiSparkTarget($message,$pageSparks,$prior,$context)
+                ?? $this->localSparkTarget($message,$pageSparks,$prior,$context);
+
+            if(is_array($sparkTarget)){
+                $context['selected_spark']=$sparkTarget;
+                $context['target_index']=$sparkTarget['index'];
+                Log::debug('[LunaRouter] API 3 Spark resolved', [
+                    'index'=>$sparkTarget['index'],
+                    'type'=>$sparkTarget['type'],
+                    'label'=>$sparkTarget['label']??null,
+                    'page_spark_count'=>count($pageSparks),
+                ]);
+            }else{
+                Log::warning('[LunaRouter] API 3 Spark unresolved', [
+                    'page_spark_count'=>count($pageSparks),
+                    'surface'=>(string)($context['surface']??''),
+                ]);
+            }
+        }
+
+        // Transitional compatibility only: existing downstream executors still
+        // expect build/update/inspect/publish/delete/navigate. Derive that family
+        // locally after the scope is locked; do NOT spend another AI call here.
+        $actionFamily=$this->legacyActionFamilyForScope($message,$actionScope);
+
+        // Transitional downstream route. Batch 3 replaces the Sparks branch with
+        // the page Spark-selection menu before the full-schema editor is invoked.
+        $compatContext=array_replace($context,['menu_scope'=>$actionScope]);
+        $schema=$actionScope==='sparks'
+            ? $this->localActionSchema($message,$prior,$compatContext,$actionFamily)
+            : ($this->aiDomainSchema($message,$actionFamily,$prior,$context,$actionScope)
+                ?? $this->localActionSchema($message,$prior,$compatContext,$actionFamily));
         $schema['action']=$actionFamily;
         $schema['routing']=[
             'intent'=>'action',
+            'menu_scope'=>$actionScope,
+            'spark_target'=>$sparkTarget,
             'action_family'=>$actionFamily,
             'domain'=>$schema['domain']??null,
             'leaf_operation'=>$schema['leaf_operation']??null,
@@ -76,8 +134,23 @@ final class LunaIntentGateway
 
         $normalized=$this->normalizeAction($schema,$prior);
         $normalized=$this->contextResolver->apply($normalized,$resolution,$message);
+        if($actionScope==='sparks' && is_array($sparkTarget)){
+            $normalized['scope']='section';
+            $normalized['target']=array_replace(
+                is_array($normalized['target']??null)?$normalized['target']:[],
+                [
+                    'type'=>'spark',
+                    'key'=>$sparkTarget['type'],
+                    'label'=>$sparkTarget['label']?:$sparkTarget['type'],
+                    'index'=>$sparkTarget['index'],
+                ]
+            );
+            $normalized['needs_clarification']=false;
+        }
         $normalized['routing']=array_replace(is_array($normalized['routing']??null)?$normalized['routing']:[],[
             'intent'=>'action',
+            'menu_scope'=>$actionScope,
+            'spark_target'=>$sparkTarget,
             'action_family'=>$normalized['action']??$actionFamily,
             'domain'=>$normalized['domain']??null,
             'leaf_operation'=>$normalized['leaf_operation']??null,
@@ -109,6 +182,8 @@ final class LunaIntentGateway
 
         $siteMemory['routing_context']=[
             'intent'=>'action',
+            'menu_scope'=>data_get($schema,'routing.menu_scope'),
+            'spark_target'=>data_get($schema,'routing.spark_target'),
             'action'=>$schema['action']??'update',
             'scope'=>$schema['scope']??'page',
             'domain'=>$schema['domain']??null,
@@ -155,11 +230,11 @@ Return JSON only and return exactly one key:
 or
 {"intent":"action"}
 
-Use chat for greetings, conversation, questions, help, explanations, and capability/product questions.
-Use action when the user is asking Luna to actually build, create, update, edit, redesign, inspect/read current website state, publish, delete, or navigate somewhere.
-"Can you build me a restaurant website?" is action when it is a concrete request to build it.
-"Can you change the theme?", "Could you switch the palette?", and "Would you update the brand colors?" are ACTION requests, not capability questions.
-Do not classify the specific action. Do not return scope, target, entities, reasoning, suggestions, confirmation language, or a user-facing reply.
+Choose ACTION only when the user wants Cosmic/Luna to do something to website or CMS state now, including build, create, update, edit, redesign, inspect/read current website state, publish, delete, or navigate.
+Choose CHAT for greetings, conversation, explanations, help/how-to questions, capability/product questions, brainstorming, and requests that only ask what is possible.
+Question grammar does not make a request CHAT: "Can you change the theme?" is ACTION because it asks Luna to perform the change.
+A short follow-up such as "a little more", "make it smaller again", or "same for mobile" is ACTION when PRIOR ACTION CONTEXT clearly shows it continues executable work.
+Do not identify what action it is. Do not return action family, scope, target, entities, reasoning, suggestions, confirmation language, or a user-facing reply.
 PROMPT;
 
         try{
@@ -171,7 +246,7 @@ PROMPT;
                     'response_format'=>['type'=>'json_object'],
                     'messages'=>[
                         ['role'=>'system','content'=>$system],
-                        ['role'=>'user','content'=>"CURRENT MESSAGE:\n{$message}\n\nPRIOR ACTION CONTEXT:\n".json_encode($prior,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUI CONTEXT:\n".json_encode($context,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
+                        ['role'=>'user','content'=>"BUILDER CONVERSATION (oldest to newest):\n".json_encode($this->builderConversationContext($context),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT MESSAGE:\n{$message}\n\nPRIOR ACTION CONTEXT:\n".json_encode($this->intentPriorContext($prior),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUI CONTEXT:\n".json_encode($this->intentUiContext($context),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
                     ],
                 ])->throw()->json();
 
@@ -184,9 +259,367 @@ PROMPT;
         }
     }
 
+
+    /**
+     * Full ephemeral Builder-session transcript. This is user/Luna prose only;
+     * no page schemas, secrets, internal IDs, or hidden execution payloads.
+     */
+    private function builderConversationContext(array $context): array
+    {
+        $conversation=is_array($context['conversation']??null)?$context['conversation']:[];
+        $out=[];
+        foreach($conversation as $turn){
+            if(!is_array($turn)) continue;
+            $role=(string)($turn['role']??'');
+            $content=trim((string)($turn['content']??''));
+            if(!in_array($role,['user','assistant'],true)||$content==='') continue;
+            $out[]=['role'=>$role,'content'=>Str::limit($content,6000,'')];
+            if(count($out)>=120) break;
+        }
+        return $out;
+    }
+
+    /** API 1 needs only enough state to recognize an executable follow-up. */
+    private function intentPriorContext(array $prior): array
+    {
+        $verified=is_array($prior['last_verified_action']??null)?$prior['last_verified_action']:[];
+        $routing=is_array($prior['last_routing_context']??null)?$prior['last_routing_context']:[];
+        $current=is_array($prior['current']??null)?$prior['current']:[];
+
+        return array_filter([
+            'last_verified_action'=>array_filter([
+                'action'=>$verified['action']??null,
+                'scope'=>$verified['scope']??null,
+                'domain'=>$verified['domain']??null,
+                'target'=>$verified['target']??null,
+            ],fn($v)=>$v!==null&&$v!==[]&&$v!==''),
+            'last_routing_context'=>array_filter([
+                'intent'=>$routing['intent']??null,
+                'action'=>$routing['action']??null,
+                'scope'=>$routing['scope']??null,
+                'domain'=>$routing['domain']??null,
+                'target'=>$routing['target']??null,
+            ],fn($v)=>$v!==null&&$v!==[]&&$v!==''),
+            'current'=>array_filter([
+                'surface'=>$current['surface']??null,
+                'page_id'=>$current['current_page_id']??($current['page_id']??null),
+                'target_index'=>$current['target_index']??null,
+            ],fn($v)=>$v!==null&&$v!==[]&&$v!==''),
+        ],fn($v)=>$v!==[]);
+    }
+
+    /** Never send Spark schemas, DOM inventories, or page payloads to API 1. */
+    private function intentUiContext(array $context): array
+    {
+        return array_filter([
+            'surface'=>$context['surface']??null,
+            'ui_scope'=>$context['ui_scope']??null,
+            'target_index'=>$context['target_index']??null,
+            'has_blocks'=>$context['has_blocks']??null,
+            'current_page_id'=>$context['current_page_id']??null,
+            'current_page_title'=>$context['current_page_title']??null,
+            'current_page_slug'=>$context['current_page_slug']??null,
+        ],fn($v)=>$v!==null&&$v!=='');
+    }
+
     /**
      * API 2: action family only. This intentionally has a six-value choice set.
      */
+    /**
+     * Normalize the page's actual Spark menu for API 3. No block content or
+     * Tailwind/schema payload is exposed at this stage.
+     */
+    private function normalizePageSparkMenu(array $sparks): array
+    {
+        $clean=[];
+        foreach(array_slice($sparks,0,120) as $row){
+            if(!is_array($row)) continue;
+            $index=filter_var($row['index']??null,FILTER_VALIDATE_INT);
+            $type=Str::lower(trim((string)($row['type']??'')));
+            if($index===false || $index<0 || $type==='') continue;
+            $clean[]=[
+                'index'=>(int)$index,
+                'type'=>Str::limit($type,120,''),
+                'label'=>Str::limit(trim((string)($row['label']??'')),80,''),
+            ];
+        }
+        return $clean;
+    }
+
+    /**
+     * API 3: choose exactly one Spark instance from the current page.
+     * It must never invent a library Spark or return schema edits.
+     */
+    private function aiSparkTarget(string $message,array $pageSparks,array $prior,array $context): ?array
+    {
+        if($pageSparks===[]) return null;
+        $apiKey=(string)config('openai.api_key');
+        if($apiKey==='') return null;
+
+        $system=<<<'PROMPT'
+You are Luna's third routing API inside Cosmic CMS.
+API 1 already chose ACTION and API 2 already chose SPARKS.
+
+You receive the exact Spark instances currently present on this page.
+Choose exactly one existing Spark instance that the user's request targets.
+
+Return JSON only:
+{"index":0,"type":"hero_slider_fade"}
+
+Rules:
+- index and type MUST exactly match one row from AVAILABLE PAGE SPARKS.
+- Never invent a Spark type or choose from the global Spark library.
+- Use the user's natural language plus each row's type/label.
+- "hero", "banner", "top section" normally means the most relevant hero/banner Spark.
+- "services", "pricing", "testimonials", "faq", "contact", etc. should choose the corresponding page Spark.
+- A request about a button/card/image/heading inside a named section targets that section's Spark.
+- For short follow-ups such as "a little more", prefer the previously verified/routed Spark when it still exists on this page.
+- If multiple same-type Sparks exist, use label/context and prior target to select one.
+- Do not return operation, changes, schema, Tailwind classes, reasoning, confirmation, or reply text.
+PROMPT;
+
+        try{
+            $response=Http::withToken($apiKey)
+                ->connectTimeout(20)
+                ->timeout(60)
+                ->post($this->endpoint(),[
+                    'model'=>env('OPENAI_LUNA_SPARK_ROUTER_MODEL',env('OPENAI_LUNA_ROUTER_MODEL',env('OPENAI_MODEL','gpt-5-mini'))),
+                    'response_format'=>['type'=>'json_object'],
+                    'messages'=>[
+                        ['role'=>'system','content'=>$system],
+                        ['role'=>'user','content'=>"BUILDER CONVERSATION (oldest to newest):\n".json_encode($this->builderConversationContext($context),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT ACTION REQUEST:\n{$message}\n\nAVAILABLE PAGE SPARKS:\n".json_encode($pageSparks,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nPRIOR SPARK CONTEXT:\n".json_encode($this->sparkPriorContext($prior),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
+                    ],
+                ])->throw()->json();
+
+            $decoded=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+            if(!is_array($decoded)) return null;
+            $index=filter_var($decoded['index']??null,FILTER_VALIDATE_INT);
+            $type=Str::lower(trim((string)($decoded['type']??'')));
+            if($index===false || $type==='') return null;
+
+            foreach($pageSparks as $row){
+                if((int)$row['index']===(int)$index && $row['type']===$type) return $row;
+            }
+            return null;
+        }catch(\Throwable $e){
+            report($e);
+            return null;
+        }
+    }
+
+    private function sparkPriorContext(array $prior): array
+    {
+        $verified=is_array($prior['last_verified_action']??null)?$prior['last_verified_action']:[];
+        $routing=is_array($prior['last_routing_context']??null)?$prior['last_routing_context']:[];
+        return array_filter([
+            'verified_index'=>data_get($verified,'routing.spark_target.index') ?? data_get($verified,'target.index'),
+            'verified_type'=>data_get($verified,'routing.spark_target.type') ?? data_get($verified,'target.key'),
+            'routed_index'=>data_get($routing,'spark_target.index') ?? data_get($routing,'target.index'),
+            'routed_type'=>data_get($routing,'spark_target.type') ?? data_get($routing,'target.key'),
+        ],fn($v)=>$v!==null&&$v!=='');
+    }
+
+    /** Deterministic outage fallback for API 3. */
+    private function localSparkTarget(string $message,array $pageSparks,array $prior,array $context): ?array
+    {
+        if($pageSparks===[]) return null;
+
+        $explicitIndex=filter_var($context['target_index']??null,FILTER_VALIDATE_INT);
+        if($explicitIndex!==false){
+            foreach($pageSparks as $row) if((int)$row['index']===(int)$explicitIndex) return $row;
+        }
+
+        $q=Str::lower($message);
+        $terms=[
+            'hero'=>['hero','banner'],
+            'services'=>['service'],
+            'features'=>['feature'],
+            'pricing'=>['pricing','price'],
+            'testimonials'=>['testimonial','review'],
+            'team'=>['team','staff'],
+            'portfolio'=>['portfolio','project','work'],
+            'faq'=>['faq','frequently'],
+            'contact'=>['contact'],
+            'cta'=>['cta','call to action'],
+            'stats'=>['stat','metric','number'],
+            'process'=>['process','steps','timeline'],
+            'blog'=>['blog','post'],
+            'footer'=>['footer'],
+        ];
+        foreach($terms as $needle=>$typeTerms){
+            if(!Str::contains($q,$needle)) continue;
+            foreach($pageSparks as $row){
+                $hay=Str::lower($row['type'].' '.$row['label']);
+                if(Str::contains($hay,$typeTerms)) return $row;
+            }
+        }
+
+        $priorCtx=$this->sparkPriorContext($prior);
+        $priorIndex=filter_var($priorCtx['verified_index']??$priorCtx['routed_index']??null,FILTER_VALIDATE_INT);
+        if($priorIndex!==false){
+            foreach($pageSparks as $row) if((int)$row['index']===(int)$priorIndex) return $row;
+        }
+
+        return count($pageSparks)===1?$pageSparks[0]:null;
+    }
+
+    /** API 2 menu. Keep this intentionally small and stable. */
+    private function actionScopes(): array
+    {
+        return [
+            'sparks',
+            'global',
+            'header',
+            'footer',
+            'navigation',
+            'theme',
+            'page',
+            'publish',
+            'media',
+            'posts',
+            'commerce',
+            'seo',
+            'settings',
+            'navigate',
+        ];
+    }
+
+    /**
+     * API 2: select only the top-level CMS scope/menu for an ACTION turn.
+     * No operation, Spark target, changes, schema, or response copy is allowed.
+     */
+    private function aiActionScope(string $message,array $prior,array $context): ?string
+    {
+        $apiKey=(string)config('openai.api_key');
+        if($apiKey==='') return null;
+
+        $allowed=implode('|',$this->actionScopes());
+        $system=<<<PROMPT
+You are Luna's second routing API inside Cosmic CMS.
+API 1 already decided this turn is ACTION.
+
+Return JSON only and exactly one key:
+{"scope":"{$allowed}"}
+
+Choose the single top-level CMS menu that owns the requested action:
+- sparks: edit/add/remove/reorder/redesign a page section/Spark or an element inside a Spark, including its content, layout, Tailwind styling, buttons, cards, images, headings, spacing, responsive styles, and section-local forms.
+- global: site-wide design/content tokens or changes explicitly applying across the whole website.
+- header: header shell/layout/logo/header-specific styling, excluding navigation structure when navigation is the main request.
+- footer: footer shell/layout/content/footer-specific styling.
+- navigation: menus, menu links, submenus, ordering, destinations, or navigation structure.
+- theme: site theme, brand/color family, theme palette, fonts when requested as a theme/brand-wide change.
+- page: page creation/deletion/rename/slug/page-level settings or whole-page composition when no specific Spark is the target.
+- publish: publish, republish, unpublish/go-live workflow.
+- media: media-library operations or site media not specifically tied to one Spark.
+- posts: posts/updates/blog content management.
+- commerce: products, categories, cart, checkout, orders, shipping, store configuration.
+- seo: SEO metadata, sitemap, robots, indexing settings.
+- settings: CMS/site settings not better owned by another menu.
+- navigate: open/go to/take the user to a CMS destination.
+
+Target wording wins over implementation details. Example:
+"Make the hero buttons square" => sparks
+"Change all H2s site-wide" => global
+"Change the website theme to navy" => theme
+"Add Services to the main menu" => navigation
+"Publish this page" => publish
+
+For short executable follow-ups such as "a little more", preserve the previously verified/routed menu when PRIOR ACTION CONTEXT makes it clear.
+Do not return operation, action family, target, Spark name/index, schema, changes, reasoning, confirmation text, or user-facing prose.
+PROMPT;
+
+        try{
+            $response=Http::withToken($apiKey)
+                ->connectTimeout(20)
+                ->timeout(60)
+                ->post($this->endpoint(),[
+                    'model'=>env('OPENAI_LUNA_SCOPE_ROUTER_MODEL',env('OPENAI_LUNA_ROUTER_MODEL',env('OPENAI_MODEL','gpt-5-mini'))),
+                    'response_format'=>['type'=>'json_object'],
+                    'messages'=>[
+                        ['role'=>'system','content'=>$system],
+                        ['role'=>'user','content'=>"BUILDER CONVERSATION (oldest to newest):\n".json_encode($this->builderConversationContext($context),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT ACTION REQUEST:\n{$message}\n\nPRIOR ACTION CONTEXT:\n".json_encode($this->scopePriorContext($prior),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUI CONTEXT:\n".json_encode($this->intentUiContext($context),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
+                    ],
+                ])->throw()->json();
+
+            $decoded=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+            $scope=is_array($decoded)?($decoded['scope']??null):null;
+            return is_string($scope)&&in_array($scope,$this->actionScopes(),true)?$scope:null;
+        }catch(\Throwable $e){
+            report($e);
+            return null;
+        }
+    }
+
+    /** Tiny prior context for API 2. Never send page schemas or Tailwind inventories. */
+    private function scopePriorContext(array $prior): array
+    {
+        $verified=is_array($prior['last_verified_action']??null)?$prior['last_verified_action']:[];
+        $routing=is_array($prior['last_routing_context']??null)?$prior['last_routing_context']:[];
+        return [
+            'last_verified'=>array_filter([
+                'menu_scope'=>data_get($verified,'routing.menu_scope') ?? ($verified['menu_scope']??null),
+                'domain'=>$verified['domain']??null,
+                'scope'=>$verified['scope']??null,
+                'target_type'=>data_get($verified,'target.type'),
+                'target_label'=>data_get($verified,'target.label'),
+            ],fn($v)=>$v!==null&&$v!==''),
+            'last_routed'=>array_filter([
+                'menu_scope'=>$routing['menu_scope']??null,
+                'domain'=>$routing['domain']??null,
+                'scope'=>$routing['scope']??null,
+                'target_type'=>data_get($routing,'target.type'),
+                'target_label'=>data_get($routing,'target.label'),
+            ],fn($v)=>$v!==null&&$v!==''),
+        ];
+    }
+
+    /** Deterministic fallback only when API 2 is unavailable/invalid. */
+    private function localActionScope(string $message,array $prior,array $context): string
+    {
+        $q=Str::lower(trim($message));
+
+        // Explicitly named top-level features first.
+        if(preg_match('/\b(publish|republish|unpublish|go live|make (?:it|this|the (?:page|site|website)) live)\b/i',$message)) return 'publish';
+        if(preg_match('/\b(menu|menus|navigation|nav link|menu link|submenu|sub-menu)\b/i',$message)) return 'navigation';
+        if(preg_match('/\b(header)\b/i',$message)) return 'header';
+        if(preg_match('/\b(footer)\b/i',$message)) return 'footer';
+        if(preg_match('/\b(theme|brand palette|color family|colour family)\b/i',$message)) return 'theme';
+        if(preg_match('/\b(product|products|cart|checkout|order|orders|shipping|store|commerce)\b/i',$message)) return 'commerce';
+        if(preg_match('/\b(post|posts|blog|update post|news post)\b/i',$message)) return 'posts';
+        if(preg_match('/\b(seo|meta title|meta description|sitemap|robots\.txt|indexing)\b/i',$message)) return 'seo';
+        if(preg_match('/\b(media library|upload media|media folder)\b/i',$message)) return 'media';
+        if(preg_match('/\b(open|go to|take me to|navigate to)\b/i',$message)) return 'navigate';
+        if(preg_match('/\b(site[- ]wide|website[- ]wide|across (?:the )?(?:whole )?(?:site|website)|all (?:h1|h2|h3|headings?|buttons?|links?))\b/i',$message)) return 'global';
+
+        // A concrete section/visual primitive on the current page is a Spark edit.
+        if(preg_match('/\b(hero|banner|section|spark|services?|features?|pricing|testimonials?|team|portfolio|faq|contact|cta|call to action|cards?|buttons?|heading|headline|image|photo|spacing|padding|gap|columns?|rounded|radius)\b/i',$message)) return 'sparks';
+
+        if(preg_match('/\b(page|homepage|home page|landing page|slug)\b/i',$message)) return 'page';
+
+        // Follow-ups inherit only the previous menu hint.
+        $priorScope=(string)(data_get($prior,'last_verified_action.routing.menu_scope')
+            ?? data_get($prior,'last_routing_context.menu_scope')
+            ?? '');
+        if(in_array($priorScope,$this->actionScopes(),true)) return $priorScope;
+
+        return 'settings';
+    }
+
+    /**
+     * Temporary adapter for the pre-nested executors. API 2 does not choose this;
+     * it is derived locally until the downstream branches are replaced.
+     */
+    private function legacyActionFamilyForScope(string $message,string $scope): string
+    {
+        if($scope==='publish') return 'publish';
+        if($scope==='navigate') return 'navigate';
+        if(preg_match('/\b(delete|destroy|permanently remove)\b/i',$message)) return 'delete';
+        if(preg_match('/\b(inspect|audit|check|show me|what is|what are|which|how many)\b/i',$message)
+            && !preg_match('/\b(fix|repair|correct|change|update|improve|make|set|add|remove|delete|create|build)\b/i',$message)) return 'inspect';
+        if($scope==='page' && preg_match('/\b(build|create|generate|design)\b/i',$message)) return 'build';
+        return 'update';
+    }
+
     private function aiActionFamily(string $message,array $prior,array $context): ?string
     {
         $apiKey=(string)config('openai.api_key');
@@ -242,13 +675,13 @@ PROMPT;
         return 'update';
     }
 
-    private function aiDomainSchema(string $message,string $actionFamily,array $prior,array $context): ?array
+    private function aiDomainSchema(string $message,string $actionFamily,array $prior,array $context,string $menuScope='settings'): ?array
     {
         $apiKey=(string)config('openai.api_key');
         if($apiKey==='') return null;
 
         $system=<<<'PROMPT'
-You are Luna's third routing API inside Cosmic CMS. API 1 established ACTION and API 2 already locked the action family. Resolve only the domain, atomic operation, scope, target and structured changes. Never change the supplied action family.
+You are Luna's transitional downstream routing API inside Cosmic CMS. API 1 established ACTION and API 2 already locked the top-level CMS MENU SCOPE. Resolve only the compatible domain, atomic operation, executor scope, target and structured changes. Never escape the supplied MENU SCOPE or change the supplied legacy action family.
 
 Return JSON only:
 {
@@ -279,6 +712,22 @@ Return JSON only:
 Rules:
 - This output is machine-only. Never include reply, message, response, suggestion, question, or customer-facing prose.
 - The action field MUST exactly equal LOCKED ACTION FAMILY supplied in the user payload. Never reinterpret it.
+- LOCKED MENU SCOPE is authoritative. Keep domain/target compatible with it:
+  sparks => section|element|content|design|typography|layout|media|responsive|form when section-local
+  global => site|design|typography|layout|responsive
+  header => header
+  footer => footer
+  navigation => navigation
+  theme => theme
+  page => page
+  publish => publishing
+  media => media
+  posts => post
+  commerce => commerce
+  seo => seo
+  settings => settings
+  navigate => page|site
+- Do not silently route a request to a different top-level menu.
 - build means create a page/site or compose an empty page.
 - update means mutate existing content, structure, media, shell, theme, or design tokens.
 - inspect means read actual current website/page/section/element state and must never mutate.
@@ -312,7 +761,7 @@ PROMPT;
                     'response_format'=>['type'=>'json_object'],
                     'messages'=>[
                         ['role'=>'system','content'=>$system],
-                        ['role'=>'user','content'=>"LOCKED ACTION FAMILY: {$actionFamily}\n\nCURRENT ACTION REQUEST:\n{$message}\n\nPRIOR ACTION CONTEXT:\n".json_encode($prior,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nEXECUTION CONTEXT:\n".json_encode($context,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
+                        ['role'=>'user','content'=>"LOCKED MENU SCOPE: {$menuScope}\nLOCKED ACTION FAMILY: {$actionFamily}\n\nCURRENT ACTION REQUEST:\n{$message}\n\nPRIOR ACTION CONTEXT:\n".json_encode($prior,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nEXECUTION CONTEXT:\n".json_encode(array_replace($context,['menu_scope'=>$menuScope]),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
                     ],
                 ])->throw()->json();
 

@@ -104,9 +104,9 @@ export function HeroCenteredCTA({ block, onUpdate, globalTheme }) {
             className={sparkTw(block, "section", `relative flex min-h-[500px] w-full items-center overflow-hidden border-b px-7 py-20 text-center sm:min-h-[560px] sm:px-10 sm:py-24 lg:min-h-[620px] lg:px-12 lg:py-28 ${theme.bg} ${theme.border} transition-colors duration-500`)}
         >
 
-            <div className={sparkTw(block, "b10_1", "absolute
+            <div className={sparkTw(block, "b10_1", `absolute
                 inset-0
-                overflow-hidden")}>
+                overflow-hidden`)}>
 
                 <div className={sparkTw(block, "wrapper", `absolute -left-32 -top-32 h-[30rem] w-[30rem] rounded-full opacity-[0.13] blur-[140px] ${primaryTheme.bg}`)} />
 

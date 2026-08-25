@@ -206,8 +206,8 @@ final class LunaExecutionVerificationService
         if($planned===$actual) return true;
         if($contract==='v5'){
             $strictAliases=[
-                'update'=>['edit','update','design_overrides','header_overlay','brand_color_family'],
-                'edit'=>['edit','update','repeater_add','repeater_remove','repeater_reorder'],
+                'update'=>['edit','update','spark_full_schema_edit','design_overrides','header_overlay','brand_color_family'],
+                'edit'=>['edit','update','spark_full_schema_edit','repeater_add','repeater_remove','repeater_reorder'],
                 'add'=>['add','create','insert_before','insert_after','repeater_add'],
                 'create'=>['create','add','build_page'],
                 'remove'=>['remove','delete','repeater_remove'],
@@ -223,8 +223,8 @@ final class LunaExecutionVerificationService
             return in_array($actual,$strictAliases[$planned]??[],true);
         }
         $aliases=[
-            'update'=>['edit','update','design_overrides','header_overlay','brand_color_family'],
-            'edit'=>['edit','update','repeater_add','repeater_remove','repeater_reorder'],
+            'update'=>['edit','update','spark_full_schema_edit','design_overrides','header_overlay','brand_color_family'],
+            'edit'=>['edit','update','spark_full_schema_edit','repeater_add','repeater_remove','repeater_reorder'],
             'add'=>['add','create','insert_before','insert_after','repeater_add'],
             'create'=>['create','add','build_page'],
             'remove'=>['remove','delete','repeater_remove'],
