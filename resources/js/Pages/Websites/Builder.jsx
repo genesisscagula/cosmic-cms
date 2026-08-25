@@ -5821,10 +5821,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             min-width: 0;
                             overflow-x: clip;
                         }
-                        .cosmic-builder-spark > section:not([class*="cosmic-tw-slot--"]),
-                        .cosmic-builder-spark > [data-cosmic-render-shell] > section:not([class*="cosmic-tw-slot--"]),
-                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not([class*="cosmic-tw-slot--"]),
-                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not([class*="cosmic-tw-slot--"]) {
+                        .cosmic-builder-spark > section:not(.cosmic-tw-own-section-y),
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-y),
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-y),
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
                             box-sizing: border-box;
                             max-width: 100%;
                             padding-top: 50px !important;
@@ -5851,13 +5851,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         }
                         .cosmic-builder-spark:hover > .cosmic-luna-hover-trigger { opacity:1; transform:scale(1); pointer-events:auto; }
                         @media (min-width: 640px) {
-                            .cosmic-builder-spark > section:not([class*="cosmic-tw-slot--"]),
-                            .cosmic-builder-spark > [data-cosmic-render-shell] > section:not([class*="cosmic-tw-slot--"]),
-                            .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not([class*="cosmic-tw-slot--"]),
-                            .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not([class*="cosmic-tw-slot--"]) {
-                                padding-top: 80px !important;
-                                padding-bottom: 80px !important;
-                            }
+                            .cosmic-builder-spark > section:not(.cosmic-tw-own-section-y),
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-y),
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-y),
+                        .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
+                            padding-top: 80px !important;
+                            padding-bottom: 80px !important;
+                        }
                         }
                         @media (max-width: 639px) {
                             .cosmic-builder-spark table {

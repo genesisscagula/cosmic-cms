@@ -83,6 +83,8 @@ final class SiteBundleCatalog
                         'shared_typography' => true,
                         'shared_spacing' => true,
                         'distinct_page_compositions' => true,
+                        'customizable_section_slots' => true,
+                        'custom_slot_policy' => 'registered_first_flex_fallback',
                         'visual_direction' => $archetype['visual_direction'],
                     ],
                     'pages' => $pages,

@@ -11,7 +11,10 @@ final class LunaIntentGateway
     private array $contract;
     private array $leafSchemas;
 
-    public function __construct(private readonly LunaContextResolverService $contextResolver)
+    public function __construct(
+        private readonly LunaContextResolverService $contextResolver,
+        private readonly LunaModelDepartmentService $models,
+    )
     {
         $path=resource_path('luna/canonical_intent_schema.json');
         $decoded=is_file($path)?json_decode((string)file_get_contents($path),true):[];
@@ -61,9 +64,10 @@ final class LunaIntentGateway
     }
 
     /**
-     * Nested action routing for action turns. API 2 locks the action family;
-     * API 3 resolves domain/operation/target into the canonical execution JSON.
-     * No intermediate output is customer-facing.
+     * Nested action routing for action turns. API 2 locks the CMS scope. For
+     * Sparks, API 3 locks the Spark action branch and API 4 may resolve the
+     * current-page target before branch-specific execution. No intermediate
+     * output is customer-facing.
      */
     public function classifyAction(string $message,array $siteMemory=[],array $context=[]): array
     {
@@ -84,28 +88,52 @@ final class LunaIntentGateway
             'surface'=>(string)($context['surface']??''),
         ]);
 
-        // API 3 exists only for the Sparks menu. It receives the actual Spark
-        // instances on the current page and chooses exactly one target instance.
+        // API 3 exists only for the Sparks menu. It chooses the Spark action
+        // branch before any concrete Spark instance is selected. This keeps
+        // edit/change/add/remove/custom/reorder semantics from overlapping.
+        $sparkAction=null;
         $sparkTarget=null;
         if($actionScope==='sparks'){
-            $pageSparks=$this->normalizePageSparkMenu($context['page_sparks']??[]);
-            $sparkTarget=$this->aiSparkTarget($message,$pageSparks,$prior,$context)
-                ?? $this->localSparkTarget($message,$pageSparks,$prior,$context);
+            $sparkAction=$this->aiSparkAction($message,$prior,$context)
+                ?? $this->localSparkAction($message,$prior,$context);
+            if(!in_array($sparkAction,$this->sparkActions(),true)) $sparkAction='edit_spark';
 
-            if(is_array($sparkTarget)){
-                $context['selected_spark']=$sparkTarget;
-                $context['target_index']=$sparkTarget['index'];
-                Log::debug('[LunaRouter] API 3 Spark resolved', [
-                    'index'=>$sparkTarget['index'],
-                    'type'=>$sparkTarget['type'],
-                    'label'=>$sparkTarget['label']??null,
-                    'page_spark_count'=>count($pageSparks),
-                ]);
-            }else{
-                Log::warning('[LunaRouter] API 3 Spark unresolved', [
-                    'page_spark_count'=>count($pageSparks),
-                    'surface'=>(string)($context['surface']??''),
-                ]);
+            Log::debug('[LunaRouter] API 3 Spark action resolved', [
+                'spark_action'=>$sparkAction,
+                'surface'=>(string)($context['surface']??''),
+            ]);
+
+            // API 4 is branch-specific target selection. add_spark creates a new
+            // section and therefore has no existing target. custom_spark is special:
+            // it may either create a new section OR replace an existing named section.
+            // Resolve a current-page target when possible so requests such as
+            // "redesign the hero into a unique ..." can reach AI Flex from Whole
+            // Page context without forcing the user to click/select the hero first.
+            // Downstream branch executors remain authoritative about whether the
+            // resolved target is used as a replacement source or only as context.
+            $shouldResolveExistingTarget=in_array($sparkAction,['edit_spark','change_spark','remove_spark','reorder_spark','custom_spark'],true);
+            if($shouldResolveExistingTarget){
+                $pageSparks=$this->normalizePageSparkMenu($context['page_sparks']??[]);
+                $sparkTarget=$this->aiSparkTarget($message,$pageSparks,$prior,$context,$sparkAction)
+                    ?? $this->localSparkTarget($message,$pageSparks,$prior,$context);
+
+                if(is_array($sparkTarget)){
+                    $context['selected_spark']=$sparkTarget;
+                    $context['target_index']=$sparkTarget['index'];
+                    Log::debug('[LunaRouter] API 4 Spark target resolved', [
+                        'spark_action'=>$sparkAction,
+                        'index'=>$sparkTarget['index'],
+                        'type'=>$sparkTarget['type'],
+                        'label'=>$sparkTarget['label']??null,
+                        'page_spark_count'=>count($pageSparks),
+                    ]);
+                }else{
+                    Log::warning('[LunaRouter] API 4 Spark target unresolved', [
+                        'spark_action'=>$sparkAction,
+                        'page_spark_count'=>count($pageSparks),
+                        'surface'=>(string)($context['surface']??''),
+                    ]);
+                }
             }
         }
 
@@ -114,8 +142,9 @@ final class LunaIntentGateway
         // locally after the scope is locked; do NOT spend another AI call here.
         $actionFamily=$this->legacyActionFamilyForScope($message,$actionScope);
 
-        // Transitional downstream route. Batch 3 replaces the Sparks branch with
-        // the page Spark-selection menu before the full-schema editor is invoked.
+        // Transitional downstream route. The explicit Spark action branch is now
+        // locked before target selection; Batch 2 extracts each structural branch
+        // into its dedicated executor workflow.
         $compatContext=array_replace($context,['menu_scope'=>$actionScope]);
         $schema=$actionScope==='sparks'
             ? $this->localActionSchema($message,$prior,$compatContext,$actionFamily)
@@ -125,11 +154,13 @@ final class LunaIntentGateway
         $schema['routing']=[
             'intent'=>'action',
             'menu_scope'=>$actionScope,
+            'spark_action'=>$sparkAction,
+            'model_department'=>$actionScope==='sparks' ? $this->models->departmentForSparkAction($sparkAction) : 'terra',
             'spark_target'=>$sparkTarget,
             'action_family'=>$actionFamily,
             'domain'=>$schema['domain']??null,
             'leaf_operation'=>$schema['leaf_operation']??null,
-            'api_depth'=>3,
+            'api_depth'=>$actionScope==='sparks'?(in_array($sparkAction,['edit_spark','change_spark','remove_spark','reorder_spark'],true)?4:3):3,
         ];
 
         $normalized=$this->normalizeAction($schema,$prior);
@@ -150,11 +181,13 @@ final class LunaIntentGateway
         $normalized['routing']=array_replace(is_array($normalized['routing']??null)?$normalized['routing']:[],[
             'intent'=>'action',
             'menu_scope'=>$actionScope,
+            'spark_action'=>$sparkAction,
+            'model_department'=>$actionScope==='sparks' ? $this->models->departmentForSparkAction($sparkAction) : 'terra',
             'spark_target'=>$sparkTarget,
             'action_family'=>$normalized['action']??$actionFamily,
             'domain'=>$normalized['domain']??null,
             'leaf_operation'=>$normalized['leaf_operation']??null,
-            'api_depth'=>3,
+            'api_depth'=>$actionScope==='sparks'?(in_array($sparkAction,['edit_spark','change_spark','remove_spark','reorder_spark'],true)?4:3):3,
         ]);
         if(($normalized['action']??'')==='inspect'){
             $surface=(string)($context['surface']??'');
@@ -183,6 +216,7 @@ final class LunaIntentGateway
         $siteMemory['routing_context']=[
             'intent'=>'action',
             'menu_scope'=>data_get($schema,'routing.menu_scope'),
+            'spark_action'=>data_get($schema,'routing.spark_action'),
             'spark_target'=>data_get($schema,'routing.spark_target'),
             'action'=>$schema['action']??'update',
             'scope'=>$schema['scope']??'page',
@@ -242,7 +276,7 @@ PROMPT;
                 ->connectTimeout(20)
                 ->timeout(60)
                 ->post($this->endpoint(),[
-                    'model'=>env('OPENAI_LUNA_ROUTER_MODEL',env('OPENAI_MODEL','gpt-5-mini')),
+                    'model'=>$this->models->router(),
                     'response_format'=>['type'=>'json_object'],
                     'messages'=>[
                         ['role'=>'system','content'=>$system],
@@ -322,11 +356,112 @@ PROMPT;
         ],fn($v)=>$v!==null&&$v!=='');
     }
 
+    /** API 3 Spark menu. Keep branch names stable because executors key off them. */
+    private function sparkActions(): array
+    {
+        return [
+            'edit_spark',
+            'change_spark',
+            'add_spark',
+            'remove_spark',
+            'custom_spark',
+            'reorder_spark',
+        ];
+    }
+
     /**
-     * API 2: action family only. This intentionally has a six-value choice set.
+     * API 3: select only the Spark action branch. It must not choose a Spark
+     * instance, library replacement, position, schema mutation, or reply.
      */
+    private function aiSparkAction(string $message,array $prior,array $context): ?string
+    {
+        $apiKey=(string)config('openai.api_key');
+        if($apiKey==='') return null;
+
+        $system=<<<'PROMPT'
+You are Luna's third routing API inside Cosmic CMS.
+API 1 already chose ACTION and API 2 already chose SPARKS.
+
+Return JSON only and exactly one key:
+{"spark_action":"edit_spark|change_spark|add_spark|remove_spark|custom_spark|reorder_spark"}
+
+Definitions:
+- edit_spark: keep the same existing Spark design and modify content/style/layout values inside its editable schema. This is the default and most common branch.
+- change_spark: keep the same section purpose but replace the current section with a different registered/premade Spark design.
+- add_spark: add a new section using a registered/premade Spark.
+- remove_spark: delete an existing section.
+- custom_spark: create or replace a section with a highly specific/unique composition that registered Sparks may not satisfy; this is the AI Flex fallback branch.
+- reorder_spark: move existing sections to a different page order without changing their content/schema.
+
+Examples:
+"Make the hero buttons square" => edit_spark
+"Make the heading a little smaller" => edit_spark
+"Try a completely different hero" => change_spark
+"Use another services layout" => change_spark
+"Add testimonials after services" => add_spark
+"Remove the FAQ" => remove_spark
+"Move testimonials above services" => reorder_spark
+"Create a hero with a diagonal image collage and floating booking widget" => custom_spark
+
+Rules:
+- Prefer edit_spark whenever the request can be achieved by editing the current registered Spark schema.
+- Prefer registered Sparks over custom_spark unless the user clearly requests a unique/specific composition that normal registered Sparks are unlikely to satisfy.
+- "more modern", "more premium", or "cleaner" alone is edit_spark unless the user explicitly asks for a different layout/template/section design.
+- "another", "different", "replace this layout", "try another design" normally means change_spark.
+- Do not choose a target Spark, replacement Spark, insertion position, changes, Tailwind classes, reasoning, confirmation, or user-facing reply.
+PROMPT;
+
+        try{
+            $response=Http::withToken($apiKey)
+                ->connectTimeout(20)
+                ->timeout(60)
+                ->post($this->endpoint(),[
+                    'model'=>$this->models->sparkActionRouter(),
+                    'response_format'=>['type'=>'json_object'],
+                    'messages'=>[
+                        ['role'=>'system','content'=>$system],
+                        ['role'=>'user','content'=>"BUILDER CONVERSATION (oldest to newest):\n".json_encode($this->builderConversationContext($context),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT SPARK REQUEST:\n{$message}\n\nPRIOR SPARK CONTEXT:\n".json_encode($this->sparkPriorContext($prior),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
+                    ],
+                ])->throw()->json();
+
+            $decoded=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+            $sparkAction=is_array($decoded)?($decoded['spark_action']??null):null;
+            return in_array($sparkAction,$this->sparkActions(),true)?$sparkAction:null;
+        }catch(\Throwable $e){
+            report($e);
+            return null;
+        }
+    }
+
+    /** Deterministic outage fallback for API 3. */
+    private function localSparkAction(string $message,array $prior,array $context): string
+    {
+        $q=Str::lower(trim($message));
+
+        if(preg_match('/\b(move|reorder|put|place)\b.*\b(above|below|before|after|first|second|third|last|top|bottom)\b/i',$message)
+            || preg_match('/\b(move|reorder)\s+(this|that|the)?\s*(section|spark)\b/i',$message)) return 'reorder_spark';
+
+        if(preg_match('/\b(remove|delete|get rid of|drop)\b.*\b(section|hero|services?|testimonials?|reviews?|pricing|faq|contact|cta|team|stats?|process|gallery|spark)\b/i',$message)) return 'remove_spark';
+
+        if(preg_match('/\b(custom|unique|bespoke|from scratch|completely custom|specific composition)\b/i',$message)
+            || preg_match('/\b(create|build|design|make)\b.*\b(diagonal|floating|overlap|orbit|interactive|unusual|experimental)\b/i',$message)) return 'custom_spark';
+
+        if(preg_match('/\b(add|insert|create|include|need)\b.*\b(section|hero|services?|testimonials?|reviews?|pricing|faq|contact|cta|team|stats?|process|gallery)\b/i',$message)) return 'add_spark';
+
+        if(preg_match('/\b(another|different|alternative|replace|swap|switch|try another|new layout|different layout|different design)\b/i',$message)
+            && preg_match('/\b(hero|banner|section|services?|testimonials?|reviews?|pricing|faq|contact|cta|team|stats?|process|gallery|layout|design|spark)\b/i',$message)) return 'change_spark';
+
+        $priorAction=(string)(data_get($prior,'last_routing_context.spark_action')
+            ?? data_get($prior,'last_verified_action.routing.spark_action')
+            ?? '');
+        if($q!=='' && preg_match('/^(a little|little|more|less|same|again|also|and|make it|do that)/i',$q)
+            && in_array($priorAction,$this->sparkActions(),true)) return $priorAction;
+
+        return 'edit_spark';
+    }
+
     /**
-     * Normalize the page's actual Spark menu for API 3. No block content or
+     * Normalize the page's actual Spark menu for API 4. No block content or
      * Tailwind/schema payload is exposed at this stage.
      */
     private function normalizePageSparkMenu(array $sparks): array
@@ -347,21 +482,21 @@ PROMPT;
     }
 
     /**
-     * API 3: choose exactly one Spark instance from the current page.
+     * API 4: choose exactly one Spark instance from the current page.
      * It must never invent a library Spark or return schema edits.
      */
-    private function aiSparkTarget(string $message,array $pageSparks,array $prior,array $context): ?array
+    private function aiSparkTarget(string $message,array $pageSparks,array $prior,array $context,string $sparkAction='edit_spark'): ?array
     {
         if($pageSparks===[]) return null;
         $apiKey=(string)config('openai.api_key');
         if($apiKey==='') return null;
 
         $system=<<<'PROMPT'
-You are Luna's third routing API inside Cosmic CMS.
-API 1 already chose ACTION and API 2 already chose SPARKS.
+You are Luna's fourth routing API inside Cosmic CMS.
+API 1 already chose ACTION, API 2 chose SPARKS, and API 3 already chose a SPARK ACTION.
 
 You receive the exact Spark instances currently present on this page.
-Choose exactly one existing Spark instance that the user's request targets.
+Choose exactly one existing Spark instance that the user's request targets when that branch needs an existing source/target.
 
 Return JSON only:
 {"index":0,"type":"hero_slider_fade"}
@@ -375,6 +510,7 @@ Rules:
 - A request about a button/card/image/heading inside a named section targets that section's Spark.
 - For short follow-ups such as "a little more", prefer the previously verified/routed Spark when it still exists on this page.
 - If multiple same-type Sparks exist, use label/context and prior target to select one.
+- SPARK ACTION is authoritative. Do not change or reinterpret it.
 - Do not return operation, changes, schema, Tailwind classes, reasoning, confirmation, or reply text.
 PROMPT;
 
@@ -383,11 +519,11 @@ PROMPT;
                 ->connectTimeout(20)
                 ->timeout(60)
                 ->post($this->endpoint(),[
-                    'model'=>env('OPENAI_LUNA_SPARK_ROUTER_MODEL',env('OPENAI_LUNA_ROUTER_MODEL',env('OPENAI_MODEL','gpt-5-mini'))),
+                    'model'=>$this->models->sparkTargetRouter(),
                     'response_format'=>['type'=>'json_object'],
                     'messages'=>[
                         ['role'=>'system','content'=>$system],
-                        ['role'=>'user','content'=>"BUILDER CONVERSATION (oldest to newest):\n".json_encode($this->builderConversationContext($context),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT ACTION REQUEST:\n{$message}\n\nAVAILABLE PAGE SPARKS:\n".json_encode($pageSparks,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nPRIOR SPARK CONTEXT:\n".json_encode($this->sparkPriorContext($prior),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
+                        ['role'=>'user','content'=>"BUILDER CONVERSATION (oldest to newest):\n".json_encode($this->builderConversationContext($context),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT ACTION REQUEST:\n{$message}\n\nSPARK ACTION:\n{$sparkAction}\n\nAVAILABLE PAGE SPARKS:\n".json_encode($pageSparks,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nPRIOR SPARK CONTEXT:\n".json_encode($this->sparkPriorContext($prior),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
                     ],
                 ])->throw()->json();
 
@@ -412,14 +548,16 @@ PROMPT;
         $verified=is_array($prior['last_verified_action']??null)?$prior['last_verified_action']:[];
         $routing=is_array($prior['last_routing_context']??null)?$prior['last_routing_context']:[];
         return array_filter([
+            'verified_action'=>data_get($verified,'routing.spark_action'),
             'verified_index'=>data_get($verified,'routing.spark_target.index') ?? data_get($verified,'target.index'),
             'verified_type'=>data_get($verified,'routing.spark_target.type') ?? data_get($verified,'target.key'),
+            'routed_action'=>$routing['spark_action']??null,
             'routed_index'=>data_get($routing,'spark_target.index') ?? data_get($routing,'target.index'),
             'routed_type'=>data_get($routing,'spark_target.type') ?? data_get($routing,'target.key'),
         ],fn($v)=>$v!==null&&$v!=='');
     }
 
-    /** Deterministic outage fallback for API 3. */
+    /** Deterministic outage fallback for API 4. */
     private function localSparkTarget(string $message,array $pageSparks,array $prior,array $context): ?array
     {
         if($pageSparks===[]) return null;
@@ -533,7 +671,7 @@ PROMPT;
                 ->connectTimeout(20)
                 ->timeout(60)
                 ->post($this->endpoint(),[
-                    'model'=>env('OPENAI_LUNA_SCOPE_ROUTER_MODEL',env('OPENAI_LUNA_ROUTER_MODEL',env('OPENAI_MODEL','gpt-5-mini'))),
+                    'model'=>$this->models->scopeRouter(),
                     'response_format'=>['type'=>'json_object'],
                     'messages'=>[
                         ['role'=>'system','content'=>$system],
@@ -647,7 +785,7 @@ PROMPT;
                 ->connectTimeout(20)
                 ->timeout(60)
                 ->post($this->endpoint(),[
-                    'model'=>env('OPENAI_LUNA_ACTION_ROUTER_MODEL',env('OPENAI_LUNA_ROUTER_MODEL',env('OPENAI_MODEL','gpt-5-mini'))),
+                    'model'=>$this->models->actionRouter(),
                     'response_format'=>['type'=>'json_object'],
                     'messages'=>[
                         ['role'=>'system','content'=>$system],
@@ -757,7 +895,7 @@ PROMPT;
                 ->connectTimeout(20)
                 ->timeout(60)
                 ->post($this->endpoint(),[
-                    'model'=>env('OPENAI_LUNA_DOMAIN_ROUTER_MODEL',env('OPENAI_LUNA_ACTION_MODEL',env('OPENAI_MODEL','gpt-5-mini'))),
+                    'model'=>$this->models->domainRouter(),
                     'response_format'=>['type'=>'json_object'],
                     'messages'=>[
                         ['role'=>'system','content'=>$system],

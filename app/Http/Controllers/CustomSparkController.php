@@ -958,7 +958,7 @@ PROMPT;
         }
 
         $fixed = $qa['block'];
-        $allowed = ['type','custom_spark_key','custom_spark_saved','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','theme','style_overrides','visual_style','review','form'];
+        $allowed = ['type','custom_spark_key','custom_spark_saved','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','theme','style_overrides','visual_style','review','form','ai_flex'];
         $fixed = array_intersect_key($fixed, array_flip($allowed));
         $fixed['type'] = 'luna_custom_section';
         $fixed['custom_spark_key'] = $customSpark->key;
@@ -2020,7 +2020,9 @@ PROMPT;
         LunaIntentGateway $intentGateway,
         \App\Services\LunaContextStateService $contextState,
         LunaInspectService $inspectService,
-        LunaSiteAdminActionService $siteAdminActions
+        LunaSiteAdminActionService $siteAdminActions,
+        \App\Services\LunaAiFlexSparkService $aiFlex,
+        \App\Services\LunaFullPageComposerService $fullPageComposer
     ) {
         // A whole-page Luna build intentionally runs several bounded provider
         // calls (intent, planning, content, media and the final reply). The
@@ -2945,15 +2947,52 @@ For the compatible premium Services family (services_bento_premium, services_edi
             $ops=array_values($resumePendingPlan['operations']);
         }
 
-        // Nested router Batch 4: Spark schema edits do not depend on the legacy
-        // planner producing a micro-edit operation. API 3 already locked the target.
+        // Nested Spark branch executor. Once API 3 has locked a Spark action,
+        // structural branches no longer depend on the legacy free-form planner.
+        // edit_spark remains owned by the full-schema editor; change/add/remove/
+        // reorder are converted into a deterministic operation plan here.
         $nestedSparkTarget=data_get($canonicalIntent,'routing.spark_target');
-        if(data_get($canonicalIntent,'routing.menu_scope')==='sparks' && is_array($nestedSparkTarget)){
-            $nestedIndex=(int)($nestedSparkTarget['index']??-1);
-            if($nestedIndex>=0 && isset($blocks[$nestedIndex])){
-                $ops=[['action'=>'edit','index'=>$nestedIndex,'changes'=>[]]];
-                $scope='section';
-                $targetIndex=$nestedIndex;
+        if(data_get($canonicalIntent,'routing.branch_executor')!=='sol_full_page_v1' && data_get($canonicalIntent,'routing.menu_scope')==='sparks'){
+            $sparkBranch=(string)data_get($canonicalIntent,'routing.spark_action');
+            // Batch 4: custom_spark scans the registered library once more before
+            // invoking Sol. A strong match is downgraded to change_spark; otherwise
+            // Sol composes a structured luna_custom_section that inherits the theme.
+            if($sparkBranch==='custom_spark'){
+                $flexTarget=is_array($nestedSparkTarget)?(int)($nestedSparkTarget['index']??$targetIndex):$targetIndex;
+                $flexSource=is_array($blocks[$flexTarget]??null)?$blocks[$flexTarget]:[];
+                $registered=$aiFlex->registeredFallback($prompt,$usable,(string)($flexSource['type']??''));
+                if(is_array($registered) && !empty($registered['key']) && isset($blocks[$flexTarget])){
+                    $sparkBranch='change_spark';
+                    $canonicalIntent['routing']['spark_action']='change_spark';
+                    $canonicalIntent['routing']['ai_flex_fallback']='registered_spark';
+                }else{
+                    try{
+                        $flexBlock=$aiFlex->generate($prompt,is_array($theme??null)?$theme:[],['section_count'=>count($blocks),'target_index'=>$flexTarget],$flexSource);
+                        $ops=[['action'=>'ai_flex_replace','index'=>$flexTarget,'block'=>$flexBlock]];
+                        $scope='section';
+                        $targetIndex=$flexTarget;
+                        $canonicalIntent['routing']['branch_executor']='ai_flex_v1';
+                        $canonicalIntent['routing']['ai_flex_fallback']='sol';
+                        $canonicalIntent['routing']['model_department']='sol';
+                    }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] custom_spark branch failed',['error'=>$e->getMessage(),'target_index'=>$flexTarget]); report($e); $ops=[]; }
+                }
+            }
+            $branchPlan=$sparkBranch==='custom_spark'?null:$this->lunaSparkStructuralBranchPlan(
+                $sparkBranch,$prompt,$blocks,$usable,$nestedSparkTarget,$targetIndex
+            );
+            if(is_array($branchPlan)){
+                $ops=$branchPlan['operations'];
+                $scope=$branchPlan['scope'];
+                $targetIndex=$branchPlan['target_index'];
+                $canonicalIntent['routing']['branch_executor']='spark_structural_v1';
+                $canonicalIntent['routing']['branch_meta']=$branchPlan['meta']??[];
+            } elseif($sparkBranch==='edit_spark' && is_array($nestedSparkTarget)){
+                $nestedIndex=(int)($nestedSparkTarget['index']??-1);
+                if($nestedIndex>=0 && isset($blocks[$nestedIndex])){
+                    $ops=[['action'=>'edit','index'=>$nestedIndex,'changes'=>[]]];
+                    $scope='section';
+                    $targetIndex=$nestedIndex;
+                }
             }
         }
 
@@ -3021,11 +3060,12 @@ For the compatible premium Services family (services_bento_premium, services_edi
             if($action==='edit'&&isset($next[$i])&&(is_array($op['changes']??null)||is_array($op['tailwind_mutations']??null))){
                 $changes=is_array($op['changes']??null)?$op['changes']:[];unset($changes['type'],$changes['_renderKey']);
 
-                // API 4 full-schema editor owns Spark edits in the new nested route.
-                // Run it once for the exact API-3-selected Spark and bypass the
+                // API 5 full-schema editor owns Spark edits in the new nested route.
+                // Run it once for the exact API-4-selected Spark and bypass the
                 // legacy micro-mutation/repeater path when it returns a valid schema.
                 $sparkTarget=data_get($canonicalIntent,'routing.spark_target');
                 if(!$fullSchemaEdited && data_get($canonicalIntent,'routing.menu_scope')==='sparks'
+                    && data_get($canonicalIntent,'routing.spark_action')==='edit_spark'
                     && is_array($sparkTarget) && (int)($sparkTarget['index']??-1)===$i){
                     $schemaResult=$sparkSchemaEditor->edit($prompt,$next[$i],$sparkTarget,$elementContext,$builderConversation);
                     if(($schemaResult['ok']??false)===true){
@@ -3088,6 +3128,53 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 if(($sanitized['paths']??[])!==[])$applied[]=['action'=>'edit','index'=>$i,'mode'=>$sanitized['mode']??'block','paths'=>$sanitized['paths'],'verified'=>true];
                 continue;
             }
+            if($action==='trim_page'){
+                $keep=max(1,(int)($operation['count']??count($nextBlocks)));
+                $nextBlocks=array_values(array_slice($nextBlocks,0,$keep));
+                $applied[]=['action'=>'trim_page','count'=>$keep,'verified'=>count($nextBlocks)===$keep];
+                continue;
+            }
+
+            if($action==='ai_flex_upsert'){
+                $flexBlock=is_array($operation['block']??null)?$operation['block']:null;
+                if($flexBlock){
+                    if(isset($nextBlocks[$index])) $nextBlocks[$index]=$flexBlock;
+                    else $nextBlocks[]=$flexBlock;
+                    $nextBlocks=array_values($nextBlocks);
+                    $applied[]=['action'=>'ai_flex_upsert','index'=>$index,'type'=>'luna_custom_section','verified'=>true];
+                }
+                continue;
+            }
+
+            if($action==='registered_upsert'){
+                $sparkKey=trim((string)($operation['spark_key']??''));
+                if($sparkKey==='' || !$catalogKeys->has($sparkKey)) continue;
+                $reference=$nextBlocks[$index]??[];
+                $instruction=trim((string)($operation['instruction']??''));
+                $generationPrompt=$this->lunaGroundedMediaPrompt((string)$validated['prompt'],$nextBlocks,$siteMemory,is_array($reference)?$reference:[])
+                    ."\n\nSOL FULL-PAGE COMPOSITION: Build exactly one {$sparkKey} Spark for slot {$index}."
+                    .($instruction!==''?"\nInstruction: {$instruction}":'')
+                    ."\nPreserve the active website theme and adapt useful existing content when relevant.";
+                try{
+                    $generated=$lunaPages->generate($generationPrompt,[$sparkKey]);
+                    $block=is_array($generated[0]??null)?$generated[0]:null;
+                    if($block){
+                        if(isset($nextBlocks[$index])) $nextBlocks[$index]=$block; else $nextBlocks[]=$block;
+                        $nextBlocks=array_values($nextBlocks);
+                        $applied[]=['action'=>'registered_upsert','index'=>$index,'spark_key'=>$sparkKey,'verified'=>true];
+                    }
+                }catch(\Throwable $e){ report($e); }
+                continue;
+            }
+
+            if($action==='ai_flex_replace'){
+                $flexBlock=is_array($op['block']??null)?$op['block']:null;
+                if($flexBlock && isset($next[$i])){
+                    $next[$i]=$flexBlock;
+                    $applied[]=['action'=>'ai_flex_replace','index'=>$i,'type'=>'luna_custom_section','verified'=>true];
+                }
+                continue;
+            }
             if(in_array($action,['replace','insert_before','insert_after'],true)){
                 $key=(string)($op['spark_key']??'');if(!$keys->has($key))continue;
                 $reference=$next[$i]??[];
@@ -3100,7 +3187,12 @@ For the compatible premium Services family (services_bento_premium, services_edi
                     if(is_array($videoBlocks[0]??null)) $block=$videoBlocks[0];
                 }catch(\Throwable $e){report($e);}
                 $block['_renderKey']='luna-'.Str::lower(Str::random(10));
-                if($action==='replace'&&isset($next[$i]))$next[$i]=$block;elseif($action==='insert_before')array_splice($next,max(0,$i),0,[$block]);else array_splice($next,max(0,$i+1),0,[$block]);
+                if($action==='replace'&&isset($next[$i])){
+                    if(($op['preserve_content']??false)===true && is_array($reference)){
+                        $block=$this->lunaPreserveCompatibleSparkContent($reference,$block);
+                    }
+                    $next[$i]=$block;
+                }elseif($action==='insert_before')array_splice($next,max(0,$i),0,[$block]);else array_splice($next,max(0,$i+1),0,[$block]);
                 $applied[]=['action'=>$action,'index'=>$i];continue;
             }
             if($action==='delete'&&isset($next[$i])){array_splice($next,$i,1);$applied[]=['action'=>'delete','index'=>$i];}
@@ -3279,6 +3371,252 @@ For the compatible premium Services family (services_bento_premium, services_edi
             'canonical_intent'=>$canonicalIntent,
             'execution_phases'=>['Thinking','Planning','Designing','Building','Checking'],
         ]);
+    }
+
+    /**
+     * Batch 2 Spark structural branch planner.
+     *
+     * API 3 has already selected one of the Spark action branches. This helper
+     * converts the non-edit registered-Spark branches into a small deterministic
+     * operation plan so the old free-form action planner can no longer blur
+     * change/add/remove/reorder semantics together.
+     *
+     * custom_spark intentionally returns null here; Batch 4 owns AI Flex.
+     */
+    private function lunaSparkStructuralBranchPlan(
+        string $branch,
+        string $prompt,
+        array $blocks,
+        array $usable,
+        mixed $sparkTarget,
+        int $fallbackTargetIndex
+    ): ?array {
+        if(!in_array($branch,['change_spark','add_spark','remove_spark','reorder_spark'],true)) return null;
+
+        $targetIndex=is_array($sparkTarget)
+            ? (int)($sparkTarget['index']??$fallbackTargetIndex)
+            : $fallbackTargetIndex;
+        $targetIndex=max(0,$targetIndex);
+
+        if($branch==='remove_spark'){
+            if(!isset($blocks[$targetIndex])) return [
+                'operations'=>[], 'scope'=>'section', 'target_index'=>$targetIndex,
+                'meta'=>['branch'=>$branch,'status'=>'target_missing'],
+            ];
+            return [
+                'operations'=>[['action'=>'delete','index'=>$targetIndex]],
+                'scope'=>'section',
+                'target_index'=>$targetIndex,
+                'meta'=>['branch'=>$branch,'target_type'=>$blocks[$targetIndex]['type']??null],
+            ];
+        }
+
+        if($branch==='reorder_spark'){
+            if(!isset($blocks[$targetIndex])) return [
+                'operations'=>[], 'scope'=>'section', 'target_index'=>$targetIndex,
+                'meta'=>['branch'=>$branch,'status'=>'target_missing'],
+            ];
+            $reorder=$this->lunaSectionReorderAction($prompt,'section',$targetIndex,$blocks);
+            $move=is_array($reorder) ? (($reorder['applied_operations'][0]??null)) : null;
+            return [
+                'operations'=>is_array($move)?[$move]:[],
+                'scope'=>'section',
+                'target_index'=>$targetIndex,
+                'meta'=>[
+                    'branch'=>$branch,
+                    'status'=>is_array($move)?'resolved':'destination_unresolved',
+                    'target_type'=>$blocks[$targetIndex]['type']??null,
+                ],
+            ];
+        }
+
+        if($branch==='change_spark'){
+            if(!isset($blocks[$targetIndex]) || !is_array($blocks[$targetIndex])) return [
+                'operations'=>[], 'scope'=>'section', 'target_index'=>$targetIndex,
+                'meta'=>['branch'=>$branch,'status'=>'target_missing'],
+            ];
+            $currentKey=(string)($blocks[$targetIndex]['type']??'');
+            $candidate=$this->lunaRegisteredSparkCandidate($prompt,$usable,$currentKey,$blocks[$targetIndex]);
+            if(!$candidate) return [
+                'operations'=>[], 'scope'=>'section', 'target_index'=>$targetIndex,
+                'meta'=>['branch'=>$branch,'status'=>'replacement_unresolved','current_key'=>$currentKey],
+            ];
+            return [
+                'operations'=>[array_filter([
+                    'action'=>'replace',
+                    'index'=>$targetIndex,
+                    'spark_key'=>$candidate['key'],
+                    'instruction'=>'Preserve compatible content, links, imagery, item meaning and CTA intent from the current section while changing only the registered Spark presentation.',
+                    'preserve_content'=>true,
+                    'redesign_from'=>$currentKey?:null,
+                ],fn($v)=>$v!==null)],
+                'scope'=>'section',
+                'target_index'=>$targetIndex,
+                'meta'=>[
+                    'branch'=>$branch,
+                    'current_key'=>$currentKey,
+                    'replacement_key'=>$candidate['key'],
+                    'replacement_category'=>$candidate['category']??null,
+                ],
+            ];
+        }
+
+        // add_spark: choose a registered Spark by semantic purpose, then resolve
+        // insertion position deterministically from the page and the user's words.
+        $candidate=$this->lunaRegisteredSparkCandidate($prompt,$usable,'',[]);
+        if(!$candidate) return [
+            'operations'=>[], 'scope'=>'page', 'target_index'=>$fallbackTargetIndex,
+            'meta'=>['branch'=>$branch,'status'=>'candidate_unresolved'],
+        ];
+        [$anchor,$action,$positionMeta]=$this->lunaSparkInsertPosition($prompt,$blocks,$fallbackTargetIndex);
+        return [
+            'operations'=>[[
+                'action'=>$action,
+                'index'=>$anchor,
+                'spark_key'=>$candidate['key'],
+                'instruction'=>'Generate content that matches the website/page context and the requested section purpose. Keep the current brand and avoid duplicating nearby copy.',
+            ]],
+            'scope'=>'page',
+            'target_index'=>$anchor,
+            'meta'=>array_merge([
+                'branch'=>$branch,
+                'spark_key'=>$candidate['key'],
+                'category'=>$candidate['category']??null,
+            ],$positionMeta),
+        ];
+    }
+
+    /** Pick a registered Spark while keeping section purpose/category stable. */
+    private function lunaRegisteredSparkCandidate(string $prompt,array $usable,string $excludeKey='',array $reference=[]): ?array
+    {
+        $lower=Str::lower($prompt);
+        $referenceMeta=$excludeKey!=='' ? (SparkCatalog::find($excludeKey)??[]) : [];
+        $referenceCategory=Str::lower((string)($referenceMeta['category']??''));
+
+        $aliases=[
+            'hero'=>['hero','banner','masthead'],
+            'services'=>['services','service','what we do'],
+            'testimonials'=>['testimonials','testimonial','reviews','review','customer feedback'],
+            'pricing'=>['pricing','plans','packages','price'],
+            'faq'=>['faq','faqs','frequently asked','questions'],
+            'contact'=>['contact','contact us','enquiry','inquiry','get in touch'],
+            'cta'=>['cta','call to action','book now','get started'],
+            'team'=>['team','staff','people','our team'],
+            'process'=>['process','steps','how it works','timeline'],
+            'gallery'=>['gallery','portfolio','projects','showcase'],
+            'about'=>['about','our story','story'],
+            'stats'=>['stats','statistics','numbers','metrics'],
+            'features'=>['features','benefits','why choose us'],
+        ];
+        $requestedCategory='';
+        foreach($aliases as $category=>$terms){
+            foreach($terms as $term){
+                if(Str::contains($lower,$term)){ $requestedCategory=$category; break 2; }
+            }
+        }
+        $wantedCategory=$requestedCategory!=='' ? $requestedCategory : $referenceCategory;
+
+        $ranked=collect($usable)
+            ->filter(fn($spark)=>is_array($spark) && !empty($spark['key']) && (string)$spark['key']!==$excludeKey)
+            ->map(function($spark) use($lower,$wantedCategory,$referenceMeta){
+                $score=0;
+                $category=Str::lower((string)($spark['category']??''));
+                if($wantedCategory!=='' && $category===$wantedCategory) $score+=500;
+                elseif($wantedCategory!=='') $score-=220;
+
+                $haystack=Str::lower(implode(' ',array_filter([
+                    (string)($spark['key']??''),
+                    (string)($spark['name']??''),
+                    (string)($spark['description']??''),
+                    $category,
+                    implode(' ',(array)($spark['style']??[])),
+                    implode(' ',(array)($spark['layout']??[])),
+                    implode(' ',(array)($spark['intent']??[])),
+                ])));
+                foreach(preg_split('/[^a-z0-9]+/',$lower)?:[] as $token){
+                    if(strlen($token)>=5 && Str::contains($haystack,$token)) $score+=12;
+                }
+                $referenceIntent=collect($referenceMeta['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                $candidateIntent=collect($spark['intent']??[])->map(fn($v)=>Str::lower((string)$v))->all();
+                $score+=count(array_intersect($referenceIntent,$candidateIntent))*25;
+                $spark['_branch_score']=$score;
+                return $spark;
+            })
+            ->sortByDesc('_branch_score')
+            ->values();
+
+        $best=$ranked->first();
+        if(!is_array($best)) return null;
+        if($wantedCategory!=='' && Str::lower((string)($best['category']??''))!==$wantedCategory) return null;
+        return $best;
+    }
+
+    /** Resolve add_spark placement into the existing insert_before/after executor. */
+    private function lunaSparkInsertPosition(string $prompt,array $blocks,int $fallbackIndex): array
+    {
+        $count=count($blocks);
+        if($count===0) return [0,'insert_before',['position'=>'empty_page']];
+        $lower=Str::lower($prompt);
+
+        if(Str::contains($lower,['at the top','top of the page','before the hero','first section'])){
+            return [0,'insert_before',['position'=>'top']];
+        }
+        if(Str::contains($lower,['before footer','before the footer','at the bottom','bottom of the page','last section'])){
+            return [$count-1,'insert_after',['position'=>'bottom']];
+        }
+
+        $relation=Str::contains($lower,[' before ','above '])?'before':(Str::contains($lower,[' after ','below '])?'after':null);
+        if($relation!==null){
+            $aliases=[
+                'hero'=>['hero','banner'], 'services'=>['services','service'],
+                'testimonials'=>['testimonials','reviews'], 'pricing'=>['pricing','plans'],
+                'faq'=>['faq','faqs'], 'contact'=>['contact','contact us'],
+                'cta'=>['cta','call to action'], 'team'=>['team'], 'process'=>['process','steps'],
+                'gallery'=>['gallery','portfolio'], 'about'=>['about'], 'stats'=>['stats','statistics'],
+            ];
+            foreach($blocks as $index=>$block){
+                if(!is_array($block)) continue;
+                $type=(string)($block['type']??'');
+                $meta=SparkCatalog::find($type)??[];
+                $category=Str::lower((string)($meta['category']??''));
+                $haystack=Str::lower($type.' '.$category.' '.(string)($meta['name']??''));
+                foreach($aliases as $terms){
+                    $mentioned=false;
+                    foreach($terms as $term){ if(Str::contains($lower,$term)){ $mentioned=true; break; } }
+                    if(!$mentioned) continue;
+                    foreach($terms as $term){
+                        if(Str::contains($haystack,$term)){
+                            return [$index,$relation==='before'?'insert_before':'insert_after',[
+                                'position'=>$relation,'relative_to'=>$index,'relative_type'=>$type,
+                            ]];
+                        }
+                    }
+                }
+            }
+        }
+
+        // Default registered section insertion is before footer/end, not inside a
+        // random selected section. This remains deterministic and visually sane.
+        return [$count-1,'insert_after',['position'=>'bottom_default']];
+    }
+
+    /** Preserve content when change_spark swaps only the registered presentation. */
+    private function lunaPreserveCompatibleSparkContent(array $reference,array $replacement): array
+    {
+        $contentKeys=[
+            'eyebrow','heading','subheading','title','subtitle','text','description','body','intro',
+            'primary_label','primary_url','secondary_label','secondary_url','button_label','button_url',
+            'cta_label','cta_url','image_url','image_alt','video_url','items','services','slides','features',
+            'testimonials','reviews','faqs','questions','plans','pricing','stats','cards','logos','members','team','steps',
+        ];
+        foreach($contentKeys as $key){
+            if(!array_key_exists($key,$reference) || !array_key_exists($key,$replacement)) continue;
+            $value=$reference[$key];
+            if($value===null || $value==='' || $value===[]) continue;
+            if(gettype($value)!==gettype($replacement[$key]) && $replacement[$key]!==null) continue;
+            $replacement[$key]=$value;
+        }
+        return $replacement;
     }
 
     /**
@@ -3980,7 +4318,9 @@ For the compatible premium Services family (services_bento_premium, services_edi
         \App\Services\LunaContextStateService $contextState,
         LunaInspectService $inspectService,
         LunaSiteAdminActionService $siteAdminActions,
-        \App\Services\LunaContentCommerceActionService $contentCommerceActions
+        \App\Services\LunaContentCommerceActionService $contentCommerceActions,
+        \App\Services\LunaAiFlexSparkService $aiFlex,
+        \App\Services\LunaFullPageComposerService $fullPageComposer
     ) {
         // Whole-page generation is a multi-stage operation and can legitimately
         // exceed PHP's default 60-second request limit. Each remote call still
@@ -5763,15 +6103,94 @@ PROMPT;
             $operations=array_values($resumePendingPlan['operations']);
         }
 
-        // Nested router Batch 4: API 4 owns edits for the exact API-3-selected
-        // Spark. Do not require the old mutation planner to invent an edit plan.
+        // Batch 5 — Sol full-page composer. A deliberately custom whole-page
+        // request may mix registered Sparks with AI Flex slots. It creates only
+        // backend operations; the normal pricing, validator, executor and verifier
+        // below remain authoritative.
+        if($fullPageComposer->shouldCompose((string)$validated['prompt'],$scope)){
+            try{
+                $bundleContext=is_array($siteBundle??null)?[
+                    'bundle_key'=>$siteBundle['bundle_key']??null,
+                    'bundle_name'=>$siteBundle['bundle_name']??null,
+                    'design_contract'=>$siteBundle['design_contract']??[],
+                    'customization_policy'=>'registered_first_flex_fallback',
+                ]:[];
+                $pagePlan=$fullPageComposer->plan((string)$validated['prompt'],is_array($theme??null)?$theme:[],$blocks,$bundleContext);
+                $composedOps=[];
+                foreach($pagePlan['slots'] as $slotIndex=>$slot){
+                    if(($slot['mode']??'')==='flex'){
+                        $source=is_array($blocks[$slotIndex]??null)?$blocks[$slotIndex]:[];
+                        $flex=$aiFlex->generate((string)($slot['instruction']??$validated['prompt']),is_array($theme??null)?$theme:[],[
+                            'full_page'=>true,'slot_index'=>$slotIndex,'slot_count'=>count($pagePlan['slots'])
+                        ],$source);
+                        $composedOps[]=['action'=>'ai_flex_upsert','index'=>$slotIndex,'block'=>$flex];
+                    }else{
+                        $composedOps[]=['action'=>'registered_upsert','index'=>$slotIndex,'spark_key'=>(string)$slot['spark_key'],'instruction'=>(string)($slot['instruction']??'')];
+                    }
+                }
+                $composedOps[]=['action'=>'trim_page','count'=>count($pagePlan['slots'])];
+                $operations=$composedOps;
+                $canonicalIntent['routing']['model_department']='sol';
+                $canonicalIntent['routing']['branch_executor']='sol_full_page_v1';
+                $canonicalIntent['routing']['full_page_composer']=$pagePlan['composer']??'sol_full_page_v1';
+            }catch(\Throwable $e){ report($e); }
+        }
+
+        // Nested Spark branch executor. Structural Spark actions are now
+        // deterministic once API 3 has selected the branch. This replaces the
+        // legacy mutation planner only for change/add/remove/reorder; edit_spark
+        // continues through the full-schema editor and custom_spark stays reserved
+        // for the AI Flex batch.
         $nestedSparkTarget=data_get($canonicalIntent,'routing.spark_target');
-        if(data_get($canonicalIntent,'routing.menu_scope')==='sparks' && is_array($nestedSparkTarget)){
-            $nestedIndex=(int)($nestedSparkTarget['index']??-1);
-            if($nestedIndex>=0 && isset($blocks[$nestedIndex])){
-                $operations=[['action'=>'edit','index'=>$nestedIndex,'changes'=>[]]];
-                $scope='section';
-                $targetIndex=$nestedIndex;
+        if(data_get($canonicalIntent,'routing.branch_executor')!=='sol_full_page_v1' && data_get($canonicalIntent,'routing.menu_scope')==='sparks'){
+            $sparkBranch=(string)data_get($canonicalIntent,'routing.spark_action');
+            // Batch 4: custom_spark scans the registered library once more before
+            // invoking Sol. A strong match is downgraded to change_spark; otherwise
+            // Sol composes a structured luna_custom_section that inherits the theme.
+            if($sparkBranch==='custom_spark'){
+                $flexTarget=is_array($nestedSparkTarget)?(int)($nestedSparkTarget['index']??$targetIndex):$targetIndex;
+                $flexSource=is_array($blocks[$flexTarget]??null)?$blocks[$flexTarget]:[];
+                $registered=$aiFlex->registeredFallback($prompt,$usable,(string)($flexSource['type']??''));
+                if(is_array($registered) && !empty($registered['key']) && isset($blocks[$flexTarget])){
+                    $sparkBranch='change_spark';
+                    $canonicalIntent['routing']['spark_action']='change_spark';
+                    $canonicalIntent['routing']['ai_flex_fallback']='registered_spark';
+                }else{
+                    try{
+                        $flexBlock=$aiFlex->generate($prompt,is_array($theme??null)?$theme:[],['section_count'=>count($blocks),'target_index'=>$flexTarget],$flexSource);
+                        // pageChat executes the canonical $operations plan below.
+                        // Do not write to the trial-only $ops variable here or the
+                        // generated Flex block will never reach the executor/verifier.
+                        $operations=[['action'=>'ai_flex_replace','index'=>$flexTarget,'block'=>$flexBlock]];
+                        $scope='section';
+                        $targetIndex=$flexTarget;
+                        $canonicalIntent['routing']['branch_executor']='ai_flex_v1';
+                        $canonicalIntent['routing']['ai_flex_fallback']='sol';
+                        $canonicalIntent['routing']['model_department']='sol';
+                        \Illuminate\Support\Facades\Log::debug('[AiFlex] execution plan queued',[
+                            'action'=>'ai_flex_replace',
+                            'target_index'=>$flexTarget,
+                            'generated_type'=>$flexBlock['type']??null,
+                        ]);
+                    }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] custom_spark branch failed',['error'=>$e->getMessage(),'target_index'=>$flexTarget]); report($e); $operations=[]; }
+                }
+            }
+            $branchPlan=$sparkBranch==='custom_spark'?null:$this->lunaSparkStructuralBranchPlan(
+                $sparkBranch,(string)$validated['prompt'],$blocks,$usable,$nestedSparkTarget,$targetIndex
+            );
+            if(is_array($branchPlan)){
+                $operations=$branchPlan['operations'];
+                $scope=$branchPlan['scope'];
+                $targetIndex=$branchPlan['target_index'];
+                $canonicalIntent['routing']['branch_executor']='spark_structural_v1';
+                $canonicalIntent['routing']['branch_meta']=$branchPlan['meta']??[];
+            } elseif($sparkBranch==='edit_spark' && is_array($nestedSparkTarget)){
+                $nestedIndex=(int)($nestedSparkTarget['index']??-1);
+                if($nestedIndex>=0 && isset($blocks[$nestedIndex])){
+                    $operations=[['action'=>'edit','index'=>$nestedIndex,'changes'=>[]]];
+                    $scope='section';
+                    $targetIndex=$nestedIndex;
+                }
             }
         }
 
@@ -5865,6 +6284,7 @@ PROMPT;
 
                 $sparkTarget=data_get($canonicalIntent,'routing.spark_target');
                 if(!$fullSchemaEdited && data_get($canonicalIntent,'routing.menu_scope')==='sparks'
+                    && data_get($canonicalIntent,'routing.spark_action')==='edit_spark'
                     && is_array($sparkTarget) && (int)($sparkTarget['index']??-1)===$index){
                     $schemaResult=$sparkSchemaEditor->edit($prompt,$current,$sparkTarget,$elementContext,$builderConversation);
                     if(($schemaResult['ok']??false)===true){
@@ -5980,6 +6400,53 @@ PROMPT;
                 continue;
             }
 
+            if($action==='trim_page'){
+                $keep=max(1,(int)($operation['count']??count($nextBlocks)));
+                $nextBlocks=array_values(array_slice($nextBlocks,0,$keep));
+                $applied[]=['action'=>'trim_page','count'=>$keep,'verified'=>count($nextBlocks)===$keep];
+                continue;
+            }
+
+            if($action==='ai_flex_upsert'){
+                $flexBlock=is_array($operation['block']??null)?$operation['block']:null;
+                if($flexBlock){
+                    if(isset($nextBlocks[$index])) $nextBlocks[$index]=$flexBlock; else $nextBlocks[]=$flexBlock;
+                    $nextBlocks=array_values($nextBlocks);
+                    $applied[]=['action'=>'ai_flex_upsert','index'=>$index,'type'=>'luna_custom_section','verified'=>true];
+                }
+                continue;
+            }
+
+            if($action==='registered_upsert'){
+                $sparkKey=trim((string)($operation['spark_key']??''));
+                if($sparkKey==='' || !$catalogKeys->has($sparkKey)) continue;
+                $reference=$nextBlocks[$index]??[];
+                $instruction=trim((string)($operation['instruction']??''));
+                $generationPrompt=$this->lunaGroundedMediaPrompt((string)$validated['prompt'],$nextBlocks,$siteMemory,is_array($reference)?$reference:[])
+                    ."\n\nSOL FULL-PAGE COMPOSITION: Build exactly one {$sparkKey} Spark for slot {$index}."
+                    .($instruction!==''?"\nInstruction: {$instruction}":'')
+                    ."\nPreserve the active website theme and adapt useful existing content when relevant.";
+                try{
+                    $generated=$lunaPages->generate($generationPrompt,[$sparkKey]);
+                    $block=is_array($generated[0]??null)?$generated[0]:null;
+                    if($block){
+                        if(isset($nextBlocks[$index])) $nextBlocks[$index]=$block; else $nextBlocks[]=$block;
+                        $nextBlocks=array_values($nextBlocks);
+                        $applied[]=['action'=>'registered_upsert','index'=>$index,'spark_key'=>$sparkKey,'verified'=>true];
+                    }
+                }catch(\Throwable $e){ report($e); }
+                continue;
+            }
+
+            if($action==='ai_flex_replace'){
+                $flexBlock=is_array($operation['block']??null)?$operation['block']:null;
+                if($flexBlock && isset($nextBlocks[$index])){
+                    $nextBlocks[$index]=$flexBlock;
+                    $applied[]=['action'=>'ai_flex_replace','index'=>$index,'type'=>'luna_custom_section','verified'=>true];
+                }
+                continue;
+            }
+
             if(in_array($action,['replace','insert_before','insert_after'],true)){
                 $sparkKey=trim((string)($operation['spark_key']??''));
                 if($sparkKey==='' || !$catalogKeys->has($sparkKey)) continue;
@@ -6039,6 +6506,9 @@ PROMPT;
 
                 if($action==='replace' && isset($nextBlocks[$index])){
                     $oldType=(string)($nextBlocks[$index]['type']??'');
+                    if(($operation['preserve_content']??false)===true && is_array($reference)){
+                        $newBlock=$this->lunaPreserveCompatibleSparkContent($reference,$newBlock);
+                    }
                     $nextBlocks[$index]=$newBlock;
                     $applied[]=[
                         'action'=>'replace',
@@ -6564,7 +7034,7 @@ PROMPT;
         $action = ($result['action'] ?? 'update') === 'reply_only' ? 'reply_only' : 'update';
         $fixed = $currentBlock;
         if ($action === 'update' && is_array($result['block'] ?? null)) {
-            $allowed = ['type','custom_spark_key','custom_spark_saved','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','theme','style_overrides','visual_style','review','form','runtime'];
+            $allowed = ['type','custom_spark_key','custom_spark_saved','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','theme','style_overrides','visual_style','review','form','runtime','ai_flex'];
             $candidate = array_intersect_key($result['block'], array_flip($allowed));
             $fixed = array_merge($currentBlock, $candidate);
             $fixed['type'] = 'luna_custom_section';

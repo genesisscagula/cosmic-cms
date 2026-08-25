@@ -74,6 +74,12 @@ final class LunaSiteBundlePlannerService
                 'sections' => array_values($selected['sections'] ?? []),
                 'composition_fingerprint' => $fingerprint,
                 'build_status' => ($page['is_home'] ?? false) ? 'building' : 'queued',
+                // Batch 5: every curated bundle page keeps its reliable registered
+                // template while exposing a per-section AI Flex escape hatch.
+                'custom_slots' => collect((array) ($selected['sections'] ?? []))->values()->map(fn ($section, $slot) => [
+                    'slot' => $slot, 'registered_spark' => $section, 'allow_ai_flex' => true,
+                    'policy' => 'registered_first_flex_fallback',
+                ])->all(),
             ];
         })->values()->all();
 
@@ -88,6 +94,7 @@ final class LunaSiteBundlePlannerService
             'pages' => $pages,
             'page_count' => count($pages),
             'planner' => 'luna_curated_site_bundle',
+            'customization_policy' => 'registered_first_flex_fallback',
             'planned_at' => now()->toIso8601String(),
         ];
     }

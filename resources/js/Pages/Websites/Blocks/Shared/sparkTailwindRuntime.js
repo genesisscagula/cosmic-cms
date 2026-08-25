@@ -80,5 +80,12 @@ export { STORAGE_KEY as SPARK_TAILWIND_STORAGE_KEY };
 export function sparkTw(block, slot, fallback = '') {
     const resolved = resolveSparkTailwindSlot(block, slot, fallback);
     const marker = `cosmic-tw-slot--${normalizeSlot(slot)}`;
-    return `${resolved} ${marker}`.trim();
+    const tokens = resolved.split(/\s+/).filter(Boolean);
+    const ownsSectionY = tokens.some((token)=>/(?:^|:)(?:p|py|pt|pb)-/.test(token));
+    const ownsSectionX = tokens.some((token)=>/(?:^|:)(?:p|px|pl|pr)-/.test(token));
+    const ownership = [
+        ownsSectionY ? 'cosmic-tw-own-section-y' : '',
+        ownsSectionX ? 'cosmic-tw-own-section-x' : '',
+    ].filter(Boolean).join(' ');
+    return `${resolved} ${marker} ${ownership}`.trim();
 }

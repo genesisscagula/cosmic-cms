@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Http;
 
 class LunaNaturalReplyService
 {
+    public function __construct(private readonly LunaModelDepartmentService $models) {}
     public function compose(string $message, array $context = [], array $facts = []): string
     {
         $apiKey=(string)config('openai.api_key');
@@ -75,7 +76,7 @@ PROMPT;
             ->connectTimeout(20)
             ->timeout(90)
             ->post(rtrim((string)(config('openai.base_uri')?:'https://api.openai.com/v1'),'/').'/chat/completions',[
-                'model'=>env('OPENAI_LUNA_RESPONSE_MODEL',env('OPENAI_MODEL','gpt-5-mini')),
+                'model'=>$this->models->chat(),
                 'messages'=>$messages,
             ])->throw()->json();
 

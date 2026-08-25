@@ -20,15 +20,19 @@ final class AuditLunaNestedRouter extends Command
                 app_path('Services/LunaIntentGateway.php'),
                 ['aiActionScope(', "'sparks'", "'navigation'", "'theme'", "'publish'"],
             ],
-            'API 3 current-page Spark selector' => [
+            'API 3 Spark action router' => [
                 app_path('Services/LunaIntentGateway.php'),
-                ['aiSparkTarget(', 'AVAILABLE PAGE SPARKS', 'spark_target'],
+                ['aiSparkAction(', 'edit_spark', 'change_spark', 'add_spark', 'remove_spark', 'custom_spark', 'reorder_spark'],
             ],
-            'API 4 full Spark schema editor' => [
+            'API 4 current-page Spark selector' => [
+                app_path('Services/LunaIntentGateway.php'),
+                ['aiSparkTarget(', 'AVAILABLE PAGE SPARKS', 'SPARK ACTION', 'spark_target'],
+            ],
+            'API 5 full Spark schema editor' => [
                 app_path('Services/LunaSparkSchemaEditorService.php'),
                 ['FULL EDITABLE SPARK SCHEMA', 'FULL CURRENT TAILWIND SCHEMA', 'Return the COMPLETE editable object'],
             ],
-            'API 4 deterministic diff guards' => [
+            'API 5 deterministic diff guards' => [
                 app_path('Services/LunaSparkSchemaEditorService.php'),
                 ['protected_tailwind_removed', "'diff'=>[", 'before_fingerprint', 'after_fingerprint'],
             ],
@@ -38,7 +42,15 @@ final class AuditLunaNestedRouter extends Command
             ],
             'Spark route fail-closed executor' => [
                 app_path('Http/Controllers/CustomSparkController.php'),
-                ['spark_full_schema_edit', 'fail-closed'],
+                ['spark_full_schema_edit', 'fail-closed', "routing.spark_action')==='edit_spark"],
+            ],
+            'Batch 2 structural Spark branch executor' => [
+                app_path('Http/Controllers/CustomSparkController.php'),
+                ['lunaSparkStructuralBranchPlan(', "'change_spark'", "'add_spark'", "'remove_spark'", "'reorder_spark'", 'spark_structural_v1'],
+            ],
+            'Batch 2 registered Spark content preservation' => [
+                app_path('Http/Controllers/CustomSparkController.php'),
+                ['lunaRegisteredSparkCandidate(', 'lunaPreserveCompatibleSparkContent(', "'preserve_content'=>true"],
             ],
             'Spark route bypasses typography shortcut' => [
                 app_path('Http/Controllers/CustomSparkController.php'),

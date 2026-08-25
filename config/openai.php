@@ -50,6 +50,16 @@ return [
     // the public generation screen waiting for a request PHP has terminated.
     'request_timeout' => env('OPENAI_REQUEST_TIMEOUT', 180),
 
+    // Batch 3: Luna / Terra / Sol model departments. Luna remains the
+    // customer-facing identity; these keys only choose the backend model role.
+    // Semantic env names are preferred, with MODEL1/2/3 kept as compatibility
+    // aliases for deployments that already use the numbered variables.
+    'department_models' => [
+        'luna' => env('OPENAI_MODEL_LUNA', env('OPENAI_MODEL3', env('OPENAI_MODEL', 'gpt-5-mini'))),
+        'terra' => env('OPENAI_MODEL_TERRA', env('OPENAI_MODEL2', env('OPENAI_MODEL_LUNA', env('OPENAI_MODEL3', env('OPENAI_MODEL', 'gpt-5-mini'))))),
+        'sol' => env('OPENAI_MODEL_SOL', env('OPENAI_MODEL1', env('OPENAI_MODEL_TERRA', env('OPENAI_MODEL2', env('OPENAI_MODEL', 'gpt-5-mini'))))),
+    ],
+
     // Spark selection can use a faster/cheaper model independently from
     // the full content generator. Falls back to OPENAI_MODEL when omitted.
     'planner_model' => env('OPENAI_PLANNER_MODEL', env('OPENAI_MODEL', 'gpt-5-mini')),

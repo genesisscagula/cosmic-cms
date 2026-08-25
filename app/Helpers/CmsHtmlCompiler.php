@@ -46,8 +46,21 @@ class CmsHtmlCompiler
      */
     private static function sparkTw(array $block, string $slot, string $legacyClasses = ''): string
     {
-        return app(\App\Services\SparkTailwindSchemaContract::class)
-            ->resolveSlot($block, $slot, $legacyClasses);
+        $contract=app(\App\Services\SparkTailwindSchemaContract::class);
+        $resolved=$contract->resolveSlot($block, $slot, $legacyClasses);
+        $tokens=preg_split('/\\s+/',trim($resolved))?:[];
+        $ownsY=false;
+        $ownsX=false;
+        foreach($tokens as $token){
+            if(preg_match('/(?:^|:)(?:p|py|pt|pb)-/',$token)) $ownsY=true;
+            if(preg_match('/(?:^|:)(?:p|px|pl|pr)-/',$token)) $ownsX=true;
+        }
+        $markers=[
+            'cosmic-tw-slot--'.$contract->normalizeSlot($slot),
+            $ownsY?'cosmic-tw-own-section-y':'',
+            $ownsX?'cosmic-tw-own-section-x':'',
+        ];
+        return trim($resolved.' '.implode(' ',array_filter($markers)));
     }
 
     private static function getTheme($key)
@@ -6331,6 +6344,9 @@ CSS;
         $copyWidth = max(30, min(100, $num($v['copy_width_percent'] ?? null, 52)));
         $headingLine = $num($v['heading_line_height'] ?? null, 1.02);
         $bodyLine = $num($v['body_line_height'] ?? null, 1.45);
+        $mediaWidth = max(20, min(80, $num($v['media_width_percent'] ?? null, 50)));
+        $copyColWidth = 100 - $mediaWidth;
+        $aiFlexHero = (($block['category'] ?? '') === 'hero') && str_starts_with((string)($block['ai_flex']['composition_profile'] ?? ''), 'premium_hero');
 
         $headingTablet = $num($o['heading_size_tablet'] ?? ($v['heading_size_tablet'] ?? null), round($headingSize * .82));
         $headingMobile = $num($o['heading_size_mobile'] ?? ($v['heading_size_mobile'] ?? null), round($headingSize * .64));
@@ -6370,7 +6386,8 @@ CSS;
         };
 
         $alignCss = $alignment === 'center' ? 'text-align:center;align-items:center;' : ($alignment === 'right' ? 'text-align:right;align-items:flex-end;' : 'text-align:left;align-items:flex-start;');
-        $copy = "<div class='cc-copy' style='position:relative;z-index:2;display:flex;flex-direction:column;gap:{$gap}px;max-width:{$copyWidth}%;{$alignCss}'>".
+        $copyMaxWidth = ($aiFlexHero && in_array($mediaPosition, ['left', 'right'], true)) ? '100%' : "{$copyWidth}%";
+        $copy = "<div class='cc-copy' style='position:relative;z-index:2;display:flex;flex-direction:column;gap:{$gap}px;max-width:{$copyMaxWidth};{$alignCss}'>".
             ($eyebrow !== '' ? "<div style='font-size:".$num($v['eyebrow_size'] ?? null,14)."px;font-weight:700;color:{$headingColor}'>{$eyebrow}</div>" : '').
             "<h2 class='cc-heading' style='margin:0;font-size:{$headingSize}px;line-height:{$headingLine};font-weight:900;color:{$headingColor};white-space:pre-line'>{$heading}</h2>".
             ($text !== '' ? "<div class='cc-body' style='font-size:{$bodySize}px;line-height:{$bodyLine};color:{$bodyColor}'>{$text}</div>" : '');
@@ -6572,7 +6589,9 @@ HTML;
         $split = in_array($mediaPosition, ['left','right'], true) || in_array($layout, ['split','showcase'], true);
         if ($split && $media !== '') {
             $body = $mediaPosition === 'left' ? $media.$copy : $copy.$media;
-            $body = "<div class='cc-main cc-split' style='position:relative;margin:0 auto;max-width:{$maxWidth}px;min-height:inherit;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;gap:40px'>{$body}</div>";
+            $splitColumns = $mediaPosition === 'left' ? "{$mediaWidth}% {$copyColWidth}%" : "{$copyColWidth}% {$mediaWidth}%";
+            $splitGap = $gap * 2;
+            $body = "<div class='cc-main cc-split' style='position:relative;margin:0 auto;max-width:{$maxWidth}px;min-height:inherit;display:grid;grid-template-columns:{$splitColumns};align-items:center;gap:{$splitGap}px'>{$body}</div>";
         } else {
             $top = ($mediaPosition === 'top' && $media !== '') ? "<div style='margin-bottom:40px'>{$media}</div>" : '';
             $body = "<div class='cc-main' style='position:relative;margin:0 auto;max-width:{$maxWidth}px;min-height:inherit;display:flex;flex-direction:column;justify-content:center'>{$top}{$copy}</div>";
@@ -6584,7 +6603,11 @@ HTML;
             $trustStrip = $layout === 'trust_strip';
             $gridCols = $trustStrip ? 4 : 3;
             $gridGap = $trustStrip ? 0 : 16;
-            $itemsHtml = "<div class='cc-items ".($trustStrip?'cc-trust-strip':'')."' style='position:relative;z-index:2;margin:40px auto 0;max-width:{$maxWidth}px;display:grid;grid-template-columns:repeat({$gridCols},minmax(0,1fr));gap:{$gridGap}px'>";
+            $heroItemsClass = $aiFlexHero ? ' cc-hero-items' : '';
+            $heroItemsStyle = $aiFlexHero
+                ? "position:absolute;z-index:4;right:{$padX}px;bottom:32px;width:min(340px,32vw);display:grid;grid-template-columns:1fr;gap:16px"
+                : "position:relative;z-index:2;margin:40px auto 0;max-width:{$maxWidth}px;display:grid;grid-template-columns:repeat({$gridCols},minmax(0,1fr));gap:{$gridGap}px";
+            $itemsHtml = "<div class='cc-items".$heroItemsClass.($trustStrip?' cc-trust-strip':'')."' style='{$heroItemsStyle}'>";
             foreach ($items as $itemIndex => $item) {
                 if (!is_array($item)) continue;
                 $itemStyle = $trustStrip ? "display:flex;align-items:flex-start;gap:16px;padding:".min($cardPadding,22)."px;border-right:".($itemIndex < count($items)-1?'1px solid rgba(255,255,255,.25)':'0')."" : "border:1px solid rgba(0,0,0,.1);background:{$cardBg};border-radius:{$cardRadius}px;padding:{$cardPadding}px";
@@ -6621,7 +6644,7 @@ HTML;
         $css = "<style>
 #cc-{$key} .cc-heading{font-size:{$headingSize}px!important}
 #cc-{$key} .cc-body{font-size:{$bodySize}px!important}
-@media(max-width:900px){#cc-{$key}{padding-top:{$padTablet}px!important;padding-bottom:{$padTablet}px!important;padding-left:clamp(24px,5vw,56px)!important;padding-right:clamp(24px,5vw,56px)!important}#cc-{$key} .cc-copy{max-width:min(78%,720px)!important}#cc-{$key} .cc-heading{font-size:{$headingTablet}px!important}#cc-{$key} .cc-body{font-size:{$bodyTablet}px!important}#cc-{$key} .cc-items{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:900px){#cc-{$key} .cc-hero-items{position:relative!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:720px!important;margin:28px auto 0!important}#cc-{$key}{padding-top:{$padTablet}px!important;padding-bottom:{$padTablet}px!important;padding-left:clamp(24px,5vw,56px)!important;padding-right:clamp(24px,5vw,56px)!important}#cc-{$key} .cc-copy{max-width:min(78%,720px)!important}#cc-{$key} .cc-heading{font-size:{$headingTablet}px!important}#cc-{$key} .cc-body{font-size:{$bodyTablet}px!important}#cc-{$key} .cc-items{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:640px){#cc-{$key}{min-height:auto!important;padding:{$padMobile}px 22px!important}#cc-{$key} .cc-copy{max-width:100%!important}#cc-{$key} .cc-heading{font-size:{$headingMobile}px!important}#cc-{$key} .cc-body{font-size:{$bodyMobile}px!important}#cc-{$key} .cc-split{grid-template-columns:1fr!important}#cc-{$key} .cc-items{grid-template-columns:1fr!important}#cc-{$key} .cc-form-grid{grid-template-columns:1fr!important}#cc-{$key} input{grid-column:1/-1}}
 </style>";
 
@@ -6629,7 +6652,7 @@ HTML;
             ? "aspect-ratio:{$aspectRatio}/1;min-height:0;"
             : "min-height:{$minHeight}px;";
         if ($aspectRatio > 0) {
-            $css .= "<style>@media(max-width:900px){#cc-{$key}{aspect-ratio:auto!important;min-height:auto!important}}</style>";
+            $css .= "<style>@media(max-width:900px){#cc-{$key} .cc-hero-items{position:relative!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:720px!important;margin:28px auto 0!important}#cc-{$key}{aspect-ratio:auto!important;min-height:auto!important}}</style>";
         }
 
         return "<section id='cc-{$key}' data-custom-spark-key='{$key}' style='position:relative;isolation:isolate;overflow:hidden;{$ratioStyle}background:{$bg};padding:{$padY}px {$padX}px;box-sizing:border-box'>{$background}{$body}{$itemsHtml}{$css}</section>".$formScript;

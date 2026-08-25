@@ -38,6 +38,7 @@ final class AuditSparkTailwindOwnership extends Command
                     if(!str_contains($body,'!important')) continue;
                     if(!preg_match('/(?:font-size|font-weight|line-height|letter-spacing|border-radius|box-shadow|background(?:-color)?|color|padding|margin|max-width|object-fit)\s*:/i',$body)) continue;
                     if(str_contains($selector,'cosmic-tw-slot--')) continue;
+                    if(str_contains($selector,'cosmic-tw-own-section-')) continue;
 
                     // Variable-only shell declarations are not customer element overrides.
                     if(trim($selector)==='.cosmic-render-shell') continue;

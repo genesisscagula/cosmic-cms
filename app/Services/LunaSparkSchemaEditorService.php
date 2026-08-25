@@ -13,6 +13,7 @@ final class LunaSparkSchemaEditorService
         private readonly SparkTailwindSchemaContract $contract,
         private readonly SparkTailwindSchemaValidator $validator,
         private readonly TailwindUtilityConflictResolver $conflicts,
+        private readonly LunaModelDepartmentService $models,
     ) {}
 
     /**
@@ -104,7 +105,7 @@ PROMPT;
                 ->connectTimeout(20)
                 ->timeout(90)
                 ->post($this->endpoint(),[
-                    'model'=>env('OPENAI_LUNA_SPARK_EDITOR_MODEL',env('OPENAI_MODEL','gpt-5-mini')),
+                    'model'=>$this->models->sparkEditor(),
                     'response_format'=>['type'=>'json_object'],
                     'messages'=>[
                         ['role'=>'system','content'=>$system],
