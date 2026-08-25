@@ -49,7 +49,7 @@ final class SparkEditCapabilityRegistry
 
     public function selectedSparkPayload(?string $sparkType, array $block = [], array $elementContext = []): array
     {
-        if ($sparkType === null || ! isset(SchemaManager::map()[$sparkType])) {
+        if ($sparkType === null || (! isset(SchemaManager::map()[$sparkType]) && $sparkType !== 'luna_custom_section')) {
             return ['mode' => 'selected_spark', 'selected_spark' => null, 'element_context' => $elementContext];
         }
 
@@ -182,7 +182,7 @@ final class SparkEditCapabilityRegistry
 
     public function inferModules(string $sparkType, array $block = [], array $catalog = []): array
     {
-        $text = Str::lower($sparkType.' '.json_encode([
+        $text = Str::lower($sparkType.' '.($block['semantic_type'] ?? '').' '.($block['category'] ?? '').' '.($block['source_type'] ?? '').' '.json_encode([
             $catalog['media'] ?? null,
             $catalog['layout'] ?? null,
             $catalog['capabilities'] ?? null,

@@ -2327,29 +2327,56 @@ HTML;
                             );
 
                             if (firstSection) {
-                                firstSection.classList.add('cosmic-static-overlay-first-spark');
+                                // Match Builder.jsx exactly: overlay is only active when the first
+                                // rendered Spark is semantically a hero/banner. A global overlay
+                                // preference must not force a transparent/absolute header over an
+                                // AI Flex/custom section that Builder currently renders in normal flow.
+                                const firstType = String(firstSection.dataset.cosmicBlockType || firstSection.dataset.cosmicSemanticType || firstSection.dataset.type || '').toLowerCase();
+                                const firstSectionIsBanner = firstType === 'hero' || firstType.includes('hero') || firstType.includes('banner');
 
-                                // Premium overlay keeps the nav/logo high-contrast while the CTA
-                                // carries the active brand gradient. Do not revert the exported
-                                // header back to the legacy all-white CTA treatment at runtime.
-                                const useLightHeader = staticHeader.dataset.cosmicPremiumOverlayHeader === 'true';
+                                if (!firstSectionIsBanner) {
+                                    staticHeader.dataset.cosmicOverlayHeader = 'false';
+                                    staticHeader.dataset.cosmicPremiumOverlayHeader = 'false';
+                                    staticHeader.classList.remove(
+                                        'cosmic-static-overlay-header',
+                                        'cosmic-overlay-tone-light',
+                                        'cosmic-overlay-tone-dark',
+                                        'cosmic-overlay-cta-gradient',
+                                        'cosmic-overlay-cta-primary',
+                                        'absolute',
+                                        'inset-x-0',
+                                        'border-transparent',
+                                        'bg-transparent',
+                                        'shadow-none'
+                                    );
+                                    staticHeader.classList.add('sticky', 'top-0', 'bg-white', 'shadow-sm', 'border-b', 'border-slate-200');
+                                    const flowHeight = Math.ceil(staticHeader.getBoundingClientRect().height || 0);
+                                    document.documentElement.style.setProperty('--cosmic-header-flow-offset', `\${flowHeight}px`);
+                                } else {
+                                    firstSection.classList.add('cosmic-static-overlay-first-spark');
 
-                                staticHeader.classList.toggle('cosmic-overlay-tone-light', useLightHeader);
-                                staticHeader.classList.toggle('cosmic-overlay-tone-dark', !useLightHeader);
-                                staticHeader.classList.remove('cosmic-overlay-cta-gradient');
-                                staticHeader.classList.add('cosmic-overlay-cta-primary');
+                                    // Premium overlay keeps the nav/logo high-contrast while the CTA
+                                    // carries the active brand gradient. Do not revert the exported
+                                    // header back to the legacy all-white CTA treatment at runtime.
+                                    const useLightHeader = staticHeader.dataset.cosmicPremiumOverlayHeader === 'true';
 
-                                const syncOverlaySpacing = () => {
-                                    const headerHeight = Math.ceil(staticHeader.getBoundingClientRect().height || 0);
-                                    document.documentElement.style.setProperty('--cosmic-overlay-header-height', `\${headerHeight}px`);
-                                };
+                                    staticHeader.classList.toggle('cosmic-overlay-tone-light', useLightHeader);
+                                    staticHeader.classList.toggle('cosmic-overlay-tone-dark', !useLightHeader);
+                                    staticHeader.classList.remove('cosmic-overlay-cta-gradient');
+                                    staticHeader.classList.add('cosmic-overlay-cta-primary');
 
-                                syncOverlaySpacing();
-                                window.addEventListener('resize', syncOverlaySpacing);
+                                    const syncOverlaySpacing = () => {
+                                        const headerHeight = Math.ceil(staticHeader.getBoundingClientRect().height || 0);
+                                        document.documentElement.style.setProperty('--cosmic-overlay-header-height', `\${headerHeight}px`);
+                                    };
 
-                                if (typeof ResizeObserver !== 'undefined') {
-                                    const overlayResizeObserver = new ResizeObserver(syncOverlaySpacing);
-                                    overlayResizeObserver.observe(staticHeader);
+                                    syncOverlaySpacing();
+                                    window.addEventListener('resize', syncOverlaySpacing);
+
+                                    if (typeof ResizeObserver !== 'undefined') {
+                                        const overlayResizeObserver = new ResizeObserver(syncOverlaySpacing);
+                                        overlayResizeObserver.observe(staticHeader);
+                                    }
                                 }
                             }
                         }
@@ -5901,7 +5928,12 @@ HTML;
                     ? $blockTheme
                     : ($blockTheme === 'light' ? 'light' : 'primary');
                 $semanticTheme = e($semanticTheme);
-                $semanticType = e((string) ($block['type'] ?? ''));
+                $implementationType = (string) ($block['type'] ?? '');
+                $semanticRawType = $implementationType === 'luna_custom_section'
+                    ? (string) ($block['semantic_type'] ?? $block['category'] ?? $implementationType)
+                    : $implementationType;
+                $semanticType = e($semanticRawType);
+                $implementationTypeAttr = e($implementationType);
                 $semanticIndex = (int) $index;
                 $renderContractVersion = e(self::renderContractVersion());
                 $tailwindSchemaState = is_array($block['luna_tailwind_schema']['slots'] ?? null) && $block['luna_tailwind_schema']['slots'] !== []
@@ -5909,7 +5941,7 @@ HTML;
                     : 'legacy_fallback';
                 $taggedFragment = preg_replace(
                     '/<section(?![^>]*data-cosmic-spark)/i',
-                    "<section data-cosmic-spark='1' data-cosmic-render-contract='{$renderContractVersion}' data-cosmic-tailwind-schema='{$tailwindSchemaState}' data-cosmic-block-index='{$semanticIndex}' data-cosmic-resolved-theme='{$semanticTheme}' data-cosmic-block-type='{$semanticType}'",
+                    "<section data-cosmic-spark='1' data-cosmic-render-contract='{$renderContractVersion}' data-cosmic-tailwind-schema='{$tailwindSchemaState}' data-cosmic-block-index='{$semanticIndex}' data-cosmic-resolved-theme='{$semanticTheme}' data-cosmic-block-type='{$semanticType}' data-cosmic-implementation-type='{$implementationTypeAttr}'",
                     $fragment,
                     1
                 );
@@ -6311,7 +6343,18 @@ CSS;
         $o = is_array($block['style_overrides'] ?? null) ? $block['style_overrides'] : [];
         $num = static fn($value, $fallback) => is_numeric($value) ? (float) $value : $fallback;
         $hex = static function ($value, $fallback) {
-            $value = (string) $value;
+            $value = strtolower(trim((string) $value));
+            $tokens = [
+                'primary' => 'var(--cosmic-brand-primary,#30475E)',
+                'surface' => 'var(--cosmic-surface,#f3f7f4)',
+                'surface_alt' => 'var(--cosmic-surface-alt,#eef2f0)',
+                'white' => '#ffffff',
+                'on_primary' => 'var(--cosmic-color-on-primary,#ffffff)',
+                'on_surface' => 'var(--cosmic-color-on-surface,#27272a)',
+                'on_dark' => 'var(--cosmic-color-on-dark,#f8fafc)',
+                'accent' => 'var(--cosmic-brand-accent,#f5b68c)',
+            ];
+            if (isset($tokens[$value])) return $tokens[$value];
             return preg_match('/^#[0-9a-f]{6}([0-9a-f]{2})?$/i', $value) ? $value : $fallback;
         };
         $esc = static fn($value) => e((string) $value);
@@ -6346,7 +6389,7 @@ CSS;
         $bodyLine = $num($v['body_line_height'] ?? null, 1.45);
         $mediaWidth = max(20, min(80, $num($v['media_width_percent'] ?? null, 50)));
         $copyColWidth = 100 - $mediaWidth;
-        $aiFlexHero = (($block['category'] ?? '') === 'hero') && str_starts_with((string)($block['ai_flex']['composition_profile'] ?? ''), 'premium_hero');
+        $aiFlexHero = (((string)($block['semantic_type'] ?? $block['category'] ?? '')) === 'hero') && str_starts_with((string)($block['ai_flex']['composition_profile'] ?? ''), 'premium_hero');
 
         $headingTablet = $num($o['heading_size_tablet'] ?? ($v['heading_size_tablet'] ?? null), round($headingSize * .82));
         $headingMobile = $num($o['heading_size_mobile'] ?? ($v['heading_size_mobile'] ?? null), round($headingSize * .64));
@@ -6388,7 +6431,7 @@ CSS;
         $alignCss = $alignment === 'center' ? 'text-align:center;align-items:center;' : ($alignment === 'right' ? 'text-align:right;align-items:flex-end;' : 'text-align:left;align-items:flex-start;');
         $copyMaxWidth = ($aiFlexHero && in_array($mediaPosition, ['left', 'right'], true)) ? '100%' : "{$copyWidth}%";
         $copy = "<div class='cc-copy' style='position:relative;z-index:2;display:flex;flex-direction:column;gap:{$gap}px;max-width:{$copyMaxWidth};{$alignCss}'>".
-            ($eyebrow !== '' ? "<div style='font-size:".$num($v['eyebrow_size'] ?? null,14)."px;font-weight:700;color:{$headingColor}'>{$eyebrow}</div>" : '').
+            ($eyebrow !== '' ? "<div class='cc-eyebrow' style='font-size:".$num($v['eyebrow_size'] ?? null,14)."px;font-weight:700;color:{$headingColor}'>{$eyebrow}</div>" : '').
             "<h2 class='cc-heading' style='margin:0;font-size:{$headingSize}px;line-height:{$headingLine};font-weight:900;color:{$headingColor};white-space:pre-line'>{$heading}</h2>".
             ($text !== '' ? "<div class='cc-body' style='font-size:{$bodySize}px;line-height:{$bodyLine};color:{$bodyColor}'>{$text}</div>" : '');
 
@@ -6575,8 +6618,8 @@ HTML;
 HTML;
         } elseif ($primaryLabel !== '' || $secondaryLabel !== '') {
             $copy .= "<div style='display:flex;flex-wrap:wrap;gap:12px'>";
-            if ($primaryLabel !== '') $copy .= "<a href='{$primaryUrl}' style='padding:12px 24px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-size:14px;font-weight:700;text-decoration:none'>{$primaryLabel}</a>";
-            if ($secondaryLabel !== '') $copy .= "<a href='{$secondaryUrl}' style='padding:12px 24px;border-radius:{$buttonRadius}px;border:1px solid rgba(0,0,0,.15);color:{$headingColor};font-size:14px;font-weight:700;text-decoration:none'>{$secondaryLabel}</a>";
+            if ($primaryLabel !== '') $copy .= "<a class='cc-primary-button' href='{$primaryUrl}' style='padding:12px 24px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-size:14px;font-weight:700;text-decoration:none'>{$primaryLabel}</a>";
+            if ($secondaryLabel !== '') $copy .= "<a class='cc-secondary-button' href='{$secondaryUrl}' style='padding:12px 24px;border-radius:{$buttonRadius}px;border:1px solid rgba(0,0,0,.15);color:{$headingColor};font-size:14px;font-weight:700;text-decoration:none'>{$secondaryLabel}</a>";
             $copy .= "</div>";
         }
         $copy .= "</div>";
@@ -6611,7 +6654,7 @@ HTML;
             foreach ($items as $itemIndex => $item) {
                 if (!is_array($item)) continue;
                 $itemStyle = $trustStrip ? "display:flex;align-items:flex-start;gap:16px;padding:".min($cardPadding,22)."px;border-right:".($itemIndex < count($items)-1?'1px solid rgba(255,255,255,.25)':'0')."" : "border:1px solid rgba(0,0,0,.1);background:{$cardBg};border-radius:{$cardRadius}px;padding:{$cardPadding}px";
-                $itemsHtml .= "<article style='{$itemStyle}'>";
+                $itemsHtml .= "<article class='cc-item-card' style='{$itemStyle}'>";
                 if (($item['icon'] ?? '') !== '') $itemsHtml .= "<div style='flex:0 0 auto'>".$iconSvg($item['icon'],$accent)."</div><div style='min-width:0;flex:1'>";
                 if (($item['image_url'] ?? '') !== '') $itemsHtml .= "<img src='".$esc($item['image_url'])."' alt='' style='width:100%;aspect-ratio:4/3;object-fit:cover;border-radius:".max(8,$cardRadius-4)."px;margin-bottom:16px'>";
                 if (($item['label'] ?? '') !== '' || ($item['value'] ?? '') !== '') $itemsHtml .= "<div style='display:flex;justify-content:space-between;gap:12px;margin-bottom:8px;font-size:11px;font-weight:700;text-transform:uppercase;color:{$bodyColor}'><span>".$esc($item['label'] ?? '')."</span><span>".$esc($item['value'] ?? '')."</span></div>";
@@ -6642,8 +6685,14 @@ HTML;
         }
 
         $css = "<style>
-#cc-{$key} .cc-heading{font-size:{$headingSize}px!important}
-#cc-{$key} .cc-body{font-size:{$bodySize}px!important}
+/* AI Flex export/live parity: visual_style is authoritative for this custom section. */
+#cc-{$key}{background:{$bg}!important;background-color:{$bg}!important}
+#cc-{$key} .cc-eyebrow{color:{$headingColor}!important}
+#cc-{$key} .cc-heading{font-size:{$headingSize}px!important;color:{$headingColor}!important}
+#cc-{$key} .cc-body{font-size:{$bodySize}px!important;color:{$bodyColor}!important}
+#cc-{$key} .cc-primary-button{background:{$accent}!important;color:{$headingColor}!important}
+#cc-{$key} .cc-secondary-button{background:transparent!important;color:{$headingColor}!important;border-color:rgba(0,0,0,.15)!important}
+#cc-{$key} .cc-item-card{background:{$cardBg}!important;color:{$bodyColor}!important}
 @media(max-width:900px){#cc-{$key} .cc-hero-items{position:relative!important;right:auto!important;bottom:auto!important;width:100%!important;max-width:720px!important;margin:28px auto 0!important}#cc-{$key}{padding-top:{$padTablet}px!important;padding-bottom:{$padTablet}px!important;padding-left:clamp(24px,5vw,56px)!important;padding-right:clamp(24px,5vw,56px)!important}#cc-{$key} .cc-copy{max-width:min(78%,720px)!important}#cc-{$key} .cc-heading{font-size:{$headingTablet}px!important}#cc-{$key} .cc-body{font-size:{$bodyTablet}px!important}#cc-{$key} .cc-items{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
 @media(max-width:640px){#cc-{$key}{min-height:auto!important;padding:{$padMobile}px 22px!important}#cc-{$key} .cc-copy{max-width:100%!important}#cc-{$key} .cc-heading{font-size:{$headingMobile}px!important}#cc-{$key} .cc-body{font-size:{$bodyMobile}px!important}#cc-{$key} .cc-split{grid-template-columns:1fr!important}#cc-{$key} .cc-items{grid-template-columns:1fr!important}#cc-{$key} .cc-form-grid{grid-template-columns:1fr!important}#cc-{$key} input{grid-column:1/-1}}
 </style>";

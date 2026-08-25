@@ -958,7 +958,7 @@ PROMPT;
         }
 
         $fixed = $qa['block'];
-        $allowed = ['type','custom_spark_key','custom_spark_saved','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','theme','style_overrides','visual_style','review','form','ai_flex'];
+        $allowed = ['type','custom_spark_key','custom_spark_saved','semantic_type','source_type','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','theme','style_overrides','visual_style','review','form','ai_flex'];
         $fixed = array_intersect_key($fixed, array_flip($allowed));
         $fixed['type'] = 'luna_custom_section';
         $fixed['custom_spark_key'] = $customSpark->key;
@@ -2055,6 +2055,9 @@ PROMPT;
             'confirmed'=>['nullable','boolean'],
             'pending_action_token'=>['nullable','string','max:100'],
             'current_page_id'=>['nullable','integer','min:1'],
+            'reference_image'=>['nullable','image','mimes:png,jpg,jpeg,webp','max:8192'],
+            'reference_target_index'=>['nullable','integer','min:0','max:100'],
+            'reference_placement'=>['nullable','in:replace,above,below'],
         ]);
         $blocks=json_decode($validated['blocks'],true);
         $header=json_decode((string)($validated['header']??'{}'),true);
@@ -2130,8 +2133,8 @@ PROMPT;
                 'page_sparks'=>array_values(array_map(
                     fn($block,$index)=>[
                         'index'=>$index,
-                        'type'=>is_array($block)?(string)($block['type']??''):'',
-                        'label'=>is_array($block)?Str::limit(trim((string)($block['heading']??$block['title']??$block['eyebrow']??$block['type']??'')),80,''):'',
+                        'type'=>is_array($block)?(string)(($block['type']??'')==='luna_custom_section' ? ($block['semantic_type']??$block['category']??$block['type']??'') : ($block['type']??'')):'',
+                        'label'=>is_array($block)?Str::limit(trim((string)($block['heading']??$block['title']??$block['eyebrow']??$block['semantic_type']??$block['type']??'')),80,''):'',
                     ],
                     $blocks,
                     array_keys($blocks)
@@ -2952,8 +2955,102 @@ For the compatible premium Services family (services_bento_premium, services_edi
         // edit_spark remains owned by the full-schema editor; change/add/remove/
         // reorder are converted into a deterministic operation plan here.
         $nestedSparkTarget=data_get($canonicalIntent,'routing.spark_target');
+        $referenceThemeProposal=null;
         if(data_get($canonicalIntent,'routing.branch_executor')!=='sol_full_page_v1' && data_get($canonicalIntent,'routing.menu_scope')==='sparks'){
             $sparkBranch=(string)data_get($canonicalIntent,'routing.spark_action');
+            // Reference Batch 1 is routing-only. Never let a reference_spark
+            // request fall through to the legacy planner before the screenshot
+            // ingestion/vision executor exists in Batch 2. This makes the new
+            // branch fail closed instead of mutating an unrelated section.
+            if($sparkBranch==='reference_spark'){
+                $ops=[];
+                $referenceScope=(string)data_get($canonicalIntent,'routing.reference_scope','single_spark');
+                $referenceMode=(string)data_get($canonicalIntent,'routing.reference_mode','layout_only');
+                $scope=$referenceScope==='whole_page'?'page':'section';
+                if($referenceMode==='layout_and_theme' && $request->hasFile('reference_image')){
+                    try{
+                        $referenceThemeProposal=$aiFlex->generateThemeFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[]);
+                        $canonicalIntent['routing']['reference_theme_primary']=$referenceThemeProposal['primary']??null;
+                    }catch(\Throwable $e){
+                        \Illuminate\Support\Facades\Log::warning('[AiFlex] reference theme skipped',['error'=>$e->getMessage()]);
+                    }
+                }
+                $canonicalIntent['routing']['model_department']='sol';
+                if(!$request->hasFile('reference_image')){
+                    $canonicalIntent['routing']['branch_executor']='reference_vision_v1';
+                    $canonicalIntent['needs_clarification']=true;
+                    $canonicalIntent['reason']='Attach a screenshot or reference image so Sol can rebuild it.';
+                }elseif($referenceScope==='whole_page'){
+                    try{
+                        $referencePlan=$aiFlex->generatePageFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[],$usable,$referenceMode);
+                        $operations=[];
+                        foreach($referencePlan['sections'] as $referenceIndex=>$referenceSection){
+                            if(($referenceSection['implementation']??'')==='registered'){
+                                $operations[]=['action'=>'registered_upsert','index'=>$referenceIndex,'spark_key'=>(string)$referenceSection['spark_key'],'instruction'=>(string)($referenceSection['instruction']??'')];
+                            }else{
+                                $operations[]=['action'=>'ai_flex_upsert','index'=>$referenceIndex,'block'=>$referenceSection['block']];
+                            }
+                        }
+                        $operations[]=['action'=>'trim_page','count'=>count($referencePlan['sections'])];
+                        $scope='page';
+                        $canonicalIntent['routing']['branch_executor']='sol_reference_page_v1';
+                        $canonicalIntent['routing']['reference_ingested']=true;
+                        $canonicalIntent['routing']['reference_page_plan']=$referencePlan;
+                        $canonicalIntent['needs_clarification']=false;
+                    }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] whole-page reference_spark failed',['error'=>$e->getMessage()]); report($e); $operations=[]; }
+                }else{
+                    $requestedReferenceTarget=isset($validated['reference_target_index'])?(int)$validated['reference_target_index']:null;
+                    $requestedReferencePlacement=(string)($validated['reference_placement']??'');
+                    if($requestedReferenceTarget===null || !in_array($requestedReferencePlacement,['replace','above','below'],true)){
+                        $referenceTargets=[];
+                        foreach(array_values($blocks) as $referenceIndex=>$referenceCandidate){
+                            if(!is_array($referenceCandidate)) continue;
+                            $semantic=trim((string)($referenceCandidate['semantic_type']??$referenceCandidate['category']??''));
+                            if($semantic===''){
+                                $rawType=(string)($referenceCandidate['type']??'section');
+                                $semantic=(string)(preg_split('/[_-]+/',$rawType)[0]??'section');
+                            }
+                            $title=trim((string)($referenceCandidate['heading']??$referenceCandidate['title']??$referenceCandidate['eyebrow']??''));
+                            $baseLabel=ucwords(str_replace(['_','-'],' ',$semantic?:'section'));
+                            $referenceTargets[]=['index'=>$referenceIndex,'type'=>(string)($referenceCandidate['type']??''),'semantic_type'=>$semantic?:'section','label'=>$title!==''?$baseLabel.' · '.mb_strimwidth($title,0,54,'…'):$baseLabel];
+                        }
+                        return response()->json([
+                            'reply'=>'Where do you want to place this reference section?',
+                            'mode'=>'reference_place',
+                            'reference_placement'=>['prompt'=>$prompt,'reference_scope'=>'single_spark','reference_mode'=>$referenceMode,'targets'=>$referenceTargets],
+                            'canonical_intent'=>$canonicalIntent,
+                            'credit_cost'=>0,
+                            'credit_balance'=>$trialCredits->balance($trial),
+                            'blocks'=>$blocks,
+                            'header'=>is_array($header)?$header:[],
+                            'footer'=>is_array($footer)?$footer:[],
+                            'site_memory'=>$siteMemory,
+                            'pending_action'=>false,
+                            'applied_operations'=>[],
+                        ]);
+                    }
+                    $referenceTarget=$requestedReferenceTarget;
+                    if(!isset($blocks[$referenceTarget])) throw \Illuminate\Validation\ValidationException::withMessages(['reference_target_index'=>'That placement section is no longer available.']);
+                    $referenceSource=$requestedReferencePlacement==='replace' && is_array($blocks[$referenceTarget]??null)?$blocks[$referenceTarget]:[];
+                    $anchor=is_array($blocks[$referenceTarget]??null)?$blocks[$referenceTarget]:[];
+                    try{
+                        $referenceBlock=$aiFlex->generateFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[],[
+                            'section_count'=>count($blocks),'target_index'=>$referenceTarget,'reference_mode'=>$referenceMode,'placement'=>$requestedReferencePlacement,
+                            'anchor'=>['type'=>$anchor['type']??null,'semantic_type'=>$anchor['semantic_type']??$anchor['category']??null,'heading'=>$anchor['heading']??$anchor['title']??null],
+                        ],$referenceSource,$referenceMode);
+                        $referenceAction=$requestedReferencePlacement==='replace'?'ai_flex_replace':($requestedReferencePlacement==='above'?'ai_flex_insert_before':'ai_flex_insert_after');
+                        $ops=[['action'=>$referenceAction,'index'=>$referenceTarget,'block'=>$referenceBlock]];
+                        $targetIndex=$requestedReferencePlacement==='below'?$referenceTarget+1:$referenceTarget;
+                        $scope='section';
+                        $canonicalIntent['routing']['branch_executor']='reference_vision_placement_v1';
+                        $canonicalIntent['routing']['reference_ingested']=true;
+                        $canonicalIntent['routing']['reference_placement']=$requestedReferencePlacement;
+                        $canonicalIntent['routing']['reference_anchor_index']=$referenceTarget;
+                        $canonicalIntent['needs_clarification']=false;
+                    }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] trial reference_spark failed',['error'=>$e->getMessage(),'target_index'=>$referenceTarget,'placement'=>$requestedReferencePlacement]); report($e); $ops=[]; }
+                }
+            }
+
             // Batch 4: custom_spark scans the registered library once more before
             // invoking Sol. A strong match is downgraded to change_spark; otherwise
             // Sol composes a structured luna_custom_section that inherits the theme.
@@ -3167,6 +3264,15 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 continue;
             }
 
+            if(in_array($action,['ai_flex_insert_before','ai_flex_insert_after'],true)){
+                $flexBlock=is_array($op['block']??null)?$op['block']:null;
+                if($flexBlock){
+                    $insertIndex=$action==='ai_flex_insert_after'?$i+1:$i;
+                    array_splice($next,$insertIndex,0,[$flexBlock]);
+                    $applied[]=['action'=>$action,'index'=>$insertIndex,'anchor_index'=>$i,'type'=>'luna_custom_section','verified'=>true];
+                }
+                continue;
+            }
             if($action==='ai_flex_replace'){
                 $flexBlock=is_array($op['block']??null)?$op['block']:null;
                 if($flexBlock && isset($next[$i])){
@@ -3261,9 +3367,11 @@ For the compatible premium Services family (services_bento_premium, services_edi
             }
         }
 
-        $brandPrimary=$explicitBrandPrimary ?: $this->lunaExplicitBrandColor($designPrompt);
+        $referenceBrandPrimary=is_array($referenceThemeProposal??null)?($referenceThemeProposal['primary']??null):null;
+        $referenceBrandFamily=is_array($referenceThemeProposal??null)?($referenceThemeProposal['family']??null):null;
+        $brandPrimary=$referenceBrandPrimary ?: ($explicitBrandPrimary ?: $this->lunaExplicitBrandColor($designPrompt));
         $brandColorFamily=$brandPrimary
-            ? $this->lunaValidateBrandColorFamily($brandPrimary,$plan['brand_color_family']??null)
+            ? $this->lunaValidateBrandColorFamily($brandPrimary,$referenceBrandFamily ?: ($plan['brand_color_family']??null))
             : null;
         $brandPattern=null;
         if($brandColorFamily){
@@ -3276,7 +3384,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'scope'=>'site',
                 'primary'=>$brandPrimary,
                 'mode'=>$brandPattern['mode'],
-                'source'=>$aiPaletteProposed?'luna_designed_validated':'deterministic_fallback',
+                'source'=>$referenceBrandFamily?'sol_reference_theme_v1':($aiPaletteProposed?'luna_designed_validated':'deterministic_fallback'),
                 'verified'=>true
             ];
             if($brandPattern['hero_changed']) $applied[]=['action'=>'brand_hero_contrast','index'=>$brandPattern['hero_index'],'mode'=>$brandPattern['mode'],'verified'=>true];
@@ -4352,6 +4460,9 @@ For the compatible premium Services family (services_bento_premium, services_edi
             'confirmed'=>['nullable','boolean'],
             'pending_action_token'=>['nullable','string','max:100'],
             'current_page_id'=>['nullable','integer','min:1'],
+            'reference_image'=>['nullable','image','mimes:png,jpg,jpeg,webp','max:8192'],
+            'reference_target_index'=>['nullable','integer','min:0','max:100'],
+            'reference_placement'=>['nullable','in:replace,above,below'],
         ]);
         $originalUserPrompt=trim((string)$validated['prompt']);
         $user=$request->user();
@@ -4431,8 +4542,8 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'page_sparks'=>array_values(array_map(
                     fn($block,$index)=>[
                         'index'=>$index,
-                        'type'=>is_array($block)?(string)($block['type']??''):'',
-                        'label'=>is_array($block)?Str::limit(trim((string)($block['heading']??$block['title']??$block['eyebrow']??$block['type']??'')),80,''):'',
+                        'type'=>is_array($block)?(string)(($block['type']??'')==='luna_custom_section' ? ($block['semantic_type']??$block['category']??$block['type']??'') : ($block['type']??'')):'',
+                        'label'=>is_array($block)?Str::limit(trim((string)($block['heading']??$block['title']??$block['eyebrow']??$block['semantic_type']??$block['type']??'')),80,''):'',
                     ],
                     $blocks,
                     array_keys($blocks)
@@ -6142,8 +6253,119 @@ PROMPT;
         // continues through the full-schema editor and custom_spark stays reserved
         // for the AI Flex batch.
         $nestedSparkTarget=data_get($canonicalIntent,'routing.spark_target');
+        $referenceThemeProposal=null;
         if(data_get($canonicalIntent,'routing.branch_executor')!=='sol_full_page_v1' && data_get($canonicalIntent,'routing.menu_scope')==='sparks'){
             $sparkBranch=(string)data_get($canonicalIntent,'routing.spark_action');
+            // Reference Batch 2: ingest the attached screenshot and let Sol
+            // convert a SINGLE-SPARK visual reference into the same validated AI
+            // Flex contract used by custom_spark. Placement UX and whole-page
+            // segmentation intentionally remain fail-closed for later batches.
+            if($sparkBranch==='reference_spark'){
+                $operations=[];
+                $referenceScope=(string)data_get($canonicalIntent,'routing.reference_scope','single_spark');
+                $referenceMode=(string)data_get($canonicalIntent,'routing.reference_mode','layout_only');
+                $scope=$referenceScope==='whole_page'?'page':'section';
+                if($referenceMode==='layout_and_theme' && $request->hasFile('reference_image')){
+                    try{
+                        $referenceThemeProposal=$aiFlex->generateThemeFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[]);
+                        $canonicalIntent['routing']['reference_theme_primary']=$referenceThemeProposal['primary']??null;
+                    }catch(\Throwable $e){
+                        \Illuminate\Support\Facades\Log::warning('[AiFlex] reference theme skipped',['error'=>$e->getMessage()]);
+                    }
+                }
+                $canonicalIntent['routing']['model_department']='sol';
+                if(!$request->hasFile('reference_image')){
+                    $canonicalIntent['routing']['branch_executor']='reference_vision_v1';
+                    $canonicalIntent['needs_clarification']=true;
+                    $canonicalIntent['reason']='Attach a screenshot or reference image so Sol can rebuild it.';
+                }elseif($referenceScope==='whole_page'){
+                    try{
+                        $referencePlan=$aiFlex->generatePageFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[],$usable,$referenceMode);
+                        $operations=[];
+                        foreach($referencePlan['sections'] as $referenceIndex=>$referenceSection){
+                            if(($referenceSection['implementation']??'')==='registered'){
+                                $operations[]=['action'=>'registered_upsert','index'=>$referenceIndex,'spark_key'=>(string)$referenceSection['spark_key'],'instruction'=>(string)($referenceSection['instruction']??'')];
+                            }else{
+                                $operations[]=['action'=>'ai_flex_upsert','index'=>$referenceIndex,'block'=>$referenceSection['block']];
+                            }
+                        }
+                        $operations[]=['action'=>'trim_page','count'=>count($referencePlan['sections'])];
+                        $scope='page';
+                        $canonicalIntent['routing']['branch_executor']='sol_reference_page_v1';
+                        $canonicalIntent['routing']['reference_ingested']=true;
+                        $canonicalIntent['routing']['reference_page_plan']=$referencePlan;
+                        $canonicalIntent['needs_clarification']=false;
+                    }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] whole-page reference_spark failed',['error'=>$e->getMessage()]); report($e); $operations=[]; }
+                }else{
+                    $requestedReferenceTarget=isset($validated['reference_target_index'])?(int)$validated['reference_target_index']:null;
+                    $requestedReferencePlacement=(string)($validated['reference_placement']??'');
+                    if($requestedReferenceTarget===null || !in_array($requestedReferencePlacement,['replace','above','below'],true)){
+                        $referenceTargets=[];
+                        foreach(array_values($blocks) as $referenceIndex=>$referenceCandidate){
+                            if(!is_array($referenceCandidate)) continue;
+                            $semantic=trim((string)($referenceCandidate['semantic_type']??$referenceCandidate['category']??''));
+                            if($semantic===''){
+                                $rawType=(string)($referenceCandidate['type']??'section');
+                                $semantic=(string)(preg_split('/[_-]+/',$rawType)[0]??'section');
+                            }
+                            $title=trim((string)($referenceCandidate['heading']??$referenceCandidate['title']??$referenceCandidate['eyebrow']??''));
+                            $baseLabel=ucwords(str_replace(['_','-'],' ',$semantic?:'section'));
+                            $referenceTargets[]=[
+                                'index'=>$referenceIndex,
+                                'type'=>(string)($referenceCandidate['type']??''),
+                                'semantic_type'=>$semantic?:'section',
+                                'label'=>$title!==''?$baseLabel.' · '.mb_strimwidth($title,0,54,'…'):$baseLabel,
+                            ];
+                        }
+                        return response()->json([
+                            'reply'=>'Where do you want to place this reference section?',
+                            'mode'=>'reference_place',
+                            'reference_placement'=>[
+                                'prompt'=>$prompt,
+                                'reference_scope'=>'single_spark',
+                                'reference_mode'=>$referenceMode,
+                                'targets'=>$referenceTargets,
+                            ],
+                            'canonical_intent'=>$canonicalIntent,
+                            'credit_cost'=>0,
+                            'credit_balance'=>$user ? $credits->balance($user) : null,
+                            'blocks'=>$blocks,
+                            'header'=>is_array($header)?$header:[],
+                            'footer'=>is_array($footer)?$footer:[],
+                            'site_memory'=>$siteMemory,
+                            'pending_action'=>false,
+                            'applied_operations'=>[],
+                        ]);
+                    }
+                    $referenceTarget=$requestedReferenceTarget;
+                    if(!isset($blocks[$referenceTarget])) throw \Illuminate\Validation\ValidationException::withMessages(['reference_target_index'=>'That placement section is no longer available.']);
+                    $referenceSource=$requestedReferencePlacement==='replace' && is_array($blocks[$referenceTarget]??null)?$blocks[$referenceTarget]:[];
+                    $anchor=is_array($blocks[$referenceTarget]??null)?$blocks[$referenceTarget]:[];
+                    try{
+                        $referenceBlock=$aiFlex->generateFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[],[
+                            'section_count'=>count($blocks),
+                            'target_index'=>$referenceTarget,
+                            'reference_mode'=>$referenceMode,
+                            'placement'=>$requestedReferencePlacement,
+                            'anchor'=>[
+                                'type'=>$anchor['type']??null,
+                                'semantic_type'=>$anchor['semantic_type']??$anchor['category']??null,
+                                'heading'=>$anchor['heading']??$anchor['title']??null,
+                            ],
+                        ],$referenceSource,$referenceMode);
+                        $referenceAction=$requestedReferencePlacement==='replace'?'ai_flex_replace':($requestedReferencePlacement==='above'?'ai_flex_insert_before':'ai_flex_insert_after');
+                        $operations=[['action'=>$referenceAction,'index'=>$referenceTarget,'block'=>$referenceBlock]];
+                        $targetIndex=$requestedReferencePlacement==='below'?$referenceTarget+1:$referenceTarget;
+                        $scope='section';
+                        $canonicalIntent['routing']['branch_executor']='reference_vision_placement_v1';
+                        $canonicalIntent['routing']['reference_ingested']=true;
+                        $canonicalIntent['routing']['reference_placement']=$requestedReferencePlacement;
+                        $canonicalIntent['routing']['reference_anchor_index']=$referenceTarget;
+                        $canonicalIntent['needs_clarification']=false;
+                    }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] reference_spark failed',['error'=>$e->getMessage(),'target_index'=>$referenceTarget,'placement'=>$requestedReferencePlacement]); report($e); $operations=[]; }
+                }
+            }
+
             // Batch 4: custom_spark scans the registered library once more before
             // invoking Sol. A strong match is downgraded to change_spark; otherwise
             // Sol composes a structured luna_custom_section that inherits the theme.
@@ -6438,6 +6660,15 @@ PROMPT;
                 continue;
             }
 
+            if(in_array($action,['ai_flex_insert_before','ai_flex_insert_after'],true)){
+                $flexBlock=is_array($operation['block']??null)?$operation['block']:null;
+                if($flexBlock){
+                    $insertIndex=$action==='ai_flex_insert_after'?$index+1:$index;
+                    array_splice($nextBlocks,$insertIndex,0,[$flexBlock]);
+                    $applied[]=['action'=>$action,'index'=>$insertIndex,'anchor_index'=>$index,'type'=>'luna_custom_section','verified'=>true];
+                }
+                continue;
+            }
             if($action==='ai_flex_replace'){
                 $flexBlock=is_array($operation['block']??null)?$operation['block']:null;
                 if($flexBlock && isset($nextBlocks[$index])){
@@ -6705,9 +6936,11 @@ PROMPT;
             $operations=array_values(array_filter($operations,fn($operation)=>(($operation['action']??'')!=='theme')));
         }
 
-        $brandPrimary=$explicitBrandPrimary;
+        $referenceBrandPrimary=is_array($referenceThemeProposal??null)?($referenceThemeProposal['primary']??null):null;
+        $referenceBrandFamily=is_array($referenceThemeProposal??null)?($referenceThemeProposal['family']??null):null;
+        $brandPrimary=$referenceBrandPrimary ?: $explicitBrandPrimary;
         $brandColorFamily=$brandPrimary
-            ? $this->lunaValidateBrandColorFamily($brandPrimary,$plan['brand_color_family']??null)
+            ? $this->lunaValidateBrandColorFamily($brandPrimary,$referenceBrandFamily ?: ($plan['brand_color_family']??null))
             : null;
         $brandPattern=null;
         if($brandColorFamily){
@@ -6719,7 +6952,7 @@ PROMPT;
                 'scope'=>'site',
                 'primary'=>$brandPrimary,
                 'mode'=>$brandPattern['mode'],
-                'source'=>is_array($plan['brand_color_family']??null)?'luna_designed_validated':'deterministic_fallback',
+                'source'=>$referenceBrandFamily?'sol_reference_theme_v1':(is_array($plan['brand_color_family']??null)?'luna_designed_validated':'deterministic_fallback'),
                 'verified'=>true,
             ];
             if($brandPattern['hero_changed']) $applied[]=['action'=>'brand_hero_contrast','index'=>$brandPattern['hero_index'],'mode'=>$brandPattern['mode'],'verified'=>true];
@@ -7034,7 +7267,7 @@ PROMPT;
         $action = ($result['action'] ?? 'update') === 'reply_only' ? 'reply_only' : 'update';
         $fixed = $currentBlock;
         if ($action === 'update' && is_array($result['block'] ?? null)) {
-            $allowed = ['type','custom_spark_key','custom_spark_saved','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','theme','style_overrides','visual_style','review','form','runtime','ai_flex'];
+            $allowed = ['type','custom_spark_key','custom_spark_saved','semantic_type','source_type','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','theme','style_overrides','visual_style','review','form','runtime','ai_flex'];
             $candidate = array_intersect_key($result['block'], array_flip($allowed));
             $fixed = array_merge($currentBlock, $candidate);
             $fixed['type'] = 'luna_custom_section';

@@ -392,6 +392,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [cosmicAiError, setCosmicAiError] = useState('');
     const [pageAiOpen, setPageAiOpen] = useState(false);
     const [pageAiPrompt, setPageAiPrompt] = useState('');
+    const [lunaReferenceImage, setLunaReferenceImage] = useState(null);
     const [pageAiBusy, setPageAiBusy] = useState(false);
     const [pageAiError, setPageAiError] = useState('');
     const [lunaChatOpen, setLunaChatOpen] = useState(false);
@@ -2988,6 +2989,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         firstBlockType === 'hero' ||
         firstBlockType.includes('hero') ||
         firstBlockType.includes('banner') ||
+        (firstBlockType === 'luna_custom_section' && ['hero','banner'].includes(String(firstBlock?.semantic_type || firstBlock?.category || '').toLowerCase())) ||
         (customWebsiteMode && firstBlockType === 'luna_custom_section' && String(firstBlock?.media_position || '').toLowerCase() === 'background')
     );
     const firstBlockResolvedTheme = firstBlock ? resolveBlockTheme(firstBlock, 0) : null;
@@ -3391,6 +3393,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         try {
             const form = new FormData();
             form.append('prompt', prompt);
+            if (lunaReferenceImage) form.append('reference_image', lunaReferenceImage);
             form.append('block', JSON.stringify(stripClientBlockFields([currentBlock])[0]));
             form.append('target_scope', cosmicAiChat.targetScope || 'section');
             if (cosmicAiChat.targetKey) form.append('target_key', cosmicAiChat.targetKey);
@@ -4387,7 +4390,7 @@ const blockHasVideoSlot = (value) => {
         }
     };
 
-const sendPageAiRequest = async (directPrompt = null, confirmed = false, pendingActionToken = null) => {
+const sendPageAiRequest = async (directPrompt = null, confirmed = false, pendingActionToken = null, requestOptions = {}) => {
         // React passes the click event when a handler is used as onClick={fn}.
         // Only an explicit string is a real direct prompt; everything else must
         // behave like the normal composer Send action.
@@ -4553,6 +4556,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         try {
             const form = new FormData();
             form.append('prompt', prompt);
+            if (lunaReferenceImage) form.append('reference_image', lunaReferenceImage);
+            if (Number.isInteger(Number(requestOptions?.reference_target_index))) form.append('reference_target_index', String(Number(requestOptions.reference_target_index)));
+            if (['replace','above','below'].includes(String(requestOptions?.reference_placement || ''))) form.append('reference_placement', String(requestOptions.reference_placement));
             // Send the complete current Builder-session conversation to every
             // Luna routing/edit API. Backend remains a validator/executor.
             form.append('conversation', JSON.stringify(requestConversation));
@@ -4729,6 +4735,24 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 ? route('trial-luna.chat', { trial: trialToken })
                 : `/websites/${website.id}/custom-page-ai`;
             const { data: response } = await axios.post(lunaEndpoint, form, { headers:{'Content-Type':'multipart/form-data'} });
+            if (lunaReferenceImage && response.mode !== 'reference_place') setLunaReferenceImage(null);
+            if (response.mode === 'reference_place') {
+                setLunaStatus('Ready');
+                const placement=response.reference_placement || {};
+                const placementReply=response.reply || 'Where do you want to place this reference section?';
+                rememberLunaAssistantReply(placementReply);
+                setLunaMessages((messages)=>[...messages,{
+                    role:'assistant',
+                    text:placementReply,
+                    referencePlacement:{
+                        prompt:String(placement.prompt || prompt),
+                        targets:Array.isArray(placement.targets)?placement.targets:[],
+                        selectedTarget:null,
+                    },
+                }]);
+                if (Number.isFinite(Number(response.credit_balance))) setCreditBalance(Number(response.credit_balance));
+                return;
+            }
             if (response.mode === 'grounded_info' || response.mode === 'clarify') {
                 setLunaStatus('Ready');
             } else if (response.mode !== 'confirm' && actionIntent) {
@@ -5326,7 +5350,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
   <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pt-3 pb-2">
     {lunaMessages.length ? lunaMessages.slice(-12).map((message,i)=><div key={`${i}-${message.text}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}><div className="max-w-[86%]"><div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'
     ?'bg-violet-500 text-white'
-    :'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div>{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true,message.confirmation.token);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Delete · {message.confirmation.cost} credits</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Keep content</button></div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
+    :'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div>{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true,message.confirmation.token);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Delete · {message.confirmation.cost} credits</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Keep content</button></div>:null}{message.role==='assistant'&&message.referencePlacement?<div className="mt-2 space-y-2">{message.referencePlacement.selectedTarget==null?<div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">{(message.referencePlacement.targets||[]).map((target)=><button key={`ref-target-${target.index}`} type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:target}}:item))} className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2.5 py-1.5 text-[10px] font-semibold text-violet-100 hover:bg-violet-500/20 disabled:opacity-40">{target.label || `Section ${Number(target.index)+1}`}</button>)}</div>:<div><div className="mb-1.5 text-[10px] font-semibold text-slate-400">Relative to {message.referencePlacement.selectedTarget.label || `Section ${Number(message.referencePlacement.selectedTarget.index)+1}`}</div><div className="flex flex-wrap gap-1.5"><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'above'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert above</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'below'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert below</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'replace'})} className="rounded-lg bg-violet-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Replace</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:null}}:item))} className="rounded-lg px-2 py-1.5 text-[10px] font-semibold text-slate-500 hover:text-slate-300 disabled:opacity-40">Back</button></div></div>}</div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
     {(pageAiBusy||lunaContextTyping)?<div className="flex items-center gap-2 text-xs font-semibold text-violet-300" role="status" aria-live="polite"><span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-violet-300/25 border-t-violet-300" aria-hidden="true"/><span>{lunaStatus}</span></div>:null}
     <div ref={lunaMessagesEndRef} aria-hidden="true" className="h-px" />
   </div>
@@ -5434,6 +5458,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             <span aria-hidden="true">▣</span> Choose from Media Library
           </button>
     ) : null}
+    <div className="mb-2 flex items-center gap-2">
+      <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 hover:border-violet-300/30 hover:text-white">
+        <span aria-hidden="true">▧</span><span className="max-w-[210px] truncate">{lunaReferenceImage?.name || 'Attach design reference'}</span>
+        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e)=>{const file=e.target.files?.[0]||null;if(file&&file.size>8*1024*1024){showCosmicNotification({title:'Reference too large',message:'Use a PNG, JPG, or WebP up to 8 MB.',tone:'error'});e.target.value='';return;}setLunaReferenceImage(file);}}/>
+      </label>
+      {lunaReferenceImage ? <button type="button" onClick={()=>setLunaReferenceImage(null)} className="text-[11px] font-semibold text-rose-300 hover:text-rose-200">Remove</button> : null}
+    </div>
     <textarea
       ref={lunaPromptRef}
       value={pageAiPrompt}

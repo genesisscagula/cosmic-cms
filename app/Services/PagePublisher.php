@@ -63,7 +63,11 @@ class PagePublisher
         $themePalette = $primaryColor === 'my-brand'
             ? ((array) data_get($theme, 'brand_palette', data_get($theme, 'custom_brand_theme.palette', [])))
             : app(ThemeColorResolver::class)->palette((string) $primaryColor);
-        $header = $website->published_global_header ?? $website->global_header;
+        // Global header is an immediately-saved website shell in the Builder.
+        // Export/Live must mirror that current shell state (especially
+        // overlay_header_on_banner) instead of resurrecting a stale published
+        // header snapshot while the page content remains snapshot-based.
+        $header = $website->global_header ?? $website->published_global_header;
         $footer = $website->published_global_footer ?? $website->global_footer;
         $pages = $website->pages()
             ->where(function ($query) {

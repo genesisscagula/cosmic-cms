@@ -22,7 +22,19 @@ final class AuditLunaNestedRouter extends Command
             ],
             'API 3 Spark action router' => [
                 app_path('Services/LunaIntentGateway.php'),
-                ['aiSparkAction(', 'edit_spark', 'change_spark', 'add_spark', 'remove_spark', 'custom_spark', 'reorder_spark'],
+                ['aiSparkAction(', 'edit_spark', 'change_spark', 'add_spark', 'remove_spark', 'custom_spark', 'reference_spark', 'reorder_spark'],
+            ],
+            'Reference Spark sub-router' => [
+                app_path('Services/LunaIntentGateway.php'),
+                ['reference_spark', 'aiReferenceScope(', 'whole_page', 'single_spark', 'aiReferenceMode(', 'layout_only', 'layout_and_theme'],
+            ],
+            'Reference Spark placement UX/executor' => [
+                app_path('Http/Controllers/CustomSparkController.php'),
+                ['reference_target_index', 'reference_placement', 'reference_place', 'ai_flex_insert_before', 'ai_flex_insert_after', 'reference_vision_placement_v1'],
+            ],
+            'Whole-page reference composer' => [
+                app_path('Services/LunaAiFlexSparkService.php'),
+                ['generatePageFromReference(', 'sol_reference_page_v1', 'registered_catalog', 'page_plan'],
             ],
             'API 4 current-page Spark selector' => [
                 app_path('Services/LunaIntentGateway.php'),

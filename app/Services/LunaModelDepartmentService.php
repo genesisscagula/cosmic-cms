@@ -71,12 +71,12 @@ final class LunaModelDepartmentService
 
     public function forSparkAction(?string $sparkAction): string
     {
-        return $sparkAction === 'custom_spark' ? $this->sol() : $this->terra();
+        return in_array($sparkAction, ['custom_spark','reference_spark'], true) ? $this->sol() : $this->terra();
     }
 
     public function departmentForSparkAction(?string $sparkAction): string
     {
-        return $sparkAction === 'custom_spark' ? 'sol' : 'terra';
+        return in_array($sparkAction, ['custom_spark','reference_spark'], true) ? 'sol' : 'terra';
     }
 
     /** @return array{luna:string,terra:string,sol:string} */

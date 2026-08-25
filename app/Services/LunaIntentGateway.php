@@ -93,6 +93,8 @@ final class LunaIntentGateway
         // edit/change/add/remove/custom/reorder semantics from overlapping.
         $sparkAction=null;
         $sparkTarget=null;
+        $referenceScope=null;
+        $referenceMode=null;
         if($actionScope==='sparks'){
             $sparkAction=$this->aiSparkAction($message,$prior,$context)
                 ?? $this->localSparkAction($message,$prior,$context);
@@ -111,7 +113,30 @@ final class LunaIntentGateway
             // Page context without forcing the user to click/select the hero first.
             // Downstream branch executors remain authoritative about whether the
             // resolved target is used as a replacement source or only as context.
-            $shouldResolveExistingTarget=in_array($sparkAction,['edit_spark','change_spark','remove_spark','reorder_spark','custom_spark'],true);
+            // reference_spark owns a deeper visual-reference sub-router, so it
+            // deliberately does not consume the normal API-4 target selector.
+            // API 4 = whole_page|single_spark and API 5 = layout_only|layout_and_theme.
+            if($sparkAction==='reference_spark'){
+                $referenceScope=$this->aiReferenceScope($message,$prior,$context)
+                    ?? $this->localReferenceScope($message,$prior,$context);
+                if(!in_array($referenceScope,$this->referenceScopes(),true)) $referenceScope='single_spark';
+                Log::debug('[LunaRouter] API 4 Reference scope resolved',[
+                    'reference_scope'=>$referenceScope,
+                    'surface'=>(string)($context['surface']??''),
+                ]);
+
+                $referenceMode=$this->aiReferenceMode($message,$prior,$context,$referenceScope)
+                    ?? $this->localReferenceMode($message,$prior,$context);
+                if(!in_array($referenceMode,$this->referenceModes(),true)) $referenceMode='layout_only';
+                Log::debug('[LunaRouter] API 5 Reference mode resolved',[
+                    'reference_scope'=>$referenceScope,
+                    'reference_mode'=>$referenceMode,
+                    'surface'=>(string)($context['surface']??''),
+                ]);
+            }
+
+            $shouldResolveExistingTarget=$sparkAction!=='reference_spark'
+                && in_array($sparkAction,['edit_spark','change_spark','remove_spark','reorder_spark','custom_spark'],true);
             if($shouldResolveExistingTarget){
                 $pageSparks=$this->normalizePageSparkMenu($context['page_sparks']??[]);
                 $sparkTarget=$this->aiSparkTarget($message,$pageSparks,$prior,$context,$sparkAction)
@@ -157,10 +182,12 @@ final class LunaIntentGateway
             'spark_action'=>$sparkAction,
             'model_department'=>$actionScope==='sparks' ? $this->models->departmentForSparkAction($sparkAction) : 'terra',
             'spark_target'=>$sparkTarget,
+            'reference_scope'=>$referenceScope,
+            'reference_mode'=>$referenceMode,
             'action_family'=>$actionFamily,
             'domain'=>$schema['domain']??null,
             'leaf_operation'=>$schema['leaf_operation']??null,
-            'api_depth'=>$actionScope==='sparks'?(in_array($sparkAction,['edit_spark','change_spark','remove_spark','reorder_spark'],true)?4:3):3,
+            'api_depth'=>$actionScope==='sparks'?($sparkAction==='reference_spark'?5:(in_array($sparkAction,['edit_spark','change_spark','remove_spark','reorder_spark'],true)?4:3)):3,
         ];
 
         $normalized=$this->normalizeAction($schema,$prior);
@@ -184,11 +211,20 @@ final class LunaIntentGateway
             'spark_action'=>$sparkAction,
             'model_department'=>$actionScope==='sparks' ? $this->models->departmentForSparkAction($sparkAction) : 'terra',
             'spark_target'=>$sparkTarget,
+            'reference_scope'=>$referenceScope,
+            'reference_mode'=>$referenceMode,
             'action_family'=>$normalized['action']??$actionFamily,
             'domain'=>$normalized['domain']??null,
             'leaf_operation'=>$normalized['leaf_operation']??null,
-            'api_depth'=>$actionScope==='sparks'?(in_array($sparkAction,['edit_spark','change_spark','remove_spark','reorder_spark'],true)?4:3):3,
+            'api_depth'=>$actionScope==='sparks'?($sparkAction==='reference_spark'?5:(in_array($sparkAction,['edit_spark','change_spark','remove_spark','reorder_spark'],true)?4:3)):3,
         ]);
+        if($actionScope==='sparks' && $sparkAction==='reference_spark'){
+            $normalized['scope']=$referenceScope==='whole_page'?'page':'section';
+            $normalized['execution_allowed']=false;
+            $normalized['needs_clarification']=true;
+            $normalized['reason']='Reference routing is ready; screenshot ingestion and reference execution are introduced in the next batch.';
+        }
+
         if(($normalized['action']??'')==='inspect'){
             $surface=(string)($context['surface']??'');
             $ready=in_array($surface,['builder','trial_builder'],true);
@@ -365,6 +401,7 @@ PROMPT;
             'add_spark',
             'remove_spark',
             'custom_spark',
+            'reference_spark',
             'reorder_spark',
         ];
     }
@@ -383,7 +420,7 @@ You are Luna's third routing API inside Cosmic CMS.
 API 1 already chose ACTION and API 2 already chose SPARKS.
 
 Return JSON only and exactly one key:
-{"spark_action":"edit_spark|change_spark|add_spark|remove_spark|custom_spark|reorder_spark"}
+{"spark_action":"edit_spark|change_spark|add_spark|remove_spark|custom_spark|reference_spark|reorder_spark"}
 
 Definitions:
 - edit_spark: keep the same existing Spark design and modify content/style/layout values inside its editable schema. This is the default and most common branch.
@@ -391,6 +428,7 @@ Definitions:
 - add_spark: add a new section using a registered/premade Spark.
 - remove_spark: delete an existing section.
 - custom_spark: create or replace a section with a highly specific/unique composition that registered Sparks may not satisfy; this is the AI Flex fallback branch.
+- reference_spark: reproduce or reinterpret a supplied screenshot/image design reference. This branch owns both single-section and whole-page screenshot workflows; later routing decides which one.
 - reorder_spark: move existing sections to a different page order without changing their content/schema.
 
 Examples:
@@ -402,10 +440,13 @@ Examples:
 "Remove the FAQ" => remove_spark
 "Move testimonials above services" => reorder_spark
 "Create a hero with a diagonal image collage and floating booking widget" => custom_spark
+"Make this section look like the attached screenshot" => reference_spark
+"Rebuild this whole page from this screenshot" => reference_spark
 
 Rules:
 - Prefer edit_spark whenever the request can be achieved by editing the current registered Spark schema.
 - Prefer registered Sparks over custom_spark unless the user clearly requests a unique/specific composition that normal registered Sparks are unlikely to satisfy.
+- Choose reference_spark whenever the user explicitly supplies/refers to a screenshot, reference image, mockup image, or says to match/copy a visual reference. Do not confuse a text-only custom design request with reference_spark.
 - "more modern", "more premium", or "cleaner" alone is edit_spark unless the user explicitly asks for a different layout/template/section design.
 - "another", "different", "replace this layout", "try another design" normally means change_spark.
 - Do not choose a target Spark, replacement Spark, insertion position, changes, Tailwind classes, reasoning, confirmation, or user-facing reply.
@@ -433,6 +474,118 @@ PROMPT;
         }
     }
 
+    /** @return array<int,string> */
+    private function referenceScopes(): array
+    {
+        return ['whole_page','single_spark'];
+    }
+
+    /** @return array<int,string> */
+    private function referenceModes(): array
+    {
+        return ['layout_only','layout_and_theme'];
+    }
+
+    /**
+     * API 4 for reference_spark only: decide whether the supplied visual
+     * reference represents one section or an entire page. No placement or
+     * implementation decision is allowed here.
+     */
+    private function aiReferenceScope(string $message,array $prior,array $context): ?string
+    {
+        $apiKey=(string)config('openai.api_key');
+        if($apiKey==='') return null;
+
+        $system=<<<'PROMPT'
+You are Luna's visual-reference scope router inside Cosmic CMS.
+API 1 chose ACTION, API 2 chose SPARKS, and API 3 chose reference_spark.
+
+Return JSON only and exactly one key:
+{"reference_scope":"whole_page|single_spark"}
+
+Definitions:
+- single_spark: the screenshot/reference is one website section/component such as a hero, services section, testimonials, FAQ, pricing, CTA, contact section, gallery, or similar single section.
+- whole_page: the screenshot/reference represents a complete page or the user explicitly asks to reconstruct/divide an entire page from the reference.
+
+Rules:
+- Explicit "whole page", "entire page", "full page", "landing page screenshot", or equivalent => whole_page.
+- Explicit hero/services/FAQ/testimonial/etc. section wording => single_spark.
+- If ambiguous, prefer single_spark because it is the safer, narrower scope.
+- Do not choose target section, placement, theme mode, Spark implementation, schema, or user-facing text.
+PROMPT;
+
+        try{
+            $response=Http::withToken($apiKey)->connectTimeout(20)->timeout(60)->post($this->endpoint(),[
+                'model'=>$this->models->sparkActionRouter(),
+                'response_format'=>['type'=>'json_object'],
+                'messages'=>[
+                    ['role'=>'system','content'=>$system],
+                    ['role'=>'user','content'=>"CURRENT REFERENCE REQUEST:\n{$message}\n\nUI CONTEXT:\n".json_encode($this->intentUiContext($context),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
+                ],
+            ])->throw()->json();
+            $decoded=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+            $scope=is_array($decoded)?($decoded['reference_scope']??null):null;
+            return is_string($scope)&&in_array($scope,$this->referenceScopes(),true)?$scope:null;
+        }catch(\Throwable $e){ report($e); return null; }
+    }
+
+    private function localReferenceScope(string $message,array $prior,array $context): string
+    {
+        if(preg_match('/\b(whole|entire|full)\s+(page|homepage|home page|landing page|website page)\b/i',$message)
+            || preg_match('/\b(rebuild|recreate|copy|match|convert)\b.*\b(page|homepage|landing page)\b.*\b(screenshot|reference|mockup|image)\b/i',$message)) return 'whole_page';
+        return 'single_spark';
+    }
+
+    /**
+     * API 5 for reference_spark only: decide whether the current Cosmic theme
+     * remains authoritative or the reference is also allowed to seed a new theme.
+     */
+    private function aiReferenceMode(string $message,array $prior,array $context,string $referenceScope): ?string
+    {
+        $apiKey=(string)config('openai.api_key');
+        if($apiKey==='') return null;
+
+        $system=<<<'PROMPT'
+You are Luna's visual-reference theme-mode router inside Cosmic CMS.
+A screenshot/reference workflow is already selected.
+
+Return JSON only and exactly one key:
+{"reference_mode":"layout_only|layout_and_theme"}
+
+Definitions:
+- layout_only: copy/reinterpret composition, structure, hierarchy, spacing and visual arrangement while preserving the current Cosmic theme/brand.
+- layout_and_theme: the user explicitly wants the reference's colors/theme/branding/design language included, or this is a from-scratch/new-site reference workflow with no established theme.
+
+Rules:
+- Existing site + no explicit request to copy colors/theme => layout_only.
+- "include the theme", "copy the colors", "match the theme", "same branding/colors", or equivalent => layout_and_theme.
+- "keep my current theme/brand/colors" => layout_only.
+- Do not infer layout_and_theme merely because a screenshot exists.
+PROMPT;
+
+        try{
+            $response=Http::withToken($apiKey)->connectTimeout(20)->timeout(60)->post($this->endpoint(),[
+                'model'=>$this->models->sparkActionRouter(),
+                'response_format'=>['type'=>'json_object'],
+                'messages'=>[
+                    ['role'=>'system','content'=>$system],
+                    ['role'=>'user','content'=>"REFERENCE SCOPE: {$referenceScope}\nCURRENT REQUEST:\n{$message}\n\nUI CONTEXT:\n".json_encode($this->intentUiContext($context),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
+                ],
+            ])->throw()->json();
+            $decoded=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+            $mode=is_array($decoded)?($decoded['reference_mode']??null):null;
+            return is_string($mode)&&in_array($mode,$this->referenceModes(),true)?$mode:null;
+        }catch(\Throwable $e){ report($e); return null; }
+    }
+
+    private function localReferenceMode(string $message,array $prior,array $context): string
+    {
+        if(preg_match('/\b(keep|preserve|retain|use)\b.{0,35}\b(current|existing|my)\b.{0,20}\b(theme|brand|branding|colors?|colours?)\b/i',$message)) return 'layout_only';
+        if(preg_match('/\b(include|copy|match|follow|use|same)\b.{0,35}\b(theme|colors?|colours?|palette|branding|brand style|design language)\b/i',$message)
+            || preg_match('/\b(theme|colors?|colours?|palette|branding)\b.{0,25}\b(from|of)\b.{0,20}\b(screenshot|reference|image|mockup)\b/i',$message)) return 'layout_and_theme';
+        return 'layout_only';
+    }
+
     /** Deterministic outage fallback for API 3. */
     private function localSparkAction(string $message,array $prior,array $context): string
     {
@@ -442,6 +595,9 @@ PROMPT;
             || preg_match('/\b(move|reorder)\s+(this|that|the)?\s*(section|spark)\b/i',$message)) return 'reorder_spark';
 
         if(preg_match('/\b(remove|delete|get rid of|drop)\b.*\b(section|hero|services?|testimonials?|reviews?|pricing|faq|contact|cta|team|stats?|process|gallery|spark)\b/i',$message)) return 'remove_spark';
+
+        if(preg_match('/\b(screenshot|screen shot|reference image|design reference|mockup|mock-up|attached image|attached screenshot)\b/i',$message)
+            || preg_match('/\b(copy|match|follow|recreate|rebuild|convert)\b.*\b(screenshot|screen shot|reference|mockup|image)\b/i',$message)) return 'reference_spark';
 
         if(preg_match('/\b(custom|unique|bespoke|from scratch|completely custom|specific composition)\b/i',$message)
             || preg_match('/\b(create|build|design|make)\b.*\b(diagonal|floating|overlap|orbit|interactive|unusual|experimental)\b/i',$message)) return 'custom_spark';
@@ -640,7 +796,7 @@ Return JSON only and exactly one key:
 {"scope":"{$allowed}"}
 
 Choose the single top-level CMS menu that owns the requested action:
-- sparks: edit/add/remove/reorder/redesign a page section/Spark or an element inside a Spark, including its content, layout, Tailwind styling, buttons, cards, images, headings, spacing, responsive styles, and section-local forms.
+- sparks: edit/add/remove/reorder/redesign a page section/Spark or an element inside a Spark, including screenshot/reference-driven reconstruction. Screenshot/reference actions route here even when the supplied screenshot represents a whole page; the deeper reference_spark router decides whole_page vs single_spark.
 - global: site-wide design/content tokens or changes explicitly applying across the whole website.
 - header: header shell/layout/logo/header-specific styling, excluding navigation structure when navigation is the main request.
 - footer: footer shell/layout/content/footer-specific styling.
@@ -661,6 +817,8 @@ Target wording wins over implementation details. Example:
 "Change the website theme to navy" => theme
 "Add Services to the main menu" => navigation
 "Publish this page" => publish
+"Match this attached screenshot" => sparks
+"Rebuild this whole page from this screenshot" => sparks
 
 For short executable follow-ups such as "a little more", preserve the previously verified/routed menu when PRIOR ACTION CONTEXT makes it clear.
 Do not return operation, action family, target, Spark name/index, schema, changes, reasoning, confirmation text, or user-facing prose.
@@ -715,6 +873,10 @@ PROMPT;
     private function localActionScope(string $message,array $prior,array $context): string
     {
         $q=Str::lower(trim($message));
+
+        // Screenshot/design-reference workflows always enter the Sparks menu.
+        // reference_spark owns the deeper whole_page|single_spark distinction.
+        if(preg_match('/\b(screenshot|screen shot|reference image|design reference|mockup|mock-up|attached image|attached screenshot)\b/i',$message)) return 'sparks';
 
         // Explicitly named top-level features first.
         if(preg_match('/\b(publish|republish|unpublish|go live|make (?:it|this|the (?:page|site|website)) live)\b/i',$message)) return 'publish';

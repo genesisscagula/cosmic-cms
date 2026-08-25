@@ -25,8 +25,17 @@ final class LunaSparkSchemaEditorService
     {
         $sparkType=(string)($block['type']??'');
         $targetType=(string)($sparkTarget['type']??'');
-        if($sparkType==='' || $targetType==='' || $sparkType!==$targetType){
+        $semanticType=(string)($block['semantic_type']??$block['category']??'');
+        $customSemanticMatch=$sparkType==='luna_custom_section' && $targetType!=='' && in_array($targetType, array_filter([$semanticType,(string)($block['category']??''),$sparkType]), true);
+        if($sparkType==='' || $targetType==='' || ($sparkType!==$targetType && !$customSemanticMatch)){
             return ['ok'=>false,'reason'=>'spark_target_mismatch'];
+        }
+        if($customSemanticMatch && $targetType!==$sparkType){
+            // Router speaks in semantic roles (hero/services/etc.), while the editor
+            // must lock the physical renderer type for schema validation/persistence.
+            $sparkTarget['semantic_type']=$targetType;
+            $sparkTarget['implementation_type']=$sparkType;
+            $sparkTarget['type']=$sparkType;
         }
 
         $contextTarget=filter_var($elementContext['tailwindTargetIndex']??null,FILTER_VALIDATE_INT);
@@ -98,6 +107,9 @@ Rules:
 - For "primary"/"secondary"/specific wording, edit only the matching role/slot.
 - For relative follow-ups, the supplied schema is CURRENT persisted/rendered state; modify from it, not from an original default.
 - Preserve responsive/state variants unless the request explicitly changes them.
+- When LOCKED SPARK TARGET implementation_type/type is luna_custom_section, treat semantic_type as its logical role (hero/services/testimonials/faq/contact/etc.) and edit its visible AI Flex fields directly.
+- For AI Flex visual_style color fields, semantic values are allowed: primary, surface, surface_alt, white, on_primary, on_surface, on_dark, accent, or an explicit HEX.
+- If changing an AI Flex section background to primary, also maintain readable contrast by using on_primary for heading/body where appropriate; if changing back to a light surface, use on_surface unless the user explicitly asks otherwise.
 PROMPT;
 
         try{

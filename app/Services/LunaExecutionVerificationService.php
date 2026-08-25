@@ -120,7 +120,7 @@ final class LunaExecutionVerificationService
                 'build_page','edit','replace','insert_before','insert_after','delete','move','theme',
                 'publish','navigate','header_overlay','design_overrides','brand_color_family',
                 'repeater_add','repeater_remove','repeater_reorder','create','update','remove','add',
-                'inspect','configure','postcondition_check','ai_flex_replace','ai_flex_upsert','registered_upsert','trim_page'
+                'inspect','configure','postcondition_check','ai_flex_replace','ai_flex_insert_before','ai_flex_insert_after','ai_flex_upsert','registered_upsert','trim_page'
             ],true))continue;
             $out[]=[
                 'contract'=>'legacy',

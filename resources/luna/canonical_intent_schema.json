@@ -1,5 +1,5 @@
 {
-  "version": 7,
+  "version": 8,
   "route_contract": {
     "api": 1,
     "name": "intent_router",
@@ -160,5 +160,35 @@
     "field": "leaf_operation",
     "rule": "leaf_operation must be one of the finite operations registered for the selected domain. operation remains the backwards-compatible executor operation.",
     "validation": "required_changes declared by the selected leaf schema must be present before execution."
+  },
+  "spark_action_router_contract": {
+    "api": 3,
+    "name": "spark_action_router",
+    "allowed_values": [
+      "edit_spark",
+      "change_spark",
+      "add_spark",
+      "remove_spark",
+      "custom_spark",
+      "reference_spark",
+      "reorder_spark"
+    ]
+  },
+  "reference_spark_contract": {
+    "api_4": {
+      "name": "reference_scope_router",
+      "allowed_values": [
+        "whole_page",
+        "single_spark"
+      ]
+    },
+    "api_5": {
+      "name": "reference_mode_router",
+      "allowed_values": [
+        "layout_only",
+        "layout_and_theme"
+      ]
+    },
+    "rule": "reference_spark Batch 3 accepts a screenshot/image attachment and, for single_spark, returns deterministic current-page placement choices before Sol vision -> validated AI Flex. The user chooses an anchor Spark and then insert above, insert below, or replace. whole_page segmentation remains Batch 4."
   }
 }

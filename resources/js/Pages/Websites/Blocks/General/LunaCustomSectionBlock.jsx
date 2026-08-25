@@ -6,10 +6,10 @@ import { sparkTw } from "../Shared/sparkTailwindRuntime";
 
 export const LunaCustomSectionSchema = {
     type:'luna_custom_section', title:'Cosmic AI Custom Section', category:'Cosmic AI Custom', purpose:'Screenshot-rebuilt custom section',
-    defaults:{category:'content',layout:'editorial',alignment:'left',media_position:'none',density:'balanced',accent_shape:'none',eyebrow:'',heading:'Custom section',text:'',primary_label:'',primary_url:'#',secondary_label:'',secondary_url:'#',image_url:'',items:[],review:null,form:null,runtime:null,visual_style:{},style_overrides:{}}, fields:[],
+    defaults:{semantic_type:'content',source_type:'',category:'content',layout:'editorial',alignment:'left',media_position:'none',density:'balanced',accent_shape:'none',eyebrow:'',heading:'Custom section',text:'',primary_label:'',primary_url:'#',secondary_label:'',secondary_url:'#',image_url:'',items:[],review:null,form:null,runtime:null,visual_style:{},style_overrides:{}}, fields:[],
 };
 const num=(v,f)=>Number.isFinite(Number(v))?Number(v):f;
-const color=(v,f)=>/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(v||'')?v:f;
+const color=(v,f)=>{const raw=String(v||'').toLowerCase();const tokens={primary:'var(--cosmic-brand-primary,#30475E)',surface:'var(--cosmic-surface,#f3f7f4)',surface_alt:'var(--cosmic-surface-alt,#eef2f0)',white:'#ffffff',on_primary:'var(--cosmic-color-on-primary,#ffffff)',on_surface:'var(--cosmic-color-on-surface,#27272a)',on_dark:'var(--cosmic-color-on-dark,#f8fafc)',accent:'var(--cosmic-brand-accent,#f5b68c)'};return tokens[raw]||(/^#[0-9a-f]{6}([0-9a-f]{2})?$/i.test(raw)?v:f);};
 const ICON_PATHS={
  'shield-check':'M12 3 5 6v5c0 4.6 2.9 7.5 7 10 4.1-2.5 7-5.4 7-10V6l-7-3zm-3 8 2 2 4-4',
  settings:'M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8zm0-5v2m0 14v2M3 12h2m14 0h2M5.6 5.6 7 7m10 10 1.4 1.4M18.4 5.6 17 7M7 17l-1.4 1.4',
@@ -158,7 +158,7 @@ export function LunaCustomSectionBlock({block,blockIndex,onUpdate,onOpenCosmicAI
    gapMobile:num(o.content_gap_mobile,num(v.content_gap_mobile,Math.max(10,Math.round(s.gap*.75)))),
  };
  const background=block.media_position==='background'&&block.image_url;
- const aiFlexHero=block.category==='hero'&&String(block.ai_flex?.composition_profile||'').startsWith('premium_hero');
+ const aiFlexHero=String(block.semantic_type||block.category||'').toLowerCase()==='hero'&&String(block.ai_flex?.composition_profile||'').startsWith('premium_hero');
  const split=['left','right'].includes(block.media_position)||['split','showcase','feature_row'].includes(block.layout);
  const copyMaxWidth=aiFlexHero&&split?'100%':`${s.copyWidth}%`;
  const copy=<div className={sparkTw(block, "wrapper_27", "cosmic-custom-copy relative z-10 flex flex-col items-start text-left")} style={{gap:s.gap,maxWidth:copyMaxWidth}}>
