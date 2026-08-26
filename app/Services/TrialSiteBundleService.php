@@ -91,8 +91,8 @@ final class TrialSiteBundleService
                 $manifestPages[] = [
                     ...$recipe,
                     'page_id' => $page->id,
-                    'build_status' => $isHome ? 'ready' : 'queued',
-                    'built_at' => $isHome ? now()->toIso8601String() : null,
+                    'build_status' => ($isHome && !empty($homeGeneration['blocks'] ?? [])) ? 'ready' : 'queued',
+                    'built_at' => ($isHome && !empty($homeGeneration['blocks'] ?? [])) ? now()->toIso8601String() : null,
                 ];
             }
 
@@ -120,7 +120,7 @@ final class TrialSiteBundleService
                 'page_id' => $homePage->id,
                 'menu_structure' => $menuStructure,
                 'bundle_manifest' => $manifest,
-                'bundle_status' => count($manifestPages) > 1 ? 'queued' : 'ready',
+                'bundle_status' => collect($manifestPages)->every(fn (array $item) => ($item['build_status'] ?? null) === 'ready') ? 'ready' : 'queued',
                 'bundle_error' => null,
                 'sections' => $homeGeneration['sections'] ?? [],
                 'generated_blocks' => $homeGeneration['blocks'] ?? [],
@@ -192,8 +192,8 @@ final class TrialSiteBundleService
                 $manifestPages[] = [
                     ...$recipe,
                     'page_id' => $page->id,
-                    'build_status' => $isHome ? 'ready' : 'queued',
-                    'built_at' => $isHome ? now()->toIso8601String() : null,
+                    'build_status' => ($isHome && !empty($homeGeneration['blocks'] ?? [])) ? 'ready' : 'queued',
+                    'built_at' => ($isHome && !empty($homeGeneration['blocks'] ?? [])) ? now()->toIso8601String() : null,
                     'build_error' => null,
                 ];
             }
@@ -245,7 +245,7 @@ final class TrialSiteBundleService
                 'page_id' => (int) $manifestPages[0]['page_id'],
                 'menu_structure' => $menuStructure,
                 'bundle_manifest' => $manifest,
-                'bundle_status' => count($manifestPages) > 1 ? 'queued' : 'ready',
+                'bundle_status' => collect($manifestPages)->every(fn (array $item) => ($item['build_status'] ?? null) === 'ready') ? 'ready' : 'queued',
                 'bundle_error' => null,
                 'sections' => $homeGeneration['sections'] ?? [],
                 'generated_blocks' => $homeGeneration['blocks'] ?? [],

@@ -7,6 +7,7 @@ use App\Models\TrialGeneration;
 use App\Services\AiPageGenerationService;
 use App\Services\LunaPexelsVideoService;
 use App\Services\TrialStagingPublisherService;
+use App\Jobs\SendTrialBundleReadyJob;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -20,8 +21,9 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
-    public int $timeout = 600;
+    public int $tries = 3;
+    public int $timeout = 420;
+    public array $backoff = [30, 90, 180];
 
     public function __construct(public int $trialId, public int $pageId)
     {
@@ -42,7 +44,7 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
         $trial->forceFill(['bundle_status' => 'building', 'bundle_error' => null])->save();
         $recipe = collect((array) data_get($trial->bundle_manifest, 'pages', []))
             ->first(fn (array $page) => (int) ($page['page_id'] ?? 0) === $this->pageId);
-        if (! is_array($recipe) || ($recipe['is_home'] ?? false)) {
+        if (! is_array($recipe)) {
             return;
         }
 
@@ -54,13 +56,18 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
         }
         if (is_array($page->blocks) && $page->blocks !== []) {
             $this->markPage($trial->id, $page->id, 'ready');
-            if($this->refreshBundleStatus($trial->id)==='ready'){
-                try{$staging->publish($trial->fresh());}catch(Throwable $exception){report($exception);}
+            $status = $this->refreshBundleStatus($trial->id);
+            if ($status === 'ready') {
+                try { $staging->publish($trial->fresh()); } catch (Throwable $exception) { report($exception); }
+                SendTrialBundleReadyJob::dispatch($trial->id);
+            } else {
+                $this->dispatchNextQueuedPage($trial->id);
             }
             return;
         }
 
         try {
+            $this->markPage($trial->id, $page->id, 'building');
             $prompt = $this->pagePrompt($trial, $recipe);
             $blocks = $generator->imagesWithoutRemoteDownloads(
                 fn () => $generator->generateBlocks($prompt, array_values($recipe['sections'] ?? []))
@@ -88,8 +95,11 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
 
         $bundleStatus=$this->refreshBundleStatus($trial->id);
         $fresh = TrialGeneration::query()->find($trial->id);
-        if($bundleStatus==='ready' && $fresh){
-            try{$staging->publish($fresh);}catch(Throwable $exception){report($exception);}
+        if ($bundleStatus === 'ready' && $fresh) {
+            try { $staging->publish($fresh); } catch (Throwable $exception) { report($exception); }
+            SendTrialBundleReadyJob::dispatch($trial->id);
+        } elseif (in_array($bundleStatus, ['building', 'queued', 'partial'], true)) {
+            $this->dispatchNextQueuedPage($trial->id);
         }
         $statuses = collect(data_get($fresh?->bundle_manifest, 'pages', []))->pluck('build_status');
 
@@ -167,6 +177,23 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
                 'updated_at' => now()->toIso8601String(),
             ],
         ])->save();
+    }
+
+
+    private function dispatchNextQueuedPage(int $trialId): void
+    {
+        $trial = TrialGeneration::query()->find($trialId);
+        if (! $trial || $trial->claimed_at) {
+            return;
+        }
+
+        $next = collect(data_get($trial->bundle_manifest, 'pages', []))
+            ->sortBy('sort_order')
+            ->first(fn (array $item) => ($item['build_status'] ?? null) === 'queued' && (int) ($item['page_id'] ?? 0) > 0);
+
+        if (is_array($next)) {
+            self::dispatch($trialId, (int) $next['page_id']);
+        }
     }
 
     private function refreshBundleStatus(int $trialId): string

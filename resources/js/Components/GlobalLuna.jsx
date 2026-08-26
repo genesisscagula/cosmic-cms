@@ -201,11 +201,11 @@ useEffect(()=>{
 
     const generatePublicTrial=async(message)=>{
         const stages=[
-            'Thinking…',
-            'Planning…',
-            'Designing…',
-            'Building…',
-            'Checking…',
+            'Understanding your request…',
+            'Planning the website…',
+            'Designing the page…',
+            'Building the website…',
+            'Checking everything…',
         ];
         let stageIndex=0;
         setStatus(stages[0]);
@@ -300,7 +300,7 @@ useEffect(()=>{
         if(!message||busy)return;
         if(safeDirectMessage===null)setInput('');
         setBusy(true);
-        setStatus('Thinking…');
+        setStatus('Understanding your request…');
         if(!safeConfirmationToken)setMessages(current=>[...current,{role:'user',text:message}]);
 
         if(starterWebsiteId&&!safeConfirmationToken){
@@ -315,14 +315,14 @@ useEffect(()=>{
         const navigateIntent=/\b(open|go to|take me to|navigate to)\b/i.test(message);
         const actionIntent=buildIntent||updateIntent||publishIntent||navigateIntent;
         const phases=buildIntent
-            ? ['Thinking…','Planning…','Designing…','Building…','Checking…']
+            ? ['Understanding your request…','Planning the changes…','Applying the design…','Building the update…','Verifying the result…']
             : updateIntent
-                ? ['Thinking…','Planning…','Designing…','Building…','Checking…']
+                ? ['Understanding your request…','Planning the changes…','Applying the design…','Building the update…','Verifying the result…']
                 : publishIntent
-                    ? ['Thinking…','Planning…','Building…','Checking…']
+                    ? ['Understanding your request…','Planning the changes…','Applying the update…','Verifying the result…']
                     : navigateIntent
-                        ? ['Thinking…','Checking…']
-                        : ['Thinking…'];
+                        ? ['Understanding your request…','Verifying the result…']
+                        : ['Understanding your request…'];
         let phaseIndex=0;
         const timer=actionIntent ? window.setInterval(()=>{
             phaseIndex=Math.min(phaseIndex+1,phases.length-1);

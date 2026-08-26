@@ -6380,6 +6380,7 @@ CSS;
         $gap = $num($o['content_gap'] ?? ($v['content_gap'] ?? null), 20);
         $cardPadding = $num($o['card_padding'] ?? ($v['card_padding'] ?? null), 28);
         $cardRadius = $num($v['card_radius'] ?? null, 18);
+        $imageRadius = $num($v['image_radius'] ?? null, $cardRadius);
         $buttonRadius = $num($v['button_radius'] ?? null, 999);
         $minHeight = $num($v['section_min_height'] ?? null, 560);
         $aspectRatio = max(0, min(6, $num($v['reference_aspect_ratio'] ?? null, 0)));
@@ -6440,7 +6441,7 @@ CSS;
                 elseif($type==='heading')$html.="<h2 class='cosmic-flex-el cosmic-flex-heading' style='margin:0;color:{$headingColor};{$style}'>{$text}</h2>";
                 elseif($type==='text')$html.="<p class='cosmic-flex-el cosmic-flex-text' style='margin:0;color:{$bodyColor};{$style}'>{$text}</p>";
                 elseif($type==='button')$html.="<a class='cosmic-flex-el cosmic-flex-button' href='{$url}' style='display:inline-flex;align-items:center;justify-content:center;padding:12px 22px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-weight:700;text-decoration:none;{$style}'>".($label?:$text?:'Learn more')."</a>";
-                elseif($type==='image'){ $src=$esc($node['src']??'');$alt=$esc($node['alt']??'');if($src!=='')$html.="<img class='cosmic-flex-el cosmic-flex-image' src='{$src}' alt='{$alt}' loading='lazy' decoding='async' style='display:block;width:100%;border-radius:{$cardRadius}px;object-fit:".$esc($st['object_fit']??'cover').";object-position:".$esc($st['object_position']??'center').";{$style}'>"; }
+                elseif($type==='image'){ $src=$esc($node['src']??'');$alt=$esc($node['alt']??'');if($src!=='')$html.="<img class='cosmic-flex-el cosmic-flex-image' src='{$src}' alt='{$alt}' loading='lazy' decoding='async' style='display:block;width:100%;border-radius:{$imageRadius}px;object-fit:".$esc($st['object_fit']??'cover').";object-position:".$esc($st['object_position']??'center').";{$style}'>"; }
                 elseif($type==='icon')$html.="<span class='cosmic-flex-el cosmic-flex-icon' style='display:inline-flex;{$style}'>".$iconSvg($node['icon']??'',$fg?:$accent)."</span>";
                 elseif($type==='badge')$html.="<span class='cosmic-flex-el cosmic-flex-badge' style='display:inline-flex;width:max-content;padding:7px 12px;border-radius:999px;background:{$cardBg};font-weight:700;{$style}'>".($label?:$text)."</span>";
                 elseif($type==='list'){ $lis='';foreach(array_slice(is_array($node['items']??null)?$node['items']:[],0,20) as $it){$val=is_array($it)?($it['text']??$it['label']??$it['value']??''):$it;$lis.='<li>'.$esc($val).'</li>';}$html.="<ul class='cosmic-flex-el cosmic-flex-list' style='margin:0;padding-left:22px;{$style}'>{$lis}</ul>";}
@@ -6675,7 +6676,7 @@ HTML;
 
         $media = '';
         if ($image !== '' && !in_array($mediaPosition, ['none','background'], true)) {
-            $media = "<div style='position:relative;z-index:2;min-height:280px;overflow:hidden;border-radius:{$cardRadius}px'><img src='{$image}' alt='' style='width:100%;height:100%;min-height:280px;object-fit:cover;object-position:{$backgroundPosition}' loading='lazy'></div>";
+            $media = "<div style='position:relative;z-index:2;min-height:280px;overflow:hidden;border-radius:{$imageRadius}px'><img src='{$image}' alt='' style='width:100%;height:100%;min-height:280px;object-fit:cover;object-position:{$backgroundPosition}' loading='lazy'></div>";
         }
 
         $split = in_array($mediaPosition, ['left','right'], true) || in_array($layout, ['split','showcase'], true);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\AI\Registries\IndustryMenuRegistry;
 use App\Jobs\BuildTrialSiteBundleJob;
+use App\Jobs\SendTrialBundleReadyJob;
 use App\Jobs\SendTrialAccessLinkJob;
 use App\Models\MediaPack;
 use App\Models\Page;
@@ -202,56 +203,30 @@ class TrialGenerationController extends Controller
         $trial->update(['media_pack_id' => $mediaPack->id]);
 
         try {
-            Log::info('[TrialGeneration] Starting synchronous trial generation.', ['trial' => $trial->id]);
+            // Production trial hand-off: do not keep the public HTTP request open
+            // while an AI page is being generated. Create the complete page shell
+            // immediately, queue Home first, then let each completed page dispatch
+            // exactly one next page.
+            Log::info('[TrialGeneration] Creating asynchronous trial shell.', ['trial' => $trial->id]);
 
-            $generated = $this->pageGenerationService->generateTrialPage($generationPrompt, $trial->id);
-            $generated['blocks'] = $this->lunaVideos->apply($generationPrompt, $generated['blocks'] ?? []);
-
-            Log::info('[TrialGeneration] AI generation completed.', [
-                'trial' => $trial->id,
-                'sections' => count($generated['sections'] ?? []),
-                'blocks' => count($generated['blocks'] ?? []),
-            ]);
-
-            // Final trial pipeline order:
-            // 1) page structure/content/images are generated,
-            // 2) the prompt-aware website theme is finalized and persisted,
-            // 3) only after the ready page/theme are committed do we generate
-            //    the complimentary logo below.
             $finalThemeSettings = $this->myBrandThemes->ensureInSettings(
-                $this->regenerationThemeForPrompt(
-                    $profile['industry'],
-                    $validated['prompt']
-                )
+                $this->regenerationThemeForPrompt($profile['industry'], $validated['prompt'])
             );
-            // Trial first impression must stay predictable: never let Luna
-            // automatically overlay the header on the generated hero/banner.
-            // The Trial Builder still exposes the switch so the visitor can
-            // explicitly enable overlay mode after generation if they want it.
             $finalThemeSettings['overlay_header_on_banner'] = false;
             $trial->update(['preview_theme' => $finalThemeSettings]);
             $trial->setAttribute('preview_theme', $finalThemeSettings);
 
-            Log::info('[TrialGeneration] Final website theme committed before logo generation.', [
-                'trial' => $trial->id,
-                'theme' => data_get($finalThemeSettings, 'primary'),
-                'overlay_header_on_banner' => (bool) data_get($finalThemeSettings, 'overlay_header_on_banner', false),
-            ]);
-
-            $remoteImages = array_values($generated['remote_images'] ?? []);
-            $targetImageCount = min(10, max(0, (int) ($generated['target_image_count'] ?? 0)));
-
             $mediaPack->update([
-                'keywords' => array_values($generated['media_keywords'] ?? []),
-                'target_image_count' => $targetImageCount,
+                'keywords' => [],
+                'target_image_count' => 0,
                 'status' => 'ready',
                 'manifest' => [
-                    'mode' => 'remote_trial_preview',
+                    'mode' => 'remote_trial_bundle',
                     'provider' => 'unsplash',
                     'remote_only' => true,
-                    'image_count' => count($remoteImages),
-                    'target_image_count' => $targetImageCount,
-                    'images' => $remoteImages,
+                    'image_count' => 0,
+                    'target_image_count' => 0,
+                    'images' => [],
                     'updated_at' => now()->toIso8601String(),
                 ],
                 'queued_at' => null,
@@ -259,59 +234,34 @@ class TrialGenerationController extends Controller
                 'last_error' => null,
             ]);
 
-            $page = $this->trialSiteBundles->create($trial, $profile, $bundlePlan, $generated);
-
-            Log::info('[TrialGeneration] Trial page persisted and ready.', [
-                'trial' => $trial->id,
-                'page' => $page->id,
+            $page = $this->trialSiteBundles->create($trial, $profile, $bundlePlan, [
+                'sections' => [],
+                'blocks' => [],
             ]);
 
-            // Logo is intentionally LAST. At this point content, remote images,
-            // navigation and the final prompt-aware theme are already committed.
-            // This is best-effort and never blocks the website draft.
-            $this->initialTrialLogo->generate($trial->fresh());
+            $freshTrial = $trial->fresh();
+            $homeRecipe = collect((array) data_get($freshTrial->bundle_manifest, 'pages', []))
+                ->first(fn (array $item) => (bool) ($item['is_home'] ?? false));
 
-            // Home is immediately usable. Remaining pages build after the HTTP
-            // response so a five-page trial never recreates the old timeout.
-            foreach ((array) data_get($trial->fresh()->bundle_manifest, 'pages', []) as $bundlePage) {
-                if (! ($bundlePage['is_home'] ?? false) && (int) ($bundlePage['page_id'] ?? 0) > 0) {
-                    BuildTrialSiteBundleJob::dispatchAfterResponse($trial->id, (int) $bundlePage['page_id']);
-                }
-            }
-            if($trial->fresh()->bundle_status==='ready'){
-                try{$this->trialStagingPublisher->publish($trial->fresh());}catch(\Throwable $exception){report($exception);}
+            if (is_array($homeRecipe) && (int) ($homeRecipe['page_id'] ?? 0) > 0) {
+                BuildTrialSiteBundleJob::dispatch($trial->id, (int) $homeRecipe['page_id']);
             }
 
-            Log::info('[MediaPack] Trial remote preview ready; local download deferred until purchase.', [
-                'media_pack_id' => $mediaPack->id,
-                'trial' => $trial->id,
-                'page' => $page->id,
-                'provider' => 'unsplash',
-                'remote_image_count' => count($remoteImages),
-                'target_image_count' => $targetImageCount,
-            ]);
-
-            // Keep the public Start -> Builder hand-off on the browser's current
-            // origin. Using route() here creates an absolute URL from APP_URL, which
-            // can differ from the actual local/dev origin (localhost vs 127.0.0.1,
-            // custom ports, proxies) and make an otherwise successful generation
-            // appear to stop after the loading overlay disappears.
+            // Logo generation is intentionally deferred from this request too.
+            // A generic logo remains usable while the AI page queue is running.
             $builderUrl = route('pages.builder', [
                 'page' => $page,
                 'token' => $trial->token,
             ], false);
 
-            Log::info('[TrialGeneration] Builder redirect prepared.', [
+            Log::info('[TrialGeneration] Async Builder redirect prepared.', [
                 'trial' => $trial->id,
                 'page' => $page->id,
                 'builder_url' => $builderUrl,
             ]);
 
-            // The public Start page submits with Axios. Always return a stable JSON
-            // contract here instead of relying on content-negotiation, which can be
-            // affected by Inertia headers and leave the client without builder_url.
             return response()->json([
-                'status' => 'ready',
+                'status' => 'building',
                 'trial_id' => $trial->id,
                 'page_id' => $page->id,
                 'token' => $trial->token,
@@ -321,9 +271,10 @@ class TrialGenerationController extends Controller
                 'url' => $builderUrl,
                 'media_pack_uuid' => $mediaPack->uuid,
                 'media_pack_status' => $mediaPack->fresh()->status,
-                'bundle_key' => data_get($trial->fresh()->bundle_manifest, 'bundle_key'),
-                'bundle_status' => $trial->fresh()->bundle_status,
-                'bundle_page_count' => (int) data_get($trial->fresh()->bundle_manifest, 'page_count', 1),
+                'bundle_key' => data_get($freshTrial->bundle_manifest, 'bundle_key'),
+                'bundle_status' => $freshTrial->bundle_status,
+                'bundle_page_count' => (int) data_get($freshTrial->bundle_manifest, 'page_count', 1),
+                'message' => 'Your Builder is ready. Home is building first; the remaining pages will continue automatically.',
             ])->header('X-Cosmic-Builder-Url', $builderUrl);
         } catch (TransporterException $exception) {
             Log::warning('Public trial generation unavailable', [
@@ -503,6 +454,11 @@ class TrialGenerationController extends Controller
             'email_captured_at' => now(),
             'last_saved_at' => now(),
         ]);
+
+        if ($trial->fresh()->bundle_status === 'ready') {
+            SendTrialBundleReadyJob::dispatch($trial->id);
+        }
+
         $trial->refresh();
 
         if (! $welcomeAlreadySentToThisEmail) {

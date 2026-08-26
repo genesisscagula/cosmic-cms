@@ -4536,7 +4536,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         // Batch 4 — Codex-style phase display. The first visible state is always
         // neutral Thinking. We only advance into action phases when the prompt
         // clearly looks executable; conversational prompts stay on Thinking.
-        setLunaStatus('Thinking…');
+        setLunaStatus('Understanding your request…');
         const sanitizeLunaSessionTurn = (turn) => {
             const role = turn?.role === 'assistant' ? 'assistant' : turn?.role === 'user' ? 'user' : null;
             const content = String(turn?.content ?? turn?.text ?? '').trim();
@@ -4585,14 +4585,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         const deleteIntent = /\b(delete)\b/i.test(prompt);
         const actionIntent = buildIntent || updateIntent || inspectIntent || publishIntent || deleteIntent || navigateIntent;
         const phases = buildIntent
-            ? ['Thinking…','Planning…','Designing…','Building…','Checking…']
+            ? ['Understanding your request…','Planning the changes…','Applying the design…','Building the update…','Verifying the result…']
             : updateIntent
-                ? ['Thinking…','Planning…','Designing…','Building…','Checking…']
+                ? ['Understanding your request…','Planning the changes…','Applying the design…','Building the update…','Verifying the result…']
                 : publishIntent
-                    ? ['Thinking…','Planning…','Building…','Checking…']
+                    ? ['Understanding your request…','Planning the changes…','Applying the update…','Verifying the result…']
                     : navigateIntent
-                        ? ['Thinking…','Checking…']
-                        : ['Thinking…'];
+                        ? ['Understanding your request…','Verifying the result…']
+                        : ['Understanding your request…'];
         let lunaPhaseIndex=0;
         const lunaStatusTimer = actionIntent ? window.setInterval(()=>{
             lunaPhaseIndex=Math.min(lunaPhaseIndex+1,phases.length-1);

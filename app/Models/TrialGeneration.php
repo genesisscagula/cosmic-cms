@@ -53,6 +53,8 @@ class TrialGeneration extends Model
         'welcome_email_attempts',
         'welcome_email_last_attempt_at',
         'welcome_email_last_error',
+        'bundle_ready_email_sent_at',
+        'bundle_ready_email_last_error',
         'last_saved_at',
     ];
 
@@ -76,6 +78,7 @@ class TrialGeneration extends Model
         'welcome_email_sent_at' => 'datetime',
         'welcome_email_attempts' => 'integer',
         'welcome_email_last_attempt_at' => 'datetime',
+        'bundle_ready_email_sent_at' => 'datetime',
         'last_saved_at' => 'datetime',
     ];
 
