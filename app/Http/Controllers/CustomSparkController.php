@@ -680,7 +680,6 @@ PROMPT;
     public function startFullPageBuild(Request $request, Website $website)
     {
         $this->authorize('update', $website);
-        abort_unless($website->isCustom(), 422, 'Cosmic AI Full Page Build is only available for Custom Websites.');
 
         $validated=$request->validate([
             'instructions'=>['nullable','string','max:8000','required_without:screenshot'],
@@ -731,7 +730,6 @@ PROMPT;
     public function fullPageBuildStatus(Request $request, Website $website, string $buildId)
     {
         $this->authorize('update', $website);
-        abort_unless($website->isCustom(), 404);
 
         $state=Cache::get('cosmic:custom-build:'.$buildId);
         abort_unless(is_array($state) && (int)($state['website_id']??0)===(int)$website->id,404,'This build session could not be found.');
@@ -2059,6 +2057,15 @@ PROMPT;
             'reference_target_index'=>['nullable','integer','min:0','max:100'],
             'reference_placement'=>['nullable','in:replace,above,below'],
         ]);
+        if ($request->hasFile('reference_image')) {
+            $referenceUpload = $request->file('reference_image');
+            Log::debug('[ReferenceImage] received', [
+                'name' => $referenceUpload?->getClientOriginalName(),
+                'mime' => $referenceUpload?->getMimeType(),
+                'size' => $referenceUpload?->getSize(),
+                'valid' => $referenceUpload?->isValid(),
+            ]);
+        }
         $blocks=json_decode($validated['blocks'],true);
         $header=json_decode((string)($validated['header']??'{}'),true);
         $footer=json_decode((string)($validated['footer']??'{}'),true);
@@ -2144,6 +2151,8 @@ PROMPT;
                 'current_page_slug'=>$currentPage?->slug,
                 'element_context'=>$elementContext,
                 'conversation'=>$builderConversation,
+                'reference_image_attached'=>$request->hasFile('reference_image'),
+                'reference_image_name'=>$request->hasFile('reference_image') ? (string)$request->file('reference_image')->getClientOriginalName() : null,
             ];
             $siteMemory=$contextState->attach($siteMemory,$routeContext);
             $routeContext['context_state']=$contextState->routingContext($siteMemory,$routeContext);
@@ -2964,9 +2973,31 @@ For the compatible premium Services family (services_bento_premium, services_edi
             // branch fail closed instead of mutating an unrelated section.
             if($sparkBranch==='reference_spark'){
                 $ops=[];
-                $referenceScope=(string)data_get($canonicalIntent,'routing.reference_scope','single_spark');
-                $referenceMode=(string)data_get($canonicalIntent,'routing.reference_mode','layout_only');
-                $scope=$referenceScope==='whole_page'?'page':'section';
+                // Batch 4: screenshot/reference mutation has one contract only:
+                // confirmed full-page replacement plus a new brand derived from the image.
+                if(!$request->boolean('confirmed')){
+                    return response()->json([
+                        'reply'=>'Use this reference to create a new premium page? This replaces the current page body, carries over the reference brand DNA, and builds Cosmic’s own responsive AI Flex interpretation rather than a pixel-perfect copy.',
+                        'mode'=>'reference_replace_confirm',
+                        'reference_replace_confirmation'=>['prompt'=>$prompt],
+                        'canonical_intent'=>$canonicalIntent,
+                        'credit_cost'=>0,
+                        'credit_balance'=>$user ? $credits->balance($user) : null,
+                        'blocks'=>$blocks,
+                        'header'=>is_array($header)?$header:[],
+                        'footer'=>is_array($footer)?$footer:[],
+                        'site_memory'=>$siteMemory,
+                        'pending_action'=>false,
+                        'applied_operations'=>[],
+                    ]);
+                }
+                $referenceScope='whole_page';
+                $referenceMode='layout_and_theme';
+                $canonicalIntent['routing']['reference_scope']='whole_page';
+                $canonicalIntent['routing']['reference_mode']='layout_and_theme';
+                $canonicalIntent['routing']['reference_contract']='replace_complete_page_and_brand_v1';
+                $canonicalIntent['routing']['reference_strategy']='premium_reference_dna_interpretation_v1';
+                $scope='page';
                 if($referenceMode==='layout_and_theme' && $request->hasFile('reference_image')){
                     try{
                         $referenceThemeProposal=$aiFlex->generateThemeFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[]);
@@ -2975,6 +3006,17 @@ For the compatible premium Services family (services_bento_premium, services_edi
                         \Illuminate\Support\Facades\Log::warning('[AiFlex] reference theme skipped',['error'=>$e->getMessage()]);
                     }
                 }
+                // Reference theme hotfix: the screenshot-derived Cosmic color family must
+                // become the generation theme BEFORE Sol plans/materializes the page. Previously
+                // it was only painted onto blocks after generation, allowing the old/default
+                // navy family to dominate registered Sparks.
+                $referenceGenerationTheme=is_array($theme??null)?$theme:[];
+                if(is_array($referenceThemeProposal??null) && is_array($referenceThemeProposal['family']??null)){
+                    $referenceGenerationTheme['primary']=$referenceThemeProposal['primary']??($referenceGenerationTheme['primary']??null);
+                    $referenceGenerationTheme['brand_color_family']=$referenceThemeProposal['family'];
+                    $referenceGenerationTheme['color_family']=$referenceThemeProposal['family'];
+                    $referenceGenerationTheme['reference_brand_source']='sol_reference_theme_v1';
+                }
                 $canonicalIntent['routing']['model_department']='sol';
                 if(!$request->hasFile('reference_image')){
                     $canonicalIntent['routing']['branch_executor']='reference_vision_v1';
@@ -2982,23 +3024,68 @@ For the compatible premium Services family (services_bento_premium, services_edi
                     $canonicalIntent['reason']='Attach a screenshot or reference image so Sol can rebuild it.';
                 }elseif($referenceScope==='whole_page'){
                     try{
-                        $referencePlan=$aiFlex->generatePageFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[],$usable,$referenceMode);
-                        $operations=[];
+                        try {
+                            $referencePlan=$aiFlex->generatePageFromReference($request->file('reference_image'),$prompt,$referenceGenerationTheme,[],$referenceMode);
+                        } catch (\Throwable $visionError) {
+                            // Graceful hotfix: a large/scaled screenshot or transient vision failure
+                            // must not abort the build. Reuse any brand DNA already extracted above
+                            // and ask Sol for a fresh premium AI Flex page WITHOUT resending image bytes.
+                            \Illuminate\Support\Facades\Log::warning('[AiFlex] reference vision failed; using brand-DNA fallback',['error'=>$visionError->getMessage()]);
+                            $referencePlan=$aiFlex->generatePremiumReferenceFallback($prompt,$referenceGenerationTheme);
+                            $canonicalIntent['routing']['reference_fallback_used']=true;
+                            $canonicalIntent['routing']['reference_fallback_reason']='vision_or_reference_planning_failed';
+                        }
+                        $plan['page_style']='premium';
+                        $canonicalIntent['routing']['reference_composer']='ai_flex_only_v1';
+                        $canonicalIntent['routing']['registered_sparks_allowed']=false;
+                        // Batch 5 atomic preflight: materialize every planned section BEFORE the executor
+                        // touches the current page. Registered Sparks are generated here and carried as
+                        // concrete blocks, so one late generation failure cannot leave a half-replaced page.
+                        $ops=[];
                         foreach($referencePlan['sections'] as $referenceIndex=>$referenceSection){
-                            if(($referenceSection['implementation']??'')==='registered'){
-                                $operations[]=['action'=>'registered_upsert','index'=>$referenceIndex,'spark_key'=>(string)$referenceSection['spark_key'],'instruction'=>(string)($referenceSection['instruction']??'')];
+                            if(false && ($referenceSection['implementation']??'')==='registered'){
+                                $sparkKey=(string)$referenceSection['spark_key'];
+                                $instruction=(string)($referenceSection['instruction']??'');
+                                $generationPrompt=$this->lunaGroundedMediaPrompt($prompt,$blocks,$siteMemory,[])
+                                    ."\n\nREFERENCE PAGE PREFLIGHT: Build exactly one {$sparkKey} Spark for slot {$referenceIndex}."
+                                    .($instruction!==''?"\nInstruction: {$instruction}":'')
+                                    ."\nSCREENSHOT-DERIVED COSMIC COLOR FAMILY (authoritative; do not fall back to the old/default palette): ".json_encode($referenceGenerationTheme['brand_color_family']??[],JSON_UNESCAPED_SLASHES)
+                                    ."\nFollow this screenshot-derived brand direction across backgrounds, surfaces, text, buttons, accents and borders. Keep the result export-safe.";
+                                $generated=$lunaPages->generate($generationPrompt,[$sparkKey]);
+                                $concrete=is_array($generated[0]??null)?$generated[0]:null;
+                                if(!$concrete) throw new \RuntimeException("Reference preflight could not materialize registered Spark {$sparkKey}.");
+                                $ops[]=['action'=>'registered_upsert','index'=>$referenceIndex,'spark_key'=>$sparkKey,'instruction'=>$instruction,'block'=>$concrete,'reference_preflight'=>true];
                             }else{
-                                $operations[]=['action'=>'ai_flex_upsert','index'=>$referenceIndex,'block'=>$referenceSection['block']];
+                                $flex=is_array($referenceSection['block']??null)?$referenceSection['block']:null;
+                                if(!$flex) throw new \RuntimeException('Reference preflight produced an invalid AI Flex section.');
+                                $ops[]=['action'=>'ai_flex_upsert','index'=>$referenceIndex,'block'=>$flex,'reference_preflight'=>true];
                             }
                         }
-                        $operations[]=['action'=>'trim_page','count'=>count($referencePlan['sections'])];
+                        $expectedReferenceCount=count($referencePlan['sections']);
+                        if($expectedReferenceCount<1) throw new \RuntimeException('Reference preflight returned an empty page.');
+                        $ops[]=['action'=>'trim_page','count'=>$expectedReferenceCount,'reference_preflight'=>true];
+                        $canonicalIntent['routing']['reference_atomic_expected_count']=$expectedReferenceCount;
+                        $canonicalIntent['routing']['reference_atomic_preflight']=true;
                         $scope='page';
                         $canonicalIntent['routing']['branch_executor']='sol_reference_page_v1';
                         $canonicalIntent['routing']['reference_ingested']=true;
                         $canonicalIntent['routing']['reference_page_plan']=$referencePlan;
                         $canonicalIntent['needs_clarification']=false;
-                    }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] whole-page reference_spark failed',['error'=>$e->getMessage()]); report($e); $operations=[]; }
+                    }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] whole-page reference_spark failed',['error'=>$e->getMessage()]); report($e); $ops=[]; }
                 }else{
+                    if(count($blocks)===0){
+                        try{
+                            $referenceBlock=$aiFlex->generateFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[],[
+                                'section_count'=>0,'target_index'=>0,'reference_mode'=>$referenceMode,'placement'=>'first','anchor'=>null,
+                            ],[],$referenceMode);
+                            $ops=[['action'=>'ai_flex_upsert','index'=>0,'block'=>$referenceBlock]];
+                            $targetIndex=0; $scope='section';
+                            $canonicalIntent['routing']['branch_executor']='reference_vision_empty_page_v1';
+                            $canonicalIntent['routing']['reference_ingested']=true;
+                            $canonicalIntent['routing']['reference_placement']='first';
+                            $canonicalIntent['needs_clarification']=false;
+                        }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] empty-page reference_spark failed',['error'=>$e->getMessage()]); report($e); $ops=[]; }
+                    } else {
                     $requestedReferenceTarget=isset($validated['reference_target_index'])?(int)$validated['reference_target_index']:null;
                     $requestedReferencePlacement=(string)($validated['reference_placement']??'');
                     if($requestedReferenceTarget===null || !in_array($requestedReferencePlacement,['replace','above','below'],true)){
@@ -3048,6 +3135,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
                         $canonicalIntent['routing']['reference_anchor_index']=$referenceTarget;
                         $canonicalIntent['needs_clarification']=false;
                     }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] trial reference_spark failed',['error'=>$e->getMessage(),'target_index'=>$referenceTarget,'placement'=>$requestedReferencePlacement]); report($e); $ops=[]; }
+                    }
                 }
             }
 
@@ -3253,12 +3341,15 @@ For the compatible premium Services family (services_bento_premium, services_edi
                     .($instruction!==''?"\nInstruction: {$instruction}":'')
                     ."\nPreserve the active website theme and adapt useful existing content when relevant.";
                 try{
-                    $generated=$lunaPages->generate($generationPrompt,[$sparkKey]);
-                    $block=is_array($generated[0]??null)?$generated[0]:null;
+                    $block=is_array($operation['block']??null)?$operation['block']:null;
+                    if(!$block){
+                        $generated=$lunaPages->generate($generationPrompt,[$sparkKey]);
+                        $block=is_array($generated[0]??null)?$generated[0]:null;
+                    }
                     if($block){
                         if(isset($nextBlocks[$index])) $nextBlocks[$index]=$block; else $nextBlocks[]=$block;
                         $nextBlocks=array_values($nextBlocks);
-                        $applied[]=['action'=>'registered_upsert','index'=>$index,'spark_key'=>$sparkKey,'verified'=>true];
+                        $applied[]=['action'=>'registered_upsert','index'=>$index,'spark_key'=>$sparkKey,'verified'=>true,'reference_preflight'=>(bool)($operation['reference_preflight']??false)];
                     }
                 }catch(\Throwable $e){ report($e); }
                 continue;
@@ -3402,6 +3493,42 @@ For the compatible premium Services family (services_bento_premium, services_edi
         }
         $verifiedSomething=$blocksActuallyChanged||$shellChanged;
         $executionVerificationResult=$executionVerification->verify($ops,$applied,$verifiedSomething);
+
+        // Batch 5 atomic reference replacement guard. A confirmed screenshot rebuild is
+        // all-or-nothing: section count, every planned operation, and the derived brand
+        // must verify before the response is allowed to replace the Builder state.
+        $isAtomicReference=(string)data_get($canonicalIntent,'routing.reference_contract','')==='replace_complete_page_and_brand_v1';
+        if($isAtomicReference){
+            $expectedReferenceCount=(int)data_get($canonicalIntent,'routing.reference_atomic_expected_count',0);
+            $referencePostconditionOk=($executionVerificationResult['status']??'failed')==='complete'
+                && $expectedReferenceCount>0
+                && count($next)===$expectedReferenceCount
+                && is_array($brandColorFamily)
+                && !empty($brandColorFamily['primary']);
+            if(!$referencePostconditionOk){
+                $failedVerification=$executionVerificationResult;
+                $next=array_values($blocks);
+                $brandColorFamily=null;
+                $brandPattern=null;
+                $trialThemeKey=null;
+                $trialPageStyle=null;
+                $blocksActuallyChanged=false;
+                $shellChanged=false;
+                $verifiedSomething=false;
+                $afterFingerprint=$beforeFingerprint;
+                $applied=[['action'=>'reference_atomic_rollback','scope'=>'page','verified'=>true,'reason'=>'Reference replacement did not satisfy all page + brand postconditions.']];
+                $executionVerificationResult=[
+                    'status'=>'failed','planned_count'=>$failedVerification['planned_count']??count($ops),'verified_count'=>0,'failed_count'=>max(1,(int)($failedVerification['failed_count']??0)),
+                    'verified_operations'=>[],'unverified_operations'=>$failedVerification['unverified_operations']??[],
+                    'state_changed'=>false,'can_claim_complete'=>false,'contract_version'=>5,
+                    'atomic_rollback'=>true,'expected_section_count'=>$expectedReferenceCount,'actual_section_count_before_rollback'=>count($blocks),
+                ];
+                Log::warning('[ReferenceReplace] atomic rollback (trial)',['expected_sections'=>$expectedReferenceCount,'verification'=>$failedVerification['status']??'failed']);
+            }else{
+                $canonicalIntent['routing']['reference_atomic_verified']=true;
+                Log::info('[ReferenceReplace] atomic commit ready (trial)',['sections'=>$expectedReferenceCount,'primary'=>$brandColorFamily['primary']??null]);
+            }
+        }
         $siteMemory=$contextState->rememberVerified($siteMemory,$canonicalIntent,$executionVerificationResult,$applied,$routeContext??[],['blocks_fingerprint'=>$beforeFingerprint],['blocks_fingerprint'=>$afterFingerprint]);
         $siteMemory=$siteDna->updateAfterExecution(
             $siteMemory,$trialDna,$executionVerificationResult,$scopeResolution,
@@ -4464,6 +4591,15 @@ For the compatible premium Services family (services_bento_premium, services_edi
             'reference_target_index'=>['nullable','integer','min:0','max:100'],
             'reference_placement'=>['nullable','in:replace,above,below'],
         ]);
+        if ($request->hasFile('reference_image')) {
+            $referenceUpload = $request->file('reference_image');
+            Log::debug('[ReferenceImage] received', [
+                'name' => $referenceUpload?->getClientOriginalName(),
+                'mime' => $referenceUpload?->getMimeType(),
+                'size' => $referenceUpload?->getSize(),
+                'valid' => $referenceUpload?->isValid(),
+            ]);
+        }
         $originalUserPrompt=trim((string)$validated['prompt']);
         $user=$request->user();
 
@@ -4553,6 +4689,8 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'current_page_id'=>$validated['current_page_id']??null,
                 'element_context'=>$elementContext,
                 'conversation'=>$builderConversation,
+                'reference_image_attached'=>$request->hasFile('reference_image'),
+                'reference_image_name'=>$request->hasFile('reference_image') ? (string)$request->file('reference_image')->getClientOriginalName() : null,
             ];
             $siteMemory=$contextState->attach($siteMemory,$routeContext);
             $siteMemory=$contextState->invalidateForNavigation($siteMemory,$routeContext);
@@ -6214,11 +6352,32 @@ PROMPT;
             $operations=array_values($resumePendingPlan['operations']);
         }
 
+        // Batch 3 reference execution guard. A screenshot/reference action owns
+        // its execution path and must never be widened by the generic Sol full-page
+        // composer. This is intentionally enforced again at execution time even
+        // though the V2 router already selected reference_spark.
+        $isReferenceExecution=$request->hasFile('reference_image')
+            && data_get($canonicalIntent,'routing.spark_action')==='reference_spark';
+        if($isReferenceExecution){
+            $referencePrompt=(string)$validated['prompt'];
+            $explicitWholeReference=(bool)(preg_match('/\b(whole|entire|full)\s+(page|homepage|home page|landing page|website page)\b/i',$referencePrompt)
+                || preg_match('/\b(rebuild|recreate|copy|match|convert)\b.*\b(page|homepage|landing page)\b.*\b(screenshot|reference|mockup|image)\b/i',$referencePrompt));
+            $explicitSingleReference=(bool)preg_match('/\b(hero|banner|services?|features?|about|testimonials?|reviews?|faq|pricing|cta|call[ -]to[ -]action|contact|gallery|team|process|stats?|section|spark)\b/i',$referencePrompt);
+            if($explicitSingleReference && !$explicitWholeReference){
+                $canonicalIntent['routing']['reference_scope']='single_spark';
+                $canonicalIntent['scope']='section';
+                $scope='section';
+                \Illuminate\Support\Facades\Log::debug('[ReferenceV2] execution scope locked',[
+                    'reference_scope'=>'single_spark',
+                    'reason'=>'explicit_section_wording',
+                ]);
+            }
+        }
+
         // Batch 5 — Sol full-page composer. A deliberately custom whole-page
-        // request may mix registered Sparks with AI Flex slots. It creates only
-        // backend operations; the normal pricing, validator, executor and verifier
-        // below remain authoritative.
-        if($fullPageComposer->shouldCompose((string)$validated['prompt'],$scope)){
+        // request may mix registered Sparks with AI Flex slots. Reference V2 is
+        // excluded here because it has its own single/whole-page composer below.
+        if(!$isReferenceExecution && $fullPageComposer->shouldCompose((string)$validated['prompt'],$scope)){
             try{
                 $bundleContext=is_array($siteBundle??null)?[
                     'bundle_key'=>$siteBundle['bundle_key']??null,
@@ -6262,9 +6421,31 @@ PROMPT;
             // segmentation intentionally remain fail-closed for later batches.
             if($sparkBranch==='reference_spark'){
                 $operations=[];
-                $referenceScope=(string)data_get($canonicalIntent,'routing.reference_scope','single_spark');
-                $referenceMode=(string)data_get($canonicalIntent,'routing.reference_mode','layout_only');
-                $scope=$referenceScope==='whole_page'?'page':'section';
+                // Batch 4: screenshot/reference mutation has one contract only:
+                // confirmed full-page replacement plus a new brand derived from the image.
+                if(!$request->boolean('confirmed')){
+                    return response()->json([
+                        'reply'=>'Use this reference to create a new premium page? This replaces the current page body, carries over the reference brand DNA, and builds Cosmic’s own responsive AI Flex interpretation rather than a pixel-perfect copy.',
+                        'mode'=>'reference_replace_confirm',
+                        'reference_replace_confirmation'=>['prompt'=>$prompt],
+                        'canonical_intent'=>$canonicalIntent,
+                        'credit_cost'=>0,
+                        'credit_balance'=>$user ? $credits->balance($user) : null,
+                        'blocks'=>$blocks,
+                        'header'=>is_array($header)?$header:[],
+                        'footer'=>is_array($footer)?$footer:[],
+                        'site_memory'=>$siteMemory,
+                        'pending_action'=>false,
+                        'applied_operations'=>[],
+                    ]);
+                }
+                $referenceScope='whole_page';
+                $referenceMode='layout_and_theme';
+                $canonicalIntent['routing']['reference_scope']='whole_page';
+                $canonicalIntent['routing']['reference_mode']='layout_and_theme';
+                $canonicalIntent['routing']['reference_contract']='replace_complete_page_and_brand_v1';
+                $canonicalIntent['routing']['reference_strategy']='premium_reference_dna_interpretation_v1';
+                $scope='page';
                 if($referenceMode==='layout_and_theme' && $request->hasFile('reference_image')){
                     try{
                         $referenceThemeProposal=$aiFlex->generateThemeFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[]);
@@ -6273,6 +6454,17 @@ PROMPT;
                         \Illuminate\Support\Facades\Log::warning('[AiFlex] reference theme skipped',['error'=>$e->getMessage()]);
                     }
                 }
+                // Reference theme hotfix: the screenshot-derived Cosmic color family must
+                // become the generation theme BEFORE Sol plans/materializes the page. Previously
+                // it was only painted onto blocks after generation, allowing the old/default
+                // navy family to dominate registered Sparks.
+                $referenceGenerationTheme=is_array($theme??null)?$theme:[];
+                if(is_array($referenceThemeProposal??null) && is_array($referenceThemeProposal['family']??null)){
+                    $referenceGenerationTheme['primary']=$referenceThemeProposal['primary']??($referenceGenerationTheme['primary']??null);
+                    $referenceGenerationTheme['brand_color_family']=$referenceThemeProposal['family'];
+                    $referenceGenerationTheme['color_family']=$referenceThemeProposal['family'];
+                    $referenceGenerationTheme['reference_brand_source']='sol_reference_theme_v1';
+                }
                 $canonicalIntent['routing']['model_department']='sol';
                 if(!$request->hasFile('reference_image')){
                     $canonicalIntent['routing']['branch_executor']='reference_vision_v1';
@@ -6280,16 +6472,48 @@ PROMPT;
                     $canonicalIntent['reason']='Attach a screenshot or reference image so Sol can rebuild it.';
                 }elseif($referenceScope==='whole_page'){
                     try{
-                        $referencePlan=$aiFlex->generatePageFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[],$usable,$referenceMode);
+                        try {
+                            $referencePlan=$aiFlex->generatePageFromReference($request->file('reference_image'),$prompt,$referenceGenerationTheme,[],$referenceMode);
+                        } catch (\Throwable $visionError) {
+                            // Graceful hotfix: a large/scaled screenshot or transient vision failure
+                            // must not abort the build. Reuse any brand DNA already extracted above
+                            // and ask Sol for a fresh premium AI Flex page WITHOUT resending image bytes.
+                            \Illuminate\Support\Facades\Log::warning('[AiFlex] reference vision failed; using brand-DNA fallback',['error'=>$visionError->getMessage()]);
+                            $referencePlan=$aiFlex->generatePremiumReferenceFallback($prompt,$referenceGenerationTheme);
+                            $canonicalIntent['routing']['reference_fallback_used']=true;
+                            $canonicalIntent['routing']['reference_fallback_reason']='vision_or_reference_planning_failed';
+                        }
+                        $plan['page_style']='premium';
+                        $canonicalIntent['routing']['reference_composer']='ai_flex_only_v1';
+                        $canonicalIntent['routing']['registered_sparks_allowed']=false;
+                        // Batch 5 atomic preflight: materialize every planned section BEFORE the executor
+                        // touches the current page. Registered Sparks are generated here and carried as
+                        // concrete blocks, so one late generation failure cannot leave a half-replaced page.
                         $operations=[];
                         foreach($referencePlan['sections'] as $referenceIndex=>$referenceSection){
-                            if(($referenceSection['implementation']??'')==='registered'){
-                                $operations[]=['action'=>'registered_upsert','index'=>$referenceIndex,'spark_key'=>(string)$referenceSection['spark_key'],'instruction'=>(string)($referenceSection['instruction']??'')];
+                            if(false && ($referenceSection['implementation']??'')==='registered'){
+                                $sparkKey=(string)$referenceSection['spark_key'];
+                                $instruction=(string)($referenceSection['instruction']??'');
+                                $generationPrompt=$this->lunaGroundedMediaPrompt($prompt,$blocks,$siteMemory,[])
+                                    ."\n\nREFERENCE PAGE PREFLIGHT: Build exactly one {$sparkKey} Spark for slot {$referenceIndex}."
+                                    .($instruction!==''?"\nInstruction: {$instruction}":'')
+                                    ."\nSCREENSHOT-DERIVED COSMIC COLOR FAMILY (authoritative; do not fall back to the old/default palette): ".json_encode($referenceGenerationTheme['brand_color_family']??[],JSON_UNESCAPED_SLASHES)
+                                    ."\nFollow this screenshot-derived brand direction across backgrounds, surfaces, text, buttons, accents and borders. Keep the result export-safe.";
+                                $generated=$lunaPages->generate($generationPrompt,[$sparkKey]);
+                                $concrete=is_array($generated[0]??null)?$generated[0]:null;
+                                if(!$concrete) throw new \RuntimeException("Reference preflight could not materialize registered Spark {$sparkKey}.");
+                                $operations[]=['action'=>'registered_upsert','index'=>$referenceIndex,'spark_key'=>$sparkKey,'instruction'=>$instruction,'block'=>$concrete,'reference_preflight'=>true];
                             }else{
-                                $operations[]=['action'=>'ai_flex_upsert','index'=>$referenceIndex,'block'=>$referenceSection['block']];
+                                $flex=is_array($referenceSection['block']??null)?$referenceSection['block']:null;
+                                if(!$flex) throw new \RuntimeException('Reference preflight produced an invalid AI Flex section.');
+                                $operations[]=['action'=>'ai_flex_upsert','index'=>$referenceIndex,'block'=>$flex,'reference_preflight'=>true];
                             }
                         }
-                        $operations[]=['action'=>'trim_page','count'=>count($referencePlan['sections'])];
+                        $expectedReferenceCount=count($referencePlan['sections']);
+                        if($expectedReferenceCount<1) throw new \RuntimeException('Reference preflight returned an empty page.');
+                        $operations[]=['action'=>'trim_page','count'=>$expectedReferenceCount,'reference_preflight'=>true];
+                        $canonicalIntent['routing']['reference_atomic_expected_count']=$expectedReferenceCount;
+                        $canonicalIntent['routing']['reference_atomic_preflight']=true;
                         $scope='page';
                         $canonicalIntent['routing']['branch_executor']='sol_reference_page_v1';
                         $canonicalIntent['routing']['reference_ingested']=true;
@@ -6297,6 +6521,19 @@ PROMPT;
                         $canonicalIntent['needs_clarification']=false;
                     }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] whole-page reference_spark failed',['error'=>$e->getMessage()]); report($e); $operations=[]; }
                 }else{
+                    if(count($blocks)===0){
+                        try{
+                            $referenceBlock=$aiFlex->generateFromReference($request->file('reference_image'),$prompt,is_array($theme??null)?$theme:[],[
+                                'section_count'=>0,'target_index'=>0,'reference_mode'=>$referenceMode,'placement'=>'first','anchor'=>null,
+                            ],[],$referenceMode);
+                            $operations=[['action'=>'ai_flex_upsert','index'=>0,'block'=>$referenceBlock]];
+                            $targetIndex=0; $scope='section';
+                            $canonicalIntent['routing']['branch_executor']='reference_vision_empty_page_v1';
+                            $canonicalIntent['routing']['reference_ingested']=true;
+                            $canonicalIntent['routing']['reference_placement']='first';
+                            $canonicalIntent['needs_clarification']=false;
+                        }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] empty-page reference_spark failed',['error'=>$e->getMessage()]); report($e); $operations=[]; }
+                    } else {
                     $requestedReferenceTarget=isset($validated['reference_target_index'])?(int)$validated['reference_target_index']:null;
                     $requestedReferencePlacement=(string)($validated['reference_placement']??'');
                     if($requestedReferenceTarget===null || !in_array($requestedReferencePlacement,['replace','above','below'],true)){
@@ -6363,6 +6600,7 @@ PROMPT;
                         $canonicalIntent['routing']['reference_anchor_index']=$referenceTarget;
                         $canonicalIntent['needs_clarification']=false;
                     }catch(\Throwable $e){ \Illuminate\Support\Facades\Log::error('[AiFlex] reference_spark failed',['error'=>$e->getMessage(),'target_index'=>$referenceTarget,'placement'=>$requestedReferencePlacement]); report($e); $operations=[]; }
+                    }
                 }
             }
 
@@ -6649,12 +6887,15 @@ PROMPT;
                     .($instruction!==''?"\nInstruction: {$instruction}":'')
                     ."\nPreserve the active website theme and adapt useful existing content when relevant.";
                 try{
-                    $generated=$lunaPages->generate($generationPrompt,[$sparkKey]);
-                    $block=is_array($generated[0]??null)?$generated[0]:null;
+                    $block=is_array($operation['block']??null)?$operation['block']:null;
+                    if(!$block){
+                        $generated=$lunaPages->generate($generationPrompt,[$sparkKey]);
+                        $block=is_array($generated[0]??null)?$generated[0]:null;
+                    }
                     if($block){
                         if(isset($nextBlocks[$index])) $nextBlocks[$index]=$block; else $nextBlocks[]=$block;
                         $nextBlocks=array_values($nextBlocks);
-                        $applied[]=['action'=>'registered_upsert','index'=>$index,'spark_key'=>$sparkKey,'verified'=>true];
+                        $applied[]=['action'=>'registered_upsert','index'=>$index,'spark_key'=>$sparkKey,'verified'=>true,'reference_preflight'=>(bool)($operation['reference_preflight']??false)];
                     }
                 }catch(\Throwable $e){ report($e); }
                 continue;
@@ -7073,6 +7314,44 @@ PROMPT;
                     'Post-repair QA still found a critical/high-severity issue, so full repair cannot be claimed.',
                     ['blocking_findings'=>$blockingFindings]
                 );
+            }
+        }
+
+        // Batch 5 atomic reference replacement guard (authenticated Builder).
+        // Never return a half-built screenshot page: if any section/brand postcondition
+        // fails, restore the original in-memory page + shell and charge nothing.
+        $isAtomicReference=(string)data_get($canonicalIntent,'routing.reference_contract','')==='replace_complete_page_and_brand_v1';
+        if($isAtomicReference){
+            $expectedReferenceCount=(int)data_get($canonicalIntent,'routing.reference_atomic_expected_count',0);
+            $referencePostconditionOk=($executionVerificationResult['status']??'failed')==='complete'
+                && $expectedReferenceCount>0
+                && count($nextBlocks)===$expectedReferenceCount
+                && is_array($brandColorFamily)
+                && !empty($brandColorFamily['primary']);
+            if(!$referencePostconditionOk){
+                $failedVerification=$executionVerificationResult;
+                $nextBlocks=array_values($blocks);
+                $safeHeader=is_array($header)?$header:[];
+                $safeFooter=is_array($footer)?$footer:[];
+                $brandColorFamily=null;
+                $brandPattern=null;
+                $themeKey=null;
+                $pageStyle=null;
+                $blocksActuallyChanged=false;
+                $shellChanged=false;
+                $verifiedSomething=false;
+                $afterFingerprint=$beforeFingerprint;
+                $applied=[['action'=>'reference_atomic_rollback','scope'=>'page','verified'=>true,'reason'=>'Reference replacement did not satisfy all page + brand postconditions.']];
+                $executionVerificationResult=[
+                    'status'=>'failed','planned_count'=>$failedVerification['planned_count']??count($operations),'verified_count'=>0,'failed_count'=>max(1,(int)($failedVerification['failed_count']??0)),
+                    'verified_operations'=>[],'unverified_operations'=>$failedVerification['unverified_operations']??[],
+                    'state_changed'=>false,'can_claim_complete'=>false,'contract_version'=>5,
+                    'atomic_rollback'=>true,'expected_section_count'=>$expectedReferenceCount,'actual_section_count_before_rollback'=>count($blocks),
+                ];
+                Log::warning('[ReferenceReplace] atomic rollback',['website_id'=>$website->id??null,'page_id'=>$page->id??null,'expected_sections'=>$expectedReferenceCount,'verification'=>$failedVerification['status']??'failed']);
+            }else{
+                $canonicalIntent['routing']['reference_atomic_verified']=true;
+                Log::info('[ReferenceReplace] atomic commit ready',['website_id'=>$website->id??null,'page_id'=>$page->id??null,'sections'=>$expectedReferenceCount,'primary'=>$brandColorFamily['primary']??null]);
             }
         }
 

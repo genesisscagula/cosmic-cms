@@ -393,6 +393,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [pageAiOpen, setPageAiOpen] = useState(false);
     const [pageAiPrompt, setPageAiPrompt] = useState('');
     const [lunaReferenceImage, setLunaReferenceImage] = useState(null);
+    const [lunaReferencePreviewUrl, setLunaReferencePreviewUrl] = useState(null);
+    const lunaPendingReferenceImageRef = useRef(null);
     const [pageAiBusy, setPageAiBusy] = useState(false);
     const [pageAiError, setPageAiError] = useState('');
     const [lunaChatOpen, setLunaChatOpen] = useState(false);
@@ -3114,12 +3116,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     // from becoming a flat white strip over cinematic hero media.
     const overlayCtaTreatment = overlayHeaderActive ? 'gradient' : 'primary';
 
-    const generateCustomSparkFromScreenshot = async () => {
+    const generateCustomSparkFromScreenshot = async (options = {}) => {
         if (!website?.id) return;
-        const prompt = customSparkInstructions.trim();
-        if (!customSparkFile && prompt.length < 10) {
+        const invokedFromLuna = Boolean(options?.invokedFromLuna);
+        const sourceFile = options?.file instanceof File ? options.file : customSparkFile;
+        const prompt = String(options?.prompt ?? customSparkInstructions).trim();
+        if (!sourceFile && prompt.length < 10) {
             setCustomSparkError('Describe the website you want, or upload a full-page reference screenshot.');
-            return;
+            return false;
         }
 
         setCustomSparkBusy(true);
@@ -3207,7 +3211,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         try {
             const form = new FormData();
             form.append('instructions', prompt || 'Reconstruct this full-page website screenshot faithfully as an editable responsive landing page.');
-            if (customSparkFile) form.append('screenshot', customSparkFile);
+            if (sourceFile) form.append('screenshot', sourceFile);
 
             const { data: queued } = await axios.post(
                 `/websites/${website.id}/custom-builds`,
@@ -3220,6 +3224,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
             updateCustomBuildProgress(queued.progress || 1);
             setCustomSparkStage(queued.stage || 'Queued for Cosmic AI…');
+            if (invokedFromLuna) {
+                setLunaStatus(`${queued.stage || 'Queued for Cosmic AI…'} · ${Number(queued.progress || 1)}%`);
+            }
 
             const startedAt = Date.now();
             const maxWaitMs = 12 * 60 * 1000;
@@ -3231,6 +3238,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
                 updateCustomBuildProgress(state?.progress || 1);
                 setCustomSparkStage(state?.stage || 'Cosmic AI is working…');
+                if (invokedFromLuna) {
+                    const progress = Math.max(1, Math.min(100, Number(state?.progress || 1)));
+                    setLunaStatus(`${state?.stage || 'Cosmic AI is working…'} · ${progress}%`);
+                }
 
                 if (state?.status === 'completed') {
                     completed = state?.result || null;
@@ -3248,6 +3259,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             const rebuilt = applyBuildResult(completed);
             updateCustomBuildProgress(100, true);
             setCustomSparkStage('Your editable page is ready.');
+            if (invokedFromLuna) setLunaStatus('Your editable page is ready. · 100%');
 
             showCosmicNotification({
                 title:`Cosmic AI rebuilt ${rebuilt.length} sections`,
@@ -3259,12 +3271,25 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 duration:5200,
             });
 
+            if (invokedFromLuna) {
+                const reply = `Rebuilt the page from your screenshot into ${rebuilt.length} editable sections using visual region matching.`;
+                setLunaMessages((messages)=>[...messages,{role:'assistant',text:reply}]);
+                lunaSessionConversationRef.current=[
+                    ...(Array.isArray(lunaSessionConversationRef.current)?lunaSessionConversationRef.current:[]),
+                    {role:'assistant',content:reply},
+                ];
+                setLunaStatus('Ready');
+            }
+
             await new Promise(resolve=>window.setTimeout(resolve,350));
-            setCustomSparkOpen(false);
-            setCustomSparkFile(null);
-            setCustomSparkInstructions('');
+            if (!invokedFromLuna) {
+                setCustomSparkOpen(false);
+                setCustomSparkFile(null);
+                setCustomSparkInstructions('');
+            }
             setCustomSparkStage('');
             setCustomSparkProgress(0);
+            return true;
         } catch (error) {
             const message =
                 error?.response?.data?.message ||
@@ -3273,10 +3298,16 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 error?.message ||
                 'Unable to rebuild this page with Cosmic AI.';
             setCustomSparkError(message);
+            if (invokedFromLuna) {
+                setPageAiError(message);
+                setLunaStatus('Ready');
+            }
             setCustomSparkStage('');
             setCustomSparkProgress(0);
+            return false;
         } finally {
             setCustomSparkBusy(false);
+            if (invokedFromLuna) setPageAiBusy(false);
         }
     };
 
@@ -4515,6 +4546,17 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         const existingSessionConversation = Array.isArray(lunaSessionConversationRef.current)
             ? lunaSessionConversationRef.current.map(sanitizeLunaSessionTurn).filter(Boolean)
             : [];
+        const referenceImageForRequest = lunaReferenceImage instanceof File
+            ? lunaReferenceImage
+            : (lunaPendingReferenceImageRef.current instanceof File ? lunaPendingReferenceImageRef.current : null);
+        if (lunaReferenceImage instanceof File) {
+            lunaPendingReferenceImageRef.current = lunaReferenceImage;
+            setLunaReferenceImage(null); // consume composer attachment immediately; history keeps its thumbnail
+            setLunaReferencePreviewUrl(null);
+        }
+        const referencePreviewUrl = lunaReferencePreviewUrl || (referenceImageForRequest && typeof URL !== 'undefined' && typeof URL.createObjectURL === 'function'
+            ? URL.createObjectURL(referenceImageForRequest)
+            : null);
         const requestConversation = [
             ...existingSessionConversation,
             { role:'user', content:prompt },
@@ -4522,7 +4564,18 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         // Keep UI and AI session history separate: UI messages can contain
         // confirmation metadata/chrome, while Luna receives only role+content.
         lunaSessionConversationRef.current = requestConversation;
-        if (directPrompt === null) setLunaMessages((messages)=>[...messages,{role:'user',text:prompt,scope:lunaScope.label}]);
+        if (directPrompt === null) setLunaMessages((messages)=>[...messages,{
+            role:'user',
+            text:prompt,
+            scope:lunaScope.label,
+            referenceAttachment: referenceImageForRequest ? {
+                name: referenceImageForRequest.name,
+                size: referenceImageForRequest.size,
+                type: referenceImageForRequest.type,
+                previewUrl: referencePreviewUrl,
+            } : null,
+        }]);
+
         const imageIntent = /image|photo|photography|picture|unsplash|background image/i.test(prompt);
         const buildIntent = /\b(build|create|generate|design|make)\b.{0,100}\b(website|site|homepage|home page|landing page|page)\b/i.test(prompt);
         const updateIntent = /\b(change|update|edit|rewrite|replace|redesign|rebrand|adjust|increase|decrease|add|remove|make this|make the|make all)\b/i.test(prompt);
@@ -4556,7 +4609,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         try {
             const form = new FormData();
             form.append('prompt', prompt);
-            if (lunaReferenceImage) form.append('reference_image', lunaReferenceImage);
+            if (referenceImageForRequest) { form.append('reference_image', referenceImageForRequest, referenceImageForRequest.name); form.append('router_variant', 'v2_reference'); }
             if (Number.isInteger(Number(requestOptions?.reference_target_index))) form.append('reference_target_index', String(Number(requestOptions.reference_target_index)));
             if (['replace','above','below'].includes(String(requestOptions?.reference_placement || ''))) form.append('reference_placement', String(requestOptions.reference_placement));
             // Send the complete current Builder-session conversation to every
@@ -4734,8 +4787,23 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             const lunaEndpoint = trialMode
                 ? route('trial-luna.chat', { trial: trialToken })
                 : `/websites/${website.id}/custom-page-ai`;
-            const { data: response } = await axios.post(lunaEndpoint, form, { headers:{'Content-Type':'multipart/form-data'} });
-            if (lunaReferenceImage && response.mode !== 'reference_place') setLunaReferenceImage(null);
+            // Let Axios/browser generate the multipart boundary so Laravel receives
+            // the actual reference image bytes reliably.
+            const { data: response } = await axios.post(lunaEndpoint, form);
+            if (referenceImageForRequest && !['reference_place','reference_replace_confirm'].includes(response.mode)) lunaPendingReferenceImageRef.current = null;
+            if (response.mode === 'reference_replace_confirm') {
+                setLunaStatus('Waiting for confirmation');
+                const confirmData=response.reference_replace_confirmation || {};
+                const confirmReply=response.reply || 'Use this screenshot as the new page design? This will replace all current page content and create a new brand/theme from the reference.';
+                rememberLunaAssistantReply(confirmReply);
+                setLunaMessages((messages)=>[...messages,{
+                    role:'assistant',
+                    text:confirmReply,
+                    referenceReplaceConfirmation:{prompt:String(confirmData.prompt || prompt)},
+                }]);
+                if (Number.isFinite(Number(response.credit_balance))) setCreditBalance(Number(response.credit_balance));
+                return;
+            }
             if (response.mode === 'reference_place') {
                 setLunaStatus('Ready');
                 const placement=response.reference_placement || {};
@@ -5350,7 +5418,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
   <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pt-3 pb-2">
     {lunaMessages.length ? lunaMessages.slice(-12).map((message,i)=><div key={`${i}-${message.text}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}><div className="max-w-[86%]"><div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'
     ?'bg-violet-500 text-white'
-    :'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div>{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true,message.confirmation.token);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Delete · {message.confirmation.cost} credits</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Keep content</button></div>:null}{message.role==='assistant'&&message.referencePlacement?<div className="mt-2 space-y-2">{message.referencePlacement.selectedTarget==null?<div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">{(message.referencePlacement.targets||[]).map((target)=><button key={`ref-target-${target.index}`} type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:target}}:item))} className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2.5 py-1.5 text-[10px] font-semibold text-violet-100 hover:bg-violet-500/20 disabled:opacity-40">{target.label || `Section ${Number(target.index)+1}`}</button>)}</div>:<div><div className="mb-1.5 text-[10px] font-semibold text-slate-400">Relative to {message.referencePlacement.selectedTarget.label || `Section ${Number(message.referencePlacement.selectedTarget.index)+1}`}</div><div className="flex flex-wrap gap-1.5"><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'above'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert above</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'below'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert below</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'replace'})} className="rounded-lg bg-violet-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Replace</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:null}}:item))} className="rounded-lg px-2 py-1.5 text-[10px] font-semibold text-slate-500 hover:text-slate-300 disabled:opacity-40">Back</button></div></div>}</div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
+    :'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div>{message.role==='user'&&message.referenceAttachment?<div className="mt-1.5 ml-auto w-fit max-w-full overflow-hidden rounded-xl border border-violet-300/20 bg-violet-500/10">{message.referenceAttachment.previewUrl?<img src={message.referenceAttachment.previewUrl} alt={message.referenceAttachment.name || 'Design reference'} className="block max-h-44 w-auto max-w-[280px] object-contain"/>:null}<div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-semibold text-violet-100"><span aria-hidden="true">▧</span><span className="max-w-[220px] truncate">{message.referenceAttachment.name || 'Design reference'}</span><span className="text-violet-300/60">sent</span></div></div>:null}{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true,message.confirmation.token);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Delete · {message.confirmation.cost} credits</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Keep content</button></div>:null}{message.role==='assistant'&&message.referenceReplaceConfirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,referenceReplaceConfirmation:null}:item));sendPageAiRequest(message.referenceReplaceConfirmation.prompt,true,null);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Replace page</button><button type="button" disabled={pageAiBusy} onClick={()=>{lunaPendingReferenceImageRef.current=null;setLunaMessages(messages=>messages.map(item=>item===message?{...item,referenceReplaceConfirmation:null}:item));}} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Cancel</button></div>:null}{message.role==='assistant'&&message.referencePlacement?<div className="mt-2 space-y-2">{message.referencePlacement.selectedTarget==null?<div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">{(message.referencePlacement.targets||[]).map((target)=><button key={`ref-target-${target.index}`} type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:target}}:item))} className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2.5 py-1.5 text-[10px] font-semibold text-violet-100 hover:bg-violet-500/20 disabled:opacity-40">{target.label || `Section ${Number(target.index)+1}`}</button>)}</div>:<div><div className="mb-1.5 text-[10px] font-semibold text-slate-400">Relative to {message.referencePlacement.selectedTarget.label || `Section ${Number(message.referencePlacement.selectedTarget.index)+1}`}</div><div className="flex flex-wrap gap-1.5"><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'above'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert above</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'below'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert below</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'replace'})} className="rounded-lg bg-violet-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Replace</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:null}}:item))} className="rounded-lg px-2 py-1.5 text-[10px] font-semibold text-slate-500 hover:text-slate-300 disabled:opacity-40">Back</button></div></div>}</div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
     {(pageAiBusy||lunaContextTyping)?<div className="flex items-center gap-2 text-xs font-semibold text-violet-300" role="status" aria-live="polite"><span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-violet-300/25 border-t-violet-300" aria-hidden="true"/><span>{lunaStatus}</span></div>:null}
     <div ref={lunaMessagesEndRef} aria-hidden="true" className="h-px" />
   </div>
@@ -5461,9 +5529,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
     <div className="mb-2 flex items-center gap-2">
       <label className="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] font-semibold text-slate-300 hover:border-violet-300/30 hover:text-white">
         <span aria-hidden="true">▧</span><span className="max-w-[210px] truncate">{lunaReferenceImage?.name || 'Attach design reference'}</span>
-        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e)=>{const file=e.target.files?.[0]||null;if(file&&file.size>8*1024*1024){showCosmicNotification({title:'Reference too large',message:'Use a PNG, JPG, or WebP up to 8 MB.',tone:'error'});e.target.value='';return;}setLunaReferenceImage(file);}}/>
+        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={(e)=>{const file=e.target.files?.[0]||null;if(file&&file.size>8*1024*1024){showCosmicNotification({title:'Reference too large',message:'Use a PNG, JPG, or WebP up to 8 MB.',tone:'error'});e.target.value='';return;}if(lunaReferencePreviewUrl&&typeof URL!=='undefined')URL.revokeObjectURL(lunaReferencePreviewUrl);setLunaReferenceImage(file);setLunaReferencePreviewUrl(file&&typeof URL!=='undefined'&&URL.createObjectURL?URL.createObjectURL(file):null);}}/>
       </label>
-      {lunaReferenceImage ? <button type="button" onClick={()=>setLunaReferenceImage(null)} className="text-[11px] font-semibold text-rose-300 hover:text-rose-200">Remove</button> : null}
+      {lunaReferenceImage ? <button type="button" onClick={()=>{if(lunaReferencePreviewUrl&&typeof URL!=='undefined')URL.revokeObjectURL(lunaReferencePreviewUrl);setLunaReferencePreviewUrl(null);setLunaReferenceImage(null);}} className="text-[11px] font-semibold text-rose-300 hover:text-rose-200">Remove</button> : null}
     </div>
     <textarea
       ref={lunaPromptRef}

@@ -16,11 +16,15 @@ final class AuditLunaNestedRouter extends Command
                 app_path('Services/LunaIntentGateway.php'),
                 ['{"intent":"action"}', 'aiRoute(', "['chat','action']"],
             ],
-            'API 2 CMS scope router' => [
+            'API 2 action-source router' => [
+                app_path('Services/LunaIntentGateway.php'),
+                ['aiActionSource(', 'standard', 'reference', 'action_source'],
+            ],
+            'API 3 CMS scope router' => [
                 app_path('Services/LunaIntentGateway.php'),
                 ['aiActionScope(', "'sparks'", "'navigation'", "'theme'", "'publish'"],
             ],
-            'API 3 Spark action router' => [
+            'API 4 Spark action router' => [
                 app_path('Services/LunaIntentGateway.php'),
                 ['aiSparkAction(', 'edit_spark', 'change_spark', 'add_spark', 'remove_spark', 'custom_spark', 'reference_spark', 'reorder_spark'],
             ],

@@ -37,6 +37,23 @@ final class LunaIntentGateway
         $prior=$this->priorContext($siteMemory);
         $resolution=$this->contextResolver->resolve($message,$prior,$context);
         if(($resolution['is_followup']??false)===true) $prior['resolved_followup']=$resolution;
+        // Split entrance: V1 handles ordinary turns; V2 handles turns carrying
+        // a real screenshot/reference image. Both expose only chat|action, but V2
+        // is explicitly reference-aware and never leaks into the generic build router.
+        if(($context['reference_image_attached']??false)===true){
+            $referenceIntent=$this->aiReferenceRoute($message,$prior,$context);
+            if(!in_array($referenceIntent,['chat','action'],true)){
+                $referenceIntent=$this->looksLikeReferenceMutation($message)?'action':'chat';
+            }
+            Log::debug('[LunaRouter] API 1 V2 reference resolved', [
+                'intent'=>$referenceIntent,
+                'router'=>'v2_reference',
+                'surface'=>(string)($context['surface']??''),
+                'reference_image_name'=>(string)($context['reference_image_name']??''),
+            ]);
+            return ['intent'=>$referenceIntent];
+        }
+
         // Dimension 1 / API 1 is deliberately authoritative and tiny:
         // the model may choose only chat | action. No scope, target, mutation,
         // confirmation, or user-facing reply is permitted at this stage.
@@ -75,20 +92,33 @@ final class LunaIntentGateway
         $prior=$this->priorContext($siteMemory);
         $resolution=$this->contextResolver->resolve($message,$prior,$context);
         if(($resolution['is_followup']??false)===true) $prior['resolved_followup']=$resolution;
-        // API 2: choose only the high-level CMS scope/menu. It must not decide
-        // the concrete operation, target Spark, mutation, or user-facing reply.
-        $localScope=$this->localActionScope($message,$prior,$context);
-        $aiScope=$this->aiActionScope($message,$prior,$context);
-        $actionScope=$aiScope ?? $localScope;
-        if(!in_array($actionScope,$this->actionScopes(),true)) $actionScope=$localScope;
-
-        Log::debug('[LunaRouter] API 2 resolved', [
-            'scope'=>$actionScope,
-            'source'=>$aiScope!==null?'api':'local_fallback',
+        // Split router contract. Once API 1 V2 has classified an attached-image
+        // turn as ACTION, reference is already known from transport state. Do not
+        // spend or trust another standard|reference classifier call here.
+        $hasReferenceAttachment=($context['reference_image_attached']??false)===true;
+        $actionSource=$hasReferenceAttachment?'reference':'standard';
+        Log::debug('[LunaRouter] API 2 transport branch resolved', [
+            'action_source'=>$actionSource,
+            'router'=>$hasReferenceAttachment?'v2_reference':'v1_standard',
+            'reference_image_attached'=>$hasReferenceAttachment,
             'surface'=>(string)($context['surface']??''),
         ]);
 
-        // API 3 exists only for the Sparks menu. It chooses the Spark action
+        // API 3 selects CMS scope only for STANDARD actions. REFERENCE actions
+        // enter the dedicated visual-reference branch directly; internally that
+        // branch remains represented as sparks/reference_spark for executor compatibility.
+        $localScope=$this->localActionScope($message,$prior,$context);
+        $aiScope=$actionSource==='standard' ? $this->aiActionScope($message,$prior,$context) : null;
+        $actionScope=$actionSource==='reference' ? 'sparks' : ($aiScope ?? $localScope);
+        if(!in_array($actionScope,$this->actionScopes(),true)) $actionScope=$localScope;
+
+        Log::debug('[LunaRouter] API 3 CMS scope resolved', [
+            'scope'=>$actionScope,
+            'source'=>$actionSource==='reference'?'reference_branch':($aiScope!==null?'api':'local_fallback'),
+            'surface'=>(string)($context['surface']??''),
+        ]);
+
+        // API 4 exists only for the STANDARD Sparks menu. It chooses the Spark action
         // branch before any concrete Spark instance is selected. This keeps
         // edit/change/add/remove/custom/reorder semantics from overlapping.
         $sparkAction=null;
@@ -96,8 +126,10 @@ final class LunaIntentGateway
         $referenceScope=null;
         $referenceMode=null;
         if($actionScope==='sparks'){
-            $sparkAction=$this->aiSparkAction($message,$prior,$context)
-                ?? $this->localSparkAction($message,$prior,$context);
+            $sparkAction=$actionSource==='reference'
+                ? 'reference_spark'
+                : ($this->aiSparkAction($message,$prior,$context)
+                    ?? $this->localSparkAction($message,$prior,$context));
             if(!in_array($sparkAction,$this->sparkActions(),true)) $sparkAction='edit_spark';
 
             Log::debug('[LunaRouter] API 3 Spark action resolved', [
@@ -178,6 +210,7 @@ final class LunaIntentGateway
         $schema['action']=$actionFamily;
         $schema['routing']=[
             'intent'=>'action',
+            'action_source'=>$actionSource,
             'menu_scope'=>$actionScope,
             'spark_action'=>$sparkAction,
             'model_department'=>$actionScope==='sparks' ? $this->models->departmentForSparkAction($sparkAction) : 'terra',
@@ -207,6 +240,7 @@ final class LunaIntentGateway
         }
         $normalized['routing']=array_replace(is_array($normalized['routing']??null)?$normalized['routing']:[],[
             'intent'=>'action',
+            'action_source'=>$actionSource,
             'menu_scope'=>$actionScope,
             'spark_action'=>$sparkAction,
             'model_department'=>$actionScope==='sparks' ? $this->models->departmentForSparkAction($sparkAction) : 'terra',
@@ -220,9 +254,9 @@ final class LunaIntentGateway
         ]);
         if($actionScope==='sparks' && $sparkAction==='reference_spark'){
             $normalized['scope']=$referenceScope==='whole_page'?'page':'section';
-            $normalized['execution_allowed']=false;
-            $normalized['needs_clarification']=true;
-            $normalized['reason']='Reference routing is ready; screenshot ingestion and reference execution are introduced in the next batch.';
+            $normalized['execution_allowed']=true;
+            $normalized['needs_clarification']=false;
+            $normalized['reason']='A valid uploaded design reference is routed to the Sol visual-reference pipeline.';
         }
 
         if(($normalized['action']??'')==='inspect'){
@@ -251,6 +285,7 @@ final class LunaIntentGateway
 
         $siteMemory['routing_context']=[
             'intent'=>'action',
+            'action_source'=>data_get($schema,'routing.action_source','standard'),
             'menu_scope'=>data_get($schema,'routing.menu_scope'),
             'spark_action'=>data_get($schema,'routing.spark_action'),
             'spark_target'=>data_get($schema,'routing.spark_target'),
@@ -285,6 +320,37 @@ final class LunaIntentGateway
             'current'=>$current,
             'last_routing_context'=>$routing,
         ];
+    }
+
+    private function aiReferenceRoute(string $message,array $prior,array $context): ?string
+    {
+        $apiKey=(string)config('openai.api_key');
+        if($apiKey==='') return null;
+        $system=<<<'PROMPT'
+You are Luna's screenshot/reference routing API (V2) inside Cosmic CMS.
+A valid reference image is already attached. Return JSON only: {"intent":"chat"} or {"intent":"action"}.
+Choose ACTION when the user asks to build, recreate, copy, match, redesign, insert, replace, or otherwise change website/CMS state using the attached image.
+Choose CHAT when the user only wants to discuss, critique, explain, identify, or ask questions about the image without changing the site.
+Do not choose scope, section, placement, theme mode, or produce user-facing prose.
+PROMPT;
+        try{
+            $response=Http::withToken($apiKey)->connectTimeout(20)->timeout(60)->post($this->endpoint(),[
+                'model'=>$this->models->router(),'response_format'=>['type'=>'json_object'],
+                'messages'=>[
+                    ['role'=>'system','content'=>$system],
+                    ['role'=>'user','content'=>"CURRENT MESSAGE:
+{$message}
+
+REFERENCE IMAGE NAME: ".(string)($context['reference_image_name']??'reference image')."
+
+PRIOR ACTION CONTEXT:
+".json_encode($this->intentPriorContext($prior),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
+                ],
+            ])->throw()->json();
+            $decoded=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+            $intent=is_array($decoded)?($decoded['intent']??null):null;
+            return in_array($intent,['chat','action'],true)?$intent:null;
+        }catch(\Throwable $e){ report($e); return null; }
     }
 
     private function aiRoute(string $message,array $prior,array $context): ?string
@@ -493,6 +559,12 @@ PROMPT;
      */
     private function aiReferenceScope(string $message,array $prior,array $context): ?string
     {
+        // Deterministic precedence: an explicitly named website section is always
+        // a single-Spark reference, even on an empty page. Do not let the model
+        // widen "build that hero/section" into a whole-page reconstruction.
+        if(preg_match('/\b(hero|banner|services?|features?|about|testimonials?|reviews?|faq|pricing|cta|call[ -]to[ -]action|contact|gallery|team|process|stats?|section|spark)\b/i',$message)
+            && !preg_match('/\b(whole|entire|full)\s+(page|homepage|home page|landing page|website page)\b/i',$message)) return 'single_spark';
+
         $apiKey=(string)config('openai.api_key');
         if($apiKey==='') return null;
 
@@ -757,7 +829,56 @@ PROMPT;
         return count($pageSparks)===1?$pageSparks[0]:null;
     }
 
-    /** API 2 menu. Keep this intentionally small and stable. */
+    /** API 2: standard action vs visual-reference action. */
+    private function aiActionSource(string $message,array $prior,array $context): ?string
+    {
+        $apiKey=(string)config('openai.api_key');
+        if($apiKey==='') return null;
+        $system=<<<'PROMPT'
+You are Luna's second routing API inside Cosmic CMS.
+API 1 already decided this turn is ACTION.
+
+Return JSON only and exactly one key:
+{"action_source":"standard|reference"}
+
+Definitions:
+- reference: the requested mutation/build/redesign depends on an attached screenshot, mockup, design image, or other visual reference. Examples: "build this section like the screenshot", "copy this hero", "rebuild this page from this image".
+- standard: the requested action does not depend on a visual reference. An image upload by itself does not force reference when the user's action is unrelated to that image.
+
+Rules:
+- If a valid reference image is attached AND the user asks to build, copy, match, recreate, redesign, replace, insert, or style something from/like/as the image, choose reference.
+- If the user asks a normal CMS action that does not use the image as design input, choose standard.
+- Do not choose CMS scope, Spark action, target, placement, theme mode, schema, changes, or user-facing text.
+PROMPT;
+        try{
+            $response=Http::withToken($apiKey)->connectTimeout(20)->timeout(60)->post($this->endpoint(),[
+                'model'=>$this->models->scopeRouter(),
+                'response_format'=>['type'=>'json_object'],
+                'messages'=>[
+                    ['role'=>'system','content'=>$system],
+                    ['role'=>'user','content'=>"CURRENT ACTION REQUEST:\n{$message}\n\nREFERENCE IMAGE ATTACHED: ".(($context['reference_image_attached']??false)?'yes':'no')."\nREFERENCE IMAGE NAME: ".(string)($context['reference_image_name']??'')],
+                ],
+            ])->throw()->json();
+            $decoded=json_decode((string)data_get($response,'choices.0.message.content','{}'),true);
+            $source=is_array($decoded)?($decoded['action_source']??null):null;
+            return in_array($source,['standard','reference'],true)?$source:null;
+        }catch(\Throwable $e){ report($e); return null; }
+    }
+
+    private function localActionSource(string $message,array $prior,array $context): string
+    {
+        return (($context['reference_image_attached']??false)===true && $this->looksLikeReferenceMutation($message))
+            ? 'reference'
+            : 'standard';
+    }
+
+    private function looksLikeReferenceMutation(string $message): bool
+    {
+        return (bool)preg_match('/\b(build|create|make|copy|match|recreate|rebuild|convert|redesign|replace|insert|use|follow|style)\b.*\b(this|that|screenshot|screen ?shot|reference|image|mockup|design|hero|section|page)\b/i',$message)
+            || (bool)preg_match('/\b(same as|like|based on|from)\b.*\b(screenshot|screen ?shot|reference|image|mockup|design|this|that)\b/i',$message);
+    }
+
+    /** API 3 menu for STANDARD actions. Keep this intentionally small and stable. */
     private function actionScopes(): array
     {
         return [

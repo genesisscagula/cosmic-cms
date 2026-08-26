@@ -6428,6 +6428,49 @@ CSS;
             return "<svg aria-hidden='true' viewBox='0 0 24 24' width='32' height='32' fill='none' stroke='{$stroke}' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'><path d='".$esc($path)."'></path></svg>";
         };
 
+        $primitiveShadow=['none'=>'none','sm'=>'0 1px 3px rgba(15,23,42,.08)','md'=>'0 8px 24px rgba(15,23,42,.10)','lg'=>'0 18px 50px rgba(15,23,42,.13)','xl'=>'0 28px 80px rgba(15,23,42,.16)'];
+        $renderElements = null;
+        $renderElements = static function(array $nodes, int $depth=0) use (&$renderElements,$esc,$hex,$num,$iconSvg,$headingColor,$bodyColor,$accent,$cardBg,$cardRadius,$buttonRadius,$primitiveShadow): string {
+            if($depth>5)return '';$html='';
+            foreach(array_slice($nodes,0,40) as $node){if(!is_array($node))continue;$type=(string)($node['type']??'');$st=is_array($node['style']??null)?$node['style']:[];
+                $bg=(string)($st['background']??'transparent');$bg=$bg==='transparent'?'transparent':$hex($bg,'transparent');$fg=$hex($st['color']??null,$bodyColor);$styles=[];
+                if(isset($st['gap']))$styles[]='gap:'.$num($st['gap'],0).'px';if(isset($st['width']))$styles[]='width:'.$num($st['width'],100).'%';if(isset($st['max_width']))$styles[]='max-width:'.$num($st['max_width'],1200).'px';if(isset($st['min_height']))$styles[]='min-height:'.$num($st['min_height'],0).'px';if(isset($st['padding']))$styles[]='padding:'.$num($st['padding'],0).'px';if(isset($st['padding_x'])){$styles[]='padding-left:'.$num($st['padding_x'],0).'px';$styles[]='padding-right:'.$num($st['padding_x'],0).'px';}if(isset($st['padding_y'])){$styles[]='padding-top:'.$num($st['padding_y'],0).'px';$styles[]='padding-bottom:'.$num($st['padding_y'],0).'px';}if(isset($st['radius']))$styles[]='border-radius:'.$num($st['radius'],0).'px';if($bg!=='transparent')$styles[]='background:'.$bg;$styles[]='color:'.$fg;if(isset($st['border_width'])&&$num($st['border_width'],0)>0)$styles[]='border:'.$num($st['border_width'],1).'px solid '.$hex($st['border_color']??null,'rgba(15,23,42,.12)');if(isset($primitiveShadow[$st['shadow']??'']))$styles[]='box-shadow:'.$primitiveShadow[$st['shadow']];if(isset($st['text_align']))$styles[]='text-align:'.$esc($st['text_align']);if(isset($st['font_size']))$styles[]='font-size:'.$num($st['font_size'],16).'px';if(isset($st['font_weight']))$styles[]='font-weight:'.$num($st['font_weight'],400);if(isset($st['line_height']))$styles[]='line-height:'.$num($st['line_height'],1.4);if(isset($st['aspect_ratio']))$styles[]='aspect-ratio:'.$num($st['aspect_ratio'],1);if(isset($st['opacity']))$styles[]='opacity:'.max(0,min(1,$num($st['opacity'],1)));if(isset($st['position']))$styles[]='position:'.$esc($st['position']);foreach(['top','right','bottom','left'] as $edge)if(isset($st[$edge]))$styles[]=$edge.':'.$num($st[$edge],0).'px';if(isset($st['z_index']))$styles[]='z-index:'.$num($st['z_index'],0);if(isset($st['overflow']))$styles[]='overflow:'.$esc($st['overflow']);if(isset($st['order']))$styles[]='order:'.$num($st['order'],0);if(isset($st['grow']))$styles[]='flex-grow:'.$num($st['grow'],0);if(isset($st['basis']))$styles[]='flex-basis:'.$num($st['basis'],50).'%';if(isset($st['self_align'])){$self=['start'=>'flex-start','center'=>'center','end'=>'flex-end','stretch'=>'stretch','auto'=>'auto'];$styles[]='align-self:'.($self[$st['self_align']]??'auto');}if(isset($st['tablet_width']))$styles[]='--af-tablet-width:'.$num($st['tablet_width'],100).'%';if(isset($st['mobile_width']))$styles[]='--af-mobile-width:'.$num($st['mobile_width'],100).'%';if(isset($st['tablet_columns']))$styles[]='--af-tablet-columns:'.max(1,min(8,(int)$num($st['tablet_columns'],2)));if(isset($st['mobile_columns']))$styles[]='--af-mobile-columns:'.max(1,min(4,(int)$num($st['mobile_columns'],1)));if(isset($st['tablet_gap']))$styles[]='--af-tablet-gap:'.$num($st['tablet_gap'],0).'px';if(isset($st['mobile_gap']))$styles[]='--af-mobile-gap:'.$num($st['mobile_gap'],0).'px';if(isset($st['tablet_padding']))$styles[]='--af-tablet-padding:'.$num($st['tablet_padding'],0).'px';if(isset($st['mobile_padding']))$styles[]='--af-mobile-padding:'.$num($st['mobile_padding'],0).'px';if(isset($st['tablet_order']))$styles[]='--af-tablet-order:'.$num($st['tablet_order'],0);if(isset($st['mobile_order']))$styles[]='--af-mobile-order:'.$num($st['mobile_order'],0);if(isset($st['tablet_position']))$styles[]='--af-tablet-position:'.$esc($st['tablet_position']);if(isset($st['mobile_position']))$styles[]='--af-mobile-position:'.$esc($st['mobile_position']);if(isset($st['tablet_min_height']))$styles[]='--af-tablet-min-height:'.$num($st['tablet_min_height'],0).'px';if(isset($st['mobile_min_height']))$styles[]='--af-mobile-min-height:'.$num($st['mobile_min_height'],0).'px';$style=implode(';',$styles);
+                $children=$renderElements(is_array($node['children']??null)?$node['children']:[],$depth+1);$text=$esc($node['text']??'');$label=$esc($node['label']??'');$url=$esc($node['url']??'#');
+                if(in_array($type,['group','row','column','grid','stack','card'],true)){if($type==='row')$layout='display:flex;flex-wrap:wrap;flex-direction:row;';elseif($type==='grid')$layout='display:grid;grid-template-columns:repeat('.max(1,min(12,(int)($st['columns']??3))).',minmax(0,1fr));';else $layout='display:flex;flex-direction:column;';$html.="<div class='cosmic-flex-el cosmic-flex-{$type}' style='{$layout}{$style}'>{$children}</div>";}
+                elseif($type==='heading')$html.="<h2 class='cosmic-flex-el cosmic-flex-heading' style='margin:0;color:{$headingColor};{$style}'>{$text}</h2>";
+                elseif($type==='text')$html.="<p class='cosmic-flex-el cosmic-flex-text' style='margin:0;color:{$bodyColor};{$style}'>{$text}</p>";
+                elseif($type==='button')$html.="<a class='cosmic-flex-el cosmic-flex-button' href='{$url}' style='display:inline-flex;align-items:center;justify-content:center;padding:12px 22px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-weight:700;text-decoration:none;{$style}'>".($label?:$text?:'Learn more')."</a>";
+                elseif($type==='image'){ $src=$esc($node['src']??'');$alt=$esc($node['alt']??'');if($src!=='')$html.="<img class='cosmic-flex-el cosmic-flex-image' src='{$src}' alt='{$alt}' loading='lazy' decoding='async' style='display:block;width:100%;border-radius:{$cardRadius}px;object-fit:".$esc($st['object_fit']??'cover').";object-position:".$esc($st['object_position']??'center').";{$style}'>"; }
+                elseif($type==='icon')$html.="<span class='cosmic-flex-el cosmic-flex-icon' style='display:inline-flex;{$style}'>".$iconSvg($node['icon']??'',$fg?:$accent)."</span>";
+                elseif($type==='badge')$html.="<span class='cosmic-flex-el cosmic-flex-badge' style='display:inline-flex;width:max-content;padding:7px 12px;border-radius:999px;background:{$cardBg};font-weight:700;{$style}'>".($label?:$text)."</span>";
+                elseif($type==='list'){ $lis='';foreach(array_slice(is_array($node['items']??null)?$node['items']:[],0,20) as $it){$val=is_array($it)?($it['text']??$it['label']??$it['value']??''):$it;$lis.='<li>'.$esc($val).'</li>';}$html.="<ul class='cosmic-flex-el cosmic-flex-list' style='margin:0;padding-left:22px;{$style}'>{$lis}</ul>";}
+                elseif($type==='divider')$html.="<hr class='cosmic-flex-el cosmic-flex-divider' style='width:100%;border:0;border-top:".$num($st['border_width']??1,1)."px solid ".$hex($st['border_color']??null,'rgba(15,23,42,.12)').";{$style}'>";
+                elseif($type==='stat')$html.="<div class='cosmic-flex-el cosmic-flex-stat' style='{$style}'><strong style='display:block;font-size:2rem;color:{$headingColor}'>".$esc($node['value']??'')."</strong>".($label!==''?"<span style='color:{$bodyColor}'>{$label}</span>":'')."</div>";
+                elseif($type==='form'){
+                    $fields=is_array($node['fields']??null)?array_slice($node['fields'],0,12):[];$columns=((int)($node['columns']??2))===1?1:2;$title=$esc($node['title']??'');$note=$esc($node['note']??'');$button=$esc($node['button_label']??'Submit');$success=$esc($node['success_message']??'Thank you! Your inquiry has been sent successfully.');$align=in_array(($node['button_alignment']??'left'),['left','center','right'],true)?$node['button_alignment']:'left';$justify=$align==='center'?'center':($align==='right'?'flex-end':'flex-start');$requiredNames=[];
+                    $form="<form action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form data-custom-spark-form class='cosmic-flex-el cosmic-flex-form' style='width:100%;display:grid;gap:16px;{$style}'><input type='hidden' name='_cosmic_form_name' value='".($title?:'Website inquiry')."'><input type='hidden' name='_cosmic_success_message' value='{$success}'><label aria-hidden='true' style='position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden'>Company<input name='company' tabindex='-1' autocomplete='off'></label>";
+                    if($title!=='')$form.="<div style='font-size:20px;font-weight:800;color:{$headingColor}'>{$title}</div>";
+                    $form.="<div class='cc-form-grid' style='display:grid;grid-template-columns:repeat({$columns},minmax(0,1fr));gap:12px'>";
+                    foreach($fields as $i=>$field){if(!is_array($field))continue;$rawName=strtolower(trim((string)($field['name']??('field_'.($i+1)))));$safeName=preg_replace('/[^a-z0-9_]/','_',$rawName);$safeName=trim((string)preg_replace('/_+/','_',$safeName),'_');if($safeName===''||!preg_match('/^[a-z]/',$safeName))$safeName='field_'.($i+1);$safeName=substr($safeName,0,64);$ft=in_array(($field['type']??'text'),['text','email','tel','number','date','time','textarea','select','checkbox','radio','hidden'],true)?$field['type']:'text';$labelText=$esc($field['label']??$field['placeholder']??$safeName);$placeholder=$esc($field['placeholder']??$field['label']??$safeName);$required=!empty($field['required']);if($required&&$ft!=='hidden')$requiredNames[]=$safeName;$req=$required?' required':'';$span=(($field['width']??'')==='full'&&$columns===2)?'grid-column:1/-1;':'';$base="{$span}width:100%;box-sizing:border-box;border:1px solid rgba(15,23,42,.12);border-radius:12px;background:rgba(255,255,255,.72);color:{$bodyColor};font-size:14px;padding:0 13px";$options=is_array($field['options']??null)?array_slice($field['options'],0,20):[];
+                        if($ft==='hidden'){$form.="<input type='hidden' name='{$safeName}' value='".$esc($field['value']??'')."'>";continue;}
+                        if($ft==='textarea'){$form.="<label style='{$span}display:block'><span style='display:block;margin-bottom:7px;font-size:13px;font-weight:700;color:{$bodyColor}'>{$labelText}".($required?' *':'')."</span><textarea name='{$safeName}' placeholder='{$placeholder}'{$req} rows='4' style='{$base};min-height:110px;padding-top:12px;padding-bottom:12px;resize:vertical'></textarea></label>";continue;}
+                        if($ft==='select'){$form.="<label style='{$span}display:block'><span style='display:block;margin-bottom:7px;font-size:13px;font-weight:700;color:{$bodyColor}'>{$labelText}".($required?' *':'')."</span><select name='{$safeName}'{$req} style='{$base};height:48px'><option value=''>{$placeholder}</option>";foreach($options as $op){$ov=is_array($op)?($op['value']??$op['label']??''):$op;$ol=is_array($op)?($op['label']??$op['value']??''):$op;$form.="<option value='".$esc($ov)."'>".$esc($ol)."</option>";}$form.="</select></label>";continue;}
+                        if($ft==='radio'||($ft==='checkbox'&&$options)){$form.="<fieldset style='{$span}border:0;padding:0;margin:0'><legend style='margin-bottom:8px;font-size:13px;font-weight:700;color:{$bodyColor}'>{$labelText}".($required?' *':'')."</legend><div style='display:flex;flex-wrap:wrap;gap:8px 14px'>";foreach($options as $op){$ov=is_array($op)?($op['value']??$op['label']??''):$op;$ol=is_array($op)?($op['label']??$op['value']??''):$op;$nameAttr=$ft==='checkbox'?$safeName.'[]':$safeName;$form.="<label style='display:inline-flex;align-items:center;gap:7px;font-size:14px;color:{$bodyColor}'><input type='{$ft}' name='{$nameAttr}' value='".$esc($ov)."'".($required&&$ft==='radio'?' required':'')."><span>".$esc($ol)."</span></label>";}$form.="</div></fieldset>";continue;}
+                        if($ft==='checkbox'){$form.="<label style='{$span}display:flex;align-items:flex-start;gap:9px;font-size:14px;color:{$bodyColor}'><input type='checkbox' name='{$safeName}' value='1'{$req} style='margin-top:3px'><span>{$labelText}".($required?' *':'')."</span></label>";continue;}
+                        $min=isset($field['min'])&&is_numeric($field['min'])?" min='".$esc($field['min'])."'":'';$max=isset($field['max'])&&is_numeric($field['max'])?" max='".$esc($field['max'])."'":'';$step=isset($field['step'])&&is_numeric($field['step'])?" step='".$esc($field['step'])."'":'';$auto=isset($field['autocomplete'])?" autocomplete='".$esc($field['autocomplete'])."'":'';$form.="<label style='{$span}display:block'><span style='display:block;margin-bottom:7px;font-size:13px;font-weight:700;color:{$bodyColor}'>{$labelText}".($required?' *':'')."</span><input type='{$ft}' name='{$safeName}' placeholder='{$placeholder}' value='".$esc($field['value']??'')."'{$req}{$min}{$max}{$step}{$auto} style='{$base};height:48px'></label>";
+                    }
+                    $form.="</div>";if($requiredNames)$form.="<input type='hidden' name='_cosmic_required' value='".$esc(implode(',',array_values(array_unique($requiredNames))))."'>";$form.="<div style='display:flex;flex-wrap:wrap;align-items:center;justify-content:{$justify};gap:12px'><button type='submit' style='border:0;cursor:pointer;padding:12px 22px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-weight:800'>{$button}</button>".($note!==''?"<span style='font-size:13px;color:{$bodyColor}'>{$note}</span>":'')."</div><p data-cosmic-contact-status aria-live='polite' style='margin:0;font-size:12px;color:{$bodyColor}'></p></form>";$html.=$form;
+                }
+                elseif($type==='spacer')$html.="<div class='cosmic-flex-el cosmic-flex-spacer' aria-hidden='true' style='height:".$num($st['min_height']??24,24)."px;{$style}'></div>";
+            }return $html;
+        };
+
+        $elementHasForm = false;
+        $scanElementForms = static function(array $nodes) use (&$scanElementForms, &$elementHasForm): void {
+            foreach ($nodes as $node) { if (!is_array($node)) continue; if (($node['type'] ?? '') === 'form') { $elementHasForm = true; return; } if (is_array($node['children'] ?? null)) $scanElementForms($node['children']); if ($elementHasForm) return; }
+        };
+        $scanElementForms(is_array($block['elements'] ?? null) ? $block['elements'] : []);
+
         $alignCss = $alignment === 'center' ? 'text-align:center;align-items:center;' : ($alignment === 'right' ? 'text-align:right;align-items:flex-end;' : 'text-align:left;align-items:flex-start;');
         $copyMaxWidth = ($aiFlexHero && in_array($mediaPosition, ['left', 'right'], true)) ? '100%' : "{$copyWidth}%";
         $copy = "<div class='cc-copy' style='position:relative;z-index:2;display:flex;flex-direction:column;gap:{$gap}px;max-width:{$copyMaxWidth};{$alignCss}'>".
@@ -6506,81 +6549,7 @@ CSS;
 HTML;
         }
 
-        $formScript = '';
-        $form = is_array($block['form'] ?? null) ? $block['form'] : null;
-        if ($form) {
-            $formTitle = $esc($form['title'] ?? '');
-            $formName = $esc($form['title'] ?? 'Website inquiry');
-            $successMessage = $esc($form['success_message'] ?? 'Thank you! Your inquiry has been sent successfully.');
-            $columns = ((int) ($form['columns'] ?? 2)) === 1 ? 1 : 2;
-            $copy .= "<form action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form data-custom-spark-form style='width:100%;background:{$cardBg};border-radius:{$cardRadius}px;padding:{$cardPadding}px'>";
-            $copy .= "<input type='hidden' name='_cosmic_form_name' value='{$formName}'><input type='hidden' name='_cosmic_success_message' value='{$successMessage}'>";
-            $copy .= "<label aria-hidden='true' style='position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden'>Company<input name='company' tabindex='-1' autocomplete='off'></label>";
-            if ($formTitle !== '') $copy .= "<div style='font-weight:700;color:{$headingColor}'>{$formTitle}</div>";
-            $fields = is_array($form['fields'] ?? null) ? array_slice($form['fields'],0,8) : [];
-            $requiredNames = [];
-            if ($fields) {
-                $copy .= "<div class='cc-form-grid' style='margin-top:20px;display:grid;grid-template-columns:repeat({$columns},minmax(0,1fr));gap:12px'>";
-                foreach ($fields as $field) {
-                    if (!is_array($field)) continue;
-                    $rawName = strtolower(trim((string) ($field['name'] ?? 'field')));
-                    $safeName = preg_replace('/[^a-z0-9_]/', '_', $rawName);
-                    $safeName = trim((string) preg_replace('/_+/', '_', $safeName), '_');
-                    if ($safeName === '' || !preg_match('/^[a-z]/', $safeName)) $safeName = 'field_'.$safeName;
-                    $safeName = substr($safeName, 0, 64);
-
-                    $type = in_array(($field['type'] ?? 'text'), ['text','email','tel','textarea','select','checkbox','hidden'], true) ? $field['type'] : 'text';
-                    $placeholder = $esc($field['placeholder'] ?? ($field['label'] ?? $safeName));
-                    $label = $esc($field['label'] ?? $field['placeholder'] ?? $safeName);
-                    $required = !empty($field['required']) ? ' required' : '';
-                    if (!empty($field['required']) && $type !== 'hidden') $requiredNames[] = $safeName;
-                    $span = (($field['width'] ?? '') === 'full' && $columns === 2) ? 'grid-column:1/-1;' : '';
-                    $baseStyle = "{$span}width:100%;border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:0 16px;font-size:14px;background:rgba(0,0,0,.025);box-sizing:border-box;color:{$bodyColor}";
-
-                    if ($type === 'hidden') {
-                        $copy .= "<input type='hidden' name='{$safeName}' value='{$placeholder}'>";
-                    } elseif ($type === 'textarea') {
-                        $copy .= "<textarea name='{$safeName}' placeholder='{$placeholder}'{$required} rows='4' style='{$baseStyle};min-height:112px;padding-top:14px;padding-bottom:14px;resize:vertical'></textarea>";
-                    } elseif ($type === 'select') {
-                        $copy .= "<select name='{$safeName}'{$required} style='{$baseStyle};height:56px'><option value=''>{$placeholder}</option>";
-                        foreach (array_slice(is_array($field['options'] ?? null) ? $field['options'] : [],0,20) as $option) {
-                            $optionEsc = $esc($option);
-                            $copy .= "<option value='{$optionEsc}'>{$optionEsc}</option>";
-                        }
-                        $copy .= "</select>";
-                    } elseif ($type === 'checkbox') {
-                        $options = array_slice(is_array($field['options'] ?? null) ? $field['options'] : [],0,20);
-                        if ($options) {
-                            $copy .= "<fieldset style='{$span}border:0;padding:0;margin:0'><legend style='font-size:13px;font-weight:600;color:{$bodyColor};margin-bottom:8px'>{$label}</legend>";
-                            foreach ($options as $option) {
-                                $optionEsc = $esc($option);
-                                $copy .= "<label style='display:flex;align-items:flex-start;gap:8px;margin-top:6px;font-size:14px;color:{$bodyColor}'><input type='checkbox' name='{$safeName}[]' value='{$optionEsc}'><span>{$optionEsc}</span></label>";
-                            }
-                            $copy .= "</fieldset>";
-                        } else {
-                            $copy .= "<label style='{$span}display:flex;align-items:flex-start;gap:8px;font-size:14px;color:{$bodyColor}'><input type='checkbox' name='{$safeName}' value='1'{$required}><span>{$label}</span></label>";
-                        }
-                    } else {
-                        $copy .= "<input type='{$type}' name='{$safeName}' placeholder='{$placeholder}'{$required} style='{$baseStyle};height:56px'>";
-                    }
-                }
-                $copy .= "</div>";
-            }
-            if ($requiredNames) {
-                $requiredList = $esc(implode(',', array_values(array_unique($requiredNames))));
-                $copy .= "<input type='hidden' name='_cosmic_required' value='{$requiredList}'>";
-            }
-            $button = $esc($form['button_label'] ?? $primaryLabel ?: 'Submit');
-            $justify = ($form['button_alignment'] ?? '') === 'center' ? 'center' : (($form['button_alignment'] ?? '') === 'right' ? 'flex-end' : 'flex-start');
-            $noteBelow = ($form['note_position'] ?? '') === 'below';
-            $copy .= "<div style='margin-top:16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:{$justify};gap:16px'><button type='submit' style='border:0;cursor:pointer;padding:12px 24px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-size:14px;font-weight:700'>{$button}</button>";
-            if (($form['note'] ?? '') !== '' && !$noteBelow) $copy .= "<span style='font-size:14px;color:{$bodyColor}'>".$esc($form['note'])."</span>";
-            $copy .= "</div>";
-            if (($form['note'] ?? '') !== '' && $noteBelow) $copy .= "<div style='margin-top:12px;font-size:14px;color:{$bodyColor}'>".$esc($form['note'])."</div>";
-            $copy .= "<p data-cosmic-contact-status aria-live='polite' style='margin:10px 0 0;font-size:12px;color:{$bodyColor}'></p>";
-            $copy .= "</form>";
-
-            $formScript = <<<'HTML'
+        $contactFormScript = <<<'HTML'
 <script>
 (function(){
   document.querySelectorAll('[data-custom-spark-form]').forEach(function(form){
@@ -6616,6 +6585,86 @@ HTML;
 })();
 </script>
 HTML;
+        $formScript = $elementHasForm ? $contactFormScript : '';
+        $form = is_array($block['form'] ?? null) ? $block['form'] : null;
+        if ($form) {
+            $formTitle = $esc($form['title'] ?? '');
+            $formName = $esc($form['title'] ?? 'Website inquiry');
+            $successMessage = $esc($form['success_message'] ?? 'Thank you! Your inquiry has been sent successfully.');
+            $columns = ((int) ($form['columns'] ?? 2)) === 1 ? 1 : 2;
+            $copy .= "<form action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form data-custom-spark-form style='width:100%;background:{$cardBg};border-radius:{$cardRadius}px;padding:{$cardPadding}px'>";
+            $copy .= "<input type='hidden' name='_cosmic_form_name' value='{$formName}'><input type='hidden' name='_cosmic_success_message' value='{$successMessage}'>";
+            $copy .= "<label aria-hidden='true' style='position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden'>Company<input name='company' tabindex='-1' autocomplete='off'></label>";
+            if ($formTitle !== '') $copy .= "<div style='font-weight:700;color:{$headingColor}'>{$formTitle}</div>";
+            $fields = is_array($form['fields'] ?? null) ? array_slice($form['fields'],0,8) : [];
+            $requiredNames = [];
+            if ($fields) {
+                $copy .= "<div class='cc-form-grid' style='margin-top:20px;display:grid;grid-template-columns:repeat({$columns},minmax(0,1fr));gap:12px'>";
+                foreach ($fields as $field) {
+                    if (!is_array($field)) continue;
+                    $rawName = strtolower(trim((string) ($field['name'] ?? 'field')));
+                    $safeName = preg_replace('/[^a-z0-9_]/', '_', $rawName);
+                    $safeName = trim((string) preg_replace('/_+/', '_', $safeName), '_');
+                    if ($safeName === '' || !preg_match('/^[a-z]/', $safeName)) $safeName = 'field_'.$safeName;
+                    $safeName = substr($safeName, 0, 64);
+
+                    $type = in_array(($field['type'] ?? 'text'), ['text','email','tel','number','date','time','textarea','select','checkbox','radio','hidden'], true) ? $field['type'] : 'text';
+                    $placeholder = $esc($field['placeholder'] ?? ($field['label'] ?? $safeName));
+                    $label = $esc($field['label'] ?? $field['placeholder'] ?? $safeName);
+                    $required = !empty($field['required']) ? ' required' : '';
+                    if (!empty($field['required']) && $type !== 'hidden') $requiredNames[] = $safeName;
+                    $span = (($field['width'] ?? '') === 'full' && $columns === 2) ? 'grid-column:1/-1;' : '';
+                    $baseStyle = "{$span}width:100%;border:1px solid rgba(0,0,0,.1);border-radius:12px;padding:0 16px;font-size:14px;background:rgba(0,0,0,.025);box-sizing:border-box;color:{$bodyColor}";
+
+                    if ($type === 'hidden') {
+                        $copy .= "<input type='hidden' name='{$safeName}' value='{$placeholder}'>";
+                    } elseif ($type === 'textarea') {
+                        $copy .= "<textarea name='{$safeName}' placeholder='{$placeholder}'{$required} rows='4' style='{$baseStyle};min-height:112px;padding-top:14px;padding-bottom:14px;resize:vertical'></textarea>";
+                    } elseif ($type === 'select') {
+                        $copy .= "<select name='{$safeName}'{$required} style='{$baseStyle};height:56px'><option value=''>{$placeholder}</option>";
+                        foreach (array_slice(is_array($field['options'] ?? null) ? $field['options'] : [],0,20) as $option) {
+                            $optionValue = is_array($option) ? ($option['value'] ?? $option['label'] ?? '') : $option;
+                            $optionLabel = is_array($option) ? ($option['label'] ?? $option['value'] ?? '') : $option;
+                            $copy .= "<option value='".$esc($optionValue)."'>".$esc($optionLabel)."</option>";
+                        }
+                        $copy .= "</select>";
+                    } elseif ($type === 'checkbox' || $type === 'radio') {
+                        $options = array_slice(is_array($field['options'] ?? null) ? $field['options'] : [],0,20);
+                        if ($options) {
+                            $copy .= "<fieldset style='{$span}border:0;padding:0;margin:0'><legend style='font-size:13px;font-weight:600;color:{$bodyColor};margin-bottom:8px'>{$label}</legend>";
+                            foreach ($options as $option) {
+                                $optionValue = is_array($option) ? ($option['value'] ?? $option['label'] ?? '') : $option;
+                                $optionLabel = is_array($option) ? ($option['label'] ?? $option['value'] ?? '') : $option;
+                                $optionValueEsc = $esc($optionValue); $optionLabelEsc = $esc($optionLabel);
+                                $inputName = $type === 'checkbox' ? $safeName.'[]' : $safeName;
+                                $optionRequired = (!empty($field['required']) && $type === 'radio') ? ' required' : '';
+                                $copy .= "<label style='display:flex;align-items:flex-start;gap:8px;margin-top:6px;font-size:14px;color:{$bodyColor}'><input type='{$type}' name='{$inputName}' value='{$optionValueEsc}'{$optionRequired}><span>{$optionLabelEsc}</span></label>";
+                            }
+                            $copy .= "</fieldset>";
+                        } elseif ($type === 'checkbox') {
+                            $copy .= "<label style='{$span}display:flex;align-items:flex-start;gap:8px;font-size:14px;color:{$bodyColor}'><input type='checkbox' name='{$safeName}' value='1'{$required}><span>{$label}</span></label>";
+                        }
+                    } else {
+                        $copy .= "<input type='{$type}' name='{$safeName}' placeholder='{$placeholder}'{$required} style='{$baseStyle};height:56px'>";
+                    }
+                }
+                $copy .= "</div>";
+            }
+            if ($requiredNames) {
+                $requiredList = $esc(implode(',', array_values(array_unique($requiredNames))));
+                $copy .= "<input type='hidden' name='_cosmic_required' value='{$requiredList}'>";
+            }
+            $button = $esc($form['button_label'] ?? $primaryLabel ?: 'Submit');
+            $justify = ($form['button_alignment'] ?? '') === 'center' ? 'center' : (($form['button_alignment'] ?? '') === 'right' ? 'flex-end' : 'flex-start');
+            $noteBelow = ($form['note_position'] ?? '') === 'below';
+            $copy .= "<div style='margin-top:16px;display:flex;flex-wrap:wrap;align-items:center;justify-content:{$justify};gap:16px'><button type='submit' style='border:0;cursor:pointer;padding:12px 24px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-size:14px;font-weight:700'>{$button}</button>";
+            if (($form['note'] ?? '') !== '' && !$noteBelow) $copy .= "<span style='font-size:14px;color:{$bodyColor}'>".$esc($form['note'])."</span>";
+            $copy .= "</div>";
+            if (($form['note'] ?? '') !== '' && $noteBelow) $copy .= "<div style='margin-top:12px;font-size:14px;color:{$bodyColor}'>".$esc($form['note'])."</div>";
+            $copy .= "<p data-cosmic-contact-status aria-live='polite' style='margin:10px 0 0;font-size:12px;color:{$bodyColor}'></p>";
+            $copy .= "</form>";
+
+            $formScript = $contactFormScript;
         } elseif ($primaryLabel !== '' || $secondaryLabel !== '') {
             $copy .= "<div style='display:flex;flex-wrap:wrap;gap:12px'>";
             if ($primaryLabel !== '') $copy .= "<a class='cc-primary-button' href='{$primaryUrl}' style='padding:12px 24px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-size:14px;font-weight:700;text-decoration:none'>{$primaryLabel}</a>";
@@ -6666,6 +6715,9 @@ HTML;
             $itemsHtml .= "</div>";
         }
 
+        $elements = is_array($block['elements'] ?? null) ? $block['elements'] : [];
+        if ($elements) { $body = "<div class='cosmic-flex-elements' style='position:relative;z-index:2;margin:0 auto;max-width:{$maxWidth}px;width:100%'>".$renderElements($elements,0)."</div>"; $itemsHtml = ''; }
+
         $background = '';
         if ($mediaPosition === 'background' && $image !== '') {
             $background = "<div style='position:absolute;inset:0'><img src='{$image}' alt='' style='width:100%;height:100%;object-fit:{$backgroundSize};object-position:{$backgroundPosition}'>";
@@ -6685,7 +6737,10 @@ HTML;
         }
 
         $css = "<style>
-/* AI Flex export/live parity: visual_style is authoritative for this custom section. */
+/* AI Flex export/live parity: visual_style + universal elements are authoritative for this custom section. */
+#cc-{$key} .cosmic-flex-el{box-sizing:border-box;min-width:0;overflow-wrap:anywhere}
+@media(max-width:900px){#cc-{$key} .cosmic-flex-el{width:var(--af-tablet-width,auto)!important;gap:var(--af-tablet-gap,inherit)!important;padding:var(--af-tablet-padding,initial)!important;order:var(--af-tablet-order,0)!important;position:var(--af-tablet-position,relative)!important;min-height:var(--af-tablet-min-height,initial)!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important}#cc-{$key} .cosmic-flex-grid{grid-template-columns:repeat(var(--af-tablet-columns,2),minmax(0,1fr))!important}#cc-{$key} .cosmic-flex-row{flex-direction:column!important}}
+@media(max-width:640px){#cc-{$key} .cosmic-flex-el{width:var(--af-mobile-width,100%)!important;max-width:100%!important;gap:var(--af-mobile-gap,inherit)!important;padding:var(--af-mobile-padding,initial)!important;order:var(--af-mobile-order,0)!important;position:var(--af-mobile-position,relative)!important;min-height:var(--af-mobile-min-height,initial)!important;top:auto!important;right:auto!important;bottom:auto!important;left:auto!important}#cc-{$key} .cosmic-flex-grid{grid-template-columns:repeat(var(--af-mobile-columns,1),minmax(0,1fr))!important}}
 #cc-{$key}{background:{$bg}!important;background-color:{$bg}!important}
 #cc-{$key} .cc-eyebrow{color:{$headingColor}!important}
 #cc-{$key} .cc-heading{font-size:{$headingSize}px!important;color:{$headingColor}!important}

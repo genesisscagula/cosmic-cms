@@ -49,6 +49,7 @@ class VisualFirstFullPageBuildService
         // and author every section schema, which flattened detailed layouts into generic cards.
         $progress(max(32, $screenshotPath ? 24 : 32), 'Mapping exact section boundaries…');
         $mapResponse = Http::withToken($apiKey)
+            ->retry([1000, 2500, 5000])
             ->timeout(max(180, (int) config('openai.request_timeout', 180)))
             ->post(rtrim((string) (config('openai.base_uri') ?: 'https://api.openai.com/v1'), '/').'/chat/completions', [
                 'model' => env('OPENAI_VISION_MODEL', env('OPENAI_MODEL', 'gpt-5-mini')),
@@ -84,6 +85,7 @@ class VisualFirstFullPageBuildService
             $region = $crop['region'];
 
             $sectionResponse = Http::withToken($apiKey)
+                ->retry([1000, 2500, 5000])
                 ->timeout(max(150, (int) config('openai.request_timeout', 150)))
                 ->post(rtrim((string) (config('openai.base_uri') ?: 'https://api.openai.com/v1'), '/').'/chat/completions', [
                     'model' => env('OPENAI_VISION_MODEL', env('OPENAI_MODEL', 'gpt-5-mini')),
@@ -277,6 +279,27 @@ class VisualFirstFullPageBuildService
                 'logo_tone','logo_height','nav_size','nav_gap','phone_enabled','phone_text','phone_color',
                 'cta_label','cta_url','cta_background','cta_color','cta_radius','menu'
             ]));
+            // Vision models occasionally return shell measurements normalized to
+            // the reference canvas despite the header schema expecting pixels.
+            // Convert those fractions into practical desktop values so a faithful
+            // map cannot create a 0.05px header or logo in the Builder.
+            $fractionalPixels = [
+                'height' => [1560, 52, 140],
+                'padding_x' => [1024, 16, 120],
+                'content_max_width' => [1024, 720, 1800],
+                'logo_height' => [1560, 20, 96],
+                'nav_size' => [1560, 10, 24],
+                'nav_gap' => [1024, 8, 64],
+                'cta_radius' => [1024, 0, 40],
+            ];
+            foreach ($fractionalPixels as $key => [$canvas, $min, $max]) {
+                if (! is_numeric($header[$key] ?? null)) continue;
+                $value = (float) $header[$key];
+                if ($value > 0 && $value <= 1) $value *= $canvas;
+                $header[$key] = (int) round(max($min, min($max, $value)));
+            }
+            if (($header['logo_tone'] ?? '') === 'white') $header['logo_tone'] = 'light';
+            if (($header['logo_tone'] ?? '') === 'black') $header['logo_tone'] = 'dark';
             $header['menu'] = array_values(array_slice(array_filter(
                 is_array($header['menu'] ?? null) ? $header['menu'] : [],
                 fn ($item) => is_array($item) && trim((string) ($item['label'] ?? '')) !== ''
@@ -288,7 +311,14 @@ class VisualFirstFullPageBuildService
             $footer = array_intersect_key($raw['footer'], array_flip([
                 'background_color','text_color','muted_color','logo_tone','tagline','cta_label','cta_url','columns','copyright'
             ]));
-            $footer['columns'] = array_values(array_slice(is_array($footer['columns'] ?? null) ? $footer['columns'] : [], 0, 4));
+            $footer['columns'] = array_values(array_map(
+                fn ($column) => is_array($column)
+                    ? $column
+                    : ['title' => trim((string) $column), 'items' => []],
+                array_slice(is_array($footer['columns'] ?? null) ? $footer['columns'] : [], 0, 4)
+            ));
+            if (($footer['logo_tone'] ?? '') === 'white') $footer['logo_tone'] = 'light';
+            if (($footer['logo_tone'] ?? '') === 'black') $footer['logo_tone'] = 'dark';
             $shell['footer'] = $footer;
         }
 
@@ -445,6 +475,7 @@ Do not include the global header/footer inside body regions when they are clearl
 
 Header supports:
 overlay,background_color,text_color,nav_color,height,padding_x,content_max_width,logo_tone,logo_height,nav_size,nav_gap,phone_enabled,phone_text,phone_color,cta_label,cta_url,cta_background,cta_color,cta_radius,menu.
+Header height, padding_x, content_max_width, logo_height, nav_size, nav_gap and cta_radius MUST be desktop CSS pixel values, never normalized 0..1 fractions. logo_tone must be light or dark.
 Never replace the actual site logo.
 Footer supports:
 background_color,text_color,muted_color,logo_tone,tagline,cta_label,cta_url,columns,copyright.

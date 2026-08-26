@@ -1,5 +1,5 @@
 {
-  "version": 8,
+  "version": 9,
   "route_contract": {
     "api": 1,
     "name": "intent_router",
@@ -13,7 +13,7 @@
     "rule": "This is the only decision made by API 1."
   },
   "action_classifier_contract": {
-    "api": 2,
+    "api": 3,
     "name": "action_family_router",
     "allowed_keys": [
       "action"
@@ -190,5 +190,17 @@
       ]
     },
     "rule": "reference_spark Batch 3 accepts a screenshot/image attachment and, for single_spark, returns deterministic current-page placement choices before Sol vision -> validated AI Flex. The user chooses an anchor Spark and then insert above, insert below, or replace. whole_page segmentation remains Batch 4."
+  },
+  "action_source_contract": {
+    "api": 2,
+    "name": "action_source_router",
+    "allowed_keys": [
+      "action_source"
+    ],
+    "allowed_values": [
+      "standard",
+      "reference"
+    ],
+    "rule": "API 2 decides whether an ACTION is standard CMS work or depends on a visual reference. It does not choose CMS scope, Spark target, placement, or mutation schema."
   }
 }

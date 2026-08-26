@@ -16,7 +16,7 @@ class BuildVisualFirstCustomPageJob implements ShouldQueue
 {
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
-    public int $tries = 1;
+    public int $tries = 3;
     public int $timeout = 720;
     public array $backoff = [15, 45];
 
@@ -28,13 +28,12 @@ class BuildVisualFirstCustomPageJob implements ShouldQueue
         public ?string $screenshotMime = null,
     ) {
         $this->onQueue((string) config('cosmic-queue.queues.ai_builds', 'ai-builds'));
-        $this->afterCommit();
     }
 
     public function handle(VisualFirstFullPageBuildService $builder): void
     {
         $website = Website::query()->find($this->websiteId);
-        if (! $website || ! $website->isCustom()) {
+        if (! $website) {
             $this->store(['status' => 'failed', 'progress' => 0, 'stage' => 'Website not found.', 'message' => 'The Custom Website no longer exists.']);
             return;
         }
@@ -60,11 +59,16 @@ class BuildVisualFirstCustomPageJob implements ShouldQueue
             ], 120);
         } catch (Throwable $e) {
             report($e);
-            $this->store([
+            $finalAttempt = $this->attempts() >= $this->tries;
+            $this->store($finalAttempt ? [
                 'status' => 'failed',
                 'progress' => 0,
                 'stage' => 'Generation stopped.',
                 'message' => $e->getMessage() ?: 'Cosmic AI could not finish this page.',
+            ] : [
+                'status' => 'running',
+                'stage' => 'Connection interrupted. Retrying automatically…',
+                'message' => null,
             ], 120);
             throw $e;
         }
