@@ -106,9 +106,9 @@ export function resolveSemanticPalette(themeOrHex, settings = {}, fallbackTheme 
     const surfaceAlt = mixHex(primary, white, 0.12);
     const page = white;
     const dark = valueHex(raw, ['dark'], '#0F172A');
-    const onPrimary = readableForeground(primary, valueHex(raw, ['on_primary', 'onPrimary', 'button_text', 'buttonText', 'text'], null));
-    const onSecondary = readableForeground(secondary, valueHex(raw, ['on_secondary', 'onSecondary', 'text'], null));
-    const onAccent = readableForeground(accent, valueHex(raw, ['on_accent', 'onAccent'], null));
+    const onPrimary = readableForeground(primary, valueHex(raw, ['on_primary', 'onPrimary', 'primary_text', 'primaryText', 'background_text', 'backgroundText', 'button_text', 'buttonText'], null));
+    const onSecondary = readableForeground(secondary, valueHex(raw, ['on_secondary', 'onSecondary', 'secondary_text', 'secondaryText'], null));
+    const onAccent = readableForeground(accent, valueHex(raw, ['on_accent', 'onAccent', 'accent_text', 'accentText'], null));
     const onSurface = readableForeground(surface, valueHex(raw, ['surface_text', 'surfaceText', 'body'], null));
     const heading = ensureContrast(valueHex(raw, ['heading'], primary), surface);
     const body = ensureContrast(valueHex(raw, ['body', 'surface_text', 'surfaceText'], onSurface), surface);
@@ -126,9 +126,9 @@ export function resolveSemanticPalette(themeOrHex, settings = {}, fallbackTheme 
         border: valueHex(raw, ['border'], mixHex(body, surface, 0.18)),
         border_strong: valueHex(raw, ['border_strong', 'borderStrong'], mixHex(body, surface, 0.32)),
         on_primary: onPrimary, on_secondary: onSecondary, on_accent: onAccent, on_surface: onSurface,
-        on_dark: readableForeground(dark, valueHex(raw, ['on_dark', 'onDark', 'text'], null)),
+        on_dark: readableForeground(dark, valueHex(raw, ['on_dark', 'onDark'], null)),
         button_primary: buttonPrimary,
-        button_text: readableForeground(buttonPrimary, valueHex(raw, ['button_text', 'buttonText', 'on_primary', 'onPrimary'], null)),
+        button_text: readableForeground(buttonPrimary, valueHex(raw, ['button_text', 'buttonText', 'primary_text', 'primaryText', 'on_primary', 'onPrimary'], null)),
         button_secondary: buttonSecondary,
         button_secondary_text: readableForeground(buttonSecondary, valueHex(raw, ['button_secondary_text', 'buttonSecondaryText', 'heading'], null)),
         success: valueHex(raw, ['success'], '#237A57'), warning: valueHex(raw, ['warning'], '#A86D22'), error: valueHex(raw, ['error'], '#B44949'),
@@ -145,7 +145,8 @@ export function resolveSemanticPalette(themeOrHex, settings = {}, fallbackTheme 
         ...palette,
         sourceColor: palette.source_color, primaryHover: palette.primary_hover, primarySoft: palette.primary_soft,
         brandSurface: palette.brand_surface, surfaceMuted: palette.surface_alt, surfaceText: palette.body,
-        borderStrong: palette.border_strong, onPrimary: palette.on_primary, onSecondary: palette.on_secondary,
+        borderStrong: palette.border_strong, primaryText: palette.on_primary, secondaryText: palette.on_secondary,
+        accentText: palette.on_accent, backgroundText: palette.on_primary, onPrimary: palette.on_primary, onSecondary: palette.on_secondary,
         onAccent: palette.on_accent, onSurface: palette.on_surface, onDark: palette.on_dark,
         buttonPrimary: palette.button_primary, buttonText: palette.button_text,
         buttonSecondary: palette.button_secondary, buttonSecondaryText: palette.button_secondary_text,

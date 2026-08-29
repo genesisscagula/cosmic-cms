@@ -24,6 +24,8 @@ use App\Http\Controllers\CosmicPricingController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\SparkController;
 use App\Http\Controllers\CustomSparkController;
+use App\Http\Controllers\SavedSparkController;
+use App\Http\Controllers\ThemeLunaController;
 use App\Http\Controllers\AgencyLeadController;
 use App\Http\Controllers\AgencySalesController;
 use App\Http\Controllers\WorkspaceMemberController;
@@ -381,7 +383,7 @@ Route::post('/start/{trial:token}/plan', [TrialGenerationController::class, 'sel
     ->middleware('throttle:12,1')
     ->name('trial-generations.plan.select');
 Route::post('/trials/{trial:token}/email', [TrialGenerationController::class, 'captureEmail'])
-    ->middleware('throttle:5,1')
+    ->middleware('throttle:20,1')
     ->name('trial-generations.email.capture');
 Route::post('/trials/{trial:token}/regenerate', [TrialGenerationController::class, 'regenerate'])
     ->middleware('throttle:3,1')
@@ -463,6 +465,10 @@ Route::get('/websites/{website}/media-library/files/{asset}', [MediaLibraryContr
     ->name('media-library.assets.show');
 
 Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComplete::class])->group(function () {
+    Route::get('/saved-sparks', [SavedSparkController::class, 'index'])->name('saved-sparks.index');
+    Route::post('/saved-sparks', [SavedSparkController::class, 'store'])->name('saved-sparks.store');
+    Route::patch('/saved-sparks/{savedSpark}', [SavedSparkController::class, 'update'])->name('saved-sparks.update');
+    Route::delete('/saved-sparks/{savedSpark}', [SavedSparkController::class, 'destroy'])->name('saved-sparks.destroy');
     // Return a CSRF token from the current authenticated session. Inertia pages can
     // outlive a Laravel session regeneration (for example after payment/login), so
     // direct multipart uploads use this endpoint to avoid stale document meta tokens.
@@ -568,6 +574,9 @@ Route::middleware(['auth', 'verified', \App\Http\Middleware\EnsureOnboardingComp
     Route::get('/websites/{website}/custom-sparks/by-key/{key}/chat', [CustomSparkController::class, 'chatHistory'])->name('custom-sparks.chat-history');
     Route::post('/websites/{website}/custom-sparks/by-key/{key}/chat', [CustomSparkController::class, 'chat'])->middleware('throttle:cosmic-ai')->name('custom-sparks.chat');
     Route::post('/websites/{website}/custom-page-ai', [CustomSparkController::class, 'pageChat'])->middleware('throttle:cosmic-ai')->name('custom-page-ai.chat');
+    Route::post('/websites/{website}/luna-popup', [CustomSparkController::class, 'popupChat'])->middleware('throttle:cosmic-ai')->name('luna-popup.chat');
+    Route::post('/websites/{website}/theme-luna/intent', [ThemeLunaController::class, 'intent'])->middleware('throttle:cosmic-ai')->name('theme-luna.intent');
+    Route::post('/websites/{website}/theme-luna/generate', [ThemeLunaController::class, 'generate'])->middleware('throttle:cosmic-ai')->name('theme-luna.generate');
     Route::post('/websites/{website}/starter-site/plan', [StarterSiteController::class, 'plan'])->middleware('throttle:20,1')->name('starter-sites.plan');
     Route::post('/websites/{website}/starter-site/install', [StarterSiteController::class, 'install'])->middleware('throttle:cosmic-ai')->name('starter-sites.install');
     Route::get('/websites/{website}/starter-site/status', [StarterSiteController::class, 'status'])->middleware('throttle:60,1')->name('starter-sites.status');

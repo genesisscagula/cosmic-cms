@@ -7,7 +7,8 @@ import { EditableImage } from "../Shared/EditableImage";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeLast } from "../Shared/RepeatableControls";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
+import { resolveTestimonialAvatar } from "./avatarResolver";
 
 export const TestimonialsCarouselSchema = {
 
@@ -224,7 +225,7 @@ export function TestimonialsCarouselBlock({
 
                         <div
                             key={index}
-                            className={sparkTw(block, "auto_8", `
+                            className={sparkTwItem(block, "testimonials", index, "card", `
                                 ${theme.card}
                                 border
                                 ${theme.border}
@@ -248,7 +249,7 @@ export function TestimonialsCarouselBlock({
 
                             {/* Stars */}
 
-                            <div className={sparkTw(block, "auto_9", "mb-5 text-xl text-yellow-400")}>
+                            <div className={sparkTwItem(block, "testimonials", index, "rating", "mb-5 text-xl text-yellow-400")}>
                                 {"★".repeat(item.rating)}
                             </div>
 
@@ -259,7 +260,7 @@ export function TestimonialsCarouselBlock({
                                 <EditableText
                                     value={item.quote}
                                     isTextArea={true}
-                                    className={sparkTw(block, "auto_10", `block italic leading-8 ${theme.sub}`)}
+                                    className={sparkTwItem(block, "testimonials", index, "quote", `block italic leading-8 ${theme.sub}`)}
                                     onSave={(val) =>
                                         updateTestimonial(
                                             index,
@@ -278,7 +279,7 @@ export function TestimonialsCarouselBlock({
                                 <EditableImage
                                     websiteId={websiteId}
                                     blockIndex={blockIndex}
-                                    src={item.avatar}
+                                    src={resolveTestimonialAvatar(item, index)}
                                     showOverlay={false}
                                     className={sparkTw(block, "auto_12", "w-14 h-14 rounded-full overflow-hidden flex-shrink-0")}
                                     onSave={(url) =>

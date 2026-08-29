@@ -1,3 +1,5 @@
+import { normalizeBlockRegistry } from "./Blocks/Shared/sparkExtrasContract";
+import { SparkFieldExtrasProvider } from "./Blocks/Shared/SparkFieldExtrasRuntime";
 import {
     HeroHeadlineBlock,
     HeroHeadlineSchema
@@ -250,7 +252,7 @@ import { RestaurantSignatureDishesPremiumBlock, RestaurantSignatureDishesPremium
 import { ContentEditorialImageStackPremiumBlock, ContentEditorialImageStackPremiumSchema, ContentAsymmetricStoryPremiumBlock, ContentAsymmetricStoryPremiumSchema, ContentMediaManifestoPremiumBlock, ContentMediaManifestoPremiumSchema, ContentVisualQuotePremiumBlock, ContentVisualQuotePremiumSchema, FeaturesOverlapCardsPremiumBlock, FeaturesOverlapCardsPremiumSchema, FeaturesFullbleedPanelsPremiumBlock, FeaturesFullbleedPanelsPremiumSchema, FeaturesImageIndexPremiumBlock, FeaturesImageIndexPremiumSchema, FeaturesEditorialMosaicPremiumBlock, FeaturesEditorialMosaicPremiumSchema, ServicesFullbleedOverlayPremiumBlock, ServicesFullbleedOverlayPremiumSchema, ServicesStaggeredMediaPremiumBlock, ServicesStaggeredMediaPremiumSchema, ServicesImageAccordionPremiumBlock, ServicesImageAccordionPremiumSchema, ServicesVisualDirectoryPremiumBlock, ServicesVisualDirectoryPremiumSchema, PortfolioFullbleedProjectsPremiumBlock, PortfolioFullbleedProjectsPremiumSchema, PortfolioStaggeredGalleryPremiumBlock, PortfolioStaggeredGalleryPremiumSchema, PortfolioStoryIndexPremiumBlock, PortfolioStoryIndexPremiumSchema, PortfolioMediaLedgerPremiumBlock, PortfolioMediaLedgerPremiumSchema, ProofCaseStoryPremiumBlock, ProofCaseStoryPremiumSchema, ProofMetricGalleryPremiumBlock, ProofMetricGalleryPremiumSchema, BrandValueCardsPremiumBlock, BrandValueCardsPremiumSchema, BrandVisualPrinciplesPremiumBlock, BrandVisualPrinciplesPremiumSchema } from "./Blocks/Expansion/PremiumExpansionBatch5";
 import { AboutChapterIndexPremiumBlock, AboutChapterIndexPremiumSchema, ServicesOrbitMapPremiumBlock, ServicesOrbitMapPremiumSchema, ProcessConstellationPremiumBlock, ProcessConstellationPremiumSchema, ProofMetricStaircasePremiumBlock, ProofMetricStaircasePremiumSchema, TrustEvidenceLedgerPremiumBlock, TrustEvidenceLedgerPremiumSchema, FaqDecisionTreePremiumBlock, FaqDecisionTreePremiumSchema, CtaTicketPremiumBlock, CtaTicketPremiumSchema, ContactAvailabilityBoardPremiumBlock, ContactAvailabilityBoardPremiumSchema } from "./Blocks/Expansion/DistinctiveExpansionBatch6";
 
-export const BlockRegistry = {
+const RawBlockRegistry = {
     luna_custom_section: { component: LunaCustomSectionBlock, schema: LunaCustomSectionSchema },
     commerce_product_grid: { component: CommerceProductGridBlock, schema: CommerceProductGridSchema },
     commerce_catalog_grid: { component: CommerceCatalogGridBlock, schema: CommerceCatalogGridSchema },
@@ -833,3 +835,21 @@ export const BlockRegistry = {
     contact_availability_board_premium: { component: ContactAvailabilityBoardPremiumBlock, schema: ContactAvailabilityBoardPremiumSchema },
 
 };
+
+const NormalizedBlockRegistry = normalizeBlockRegistry(RawBlockRegistry);
+
+const wrapSparkComponentWithFieldExtras = (Component, schema, type) => {
+    if (typeof Component !== 'function') return Component;
+    const WrappedSparkComponent = (props) => <SparkFieldExtrasProvider block={props?.block} schema={schema}>
+        <Component {...props} />
+    </SparkFieldExtrasProvider>;
+    WrappedSparkComponent.displayName = `SparkFieldExtras(${Component.displayName || Component.name || type || 'Spark'})`;
+    return WrappedSparkComponent;
+};
+
+export const BlockRegistry = Object.fromEntries(Object.entries(NormalizedBlockRegistry).map(([type, entry]) => [
+    type,
+    entry && typeof entry === 'object'
+        ? { ...entry, component: wrapSparkComponentWithFieldExtras(entry.component, entry.schema, type) }
+        : entry,
+]));

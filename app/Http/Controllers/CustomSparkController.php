@@ -36,6 +36,7 @@ use App\Services\LunaIntentGateway;
 use App\Services\LunaInspectService;
 use App\Services\LunaPendingActionService;
 use App\Services\LunaPexelsVideoService;
+use App\Services\LunaSectionImageService;
 use App\Services\LunaSiteAdminActionService;
 use App\Services\TrialCreditService;
 use App\Services\SmartImageService;
@@ -956,12 +957,13 @@ PROMPT;
         }
 
         $fixed = $qa['block'];
-        $allowed = ['type','custom_spark_key','custom_spark_saved','semantic_type','source_type','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','theme','style_overrides','visual_style','review','form','ai_flex'];
+        $allowed = ['type','custom_spark_key','custom_spark_saved','semantic_type','source_type','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','elements','theme','style_overrides','visual_style','review','form','ai_flex'];
         $fixed = array_intersect_key($fixed, array_flip($allowed));
         $fixed['type'] = 'luna_custom_section';
         $fixed['custom_spark_key'] = $customSpark->key;
         $fixed['style_overrides'] = [];
         $fixed = array_merge($currentBlock, $fixed);
+        $fixed = \App\Support\AiFlexStructureContract::normalizePersistedBlock($fixed);
 
         $metadata = $this->pushRevision($customSpark, $currentBlock, 'Before Cosmic AI visual QA');
         $metadata['qa'] = [
@@ -1275,6 +1277,30 @@ PROMPT;
         if(!empty($theme['primary']))$memory['theme_primary']=$theme['primary'];
         $memory['last_direction_at']=now()->toIso8601String();
         return array_slice($memory,0,20,true);
+    }
+
+    /**
+     * Vague visual polish stays inside the selected Spark. Explicit layout/type
+     * transformation remains structural and is intentionally excluded here.
+     */
+    private function lunaVagueSelectedSparkPolishIntent(string $prompt): bool
+    {
+        $p=Str::lower($prompt);
+        $vague=Str::contains($p,[
+            'make this section more premium','make this more premium','make this section feel premium',
+            'make this section more modern','make this more modern','make this section feel modern',
+            'make this section more polished','make this more polished','make this section polished',
+            'make this section better','make this better','polish this section','improve this section',
+            'improve the design of this section','make this section visually interesting',
+            'make it more visually interesting','clean up this section','refine this section',
+        ]);
+        if(!$vague) return false;
+
+        return !Str::contains($p,[
+            'redesign','rebuild','replace this section','replace the section','swap this section',
+            'another layout','different layout','new layout','change this layout','change the layout',
+            'convert this','turn this into','turn the section into','different section type',
+        ]);
     }
 
     private function lunaArtDirectionIntent(string $prompt): bool
@@ -1940,33 +1966,154 @@ PROMPT;
         };
     }
 
+    private function universalBackgroundIntentFlags(string $prompt, ?array $block=null): array
+    {
+        $lower=Str::lower(trim($prompt));
+        $hasMedia=(bool)($block['universal_background_enabled']??false)
+            && (trim((string)($block['universal_background_image_url']??''))!==''
+                || trim((string)($block['universal_background_video_url']??''))!=='');
+
+        $explicitRemove=Str::contains($lower,[
+            'no background image','no background video','remove background image','remove the background image',
+            'remove background photo','remove background video','remove the background video','remove background media',
+        ]);
+        $genericRemove=Str::contains($lower,['remove background','clear background']);
+        $remove=$explicitRemove||($genericRemove&&$hasMedia);
+        $video=Str::contains($lower,[
+            'background video','video background','section video background','video as background',
+            'video as the background','video for the background','use this video as background','use this video as the background',
+        ]);
+        $image=Str::contains($lower,[
+            'background image','image background','background photo','photo background','section background image',
+            'image as background','image as the background','photo as background','photo as the background',
+            'use this image as background','use this image as the background','use this photo as background','use this photo as the background',
+        ]);
+        $overlay=Str::contains($lower,[
+            'background overlay','overlay','fade to white','fade into white','white gradient','gradient to white',
+            'fade to black','fade into black','black gradient','make background darker','darken the background',
+            'make background lighter','lighten the background','stronger overlay','softer overlay',
+        ]);
+        $darker=Str::contains($lower,['make background darker','darken the background','darker overlay','stronger overlay']);
+        $lighter=Str::contains($lower,['make background lighter','lighten the background','lighter overlay','softer overlay']);
+
+        // Overlay-only wording owns the universal media layer only when one is
+        // already active. Otherwise the selected-Spark schema editor should be
+        // free to interpret ordinary section/background styling.
+        $intent=$remove||$video||$image||($overlay&&$hasMedia);
+
+        return [
+            'intent'=>$intent,
+            'remove'=>$remove,
+            'kind'=>$video?'video':($image?'image':null),
+            'overlay_only'=>$overlay&&!$video&&!$image&&!$remove,
+            'darker'=>$darker,
+            'lighter'=>$lighter,
+        ];
+    }
+
+    private function universalBackgroundDirectUrl(string $prompt, string $kind): ?string
+    {
+        if(!preg_match("~(?:(?:https?://)|(?:/storage/))[^\\s<>\"']+~i",$prompt,$match)) return null;
+        $url=rtrim((string)$match[0],".,;:!?)\\]}");
+        if($kind==='video'){
+            return preg_match('~(?:youtube\\.com|youtu\\.be|vimeo\\.com|\\.(?:mp4|webm|ogg)(?:$|[?#])|^/storage/)~i',$url)?$url:null;
+        }
+        return preg_match('~(?:\\.(?:png|jpe?g|webp|gif|avif)(?:$|[?#])|images\\.|unsplash\\.|pexels\\.|^/storage/)~i',$url)?$url:null;
+    }
+
+    private function universalBackgroundOverlayForPrompt(string $prompt,string $state,?string $strength=null): string
+    {
+        $lower=Str::lower($prompt);
+        $clearTopWhiteBottom=(Str::contains($lower,['clear at the top','clear on top','top clear','transparent at the top','transparent on top']))
+            && Str::contains($lower,['white at the bottom','white bottom','fade to white','fade into white','gradient to white']);
+        if($clearTopWhiteBottom){
+            return 'linear-gradient(180deg, rgba(255,255,255,0) 0%, rgba(255,255,255,0.08) 48%, rgba(255,255,255,0.72) 78%, rgba(255,255,255,1) 100%)';
+        }
+        $clearTopDarkBottom=(Str::contains($lower,['clear at the top','clear on top','top clear','transparent at the top','transparent on top']))
+            && Str::contains($lower,['black at the bottom','dark at the bottom','fade to black','fade into black','black gradient']);
+        if($clearTopDarkBottom){
+            return 'linear-gradient(180deg, rgba(2,6,23,0) 0%, rgba(2,6,23,0.10) 48%, rgba(2,6,23,0.72) 78%, rgba(2,6,23,0.94) 100%)';
+        }
+        return $this->universalBackgroundOverlay($state,$strength?:'balanced');
+    }
+
     private function applyUniversalBackgroundIntent(
         AiPageGenerationService $pageGeneration,
+        LunaPexelsVideoService $lunaVideos,
         string $prompt,
         array $block,
         string $state,
         bool $remove=false,
-        ?string $strength=null
+        ?string $strength=null,
+        ?string $kind=null
     ): array {
         if($remove){
             unset(
                 $block['universal_background_image_url'],
+                $block['universal_background_video_url'],
+                $block['universal_background_video_poster_url'],
+                $block['universal_background_video_source'],
+                $block['universal_background_video_search_query'],
+                $block['universal_background_video_attribution'],
                 $block['universal_background_overlay'],
+                $block['universal_background_overlay_mode'],
                 $block['universal_background_state'],
-                $block['universal_background_position']
+                $block['universal_background_position'],
+                $block['universal_background_size'],
+                $block['universal_background_type']
             );
             $block['universal_background_enabled']=false;
-            return ['block'=>$block,'success'=>true,'removed'=>true,'error'=>null];
+            return ['block'=>$block,'success'=>true,'removed'=>true,'kind'=>null,'error'=>null];
         }
 
-        $block['universal_background_enabled']=true;
-        $block['universal_background_state']=$state;
-        $block['universal_background_overlay']=$this->universalBackgroundOverlay($state,$strength?:'balanced');
-        $block['universal_background_position']=$block['universal_background_position']??'center center';
+        $existingType=trim((string)($block['universal_background_type']??''));
+        if($kind===null && in_array($existingType,['image','video'],true)) $kind=$existingType;
+        $kind=$kind==='video'?'video':'image';
 
-        // Overlay-only requests should preserve the existing image.
-        if(($strength==='darker'||$strength==='lighter') && trim((string)($block['universal_background_image_url']??''))!==''){
-            return ['block'=>$block,'success'=>true,'removed'=>false,'error'=>null];
+        $block['universal_background_enabled']=true;
+        $block['universal_background_type']=$kind;
+        $block['universal_background_state']=$state;
+        $block['universal_background_overlay']=$this->universalBackgroundOverlayForPrompt($prompt,$state,$strength);
+        $customOverlay=Str::contains(Str::lower($prompt),['fade to white','fade into white','white gradient','gradient to white','fade to black','fade into black','black gradient']);
+        $block['universal_background_overlay_mode']=$customOverlay?'custom':'auto';
+        $block['universal_background_position']=$block['universal_background_position']??'center center';
+        $block['universal_background_size']=$block['universal_background_size']??'cover';
+
+        // Overlay-only requests must never replace the current media asset.
+        $existingUrl=$kind==='video'
+            ? trim((string)($block['universal_background_video_url']??''))
+            : trim((string)($block['universal_background_image_url']??''));
+        if(($strength==='darker'||$strength==='lighter'||Str::contains(Str::lower($prompt),['overlay','fade','gradient'])) && $existingUrl!==''){
+            return ['block'=>$block,'success'=>true,'removed'=>false,'kind'=>$kind,'error'=>null];
+        }
+
+        if($kind==='video'){
+            $direct=$this->universalBackgroundDirectUrl($prompt,'video');
+            try{
+                $video=$direct
+                    ? ['url'=>$direct,'source'=>'direct','query'=>null,'attribution'=>null]
+                    : $lunaVideos->backgroundFor($prompt,$block);
+                $url=trim((string)($video['url']??''));
+                if($url!==''){
+                    $block['universal_background_video_url']=$url;
+                    $block['universal_background_image_url']='';
+                    $block['universal_background_video_source']=$video['source']??($direct?'direct':'pexels');
+                    if(filled($video['query']??null)) $block['universal_background_video_search_query']=$video['query'];
+                    if(is_array($video['attribution']??null)) $block['universal_background_video_attribution']=$video['attribution'];
+                    return ['block'=>$block,'success'=>true,'removed'=>false,'kind'=>'video','error'=>null];
+                }
+            }catch(\Throwable $e){
+                report($e);
+            }
+            $block['universal_background_enabled']=false;
+            return ['block'=>$block,'success'=>false,'removed'=>false,'kind'=>'video','error'=>'No matching background video was available.'];
+        }
+
+        $direct=$this->universalBackgroundDirectUrl($prompt,'image');
+        if($direct){
+            $block['universal_background_image_url']=$direct;
+            $block['universal_background_video_url']='';
+            return ['block'=>$block,'success'=>true,'removed'=>false,'kind'=>'image','error'=>null];
         }
 
         // Create one isolated provider slot so adding a section background never
@@ -1983,7 +2130,8 @@ PROMPT;
             $url=trim((string)data_get($remote,'blocks.0.universal_background_image_url',''));
             if($url!==''){
                 $block['universal_background_image_url']=$url;
-                return ['block'=>$block,'success'=>true,'removed'=>false,'error'=>null];
+                $block['universal_background_video_url']='';
+                return ['block'=>$block,'success'=>true,'removed'=>false,'kind'=>'image','error'=>null];
             }
         }catch(\Throwable $e){
             report($e);
@@ -1991,7 +2139,7 @@ PROMPT;
 
         // Never enable a blank background or claim success when the provider failed.
         $block['universal_background_enabled']=false;
-        return ['block'=>$block,'success'=>false,'removed'=>false,'error'=>'No matching background image was returned by the image provider.'];
+        return ['block'=>$block,'success'=>false,'removed'=>false,'kind'=>'image','error'=>'No matching background image was returned by the image provider.'];
     }
 
     public function trialPageChat(
@@ -2043,12 +2191,14 @@ PROMPT;
             'section_layout'=>['nullable','string','max:12000'],
             'components'=>['nullable','string','max:12000'],
             'site_memory'=>['nullable','string','max:24000'],
-            'target_scope'=>['nullable','in:page,section,header,footer'],
+            'assistant_surface'=>['nullable','in:global_builder,contextual_popup'],
+            'target_scope'=>['nullable','in:page,section,header,footer,theme'],
             'target_index'=>['nullable','integer','min:0','max:100'],
             'element_context'=>['nullable','string','max:30000'],
             'target_item_index'=>['nullable','integer','min:0','max:100'],
             'target_item_mode'=>['nullable','in:repeater_item'],
             'target_collection_key'=>['nullable','string','max:80'],
+            'target_collection_path'=>['nullable','string','max:320'],
             'target_resolved_theme'=>['nullable','string','max:40'],
             'confirmed'=>['nullable','boolean'],
             'pending_action_token'=>['nullable','string','max:100'],
@@ -2094,9 +2244,21 @@ PROMPT;
         if(!isset($elementContext['collectionKey']) && !empty($validated['target_collection_key'])){
             $elementContext['collectionKey']=(string)$validated['target_collection_key'];
         }
+        if(!isset($elementContext['collectionPath']) && !empty($validated['target_collection_path'])){
+            $elementContext['collectionPath']=(string)$validated['target_collection_path'];
+        }
 
+        $assistantSurface=(string)($validated['assistant_surface']??'global_builder');
         $scope=(string)($validated['target_scope']??'page');
         $targetIndex=$scope==='section'?(int)($validated['target_index']??-1):-1;
+        // Batch 7 jurisdiction contract: Global Luna always enters routing from
+        // page/site scope and may resolve any CMS domain itself. Contextual Luna
+        // is allowed to carry the explicit popup target only.
+        if($assistantSurface==='global_builder'){
+            $scope='page';
+            $targetIndex=-1;
+            $elementContext=[];
+        }
         $originalUserPrompt=trim((string)$validated['prompt']);
         $scopeResolution=$scopeIntelligence->resolve($originalUserPrompt,$scope,$elementContext);
         $scopeContract=$scopeIntelligence->plannerDirective($scopeResolution);
@@ -2134,6 +2296,7 @@ PROMPT;
         }else{
             $routeContext=[
                 'surface'=>'trial_builder',
+                'assistant_surface'=>$assistantSurface,
                 'ui_scope'=>$scope,
                 'target_index'=>$targetIndex,
                 'has_blocks'=>count($blocks)>0,
@@ -2162,6 +2325,55 @@ PROMPT;
                 : ['intent'=>'chat'];
         }
 
+        // Batch 3: Theme popup requests are intentionally isolated from the Builder.
+        // A concrete HEX request is still an ACTION even when the conversational
+        // router interprets the wrapper text ("THEME-ONLY PREVIEW REQUEST") as chat.
+        // Force the bounded theme contract so the popup receives a generated
+        // brand_color_family candidate without mutating Builder state.
+        if (
+            !$resumePendingPlan
+            && $assistantSurface === 'contextual_popup'
+            && $scope === 'theme'
+            && preg_match('/#[0-9a-fA-F]{6}\b/', $originalUserPrompt)
+        ) {
+            $canonicalIntent = [
+                'intent' => 'action',
+                'execution_allowed' => true,
+                'domain' => 'theme',
+                'operation' => 'update',
+                'leaf_operation' => 'brand_theme',
+                'scope' => 'theme',
+                'routing' => [
+                    'menu_scope' => 'theme',
+                    'scope_action' => 'brand_theme',
+                ],
+            ];
+        }
+
+        // Batch 2: vague selected-section visual polish is a schema edit, not
+        // a structural redesign. Lock the existing Spark before any legacy
+        // structural refinement can reinterpret "more premium" as replacement.
+        if(!$resumePendingPlan && $scope==='section' && isset($blocks[$targetIndex])
+            && $this->lunaVagueSelectedSparkPolishIntent($prompt)){
+            $lockedBlock=(array)$blocks[$targetIndex];
+            $canonicalIntent=array_replace_recursive(is_array($canonicalIntent)?$canonicalIntent:[],[
+                'intent'=>'action',
+                'execution_allowed'=>true,
+                'domain'=>'design',
+                'operation'=>'update',
+                'leaf_operation'=>'spark_style',
+                'scope'=>'section',
+                'routing'=>[
+                    'menu_scope'=>'sparks',
+                    'spark_action'=>'edit_spark',
+                    'spark_target'=>[
+                        'index'=>$targetIndex,
+                        'type'=>(string)($lockedBlock['type']??''),
+                    ],
+                ],
+            ]);
+        }
+
         // API 1 owns the chat | action boundary. Legacy structural detection may
         // refine an already-routed ACTION, but it must never promote CHAT into
         // ACTION behind the router's back.
@@ -2174,7 +2386,7 @@ PROMPT;
             $structuralOperation=Str::contains($structuralLower,['move ','move this','reorder']) ? 'move'
                 : (Str::contains($structuralLower,['add ','insert ','create ']) ? 'add'
                 : (Str::contains($structuralLower,['remove ','delete ']) ? 'delete'
-                : (Str::contains($structuralLower,['redesign','make this section better','improve this section','polish this section','refresh this section','rework this section','restyle this section']) ? 'redesign' : 'replace')));
+                : (Str::contains($structuralLower,['redesign','rebuild this section','rebuild the section']) ? 'redesign' : 'replace')));
             $canonicalIntent=array_merge(is_array($canonicalIntent)?$canonicalIntent:[],[
                 'intent'=>'action',
                 'execution_allowed'=>true,
@@ -2182,6 +2394,29 @@ PROMPT;
                 'operation'=>$structuralOperation,
                 'scope'=>'section',
             ]);
+        }
+        // Batch 7: contextual Luna is an object specialist, never a hidden
+        // site/page orchestrator. If a local popup request routes outside its
+        // target domain, stop before any executor/credit mutation and direct the
+        // user to Global Luna instead.
+        if(!$resumePendingPlan && $assistantSurface==='contextual_popup' && (($canonicalIntent['intent']??'chat')==='action')){
+            $menuScope=(string)data_get($canonicalIntent,'routing.menu_scope','');
+            $expectedMenuScope=$scope==='header'?'header':($scope==='footer'?'footer':($scope==='theme'?'theme':'sparks'));
+            if($menuScope!=='' && $menuScope!==$expectedMenuScope){
+                return response()->json([
+                    'reply'=>'This editor is scoped to the selected '.($scope==='section'?'section':'item').'. Use the lower-right Luna for page-wide or site-wide changes.',
+                    'mode'=>'grounded_info',
+                    'canonical_intent'=>['intent'=>'chat','routing'=>['assistant_surface'=>'contextual_popup','blocked_menu_scope'=>$menuScope]],
+                    'credit_cost'=>0,
+                    'credit_balance'=>$trialCredits->balance($trial),
+                    'blocks'=>$blocks,
+                    'header'=>is_array($header)?$header:[],
+                    'footer'=>is_array($footer)?$footer:[],
+                    'site_memory'=>$siteMemory,
+                    'pending_action'=>false,
+                    'applied_operations'=>[],
+                ]);
+            }
         }
         $siteMemory=$intentGateway->memory($siteMemory,$canonicalIntent);
         $siteMemory=$contextState->rememberRouted($siteMemory,$canonicalIntent);
@@ -2474,14 +2709,12 @@ PROMPT;
                 'applied_operations'=>[['action'=>'theme','theme_key'=>$automaticTheme,'verified'=>true,'source'=>'luna_auto_family']],
             ]);
         }
-        $backgroundRemove=Str::contains($lower,['remove background image','remove the background image','remove background photo','no background image','clear background image']);
-        $backgroundDarker=Str::contains($lower,['make background darker','darken the background','darker overlay','stronger overlay']);
-        $backgroundLighter=Str::contains($lower,['make background lighter','lighten the background','lighter overlay','softer overlay']);
-        $backgroundAdd=!$backgroundRemove && (
-            (Str::contains($lower,'background image') && Str::contains($lower,['add','use','set','change','give','put','apply']))
-            || (Str::contains($lower,'background photo') && Str::contains($lower,['add','use','set','change','give','put','apply']))
-        );
-        $universalBackgroundIntent=$backgroundAdd||$backgroundRemove||$backgroundDarker||$backgroundLighter;
+        $backgroundIntent=$this->universalBackgroundIntentFlags($prompt,isset($blocks[$targetIndex])&&is_array($blocks[$targetIndex])?$blocks[$targetIndex]:null);
+        $backgroundRemove=(bool)$backgroundIntent['remove'];
+        $backgroundDarker=(bool)$backgroundIntent['darker'];
+        $backgroundLighter=(bool)$backgroundIntent['lighter'];
+        $backgroundKind=$backgroundIntent['kind'];
+        $universalBackgroundIntent=(bool)$backgroundIntent['intent'];
 
         // Mutation-scope lock: a copy/content rewrite must not accidentally mutate
         // media or design just because the prompt mentions those fields in a
@@ -2653,6 +2886,9 @@ PROMPT;
         if(!isset($elementContext['collectionKey']) && !empty($validated['target_collection_key'])){
             $elementContext['collectionKey']=(string)$validated['target_collection_key'];
         }
+        if(!isset($elementContext['collectionPath']) && !empty($validated['target_collection_path'])){
+            $elementContext['collectionPath']=(string)$validated['target_collection_path'];
+        }
         if($namedTargetOverrodeSelection){
             // Clear stale clicked-element targeting when a named page section (for example
             // "hero") overrides the previous selection, but preserve the request-scoped
@@ -2689,9 +2925,9 @@ PROMPT;
         $tailwindEditContext=$selected ? $tailwindMutations->plannerContext($selected,$elementContext) : [];
 
         $system='You are Luna, the invisible website editor. Return JSON only: {"operations":[{"action":"edit|replace|insert_before|insert_after|delete|move|theme","index":0,"to_index":0,"spark_key":"registered key when needed","theme_key":"","changes":{},"tailwind_mutations":[{"slot":"rendered slot id","add":["Tailwind utility"],"remove":["conflicting current utility"]}],"instruction":""}],"header_changes":{},"footer_changes":{},"brand_color_family":null,"page_style":null}. Use ONLY Spark keys from the supplied catalog. Rank candidates by requested aliases/media/capabilities FIRST, selected-section semantic intent/category SECOND, then layout/style/industry/position fit. Never default to Hero merely because Hero also supports the requested media; preserve the selected section role unless the user explicitly asks to change it. For simple edits use edit and only existing schema keys. REPEATER/LIST CRUD IS NON-STRUCTURAL:
-For the compatible premium Services family (services_bento_premium, services_editorial_premium, services_showcase_premium, services_minimal_luxury, services_contrast_premium, services_split_premium, services_grid_premium, services_feature_premium), treat featured_* as item 1 and service_two_* through service_seven_* as items 2–7. service_count controls visible services. "Add N services" MUST use edit, increase service_count by N up to 7, and fill the newly exposed sequential service_*_title/text/number fields with relevant content. "Remove the least important service" MUST use edit, compact the remaining service fields in order, decrement service_count, and preserve the layout. requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. FOOTER CONTRACT: footer_changes may update logo metadata, copyright, privacy/terms labels+URLs, contact {email,phone,address}, social_links [{label,url}], mega_enabled, and mega_footer {enabled,theme,tagline,primary_label,primary_url,columns:[{title,items:[{label,url}]}]}. Preserve unrelated footer fields. Footer columns max 4, items max 6 each, social links max 6. Footer-only requests must not mutate header or body sections. HEADER NAVIGATION CONTRACT: header_changes.menu is the complete resulting menu array. Each item is {"label":"...","url":"...","children":[...]}; children may nest to 3 levels total. For add/remove/rename/reorder/submenu requests, preserve unrelated items and return the complete updated menu. Header navigation is always plain dropdown navigation; do not create or enable mega menus. Never invent a page URL when the user did not provide one; use an existing matching menu/page target or "#". Header manual-equivalent navigation structure changes are valid shell changes. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs. COLOR FAMILY DESIGN: when the user supplies an explicit HEX and asks to make/change the website theme, brand, colors, or color family around it, keep that exact HEX as `brand_color_family.primary` and design a tasteful premium semantic family around it. Return `brand_color_family` with this schema: {"sourceColor":"#RRGGBB","primary":"#RRGGBB","primaryHover":"#RRGGBB","primarySoft":"#RRGGBB","secondary":"#RRGGBB","accent":"#RRGGBB","background":"#RRGGBB","surface":"#RRGGBB","surfaceMuted":"#RRGGBB","heading":"#RRGGBB","text":"#RRGGBB","muted":"#RRGGBB","border":"#RRGGBB","buttonPrimary":"#RRGGBB","buttonText":"#RRGGBB","buttonSecondary":"#RRGGBB","buttonSecondaryText":"#RRGGBB","success":"#RRGGBB","warning":"#RRGGBB","error":"#RRGGBB","onPrimary":"#RRGGBB","onDark":"#RRGGBB","gradient":{"from":"#RRGGBB","via":"#RRGGBB","to":"#RRGGBB","glow":"#RRGGBB","angle":125}}. Aim for premium restraint: harmonious surfaces, readable body text, meaningful accent separation, and no random rainbow palette. For a DARK supplied HEX, the exact primary may own the hero and headings with contrast-safe light foregrounds. For a LIGHT supplied HEX, preserve the exact HEX as the brand/CTA anchor but use a derived dark secondary for headings and a dark hero so light buttons remain clearly visible. The server enforces one of these two patterns and may repair unsafe palette values.  DOCUMENTATION GROUNDING: You receive a LUNA KNOWLEDGE PACKET containing relevant canonical Cosmic CMS documentation and capability records. Product/capability claims MUST be grounded in that packet. If a capability is unsupported, planned, or limited, say so accurately and offer the documented fallback. If the packet does not establish support, do not invent support. A capability question is informational: return a useful natural reply and NO operations/header/footer/theme/page-style mutation. Server runtime guards remain authoritative. THEME INTELLIGENCE: choose a theme only when the user explicitly asks for a theme/color-family change or when a first-build planner specifically requests one. If the user directly asks to change/switch the theme without naming a family, choose one suitable different color family now and emit a theme operation; do not ask which theme or ask for confirmation. Never choose midnight as a generic/default theme; use midnight only when the user explicitly asks for midnight/night styling. For vague style directions that are not explicit theme-change requests, preserve the current site theme and redesign within that family. REQUEST INTELLIGENCE: distinguish content edits from structural redesigns. Text/image/link/name/label changes edit the existing Spark. Add/remove/reorder list or card items edits the repeater. Requests for another layout, redesign, slider, video hero, split, grid, mosaic, testimonial style, or different section type are structural and may replace with the closest registered Spark. Global typography/spacing/background requests are handled by the design-token router; section-specific requests should remain local. Header overlay/logo/nav requests belong to the global header, not the body Spark. If a request contains multiple compatible actions, complete all applicable actions in order. ';
+For the compatible premium Services family (services_bento_premium, services_editorial_premium, services_showcase_premium, services_minimal_luxury, services_contrast_premium, services_split_premium, services_grid_premium, services_feature_premium), treat featured_* as item 1 and service_two_* through service_seven_* as items 2–7. service_count controls visible services. "Add N services" MUST use edit, increase service_count by N up to 7, and fill the newly exposed sequential service_*_title/text/number fields with relevant content. "Remove the least important service" MUST use edit, compact the remaining service fields in order, decrement service_count, and preserve the layout. requests to add, remove, update, rename, expand, reduce, or reorder services/cards/items/testimonials/FAQs/team/pricing/features/logos/gallery/process/list entries MUST use edit on the existing selected section and preserve its current Spark/layout. Update the existing array/repeater key from SELECTED using the full resulting array; do not replace the section unless the user explicitly asks for a different layout/design/type. STRUCTURAL COMMANDS ARE REAL ACTIONS: "change/turn this banner or section into a slider/video/testimonials/etc" MUST use replace on the selected index with the closest matching registered Spark; never simulate a structural change with copy edits. "move this section to the top/first" MUST use move with to_index=0. "move to bottom/last" MUST use move with to_index equal to the last page index. "move up/down" must use move. "add above/below" must use insert_before/insert_after. Section scope may replace, move, delete, or edit the selected section and may insert immediately above/below it. page_style may be balanced|clean|premium only when explicitly requested. header_changes and footer_changes may change shell state when explicitly requested. FOOTER CONTRACT: footer_changes may update logo metadata, copyright, privacy/terms labels+URLs, contact {email,phone,address}, social_links [{label,url}], mega_enabled, and mega_footer {enabled,theme,tagline,primary_label,primary_url,columns:[{title,items:[{label,url}]}]}. Preserve unrelated footer fields. Footer columns max 4, items max 6 each, social links max 6. Footer-only requests must not mutate header or body sections. HEADER NAVIGATION CONTRACT: header_changes.menu is the complete resulting menu array. Each item is {"label":"...","url":"...","children":[...]}; children may nest to 3 levels total. For add/remove/rename/reorder/submenu requests, preserve unrelated items and return the complete updated menu. Header navigation is always plain dropdown navigation; do not create or enable mega menus. Never invent a page URL when the user did not provide one; use an existing matching menu/page target or "#". Header manual-equivalent navigation structure changes are valid shell changes. In page scope, resolve natural section names (hero, banner, services, testimonials, pricing, FAQ, contact, CTA, gallery, process, team, about) from PAGE headings/types. When ELEMENT TARGET is non-empty, treat it as the exact clicked element. Interpret relative design language naturally: a little/slightly means a modest change; more/bigger/roomier means increase from current state; less/smaller/tighter means decrease. References such as "like the hero above", "same as Services", "match the section below", or "similar to the previous section" mean use that existing section as the visual reference while preserving the target section content/role. Never claim a change is complete unless an operation actually changes website state; the server verifies before/after state. MULTI-STEP REQUESTS: when the user asks for several compatible changes in one message, plan all of them in order rather than completing only the first. Use SITE DESIGN MEMORY as a consistency guide, not as permission to override an explicit current request. PAGE ART DIRECTION: requests such as make this page more premium/polished/modern may make coordinated restrained changes across multiple sections while preserving content and semantic section roles. For ordinary content/style requests, edit only matching fields indicated by matched_paths/currentValue/url and preserve the rest of the section. Explicit section transformation/reorder requests override element-only targeting. Never claim a structural change unless you emitted the corresponding operation. Never mention Sparks/templates/schemas to the user. Do not invent image URLs. COLOR FAMILY DESIGN: when the user supplies an explicit HEX and asks to make/change the website theme, brand, colors, or color family around it, keep that exact HEX as `brand_color_family.primary` and design a tasteful premium semantic family around it. Return `brand_color_family` with this schema: {"sourceColor":"#RRGGBB","primary":"#RRGGBB","primaryHover":"#RRGGBB","primarySoft":"#RRGGBB","secondary":"#RRGGBB","accent":"#RRGGBB","background":"#RRGGBB","surface":"#RRGGBB","surfaceMuted":"#RRGGBB","heading":"#RRGGBB","text":"#RRGGBB","muted":"#RRGGBB","border":"#RRGGBB","buttonPrimary":"#RRGGBB","buttonText":"#RRGGBB","buttonSecondary":"#RRGGBB","buttonSecondaryText":"#RRGGBB","success":"#RRGGBB","warning":"#RRGGBB","error":"#RRGGBB","onPrimary":"#RRGGBB","onDark":"#RRGGBB","gradient":{"from":"#RRGGBB","via":"#RRGGBB","to":"#RRGGBB","glow":"#RRGGBB","angle":125}}. Aim for premium restraint: harmonious surfaces, readable body text, meaningful accent separation, and no random rainbow palette. For a DARK supplied HEX, the exact primary may own the hero and headings with contrast-safe light foregrounds. For a LIGHT supplied HEX, preserve the exact HEX as the brand/CTA anchor but use a derived dark secondary for headings and a dark hero so light buttons remain clearly visible. The server enforces one of these two patterns and may repair unsafe palette values.  DOCUMENTATION GROUNDING: You receive a LUNA KNOWLEDGE PACKET containing relevant canonical Cosmic CMS documentation and capability records. Product/capability claims MUST be grounded in that packet. If a capability is unsupported, planned, or limited, say so accurately and offer the documented fallback. If the packet does not establish support, do not invent support. A capability question is informational: return a useful natural reply and NO operations/header/footer/theme/page-style mutation. Server runtime guards remain authoritative. THEME INTELLIGENCE: choose a theme only when the user explicitly asks for a theme/color-family change or when a first-build planner specifically requests one. If the user directly asks to change/switch the theme without naming a family, choose one suitable different color family now and emit a theme operation; do not ask which theme or ask for confirmation. Never choose midnight as a generic/default theme; use midnight only when the user explicitly asks for midnight/night styling. For vague style directions that are not explicit theme-change requests, preserve the current site theme and redesign within that family. REQUEST INTELLIGENCE: distinguish visual/content edits from structural redesigns. Text/image/link/name/label changes and vague style requests such as more premium/modern/polished edit the existing Spark. Add/remove/reorder list or card items edits the repeater. Only explicit requests for another/different/new layout, redesign/rebuild, slider/video-hero conversion, or a different section type are structural and may replace with the closest registered Spark. Global typography/spacing/background requests are handled by the design-token router; section-specific requests should remain local. Header overlay/logo/nav requests belong to the global header, not the body Spark. If a request contains multiple compatible actions, complete all applicable actions in order. ';
         $system="INTERNAL TARGET/CHANGE PLANNER. Intermediate output is JSON only. Never return reply, message, response, suggestion, question, confirmation copy, or any user-facing text.\n".$system;
-        $system.="\nLAZY SPARK CONTRACT: For mode=selected_spark, edit only the selected Spark through its declared modules and do not emit structural operations. For mode=structural_catalog, structural operations may use only supplied catalog keys.\nTAILWIND MUTATION CONTRACT: For specific visual styling requests, prefer operation.tailwind_mutations using only slot ids in TAILWIND EDIT CONTEXT.rendered_slots. Resolve natural target words through each rendered slot's semantic aliases. Plurals/groups such as buttons/CTAs mean mutate every matching button/cta slot in the resolved section; singular primary/secondary button means only that matching slot. Preserve unrelated classes. Remove conflicting current utilities before adding replacements. Never emit raw CSS or rewrite markup. Content edits remain in changes.";
+        $system.="\nLAZY SPARK CONTRACT: For mode=selected_spark, edit only the selected Spark through its declared modules and do not emit structural operations. For mode=structural_catalog, structural operations may use only supplied catalog keys.\nTAILWIND MUTATION CONTRACT: For specific visual styling requests, prefer operation.tailwind_mutations using only slot ids in TAILWIND EDIT CONTEXT.rendered_slots. Resolve natural target words through each rendered slot's semantic aliases. Plurals/groups such as buttons/CTAs mean mutate every matching button/cta slot in the resolved section; singular primary/secondary button means only that matching slot. For button shape requests, square/sharp means add rounded-none and remove conflicting rounded-* utilities on button/cta slots; pill/fully-rounded means add rounded-full and remove conflicting rounded-* utilities. Card/corner radius requests must target card slots, never button slots. Preserve unrelated classes. Remove conflicting current utilities before adding replacements. Never emit raw CSS or rewrite markup. Content edits remain in changes.";
         if($resumePendingPlan && is_array($resumePendingPlan['plan']??null)){
             $plan=$resumePendingPlan['plan'];
         }else{
@@ -2762,7 +2998,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 if(Str::contains($lower,$kind)){$desiredKind=$kind;break;}
             }
             $hasReplace=collect($ops)->contains(fn($op)=>is_array($op)&&($op['action']??'')==='replace'&&(int)($op['index']??-1)===$targetIndex);
-            if($transformRequested && $desiredKind && !$hasReplace){
+            if($transformRequested && $desiredKind && !$hasReplace && !$universalBackgroundIntent){
                 $currentType=Str::lower((string)($blocks[$targetIndex]['type']??''));
                 $currentMeta=SparkCatalog::find((string)($blocks[$targetIndex]['type']??''))??[];
                 $currentCategory=Str::lower((string)($currentMeta['category']??''));
@@ -2810,12 +3046,10 @@ For the compatible premium Services family (services_bento_premium, services_edi
         // deterministically pick a compatible registered alternative, exclude the
         // current Spark, prefer a different layout family, and preserve site theme.
         if($scope==='section' && isset($blocks[$targetIndex])){
-            $genericRedesign=Str::contains($requestLower,[
-                'redesign this section','redesign the section','redesign this','another layout','different layout',
-                'new layout','make this section better','make this better','improve this section',
-                'make this section more premium','make this more premium','make this section modern',
-                'make this more modern','make this section polished','make this more polished',
-                'refresh this section','rework this section','restyle this section'
+            $genericRedesign=Str::contains($lower,[
+                'redesign this section','redesign the section','redesign this','rebuild this section',
+                'rebuild the section','another layout','different layout','new layout','change this layout',
+                'change the section layout'
             ]);
 
             if($genericRedesign){
@@ -2834,7 +3068,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
                         && !empty($spark['key'])
                         && ($spark['key']??'')!==$currentKey
                         && $schemaKeys->has((string)($spark['key']??'')))
-                    ->map(function($spark) use($category,$intent,$industry,$position,$currentLayouts,$requestLower){
+                    ->map(function($spark) use($category,$intent,$industry,$position,$currentLayouts,$lower){
                         $score=0;
                         $sparkCategory=Str::lower((string)($spark['category']??''));
 
@@ -2858,13 +3092,13 @@ For the compatible premium Services family (services_bento_premium, services_edi
                         elseif($layoutOverlap>0) $score-=45;
 
                         $style=collect($spark['style']??[])->map(fn($v)=>Str::lower((string)$v))->implode(' ');
-                        if(Str::contains($requestLower,'premium') && Str::contains($style,['premium','editorial','cinematic','luxury'])) $score+=55;
-                        if(Str::contains($requestLower,'modern') && Str::contains($style,['modern','clean','editorial','minimal'])) $score+=38;
-                        if(Str::contains($requestLower,'visually interesting') && Str::contains($style,['premium','editorial','bold','modern'])) $score+=30;
-                        if(Str::contains($requestLower,'polished') && Str::contains($style,['premium','clean','editorial'])) $score+=28;
+                        if(Str::contains($lower,'premium') && Str::contains($style,['premium','editorial','cinematic','luxury'])) $score+=55;
+                        if(Str::contains($lower,'modern') && Str::contains($style,['modern','clean','editorial','minimal'])) $score+=38;
+                        if(Str::contains($lower,'visually interesting') && Str::contains($style,['premium','editorial','bold','modern'])) $score+=30;
+                        if(Str::contains($lower,'polished') && Str::contains($style,['premium','clean','editorial'])) $score+=28;
 
                         // Stable tie-break, while category/layout remain dominant.
-                        $score+=(abs(crc32(($spark['key']??'').'|'.$requestLower))%19);
+                        $score+=(abs(crc32(($spark['key']??'').'|'.$lower))%19);
                         $spark['_luna_redesign_score']=$score;
                         return $spark;
                     })
@@ -2879,21 +3113,21 @@ For the compatible premium Services family (services_bento_premium, services_edi
                     // This prevents generic fixed-order fallback from repeatedly choosing
                     // Editorial/Showcase regardless of what the user actually asked for.
                     $semanticServiceKey=null;
-                    if(Str::contains($requestLower,['contrast','high-contrast','high contrast','bold','performance-focused','performance focused','dark'])){
+                    if(Str::contains($lower,['contrast','high-contrast','high contrast','bold','performance-focused','performance focused','dark'])){
                         $semanticServiceKey='services_contrast_premium';
-                    } elseif(Str::contains($requestLower,['minimal luxury','quiet luxury','minimal and luxurious','minimal','luxurious','whitespace-heavy','whitespace heavy'])){
+                    } elseif(Str::contains($lower,['minimal luxury','quiet luxury','minimal and luxurious','minimal','luxurious','whitespace-heavy','whitespace heavy'])){
                         $semanticServiceKey='services_minimal_luxury';
-                    } elseif(Str::contains($requestLower,['editorial','magazine','asymmetric','asymmetrical'])){
+                    } elseif(Str::contains($lower,['editorial','magazine','asymmetric','asymmetrical'])){
                         $semanticServiceKey='services_editorial_premium';
-                    } elseif(Str::contains($requestLower,['split layout','split layouts','alternating split','alternating','split service','split services'])){
+                    } elseif(Str::contains($lower,['split layout','split layouts','alternating split','alternating','split service','split services'])){
                         $semanticServiceKey='services_split_premium';
-                    } elseif(Str::contains($requestLower,['3-column','3 column','three-column','three column','grid premium','service grid','services grid'])){
+                    } elseif(Str::contains($lower,['3-column','3 column','three-column','three column','grid premium','service grid','services grid'])){
                         $semanticServiceKey='services_grid_premium';
-                    } elseif(Str::contains($requestLower,['featured service','feature one service','one featured service','prominently featured','supporting service cards','supporting cards'])){
+                    } elseif(Str::contains($lower,['featured service','feature one service','one featured service','prominently featured','supporting service cards','supporting cards'])){
                         $semanticServiceKey='services_feature_premium';
-                    } elseif(Str::contains($requestLower,['large imagery','large image','large automotive image','more visual','image-led','image led','showcase'])){
+                    } elseif(Str::contains($lower,['large imagery','large image','large automotive image','more visual','image-led','image led','showcase'])){
                         $semanticServiceKey='services_showcase_premium';
-                    } elseif(Str::contains($requestLower,['bento','varied card sizes','varied cards'])){
+                    } elseif(Str::contains($lower,['bento','varied card sizes','varied cards'])){
                         $semanticServiceKey='services_bento_premium';
                     }
 
@@ -3430,6 +3664,14 @@ For the compatible premium Services family (services_bento_premium, services_edi
 
         $backgroundApplied=false;
         $backgroundError=null;
+        if($scope==='section' && isset($next[$targetIndex]) && is_array($next[$targetIndex])){
+            $backgroundIntent=$this->universalBackgroundIntentFlags($prompt,$next[$targetIndex]);
+            $backgroundRemove=(bool)$backgroundIntent['remove'];
+            $backgroundDarker=(bool)$backgroundIntent['darker'];
+            $backgroundLighter=(bool)$backgroundIntent['lighter'];
+            $backgroundKind=$backgroundIntent['kind'];
+            $universalBackgroundIntent=(bool)$backgroundIntent['intent'];
+        }
         if($scope==='section' && $universalBackgroundIntent && isset($next[$targetIndex])){
             $resolvedState=$this->universalBackgroundState(
                 $namedTargetOverrodeSelection ? '' : (string)($validated['target_resolved_theme']??''),
@@ -3439,11 +3681,13 @@ For the compatible premium Services family (services_bento_premium, services_edi
             $strength=$backgroundDarker?'darker':($backgroundLighter?'lighter':null);
             $result=$this->applyUniversalBackgroundIntent(
                 $pageGeneration,
+                $lunaVideos,
                 $prompt,
                 $next[$targetIndex],
                 $resolvedState,
                 $backgroundRemove,
-                $strength
+                $strength,
+                $backgroundKind
             );
             $next[$targetIndex]=$result['block'];
             $backgroundApplied=(bool)$result['success'];
@@ -3454,6 +3698,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
                     'index'=>$targetIndex,
                     'state'=>$resolvedState,
                     'strength'=>$strength?:'balanced',
+                    'media_kind'=>$result['kind']??$backgroundKind,
                 ];
             }
         }
@@ -4522,6 +4767,412 @@ For the compatible premium Services family (services_bento_premium, services_edi
         return null;
     }
 
+    public function popupChat(
+        Request $request,
+        Website $website,
+        LunaIntentGateway $intentGateway,
+        LunaCreditPricingService $lunaPricing,
+        CreditService $credits,
+        \App\Services\LunaSparkSchemaEditorService $sparkSchemaEditor,
+        \App\Services\LunaAiFlexSparkService $aiFlex,
+        LunaSmartSparkEditingService $smartSparkEditing,
+        LunaSectionImageService $sectionImages,
+    ) {
+        $this->authorize('update', $website);
+
+        $validated = $request->validate([
+            'prompt' => ['required', 'string', 'max:6000'],
+            'conversation' => ['nullable', 'string', 'max:180000'],
+            'blocks' => ['required', 'string', 'max:350000'],
+            'theme' => ['nullable', 'string', 'max:12000'],
+            'target_index' => ['required', 'integer', 'min:0', 'max:100'],
+            'element_context' => ['nullable', 'string', 'max:30000'],
+            'current_page_id' => ['nullable', 'integer', 'min:1'],
+            'creation_source' => ['nullable', 'in:blank_luna'],
+            'ai_flex_mode' => ['nullable', 'boolean'],
+            'skip_spark_match' => ['nullable', 'boolean'],
+        ]);
+
+        $prompt = trim((string) $validated['prompt']);
+        $blocks = json_decode($validated['blocks'], true);
+        $elementContext = json_decode((string) ($validated['element_context'] ?? '{}'), true);
+        $theme = json_decode((string) ($validated['theme'] ?? '{}'), true);
+        $conversation = $this->lunaBuilderConversation((string) ($validated['conversation'] ?? ''));
+        $targetIndex = (int) $validated['target_index'];
+
+        if (! is_array($blocks) || ! isset($blocks[$targetIndex]) || ! is_array($blocks[$targetIndex])) {
+            throw ValidationException::withMessages(['target_index' => 'The selected popup section is no longer available.']);
+        }
+        if (! is_array($elementContext)) $elementContext = [];
+        if (! is_array($theme)) $theme = [];
+
+        $current = $blocks[$targetIndex];
+        $sparkType = (string) ($current['type'] ?? '');
+        $blankLunaAiFlex = ($validated['creation_source'] ?? null) === 'blank_luna'
+            && (bool) ($validated['ai_flex_mode'] ?? false)
+            && (bool) ($validated['skip_spark_match'] ?? false)
+            && $sparkType === 'luna_custom_section'
+            && (($current['ai_flex']['source'] ?? null) === 'blank')
+            && (($current['ai_flex']['mode'] ?? null) === 'ai_flex');
+        $routeContext = [
+            'surface' => 'contextual_popup',
+            'assistant_surface' => 'contextual_popup',
+            'target_scope' => 'section',
+            'target_index' => $targetIndex,
+            'selected_spark' => ['index' => $targetIndex, 'type' => $sparkType],
+            'page_sparks' => [['index' => $targetIndex, 'type' => $sparkType, 'label' => $sparkType]],
+            'element_context' => $elementContext,
+            'conversation' => $conversation,
+        ];
+        $intent = $intentGateway->route($prompt, [], $routeContext);
+
+        if (($intent['intent'] ?? 'chat') !== 'action') {
+            return response()->json([
+                'mode' => 'reply',
+                'reply' => $blankLunaAiFlex
+                    ? 'Tell me what you want this new section to contain and how it should be arranged—for example, “two columns with an image left and heading, text, and button right.”'
+                    : 'I can help edit this selected section. Tell me the exact content, image, spacing, color, typography, or button change you want.',
+                'blocks' => $blocks,
+                'applied_operations' => [],
+                'credit_cost' => 0,
+                'credit_balance' => $request->user() ? $credits->balance($request->user()) : null,
+                'popup_api' => true,
+                'verified_diff' => false,
+            ]);
+        }
+
+        $redesignAiFlex = $blankLunaAiFlex || (bool) preg_match(
+            '/\b(?:redesign|rebuild|reimagine|from\s+scratch|custom\s+(?:design|layout)|unique\s+(?:design|layout)|completely\s+(?:different|new))\b/i',
+            $prompt,
+        );
+        $imageInsertionIntent = $sectionImages->isInsertionIntent($prompt);
+        $imageMode = $imageInsertionIntent ? $sectionImages->mode($prompt) : null;
+        $imageGenerationCost = $imageMode === 'generate' ? AiImageController::COST : 0;
+        $plannedAction = $redesignAiFlex ? 'replace' : 'edit';
+        $pricing = $lunaPricing->estimate($prompt, [['action' => $plannedAction, 'index' => $targetIndex]], 'section');
+        $creditCost = (int) ($pricing['credits'] ?? 5);
+        $requiredCredits = $creditCost + $imageGenerationCost;
+        $user = $request->user();
+        if ($requiredCredits > 0 && $user && ! $credits->canAfford($user, $requiredCredits)) {
+            return response()->json([
+                'message' => $imageGenerationCost > 0
+                    ? "This Luna popup change needs {$creditCost} Luna credits plus {$imageGenerationCost} image-generation credits ({$requiredCredits} total), but your balance is too low."
+                    : "This Luna popup change needs {$creditCost} credits, but your balance is too low.",
+                'credit_cost' => $requiredCredits,
+                'luna_edit_cost' => $creditCost,
+                'image_generation_cost' => $imageGenerationCost,
+                'requires_credits' => true,
+            ], 422);
+        }
+
+        if ($redesignAiFlex) {
+            try {
+                $generationSource = $blankLunaAiFlex ? [] : $current;
+                $generationContext = [
+                        'section_count' => count($blocks),
+                        'target_index' => $targetIndex,
+                        'popup' => true,
+                        'creation_source' => $blankLunaAiFlex ? 'blank_luna' : 'existing_spark',
+                        'ai_flex_mode' => $blankLunaAiFlex,
+                        'skip_spark_match' => $blankLunaAiFlex,
+                    ];
+                $flexBlock = $blankLunaAiFlex
+                    ? $aiFlex->generateStaged($prompt, $theme, $generationContext)
+                    : $aiFlex->generate($prompt, $theme, $generationContext, $generationSource);
+                if ($blankLunaAiFlex) {
+                    // Keep the draft identity stable so Batch 3 can save the exact
+                    // applied section into Luna Sparks without generating a second copy.
+                    $flexBlock['custom_spark_key'] = (string) ($current['custom_spark_key'] ?? $flexBlock['custom_spark_key'] ?? ('luna-blank-'.Str::uuid()));
+                    $flexBlock['custom_spark_saved'] = false;
+                    $flexBlock['source_type'] = 'blank_luna';
+                    $flexBlock['ai_flex'] = array_merge(is_array($flexBlock['ai_flex'] ?? null) ? $flexBlock['ai_flex'] : [], [
+                        'source' => 'blank',
+                        'mode' => 'ai_flex',
+                        'skip_spark_match' => true,
+                        'generated' => true,
+                    ]);
+                }
+                $resolvedFlexImage = null;
+                if ($imageInsertionIntent && $sectionImages->newImageNeedsSource($current, $flexBlock)) {
+                    // Ground stock search in the existing page copy first. The image
+                    // service then falls back to the website industry and, finally,
+                    // neutral office photography when a narrower query has no match.
+                    $pageCopy = collect($blocks)->flatMap(function ($block) {
+                        if (! is_array($block)) return [];
+                        return collect(['eyebrow','heading','heading_accent_text','title','text','description','semantic_type','category'])
+                            ->map(fn ($key) => trim(strip_tags((string) ($block[$key] ?? ''))))
+                            ->filter()
+                            ->values()
+                            ->all();
+                    })->take(18)->implode(' ');
+                    $imageContext = $flexBlock;
+                    if ($pageCopy !== '') $imageContext['description'] = $pageCopy;
+                    $resolvedFlexImage = $sectionImages->resolve($website, $user, $prompt, $imageContext);
+                    if (($resolvedFlexImage['ok'] ?? false) !== true || blank($resolvedFlexImage['url'] ?? null)) {
+                        return response()->json([
+                            'mode' => 'reply',
+                            'reply' => ($resolvedFlexImage['error'] ?? null) ?: 'Luna could not resolve a usable image, so the popup was left unchanged and no credits were charged.',
+                            'blocks' => $blocks,
+                            'applied_operations' => [],
+                            'credit_cost' => 0,
+                            'credit_balance' => $user ? $credits->balance($user) : null,
+                            'popup_api' => true,
+                            'popup_action' => 'blank_luna_ai_flex',
+                            'verified_diff' => false,
+                            'rejection_reason' => 'image_provider_failed',
+                        ]);
+                    }
+                    $hydratedFlex = $sectionImages->hydrateNewImages(
+                        $current,
+                        $flexBlock,
+                        (string) $resolvedFlexImage['url'],
+                        trim((string) ($flexBlock['heading'] ?? $website->name ?? '')),
+                    );
+                    if (($hydratedFlex['changed'] ?? false) !== true) {
+                        return response()->json([
+                            'mode' => 'reply',
+                            'reply' => 'Luna found an image but could not attach it to the requested column. Nothing was applied and no credits were charged.',
+                            'blocks' => $blocks,
+                            'applied_operations' => [],
+                            'credit_cost' => 0,
+                            'credit_balance' => $user ? $credits->balance($user) : null,
+                            'popup_api' => true,
+                            'popup_action' => 'blank_luna_ai_flex',
+                            'verified_diff' => false,
+                            'rejection_reason' => 'image_hydration_failed',
+                        ]);
+                    }
+                    $flexBlock = $hydratedFlex['block'];
+                }
+                $changed = hash('sha256', json_encode($current, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '')
+                    !== hash('sha256', json_encode($flexBlock, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '');
+                if (! $changed || ($flexBlock['type'] ?? '') !== 'luna_custom_section') {
+                    return response()->json([
+                        'mode' => 'reply',
+                        'reply' => 'AI Flex could not produce a verified redesign, so the popup was left unchanged and no credits were charged.',
+                        'blocks' => $blocks,
+                        'applied_operations' => [],
+                        'credit_cost' => 0,
+                        'credit_balance' => $user ? $credits->balance($user) : null,
+                        'popup_api' => true,
+                        'popup_action' => 'redesign_ai_flex',
+                        'verified_diff' => false,
+                    ]);
+                }
+                $blocks[$targetIndex] = $flexBlock;
+                if ($creditCost > 0 && $user) {
+                    $credits->consume($user, $creditCost, 'Luna popup AI Flex redesign', $website, 'luna-popup-flex-'.Str::uuid(), [
+                        'category' => 'ai', 'target_index' => $targetIndex, 'source_spark_type' => $sparkType,
+                    ]);
+                }
+                return response()->json([
+                    'mode' => 'update',
+                    'reply' => $blankLunaAiFlex
+                        ? ($resolvedFlexImage
+                            ? 'Built and verified the requested structure, added the content, and placed a related Unsplash image in the popup preview.'
+                            : 'Built and verified the requested structure first, then added the content. The result is ready in the popup preview.')
+                        : 'AI Flex redesign applied and verified in the popup preview.',
+                    'blocks' => $blocks,
+                    'applied_operations' => [[
+                        'action' => 'redesign_ai_flex', 'index' => $targetIndex,
+                        'source_spark_type' => $sparkType, 'spark_type' => 'luna_custom_section', 'verified' => true,
+                    ]],
+                    'credit_cost' => $creditCost,
+                    'credit_balance' => $user ? $credits->balance($user) : null,
+                    'popup_api' => true,
+                    'popup_action' => $blankLunaAiFlex ? 'blank_luna_ai_flex' : 'redesign_ai_flex',
+                    'ai_flex_source' => $blankLunaAiFlex ? 'blank_luna' : 'redesign',
+                    'spark_match_skipped' => $blankLunaAiFlex,
+                    'verified_diff' => true,
+                ]);
+            } catch (\Throwable $exception) {
+                Log::warning('[LunaPopup] AI Flex redesign failed', [
+                    'website_id' => $website->id, 'target_index' => $targetIndex, 'error' => $exception->getMessage(),
+                ]);
+                return response()->json([
+                    'mode' => 'reply',
+                    'reply' => 'AI Flex could not complete this redesign. Nothing was applied and no credits were charged.',
+                    'blocks' => $blocks,
+                    'applied_operations' => [],
+                    'credit_cost' => 0,
+                    'credit_balance' => $user ? $credits->balance($user) : null,
+                    'popup_api' => true,
+                    'popup_action' => 'redesign_ai_flex',
+                    'verified_diff' => false,
+                ]);
+            }
+        }
+
+        $cardinality = $smartSparkEditing->applyCardinalityIntent($prompt, $current);
+        if (is_array($cardinality) && ($cardinality['action'] ?? '') !== 'cardinality_no_change') {
+            $blocks[$targetIndex] = $cardinality['block'];
+            if ($creditCost > 0 && $user) {
+                $credits->consume($user, $creditCost, 'Luna popup card count edit', $website, 'luna-popup-count-'.Str::uuid(), [
+                    'category' => 'ai', 'spark_type' => $sparkType, 'target_index' => $targetIndex,
+                ]);
+            }
+            return response()->json([
+                'mode' => 'update',
+                'reply' => 'Card count updated and verified in the popup preview.',
+                'blocks' => $blocks,
+                'applied_operations' => [[
+                    'action' => $cardinality['action'], 'index' => $targetIndex,
+                    'collection' => $cardinality['collection'] ?? null,
+                    'count_before' => $cardinality['count_before'] ?? null,
+                    'count_after' => $cardinality['count_after'] ?? null,
+                    'verified' => true,
+                ]],
+                'credit_cost' => $creditCost,
+                'credit_balance' => $user ? $credits->balance($user) : null,
+                'popup_api' => true, 'popup_action' => 'cardinality', 'verified_diff' => true,
+            ]);
+        }
+
+        $result = $sparkSchemaEditor->edit(
+            $prompt,
+            $current,
+            ['index' => $targetIndex, 'type' => $sparkType, 'label' => $sparkType],
+            $elementContext,
+            $conversation,
+        );
+        $changed = ($result['ok'] ?? false) === true && ($result['changed'] ?? false) === true;
+
+        if (! $changed) {
+            return response()->json([
+                'mode' => 'reply',
+                'reply' => 'I could not verify a visible change in this popup, so nothing was applied and no credits were charged.',
+                'blocks' => $blocks,
+                'applied_operations' => [],
+                'credit_cost' => 0,
+                'credit_balance' => $user ? $credits->balance($user) : null,
+                'popup_api' => true,
+                'verified_diff' => false,
+                'rejection_reason' => $result['reason'] ?? 'empty_diff',
+            ]);
+        }
+
+        $resolvedImage = null;
+        if ($imageInsertionIntent) {
+            if (! $sectionImages->hasNewImageSlot($current, $result['block'])) {
+                return response()->json([
+                    'mode' => 'reply',
+                    'reply' => 'I understood the image request, but I could not verify a new image slot in this section. The popup was left unchanged and no credits were charged.',
+                    'blocks' => $blocks,
+                    'applied_operations' => [],
+                    'credit_cost' => 0,
+                    'credit_balance' => $user ? $credits->balance($user) : null,
+                    'popup_api' => true,
+                    'popup_action' => 'insert_image',
+                    'image_mode' => $imageMode,
+                    'verified_diff' => false,
+                    'rejection_reason' => 'image_slot_not_created',
+                ]);
+            }
+
+            if ($sectionImages->newImageNeedsSource($current, $result['block'])) {
+                $resolvedImage = $sectionImages->resolve($website, $user, $prompt, $current);
+                if (($resolvedImage['ok'] ?? false) !== true || blank($resolvedImage['url'] ?? null)) {
+                    return response()->json([
+                        'mode' => 'reply',
+                        'reply' => ($resolvedImage['error'] ?? null) ?: 'Luna could not resolve a usable image, so the popup was left unchanged and no credits were charged.',
+                        'blocks' => $blocks,
+                        'applied_operations' => [],
+                        'credit_cost' => 0,
+                        'credit_balance' => $user ? $credits->balance($user) : null,
+                        'popup_api' => true,
+                        'popup_action' => 'insert_image',
+                        'image_mode' => $imageMode,
+                        'verified_diff' => false,
+                        'rejection_reason' => 'image_provider_failed',
+                    ]);
+                }
+
+                $hydrated = $sectionImages->hydrateNewImages(
+                    $current,
+                    $result['block'],
+                    (string) $resolvedImage['url'],
+                    trim((string) ($current['heading'] ?? $current['title'] ?? $website->name ?? ''))
+                );
+                if (($hydrated['changed'] ?? false) !== true) {
+                    return response()->json([
+                        'mode' => 'reply',
+                        'reply' => 'Luna found an image, but could not attach it to the new image slot safely. The popup was left unchanged and no credits were charged.',
+                        'blocks' => $blocks,
+                        'applied_operations' => [],
+                        'credit_cost' => 0,
+                        'credit_balance' => $user ? $credits->balance($user) : null,
+                        'popup_api' => true,
+                        'popup_action' => 'insert_image',
+                        'image_mode' => $imageMode,
+                        'verified_diff' => false,
+                        'rejection_reason' => 'image_hydration_failed',
+                    ]);
+                }
+                $result['block'] = $hydrated['block'];
+                $result['diff']['image_asset'] = [
+                    'mode' => $imageMode,
+                    'query' => $resolvedImage['query'] ?? null,
+                    'hydrated_count' => $hydrated['hydrated_count'] ?? 1,
+                ];
+            } else {
+                $imageMode = 'direct';
+                $result['diff']['image_asset'] = ['mode' => 'direct', 'hydrated_count' => 0];
+            }
+        }
+
+        $blocks[$targetIndex] = $result['block'];
+        if ($creditCost > 0 && $user) {
+            $credits->consume($user, $creditCost, 'Luna popup Spark edit', $website, 'luna-popup-'.Str::uuid(), [
+                'category' => 'ai',
+                'spark_type' => $sparkType,
+                'target_index' => $targetIndex,
+            ]);
+        }
+        $actualImageGenerationCost = ($imageMode === 'generate' && is_array($resolvedImage) && ($resolvedImage['ok'] ?? false) === true)
+            ? AiImageController::COST
+            : 0;
+        if ($actualImageGenerationCost > 0 && $user) {
+            $credits->consume($user, $actualImageGenerationCost, 'Luna popup AI image generation', $website, 'luna-popup-image-'.Str::uuid(), [
+                'category' => 'ai',
+                'spark_type' => $sparkType,
+                'target_index' => $targetIndex,
+                'image_mode' => $imageMode,
+                'image_query' => $resolvedImage['query'] ?? null,
+            ]);
+        }
+
+        $popupReply = $imageInsertionIntent
+            ? ($imageMode === 'generate'
+                ? 'Generated a custom image and placed it in the popup preview.'
+                : ($imageMode === 'unsplash'
+                    ? 'Added a related Unsplash image in the popup preview.'
+                    : 'Added the supplied image in the popup preview.'))
+            : 'Applied and verified in the popup preview.';
+
+        return response()->json([
+            'mode' => 'update',
+            'reply' => $popupReply,
+            'blocks' => $blocks,
+            'applied_operations' => [[
+                'action' => $imageInsertionIntent ? 'insert_section_image' : ((($result['protocol'] ?? '') === 'structural_actions_v1') ? 'spark_structural_edit' : 'spark_full_schema_edit'),
+                'index' => $targetIndex,
+                'spark_type' => $sparkType,
+                'diff' => $result['diff'] ?? [],
+                'structural_operations' => $result['operations'] ?? [],
+                'verified' => true,
+            ]],
+            'credit_cost' => $creditCost + $actualImageGenerationCost,
+            'luna_edit_cost' => $creditCost,
+            'image_generation_cost' => $actualImageGenerationCost,
+            'credit_balance' => $user ? $credits->balance($user) : null,
+            'popup_api' => true,
+            'popup_action' => $imageInsertionIntent ? 'insert_image' : 'spark_edit',
+            'image_mode' => $imageMode,
+            'image_query' => is_array($resolvedImage) ? ($resolvedImage['query'] ?? null) : null,
+            'verified_diff' => true,
+        ]);
+    }
+
     public function pageChat(
         Request $request,
         Website $website,
@@ -4553,6 +5204,11 @@ For the compatible premium Services family (services_bento_premium, services_edi
         \App\Services\LunaContextStateService $contextState,
         LunaInspectService $inspectService,
         LunaSiteAdminActionService $siteAdminActions,
+        \App\Services\LunaGlobalThemeActionService $globalThemeActions,
+        \App\Services\LunaHeaderFooterActionService $headerFooterActions,
+        \App\Services\LunaNavigationActionService $navigationActions,
+        \App\Services\LunaPageActionService $pageActions,
+        \App\Services\LunaPublishActionService $publishActions,
         \App\Services\LunaContentCommerceActionService $contentCommerceActions,
         \App\Services\LunaAiFlexSparkService $aiFlex,
         \App\Services\LunaFullPageComposerService $fullPageComposer
@@ -4577,12 +5233,14 @@ For the compatible premium Services family (services_bento_premium, services_edi
             'section_layout'=>['nullable','string','max:12000'],
             'components'=>['nullable','string','max:12000'],
             'site_memory'=>['nullable','string','max:24000'],
-            'target_scope'=>['nullable','in:page,section,header,footer'],
+            'assistant_surface'=>['nullable','in:global_builder,contextual_popup'],
+            'target_scope'=>['nullable','in:page,section,header,footer,theme'],
             'target_index'=>['nullable','integer','min:0','max:100'],
             'element_context'=>['nullable','string','max:30000'],
             'target_item_index'=>['nullable','integer','min:0','max:100'],
             'target_item_mode'=>['nullable','in:repeater_item'],
             'target_collection_key'=>['nullable','string','max:80'],
+            'target_collection_path'=>['nullable','string','max:320'],
             'target_resolved_theme'=>['nullable','string','max:40'],
             'confirmed'=>['nullable','boolean'],
             'pending_action_token'=>['nullable','string','max:100'],
@@ -4624,14 +5282,23 @@ For the compatible premium Services family (services_bento_premium, services_edi
         if(!isset($elementContext['collectionKey']) && !empty($validated['target_collection_key'])){
             $elementContext['collectionKey']=(string)$validated['target_collection_key'];
         }
+        if(!isset($elementContext['collectionPath']) && !empty($validated['target_collection_path'])){
+            $elementContext['collectionPath']=(string)$validated['target_collection_path'];
+        }
         if(!is_array($blocks)) {
             throw ValidationException::withMessages(['blocks'=>'The current page could not be prepared for Luna.']);
         }
         $siteMemory=json_decode((string)($validated['site_memory']??'{}'),true);
         if(!is_array($siteMemory))$siteMemory=[];
 
+        $assistantSurface=(string)($validated['assistant_surface']??'global_builder');
         $scope=(string)($validated['target_scope']??'page');
         $targetIndex=$scope==='section' ? (int)($validated['target_index']??-1) : -1;
+        if($assistantSurface==='global_builder'){
+            $scope='page';
+            $targetIndex=-1;
+            $elementContext=[];
+        }
         $scopeResolution=$scopeIntelligence->resolve($originalUserPrompt,$scope,$elementContext);
         $scopeContract=$scopeIntelligence->plannerDirective($scopeResolution);
         // Hotfix: pageChat must initialize the smart-edit planner contract
@@ -4672,6 +5339,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
         }else{
             $routeContext=[
                 'surface'=>'builder',
+                'assistant_surface'=>$assistantSurface,
                 'ui_scope'=>$scope,
                 'target_index'=>$targetIndex,
                 'has_blocks'=>count($blocks)>0,
@@ -4701,6 +5369,55 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 : ['intent'=>'chat'];
         }
 
+        // Batch 3: Theme popup requests are intentionally isolated from the Builder.
+        // A concrete HEX request is still an ACTION even when the conversational
+        // router interprets the wrapper text ("THEME-ONLY PREVIEW REQUEST") as chat.
+        // Force the bounded theme contract so the popup receives a generated
+        // brand_color_family candidate without mutating Builder state.
+        if (
+            !$resumePendingPlan
+            && $assistantSurface === 'contextual_popup'
+            && $scope === 'theme'
+            && preg_match('/#[0-9a-fA-F]{6}\b/', $originalUserPrompt)
+        ) {
+            $canonicalIntent = [
+                'intent' => 'action',
+                'execution_allowed' => true,
+                'domain' => 'theme',
+                'operation' => 'update',
+                'leaf_operation' => 'brand_theme',
+                'scope' => 'theme',
+                'routing' => [
+                    'menu_scope' => 'theme',
+                    'scope_action' => 'brand_theme',
+                ],
+            ];
+        }
+
+        // Batch 2: vague selected-section visual polish is a schema edit, not
+        // a structural redesign. Lock the existing Spark before any legacy
+        // structural refinement can reinterpret "more premium" as replacement.
+        if(!$resumePendingPlan && $scope==='section' && isset($blocks[$targetIndex])
+            && $this->lunaVagueSelectedSparkPolishIntent($prompt)){
+            $lockedBlock=(array)$blocks[$targetIndex];
+            $canonicalIntent=array_replace_recursive(is_array($canonicalIntent)?$canonicalIntent:[],[
+                'intent'=>'action',
+                'execution_allowed'=>true,
+                'domain'=>'design',
+                'operation'=>'update',
+                'leaf_operation'=>'spark_style',
+                'scope'=>'section',
+                'routing'=>[
+                    'menu_scope'=>'sparks',
+                    'spark_action'=>'edit_spark',
+                    'spark_target'=>[
+                        'index'=>$targetIndex,
+                        'type'=>(string)($lockedBlock['type']??''),
+                    ],
+                ],
+            ]);
+        }
+
         // API 1 owns the chat | action boundary. Legacy structural detection may
         // refine an already-routed ACTION, but it must never promote CHAT into
         // ACTION behind the router's back.
@@ -4713,7 +5430,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
             $structuralOperation=Str::contains($structuralLower,['move ','move this','reorder']) ? 'move'
                 : (Str::contains($structuralLower,['add ','insert ','create ']) ? 'add'
                 : (Str::contains($structuralLower,['remove ','delete ']) ? 'delete'
-                : (Str::contains($structuralLower,['redesign','make this section better','improve this section','polish this section','refresh this section','rework this section','restyle this section']) ? 'redesign' : 'replace')));
+                : (Str::contains($structuralLower,['redesign','rebuild this section','rebuild the section']) ? 'redesign' : 'replace')));
             $canonicalIntent=array_merge(is_array($canonicalIntent)?$canonicalIntent:[],[
                 'intent'=>'action',
                 'execution_allowed'=>true,
@@ -4721,6 +5438,25 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'operation'=>$structuralOperation,
                 'scope'=>'section',
             ]);
+        }
+        if(!$resumePendingPlan && $assistantSurface==='contextual_popup' && (($canonicalIntent['intent']??'chat')==='action')){
+            $menuScope=(string)data_get($canonicalIntent,'routing.menu_scope','');
+            $expectedMenuScope=$scope==='header'?'header':($scope==='footer'?'footer':($scope==='theme'?'theme':'sparks'));
+            if($menuScope!=='' && $menuScope!==$expectedMenuScope){
+                return response()->json([
+                    'reply'=>'This editor is scoped to the selected '.($scope==='section'?'section':'item').'. Use the lower-right Luna for page-wide or site-wide changes.',
+                    'mode'=>'grounded_info',
+                    'canonical_intent'=>['intent'=>'chat','routing'=>['assistant_surface'=>'contextual_popup','blocked_menu_scope'=>$menuScope]],
+                    'credit_cost'=>0,
+                    'credit_balance'=>$user ? $credits->balance($user) : null,
+                    'blocks'=>$blocks,
+                    'header'=>is_array($header)?$header:[],
+                    'footer'=>is_array($footer)?$footer:[],
+                    'site_memory'=>$siteMemory,
+                    'pending_action'=>false,
+                    'applied_operations'=>[],
+                ]);
+            }
         }
         $siteMemory=$intentGateway->memory($siteMemory,$canonicalIntent);
         $siteMemory=$contextState->rememberRouted($siteMemory,$canonicalIntent);
@@ -4883,6 +5619,11 @@ For the compatible premium Services family (services_bento_premium, services_edi
 
         // Canonical mutation intent bundle — initialize before any downstream branch.
         $mutationPrompt=$normalizedPrompt;
+        $initialBackgroundIntent=$this->universalBackgroundIntentFlags(
+            (string)$validated['prompt'],
+            $scope==='section' && isset($blocks[$targetIndex]) && is_array($blocks[$targetIndex]) ? $blocks[$targetIndex] : null
+        );
+        $universalBackgroundIntent=(bool)($initialBackgroundIntent['intent']??false);
         $explicitMediaMutation=Str::contains($mutationPrompt,[
             'replace image','replace the image','change image','change the image',
             'replace photo','change photo','replace media','change media',
@@ -4892,10 +5633,8 @@ For the compatible premium Services family (services_bento_premium, services_edi
             'use a different photo','use different photo','refresh image','refresh photo',
             'thumbnail','poster'
         ]);
-        $universalBackgroundIntent=Str::contains($mutationPrompt,[
-            'background image','section background','background photo','background media',
-            'change background','replace background','remove background','clear background'
-        ]);
+        // Batch 3: section background media intent is resolved once by the
+        // shared universal media classifier above (image, video, remove, overlay).
         $contentRewriteIntent=Str::contains($mutationPrompt,[
             'rewrite','reword','rewrite the content','rewrite content','rewrite the copy','rewrite copy',
             'rewrite the text','rewrite text','make the copy','shorten the copy','shorter copy',
@@ -5094,6 +5833,200 @@ For the compatible premium Services family (services_bento_premium, services_edi
             }
         }
 
+        // Batch 6 Action Contracts: publish intent is classified by Luna, while
+        // execution delegates to Cosmic's existing publish/preview/export workflows.
+        // No AI credit is charged for the deterministic backend action itself.
+        if(!$resumePendingPlan && (string)data_get($canonicalIntent,'routing.menu_scope')==='publish'){
+            $currentPublishPage=null;
+            if(!empty($validated['current_page_id'])){
+                $currentPublishPage=$website->pages()->whereKey((int)$validated['current_page_id'])->first();
+            }
+            $publishResult=$publishActions->apply($website,$request,$prompt,$canonicalIntent,$currentPublishPage);
+            if(is_array($publishResult) && ($publishResult['handled']??false)){
+                $ok=(bool)($publishResult['success']??false);
+                $verification=$executionVerification->verify(
+                    $publishResult['operations']??[],
+                    $publishResult['operations']??[],
+                    $ok
+                );
+                return response()->json(array_filter([
+                    'reply'=>$naturalReplyFromFacts([
+                        'action'=>(string)($publishResult['scope_action']??'publish').' action',
+                        'action_completed'=>$ok,
+                        'execution_verification'=>$verification,
+                        'constraint'=>$ok?null:($publishResult['message']??'The publish action could not be completed.'),
+                    ]),
+                    'mode'=>'reply','canonical_intent'=>$canonicalIntent,'execution_verification'=>$verification,
+                    'credit_cost'=>0,'credit_balance'=>$user ? $credits->balance($user) : null,
+                    'blocks'=>$blocks,'header'=>is_array($header)?$header:[],'footer'=>is_array($footer)?$footer:[],
+                    'site_memory'=>$siteMemory,'pending_action'=>false,
+                    'applied_operations'=>$publishResult['operations']??[],
+                    'publish_result'=>$publishResult['publish_result']??null,
+                    'publish_status'=>$publishResult['publish_status']??null,
+                    'preview_url'=>$publishResult['preview_url']??null,
+                    'export_url'=>$publishResult['export_url']??null,
+                    'page'=>$publishResult['page']??null,
+                    'published_page_ids'=>$publishResult['published_page_ids']??null,
+                ],fn($v)=>$v!==null),$ok?200:(int)($publishResult['status_code']??422));
+            }
+        }
+
+        // Batch 5 Action Contracts: bounded Page metadata/layout mutations.
+        // AI page creation/regeneration deliberately falls through to the existing
+        // composition pipeline; deterministic page mutations stay zero-credit here.
+        if(!$resumePendingPlan && (string)data_get($canonicalIntent,'routing.menu_scope')==='page'){
+            $currentPage=null;
+            if(!empty($validated['current_page_id'])){
+                $currentPage=$website->pages()->whereKey((int)$validated['current_page_id'])->first();
+            }
+            $pageResult=$pageActions->apply($website,$prompt,$canonicalIntent,$currentPage);
+            if(is_array($pageResult) && ($pageResult['handled']??false)){
+                $ok=(bool)($pageResult['success']??false);
+                $verification=$executionVerification->verify(
+                    $pageResult['operations']??[],
+                    $pageResult['operations']??[],
+                    $ok
+                );
+                return response()->json(array_filter([
+                    'reply'=>$naturalReplyFromFacts([
+                        'action'=>(string)($pageResult['scope_action']??'page').' change',
+                        'action_completed'=>$ok,
+                        'execution_verification'=>$verification,
+                        'constraint'=>$ok?null:($pageResult['message']??'The requested page change could not be safely resolved.'),
+                    ]),
+                    'mode'=>'reply','canonical_intent'=>$canonicalIntent,'execution_verification'=>$verification,
+                    'credit_cost'=>0,'credit_balance'=>$user ? $credits->balance($user) : null,
+                    'blocks'=>$pageResult['blocks']??$blocks,
+                    'header'=>is_array($header)?$header:[],'footer'=>is_array($footer)?$footer:[],
+                    'site_memory'=>$siteMemory,'pending_action'=>false,
+                    'applied_operations'=>$pageResult['operations']??[],
+                    'page'=>$pageResult['page']??null,
+                    'page_style'=>$pageResult['page_style']??null,
+                ],static fn($value)=>$value!==null),$ok?200:422);
+            }
+        }
+
+        // Batch 4 Action Contracts: bounded Navigation mutations. Navigation
+        // is stored in global_header.menu for renderer/export compatibility, but
+        // internal page links also receive stable page metadata where resolvable.
+        if(!$resumePendingPlan && (string)data_get($canonicalIntent,'routing.menu_scope')==='navigation'){
+            $navigationResult=$navigationActions->apply(
+                $website,
+                $prompt,
+                $canonicalIntent,
+                is_array($header)?$header:[]
+            );
+            if(is_array($navigationResult) && ($navigationResult['handled']??false)){
+                $ok=(bool)($navigationResult['success']??false);
+                $verification=$executionVerification->verify(
+                    $navigationResult['operations']??[],
+                    $navigationResult['operations']??[],
+                    $ok
+                );
+                return response()->json(array_filter([
+                    'reply'=>$naturalReplyFromFacts([
+                        'action'=>(string)($navigationResult['scope_action']??'navigation').' change',
+                        'action_completed'=>$ok,
+                        'execution_verification'=>$verification,
+                        'constraint'=>$ok?null:($navigationResult['message']??'The requested navigation change could not be safely resolved.'),
+                    ]),
+                    'mode'=>'reply',
+                    'canonical_intent'=>$canonicalIntent,
+                    'execution_verification'=>$verification,
+                    'credit_cost'=>0,
+                    'credit_balance'=>$user ? $credits->balance($user) : null,
+                    'blocks'=>$blocks,
+                    'header'=>$navigationResult['header']??(is_array($header)?$header:[]),
+                    'footer'=>is_array($footer)?$footer:[],
+                    'site_memory'=>$siteMemory,
+                    'pending_action'=>false,
+                    'applied_operations'=>$navigationResult['operations']??[],
+                ],static fn($value)=>$value!==null),$ok?200:422);
+            }
+        }
+
+        // Batch 3 Action Contracts: bounded Header + Footer shell mutations.
+        // These return complete current shell snapshots and reuse the Builder's
+        // existing global_header/global_footer state + normal Save persistence.
+        if(!$resumePendingPlan && in_array((string)data_get($canonicalIntent,'routing.menu_scope'),['header','footer'],true)){
+            $headerFooterResult=$headerFooterActions->apply(
+                $website,
+                $prompt,
+                $canonicalIntent,
+                is_array($header)?$header:[],
+                is_array($footer)?$footer:[]
+            );
+            if(is_array($headerFooterResult) && ($headerFooterResult['handled']??false)){
+                $ok=(bool)($headerFooterResult['success']??false);
+                $verification=$executionVerification->verify(
+                    $headerFooterResult['operations']??[],
+                    $headerFooterResult['operations']??[],
+                    $ok
+                );
+                return response()->json(array_filter([
+                    'reply'=>$naturalReplyFromFacts([
+                        'action'=>(string)($headerFooterResult['scope_action']??$headerFooterResult['domain']??'shell').' change',
+                        'action_completed'=>$ok,
+                        'execution_verification'=>$verification,
+                        'constraint'=>$ok?null:($headerFooterResult['message']??'The requested header/footer change could not be safely resolved.'),
+                    ]),
+                    'mode'=>'reply',
+                    'canonical_intent'=>$canonicalIntent,
+                    'execution_verification'=>$verification,
+                    'credit_cost'=>0,
+                    'credit_balance'=>$user ? $credits->balance($user) : null,
+                    'blocks'=>$blocks,
+                    'header'=>$headerFooterResult['header']??(is_array($header)?$header:[]),
+                    'footer'=>$headerFooterResult['footer']??(is_array($footer)?$footer:[]),
+                    'site_memory'=>$siteMemory,
+                    'pending_action'=>false,
+                    'applied_operations'=>$headerFooterResult['operations']??[],
+                ],static fn($value)=>$value!==null),$ok?200:422);
+            }
+        }
+
+        // Batch 2 Action Contracts: bounded Global + Theme token mutations.
+        // These reuse the Builder's existing globalSelections response contract;
+        // the normal Save flow remains authoritative for persistence.
+        if(!$resumePendingPlan && in_array((string)data_get($canonicalIntent,'routing.menu_scope'),['global','theme'],true)){
+            $globalThemeResult=$globalThemeActions->apply($website,$prompt,$canonicalIntent);
+            if(is_array($globalThemeResult) && ($globalThemeResult['handled']??false)){
+                $ok=(bool)($globalThemeResult['success']??false);
+                $verification=$executionVerification->verify(
+                    $globalThemeResult['operations']??[],
+                    $globalThemeResult['operations']??[],
+                    $ok
+                );
+                return response()->json(array_filter([
+                    'reply'=>$naturalReplyFromFacts([
+                        'action'=>(string)($globalThemeResult['scope_action']??$globalThemeResult['domain']??'design').' change',
+                        'action_completed'=>$ok,
+                        'execution_verification'=>$verification,
+                        'constraint'=>$ok?null:($globalThemeResult['message']??'The requested global/theme change could not be safely resolved.'),
+                    ]),
+                    'mode'=>'reply',
+                    'canonical_intent'=>$canonicalIntent,
+                    'execution_verification'=>$verification,
+                    'credit_cost'=>0,
+                    'credit_balance'=>$user ? $credits->balance($user) : null,
+                    'blocks'=>$blocks,
+                    'header'=>is_array($header)?$header:[],
+                    'footer'=>is_array($footer)?$footer:[],
+                    'site_memory'=>$siteMemory,
+                    'pending_action'=>false,
+                    'applied_operations'=>$globalThemeResult['operations']??[],
+                    'theme_key'=>$globalThemeResult['theme_key']??null,
+                    'brand_color_family'=>$globalThemeResult['brand_color_family']??null,
+                    'brand_theme_mode'=>$globalThemeResult['brand_theme_mode']??null,
+                    'brand_theme_name'=>$globalThemeResult['brand_theme_name']??null,
+                    'typography_settings'=>$globalThemeResult['typography_settings']??null,
+                    'background_style'=>$globalThemeResult['background_style']??null,
+                    'section_layout'=>$globalThemeResult['section_layout']??null,
+                    'components'=>$globalThemeResult['components']??null,
+                ],static fn($value)=>$value!==null),$ok?200:422);
+            }
+        }
+
         $allowedSiteThemes=['midnight','emerald','coffee','rose','dark','ocean','indigo','amber','charcoal','violet','teal','ruby','forest','obsidian','navy','espresso','terracotta','asphalt'];
         $websiteThemeSettings=(array)($website->theme_settings??[]);
         $currentSiteTheme=Str::lower(trim((string)($websiteThemeSettings['primary']??'')));
@@ -5162,12 +6095,29 @@ For the compatible premium Services family (services_bento_premium, services_edi
             ]);
         }
 
-        // Selected-Spark component capabilities are deterministic and use the
-        // registry's canonical storage/render contract. This runs before the
-        // prose planner so a simple radius adjustment cannot be converted into
-        // a generic, unverifiable design_overrides operation.
+        // Batch 2 ownership rule: once APIs 1-3 have locked an exact Spark edit,
+        // Luna's full-schema editor owns the visual intent. Legacy deterministic
+        // radius/surface/background/layout handlers may still serve old/non-Spark
+        // routes, but they must never intercept a selected-Spark schema request.
+        $lockedSchemaSparkTarget=data_get($canonicalIntent,'routing.spark_target');
+        $schemaOwnsSelectedSparkEdit=in_array($scope,['section','element'],true)
+            && isset($blocks[$targetIndex])
+            && data_get($canonicalIntent,'routing.menu_scope')==='sparks'
+            && data_get($canonicalIntent,'routing.spark_action')==='edit_spark'
+            && is_array($lockedSchemaSparkTarget)
+            && (int)($lockedSchemaSparkTarget['index']??-1)===$targetIndex;
+
+        if($schemaOwnsSelectedSparkEdit){
+            Log::debug('[LunaRouter] selected Spark visual intent reserved for full-schema editor',[
+                'spark_type'=>$blocks[$targetIndex]['type']??null,
+                'target_index'=>$targetIndex,
+                'element_target'=>$elementContext['tailwindPath']??$elementContext['tailwind_path']??$elementContext['tailwindSlot']??$elementContext['tailwind_slot']??null,
+            ]);
+        }
+
         $capabilityLeaf=Str::lower((string)($canonicalIntent['leaf_operation']??''));
-        $localCardRadiusRequest=$scope==='section'
+        $localCardRadiusRequest=!$schemaOwnsSelectedSparkEdit
+            && $scope==='section'
             && isset($blocks[$targetIndex])
             && (
                 $capabilityLeaf==='border_radius'
@@ -5239,7 +6189,8 @@ For the compatible premium Services family (services_bento_premium, services_edi
             '/\b(?:cards?|tiles?|items?)\b.*\b(?:dark|darker|light|lighter|white|surface)\b|\b(?:dark|darker|light|lighter|white)\b.*\b(?:cards?|tiles?|items?)\b/i',
             $coreActionPrompt,
         );
-        $localCardSurfaceRequest=in_array($scope,['section','element'],true)
+        $localCardSurfaceRequest=!$schemaOwnsSelectedSparkEdit
+            && in_array($scope,['section','element'],true)
             && isset($blocks[$targetIndex])
             && ($capabilityLeaf==='card_surface' || $explicitCardSurfacePrompt);
         if($localCardSurfaceRequest){
@@ -5343,13 +6294,15 @@ For the compatible premium Services family (services_bento_premium, services_edi
             ]);
         }
 
-        $backgroundAction=$this->lunaBackgroundStyleAction(
-            $coreActionPrompt,
-            $scope,
-            $targetIndex,
-            $blocks,
-            $backgroundStyle
-        );
+        $backgroundAction=$schemaOwnsSelectedSparkEdit
+            ? null
+            : $this->lunaBackgroundStyleAction(
+                $coreActionPrompt,
+                $scope,
+                $targetIndex,
+                $blocks,
+                $backgroundStyle
+            );
         if(is_array($backgroundAction)){
             return response()->json([
                 'reply'=>$naturalReplyFromFacts([
@@ -5372,13 +6325,15 @@ For the compatible premium Services family (services_bento_premium, services_edi
             ]);
         }
 
-        $sectionLayoutAction=$this->lunaSectionLayoutAction(
-            $coreActionPrompt,
-            $scope,
-            $targetIndex,
-            $blocks,
-            $sectionLayout
-        );
+        $sectionLayoutAction=$schemaOwnsSelectedSparkEdit
+            ? null
+            : $this->lunaSectionLayoutAction(
+                $coreActionPrompt,
+                $scope,
+                $targetIndex,
+                $blocks,
+                $sectionLayout
+            );
         if(is_array($sectionLayoutAction)){
             return response()->json([
                 'reply'=>$naturalReplyFromFacts([
@@ -5585,13 +6540,12 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'applied_operations'=>[['action'=>'theme','theme_key'=>$automaticTheme,'verified'=>true,'source'=>'luna_auto_family']],
             ]);
         }
-        $backgroundRemove=Str::contains($normalizedPrompt,['remove background image','remove the background image','remove background photo','no background image','clear background image']);
-        $backgroundDarker=Str::contains($normalizedPrompt,['make background darker','darken the background','darker overlay','stronger overlay']);
-        $backgroundLighter=Str::contains($normalizedPrompt,['make background lighter','lighten the background','lighter overlay','softer overlay']);
-        $backgroundAdd=!$backgroundRemove && (
-            (Str::contains($normalizedPrompt,'background image') && Str::contains($normalizedPrompt,['add','use','set','change','give','put','apply']))
-            || (Str::contains($normalizedPrompt,'background photo') && Str::contains($normalizedPrompt,['add','use','set','change','give','put','apply']))
-        );
+        $backgroundIntent=$this->universalBackgroundIntentFlags((string)$validated['prompt'],isset($blocks[$targetIndex])&&is_array($blocks[$targetIndex])?$blocks[$targetIndex]:null);
+        $backgroundRemove=(bool)$backgroundIntent['remove'];
+        $backgroundDarker=(bool)$backgroundIntent['darker'];
+        $backgroundLighter=(bool)$backgroundIntent['lighter'];
+        $backgroundKind=$backgroundIntent['kind'];
+        $universalBackgroundIntent=(bool)$backgroundIntent['intent'];
 $resolvedMutationScope=(string)($scopeResolution['scope']??$scope);
         $designGlobalIntent=in_array($resolvedMutationScope,['page','site','global_token'],true);
         $artDirectionIntent=$this->lunaArtDirectionIntent((string)$validated['prompt']);
@@ -6074,7 +7028,7 @@ RULES:
 - Header language mapping: "float header", "overlay header", "header over hero/banner", "transparent header" means header_changes.overlay_header_on_banner=true. "put header above/outside the banner", "solid header", or "disable overlay" means false.
 - DESIGN SAFETY CONTRACT: Cosmic owns raw CSS/HTML/JS and unsafe implementation mechanics. Tailwind utilities may be emitted ONLY inside operation.tailwind_mutations for rendered slot ids supplied in TAILWIND EDIT CONTEXT; never expose them to the user, never rewrite markup, and never emit arbitrary CSS/style payloads.
 - Accept normal design intent (make it more prominent, more breathing room, darker/lighter, rounded, cleaner, premium, change layout) only through existing safe schema fields, registered layouts, theme/page_style, or bounded existing design controls. If the exact request cannot be represented safely, emit no styling operation and explain briefly that Luna can apply a design-system-safe equivalent instead.
-- RELATIVE DESIGN RULE: when the user says a selected section should feel "more premium", "more modern", "more polished", "better", or "more visually interesting", treat that as an explicit request for a visibly different compatible section design. Never answer that it is already premium/modern. Prefer a different registered compatible layout/Spark while preserving the section purpose and core content; otherwise apply a meaningful bounded design-system-safe visual change. For a selected Services section, choose a DIFFERENT Spark from the premium Services family than the current selected type; never return the same services_* type for a relative redesign.
+- RELATIVE DESIGN RULE: when the user says a selected section should feel "more premium", "more modern", "more polished", "better", or "more visually interesting", KEEP the current Spark/layout and emit an edit operation. Let the selected-Spark full-schema editor decide the exact Tailwind/content patch. Replace the Spark only when the user explicitly asks for another/different/new layout, redesign/rebuild, or conversion to another section type.
 - CHANGE ONLY WHAT THE USER REQUESTED. Preserve all unrelated content, typography, spacing, colors, layout, and media.
 - MUTATION SCOPE LOCK: rewrite/reword/copy/content-only requests may edit textual fields only. Mentions such as "keep images/layout/colors unchanged" are preservation constraints, NOT requests to mutate those fields. Never emit image/media/theme/layout/design changes for a content-only rewrite unless the user explicitly asks to change them.
 - Do not invent raw HTML/CSS/JS/PHP/SQL or image URLs. Cosmic resolves requested photography through its image provider after your plan.
@@ -6082,7 +7036,7 @@ RULES:
 - Never delete content unless the user asks.
 - Never claim success in reply unless the JSON contains the operation/state change that performs the request.
 PROMPT;
-        $system.="\nLAZY SPARK CONTRACT: For mode=selected_spark, edit only the selected Spark through its declared modules and do not emit structural operations. For mode=structural_catalog, structural operations may use only supplied catalog keys.\nTAILWIND MUTATION CONTRACT: For specific visual styling requests, prefer operation.tailwind_mutations using only slot ids in TAILWIND EDIT CONTEXT.rendered_slots. Resolve natural target words through each rendered slot's semantic aliases. Plurals/groups such as buttons/CTAs mean mutate every matching button/cta slot in the resolved section; singular primary/secondary button means only that matching slot. Preserve unrelated classes. Remove conflicting current utilities before adding replacements. Never emit raw CSS or rewrite markup. Content edits remain in changes.";
+        $system.="\nLAZY SPARK CONTRACT: For mode=selected_spark, edit only the selected Spark through its declared modules and do not emit structural operations. For mode=structural_catalog, structural operations may use only supplied catalog keys.\nTAILWIND MUTATION CONTRACT: For specific visual styling requests, prefer operation.tailwind_mutations using only slot ids in TAILWIND EDIT CONTEXT.rendered_slots. Resolve natural target words through each rendered slot's semantic aliases. Plurals/groups such as buttons/CTAs mean mutate every matching button/cta slot in the resolved section; singular primary/secondary button means only that matching slot. For button shape requests, square/sharp means add rounded-none and remove conflicting rounded-* utilities on button/cta slots; pill/fully-rounded means add rounded-full and remove conflicting rounded-* utilities. Card/corner radius requests must target card slots, never button slots. Preserve unrelated classes. Remove conflicting current utilities before adding replacements. Never emit raw CSS or rewrite markup. Content edits remain in changes.";
 
         if($resumePendingPlan && is_array($resumePendingPlan['plan']??null)){
             $plan=$resumePendingPlan['plan'];
@@ -6097,7 +7051,7 @@ PROMPT;
                     'response_format'=>['type'=>'json_object'],
                     'messages'=>[
                         ['role'=>'system','content'=>$system],
-                        ['role'=>'user','content'=>"SCOPE: {$scope}".($scope==='section'?"\nSELECTED INDEX: {$targetIndex}":"")."\n\n".$scopeContract."\n\n".$smartEditContract."\n\n".$siteDnaContract."\n\nUSER REQUEST:\n".$validated['prompt']."\n\nINTERPRETATION:\n".(($scope==='section' && Str::contains(Str::lower((string)$validated['prompt']),['more premium','more modern','more polished','make this section better','polish this section','more visually interesting'])) ? 'This is a relative redesign request. Produce a visibly different compatible registered section layout/design while preserving purpose and core content. Do not reject it because the current section is already premium or modern.' : 'Follow the request literally within the safe schema.')."\n\nCURRENT PAGE SUMMARY:\n".json_encode($blockSummary,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT HEADER:\n".json_encode(is_array($header)?$header:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT FOOTER:\n".json_encode(is_array($footer)?$footer:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSELECTED BLOCK FULL JSON:\n".$targetContext."\n\nELEMENT TARGET:\n".json_encode($elementContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSPARK EDIT CAPABILITY:\n".json_encode($editCapabilityPayload,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nTAILWIND EDIT CONTEXT:\n".json_encode($tailwindEditContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT THEME:\n".json_encode(is_array($theme)?$theme:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSITE DESIGN MEMORY:\n".json_encode($siteMemory,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nLUNA KNOWLEDGE PACKET:\n".json_encode($knowledgePacket,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSIBLING PAGE REFERENCES:\n".json_encode($siblingPages,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUSABLE SPARK CATALOG:\n{$catalogJson}"],
+                        ['role'=>'user','content'=>"SCOPE: {$scope}".($scope==='section'?"\nSELECTED INDEX: {$targetIndex}":"")."\n\n".$scopeContract."\n\n".$smartEditContract."\n\n".$siteDnaContract."\n\nUSER REQUEST:\n".$validated['prompt']."\n\nINTERPRETATION:\n".(($scope==='section' && Str::contains(Str::lower((string)$validated['prompt']),['more premium','more modern','more polished','make this section better','polish this section','more visually interesting'])) ? 'This is a relative visual-polish request. Preserve the current Spark/layout and emit an edit operation so the full-schema editor can restyle the selected Spark. Do not replace it unless the user explicitly requested a different layout or section type.' : 'Follow the request literally within the safe schema.')."\n\nCURRENT PAGE SUMMARY:\n".json_encode($blockSummary,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT HEADER:\n".json_encode(is_array($header)?$header:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT FOOTER:\n".json_encode(is_array($footer)?$footer:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSELECTED BLOCK FULL JSON:\n".$targetContext."\n\nELEMENT TARGET:\n".json_encode($elementContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSPARK EDIT CAPABILITY:\n".json_encode($editCapabilityPayload,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nTAILWIND EDIT CONTEXT:\n".json_encode($tailwindEditContext,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT THEME:\n".json_encode(is_array($theme)?$theme:[],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSITE DESIGN MEMORY:\n".json_encode($siteMemory,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nLUNA KNOWLEDGE PACKET:\n".json_encode($knowledgePacket,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nSIBLING PAGE REFERENCES:\n".json_encode($siblingPages,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nUSABLE SPARK CATALOG:\n{$catalogJson}"],
                     ],
                 ]
             )->throw()->json();
@@ -6167,7 +7121,7 @@ PROMPT;
                 if(Str::contains($requestLower,$kind)){$desiredKind=$kind;break;}
             }
             $hasReplace=collect($operations)->contains(fn($op)=>is_array($op)&&($op['action']??'')==='replace'&&(int)($op['index']??-1)===$targetIndex);
-            if($transformRequested && $desiredKind && !$hasReplace){
+            if($transformRequested && $desiredKind && !$hasReplace && !$universalBackgroundIntent){
                 $currentType=Str::lower((string)($blocks[$targetIndex]['type']??''));
                 $currentMeta=SparkCatalog::find((string)($blocks[$targetIndex]['type']??''))??[];
                 $currentCategory=Str::lower((string)($currentMeta['category']??''));
@@ -6214,11 +7168,9 @@ PROMPT;
         // Generic section redesign must produce a materially different, generatable Spark.
         if($scope==='section' && isset($blocks[$targetIndex])){
             $genericRedesign=Str::contains($requestLower,[
-                'redesign this section','redesign the section','redesign this','another layout','different layout',
-                'new layout','make this section better','make this better','improve this section',
-                'make this section more premium','make this more premium','make this section modern',
-                'make this more modern','make this section polished','make this more polished',
-                'refresh this section','rework this section','restyle this section'
+                'redesign this section','redesign the section','redesign this','rebuild this section',
+                'rebuild the section','another layout','different layout','new layout','change this layout',
+                'change the section layout'
             ]);
 
             if($genericRedesign){
@@ -6753,10 +7705,11 @@ PROMPT;
                         $fullSchemaEdited=true;
                         if(($schemaResult['changed']??false)===true){
                             $applied[]=[
-                                'action'=>'spark_full_schema_edit',
+                                'action'=>(($schemaResult['protocol']??'')==='structural_actions_v1')?'spark_structural_edit':'spark_full_schema_edit',
                                 'index'=>$index,
                                 'spark_type'=>$sparkTarget['type'],
                                 'diff'=>$schemaResult['diff']??[],
+                                'structural_operations'=>$schemaResult['operations']??[],
                                 'before_fingerprint'=>$schemaResult['before_fingerprint']??null,
                                 'after_fingerprint'=>$schemaResult['after_fingerprint']??null,
                                 'verified'=>true,
@@ -7040,6 +7993,14 @@ PROMPT;
 
         $backgroundApplied=false;
         $backgroundError=null;
+        if($scope==='section' && isset($nextBlocks[$targetIndex]) && is_array($nextBlocks[$targetIndex])){
+            $backgroundIntent=$this->universalBackgroundIntentFlags((string)$validated['prompt'],$nextBlocks[$targetIndex]);
+            $backgroundRemove=(bool)$backgroundIntent['remove'];
+            $backgroundDarker=(bool)$backgroundIntent['darker'];
+            $backgroundLighter=(bool)$backgroundIntent['lighter'];
+            $backgroundKind=$backgroundIntent['kind'];
+            $universalBackgroundIntent=(bool)$backgroundIntent['intent'];
+        }
         if($scope==='section' && $universalBackgroundIntent && isset($nextBlocks[$targetIndex])){
             $resolvedState=$this->universalBackgroundState(
                 $namedTargetOverrodeSelection ? '' : (string)($validated['target_resolved_theme']??''),
@@ -7049,11 +8010,13 @@ PROMPT;
             $strength=$backgroundDarker?'darker':($backgroundLighter?'lighter':null);
             $result=$this->applyUniversalBackgroundIntent(
                 $pageGeneration,
+                $lunaVideos,
                 (string)$validated['prompt'],
                 $nextBlocks[$targetIndex],
                 $resolvedState,
                 $backgroundRemove,
-                $strength
+                $strength,
+                $backgroundKind
             );
             $nextBlocks[$targetIndex]=$result['block'];
             $backgroundApplied=(bool)$result['success'];
@@ -7064,6 +8027,7 @@ PROMPT;
                     'index'=>$targetIndex,
                     'state'=>$resolvedState,
                     'strength'=>$strength?:'balanced',
+                    'media_kind'=>$result['kind']??$backgroundKind,
                 ];
             }
         }
@@ -7504,7 +8468,8 @@ The user may ask a question or request a change.
 - Treat the stored reference screenshot as design context when supplied.
 - If a newly uploaded asset is relevant, use its exact URL provided by the user message. Never invent image URLs.
 - Keep type=luna_custom_section and custom_spark_key unchanged.
-- Use only fields already present in CURRENT_BLOCK plus the supported fields visual_style, style_overrides, review, form, items, image_url.
+- Use only fields already present in CURRENT_BLOCK plus the supported fields visual_style, style_overrides, review, form, items, elements, image_url.
+- When CURRENT_BLOCK uses AI Flex elements, preserve the canonical structure: root elements are rows, row.children are columns, and column.children are extras. Add/remove/move content inside that structure; never emit HTML/CSS/JS/Tailwind.
 - For requests about a background, prefer visual_style.background_position/background_size and overlay_gradient_* fields instead of rewriting the section.
 - For typography/spacing requests, modify only the relevant numeric visual_style/style_overrides fields. Do not redesign correct regions.
 - Forms are functional schema, not decorative markup. Preserve field name/type/required/options unless the user explicitly asks to change the form. Allowed field types: text,email,tel,textarea,select,checkbox,hidden.
@@ -7546,11 +8511,12 @@ PROMPT;
         $action = ($result['action'] ?? 'update') === 'reply_only' ? 'reply_only' : 'update';
         $fixed = $currentBlock;
         if ($action === 'update' && is_array($result['block'] ?? null)) {
-            $allowed = ['type','custom_spark_key','custom_spark_saved','semantic_type','source_type','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','theme','style_overrides','visual_style','review','form','runtime','ai_flex'];
+            $allowed = ['type','custom_spark_key','custom_spark_saved','semantic_type','source_type','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','elements','theme','style_overrides','visual_style','review','form','runtime','ai_flex'];
             $candidate = array_intersect_key($result['block'], array_flip($allowed));
             $fixed = array_merge($currentBlock, $candidate);
             $fixed['type'] = 'luna_custom_section';
             $fixed['custom_spark_key'] = $spark->key;
+            $fixed = \App\Support\AiFlexStructureContract::normalizePersistedBlock($fixed);
             if ($assetUrl !== '' && str_contains(strtolower($validated['prompt']), 'background') && empty($fixed['image_url'])) {
                 $fixed['image_url'] = $assetUrl;
                 $fixed['media_position'] = 'background';

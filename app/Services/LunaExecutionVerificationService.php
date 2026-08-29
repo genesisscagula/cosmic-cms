@@ -206,14 +206,14 @@ final class LunaExecutionVerificationService
         if($planned===$actual) return true;
         if($contract==='v5'){
             $strictAliases=[
-                'update'=>['edit','update','spark_full_schema_edit','design_overrides','header_overlay','brand_color_family'],
-                'edit'=>['edit','update','spark_full_schema_edit','repeater_add','repeater_remove','repeater_reorder'],
-                'add'=>['add','create','insert_before','insert_after','repeater_add'],
+                'update'=>['edit','update','spark_full_schema_edit','spark_structural_edit','design_overrides','header_overlay','brand_color_family'],
+                'edit'=>['edit','update','spark_full_schema_edit','spark_structural_edit','repeater_add','repeater_remove','repeater_reorder','add_extra','update_extra','remove_extra','move_extra','duplicate_extra','add_row','remove_row','move_row','duplicate_row','add_column','remove_column','move_column','duplicate_column'],
+                'add'=>['add','create','insert_before','insert_after','repeater_add','add_extra','add_row','add_column'],
                 'create'=>['create','add','build_page'],
-                'remove'=>['remove','delete','repeater_remove'],
-                'delete'=>['delete','remove','repeater_remove'],
-                'reorder'=>['reorder','move','repeater_reorder'],
-                'move'=>['move','reorder'],
+                'remove'=>['remove','delete','repeater_remove','remove_extra','remove_row','remove_column'],
+                'delete'=>['delete','remove','repeater_remove','remove_extra','remove_row','remove_column'],
+                'reorder'=>['reorder','move','repeater_reorder','move_extra','move_row','move_column'],
+                'move'=>['move','reorder','move_extra','move_row','move_column'],
                 'redesign'=>['redesign','replace'],
                 'replace'=>['replace'],
                 'build'=>['build','build_page','create'],
@@ -223,13 +223,13 @@ final class LunaExecutionVerificationService
             return in_array($actual,$strictAliases[$planned]??[],true);
         }
         $aliases=[
-            'update'=>['edit','update','spark_full_schema_edit','design_overrides','header_overlay','brand_color_family'],
-            'edit'=>['edit','update','spark_full_schema_edit','repeater_add','repeater_remove','repeater_reorder'],
-            'add'=>['add','create','insert_before','insert_after','repeater_add'],
+            'update'=>['edit','update','spark_full_schema_edit','spark_structural_edit','design_overrides','header_overlay','brand_color_family'],
+            'edit'=>['edit','update','spark_full_schema_edit','spark_structural_edit','repeater_add','repeater_remove','repeater_reorder','add_extra','update_extra','remove_extra','move_extra','duplicate_extra','add_row','remove_row','move_row','duplicate_row','add_column','remove_column','move_column','duplicate_column'],
+            'add'=>['add','create','insert_before','insert_after','repeater_add','add_extra','add_row','add_column'],
             'create'=>['create','add','build_page'],
-            'remove'=>['remove','delete','repeater_remove'],
-            'delete'=>['delete','remove','repeater_remove'],
-            'reorder'=>['reorder','move','repeater_reorder'],
+            'remove'=>['remove','delete','repeater_remove','remove_extra','remove_row','remove_column'],
+            'delete'=>['delete','remove','repeater_remove','remove_extra','remove_row','remove_column'],
+            'reorder'=>['reorder','move','repeater_reorder','move_extra','move_row','move_column'],
             'redesign'=>['redesign','replace','edit','update'],
             'replace'=>['replace','edit','update'],
             'build'=>['build','build_page','create'],

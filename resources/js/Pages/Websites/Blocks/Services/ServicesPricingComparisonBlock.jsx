@@ -3,7 +3,7 @@ import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { BoundedCountControls } from "../Shared/RepeatableControls";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem, sparkTwPath } from "../Shared/sparkTailwindRuntime";
 
 export const ServicesPricingComparisonSchema = {
     type: "services_pricing_comparison",
@@ -37,8 +37,8 @@ export function ServicesPricingComparisonBlock({ block, onUpdate, globalTheme })
     const muted = isPrimary ? "text-white/70" : theme.sub;
     const featuredMuted = isPrimary ? "text-slate-600" : primaryTheme.sub;
     const border = isPrimary ? "border-white/20" : theme.border;
-    const baseCard = isPrimary ? "bg-white/10 text-white" : `${theme.surface} ${theme.text}`;
-    const featuredCard = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.card || primaryTheme.bg} ${primaryTheme.text}`;
+    const baseCard = isPrimary ? "cosmic-primary-contrast bg-white/10 text-white" : `cosmic-surface-contrast ${theme.surface} ${theme.text}`;
+    const featuredCard = isPrimary ? "cosmic-surface-contrast bg-white text-slate-950" : `cosmic-primary-contrast ${primaryTheme.card || primaryTheme.bg} ${primaryTheme.text}`;
     const normalButton = isPrimary ? "bg-white text-slate-950" : `${primaryTheme.bg} ${primaryTheme.text}`;
     const featuredButton = isPrimary ? `${primaryTheme.bg} ${primaryTheme.text}` : `${primaryTheme.bg} ${primaryTheme.text}`;
     const rowCount = Math.max(1, Math.min(6, Number(data.comparison_row_count) || 6));
@@ -64,7 +64,7 @@ export function ServicesPricingComparisonBlock({ block, onUpdate, globalTheme })
             <div className={sparkTw(block, "wrapper_3", "mt-12 overflow-hidden rounded-[2rem] border shadow-sm")} style={{borderColor:'currentColor'}}>
                 <div className={sparkTw(block, "wrapper_4", `grid lg:grid-cols-[1.15fr_repeat(3,1fr)] ${baseCard}`)}>
                     <div className={sparkTw(block, "wrapper_5", `hidden border-b p-6 lg:block ${border}`)}><span className={sparkTw(block, "label", `text-xs font-bold uppercase tracking-[.22em] ${muted}`)}>Compare packages</span></div>
-                    {plans.map((plan)=><article key={plan.key} className={sparkTw(block, "card", `relative border-b p-6 sm:p-7 ${border} ${plan.featured?featuredCard:baseCard}`)}>
+                    {plans.map((plan, planIndex)=><article key={plan.key} className={sparkTwItem(block, "plans", planIndex, "card", `relative border-b p-6 sm:p-7 ${border} ${plan.featured?featuredCard:baseCard}`)}>
                         {plan.featured && <EditableText value={data.growth_badge} className={sparkTw(block, "text_4", `mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] ${primaryTheme.bg} ${primaryTheme.text}`)} onSave={save('growth_badge')}/>} 
                         <EditableText value={plan.name} className={sparkTw(block, "text_5", "block text-xl font-semibold")} onSave={save(`${plan.key}_name`)}/>
                         <div className={sparkTw(block, "wrapper_6", "mt-4 flex items-end gap-2")}><EditableText value={plan.price} className={sparkTw(block, "text_6", "block text-4xl font-semibold tracking-[-.04em]")} onSave={save(`${plan.key}_price`)}/><EditableText value={plan.period} className={sparkTw(block, "text_7", `mb-1 text-xs font-semibold uppercase tracking-wider ${plan.featured?featuredMuted:muted}`)} onSave={save(`${plan.key}_period`)}/></div>
@@ -73,7 +73,7 @@ export function ServicesPricingComparisonBlock({ block, onUpdate, globalTheme })
                     </article>)}
                     {rows.map((row,index)=><div key={row.label} className={sparkTw(block, "wrapper_7", "contents")}>
                         <div className={sparkTw(block, "wrapper_8", `border-b p-5 lg:p-6 ${border} ${baseCard}`)}><EditableText value={data[row.label]} className={sparkTw(block, "text_9", "text-sm font-semibold")} onSave={save(row.label)}/></div>
-                        {['starter','growth','pro'].map((key)=><div key={key} className={sparkTw(block, "wrapper_9", `border-b p-5 text-sm lg:p-6 ${border} ${key==='growth'?featuredCard:baseCard}`)}><EditableText value={data[row[key]]} className={sparkTw(block, "text_10", `font-semibold ${key==='growth'?featuredMuted:''}`)} onSave={save(row[key])}/></div>)}
+                        {['starter','growth','pro'].map((key, planIndex)=><div key={key} className={sparkTwPath(block, ["features", index, "plans", planIndex], "cell", `border-b p-5 text-sm lg:p-6 ${border} ${key==='growth'?featuredCard:baseCard}`)}><EditableText value={data[row[key]]} className={sparkTw(block, "text_10", `font-semibold ${key==='growth'?featuredMuted:''}`)} onSave={save(row[key])}/></div>)}
                     </div>)}
                 </div>
             </div>

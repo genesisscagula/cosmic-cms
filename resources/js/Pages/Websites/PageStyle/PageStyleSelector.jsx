@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import axios from 'axios';
-import { confirmCosmicAction, showCosmicNotification } from '../../../Components/CosmicNotification';
+import { showCosmicNotification } from '../../../Components/CosmicNotification';
 
 const directionLabels = {
     clean: 'Clean & Professional',
@@ -14,6 +14,7 @@ export default function PageStyleSelector({
     blocks,
     disabled = false,
     trialMode = false,
+    darkMode = true,
     trialToken = null,
     creditBalance = 0,
     creditCost = 20,
@@ -21,37 +22,34 @@ export default function PageStyleSelector({
 }) {
     const [open, setOpen] = useState(false);
     const [applying, setApplying] = useState('');
-    const rootRef = useRef(null);
-    const current = ['balanced', 'clean', 'premium'].includes(String(currentStyle || '').toLowerCase()) ? String(currentStyle).toLowerCase() : 'balanced';
-    const currentLabel = suggestions.find((style) => style.key === current)?.label || 'Balanced';
+    const current = ['balanced', 'clean', 'premium'].includes(String(currentStyle || '').toLowerCase())
+        ? String(currentStyle).toLowerCase()
+        : 'balanced';
+    const [draftStyle, setDraftStyle] = useState(current);
+    const light = trialMode || !darkMode;
 
     useEffect(() => {
         if (!open) return undefined;
-        const close = (event) => {
-            if (!rootRef.current?.contains(event.target)) setOpen(false);
-        };
+        setDraftStyle(current);
         const escape = (event) => {
-            if (event.key === 'Escape') setOpen(false);
+            if (event.key === 'Escape' && !applying) setOpen(false);
         };
-        document.addEventListener('mousedown', close);
         document.addEventListener('keydown', escape);
-        return () => {
-            document.removeEventListener('mousedown', close);
-            document.removeEventListener('keydown', escape);
-        };
-    }, [open]);
+        return () => document.removeEventListener('keydown', escape);
+    }, [open, current, applying]);
 
-    const applyStyle = async (style) => {
-        if (style.key === current) return;
+    const closeModal = () => {
+        if (applying) return;
+        setDraftStyle(current);
+        setOpen(false);
+    };
 
-        const confirmed = await confirmCosmicAction({
-            title: `Apply ${style.label}?`,
-            message: trialMode
-                ? `Cosmic will reset every Spark to Auto and preview this creative direction. Cost: ${creditCost} Cosmic Credits. Balance: ${creditBalance} → ${Math.max(0, Number(creditBalance || 0) - creditCost)}.`
-                : `Cosmic will reset every Spark to Auto and apply this creative direction across the page. Cost: ${creditCost} Credits.`,
-            confirmLabel: `Use ${creditCost} Credits`,
-        });
-        if (!confirmed) return;
+    const applyStyle = async () => {
+        const style = suggestions.find((item) => item.key === draftStyle);
+        if (!style || style.key === current) {
+            setOpen(false);
+            return;
+        }
 
         setApplying(style.key);
         try {
@@ -66,13 +64,13 @@ export default function PageStyleSelector({
             setOpen(false);
             showCosmicNotification({
                 title: `${style.label} applied`,
-                message: 'Every Spark is back on Auto and the new page rhythm is ready.',
+                message: 'Page Style updated. Your Spark content and explicit section themes were preserved.',
                 tone: 'success',
             });
         } catch (error) {
             showCosmicNotification({
-                title: 'Style generation failed',
-                message: error.response?.data?.message || 'Cosmic could not apply this creative direction.',
+                title: 'Page Style unavailable',
+                message: error.response?.data?.message || 'Cosmic could not apply this page style.',
                 tone: 'error',
             });
         } finally {
@@ -81,58 +79,101 @@ export default function PageStyleSelector({
     };
 
     return (
-        <div ref={rootRef} className={`relative hidden min-w-0 lg:block ${trialMode ? 'ml-2' : 'ml-5'}`}>
+        <>
+            {/* Toolbar navigation owns the visible trigger. Keep this hook hidden so
+                Design -> Page Style can open the full popup without a duplicate control. */}
             <button
                 type="button"
                 disabled={disabled || applying !== ''}
-                onClick={() => setOpen((value) => !value)}
-                className={`cosmic-page-style-trigger inline-flex h-9 max-w-[190px] items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50 ${trialMode ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200' : 'border-white/10 bg-white/[0.045] text-slate-200 hover:border-violet-400/35 hover:bg-violet-500/10'}`}
-                title="Creative Direction"
+                onClick={() => {
+                    setDraftStyle(current);
+                    setOpen(true);
+                }}
+                className="cosmic-page-style-trigger absolute h-px w-px overflow-hidden opacity-0 pointer-events-none"
+                tabIndex={-1}
+                aria-hidden="true"
             >
-                <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="h-3.5 w-3.5 shrink-0 text-violet-300">
-                    <path d="M10 2.25c.26 3.66 1.59 4.99 5.25 5.25-3.66.26-4.99 1.59-5.25 5.25-.26-3.66-1.59-4.99-5.25-5.25 3.66-.26 4.99-1.59 5.25-5.25Zm5.1 9.8c.09 1.25.55 1.71 1.8 1.8-1.25.09-1.71.55-1.8 1.8-.09-1.25-.55-1.71-1.8-1.8 1.25-.09 1.71-.55 1.8-1.8Z" />
-                </svg>
-                <span className="truncate capitalize">{applying ? 'Reimagining…' : currentLabel}</span>
-                <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={`ml-auto h-3.5 w-3.5 shrink-0 text-slate-400 transition ${open ? 'rotate-180 text-violet-300' : ''}`}>
-                    <path d="m5.5 7.5 4.5 4.5 4.5-4.5" strokeLinecap="round" strokeLinejoin="round" />
-                </svg>
+                Page Style
             </button>
 
             {open && (
-                <div className="cosmic-page-style-menu absolute left-0 top-11 z-[90] w-[360px] overflow-hidden rounded-2xl border border-white/10 bg-[#15151a] shadow-2xl shadow-black/60">
-                    <div className="border-b border-white/10 px-4 py-3.5">
-                        <p className="text-sm font-bold text-white">Make AI style your page</p>
-                        <p className="mt-1 text-xs leading-5 text-slate-400">{trialMode ? `Three curated directions based on this website’s industry. Applying one costs ${creditCost} Guest Cosmic Credits.` : `Three curated directions based on this website’s industry. Applying one costs ${creditCost} Credits.`}</p>
-                    </div>
-                    <div className="space-y-2 p-3">
-                        {suggestions.map((style) => {
-                            const selected = style.key === current;
-                            return (
-                                <button
-                                    key={style.key}
-                                    type="button"
-                                    disabled={selected || applying !== ''}
-                                    onClick={() => applyStyle(style)}
-                                    className={`cosmic-page-style-option w-full rounded-xl border p-3 text-left transition focus:outline-none focus:ring-2 focus:ring-violet-400 ${selected ? 'is-selected border-violet-400/40 bg-violet-500/12' : 'border-white/8 bg-white/[0.025] hover:border-white/15 hover:bg-white/[0.055]'}`}
-                                >
-                                    <div className="flex items-center justify-between gap-3">
-                                        <div>
-                                            <p className="cosmic-page-style-direction text-[10px] font-bold uppercase tracking-[0.18em] text-violet-300">{directionLabels[style.direction] || style.direction}</p>
-                                            <p className="cosmic-page-style-title mt-1 text-sm font-bold text-white">{style.label}</p>
+                <div
+                    className="cosmic-app-modal-backdrop cosmic-page-style-backdrop fixed inset-0 z-[10080] flex items-center justify-center p-4"
+                    data-cosmic-modal-backdrop="page-style"
+                    data-appearance={light ? 'light' : 'dark'}
+                    style={{ backgroundColor: 'rgba(2, 6, 23, 0.58)', WebkitBackdropFilter: 'blur(8px)', backdropFilter: 'blur(8px)' }}
+                    onMouseDown={(event) => {
+                        if (event.target === event.currentTarget) closeModal();
+                    }}
+                >
+                    <div
+                        id="cosmic-page-style-modal"
+                        role="dialog"
+                        aria-modal="true"
+                        aria-labelledby="cosmic-page-style-title"
+                        data-cosmic-app-modal="page-style"
+                        data-appearance={light ? 'light' : 'dark'}
+                        className={`cosmic-page-style-menu w-full max-w-3xl overflow-hidden rounded-3xl border shadow-2xl ${light ? 'border-slate-200 bg-white text-slate-900' : 'border-white/10 bg-[#111318] text-white'}`}
+                    >
+                        <div className={`flex items-start justify-between gap-4 border-b px-5 py-4 sm:px-6 ${light ? 'border-slate-200' : 'border-white/10'}`}>
+                            <div>
+                                <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-500">Design</p>
+                                <h3 id="cosmic-page-style-title" className={`mt-1 text-lg font-bold ${light ? 'text-slate-950' : 'text-white'}`}>Page Style</h3>
+                                <p className={`mt-1 max-w-xl text-xs leading-5 ${light ? 'text-slate-600' : 'text-slate-400'}`}>Choose the overall page rhythm. Your selection stays in this popup until you click Apply.</p>
+                            </div>
+                            <button type="button" onClick={closeModal} disabled={Boolean(applying)} className={`h-9 w-9 rounded-xl text-lg transition disabled:opacity-40 ${light ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`} aria-label="Close Page Style">×</button>
+                        </div>
+
+                        <div className="grid gap-3 p-5 sm:grid-cols-3 sm:p-6">
+                            {suggestions.map((style) => {
+                                const selected = style.key === draftStyle;
+                                const applied = style.key === current;
+                                return (
+                                    <button
+                                        key={style.key}
+                                        type="button"
+                                        disabled={Boolean(applying)}
+                                        onClick={() => setDraftStyle(style.key)}
+                                        className={`cosmic-page-style-option min-h-[138px] rounded-2xl border p-4 text-left transition focus:outline-none focus:ring-2 focus:ring-violet-400 disabled:opacity-50 ${selected
+                                            ? light
+                                                ? 'is-selected border-violet-400 bg-violet-50 shadow-sm'
+                                                : 'is-selected border-violet-400/55 bg-violet-500/15'
+                                            : light
+                                                ? 'border-slate-200 bg-slate-50 hover:border-violet-300 hover:bg-white'
+                                                : 'border-white/10 bg-white/[0.025] hover:border-white/20 hover:bg-white/[0.055]'
+                                        }`}
+                                    >
+                                        <div className="flex items-start justify-between gap-3">
+                                            <div>
+                                                <p className="cosmic-page-style-direction text-[10px] font-bold uppercase tracking-[0.16em] text-violet-500">{directionLabels[style.direction] || style.direction || 'Balanced'}</p>
+                                                <p className={`cosmic-page-style-title mt-2 text-sm font-bold ${light ? 'text-slate-950' : 'text-white'}`}>{style.label}</p>
+                                            </div>
+                                            <span className={`cosmic-page-style-cost rounded-full px-2 py-1 text-[9px] font-bold ${selected ? 'bg-violet-500/15 text-violet-500' : light ? 'bg-white text-slate-500' : 'bg-white/[0.06] text-slate-400'}`}>
+                                                {selected ? 'Selected' : applied ? 'Current' : 'Free'}
+                                            </span>
                                         </div>
-                                        <span className={`cosmic-page-style-cost rounded-full px-2 py-1 text-[10px] font-bold ${selected ? 'bg-violet-400/15 text-violet-200' : 'bg-white/[0.06] text-slate-400'}`}>
-                                            {selected ? 'Current' : `${creditCost} Credits`}
-                                        </span>
-                                    </div>
+                                        <p className={`mt-4 text-[11px] leading-5 ${light ? 'text-slate-600' : 'text-slate-400'}`}>
+                                            {style.key === 'balanced' && 'Premium defaults with a balanced mix of whitespace, surfaces, and brand color.'}
+                                            {style.key === 'clean' && 'A quieter, minimal direction with light surfaces and restrained visual weight.'}
+                                            {style.key === 'premium' && 'More expressive hierarchy, stronger contrast, and richer premium section rhythm.'}
+                                        </p>
+                                    </button>
+                                );
+                            })}
+                        </div>
+
+                        <div className={`flex flex-wrap items-center justify-between gap-3 border-t px-5 py-4 sm:px-6 ${light ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-white/[0.02]'}`}>
+                            <p className={`text-[11px] ${light ? 'text-slate-500' : 'text-slate-500'}`}>Balanced is the premium default. Content and explicit Spark themes are preserved.</p>
+                            <div className="flex items-center gap-2">
+                                <button type="button" onClick={closeModal} disabled={Boolean(applying)} className={`rounded-xl border px-4 py-2 text-xs font-bold transition disabled:opacity-40 ${light ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'}`}>Cancel</button>
+                                <button type="button" onClick={applyStyle} disabled={Boolean(applying) || draftStyle === current} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40">
+                                    {applying ? 'Applying…' : draftStyle === current ? 'Applied' : 'Apply Style'}
                                 </button>
-                            );
-                        })}
-                    </div>
-                    <div className="border-t border-white/10 bg-white/[0.02] px-4 py-3 text-[11px] text-slate-500">
-                        Balanced is the default. Clean and Premium are the only alternate site-wide page styles.
+                            </div>
+                        </div>
                     </div>
                 </div>
             )}
-        </div>
+        </>
     );
 }

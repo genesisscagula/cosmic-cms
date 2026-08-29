@@ -1,7 +1,0 @@
-const statusStyles = { Published: "bg-emerald-400/10 text-emerald-300", Draft: "bg-amber-300/10 text-amber-200" };
-
-export default function RecentWebsiteList({ websites, onEdit }) {
-    if (!websites.length) return <div className="rounded-xl border border-dashed border-white/15 px-4 py-8 text-center text-sm text-slate-500">Your recent websites will appear here.</div>;
-
-    return <div className="overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035]">{websites.map((website, index) => <div key={website.id} className={`flex items-center gap-3 px-4 py-3 transition hover:bg-white/[0.04] ${index ? "border-t border-white/10" : ""}`}><div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br ${website.accent} text-sm font-bold text-white`}>{website.name.charAt(0)}</div><div className="min-w-0 flex-1"><p className="truncate text-sm font-medium text-white">{website.name}</p><p className="mt-0.5 truncate text-xs text-slate-500">{website.domain}</p></div><span className={`hidden rounded-full px-2 py-0.5 text-[10px] font-semibold sm:inline-flex ${statusStyles[website.status]}`}>{website.status}</span><button type="button" onClick={() => onEdit(website)} className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Edit</button></div>)}</div>;
-}

@@ -1,23 +1,19 @@
-import defaultTheme from 'tailwindcss/defaultTheme';
-import forms from '@tailwindcss/forms';
-
 /** @type {import('tailwindcss').Config} */
 export default {
-    content: [
-        './vendor/laravel/framework/src/Illuminate/Pagination/resources/views/*.blade.php',
-        './storage/framework/views/*.php',
-        './resources/views/**/*.blade.php',
-        './resources/js/**/*.jsx',
-        './resources/theme/**/*.json',
-    ],
-
-    theme: {
-        extend: {
-            fontFamily: {
-                sans: ['Manrope', ...defaultTheme.fontFamily.sans],
-            },
-        },
+  content: [
+    './resources/js/**/*.{js,jsx,ts,tsx}',
+    './resources/views/**/*.blade.php',
+    './app/Helpers/CmsHtmlCompiler.php',
+    './config/**/*.php',
+  ],
+  theme: {
+    extend: {
+      fontFamily: {
+        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        manrope: ['Manrope', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+        dashboard: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
     },
-
-    plugins: [forms],
+  },
+  plugins: [],
 };

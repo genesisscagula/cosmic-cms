@@ -5,7 +5,7 @@ import TextInput from '@/Components/TextInput';
 import GuestLayout from '@/Layouts/GuestLayout';
 import { Link, useForm } from '@inertiajs/react';
 
-const fieldClass = 'mt-2 block w-full rounded-xl border-slate-700 bg-[#0f1013] px-3.5 py-3 text-sm text-white shadow-none placeholder:text-slate-600 focus:border-emerald-400 focus:ring-emerald-400';
+const fieldClass = 'mt-2 block w-full rounded-xl border border-slate-400 bg-[#0f1013] px-3.5 py-3 text-sm text-white shadow-sm placeholder:text-slate-600 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/25';
 
 export default function Login({ status, canResetPassword }) {
     const { data, setData, post, processing, errors, reset } = useForm({ email: '', password: '', remember: false });

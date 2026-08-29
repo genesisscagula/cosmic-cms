@@ -13,6 +13,10 @@ use RuntimeException;
 
 final class TrialSiteBundleService
 {
+    public function __construct(private readonly GlobalMegaFooterService $megaFooters)
+    {
+    }
+
     /**
      * Create an isolated website for one public trial under the configured
      * staging owner. The ready Home page is persisted immediately; remaining
@@ -24,14 +28,33 @@ final class TrialSiteBundleService
         array $bundlePlan,
         array $homeGeneration,
     ): Page {
-        return DB::transaction(function () use ($trial, $profile, $bundlePlan, $homeGeneration): Page {
+        $menu = collect($bundlePlan['pages'] ?? [])->map(fn (array $page) => [
+            'label' => (string) $page['title'],
+            'url' => (string) $page['slug'],
+        ])->values()->all();
+        $theme = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+        $footer = $this->megaFooters->compose(
+            (string) ($trial->latest_user_prompt ?: $trial->prompt ?: $profile['business_description']),
+            [
+                'business_name' => (string) $profile['business_name'],
+                'industry' => (string) $profile['industry'],
+                'location' => (string) $profile['location'],
+                'business_description' => (string) $profile['business_description'],
+                'theme' => $theme,
+            ],
+            $menu,
+            [
+                'type' => 'minimal_footer',
+                'theme' => 'white',
+                'logo_text' => (string) $profile['business_name'],
+                'logo_image_url' => '/storage/branding/your-logo.png',
+                'copyright' => '© '.now()->year.' '.$profile['business_name'].'. All rights reserved.',
+            ],
+        );
+
+        return DB::transaction(function () use ($trial, $profile, $bundlePlan, $homeGeneration, $menu, $theme, $footer): Page {
             $owner = $this->stagingOwner();
             $workspace = $this->stagingWorkspace($owner);
-            $menu = collect($bundlePlan['pages'] ?? [])->map(fn (array $page) => [
-                'label' => (string) $page['title'],
-                'url' => (string) $page['slug'],
-            ])->values()->all();
-            $theme = is_array($trial->preview_theme) ? $trial->preview_theme : [];
 
             $website = Website::query()->create([
                 'user_id' => $owner->id,
@@ -61,14 +84,7 @@ final class TrialSiteBundleService
                     'cta_url' => 'contact',
                     'menu' => $menu,
                 ],
-                'global_footer' => [
-                    'type' => 'minimal_footer',
-                    'mega_enabled' => false,
-                    'theme' => 'white',
-                    'logo_text' => (string) $profile['business_name'],
-                    'logo_image_url' => '/storage/branding/your-logo.png',
-                    'copyright' => '© '.now()->year.' '.$profile['business_name'].'. All rights reserved.',
-                ],
+                'global_footer' => $footer,
             ]);
 
             $manifestPages = [];
@@ -144,7 +160,25 @@ final class TrialSiteBundleService
         array $homeGeneration,
         array $theme,
     ): Page {
-        return DB::transaction(function () use ($trial, $profile, $bundlePlan, $homeGeneration, $theme): Page {
+        $menu = collect($bundlePlan['pages'] ?? [])->map(fn (array $page) => [
+            'label' => (string) $page['title'],
+            'url' => (bool) ($page['is_home'] ?? false) ? 'home' : (string) $page['slug'],
+        ])->values()->all();
+        $currentWebsite = $trial->website_id ? Website::query()->find($trial->website_id) : null;
+        $footer = $this->megaFooters->compose(
+            (string) ($trial->latest_user_prompt ?: $trial->prompt ?: $profile['business_description']),
+            [
+                'business_name' => (string) $profile['business_name'],
+                'industry' => (string) $profile['industry'],
+                'location' => (string) $profile['location'],
+                'business_description' => (string) $profile['business_description'],
+                'theme' => $theme,
+            ],
+            $menu,
+            is_array($currentWebsite?->global_footer) ? $currentWebsite->global_footer : [],
+        );
+
+        return DB::transaction(function () use ($trial, $profile, $bundlePlan, $homeGeneration, $theme, $footer): Page {
             $trial = TrialGeneration::query()->lockForUpdate()->findOrFail($trial->id);
             if ($trial->claimed_at || ! $trial->website_id) {
                 throw new RuntimeException('Only an active staged trial can be regenerated.');
@@ -211,10 +245,6 @@ final class TrialSiteBundleService
             $header['logo_text'] = (string) $profile['business_name'];
             $header['menu'] = $menu;
             $header['cta_url'] = 'contact';
-            $footer = is_array($website->global_footer) ? $website->global_footer : [];
-            $footer['logo_text'] = (string) $profile['business_name'];
-            $footer['copyright'] = '© '.now()->year.' '.$profile['business_name'].'. All rights reserved.';
-
             $website->forceFill([
                 'name' => (string) $profile['business_name'],
                 'industry' => (string) $profile['industry'],

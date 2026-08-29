@@ -36,20 +36,20 @@ export function NewsletterCtaBlock({ block, onUpdate, globalTheme }) {
     const boxed = variant === "newsletter-03";
 
     return (
-        <section className={sparkTw(block, "auto_1", `${theme.bg} px-6 py-14 sm:px-8 lg:px-12 lg:py-20`)}>
-            <div className={sparkTw(block, "auto_2", "mx-auto max-w-7xl")}>
-                <div className={sparkTw(block, "auto_3", `${theme.bg} ${theme.text} ${theme.border} rounded-3xl border px-6 py-10 shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:px-10 lg:px-14 lg:py-12 ${centered ? "text-center" : boxed ? "grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center" : "lg:flex lg:items-center lg:justify-between lg:gap-12"}`)}>
+        <section className={sparkTw(block, "section_1", `${theme.bg} px-6 py-14 sm:px-8 lg:px-12 lg:py-20`)}>
+            <div className={sparkTw(block, "wrapper_2", "mx-auto max-w-7xl")}>
+                <div className={sparkTw(block, "section_3", `${theme.bg} ${theme.text} ${theme.border} rounded-3xl border px-6 py-10 shadow-[0_24px_70px_rgba(15,23,42,0.16)] sm:px-10 lg:px-14 lg:py-12 ${centered ? "text-center" : boxed ? "grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center" : "lg:flex lg:items-center lg:justify-between lg:gap-12"}`)}>
                     <div className={sparkTw(block, "auto_4", centered ? "mx-auto max-w-2xl" : "max-w-2xl")}>
-                        <EditableText value={data.eyebrow} className={sparkTw(block, "auto_5", `block text-xs font-semibold uppercase tracking-[0.28em] ${theme.sub}`)} onSave={(eyebrow) => onUpdate({ eyebrow })} />
-                        <EditableText value={data.heading} cosmicType="h2" className={sparkTw(block, "auto_6", "mt-4 block text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl")} onSave={(heading) => onUpdate({ heading })} />
-                        <EditableText value={data.text} isTextArea className={sparkTw(block, "auto_7", `mt-4 block max-w-xl text-base leading-7 ${theme.sub} ${centered ? "mx-auto" : ""}`)} onSave={(text) => onUpdate({ text })} />
+                        <EditableText value={data.eyebrow} className={sparkTw(block, "eyebrow_5", `block text-xs font-semibold uppercase tracking-[0.28em] ${theme.sub}`)} onSave={(eyebrow) => onUpdate({ eyebrow })} />
+                        <EditableText value={data.heading} cosmicType="h2" className={sparkTw(block, "heading_6", "mt-4 block text-3xl font-bold leading-[1.05] tracking-tight sm:text-4xl")} onSave={(heading) => onUpdate({ heading })} />
+                        <EditableText value={data.text} isTextArea className={sparkTw(block, "wrapper_7", `mt-4 block max-w-xl text-base leading-7 ${theme.sub} ${centered ? "mx-auto" : ""}`)} onSave={(text) => onUpdate({ text })} />
                     </div>
-                    <div className={sparkTw(block, "auto_8", `${centered ? "mx-auto mt-8" : boxed ? "" : "mt-8 lg:mt-0"} w-full max-w-md`)}>
-                        <div className={sparkTw(block, "auto_9", `flex gap-3 ${centered || !boxed ? "flex-col sm:flex-row" : "flex-col"}`)}>
-                            <EditableText value={data.placeholder} className={sparkTw(block, "auto_10", `flex min-h-[50px] flex-1 items-center rounded-xl border px-4 text-sm ${theme.border} ${theme.card} ${theme.sub}`)} onSave={(placeholder) => onUpdate({ placeholder })} />
-                            <EditableButton label={data.button_label} url="#" className={sparkTw(block, "auto_11", `inline-flex min-h-[50px] items-center justify-center rounded-xl px-6 text-sm font-bold ${buttonClass}`)} onSave={(button_label) => onUpdate({ button_label })} />
+                    <div className={sparkTw(block, "wrapper_8", `${centered ? "mx-auto mt-8" : boxed ? "" : "mt-8 lg:mt-0"} w-full max-w-md`)}>
+                        <div className={sparkTw(block, "row_9", `flex gap-3 ${centered || !boxed ? "flex-col sm:flex-row" : "flex-col"}`)}>
+                            <EditableText value={data.placeholder} className={sparkTw(block, "card_10", `flex min-h-[50px] flex-1 items-center rounded-xl border px-4 text-sm ${theme.border} ${theme.card} ${theme.sub}`)} onSave={(placeholder) => onUpdate({ placeholder })} />
+                            <EditableButton label={data.button_label} url="#" className={sparkTw(block, "title_11", `inline-flex min-h-[50px] items-center justify-center rounded-xl px-6 text-sm font-bold ${buttonClass}`)} onSave={(button_label) => onUpdate({ button_label })} />
                         </div>
-                        <EditableText value={data.disclaimer} className={sparkTw(block, "auto_12", `mt-3 block text-xs ${theme.sub}`)} onSave={(disclaimer) => onUpdate({ disclaimer })} />
+                        <EditableText value={data.disclaimer} className={sparkTw(block, "element_12", `mt-3 block text-xs ${theme.sub}`)} onSave={(disclaimer) => onUpdate({ disclaimer })} />
                     </div>
                 </div>
             </div>

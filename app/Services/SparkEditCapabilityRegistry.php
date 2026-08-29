@@ -36,6 +36,16 @@ final class SparkEditCapabilityRegistry
             'targets' => $this->targetContracts($modules, $moduleContracts),
             'writable_fields' => $this->writableFields($block),
             'semantic_treatments' => (array) config('spark-edit-capabilities.semantic_treatments', []),
+            'preservation_policy' => [
+                'content_owned_by_user' => true,
+                'stable_repeater_identity' => true,
+                'never_truncate_repeaters' => true,
+                'overflow_strategy' => 'preserve_all_items',
+                'invalid_mutation' => 'reject_and_keep_last_valid',
+            ],
+            'repeater_keys' => collect((array) config('spark-edit-capabilities.modules.ItemCollection.collection_keys', []))
+                ->filter(fn (string $key): bool => isset($block[$key]) && is_array($block[$key]))
+                ->values()->all(),
             'tailwind_schema' => $this->tailwindSchema->declaration($sparkType, $block),
         ];
     }
@@ -100,8 +110,13 @@ final class SparkEditCapabilityRegistry
             return true;
         }
 
+        // Batch 2: vague visual language is NOT structural. Requests such as
+        // "make this section more premium/modern/polished" belong to the
+        // selected Spark full-schema editor. Structural routing is reserved for
+        // an explicit add/remove/move/replace, explicit redesign/rebuild, or an
+        // explicit conversion/layout request.
         return (bool) preg_match(
-            '/\b(?:add|insert|create|remove|delete|replace|swap|reorder|move)\s+(?:a|an|the|this|another|new)?\s*(?:spark|section|block)\b|\b(?:redesign|rebuild)\s+(?:the\s+)?(?:whole|entire|full)?\s*(?:page|site|website|section)\b|\b(?:change|turn|convert)\s+(?:this|the|selected)?\s*(?:banner|hero|section|block)\s+(?:to|into)\b|\b(?:make|improve|polish|refresh|rework|restyle)\s+(?:this|the|selected)?\s*(?:section|block)\s+(?:better|premium|modern|polished|different|more\s+premium|more\s+modern|more\s+polished)?\b|\buse\s+(?:a|an)\s+(?:slider|carousel|video hero|different section layout)\b/i',
+            '/\b(?:add|insert|create|remove|delete|replace|swap|reorder|move)\s+(?:a|an|the|this|another|new)?\s*(?:spark|section|block)\b|\b(?:redesign|rebuild)\s+(?:the\s+)?(?:whole|entire|full)?\s*(?:page|site|website|section)\b|\b(?:change|turn|convert)\s+(?:this|the|selected)?\s*(?:banner|hero|section|block)\s+(?:to|into)\b|\b(?:another|different|new)\s+(?:section\s+)?layout\b|\bchange\s+(?:this|the|selected\s+)?(?:section\s+)?layout\b|\buse\s+(?:a|an)\s+(?:slider|carousel|video hero|different section layout)\b/i',
             $prompt,
         );
     }

@@ -22,6 +22,7 @@ use App\Services\WebsiteHealthService;
 use App\Services\TrialCreditService;
 use App\Services\RegisteredSiteBundleService;
 use App\Support\PageStyleRegistry;
+use App\Support\SparkExtrasContract;
 use App\Services\BlogSparkRegistry;
 use App\Cosmic\Pricing\ActionPricing;
 use App\Cosmic\Pricing\BlockPricingRegistry;
@@ -1048,7 +1049,9 @@ class PageController extends Controller
 
         $isWebsiteEditor = app(\App\Services\WorkspaceAccessService::class)->websiteRole($request->user(), $page->website) === 'website_editor';
         DB::transaction(function () use ($page, $validated, $isWebsiteEditor) {
-            $page->blocks = $validated['blocks'];
+            $page->blocks = is_array($validated['blocks'] ?? null)
+                ? SparkExtrasContract::normalizeBlocks($validated['blocks'])
+                : ($validated['blocks'] ?? null);
             $page->save();
 
             if (! $isWebsiteEditor) {
@@ -1162,7 +1165,9 @@ class PageController extends Controller
         }
 
         DB::transaction(function () use ($page, $website, $validated, $trial) {
-            $page->blocks = $validated['blocks'] ?? [];
+            $page->blocks = SparkExtrasContract::normalizeBlocks(
+                is_array($validated['blocks'] ?? null) ? $validated['blocks'] : []
+            );
             $page->status = 'draft';
             $page->publish_error = null;
             $page->save();
@@ -1240,60 +1245,28 @@ class PageController extends Controller
 
         abort_unless(PageStyleRegistry::exists($validated['style']), 422, 'That page style is not available.');
 
-        $user = $request->user();
-        $cost = PageStyleRegistry::CREDIT_COST;
-        $reference = 'page-style-'.$page->id.'-'.now()->format('YmdHisv');
+        DB::transaction(function () use ($page, $validated) {
+            $website = $page->website;
+            $website->page_style = $validated['style'];
+            $website->save();
+            $website->pages()->update(['page_style' => $validated['style']]);
+            $page->status = 'draft';
+            $page->publish_error = null;
+            $page->save();
+        });
 
-        $credits->consume(
-            $user,
-            $cost,
-            'AI page style: '.$validated['style'],
-            $page->website,
-            $reference
-        );
+        $globalStyle = PageStyleRegistry::normalize($page->website->fresh()->page_style);
 
-        try {
-            $blocks = collect($validated['blocks'])
-                ->map(function ($block) {
-                    if (! is_array($block)) return $block;
-                    $block['theme'] = 'auto';
-                    unset($block['resolvedTheme']);
-                    return $block;
-                })
-                ->values()
-                ->all();
-
-            DB::transaction(function () use ($page, $validated, $blocks) {
-                $website = $page->website;
-                $website->page_style = $validated['style'];
-                $website->save();
-
-                // Page Style is website-global. Keep legacy page columns synced so
-                // preview/publish routes that still read snapshots cannot drift.
-                $website->pages()->update(['page_style' => $validated['style']]);
-
-                $page->blocks = $blocks;
-                $page->status = 'draft';
-                $page->publish_error = null;
-                $page->save();
-            });
-
-            $globalStyle = PageStyleRegistry::normalize($page->website->fresh()->page_style);
-
-            return response()->json([
-                'status' => 'success',
-                'page_style' => $globalStyle,
-                'style' => ['key' => $globalStyle, ...PageStyleRegistry::all()[$globalStyle]],
-                'blocks' => $blocks,
-                'page_status' => 'draft',
-                'credits_spent' => $cost,
-                'credit_balance' => $credits->balance($user),
-                'suggestions' => PageStyleRegistry::suggestions($page->website->industry, $globalStyle),
-            ]);
-        } catch (\Throwable $exception) {
-            $credits->refund($user, $cost, 'Refund for failed AI page style', $page->website, $reference.'-refund');
-            throw $exception;
-        }
+        return response()->json([
+            'status' => 'success',
+            'page_style' => $globalStyle,
+            'style' => ['key' => $globalStyle, ...PageStyleRegistry::all()[$globalStyle]],
+            'blocks' => array_values($validated['blocks']),
+            'page_status' => 'draft',
+            'credits_spent' => 0,
+            'credit_balance' => $credits->balance($request->user()),
+            'suggestions' => PageStyleRegistry::suggestions($page->website->industry, $globalStyle),
+        ]);
     }
 
     public function applyTrialPageStyle(Request $request, TrialGeneration $trial, Page $page, TrialCreditService $trialCredits)
@@ -1316,43 +1289,28 @@ class PageController extends Controller
         ]);
 
         abort_unless(PageStyleRegistry::exists($validated['style']), 422, 'That page style is not available.');
-        $trialCredits->ensureCanSpend($trial, TrialCreditService::PAGE_STYLE, 'Page Style');
 
-        $blocks = collect($validated['blocks'])
-            ->map(function ($block) {
-                if (! is_array($block)) return $block;
-                $block['theme'] = 'auto';
-                unset($block['resolvedTheme']);
-                return $block;
-            })
-            ->values()
-            ->all();
-
-        DB::transaction(function () use ($page, $trial, $validated, $blocks) {
+        DB::transaction(function () use ($page, $trial, $validated) {
             $page->page_style = $validated['style'];
-            $page->blocks = $blocks;
             $page->status = 'draft';
             $page->publish_error = null;
             $page->save();
 
-            $trialUpdate = ['last_saved_at' => now()];
-            if ((int) $trial->page_id === (int) $page->id) {
-                $trialUpdate['generated_blocks'] = $blocks;
-            }
-            $trial->update($trialUpdate);
+            $previewTheme = is_array($trial->preview_theme) ? $trial->preview_theme : [];
+            $previewTheme['page_style'] = $validated['style'];
+            $trial->preview_theme = $previewTheme;
+            $trial->save();
         });
-
-        $balance = $trialCredits->consume($trial, TrialCreditService::PAGE_STYLE, 'page_style', ['style' => $validated['style']]);
 
         return response()->json([
             'status' => 'success',
-            'page_style' => $page->page_style,
-            'style' => ['key' => $page->page_style, ...PageStyleRegistry::all()[$page->page_style]],
-            'blocks' => $blocks,
+            'page_style' => $validated['style'],
+            'style' => ['key' => $validated['style'], ...PageStyleRegistry::all()[$validated['style']]],
+            'blocks' => array_values($validated['blocks']),
             'page_status' => 'draft',
-            'credits_spent' => TrialCreditService::PAGE_STYLE,
-            'credit_balance' => $balance,
-            'suggestions' => PageStyleRegistry::suggestions($page->website->industry, $page->page_style),
+            'credits_spent' => 0,
+            'credit_balance' => $trialCredits->balance($trial),
+            'suggestions' => PageStyleRegistry::suggestions((string) $trial->industry, $validated['style']),
         ]);
     }
 
@@ -1676,54 +1634,19 @@ class PageController extends Controller
             'header_block' => 'nullable|array',
         ]);
 
-        $countMenuItems = function (array $items) use (&$countMenuItems): int {
-            return collect($items)->sum(function ($item) use (&$countMenuItems) {
-                if (! is_array($item)) {
-                    return 0;
-                }
-
-                $children = is_array($item['children'] ?? null) ? $item['children'] : [];
-
-                return 1 + $countMenuItems($children);
-            });
-        };
-
-        $oldMenuCount = $countMenuItems((array) data_get($website->global_header, 'menu', []));
-        $newMenuCount = $countMenuItems((array) data_get($validated, 'header_block.menu', []));
-        $addedItems = max(0, $newMenuCount - $oldMenuCount);
-        $cost = $addedItems * ActionPricing::ADD_MENU_ITEM;
-        $reference = 'menu-' . Str::uuid();
-
-        if ($cost > 0) {
-            $credits->consume(
-                $request->user(),
-                $cost,
-                'Add ' . $addedItems . ' menu item' . ($addedItems === 1 ? '' : 's'),
-                $website,
-                $reference,
-                ['added_items' => $addedItems],
-            );
-        }
-
-        try {
-            $website->update([
-                'global_header' => $validated['header_block'] ?? null,
-                'published_global_header' => $validated['header_block'] ?? null,
-            ]);
-        } catch (Throwable $exception) {
-            if ($cost > 0) {
-                $credits->refund($request->user(), $cost, 'Refund for failed menu update', $website, $reference . '-refund');
-            }
-            throw $exception;
-        }
+        // Global shell/navigation editing is deterministic CMS work. Credits are
+        // reserved for actual AI/API requests, so manual/Luna-applied menu changes
+        // remain free when the Builder persists the resulting header snapshot.
+        $website->update([
+            'global_header' => $validated['header_block'] ?? null,
+            'published_global_header' => $validated['header_block'] ?? null,
+        ]);
 
         return response()->json([
             'status' => 'success',
-            'credits_spent' => $cost,
+            'credits_spent' => 0,
             'credit_balance' => $credits->balance($request->user()),
-            'message' => $cost > 0
-                ? "Global header saved. {$cost} Cosmic Credit" . ($cost === 1 ? '' : 's') . ' used for new menu items.'
-                : 'Global header saved. Existing menu edits are free.',
+            'message' => 'Global header saved. Menu and header edits use 0 credits.',
         ]);
     }
 
@@ -1832,7 +1755,7 @@ class PageController extends Controller
 
         // 1. Compile Header
         $headerBlocks = json_decode($website->global_header, true) ?? [];
-        $compiledHeader = \App\Helpers\CmsHtmlCompiler::compile($headerBlocks['blocks'] ?? [], $primaryColor, ['typography' => is_array($themeSettings['typography'] ?? null) ? $themeSettings['typography'] : [], 'section_layout' => is_array($themeSettings['section_layout'] ?? null) ? $themeSettings['section_layout'] : [], 'background_style' => is_array($themeSettings['background_style'] ?? null) ? $themeSettings['background_style'] : []]);
+        $compiledHeader = \App\Helpers\CmsHtmlCompiler::compile($headerBlocks['blocks'] ?? [], $primaryColor, ['typography' => is_array($themeSettings['typography'] ?? null) ? $themeSettings['typography'] : [], 'section_layout' => is_array($themeSettings['section_layout'] ?? null) ? $themeSettings['section_layout'] : [], 'background_style' => is_array($themeSettings['background_style'] ?? null) ? $themeSettings['background_style'] : [], 'components' => is_array($themeSettings['components'] ?? null) ? $themeSettings['components'] : []]);
 
         // 2. Compile Pages
         $pages = $website->pages()->get();
@@ -1841,7 +1764,7 @@ class PageController extends Controller
         foreach ($pages as $page) {
             $pagePayload[] = [
                 'slug' => $page->slug,
-                'html' => \App\Helpers\CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['typography' => is_array($themeSettings['typography'] ?? null) ? $themeSettings['typography'] : [], 'section_layout' => is_array($themeSettings['section_layout'] ?? null) ? $themeSettings['section_layout'] : [], 'background_style' => is_array($themeSettings['background_style'] ?? null) ? $themeSettings['background_style'] : []])
+                'html' => \App\Helpers\CmsHtmlCompiler::compile($page->blocks ?? [], $primaryColor, ['typography' => is_array($themeSettings['typography'] ?? null) ? $themeSettings['typography'] : [], 'section_layout' => is_array($themeSettings['section_layout'] ?? null) ? $themeSettings['section_layout'] : [], 'background_style' => is_array($themeSettings['background_style'] ?? null) ? $themeSettings['background_style'] : [], 'components' => is_array($themeSettings['components'] ?? null) ? $themeSettings['components'] : []])
             ];
         }
 

@@ -3,7 +3,7 @@ import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
 
 export const HeroAiConversationSchema = {
     type: "hero_ai_conversation",
@@ -63,7 +63,7 @@ export function HeroAiConversationBlock({ block, onUpdate, globalTheme }) {
                         <EditableButton label={data.secondary_label} url={data.secondary_url} className={sparkTw(block, "button_2", `inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold ${theme.border} ${theme.text}`)} onSave={(secondary_label,secondary_url)=>onUpdate({secondary_label,secondary_url})}/>
                     </div>
                     <div className={sparkTw(block, "wrapper_4", "mt-8 flex flex-wrap gap-2")}>
-                        {["chip_one","chip_two","chip_three"].map((key)=><EditableText key={key} value={data[key]} className={sparkTw(block, "text_4", `rounded-full border px-3 py-2 text-xs font-semibold ${theme.border} ${theme.surface} ${theme.sub}`)} onSave={(v)=>onUpdate({[key]:v})}/>) }
+                        {["chip_one","chip_two","chip_three"].map((key, index)=><EditableText key={key} value={data[key]} className={sparkTwItem(block, "chips", index, "chip", sparkTw(block, "text_4", `rounded-full border px-3 py-2 text-xs font-semibold ${theme.border} ${theme.surface} ${theme.sub}`))} onSave={(v)=>onUpdate({[key]:v})}/>) }
                     </div>
                 </div>
 

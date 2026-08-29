@@ -71,7 +71,7 @@ function FooterLogo({ block, dark = false, mega = false, forceWhite = false, edi
     </div>;
 }
 
-const FooterAiButton=({onClick,label='Ask Luna'})=>onClick ? <button type="button" onClick={onClick} className="absolute -right-1 -top-1 hidden h-7 w-7 items-center justify-center rounded-full bg-violet-600 text-xs font-black text-white shadow-lg group-hover/footer-field:inline-flex group-focus-within/footer-field:inline-flex" aria-label={label}>✦</button> : null;
+const FooterAiButton=({onClick,label='Ask Luna',inline=false})=>onClick ? <button type="button" onClick={onClick} className={`${inline?'relative':'absolute right-1 top-1'} cosmic-footer-ai-control hidden h-7 w-7 items-center justify-center rounded-md border border-violet-300/40 bg-violet-600 text-xs font-black text-white shadow-sm group-hover/footer-field:inline-flex group-focus-within/footer-field:inline-flex`} aria-label={label} title={label}>✦</button> : null;
 
 export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = false, resolvedTheme = null, onLogoManual = null, onLogoAi = null, onAiTarget = null }) {
     const megaEnabled = Boolean(block.mega_enabled ?? block.mega_footer?.enabled ?? false);
@@ -249,11 +249,11 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                             <div className={`grid gap-x-8 gap-y-7 ${mega.columns.length === 4 ? 'sm:grid-cols-2 xl:grid-cols-4' : mega.columns.length === 3 ? 'sm:grid-cols-2 xl:grid-cols-3' : mega.columns.length === 2 ? 'sm:grid-cols-2' : 'grid-cols-1'}`}>
                                 {mega.columns.map((column, columnIndex) => (
                                     <div key={`${column.title}-${columnIndex}`} data-cosmic-shell-path={`footer.mega_footer.columns.${columnIndex}`} className="group/column group/footer-field relative min-w-0">
-                                        <FooterAiButton onClick={()=>onAiTarget?.({type:'footer-column',fieldPath:`footer.mega_footer.columns.${columnIndex}`,currentValue:column.title,label:`Footer column ${column.title}`})} />
                                         {editorMode ? (
                                             <div className="flex items-center gap-2">
                                                 <button type="button" onClick={() => openEditor({ kind: 'column', columnIndex, title: 'Edit footer column' })} className={`min-w-0 flex-1 text-left text-[13px] font-bold uppercase tracking-[0.16em] transition ${megaTheme?.sub || 'text-slate-500'} hover:opacity-75`}>{column.title}</button>
-                                                <div className="flex opacity-0 transition group-hover/column:opacity-100 focus-within:opacity-100">
+                                                <div className="cosmic-footer-action-bar flex gap-0.5 rounded-lg border border-slate-300/40 bg-white/95 p-0.5 opacity-0 shadow-sm transition group-hover/column:opacity-100 focus-within:opacity-100">
+                                                    <FooterAiButton inline onClick={()=>onAiTarget?.({type:'footer-column',fieldPath:`footer.mega_footer.columns.${columnIndex}`,currentValue:column.title,label:`Footer column ${column.title}`})} />
                                                     <IconButton title="Move column left" disabled={columnIndex===0} onClick={() => moveColumn(columnIndex,-1)}>←</IconButton>
                                                     <IconButton title="Move column right" disabled={columnIndex===mega.columns.length-1} onClick={() => moveColumn(columnIndex,1)}>→</IconButton>
                                                     <IconButton title="Edit column" onClick={() => openEditor({ kind: 'column', columnIndex, title: 'Edit footer column' })}>✎</IconButton>
@@ -267,7 +267,6 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                         <div className="mt-3 space-y-1.5">
                                             {column.items.map((item, itemIndex) => (
                                                 <div key={`${item.label}-${itemIndex}`} data-cosmic-shell-path={`footer.mega_footer.columns.${columnIndex}.items.${itemIndex}`} className="group/item group/footer-field relative">
-                                                    <FooterAiButton onClick={()=>onAiTarget?.({type:'link',fieldPath:`footer.mega_footer.columns.${columnIndex}.items.${itemIndex}`,currentValue:item.label,currentUrl:item.url,label:'Footer menu link'})} />
                                                     {editorMode ? (
                                                         <div className="cosmic-mega-menu-row flex items-center justify-between gap-2 rounded-lg px-1 py-1 hover:bg-white/5">
                                                             <span
@@ -282,7 +281,8 @@ export function MinimalFooter({ block = {}, onUpdate = () => {}, editorMode = fa
                                                                     }}
                                                                     className="cosmic-mega-menu-link min-w-0 flex-1 cursor-pointer truncate text-left text-sm text-current transition hover:opacity-75"
                                                                 >{item.label}</span>
-                                                            <div className="flex opacity-0 transition group-hover/item:opacity-100 focus-within:opacity-100">
+                                                            <div className="cosmic-footer-action-bar flex shrink-0 gap-0.5 rounded-lg border border-slate-300/40 bg-white/95 p-0.5 opacity-0 shadow-sm transition group-hover/item:opacity-100 focus-within:opacity-100">
+                                                                <FooterAiButton inline onClick={()=>onAiTarget?.({type:'link',fieldPath:`footer.mega_footer.columns.${columnIndex}.items.${itemIndex}`,currentValue:item.label,currentUrl:item.url,label:'Footer menu link'})} />
                                                                 <IconButton title="Move menu up" disabled={itemIndex===0} onClick={() => moveMenu(columnIndex,itemIndex,-1)}>↑</IconButton>
                                                                 <IconButton title="Move menu down" disabled={itemIndex===column.items.length-1} onClick={() => moveMenu(columnIndex,itemIndex,1)}>↓</IconButton>
                                                                 <IconButton title="Edit menu" onClick={() => openEditor({ kind: 'menu', columnIndex, itemIndex, title: 'Edit footer link' })}>✎</IconButton>

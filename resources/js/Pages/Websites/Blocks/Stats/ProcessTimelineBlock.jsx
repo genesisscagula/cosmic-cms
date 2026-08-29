@@ -7,7 +7,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeAt } from "../Shared/RepeatableControls";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem, sparkTwPath } from "../Shared/sparkTailwindRuntime";
 
 
 export const ProcessTimelineSchema = {
@@ -194,24 +194,24 @@ export function ProcessTimelineBlock({ block, blockIndex, onUpdate, globalTheme 
 
                         <div
                             key={index}
-                            className={sparkTw(block, "auto_9", `group relative rounded-3xl ${theme.card} p-8 border ${theme.border}`)}
+                            className={sparkTwItem(block, "steps", index, "card", `group relative rounded-3xl ${theme.card} p-8 border ${theme.border}`)}
                         >
 
                             <EditableText
                                 value={step.number}
-                                className={sparkTw(block, "auto_10", `block text-5xl font-bold opacity-20 mb-6 ${theme.text}`)}
+                                className={sparkTwItem(block, "steps", index, "number", `block text-5xl font-bold opacity-20 mb-6 ${theme.text}`)}
                                 onSave={(val) => updateStep(index, "number", val)}
                             />
 
                             <EditableText
                                 value={step.title}
-                                className={sparkTw(block, "auto_11", `block text-2xl font-bold mb-4 ${theme.text}`)}
+                                className={sparkTwItem(block, "steps", index, "title", `block text-2xl font-bold mb-4 ${theme.text}`)}
                                 onSave={(val) => updateStep(index, "title", val)}
                             />
 
                             <EditableText
                                 value={step.text}
-                                className={sparkTw(block, "auto_12", `block leading-7 ${theme.sub}`)}
+                                className={sparkTwItem(block, "steps", index, "desc", `block leading-7 ${theme.sub}`)}
                                 onSave={(val) => updateStep(index, "text", val)}
                             />
 

@@ -18,6 +18,7 @@ final class RegisteredSiteBundleService
         private readonly LunaSiteBundlePlannerService $planner,
         private readonly CreditService $credits,
         private readonly PreviewDeploymentService $previews,
+        private readonly GlobalMegaFooterService $megaFooters,
     ) {
     }
 
@@ -25,6 +26,7 @@ final class RegisteredSiteBundleService
     public function plan(Website $website, string $prompt): array
     {
         $website->loadMissing('pages');
+        $prompt = trim($prompt) !== '' ? trim($prompt) : $this->websiteContextPrompt($website);
         $plan = $this->planner->plan($this->planningPrompt($website, $prompt), (string) ($website->industry ?: $prompt));
         $plan['pages'] = $this->starterPages((array) ($plan['pages'] ?? []), $prompt);
         $plan['page_count'] = count($plan['pages']);
@@ -65,6 +67,27 @@ final class RegisteredSiteBundleService
             throw new RuntimeException('Luna is already building starter pages for this website.');
         }
 
+        $firstBuild = ! $website->pages()->exists();
+        $starterFooter = null;
+        if ($firstBuild) {
+            $menu = collect((array) ($plan['pages'] ?? []))->map(fn (array $page): array => [
+                'label' => (string) ($page['title'] ?? 'Page'),
+                'url' => (bool) ($page['is_home'] ?? false) ? 'home' : (string) ($page['slug'] ?? ''),
+            ])->values()->all();
+            $starterFooter = $this->megaFooters->compose(
+                $prompt,
+                [
+                    'business_name' => (string) $website->name,
+                    'industry' => (string) ($website->industry ?: ($plan['industry'] ?? '')),
+                    'location' => (string) $website->location,
+                    'business_description' => (string) ($website->business_description ?: $prompt),
+                    'theme' => is_array($website->theme_settings) ? $website->theme_settings : [],
+                ],
+                $menu,
+                is_array($website->global_footer) ? $website->global_footer : [],
+            );
+        }
+
         $buildId = (string) Str::uuid();
         $cost = max(0, (int) ($plan['credit_cost'] ?? 0));
         $chargeReference = 'registered-site-bundle-'.$buildId;
@@ -86,9 +109,10 @@ final class RegisteredSiteBundleService
         }
 
         try {
-            $queued = DB::transaction(function () use ($website, $prompt, $plan, $buildId, $user, $chargeReference): array {
+            $queued = DB::transaction(function () use ($website, $prompt, $plan, $buildId, $user, $chargeReference, $starterFooter): array {
                 $locked = Website::query()->lockForUpdate()->findOrFail($website->id);
                 $existing = $locked->pages()->get()->keyBy(fn (Page $page): string => Str::lower((string) $page->slug));
+                $wasEmpty = $existing->isEmpty();
                 $manifestPages = [];
                 $queuedPages = [];
 
@@ -176,13 +200,17 @@ final class RegisteredSiteBundleService
 
                 $theme = is_array($locked->theme_settings) ? $locked->theme_settings : [];
                 $theme['luna_theme_locked'] = true;
-                $locked->forceFill([
+                $updates = [
                     'industry' => $locked->industry ?: Str::headline((string) ($plan['industry'] ?? '')),
                     'business_description' => $locked->business_description ?: $prompt,
                     'settings' => $settings,
                     'theme_settings' => $theme,
                     'global_header' => $header,
-                ])->save();
+                ];
+                if ($wasEmpty && is_array($starterFooter)) {
+                    $updates['global_footer'] = $starterFooter;
+                }
+                $locked->forceFill($updates)->save();
 
                 return $queuedPages;
             });
@@ -298,6 +326,16 @@ final class RegisteredSiteBundleService
             $page['sort_order'] = $index + 1;
             return $page;
         })->all();
+    }
+
+    private function websiteContextPrompt(Website $website): string
+    {
+        return trim(collect([
+            $website->name,
+            $website->industry ? 'Industry: '.$website->industry : null,
+            $website->location ? 'Location: '.$website->location : null,
+            $website->business_description,
+        ])->filter()->implode('. '));
     }
 
     private function planningPrompt(Website $website, string $prompt): string

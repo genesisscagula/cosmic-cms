@@ -21,7 +21,10 @@
     "Treat primary as an accent-first brand role by default; do not turn a section or card into a solid primary fill unless the user explicitly asks for a primary/brand-colored background.",
     "For card surface requests, use semantic roles (surface, surface_alt, accent_tint, neutral_dark, primary, accent, white) and never hardcode a family color such as Midnight/navy.",
     "A request for dark cards resolves to the active palette's neutral_dark role; explicit solid primary remains allowed because user scope and intent win.",
-    "Prefer primary for buttons, links, icons, eyebrows, headings, and small details when the user asks for brand emphasis without requesting a solid background."
+    "Prefer primary for buttons, links, icons, eyebrows, headings, and small details when the user asks for brand emphasis without requesting a solid background.",
+    "Nested repeater CRUD uses an exact collection path when available, for example rows.0.columns, rather than assuming a top-level collection.",
+    "Numeric collection indexes may shift after add/remove/reorder; preserve field extras and scoped Tailwind styles by remapping affected paths.",
+    "Stable @item-id selectors are preferred when present so nested targets survive sibling reorder operations."
   ],
   "collection_keys": [
     "items",
@@ -36,7 +39,10 @@
     "team",
     "plans",
     "logos",
-    "gallery"
+    "gallery",
+    "rows",
+    "columns",
+    "extras"
   ],
   "request_response_examples": [
     {
@@ -96,5 +102,72 @@
       "responsive/export safety",
       "readable contrast where text/UI would otherwise become unusable"
     ]
+  },
+  "nested_repeater_contract": {
+    "version": 1,
+    "path_examples": [
+      "items",
+      "rows.0.columns",
+      "rows.@row_1.columns",
+      "rows.0.columns.1.extras"
+    ],
+    "actions": [
+      "add",
+      "duplicate",
+      "remove",
+      "move",
+      "add_row",
+      "remove_row",
+      "move_row",
+      "duplicate_row",
+      "add_column",
+      "remove_column",
+      "move_column",
+      "duplicate_column",
+      "add_extra",
+      "update_extra",
+      "remove_extra",
+      "move_extra",
+      "duplicate_extra"
+    ],
+    "stable_item_id_key": "_cosmic_id",
+    "preserve": [
+      "field_extras",
+      "luna_tailwind_schema",
+      "unrelated sibling data"
+    ]
+  },
+  "structural_action_contract": {
+    "version": 1,
+    "actions": [
+      "add_extra",
+      "update_extra",
+      "remove_extra",
+      "move_extra",
+      "duplicate_extra",
+      "add_row",
+      "remove_row",
+      "move_row",
+      "duplicate_row",
+      "add_column",
+      "remove_column",
+      "move_column",
+      "duplicate_column"
+    ],
+    "registered_field_anchor": {
+      "target_field": "exact field path",
+      "placement": [
+        "before",
+        "after"
+      ],
+      "storage": "field_extras"
+    },
+    "ai_flex_paths": [
+      "rows",
+      "rows.0.columns",
+      "rows.0.columns.0.extras"
+    ],
+    "atomic": true,
+    "mixed_with_editable_or_tailwind_patch": false
   }
 }

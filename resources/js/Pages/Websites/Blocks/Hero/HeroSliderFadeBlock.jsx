@@ -7,7 +7,7 @@ import { getEffectiveTheme } from '../../../../theme/Theme';
 import { getHeroThemeState, resolveHeroThemeRequest } from '../../../../theme/heroTheme';
 import { colorFamilies } from '../../../../theme/colorFamilies';
 import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem, sparkTwPath } from "../Shared/sparkTailwindRuntime";
 
 const DEFAULT_SLIDES = [
     {
@@ -241,7 +241,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
             {slides.map((slide, index) => (
                 <div
                     key={`hero-slider-${index}`}
-                    className={sparkTw(block, "wrapper", `absolute inset-0 transition-opacity duration-700 ${index === activeIndex ? 'z-10 opacity-100' : 'z-0 opacity-0'}`)}
+                    className={sparkTwItem(block, "slides", index, "slide", sparkTw(block, "wrapper", `absolute inset-0 transition-opacity duration-700 ${index === activeIndex ? 'z-10 opacity-100' : 'z-0 opacity-0'}`))}
                     aria-hidden={index !== activeIndex}
                 >
                     <EditableImage
@@ -251,7 +251,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                         src={slide.image_url}
                         showOverlay={false}
                         isBackground
-                        className={sparkTw(block, "b10_1", "absolute inset-0 h-full w-full overflow-hidden")}
+                        className={sparkTwItem(block, "slides", index, "image", sparkTw(block, "b10_1", "absolute inset-0 h-full w-full overflow-hidden"))}
                         onSave={(value) => updateSlide(index, { image_url: value })}
                     />
                 </div>
@@ -264,26 +264,31 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
             <div className={sparkTw(block, "wrapper_5", "relative z-30 mx-auto flex max-w-7xl items-center px-6 py-0 sm:px-10 lg:px-14")} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                 <div className={sparkTw(block, "wrapper_6", `max-w-3xl ${sliderMediaStyle.textWrap}`)} aria-live="polite">
                     {activeSlide.eyebrow && (
-                        <p className={sparkTw(block, "body", `mb-5 text-xs font-bold uppercase tracking-[0.32em] sm:text-sm ${sliderMediaStyle.eyebrow}`)}>
+                        <p className={sparkTwItem(block, "slides", activeIndex, "eyebrow", sparkTw(block, "body", `mb-5 text-xs font-bold uppercase tracking-[0.32em] sm:text-sm ${sliderMediaStyle.eyebrow}`))}>
                             {activeSlide.eyebrow}
                         </p>
                     )}
-                    <h2 className={sparkTw(block, "heading", "max-w-3xl text-[3rem] font-bold leading-[0.98] tracking-[-0.04em] sm:text-[4rem] lg:text-[5rem]")}>
+                    <h2 className={sparkTwItem(block, "slides", activeIndex, "heading", sparkTw(block, "heading", "max-w-3xl text-[3rem] font-bold leading-[0.98] tracking-[-0.04em] sm:text-[4rem] lg:text-[5rem]"))}>
                         {activeSlide.heading}
                     </h2>
-                    <p className={sparkTw(block, "body_2", `mt-7 max-w-2xl text-base leading-8 sm:text-lg ${sliderMediaStyle.body}`)}>
+                    <p className={sparkTwItem(block, "slides", activeIndex, "description", sparkTw(block, "body_2", `mt-7 max-w-2xl text-base leading-8 sm:text-lg ${sliderMediaStyle.body}`))}>
                         {activeSlide.description}
                     </p>
-                    <div className={sparkTw(block, "wrapper_7", "mt-9 flex flex-wrap gap-3")}>
+                    <div className={sparkTwItem(block, "slides", activeIndex, "cta_group", sparkTw(block, "wrapper_7", "mt-9 flex flex-wrap gap-3"))}>
                         {ctas.map((cta, index) => (
                             <a
                                 key={`hero-slider-cta-${index}`}
                                 href={cta.url}
                                 onClick={(event) => event.preventDefault()}
-                                className={sparkTw(
+                                className={sparkTwPath(
                                     block,
-                                    index === 0 ? "primary_button" : `secondary_button_${index}`,
-                                    `rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 ${index === 0 ? sliderMediaStyle.primary : sliderMediaStyle.secondary}`,
+                                    ["slides", activeIndex, "ctas", index],
+                                    "button",
+                                    sparkTw(
+                                        block,
+                                        index === 0 ? "primary_button" : `secondary_button_${index}`,
+                                        `rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 ${index === 0 ? sliderMediaStyle.primary : sliderMediaStyle.secondary}`,
+                                    ),
                                 )}
                             >
                                 {cta.text}
@@ -299,7 +304,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                         key={`dot-${index}`}
                         type="button"
                         onClick={() => setActiveIndex(index)}
-                        className={sparkTw(block, "b10_3", `h-2.5 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white ${index === activeIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/70'}`)}
+                        className={sparkTwItem(block, "slides", index, "dot", sparkTw(block, "b10_3", `h-2.5 rounded-full transition-all focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-white ${index === activeIndex ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/70'}`))}
                         data-cosmic-slider-nav="dot" aria-label={`Show slide ${index + 1}`}
                         aria-current={index === activeIndex ? 'true' : undefined}
                     />
@@ -316,7 +321,7 @@ export default function HeroSliderFadeBlock({ block, blockIndex, onUpdate, globa
                     <a
                         href={floatingCta.url}
                         onClick={(event) => event.preventDefault()}
-                        className={sparkTw(block, "floating_button", `mr-1 rounded-full px-4 py-2 text-xs font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${CTA_STYLES[3]}`)}
+                        className={sparkTwPath(block, ["slides", activeIndex, "ctas", 3], "button", sparkTw(block, "floating_button", `mr-1 rounded-full px-4 py-2 text-xs font-bold backdrop-blur transition focus-visible:outline focus-visible:outline-2 focus-visible:outline-white ${CTA_STYLES[3]}`))}
                     >
                         {floatingCta.text}
                     </a>

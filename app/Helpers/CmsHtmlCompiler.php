@@ -63,6 +63,37 @@ class CmsHtmlCompiler
         return trim($resolved.' '.implode(' ',array_filter($markers)));
     }
 
+
+    /**
+     * Tailwind schema V2 scoped bridge. Migration batches can opt repeaters into
+     * per-item/nested-item styles without changing legacy output for other Sparks.
+     * Example path: ['items', 1, 'features', 2].
+     */
+    private static function sparkTwPath(array $block, array|string $path, string $slot, string $legacyClasses = ''): string
+    {
+        $contract=app(\App\Services\SparkTailwindSchemaContract::class);
+        $resolved=$contract->resolveScopedStyle($block, $path, $slot, $legacyClasses);
+        $tokens=$contract->tokenize($resolved);
+        $ownsY=false;
+        $ownsX=false;
+        foreach($tokens as $token){
+            if(preg_match('/(?:^|:)(?:p|py|pt|pb)-/',$token)) $ownsY=true;
+            if(preg_match('/(?:^|:)(?:p|px|pl|pr)-/',$token)) $ownsX=true;
+        }
+        $markers=[
+            'cosmic-tw-slot--'.$contract->normalizeSlot($slot),
+            $contract->scopeMarker($path,$slot),
+            $ownsY?'cosmic-tw-own-section-y':'',
+            $ownsX?'cosmic-tw-own-section-x':'',
+        ];
+        return trim($resolved.' '.implode(' ',array_filter($markers)));
+    }
+
+    private static function sparkTwItem(array $block, string $collection, int|string $indexOrKey, string $slot, string $legacyClasses = ''): string
+    {
+        return self::sparkTwPath($block, [$collection,$indexOrKey], $slot, $legacyClasses);
+    }
+
     private static function getTheme($key)
     {
         $catalog = self::themeCatalog();
@@ -149,6 +180,18 @@ class CmsHtmlCompiler
         $url = preg_replace('#^[A-Za-z]:[\\/].*?[\\/]public[\\/]#', '/', $url) ?? $url;
         $url = str_replace('\\', '/', $url);
 
+        // Early testimonial generation used /cosmic-images/avatar/avatar-N.svg,
+        // while the real managed avatar library lives under public storage as JPG.
+        // Normalize old saved block data during export so existing sites self-heal.
+        if (preg_match('~^/cosmic-images/avatar/avatar-([1-6])\.(?:svg|jpg|jpeg|png)(?:[?#].*)?$~i', $url, $match)) {
+            $url = '/storage/cms-images/avatars/avatar-'.$match[1].'.jpg';
+        }
+
+        // Also accept an accidentally persisted Laravel storage filesystem path.
+        if (preg_match('~(?:^|/)storage/app/public/cms-images/avatars/avatar-([1-6])\.(?:jpg|jpeg|png)(?:[?#].*)?$~i', $url, $match)) {
+            $url = '/storage/cms-images/avatars/avatar-'.$match[1].'.jpg';
+        }
+
         // Commerce uploads now use a routed public media endpoint. Rewrite URLs saved
         // by older builds so exported HTML is also independent of public/storage.
         if (preg_match('#^/storage/websites/(\d+)/commerce/([A-Za-z0-9._-]+)$#', $url, $match)) {
@@ -202,6 +245,300 @@ class CmsHtmlCompiler
         ) ?? $html;
 
         return $html;
+    }
+
+    /**
+     * Batch 6 static/export mirror for registered Spark field extras.
+     *
+     * Builder resolves extras against the rendered field using an exact field
+     * path first and a deterministic visible-value fallback second. Static HTML
+     * cannot run the React provider, so the compiler performs the same fallback
+     * once per Spark fragment before publish/export wrappers are applied.
+     */
+    private static function resolveSparkExtraTargetValue(array $block, string $target): mixed
+    {
+        $target = \App\Support\SparkExtrasContract::normalizeTargetPath($target);
+        if ($target === null) return null;
+
+        $cursor = $block;
+        foreach (explode('.', $target) as $segment) {
+            if (! is_array($cursor)) return null;
+
+            if (preg_match('/^[0-9]+$/', $segment)) {
+                $index = (int) $segment;
+                if (! array_key_exists($index, $cursor)) return null;
+                $cursor = $cursor[$index];
+                continue;
+            }
+
+            if (str_starts_with($segment, '@')) {
+                $stableId = substr($segment, 1);
+                $matched = null;
+                foreach ($cursor as $item) {
+                    if (! is_array($item)) continue;
+                    $candidate = (string) ($item['_cosmic_id'] ?? $item['id'] ?? $item['_id'] ?? $item['uuid'] ?? $item['key'] ?? '');
+                    if ($candidate === $stableId) { $matched = $item; break; }
+                }
+                if ($matched === null) return null;
+                $cursor = $matched;
+                continue;
+            }
+
+            if (! array_key_exists($segment, $cursor)) return null;
+            $cursor = $cursor[$segment];
+        }
+
+        return $cursor;
+    }
+
+    private static function sparkExtraLeafKey(string $target): string
+    {
+        $parts = array_values(array_filter(
+            explode('.', $target),
+            static fn (string $part): bool => ! preg_match('/^[0-9]+$/', $part) && ! str_starts_with($part, '@')
+        ));
+        return strtolower((string) ($parts[count($parts) - 1] ?? ''));
+    }
+
+    private static function sparkExtraComparableText(mixed $value): string
+    {
+        $text = html_entity_decode((string) ($value ?? ''), ENT_QUOTES | ENT_HTML5);
+        $text = preg_replace('/\\s+/u', ' ', $text) ?? $text;
+        return trim($text);
+    }
+
+    private static function sparkExtraVisibleHtmlText(string $markup): string
+    {
+        $markup = preg_replace('/<br\\s*\\/?\\s*>/i', ' ', $markup) ?? $markup;
+        return self::sparkExtraComparableText(strip_tags($markup));
+    }
+
+    /** @return array{0:int,1:int}|null byte offsets [start,end) */
+    private static function findSparkFieldExtraAnchor(string $fragment, string $target, mixed $value, array $claimed): ?array
+    {
+        if (! is_scalar($value) || is_bool($value)) return null;
+        $expected = self::sparkExtraComparableText($value);
+        if ($expected === '') return null;
+
+        $leaf = self::sparkExtraLeafKey($target);
+        $overlaps = static function (int $start, int $end) use ($claimed): bool {
+            foreach ($claimed as $span) {
+                if ($start < $span[1] && $end > $span[0]) return true;
+            }
+            return false;
+        };
+
+        // Media fields: match the concrete image element by either the saved URL
+        // or the export-normalized asset URL.
+        if (preg_match('/(image|photo|picture|avatar|logo|poster|thumbnail|media|src|cover)/i', $leaf)) {
+            preg_match_all('/<img\\b[^>]*>/i', $fragment, $matches, PREG_OFFSET_CAPTURE);
+            $accepted = [$expected];
+            $published = self::staticAssetUrl($expected);
+            if ($published !== '') $accepted[] = self::sparkExtraComparableText($published);
+            foreach ($matches[0] ?? [] as $match) {
+                [$tag, $start] = $match;
+                $end = $start + strlen($tag);
+                if ($overlaps($start, $end)) continue;
+                if (! preg_match('/\\bsrc\\s*=\\s*(["\\\'])(.*?)\\1/is', $tag, $srcMatch)) continue;
+                $src = self::sparkExtraComparableText($srcMatch[2]);
+                if (in_array($src, $accepted, true)) return [$start, $end];
+            }
+        }
+
+        // URL-only button/link fields anchor against href rather than visible copy.
+        if (preg_match('/(?:^|_)(url|href)$/i', $leaf)) {
+            preg_match_all('~<a\\b[^>]*>.*?</a\\s*>~is', $fragment, $matches, PREG_OFFSET_CAPTURE);
+            foreach ($matches[0] ?? [] as $match) {
+                [$markup, $start] = $match;
+                $end = $start + strlen($markup);
+                if ($overlaps($start, $end)) continue;
+                if (! preg_match('/\\bhref\\s*=\\s*(["\\\'])(.*?)\\1/is', $markup, $hrefMatch)) continue;
+                if (self::sparkExtraComparableText($hrefMatch[2]) === $expected) return [$start, $end];
+            }
+        }
+
+        // CTA/button labels prefer an <a>/<button> with exact visible text.
+        if (preg_match('/(button|cta|action|link|label)/i', $leaf)) {
+            preg_match_all('~<(a|button)\\b[^>]*>.*?</\\1\\s*>~is', $fragment, $matches, PREG_OFFSET_CAPTURE);
+            foreach ($matches[0] ?? [] as $match) {
+                [$markup, $start] = $match;
+                $end = $start + strlen($markup);
+                if ($overlaps($start, $end)) continue;
+                if (self::sparkExtraVisibleHtmlText($markup) === $expected) return [$start, $end];
+            }
+        }
+
+        // Text fallback mirrors SparkFieldExtrasRuntime.jsx: semantic text nodes
+        // only, exact normalized visible text, with the smallest matching element
+        // preferred so an outer wrapper never steals a child field anchor.
+        preg_match_all('~<(h1|h2|h3|h4|h5|h6|p|li|dt|dd|figcaption|blockquote|span)\\b[^>]*>.*?</\\1\\s*>~is', $fragment, $matches, PREG_OFFSET_CAPTURE);
+        $candidates = [];
+        foreach ($matches[0] ?? [] as $match) {
+            [$markup, $start] = $match;
+            $end = $start + strlen($markup);
+            if ($overlaps($start, $end)) continue;
+            if (self::sparkExtraVisibleHtmlText($markup) !== $expected) continue;
+            preg_match('/^<([a-z0-9]+)/i', $markup, $tagMatch);
+            $tag = strtolower((string) ($tagMatch[1] ?? 'span'));
+            $score = 0;
+            if (preg_match('/(heading|title|headline)/i', $leaf) && preg_match('/^h[1-6]$/', $tag)) $score += 60;
+            if (preg_match('/(tagline|eyebrow|label|badge|kicker)/i', $leaf) && $tag === 'span') $score += 35;
+            if (preg_match('/(text|description|desc|body|copy|content)/i', $leaf) && $tag === 'p') $score += 30;
+            if (preg_match('/^h[1-6]$/', $tag)) $score += 12;
+            if ($tag === 'p') $score += 8;
+            $candidates[] = [$score, strlen($markup), $start, $end];
+        }
+        if ($candidates !== []) {
+            usort($candidates, static fn (array $a, array $b): int => ($b[0] <=> $a[0]) ?: ($a[1] <=> $b[1]) ?: ($a[2] <=> $b[2]));
+            return [$candidates[0][2], $candidates[0][3]];
+        }
+
+        return null;
+    }
+
+    private static function renderSparkFieldExtraList(string $target, string $placement, array $items): string
+    {
+        if ($items === []) return '';
+        $targetAttr = e($target);
+        $placement = $placement === 'before' ? 'before' : 'after';
+        $rendered = '';
+
+        foreach ($items as $rawItem) {
+            if (! is_array($rawItem)) continue;
+            $extra = \App\Support\SparkExtrasContract::normalizeItem($rawItem);
+            if ($extra === null) continue;
+            $type = (string) $extra['type'];
+            $data = is_array($extra['data'] ?? null) ? $extra['data'] : [];
+            $id = e((string) ($extra['id'] ?? ''));
+            $attrs = "data-cosmic-field-extra='1' data-cosmic-extra-id='{$id}' data-cosmic-extra-type='".e($type)."'";
+
+            if ($type === 'image') {
+                $src = trim((string) ($data['src'] ?? ''));
+                $src = $src !== '' ? e(self::staticAssetUrl($src)) : '';
+                $alt = e((string) ($data['alt'] ?? ''));
+                $title = trim((string) ($data['title'] ?? ''));
+                $titleAttr = $title !== '' ? " title='".e($title)."'" : '';
+                $loading = ($data['loading'] ?? 'lazy') === 'eager' ? 'eager' : 'lazy';
+                $fit = in_array(($data['object_fit'] ?? 'cover'), ['cover','contain','fill','none','scale-down'], true) ? $data['object_fit'] : 'cover';
+                $body = $src !== ''
+                    ? "<img src='{$src}' alt='{$alt}'{$titleAttr} loading='{$loading}' style='display:block;width:100%;max-height:34rem;object-fit:".e($fit)."'>"
+                    : "<span data-cosmic-extra-empty-media='image' style='display:grid;min-height:7rem;width:100%;place-items:center;background:rgba(0,0,0,.05);padding:2rem 1rem;text-align:center;font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.5'>Image</span>";
+                $rendered .= "<span {$attrs} class='cosmic-field-extra cosmic-field-extra--image' style='display:block;width:100%;overflow:hidden;border-radius:var(--cosmic-local-image-radius,var(--cosmic-image-radius,16px))'>{$body}</span>";
+                continue;
+            }
+
+            if ($type === 'button') {
+                $label = e((string) ($data['label'] ?? '')) ?: 'Learn More';
+                $url = e((string) ($data['url'] ?? '')) ?: '#';
+                $target = ($data['target'] ?? '_self') === '_blank' ? '_blank' : '_self';
+                $rel = trim((string) ($data['rel'] ?? ''));
+                if ($rel === '' && $target === '_blank') $rel = 'noopener noreferrer';
+                $relAttr = $rel !== '' ? " rel='".e($rel)."'" : '';
+                $rendered .= "<span {$attrs} class='cosmic-field-extra cosmic-field-extra--button' style='display:inline-flex;max-width:100%'><a href='{$url}' target='{$target}'{$relAttr} style='display:inline-flex;min-height:2.5rem;align-items:center;justify-content:center;border-radius:var(--cosmic-local-button-radius,var(--cosmic-button-radius,999px));padding:.625rem 1.25rem;background:var(--cosmic-button-primary-bg,var(--cosmic-brand-primary,#0f172a));color:var(--cosmic-button-primary-text,#fff);font-size:.875rem;font-weight:700;text-decoration:none'>{$label}</a></span>";
+                continue;
+            }
+
+            if ($type === 'heading') {
+                $level = max(1, min(6, (int) ($data['level'] ?? 2)));
+                $rendered .= "<span {$attrs} class='cosmic-field-extra cosmic-field-extra--heading' role='heading' aria-level='{$level}' style='display:block;color:var(--cosmic-color-heading,currentColor);font-size:var(--cosmic-local-h3-size,var(--cosmic-type-h3-size,1.75rem));line-height:var(--cosmic-local-h3-line,var(--cosmic-type-h3-line,1.15));font-weight:700'>".e((string) ($data['text'] ?? ''))."</span>";
+                continue;
+            }
+
+            if ($type === 'text') {
+                $rendered .= "<span {$attrs} class='cosmic-field-extra cosmic-field-extra--text' style='display:block;color:var(--cosmic-color-body,currentColor);font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size,1rem));line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line,1.6))'>".e((string) ($data['text'] ?? ''))."</span>";
+                continue;
+            }
+
+            if ($type === 'badge') {
+                $rendered .= "<span {$attrs} class='cosmic-field-extra cosmic-field-extra--badge' style='display:inline-flex;border:1px solid var(--cosmic-color-border,currentColor);border-radius:999px;padding:.25rem .75rem;color:var(--cosmic-color-heading,currentColor);font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase'>".e((string) ($data['text'] ?? ''))."</span>";
+                continue;
+            }
+
+            if ($type === 'icon') {
+                $name = trim((string) ($data['name'] ?? ''));
+                $label = trim((string) ($data['label'] ?? ''));
+                $labelAttr = $label !== '' ? " aria-label='".e($label)."'" : '';
+                $rendered .= "<span {$attrs}{$labelAttr} class='cosmic-field-extra cosmic-field-extra--icon' style='display:inline-flex;align-items:center;gap:.5rem'><span aria-hidden='true' style='font-size:1.25rem;line-height:1'>".e($name !== '' ? $name : '✦')."</span>".($label !== '' ? "<span style='font-size:.875rem'>".e($label)."</span>" : '')."</span>";
+                continue;
+            }
+
+            if ($type === 'video') {
+                $src = trim((string) ($data['src'] ?? ''));
+                $src = $src !== '' ? e(self::staticAssetUrl($src)) : '';
+                $poster = trim((string) ($data['poster'] ?? ''));
+                $posterAttr = $poster !== '' ? " poster='".e(self::staticAssetUrl($poster))."'" : '';
+                $flags = ! empty($data['autoplay']) ? ' autoplay' : '';
+                $flags .= ($data['muted'] ?? true) ? ' muted' : '';
+                $flags .= ! empty($data['loop']) ? ' loop' : '';
+                $flags .= ($data['controls'] ?? true) ? ' controls' : '';
+                $flags .= ($data['plays_inline'] ?? true) ? ' playsinline' : '';
+                $body = $src !== ''
+                    ? "<video src='{$src}'{$posterAttr}{$flags} style='display:block;width:100%;max-height:34rem;object-fit:cover'></video>"
+                    : "<span data-cosmic-extra-empty-media='video' style='display:grid;min-height:7rem;width:100%;place-items:center;background:rgba(0,0,0,.05);padding:2rem 1rem;text-align:center;font-size:.75rem;font-weight:700;letter-spacing:.12em;text-transform:uppercase;opacity:.5'>Video</span>";
+                $rendered .= "<span {$attrs} class='cosmic-field-extra cosmic-field-extra--video' style='display:block;width:100%;overflow:hidden;border-radius:var(--cosmic-local-image-radius,var(--cosmic-image-radius,16px))'>{$body}</span>";
+                continue;
+            }
+
+            if ($type === 'divider') {
+                $vertical = ($data['orientation'] ?? 'horizontal') === 'vertical';
+                $style = $vertical ? 'display:inline-block;height:2.5rem;width:1px;border-left:1px solid var(--cosmic-color-border,currentColor)' : 'display:block;height:1px;width:100%;border-top:1px solid var(--cosmic-color-border,currentColor)';
+                $rendered .= "<span {$attrs} aria-hidden='true' class='cosmic-field-extra cosmic-field-extra--divider' style='{$style}'></span>";
+                continue;
+            }
+
+            if ($type === 'spacer') {
+                $sizes = ['xs'=>8,'sm'=>16,'md'=>24,'lg'=>40,'xl'=>56,'2xl'=>80];
+                $height = $sizes[(string) ($data['size'] ?? 'md')] ?? 24;
+                $rendered .= "<span {$attrs} aria-hidden='true' class='cosmic-field-extra cosmic-field-extra--spacer' style='display:block;width:100%;height:{$height}px'></span>";
+            }
+        }
+
+        if ($rendered === '') return '';
+        $spacing = $placement === 'before' ? 'margin-bottom:.75rem' : 'margin-top:.75rem';
+        return "<span data-cosmic-field-extra-list='1' data-cosmic-field-extra-for='{$targetAttr}' data-cosmic-field-extra-placement='{$placement}' class='cosmic-field-extra-list cosmic-field-extra-list--{$placement}' style='display:block;width:100%;{$spacing}'>{$rendered}</span>";
+    }
+
+    private static function applySparkFieldExtrasToFragment(string $fragment, array $block): string
+    {
+        if ($fragment === '' || ! is_array($block[\App\Support\SparkExtrasContract::STORAGE_KEY] ?? null)) return $fragment;
+        $state = \App\Support\SparkExtrasContract::normalizeState($block[\App\Support\SparkExtrasContract::STORAGE_KEY]);
+        if ($state === []) return $fragment;
+
+        $targets = array_keys($state);
+        usort($targets, 'strnatcasecmp');
+        $claimed = [];
+        $operations = [];
+
+        foreach ($targets as $target) {
+            $value = self::resolveSparkExtraTargetValue($block, $target);
+            $span = self::findSparkFieldExtraAnchor($fragment, $target, $value, $claimed);
+            if ($span === null) continue;
+            $claimed[] = $span;
+            $slots = $state[$target] ?? [];
+            $before = self::renderSparkFieldExtraList($target, 'before', is_array($slots['before'] ?? null) ? $slots['before'] : []);
+            $after = self::renderSparkFieldExtraList($target, 'after', is_array($slots['after'] ?? null) ? $slots['after'] : []);
+            if ($before !== '') $operations[] = [$span[0], $before, 0];
+            if ($after !== '') $operations[] = [$span[1], $after, 1];
+        }
+
+        usort($operations, static fn (array $a, array $b): int => ($b[0] <=> $a[0]) ?: ($b[2] <=> $a[2]));
+        foreach ($operations as [$offset, $markup]) {
+            $fragment = substr($fragment, 0, $offset).$markup.substr($fragment, $offset);
+        }
+
+        return $fragment;
+    }
+
+    private static function sparkFieldExtrasCoreCss(): string
+    {
+        return <<<'CSS'
+<style data-cosmic-field-extras-core>
+.cosmic-field-extra-list,.cosmic-field-extra{box-sizing:border-box;min-width:0;overflow-wrap:anywhere}
+.cosmic-field-extra-list>.cosmic-field-extra+.cosmic-field-extra{margin-top:.65rem}
+.cosmic-field-extra--image img,.cosmic-field-extra--video video{max-width:100%;height:auto}
+@media(max-width:640px){.cosmic-field-extra--button,.cosmic-field-extra--button>a{max-width:100%}.cosmic-field-extra--image,.cosmic-field-extra--video{border-radius:var(--cosmic-local-image-radius,var(--cosmic-image-radius,12px))}}
+</style>
+CSS;
     }
 
     /**
@@ -581,7 +918,8 @@ class CmsHtmlCompiler
                 $unitMinor = isset($p['sale_price_minor']) && $p['sale_price_minor'] !== null ? (int) $p['sale_price_minor'] : (int) ($p['regular_price_minor'] ?? 0);
                 $previewSubtotal += $unitMinor * $qty;
                 $title = e((string) ($p['title'] ?? 'Product'));
-                $lines .= "<div class='flex items-center gap-3'><img src='".$img($p)."' alt='{$title}' class='h-12 w-12 rounded-xl object-cover'><div class='min-w-0 flex-1'><p class='truncate text-sm font-semibold'>{$title}</p><p class='text-[11px]' style='color:var(--commerce-muted)'>Qty {$qty}</p></div><strong class='text-xs'>".self::commerceMoney($unitMinor * $qty, $currency, $decimals)."</strong></div>";
+                $featureRow = self::sparkTwItem($block, 'items', $index, 'row', 'flex items-center gap-3');
+                $lines .= "<div class='{$featureRow}'><img src='".$img($p)."' alt='{$title}' class='h-12 w-12 rounded-xl object-cover'><div class='min-w-0 flex-1'><p class='truncate text-sm font-semibold'>{$title}</p><p class='text-[11px]' style='color:var(--commerce-muted)'>Qty {$qty}</p></div><strong class='text-xs'>".self::commerceMoney($unitMinor * $qty, $currency, $decimals)."</strong></div>";
             }
             if ($lines === '') $lines = "<p class='text-sm' style='color:var(--commerce-muted)'>Live order items appear at checkout.</p>";
             $subtotal = self::commerceMoney($previewSubtotal, $currency, $decimals);
@@ -1450,10 +1788,13 @@ JS;
                     ];
                 }
                 $faqMarkup = '';
-                foreach ($faqs as $faq) {
+                foreach ($faqs as $faqIndex => $faq) {
                     $question = e($faq['question'] ?? 'Question');
                     $answer = e($faq['answer'] ?? 'Answer');
-                    $faqMarkup .= "<details class='group border-b p-5 last:border-b-0 sm:p-6 {$faqCardTheme['border']}'><summary class='flex cursor-pointer list-none items-center justify-between gap-5 text-base font-semibold {$faqCardTheme['text']}'><span>{$question}</span><span class='text-xl transition group-open:rotate-45'>+</span></summary><p class='pt-4 text-sm leading-6 {$faqCardTheme['sub']}'>{$answer}</p></details>";
+                    $faqItemClass = self::sparkTwItem($block, 'faqs', $faqIndex, 'item', "group border-b p-5 last:border-b-0 sm:p-6 {$faqCardTheme['border']}");
+                    $faqSummaryClass = self::sparkTwItem($block, 'faqs', $faqIndex, 'question', "flex cursor-pointer list-none items-center justify-between gap-5 text-base font-semibold {$faqCardTheme['text']}");
+                    $faqAnswerClass = self::sparkTwItem($block, 'faqs', $faqIndex, 'answer', "pt-4 text-sm leading-6 {$faqCardTheme['sub']}");
+                    $faqMarkup .= "<details class='{$faqItemClass}'><summary class='{$faqSummaryClass}'><span>{$question}</span><span class='text-xl transition group-open:rotate-45'>+</span></summary><p class='{$faqAnswerClass}'>{$answer}</p></details>";
                 }
                 $html .= "<section class='px-6 py-16 sm:px-8 lg:py-20 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)] lg:gap-16'><div><p class='text-xs font-semibold uppercase tracking-[0.22em] {$faqSectionSub}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold leading-[1.05] tracking-tight sm:text-5xl lg:text-[3.75rem] {$faqSectionText}'>{$heading}</h2><p class='mt-5 max-w-xl text-base leading-7 {$faqSectionSub}'>{$text}</p></div><div class='overflow-hidden rounded-2xl border {$faqCardTheme['border']} {$faqCardTheme['card']}'>{$faqMarkup}</div></div></section>";
                 break;
@@ -1481,7 +1822,7 @@ JS;
                         $items=$salesDefaults[$variant]??[];
                     }
                     $items=array_slice($items,0,6);
-                    $cards=''; foreach($items as $i=>$item){$n=str_pad((string)($i+1),2,'0',STR_PAD_LEFT);$title=e($item['title']??'Item');$desc=e($item['text']??'');$cards.="<article class='rounded-[1.75rem] border p-6 {$theme['border']} {$theme['card']}'><span class='text-xs font-bold {$theme['sub']}'>{$n}</span><h3 class='mt-8 text-xl font-bold {$theme['text']}'>{$title}</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$desc}</p></article>";}
+                    $cards=''; foreach($items as $i=>$item){$n=str_pad((string)($i+1),2,'0',STR_PAD_LEFT);$title=e($item['title']??'Item');$desc=e($item['text']??'');$cardClass=self::sparkTwItem($block,'items',$i,'card',"rounded-[1.75rem] border p-6 {$theme['border']} {$theme['card']}");$indexClass=self::sparkTwItem($block,'items',$i,'index',"text-xs font-bold {$theme['sub']}");$titleClass=self::sparkTwItem($block,'items',$i,'title',"mt-8 text-xl font-bold {$theme['text']}");$descClass=self::sparkTwItem($block,'items',$i,'desc',"mt-3 text-sm leading-6 {$theme['sub']}");$cards.="<article class='{$cardClass}'><span class='{$indexClass}'>{$n}</span><h3 class='{$titleClass}'>{$title}</h3><p class='{$descClass}'>{$desc}</p></article>";}
                     $note=e($block['note']??''); $noteHtml=$note!==''?"<p class='mt-5 text-xs leading-5 {$theme['sub']}'>{$note}</p>":'';
                     $html.="<section class='px-6 py-20 sm:px-8 lg:py-28 {$theme['bg']}'><div class='mx-auto max-w-7xl'><p class='text-xs font-bold uppercase tracking-[.24em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 max-w-4xl text-4xl font-black tracking-tight sm:text-5xl {$theme['text']}'>{$heading}</h2><p class='mt-4 max-w-3xl leading-7 {$theme['sub']}'>{$text}</p><div class='mt-10 grid gap-4 lg:grid-cols-3'>{$cards}</div>{$noteHtml}</div></section>";
                     break;
@@ -1511,7 +1852,7 @@ JS;
                     break;
 
                 case 'faq_documentation_premium':
-                    $eyebrow=e($block['eyebrow']??'Documentation');$heading=e($block['heading']??'Guidance that stays easy to navigate.');$text=e($block['text']??'Clear documentation topics.');$label=e($block['primary_label']??'View guide');$url=e($block['primary_url']??'/');$topics=is_array($block['topics']??null)?array_values($block['topics']):[]; if(!$topics){$topics=[['title'=>'Getting started','text'=>'Setup, preparation, or first steps.'],['title'=>'Core workflows','text'=>'Common tasks and practical instructions.'],['title'=>'Configuration','text'=>'Options, settings, or service choices.'],['title'=>'Troubleshooting','text'=>'Real solutions for common issues.']];}$steps=is_array($block['steps']??null)?array_values($block['steps']):[]; if(!$steps){$steps=[['title'=>'01 · Understand','text'=>'Explain the first real step.'],['title'=>'02 · Configure','text'=>'Describe the next practical action.'],['title'=>'03 · Continue','text'=>'Point visitors to the real next step.']];}$topicHtml='';foreach($topics as $t){$tt=e($t['title']??'Topic');$tx=e($t['text']??'Helpful guidance.');$topicHtml.="<div class='rounded-2xl border p-4 {$theme['border']}'><h3 class='font-semibold {$theme['text']}'>{$tt}</h3><p class='mt-1 text-xs leading-5 {$theme['sub']}'>{$tx}</p></div>";}$stepHtml='';foreach($steps as $st){$tt=e($st['title']??'Step');$tx=e($st['text']??'Guidance.');$stepHtml.="<div class='rounded-2xl border p-4 {$theme['border']}'><h4 class='text-sm font-bold {$theme['text']}'>{$tt}</h4><p class='mt-2 text-xs leading-5 {$theme['sub']}'>{$tx}</p></div>";}$ft=e($block['featured_title']??'Start here');$fx=e($block['featured_text']??'Use the featured guide for your most important help content.');$html.="<section class='px-6 py-20 sm:px-8 lg:py-28 {$theme['bg']}'><div class='mx-auto max-w-7xl'><p class='text-xs font-bold uppercase tracking-[.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl {$theme['text']}'>{$heading}</h2><p class='mt-4 max-w-2xl leading-7 {$theme['sub']}'>{$text}</p><div class='mt-12 grid gap-6 lg:grid-cols-[.7fr_1.3fr]'><aside class='rounded-3xl border p-5 {$theme['border']} {$theme['card']}'><div class='space-y-2'>{$topicHtml}</div></aside><article class='rounded-3xl border p-7 {$theme['border']} {$theme['card']}'><h3 class='text-2xl font-bold {$theme['text']}'>{$ft}</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$fx}</p><div class='mt-7 grid gap-3 sm:grid-cols-3'>{$stepHtml}</div><a href='{$url}' class='mt-7 inline-flex rounded-full border px-5 py-3 text-sm font-bold {$theme['border']} {$theme['text']}'>{$label}</a></article></div></div></section>";
+                    $eyebrow=e($block['eyebrow']??'Documentation');$heading=e($block['heading']??'Guidance that stays easy to navigate.');$text=e($block['text']??'Clear documentation topics.');$label=e($block['primary_label']??'View guide');$url=e($block['primary_url']??'/');$topics=is_array($block['topics']??null)?array_values($block['topics']):[]; if(!$topics){$topics=[['title'=>'Getting started','text'=>'Setup, preparation, or first steps.'],['title'=>'Core workflows','text'=>'Common tasks and practical instructions.'],['title'=>'Configuration','text'=>'Options, settings, or service choices.'],['title'=>'Troubleshooting','text'=>'Real solutions for common issues.']];}$steps=is_array($block['steps']??null)?array_values($block['steps']):[]; if(!$steps){$steps=[['title'=>'01 · Understand','text'=>'Explain the first real step.'],['title'=>'02 · Configure','text'=>'Describe the next practical action.'],['title'=>'03 · Continue','text'=>'Point visitors to the real next step.']];}$topicHtml='';foreach($topics as $t){$tt=e($t['title']??'Topic');$tx=e($t['text']??'Helpful guidance.');$topicHtml.="<div class='rounded-2xl border p-4 {$theme['border']}'><h3 class='font-semibold {$theme['text']}'>{$tt}</h3><p class='mt-1 text-xs leading-5 {$theme['sub']}'>{$tx}</p></div>";}$stepHtml='';foreach($steps as $st){$tt=e($st['title']??'Step');$tx=e($st['text']??'Guidance.');$stepHtml.="<div class='rounded-2xl border p-4 {$theme['border']}'><h4 class='text-sm font-bold {$theme['text']}'>{$tt}</h4><p class='mt-2 text-xs leading-5 {$theme['sub']}'>{$tx}</p></div>";}$ft=e($block['featured_title']??'Start here');$fx=e($block['featured_text']??'Use the featured guide for your most important help content.');$featuredTitle=self::sparkTw($block,'featured_title',"text-2xl font-bold {$theme['text']}");$html.="<section class='px-6 py-20 sm:px-8 lg:py-28 {$theme['bg']}'><div class='mx-auto max-w-7xl'><p class='text-xs font-bold uppercase tracking-[.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 max-w-3xl text-4xl font-bold tracking-tight sm:text-5xl {$theme['text']}'>{$heading}</h2><p class='mt-4 max-w-2xl leading-7 {$theme['sub']}'>{$text}</p><div class='mt-12 grid gap-6 lg:grid-cols-[.7fr_1.3fr]'><aside class='rounded-3xl border p-5 {$theme['border']} {$theme['card']}'><div class='space-y-2'>{$topicHtml}</div></aside><article class='rounded-3xl border p-7 {$theme['border']} {$theme['card']}'><h3 class='{$featuredTitle}'>{$ft}</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$fx}</p><div class='mt-7 grid gap-3 sm:grid-cols-3'>{$stepHtml}</div><a href='{$url}' class='mt-7 inline-flex rounded-full border px-5 py-3 text-sm font-bold {$theme['border']} {$theme['text']}'>{$label}</a></article></div></div></section>";
                     break;
 
                 case 'lead_magnet_premium':
@@ -1523,7 +1864,7 @@ JS;
                     break;
 
                 case 'lead_website_audit_premium':
-                    $eyebrow=e($block['eyebrow']??'Website audit');$heading=e($block['heading']??'Find the friction before you rebuild.');$text=e($block['text']??'Promote a real website review.');$label=e($block['primary_label']??'Request website audit');$url=e($block['primary_url']??'#');$items=is_array($block['audit_items']??null)?array_values($block['audit_items']):[];if(!$items){$items=[['title'=>'Experience','text'=>'Review structure, usability, and key journeys.'],['title'=>'Performance','text'=>'Check supplied or measured speed and technical issues.'],['title'=>'Search visibility','text'=>'Assess real SEO basics and content structure.'],['title'=>'Conversion','text'=>'Review calls to action and lead paths.']];}$items=array_slice($items,0,6);$cards='';foreach($items as $i){$t=e($i['title']??'Audit area');$x=e($i['text']??'Describe the audit area.');$cards.="<article class='rounded-2xl border p-5 {$theme['border']} {$theme['card']}'><h3 class='font-bold {$theme['text']}'>{$t}</h3><p class='mt-2 text-xs leading-5 {$theme['sub']}'>{$x}</p></article>";}$rl=e($block['report_label']??'Audit preview');$rt=e($block['report_title']??'A focused review, not a fabricated score.');$rx=e($block['report_text']??'Replace with the actual deliverables.');$html.="<section class='px-6 py-20 sm:px-8 lg:py-28 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-8 lg:grid-cols-2'><div><p class='text-xs font-bold uppercase tracking-[.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold tracking-tight sm:text-5xl {$theme['text']}'>{$heading}</h2><p class='mt-4 leading-7 {$theme['sub']}'>{$text}</p><div class='mt-8 grid gap-3 sm:grid-cols-2'>{$cards}</div><a href='{$url}' class='mt-7 inline-flex rounded-full border px-5 py-3 text-sm font-bold {$theme['border']} {$theme['text']}'>{$label}</a></div><aside class='rounded-[2rem] border p-7 {$theme['border']} {$theme['card']}'><p class='text-xs font-bold uppercase tracking-[.2em] {$theme['sub']}'>{$rl}</p><div class='mt-10 grid grid-cols-2 gap-3'>".implode('',array_map(fn($x)=>"<div class='rounded-2xl border p-5 {$theme['border']}'><div class='text-3xl font-black {$theme['text']}'>—</div><div class='mt-2 text-xs font-bold {$theme['sub']}'>{$x}</div></div>",['UX','SEO','Speed','CTA']))."</div><h3 class='mt-8 text-2xl font-bold {$theme['text']}'>{$rt}</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$rx}</p></aside></div></section>";
+                    $eyebrow=e($block['eyebrow']??'Website audit');$heading=e($block['heading']??'Find the friction before you rebuild.');$text=e($block['text']??'Promote a real website review.');$label=e($block['primary_label']??'Request website audit');$url=e($block['primary_url']??'#');$items=is_array($block['audit_items']??null)?array_values($block['audit_items']):[];if(!$items){$items=[['title'=>'Experience','text'=>'Review structure, usability, and key journeys.'],['title'=>'Performance','text'=>'Check supplied or measured speed and technical issues.'],['title'=>'Search visibility','text'=>'Assess real SEO basics and content structure.'],['title'=>'Conversion','text'=>'Review calls to action and lead paths.']];}$items=array_slice($items,0,6);$cards='';foreach($items as $itemIndex=>$i){$t=e($i['title']??'Audit area');$x=e($i['text']??'Describe the audit area.');$itemTitle=self::sparkTwItem($block,'audit_items',$itemIndex,'title',"font-semibold {$theme['text']}");$cards.="<article class='rounded-2xl border p-5 {$theme['border']} {$theme['card']}'><h3 class='{$itemTitle}'>{$t}</h3><p class='mt-2 text-xs leading-5 {$theme['sub']}'>{$x}</p></article>";}$rl=e($block['report_label']??'Audit preview');$rt=e($block['report_title']??'A focused review, not a fabricated score.');$rx=e($block['report_text']??'Replace with the actual deliverables.');$html.="<section class='px-6 py-20 sm:px-8 lg:py-28 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-8 lg:grid-cols-2'><div><p class='text-xs font-bold uppercase tracking-[.22em] {$theme['sub']}'>{$eyebrow}</p><h2 class='mt-4 text-4xl font-bold tracking-tight sm:text-5xl {$theme['text']}'>{$heading}</h2><p class='mt-4 leading-7 {$theme['sub']}'>{$text}</p><div class='mt-8 grid gap-3 sm:grid-cols-2'>{$cards}</div><a href='{$url}' class='mt-7 inline-flex rounded-full border px-5 py-3 text-sm font-bold {$theme['border']} {$theme['text']}'>{$label}</a></div><aside class='rounded-[2rem] border p-7 {$theme['border']} {$theme['card']}'><p class='text-xs font-bold uppercase tracking-[.2em] {$theme['sub']}'>{$rl}</p><div class='mt-10 grid grid-cols-2 gap-3'>".implode('',array_map(fn($x)=>"<div class='rounded-2xl border p-5 {$theme['border']}'><div class='text-3xl font-black {$theme['text']}'>—</div><div class='mt-2 text-xs font-bold {$theme['sub']}'>{$x}</div></div>",['UX','SEO','Speed','CTA']))."</div><h3 class='mt-8 text-2xl font-bold {$theme['text']}'>{$rt}</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$rx}</p></aside></div></section>";
                     break;
 
 
@@ -1580,7 +1921,7 @@ JS;
                 case 'portfolio_pinterest':
                 case 'portfolio_hover_video':
                 $defaults=['eyebrow'=>'SELECTED WORK','heading'=>'A portfolio with range, rhythm, and room to breathe.','text'=>'A curated selection of recent work.','primary_label'=>'View all projects','primary_url'=>'#'];
-                $d=array_merge($defaults,$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text'];
+                $d=array_merge($defaults,$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text'];
                 $portfolioCount=max(1,min(6,(int)($d['portfolio_count']??6))); $portfolioWords=array_slice(['one','two','three','four','five','six'],0,$portfolioCount);
                 $items=''; foreach($portfolioWords as $i=>$w){$img=trim((string)($d['project_'.$w.'_image_url']??'')); if($img===''){$img='/storage/cms-images/background/background-'.(($i%3)+1).'.avif';} $ratio=$block['type']==='portfolio_hover_video'?'aspect-[4/3]':($block['type']==='portfolio_pinterest'?($i%2===0?'aspect-[4/5]':'aspect-[3/4]'):($i%3===0?'aspect-[4/5]':($i%3===1?'aspect-[4/3]':'aspect-square'))); $video=trim((string)($d['project_'.$w.'_video_url']??'')); $media="<img src='".e(self::staticAssetUrl($img))."' alt='' class='h-full w-full object-cover transition duration-300'>"; if($block['type']==='portfolio_hover_video' && $video!==''){ $media.="<video muted loop playsinline preload='metadata' poster='".e(self::staticAssetUrl($img))."' src='".e(self::staticAssetUrl($video))."' class='absolute inset-0 h-full w-full object-cover opacity-0 transition duration-300' data-cosmic-hover-video></video>"; } $hint=$block['type']==='portfolio_hover_video'?"<span class='absolute inset-x-4 bottom-4 rounded-full bg-black/60 px-4 py-2 text-center text-[11px] font-bold uppercase tracking-[.16em] text-white backdrop-blur'>".($video!==''?'Hover to preview':'Poster preview')."</span>":''; $items.="<article class='group mb-4 break-inside-avoid overflow-hidden rounded-[1.75rem] border {$border} {$card}' data-cosmic-hover-card><div class='relative {$ratio} overflow-hidden'>{$media}{$hint}</div><div class='p-5'><h3 class='text-xl font-semibold'>".e($d['project_'.$w.'_title']??'Selected project')."</h3><p class='mt-2 text-sm {$muted}'>".e($d['project_'.$w.'_meta']??'Project details')."</p></div></article>";}
                 $columns=$block['type']==='portfolio_pinterest'?'columns-2 sm:columns-3 lg:columns-4':($block['type']==='portfolio_hover_video'?'grid gap-4 sm:grid-cols-2 lg:grid-cols-3':'columns-1 sm:columns-2 lg:columns-3');
@@ -1589,26 +1930,26 @@ JS;
 
                 case 'portfolio_case_study':
                 $d=array_merge(['eyebrow'=>'FEATURED CASE STUDY','heading'=>'Turn one strong project into a story worth reading.','text'=>'Lead with the work, then explain the challenge, approach, and outcome.','project_title'=>'Featured project','project_meta'=>'Strategy · Design · Delivery','image_url'=>'/storage/cms-images/background/background-1.avif','challenge_label'=>'CHALLENGE','challenge_text'=>'Define the problem clearly.','approach_label'=>'APPROACH','approach_text'=>'Explain the practical approach.','outcome_label'=>'OUTCOME','outcome_text'=>'Describe the supported outcome conservatively.','metric_value'=>'—','metric_label'=>'Add a verified result','primary_label'=>'Read the case study','primary_url'=>'#','footnote'=>'Only publish performance metrics that the business can verify.'],$block);
-                $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $img=trim((string)$d['image_url']); if($img===''){$img='/storage/cms-images/background/background-1.avif';}
+                $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $img=trim((string)$d['image_url']); if($img===''){$img='/storage/cms-images/background/background-1.avif';}
                 $details=''; foreach(['challenge','approach','outcome'] as $k){$details.="<div class='mt-7'><span class='text-[11px] font-black tracking-[.18em] {$muted}'>".e($d[$k.'_label'])."</span><p class='mt-2 text-sm leading-6 {$muted}'>".e($d[$k.'_text'])."</p></div>";}
                 $html.="<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p></div><div class='mt-10 overflow-hidden rounded-[2rem] border {$border} {$card}'><div class='grid lg:grid-cols-[1.1fr_.9fr]'><div class='min-h-[420px]'><img src='".e(self::staticAssetUrl($img))."' alt='' class='h-full w-full object-cover'></div><div class='p-7 sm:p-9'><p class='text-xs font-black uppercase tracking-[.2em] {$muted}'>".e($d['project_meta'])."</p><h3 class='mt-5 text-3xl font-semibold tracking-[-.035em]'>".e($d['project_title'])."</h3>{$details}<div class='mt-8 flex items-end justify-between gap-5'><div><span class='block text-4xl font-semibold tracking-[-.05em]'>".e($d['metric_value'])."</span><span class='mt-1 block text-xs {$muted}'>".e($d['metric_label'])."</span></div><a href='".e($d['primary_url'])."' class='inline-flex min-h-[48px] items-center rounded-full px-6 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><p class='mt-5 text-[11px] {$muted}'>".e($d['footnote'])."</p></div></div></div></div></section>";
                 break;
 
                 case 'portfolio_before_after':
                 $d=array_merge(['eyebrow'=>'BEFORE / AFTER','heading'=>'Show the transformation, not just the finished frame.','text'=>'Compare what changed and why it matters.','project_title'=>'Featured transformation','project_meta'=>'Project comparison','before_label'=>'Before','after_label'=>'After','before_image_url'=>'/storage/cms-images/background/background-2.avif','after_image_url'=>'/storage/cms-images/background/background-1.avif','outcome_label'=>'WHAT CHANGED','outcome_text'=>'Explain the supported transformation clearly.','primary_label'=>'View project','primary_url'=>'/projects'],$block);
-                $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text'];
+                $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text'];
                 $before=e(self::staticAssetUrl($d['before_image_url'])); $after=e(self::staticAssetUrl($d['after_image_url'])); $id='cosmic-before-after-'.$index;
                 $html.="<section id='{$id}' class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p></div><div class='mt-10 overflow-hidden rounded-[2rem] border {$border} {$card}'><div data-ba-stage class='relative aspect-[16/9] min-h-[320px] overflow-hidden bg-slate-950' style='--cosmic-split:50%'><img src='{$after}' alt='".e($d['after_label'])."' class='absolute inset-0 h-full w-full object-cover'><img data-ba-before src='{$before}' alt='".e($d['before_label'])."' class='absolute inset-0 h-full w-full object-cover' style='clip-path:inset(0 calc(100% - var(--cosmic-split)) 0 0)'><div data-ba-line class='pointer-events-none absolute inset-y-0 w-0.5 bg-white shadow' style='left:var(--cosmic-split)'></div><span class='absolute left-4 top-4 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white'>".e($d['before_label'])."</span><span class='absolute right-4 top-4 rounded-full bg-black/60 px-3 py-1 text-xs font-bold text-white'>".e($d['after_label'])."</span><input data-ba-range aria-label='Before and after comparison' type='range' min='0' max='100' value='50' class='absolute inset-x-6 bottom-5 w-[calc(100%-3rem)]'></div><div class='grid gap-8 p-6 sm:p-8 lg:grid-cols-[1fr_.8fr]'><div><span class='text-xs font-black uppercase tracking-[.18em] {$muted}'>".e($d['project_meta'])."</span><h3 class='mt-3 text-2xl font-semibold'>".e($d['project_title'])."</h3></div><div><span class='text-xs font-black uppercase tracking-[.18em] {$muted}'>".e($d['outcome_label'])."</span><p class='mt-2 text-sm leading-6 {$muted}'>".e($d['outcome_text'])."</p><a href='".e($d['primary_url']?:'/projects')."' class='mt-5 inline-flex min-h-[46px] items-center rounded-full px-6 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div></div></div></div><script>(function(){var r=document.getElementById('{$id}');if(!r)return;var s=r.querySelector('[data-ba-stage]'),i=r.querySelector('[data-ba-range]');if(!s||!i)return;function u(){s.style.setProperty('--cosmic-split',i.value+'%');}i.addEventListener('input',u);u();})();</script></section>";
                 break;
 
                 case 'portfolio_filterable':
-                $d=array_merge(['eyebrow'=>'PROJECT INDEX','heading'=>'Find the work that matters to you.','text'=>'Organise a varied portfolio into a few clear categories.','primary_label'=>'Start a project','primary_url'=>'/contact'],$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $id='cosmic-filterable-'.$index; $portfolioCount=max(1,min(6,(int)($d['portfolio_count']??6))); $portfolioWords=array_slice(['one','two','three','four','five','six'],0,$portfolioCount); $items=''; $categories=[]; foreach($portfolioWords as $i=>$w){$img=trim((string)($d['project_'.$w.'_image_url']??'')); if($img===''){$img='/storage/cms-images/background/background-'.(($i%3)+1).'.avif';} $cat=trim((string)($d['project_'.$w.'_category']??'Project')); if($cat==='')$cat='Project'; $categories[$cat]=true; $items.="<article data-portfolio-item data-category='".e(strtolower($cat))."' class='overflow-hidden rounded-[1.6rem] border {$border} {$card}'><img src='".e(self::staticAssetUrl($img))."' alt='' class='aspect-[4/3] w-full object-cover'><div class='p-5'><span class='text-[11px] font-black uppercase tracking-[.18em] {$muted}'>".e($cat)."</span><h3 class='mt-2 text-xl font-semibold'>".e($d['project_'.$w.'_title']??'Selected project')."</h3><p class='mt-2 text-sm {$muted}'>".e($d['project_'.$w.'_meta']??'Project details')."</p></div></article>";} $filters="<button type='button' data-filter='all' aria-pressed='true' class='rounded-full border px-4 py-2 text-xs font-bold {$buttonBg} {$buttonText}'>All</button>"; foreach(array_keys($categories) as $cat){$filters.="<button type='button' data-filter='".e(strtolower($cat))."' aria-pressed='false' class='rounded-full border px-4 py-2 text-xs font-bold {$border} {$card}'>".e($cat)."</button>";} $html.="<section id='{$id}' class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p></div><div class='mt-8 flex flex-wrap gap-2' data-filter-controls>{$filters}</div><div class='mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>{$items}</div><a href='".e($d['primary_url']?:'/contact')."' class='mt-8 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><script>(function(){var r=document.getElementById('{$id}');if(!r)return;var bs=r.querySelectorAll('[data-filter]'),is=r.querySelectorAll('[data-portfolio-item]');bs.forEach(function(b){b.addEventListener('click',function(){var f=b.getAttribute('data-filter');bs.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});is.forEach(function(x){x.hidden=f!=='all'&&x.getAttribute('data-category')!==f;});});});})();</script></section>"; break;
+                $d=array_merge(['eyebrow'=>'PROJECT INDEX','heading'=>'Find the work that matters to you.','text'=>'Organise a varied portfolio into a few clear categories.','primary_label'=>'Start a project','primary_url'=>'/contact'],$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $id='cosmic-filterable-'.$index; $portfolioCount=max(1,min(6,(int)($d['portfolio_count']??6))); $portfolioWords=array_slice(['one','two','three','four','five','six'],0,$portfolioCount); $items=''; $categories=[]; foreach($portfolioWords as $i=>$w){$img=trim((string)($d['project_'.$w.'_image_url']??'')); if($img===''){$img='/storage/cms-images/background/background-'.(($i%3)+1).'.avif';} $cat=trim((string)($d['project_'.$w.'_category']??'Project')); if($cat==='')$cat='Project'; $categories[$cat]=true; $items.="<article data-portfolio-item data-category='".e(strtolower($cat))."' class='overflow-hidden rounded-[1.6rem] border {$border} {$card}'><img src='".e(self::staticAssetUrl($img))."' alt='' class='aspect-[4/3] w-full object-cover'><div class='p-5'><span class='text-[11px] font-black uppercase tracking-[.18em] {$muted}'>".e($cat)."</span><h3 class='mt-2 text-xl font-semibold'>".e($d['project_'.$w.'_title']??'Selected project')."</h3><p class='mt-2 text-sm {$muted}'>".e($d['project_'.$w.'_meta']??'Project details')."</p></div></article>";} $filters="<button type='button' data-filter='all' aria-pressed='true' class='rounded-full border px-4 py-2 text-xs font-bold {$buttonBg} {$buttonText}'>All</button>"; foreach(array_keys($categories) as $cat){$filters.="<button type='button' data-filter='".e(strtolower($cat))."' aria-pressed='false' class='rounded-full border px-4 py-2 text-xs font-bold {$border} {$card}'>".e($cat)."</button>";} $html.="<section id='{$id}' class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p></div><div class='mt-8 flex flex-wrap gap-2' data-filter-controls>{$filters}</div><div class='mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-3'>{$items}</div><a href='".e($d['primary_url']?:'/contact')."' class='mt-8 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><script>(function(){var r=document.getElementById('{$id}');if(!r)return;var bs=r.querySelectorAll('[data-filter]'),is=r.querySelectorAll('[data-portfolio-item]');bs.forEach(function(b){b.addEventListener('click',function(){var f=b.getAttribute('data-filter');bs.forEach(function(x){x.setAttribute('aria-pressed',x===b?'true':'false');});is.forEach(function(x){x.hidden=f!=='all'&&x.getAttribute('data-category')!==f;});});});})();</script></section>"; break;
 
                 case 'portfolio_animated':
                 $d=array_merge(['eyebrow'=>'SELECTED PROJECTS','heading'=>'A portfolio that feels alive before you click.','text'=>'Subtle motion, strong imagery, and editorial labels make each project feel more tactile.','primary_label'=>'Explore all work','primary_url'=>'/projects'],$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $id='cosmic-animated-'.$index; $items=''; foreach(['one','two','three','four'] as $i=>$w){$img=trim((string)($d['project_'.$w.'_image_url']??'')); if($img===''){$img='/storage/cms-images/background/background-'.(($i%3)+1).'.avif';} $items.="<article data-animated-project tabindex='0' class='relative min-h-[360px] overflow-hidden rounded-[2rem]'><img src='".e(self::staticAssetUrl($img))."' alt='' class='absolute inset-0 h-full w-full object-cover' style='transition:transform .7s ease'><div class='absolute inset-0 bg-gradient-to-t from-black/80 via-black/15 to-transparent'></div><div data-animated-copy class='absolute inset-x-0 bottom-0 p-6 text-white' style='transition:transform .45s ease'><span class='text-[11px] font-black uppercase tracking-[.18em] text-white/65'>0".($i+1)."</span><h3 class='mt-2 text-2xl font-semibold'>".e($d['project_'.$w.'_title']??'Selected project')."</h3><p class='mt-2 text-sm text-white/70'>".e($d['project_'.$w.'_meta']??'Project details')."</p></div></article>";} $html.="<section id='{$id}' class='overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p></div><div class='mt-10 grid gap-4 md:grid-cols-2'>{$items}</div><a href='".e($d['primary_url']?:'/projects')."' class='mt-8 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><script>(function(){var r=document.getElementById('{$id}');if(!r)return;r.querySelectorAll('[data-animated-project]').forEach(function(c){var im=c.querySelector('img'),tx=c.querySelector('[data-animated-copy]');function on(){if(im)im.style.transform='scale(1.05)';if(tx)tx.style.transform='translateY(-8px)';}function off(){if(im)im.style.transform='scale(1)';if(tx)tx.style.transform='translateY(0)';}c.addEventListener('mouseenter',on);c.addEventListener('mouseleave',off);c.addEventListener('focusin',on);c.addEventListener('focusout',off);});})();</script></section>"; break;
 
                 case 'portfolio_project_timeline':
-                $d=array_merge(['eyebrow'=>'PROJECT TIMELINE','heading'=>'From first conversation to finished experience.','text'=>'Reveal the progression behind a featured project.','project_title'=>'Featured project','project_meta'=>'Strategy · Design · Delivery','primary_label'=>'Read full case study','primary_url'=>'#'],$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $steps=''; foreach(['one','two','three','four'] as $i=>$w){$img=trim((string)($d['step_'.$w.'_image_url']??'')); if($img===''){$img='/storage/cms-images/background/background-'.(($i%3)+1).'.avif';} $steps.="<article class='grid gap-5 border-b py-8 {$border} lg:grid-cols-[120px_.7fr_1.3fr] lg:items-center'><span class='text-sm font-black {$muted}'>".e($d['step_'.$w.'_number']??'0'.($i+1))."</span><div><h3 class='text-2xl font-semibold {$theme['text']}'>".e($d['step_'.$w.'_title']??'Project stage')."</h3><p class='mt-2 text-sm leading-6 {$muted}'>".e($d['step_'.$w.'_text']??'Project milestone details.')."</p></div><img src='".e(self::staticAssetUrl($img))."' alt='' class='aspect-[16/7] w-full rounded-[1.5rem] object-cover'></article>";} $html.="<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-end'><div><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p></div><div class='rounded-[1.75rem] border p-6 {$border} {$card}'><span class='text-xs font-black uppercase tracking-[.18em] {$muted}'>".e($d['project_meta'])."</span><h3 class='mt-3 text-2xl font-semibold'>".e($d['project_title'])."</h3></div></div><div class='mt-10'>{$steps}</div><a href='".e($d['primary_url'])."' class='mt-8 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div></section>"; break;
+                $d=array_merge(['eyebrow'=>'PROJECT TIMELINE','heading'=>'From first conversation to finished experience.','text'=>'Reveal the progression behind a featured project.','project_title'=>'Featured project','project_meta'=>'Strategy · Design · Delivery','primary_label'=>'Read full case study','primary_url'=>'#'],$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $steps=''; foreach(['one','two','three','four'] as $i=>$w){$img=trim((string)($d['step_'.$w.'_image_url']??'')); if($img===''){$img='/storage/cms-images/background/background-'.(($i%3)+1).'.avif';} $steps.="<article class='grid gap-5 border-b py-8 {$border} lg:grid-cols-[120px_.7fr_1.3fr] lg:items-center'><span class='text-sm font-black {$muted}'>".e($d['step_'.$w.'_number']??'0'.($i+1))."</span><div><h3 class='text-2xl font-semibold {$theme['text']}'>".e($d['step_'.$w.'_title']??'Project stage')."</h3><p class='mt-2 text-sm leading-6 {$muted}'>".e($d['step_'.$w.'_text']??'Project milestone details.')."</p></div><img src='".e(self::staticAssetUrl($img))."' alt='' class='aspect-[16/7] w-full rounded-[1.5rem] object-cover'></article>";} $html.="<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='grid gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-end'><div><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p></div><div class='rounded-[1.75rem] border p-6 {$border} {$card}'><span class='text-xs font-black uppercase tracking-[.18em] {$muted}'>".e($d['project_meta'])."</span><h3 class='mt-3 text-2xl font-semibold'>".e($d['project_title'])."</h3></div></div><div class='mt-10'>{$steps}</div><a href='".e($d['primary_url'])."' class='mt-8 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div></section>"; break;
 
                 case 'case_studies_grid':
                 $eyebrow = e($block['eyebrow'] ?? 'Selected work');
@@ -1735,7 +2076,7 @@ JS;
                         $html .= "<section class='px-6 py-20 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[1.05fr_.95fr]'><div>{$header}<div class='mt-8 space-y-3'>{$faq}</div></div><div class='rounded-[2rem] border p-6 sm:p-8 {$theme['card']} {$theme['border']}'>{$form}<div class='mt-6 border-t pt-5 text-sm {$theme['border']} {$theme['sub']}'><p>{$email}</p><p class='mt-1'>{$phone}</p></div></div></div></section>";
                     } elseif ($variant === 'contact_multistep_premium') {
                         $submitLabel=e($block['submit_label'] ?? 'Send inquiry'); $wizardId='cosmic-contact-steps-'.$index.'-'.substr(md5(json_encode($block)),0,8); $tabs=''; foreach(['one','two','three'] as $i=>$n){$t=e($block["step_{$n}_title"] ?? 'Step '.($i+1));$tabs.="<button type='button' data-contact-tab='{$i}' class='px-5 py-4 text-left text-sm font-semibold {$theme['sub']}'>0".($i+1)." · {$t}</button>";}
-                        $descriptions=''; foreach(['one','two','three'] as $i=>$n){$t=e($block["step_{$n}_title"] ?? 'Step '.($i+1));$x=e($block["step_{$n}_text"] ?? 'Add the information requested here.');$hidden=$i===0?'':' hidden';$descriptions.="<div data-contact-copy='{$i}'{$hidden}><h3 class='text-2xl font-bold {$theme['text']}'>{$t}</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$x}</p></div>";}
+                        $descriptions=''; foreach(['one','two','three'] as $i=>$n){$t=e($block["step_{$n}_title"] ?? 'Step '.($i+1));$x=e($block["step_{$n}_text"] ?? 'Add the information requested here.');$hidden=$i===0?'':' hidden';$stepTitle=self::sparkTwItem($block,'steps',$i,'title',"text-xl font-semibold {$theme['text']}");$descriptions.="<div data-contact-copy='{$i}'{$hidden}><h3 class='{$stepTitle}'>{$t}</h3><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$x}</p></div>";}
                         $stepFieldPanels=''; foreach(array_slice($premiumFields,0,3) as $i=>$field){$fieldMarkup=self::contactFieldsMarkup([$field],$theme,$premiumInputClasses,'light','#475569');$hidden=$i===0?'':' hidden';$stepFieldPanels.="<div data-contact-step='{$i}'{$hidden}>{$fieldMarkup}</div>";}
                         $html .= "<section class='px-6 py-20 {$theme['bg']}'><div class='mx-auto max-w-5xl'><div class='max-w-2xl'>{$header}</div><div id='{$wizardId}' class='mt-10 overflow-hidden rounded-[2rem] border {$theme['card']} {$theme['border']}'><div class='grid border-b sm:grid-cols-3 {$theme['border']}'>{$tabs}</div><div class='grid gap-8 p-6 sm:p-8 lg:grid-cols-[.75fr_1.25fr]'><div>{$descriptions}</div><form action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form>{$stepFieldPanels}<label class='hidden' aria-hidden='true'>Company<input name='company' tabindex='-1' autocomplete='off'></label><div class='mt-5 flex justify-between gap-3'><button type='button' data-contact-back class='rounded-xl border px-4 py-3 text-sm font-semibold {$theme['border']} {$theme['text']}' disabled>Back</button><button type='button' data-contact-next class='rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white'>Continue</button><button type='submit' data-contact-submit class='hidden rounded-xl bg-slate-900 px-5 py-3 text-sm font-bold text-white'>{$submitLabel}</button></div></form></div></div></div></section><script>(function(){var root=document.getElementById('{$wizardId}');if(!root)return;var panels=[].slice.call(root.querySelectorAll('[data-contact-step]')),copies=[].slice.call(root.querySelectorAll('[data-contact-copy]')),tabs=[].slice.call(root.querySelectorAll('[data-contact-tab]')),back=root.querySelector('[data-contact-back]'),next=root.querySelector('[data-contact-next]'),submit=root.querySelector('[data-contact-submit]'),step=0;function render(){panels.forEach(function(p,i){p.hidden=i!==step});copies.forEach(function(p,i){p.hidden=i!==step});tabs.forEach(function(t,i){t.classList.toggle('bg-black/5',i===step);t.classList.toggle('dark:bg-white/5',i===step);});back.disabled=step===0;next.classList.toggle('hidden',step===2);submit.classList.toggle('hidden',step!==2);}function valid(){var fields=[].slice.call(panels[step].querySelectorAll('input,textarea,select'));for(var i=0;i<fields.length;i++){if(!fields[i].reportValidity())return false;}return true;}next.addEventListener('click',function(){if(valid()&&step<2){step++;render();}});back.addEventListener('click',function(){if(step>0){step--;render();}});tabs.forEach(function(t,i){t.addEventListener('click',function(){step=i;render();});});render();})();</script>";
                     } else {
@@ -1891,21 +2232,28 @@ HTML;
                     $title = e($card['title'] ?? '');
                     $desc = e($card['desc'] ?? '');
                     $icon = e($card['icon'] ?? $icons[$i % count($icons)]);
+                    $itemCard = self::sparkTwItem($block, 'cards', $i, 'card', "{$theme['card']} border {$theme['border']} rounded-3xl p-8 h-full flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl");
+                    $itemIcon = self::sparkTwItem($block, 'cards', $i, 'icon', "cosmic-adaptive-icon-tile w-16 h-16 rounded-2xl border {$theme['border']} flex items-center justify-center text-2xl mb-6");
+                    $itemTitle = self::sparkTwItem($block, 'cards', $i, 'title', "text-2xl font-bold tracking-tight {$theme['text']}");
+                    $itemDivider = self::sparkTwItem($block, 'cards', $i, 'divider', "w-14 h-px mt-5 mb-5 {$theme['border']} border-t");
+                    $itemDesc = self::sparkTwItem($block, 'cards', $i, 'desc', "text-base leading-8 {$theme['sub']} flex-grow");
+                    $itemCtaWrap = self::sparkTwItem($block, 'cards', $i, 'cta_wrap', 'mt-8');
+                    $itemCta = self::sparkTwItem($block, 'cards', $i, 'cta', "inline-flex items-center gap-2 text-sm font-semibold {$theme['text']} opacity-80 transition-all duration-300 hover:gap-3");
 
                     $cardHtml .= "
-                    <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-8 h-full flex flex-col transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl'>
-                        <div class='cosmic-adaptive-icon-tile w-16 h-16 rounded-2xl border {$theme['border']} flex items-center justify-center text-2xl mb-6'>
+                    <div class='{$itemCard}'>
+                        <div class='{$itemIcon}'>
                             {$icon}
                         </div>
-                        <h3 class='text-2xl font-bold tracking-tight {$theme['text']}'>
+                        <h3 class='{$itemTitle}'>
                             {$title}
                         </h3>
-                        <div class='w-14 h-px mt-5 mb-5 {$theme['border']} border-t'></div>
-                        <p class='text-base leading-8 {$theme['sub']} flex-grow'>
+                        <div class='{$itemDivider}'></div>
+                        <p class='{$itemDesc}'>
                             {$desc}
                         </p>
-                        <div class='mt-8'>
-                            <span class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']} opacity-80 transition-all duration-300 hover:gap-3'>
+                        <div class='{$itemCtaWrap}'>
+                            <span class='{$itemCta}'>
                                 Learn More
                                 <span>→</span>
                             </span>
@@ -2192,11 +2540,11 @@ HTML;
                     .cosmic-static-overlay-first-spark {
                         /* This class is attached to the actual first section, never its
                            outer render shell, so video/image media starts behind header. */
-                        padding-top: calc(var(--cosmic-overlay-header-height, 80px) + clamp(2rem, 3.5vw, 3.75rem)) !important;
+                        padding-top: calc(var(--cosmic-overlay-header-height, 80px) + clamp(3.5rem, 5vw, 5.5rem)) !important;
                     }
                     @media (max-width: 639px) {
                         .cosmic-static-overlay-first-spark {
-                            padding-top: calc(var(--cosmic-overlay-header-height, 72px) + 2.25rem) !important;
+                            padding-top: calc(var(--cosmic-overlay-header-height, 72px) + 3rem) !important;
                         }
                     }
                     /* Contrast-aware overlay header. Runtime selects a light or dark
@@ -2712,14 +3060,14 @@ HTML;
 
                 case 'about_mission_grid':
                 $d = array_merge(['eyebrow'=>'WHY WE EXIST','heading'=>'A clear mission, translated into everyday decisions.','text'=>'Make the purpose of the company concrete by connecting the big idea to the way the team actually works.','mission_label'=>'MISSION','mission_title'=>'Make complex things feel simple.','mission_text'=>'Create useful experiences that remove friction and help people move forward with confidence.','vision_label'=>'VISION','vision_title'=>'Raise the standard','vision_text'=>'Build a business known for thoughtful work, dependable delivery, and relationships that last.','value_one_title'=>'Stay curious','value_one_text'=>'Ask better questions before reaching for familiar answers.','value_two_title'=>'Own the outcome','value_two_text'=>'Take responsibility for the result, not just the task.','value_three_title'=>'Keep it human','value_three_text'=>'Communicate clearly, listen carefully, and respect people’s time.'], $block);
-                $primaryTheme = self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $soft=$isPrimarySection?'bg-black/10 text-white':"{$primaryTheme['card']} {$primaryTheme['text']}"; $softMuted=$isPrimarySection?'text-white/70':$primaryTheme['sub']; $softBorder=$isPrimarySection?'border-white/20':$primaryTheme['border'];
+                $primaryTheme = self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $soft=$isPrimarySection?'bg-black/10 text-white':"{$primaryTheme['card']} {$primaryTheme['text']}"; $softMuted=$isPrimarySection?'text-white/70':$primaryTheme['sub']; $softBorder=$isPrimarySection?'border-white/20':$primaryTheme['border'];
                 $values=''; foreach(['one','two','three'] as $w){$values.="<article class='rounded-[2rem] border p-6 lg:col-span-4 {$border} {$card}'><h3 class='text-xl font-semibold'>".e($d['value_'.$w.'_title'])."</h3><p class='mt-3 text-sm leading-6 {$muted}'>".e($d['value_'.$w.'_text'])."</p></article>";}
                 $html .= "<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-4xl'><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-5 max-w-2xl text-base leading-7 {$muted}'>".e($d['text'])."</p></div><div class='mt-12 grid gap-4 lg:grid-cols-12'><article class='rounded-[2rem] border p-7 sm:p-9 lg:col-span-7 {$border} {$card}'><span class='text-xs font-black tracking-[.2em] {$muted}'>".e($d['mission_label'])."</span><h3 class='mt-12 text-3xl font-semibold tracking-[-.035em] sm:text-4xl'>".e($d['mission_title'])."</h3><p class='mt-4 max-w-xl leading-7 {$muted}'>".e($d['mission_text'])."</p></article><article class='rounded-[2rem] border p-7 sm:p-9 lg:col-span-5 {$softBorder} {$soft}'><span class='text-xs font-black tracking-[.2em] {$softMuted}'>".e($d['vision_label'])."</span><h3 class='mt-12 text-3xl font-semibold tracking-[-.035em]'>".e($d['vision_title'])."</h3><p class='mt-4 leading-7 {$softMuted}'>".e($d['vision_text'])."</p></article>{$values}</div></div></section>";
                 break;
 
                 case 'about_interactive_stats':
                 $d = array_merge(['eyebrow'=>'THE COMPANY IN NUMBERS','heading'=>'Proof that the work has momentum behind it.','text'=>'Use meaningful company metrics to give visitors a quick sense of scale, experience, reach, or progress.','stat_one_value'=>'12+','stat_one_label'=>'Years building','stat_one_text'=>'Experience shaped across changing markets and technologies.','stat_two_value'=>'48','stat_two_label'=>'Projects this year','stat_two_text'=>'Focused engagements delivered across strategy, design, and technology.','stat_three_value'=>'6','stat_three_label'=>'Core disciplines','stat_three_text'=>'A connected team covering the work from direction through delivery.','stat_four_value'=>'4','stat_four_label'=>'Markets served','stat_four_text'=>'Local understanding combined with a broader point of view.','footnote'=>'Replace starter metrics with verified company data before publishing.'], $block);
-                $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}";
+                $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}";
                 $stats=''; $statsCount=max(1,min(4,(int)($d['about_stats_count']??4))); foreach(array_slice(['one','two','three','four'],0,$statsCount) as $w){$stats.="<article class='relative overflow-hidden rounded-[2rem] border p-7 sm:p-8 {$border} {$card}'><span class='block text-5xl font-semibold tracking-[-.055em] sm:text-6xl'>".e($d['stat_'.$w.'_value'])."</span><h3 class='mt-6 text-lg font-semibold'>".e($d['stat_'.$w.'_label'])."</h3><p class='mt-3 text-sm leading-6 {$muted}'>".e($d['stat_'.$w.'_text'])."</p></article>";}
                 $html .= "<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='grid gap-8 lg:grid-cols-[.85fr_1.15fr] lg:items-end'><div><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2></div><p class='max-w-2xl text-base leading-7 sm:text-lg {$muted}'>".e($d['text'])."</p></div><div class='mt-12 grid gap-4 md:grid-cols-2'>{$stats}</div><p class='mt-5 text-xs {$muted}'>".e($d['footnote'])."</p></div></section>";
                 break;
@@ -2727,20 +3075,20 @@ HTML;
 
                 case 'about_brand_journey':
                 $d=array_merge(['eyebrow'=>'BRAND JOURNEY','heading'=>'How the brand became what it is today.','text'=>'Connect the moments that shaped the identity, the offer, and the way customers experience the business.','chapter_one_label'=>'ORIGIN','chapter_one_title'=>'Start with the problem','chapter_one_text'=>'The brand began with a simple observation: customers deserved a clearer, more thoughtful option.','chapter_two_label'=>'REFINEMENT','chapter_two_title'=>'Find the point of view','chapter_two_text'=>'The offer became sharper, the language more confident, and the experience more recognisable.','chapter_three_label'=>'EXPANSION','chapter_three_title'=>'Grow without losing focus','chapter_three_text'=>'New capabilities were added while the core promise stayed consistent.','chapter_four_label'=>'NOW','chapter_four_title'=>'Build the next chapter','chapter_four_text'=>'The brand keeps evolving around what customers value most.','primary_label'=>'See our work','primary_url'=>'#'],$block);
-                $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text'];
+                $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text'];
                 $chapters=''; $journeyCount=max(1,min(4,(int)($d['about_journey_count']??4))); foreach(array_slice(['one','two','three','four'],0,$journeyCount) as $i=>$w){$chapters.="<article class='rounded-[2rem] border p-6 sm:p-7 {$border} {$card}'><div class='flex items-center justify-between'><span class='text-xs font-black tracking-[.2em] {$muted}'>".e($d['chapter_'.$w.'_label'])."</span><span class='text-sm font-bold {$muted}'>0".($i+1)."</span></div><h3 class='mt-12 text-2xl font-semibold tracking-[-.03em]'>".e($d['chapter_'.$w.'_title'])."</h3><p class='mt-4 text-sm leading-6 {$muted}'>".e($d['chapter_'.$w.'_text'])."</p></article>";}
                 $html.="<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='grid gap-10 lg:grid-cols-[.9fr_1.1fr]'><div><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl lg:text-6xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-6 max-w-xl text-base leading-7 {$muted}'>".e($d['text'])."</p><a href='".e($d['primary_url'])."' class='mt-7 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><div class='grid gap-4 sm:grid-cols-2'>{$chapters}</div></div></div></section>";
                 break;
 
                 case 'about_awards_timeline':
                 $d=array_merge(['eyebrow'=>'RECOGNITION','heading'=>'Selected recognition along the way.','text'=>'Use this section only for awards, shortlistings, certifications, or recognitions the business can verify.','award_one_year'=>'2022','award_one_title'=>'Industry Award','award_one_org'=>'Awarding organisation','award_two_year'=>'2023','award_two_title'=>'Design Recognition','award_two_org'=>'Awarding organisation','award_three_year'=>'2024','award_three_title'=>'Customer Experience Award','award_three_org'=>'Awarding organisation','award_four_year'=>'2025','award_four_title'=>'Innovation Recognition','award_four_org'=>'Awarding organisation','footnote'=>'Replace all starter entries with verified recognition before publishing.'],$block);
-                $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $items=''; $awardsCount=max(1,min(4,(int)($d['about_awards_count']??4))); foreach(array_slice(['one','two','three','four'],0,$awardsCount) as $w){$items.="<article class='grid gap-4 border-t py-6 sm:grid-cols-[120px_1fr_auto] sm:items-center {$border}'><span class='text-sm font-black {$muted}'>".e($d['award_'.$w.'_year'])."</span><h3 class='text-2xl font-semibold tracking-[-.03em] {$theme['text']}'>".e($d['award_'.$w.'_title'])."</h3><span class='rounded-full border px-4 py-2 text-xs font-bold {$border} {$card}'>".e($d['award_'.$w.'_org'])."</span></article>";}
+                $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $items=''; $awardsCount=max(1,min(4,(int)($d['about_awards_count']??4))); foreach(array_slice(['one','two','three','four'],0,$awardsCount) as $w){$items.="<article class='grid gap-4 border-t py-6 sm:grid-cols-[120px_1fr_auto] sm:items-center {$border}'><span class='text-sm font-black {$muted}'>".e($d['award_'.$w.'_year'])."</span><h3 class='text-2xl font-semibold tracking-[-.03em] {$theme['text']}'>".e($d['award_'.$w.'_title'])."</h3><span class='rounded-full border px-4 py-2 text-xs font-bold {$border} {$card}'>".e($d['award_'.$w.'_org'])."</span></article>";}
                 $html.="<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-5 text-base leading-7 {$muted}'>".e($d['text'])."</p></div><div class='mt-12 border-b {$border}'>{$items}</div><p class='mt-5 text-xs {$muted}'>".e($d['footnote'])."</p></div></section>";
                 break;
 
                 case 'about_culture_section':
                 $d=array_merge(['eyebrow'=>'HOW WE WORK','heading'=>'A culture built around useful work and good people.','text'=>'Show the behaviours that shape everyday decisions, collaboration, and the experience of working with the team.','pillar_one_title'=>'Be clear','pillar_one_text'=>'Say what matters, remove ambiguity, and make the next step easy to understand.','pillar_two_title'=>'Stay curious','pillar_two_text'=>'Ask better questions and keep learning instead of defaulting to familiar answers.','pillar_three_title'=>'Own the outcome','pillar_three_text'=>'Take responsibility for the result and help the whole team move forward.','pillar_four_title'=>'Respect the craft','pillar_four_text'=>'Care about the details without losing sight of the customer or the goal.','closing_line'=>'The best culture is visible in the work, not just written on the wall.'],$block);
-                $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $soft=$isPrimarySection?'bg-black/10 text-white':"{$primaryTheme['card']} {$primaryTheme['text']}"; $softMuted=$isPrimarySection?'text-white/70':$primaryTheme['sub']; $softBorder=$isPrimarySection?'border-white/20':$primaryTheme['border']; $pillars=''; $cultureCount=max(1,min(4,(int)($d['about_culture_count']??4))); foreach(array_slice(['one','two','three','four'],0,$cultureCount) as $i=>$w){$cls=$i===0?$soft:$card; $itemMuted=$i===0?$softMuted:$muted; $itemBorder=$i===0?$softBorder:$border; $pillars.="<article class='rounded-[2rem] border p-7 {$itemBorder} {$cls}'><span class='text-xs font-black {$itemMuted}'>0".($i+1)."</span><h3 class='mt-10 text-2xl font-semibold tracking-[-.03em]'>".e($d['pillar_'.$w.'_title'])."</h3><p class='mt-4 text-sm leading-6 {$itemMuted}'>".e($d['pillar_'.$w.'_text'])."</p></article>";}
+                $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $soft=$isPrimarySection?'bg-black/10 text-white':"{$primaryTheme['card']} {$primaryTheme['text']}"; $softMuted=$isPrimarySection?'text-white/70':$primaryTheme['sub']; $softBorder=$isPrimarySection?'border-white/20':$primaryTheme['border']; $pillars=''; $cultureCount=max(1,min(4,(int)($d['about_culture_count']??4))); foreach(array_slice(['one','two','three','four'],0,$cultureCount) as $i=>$w){$cls=$i===0?$soft:$card; $itemMuted=$i===0?$softMuted:$muted; $itemBorder=$i===0?$softBorder:$border; $pillars.="<article class='rounded-[2rem] border p-7 {$itemBorder} {$cls}'><span class='text-xs font-black {$itemMuted}'>0".($i+1)."</span><h3 class='mt-10 text-2xl font-semibold tracking-[-.03em]'>".e($d['pillar_'.$w.'_title'])."</h3><p class='mt-4 text-sm leading-6 {$itemMuted}'>".e($d['pillar_'.$w.'_text'])."</p></article>";}
                 $html.="<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='grid gap-10 lg:grid-cols-12'><div class='lg:col-span-5'><span class='text-xs font-bold uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold leading-[1.02] tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-5 text-base leading-7 {$muted}'>".e($d['text'])."</p></div><div class='grid gap-4 sm:grid-cols-2 lg:col-span-7'>{$pillars}</div></div><div class='mt-5 rounded-[2rem] border px-6 py-5 text-center text-sm font-semibold {$border} {$card}'>".e($d['closing_line'])."</div></div></section>";
                 break;
 
@@ -2754,16 +3102,16 @@ HTML;
                 case 'services_horizontal':
                 $isHorizontal = $type === 'services_horizontal';
                 $d = array_merge(['eyebrow'=>$isHorizontal?'CAPABILITIES':'WHAT WE DO','heading'=>$isHorizontal?'Explore the work from left to right.':'Specialist services, connected by one clear strategy.','text'=>'A focused set of complementary services designed around practical customer outcomes.','primary_label'=>$isHorizontal?'Talk to us':'Start a project','primary_url'=>'#'], $block);
-                $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text'];
+                $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text'];
                 $defaults=[['01','Strategy','Define priorities and a practical direction.'],['02','Brand systems','Create a consistent identity and message system.'],['03','Experience design','Shape clear journeys around customer needs.'],['04','Digital platforms','Build responsive, scalable digital experiences.'],['05','Growth systems','Connect content, campaigns, conversion, and measurement.'],['06','Optimisation','Improve performance through testing and insight.']]; $serviceCount=max(1,min(6,(int)($d['service_count']??6))); $cards=''; foreach(array_slice(['one','two','three','four','five','six'],0,$serviceCount) as $i=>$w){$num=e($d['service_'.$w.'_number']??$defaults[$i][0]);$title=e($d['service_'.$w.'_title']??$defaults[$i][1]);$text=e($d['service_'.$w.'_text']??$defaults[$i][2]); if($isHorizontal){$cards.="<article class='min-w-[78%] snap-start rounded-[2rem] border p-7 sm:min-w-[46%] lg:min-w-[31%] {$border} {$card}'><span class='text-xs font-black tracking-[.2em] {$muted}'>{$num}</span><h3 class='mt-16 text-3xl font-semibold tracking-[-.035em]'>{$title}</h3><p class='mt-4 leading-7 {$muted}'>{$text}</p></article>";}else{$cards.="<article class='rounded-[2rem] border p-6 sm:p-8 {$border} {$card}'><div class='flex gap-5'><span class='pt-1 text-xs font-black tracking-[.2em] {$muted}'>{$num}</span><div><h3 class='text-2xl font-semibold tracking-[-.03em] sm:text-3xl'>{$title}</h3><p class='mt-3 leading-7 {$muted}'>{$text}</p></div></div></article>";}}
                 if($isHorizontal){$html.="<section class='overflow-hidden px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between'><div class='max-w-3xl'><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p></div><a href='".e($d['primary_url'])."' class='inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><div class='cosmic-hide-scrollbar mt-10 flex snap-x gap-4 overflow-x-auto pb-3' style='scrollbar-width:none;-ms-overflow-style:none'>{$cards}</div></div></section>";}else{$html.="<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto grid max-w-7xl gap-10 lg:grid-cols-[.75fr_1.25fr] lg:gap-16'><div class='lg:sticky lg:top-24 lg:self-start'><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-5 leading-7 {$muted}'>".e($d['text'])."</p><a href='".e($d['primary_url'])."' class='mt-7 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><div class='space-y-4'>{$cards}</div></div></section>";}
                 break;
 
                 case 'services_interactive_tabs':
-                $d=array_merge(['eyebrow'=>'SERVICES','heading'=>'One team. Four connected disciplines.','text'=>'Explore the service areas that work together to move the business forward.','primary_label'=>'Discuss your needs','primary_url'=>'/contact'],$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $defs=[['Strategy','Set the direction','Define priorities, audience needs, positioning, and the clearest path forward.'],['Brand','Build the system','Create a distinctive identity with practical rules for consistent use.'],['Experience','Design the journey','Turn customer needs into clear interfaces, content, and interactions.'],['Technology','Ship the platform','Build fast, maintainable digital experiences that can evolve with the business.']]; $tabCount=max(1,min(4,(int)($d['tab_count']??4))); $id='cosmic-service-tabs-'.$index; $buttons=''; $panels=''; foreach(array_slice(['one','two','three','four'],0,$tabCount) as $i=>$w){$label=e($d['tab_'.$w.'_label']??$defs[$i][0]);$title=e($d['tab_'.$w.'_title']??$defs[$i][1]);$text=e($d['tab_'.$w.'_text']??$defs[$i][2]);$sel=$i===0?'true':'false';$hide=$i===0?'':' hidden';$btnClass=$i===0?"{$buttonBg} {$buttonText}":"{$border} {$card}";$buttons.="<button type='button' role='tab' aria-selected='{$sel}' data-tab='{$i}' class='w-full rounded-2xl border px-5 py-4 text-left text-sm font-bold {$btnClass}'>{$label}</button>";$panels.="<article role='tabpanel' data-panel='{$i}' class='min-h-[330px] rounded-[2rem] border p-7 sm:p-10 {$border} {$card}{$hide}'><span class='text-xs font-black tracking-[.2em] {$muted}'>0".($i+1)."</span><h3 class='mt-16 text-3xl font-semibold tracking-[-.035em] sm:text-4xl'>{$title}</h3><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$muted}'>{$text}</p><a href='".e($d['primary_url']?:'/contact')."' class='mt-8 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></article>";} $html.="<section id='{$id}' class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p></div><div class='mt-10 grid gap-4 lg:grid-cols-[.65fr_1.35fr]'><div class='space-y-2' role='tablist'>{$buttons}</div><div>{$panels}</div></div></div><script>(function(){var r=document.getElementById('{$id}');if(!r)return;var bs=r.querySelectorAll('[data-tab]'),ps=r.querySelectorAll('[data-panel]');bs.forEach(function(b){b.addEventListener('click',function(){var n=b.getAttribute('data-tab');bs.forEach(function(x){x.setAttribute('aria-selected',x===b?'true':'false');});ps.forEach(function(p){p.hidden=p.getAttribute('data-panel')!==n;});});});})();</script></section>"; break;
+                $d=array_merge(['eyebrow'=>'SERVICES','heading'=>'One team. Four connected disciplines.','text'=>'Explore the service areas that work together to move the business forward.','primary_label'=>'Discuss your needs','primary_url'=>'/contact'],$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $activeTabClass="{$buttonBg} {$buttonText}"; $inactiveTabClass="{$border} {$card}"; $defs=[['Strategy','Set the direction','Define priorities, audience needs, positioning, and the clearest path forward.'],['Brand','Build the system','Create a distinctive identity with practical rules for consistent use.'],['Experience','Design the journey','Turn customer needs into clear interfaces, content, and interactions.'],['Technology','Ship the platform','Build fast, maintainable digital experiences that can evolve with the business.']]; $tabCount=max(1,min(4,(int)($d['tab_count']??4))); $id='cosmic-service-tabs-'.$index; $buttons=''; $panels=''; foreach(array_slice(['one','two','three','four'],0,$tabCount) as $i=>$w){$label=e($d['tab_'.$w.'_label']??$defs[$i][0]);$title=e($d['tab_'.$w.'_title']??$defs[$i][1]);$text=e($d['tab_'.$w.'_text']??$defs[$i][2]);$sel=$i===0?'true':'false';$hidden=$i===0?'':" hidden";$btnClass=$i===0?$activeTabClass:$inactiveTabClass;$tabButtonClass=self::sparkTw($block,'tab_button',"w-full rounded-2xl border px-5 py-4 text-left text-sm font-bold {$btnClass}");$buttons.="<button type='button' role='tab' aria-selected='{$sel}' data-tab='{$i}' data-active-class='".e($activeTabClass)."' data-inactive-class='".e($inactiveTabClass)."' class='{$tabButtonClass}'>{$label}</button>";$panels.="<article role='tabpanel' data-panel='{$i}' class='min-h-[330px] rounded-[2rem] border p-7 sm:p-10 {$border} {$card}'{$hidden}><span class='text-xs font-black tracking-[.2em] {$muted}'>0".($i+1)."</span><h3 class='mt-16 text-3xl font-semibold tracking-[-.035em] sm:text-4xl'>{$title}</h3><p class='mt-5 max-w-2xl text-base leading-7 sm:text-lg {$muted}'>{$text}</p><a href='".e($d['primary_url']?:'/contact')."' class='mt-8 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></article>";} $html.="<section id='{$id}' class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='max-w-3xl'><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p></div><div class='mt-10 grid gap-4 lg:grid-cols-[.65fr_1.35fr]'><div class='space-y-2' role='tablist'>{$buttons}</div><div>{$panels}</div></div></div><script>(function(){var r=document.getElementById('{$id}');if(!r)return;var bs=r.querySelectorAll('[data-tab]'),ps=r.querySelectorAll('[data-panel]'),tokens=function(v){return(v||'').split(/\s+/).filter(Boolean)};bs.forEach(function(b){b.addEventListener('click',function(){var n=b.getAttribute('data-tab');bs.forEach(function(x){var active=x===b,all=tokens(x.dataset.activeClass).concat(tokens(x.dataset.inactiveClass));if(all.length)x.classList.remove.apply(x.classList,all);var next=tokens(active?x.dataset.activeClass:x.dataset.inactiveClass);if(next.length)x.classList.add.apply(x.classList,next);x.setAttribute('aria-selected',active?'true':'false');});ps.forEach(function(p){var inactive=p.getAttribute('data-panel')!==n;p.hidden=inactive;p.classList.toggle('hidden',inactive);});});});})();</script></section>"; break;
 
                 case 'services_mega_grid':
-                $d=array_merge(['eyebrow'=>'FULL CAPABILITY','heading'=>'Everything needed to move from idea to growth.','text'=>'A broad set of connected specialist capabilities.','primary_label'=>'View all capabilities','primary_url'=>'#'],$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'bg-white/10 text-white':"{$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $defs=[['Strategy','Direction, positioning, roadmaps, and priorities.'],['Research','Audience insight, market review, and opportunity mapping.'],['Brand','Identity, messaging, guidelines, and brand systems.'],['Content','Content strategy, copy, editorial, and campaign assets.'],['UX / UI','Journeys, prototypes, interfaces, and design systems.'],['Development','Websites, applications, integrations, and technical delivery.'],['Campaigns','Launch planning, lifecycle, and conversion.'],['Optimisation','Analytics, testing, iteration, and performance improvement.']]; $itemCount=max(1,min(8,(int)($d['item_count']??8))); $items=''; foreach(array_slice(['one','two','three','four','five','six','seven','eight'],0,$itemCount) as $i=>$w){$items.="<article class='rounded-[1.5rem] border p-5 sm:p-6 {$border} {$card}'><span class='text-xs font-black tracking-[.2em] {$muted}'>".str_pad((string)($i+1),2,'0',STR_PAD_LEFT)."</span><h3 class='mt-8 text-xl font-semibold'>".e($d['item_'.$w.'_title']??$defs[$i][0])."</h3><p class='mt-2 text-sm leading-6 {$muted}'>".e($d['item_'.$w.'_text']??$defs[$i][1])."</p></article>";} $html.="<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='grid gap-8 lg:grid-cols-[.8fr_1.2fr]'><div><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p><a href='".e($d['primary_url'])."' class='mt-7 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><div class='grid gap-3 sm:grid-cols-2'>{$items}</div></div></div></section>"; break;
+                $d=array_merge(['eyebrow'=>'FULL CAPABILITY','heading'=>'Everything needed to move from idea to growth.','text'=>'A broad set of connected specialist capabilities.','primary_label'=>'View all capabilities','primary_url'=>'#'],$block); $primaryTheme=self::getTheme($primaryColor); $resolvedTheme=(string)($blockTheme??$block['resolvedTheme']??$selectedThemeName??'surface'); $isPrimarySection=$resolvedTheme==='primary'; $muted=$isPrimarySection?'text-white/70':$theme['sub']; $border=$isPrimarySection?'border-white/20':$theme['border']; $card=$isPrimarySection?'cosmic-primary-contrast bg-white/10 text-white':"cosmic-surface-contrast {$theme['surface']} {$theme['text']}"; $buttonBg=$isPrimarySection?'bg-white':$primaryTheme['bg']; $buttonText=$isPrimarySection?'text-slate-950':$primaryTheme['text']; $defs=[['Strategy','Direction, positioning, roadmaps, and priorities.'],['Research','Audience insight, market review, and opportunity mapping.'],['Brand','Identity, messaging, guidelines, and brand systems.'],['Content','Content strategy, copy, editorial, and campaign assets.'],['UX / UI','Journeys, prototypes, interfaces, and design systems.'],['Development','Websites, applications, integrations, and technical delivery.'],['Campaigns','Launch planning, lifecycle, and conversion.'],['Optimisation','Analytics, testing, iteration, and performance improvement.']]; $itemCount=max(1,min(8,(int)($d['item_count']??8))); $items=''; foreach(array_slice(['one','two','three','four','five','six','seven','eight'],0,$itemCount) as $i=>$w){$items.="<article class='rounded-[1.5rem] border p-5 sm:p-6 {$border} {$card}'><span class='text-xs font-black tracking-[.2em] {$muted}'>".str_pad((string)($i+1),2,'0',STR_PAD_LEFT)."</span><h3 class='mt-8 text-xl font-semibold'>".e($d['item_'.$w.'_title']??$defs[$i][0])."</h3><p class='mt-2 text-sm leading-6 {$muted}'>".e($d['item_'.$w.'_text']??$defs[$i][1])."</p></article>";} $html.="<section class='px-6 py-16 sm:px-10 sm:py-20 lg:px-14 lg:py-24 {$theme['bg']}'><div class='mx-auto max-w-7xl'><div class='grid gap-8 lg:grid-cols-[.8fr_1.2fr]'><div><span class='text-xs font-black uppercase tracking-[.28em] {$muted}'>".e($d['eyebrow'])."</span><h2 class='mt-5 text-4xl font-semibold tracking-[-.045em] sm:text-5xl {$theme['text']}'>".e($d['heading'])."</h2><p class='mt-4 leading-7 {$muted}'>".e($d['text'])."</p><a href='".e($d['primary_url'])."' class='mt-7 inline-flex min-h-[48px] items-center rounded-full px-7 text-sm font-bold {$buttonBg} {$buttonText}'>".e($d['primary_label'])."</a></div><div class='grid gap-3 sm:grid-cols-2'>{$items}</div></div></div></section>"; break;
 
                 case 'services_hover_cards':
                 $d = array_merge([
@@ -2978,36 +3326,43 @@ HTML;
 
                         </div>
 
-                        <div class='space-y-6'>
+                        <div data-cosmic-bento-list='true' class='flex flex-col gap-6'>
                 ";
 
-                foreach ($services as $service) {
+                foreach ($services as $serviceIndex => $service) {
 
                     $icon  = e($service['icon'] ?? '⚡');
                     $title = e($service['title'] ?? 'Service Title');
                     $desc  = e($service['desc'] ?? 'Service description.');
+                    $itemCard = self::sparkTwItem($block, 'services', $serviceIndex, 'card', "{$theme['card']} border {$theme['border']} rounded-3xl p-8 flex flex-col md:flex-row md:items-center gap-8 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1");
+                    $itemIcon = self::sparkTwItem($block, 'services', $serviceIndex, 'icon', "w-20 h-20 rounded-3xl bg-white/5 border {$theme['border']} flex items-center justify-center text-4xl shrink-0");
+                    $itemContent = self::sparkTwItem($block, 'services', $serviceIndex, 'content', 'flex-grow');
+                    $itemTitle = self::sparkTwItem($block, 'services', $serviceIndex, 'title', "text-3xl font-bold {$theme['text']}");
+                    $itemDesc = self::sparkTwItem($block, 'services', $serviceIndex, 'desc', "mt-3 text-lg leading-8 {$theme['sub']}");
+                    $itemCtaWrap = self::sparkTwItem($block, 'services', $serviceIndex, 'cta_wrap', 'shrink-0');
+                    $itemCta = self::sparkTwItem($block, 'services', $serviceIndex, 'cta', "inline-flex items-center gap-2 text-sm font-semibold {$theme['text']}");
 
                     $html .= "
-                        <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-8 flex flex-col md:flex-row md:items-center gap-8 transition-all duration-300 hover:shadow-2xl hover:-translate-y-1'>
+                        <div class='{$itemCard}'>
 
-                            <div class='w-20 h-20 rounded-3xl bg-white/5 border {$theme['border']} flex items-center justify-center text-4xl shrink-0'>
+                            <div class='{$itemIcon}'>
                                 {$icon}
                             </div>
 
-                            <div class='flex-grow'>
+                            <div class='{$itemContent}'>
 
-                                <h3 class='text-3xl font-bold {$theme['text']}'>
+                                <h3 class='{$itemTitle}'>
                                     {$title}
                                 </h3>
 
-                                <p class='mt-3 text-lg leading-8 {$theme['sub']}'>
+                                <p class='{$itemDesc}'>
                                     {$desc}
                                 </p>
 
                             </div>
 
-                            <div class='shrink-0'>
-                                <span class='inline-flex items-center gap-2 text-sm font-semibold {$theme['text']}'>
+                            <div class='{$itemCtaWrap}'>
+                                <span class='{$itemCta}'>
                                     Learn More →
                                 </span>
                             </div>
@@ -3062,24 +3417,29 @@ HTML;
                         <div class='grid md:grid-cols-4 gap-10'>
                 ";
 
-                foreach ($steps as $step) {
+                foreach ($steps as $stepIndex => $step) {
+
+                    $stepCard = self::sparkTwItem($block, 'steps', $stepIndex, 'card', "relative rounded-3xl {$theme['card']} p-8 border {$theme['border']}");
+                    $stepNumber = self::sparkTwItem($block, 'steps', $stepIndex, 'number', "text-5xl font-bold opacity-20 mb-6 {$theme['text']}");
+                    $stepTitle = self::sparkTwItem($block, 'steps', $stepIndex, 'title', "text-2xl font-bold mb-4 {$theme['text']}");
+                    $stepDescClass = self::sparkTwItem($block, 'steps', $stepIndex, 'desc', "leading-7 {$theme['sub']}");
 
                     $number = e($step['number'] ?? '01');
                     $title  = e($step['title'] ?? 'Step');
                     $desc   = e($step['text'] ?? '');
 
                     $html .= "
-                        <div class='relative rounded-3xl {$theme['card']} p-8 border {$theme['border']}'>
+                        <div class='{$stepCard}'>
 
-                            <div class='text-5xl font-bold opacity-20 mb-6 {$theme['text']}'>
+                            <div class='{$stepNumber}'>
                                 {$number}
                             </div>
 
-                            <h3 class='text-2xl font-bold mb-4 {$theme['text']}'>
+                            <h3 class='{$stepTitle}'>
                                 {$title}
                             </h3>
 
-                            <p class='leading-7 {$theme['sub']}'>
+                            <p class='{$stepDescClass}'>
                                 {$desc}
                             </p>
 
@@ -3138,14 +3498,18 @@ HTML;
                     $label = e($metric['label'] ?? '');
                     $description = e($metric['description'] ?? '');
                     $lastBorder = $index === count($metrics) - 1 ? 'sm:last:border-r-0' : '';
+                    $metricCard = self::sparkTwItem($block, 'metrics', $index, 'card', "min-w-0 border-b p-6 last:border-b-0 sm:border-b-0 sm:border-r {$lastBorder} lg:p-7 {$theme['border']}");
+                    $metricValue = self::sparkTwItem($block, 'metrics', $index, 'value', "block text-3xl font-bold tracking-tight sm:text-4xl {$theme['text']}");
+                    $metricLabel = self::sparkTwItem($block, 'metrics', $index, 'label', "mt-3 block text-sm font-semibold {$theme['text']}");
+                    $metricDesc = self::sparkTwItem($block, 'metrics', $index, 'desc', "mt-2 block text-sm leading-6 {$theme['sub']}");
 
                     $html .= "
-                            <article class='min-w-0 border-b p-6 last:border-b-0 sm:border-b-0 sm:border-r {$lastBorder} lg:p-7 {$theme['border']}'>
-                                <div class='block text-3xl font-bold tracking-tight sm:text-4xl {$theme['text']}'>{$value}</div>
-                                <h3 class='mt-3 block text-sm font-semibold {$theme['text']}'>{$label}</h3>";
+                            <article class='{$metricCard}'>
+                                <div class='{$metricValue}'>{$value}</div>
+                                <h3 class='{$metricLabel}'>{$label}</h3>";
 
                     if ($description !== '') {
-                        $html .= "<p class='mt-2 block text-sm leading-6 {$theme['sub']}'>{$description}</p>";
+                        $html .= "<p class='{$metricDesc}'>{$description}</p>";
                     }
 
                     $html .= "</article>";
@@ -3220,7 +3584,7 @@ HTML;
                     $cards=[]; foreach($members as $memberIndex=>$m){$name=e($m['name']??'');$role=e($m['role']??'');$bio=e($m['bio']??'');$rawImg=trim((string)($m['image_url']??''));if($rawImg===''){$rawImg='/storage/cms-images/avatars/avatar-'.(($memberIndex%4)+1).'.jpg';}$img=e(self::staticAssetUrl($rawImg));$cards[]="<article class='overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']}'><img src='{$img}' alt='{$name}' width='960' height='720' loading='lazy' decoding='async' class='aspect-[4/3] w-full object-cover'><div class='p-5'><h3 class='text-lg font-semibold {$theme['text']}'>{$name}</h3><p class='mt-1 text-sm font-medium {$theme['sub']}'>{$role}</p><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$bio}</p></div></article>";}
                     if($type==='team_timeline_premium'){$members=array_slice($members,0,4);$timelineLabel=e($block['timeline_label']??'How the team grew');$rows='';foreach($members as $i=>$m){$name=e($m['name']??'');$role=e($m['role']??'');$bio=e($m['bio']??'');$n=str_pad((string)($i+1),2,'0',STR_PAD_LEFT);$rows.="<div class='relative grid gap-4 py-6 pl-8 md:grid-cols-[80px_1fr_2fr]'><span class='absolute -left-1.5 top-8 h-3 w-3 rounded-full bg-current'></span><span class='text-xs font-bold {$theme['sub']}'>{$n}</span><strong class='{$theme['text']}'>{$name}</strong><div><p class='text-sm font-medium {$theme['text']}'>{$role}</p><p class='mt-2 text-sm {$theme['sub']}'>{$bio}</p></div></div>";}$body="<div class='mb-6 text-sm font-semibold {$theme['text']}'>{$timelineLabel}</div><div class='border-l {$theme['border']}'>{$rows}</div>";
                     }elseif($type==='team_org_chart_premium'){$cards=array_slice($cards,0,4);$chartLabel=e($block['chart_label']??'How we work together');$top=$cards[0]??'';$lower=implode('',array_slice($cards,1,3));$body="<div class='mb-8 text-center text-sm font-semibold {$theme['sub']}'>{$chartLabel}</div><div class='mx-auto max-w-sm'>{$top}</div><div class='mx-auto h-10 w-px border-l {$theme['border']}'></div><div class='grid gap-5 md:grid-cols-3'>{$lower}</div>";
-                    }elseif($type==='team_leadership_premium'){$leadMembers=array_slice($members,0,4);$topCards='';foreach(array_slice($leadMembers,0,2) as $i=>$m){$name=e($m['name']??'');$role=e($m['role']??'');$bio=e($m['bio']??'');$rawImg=trim((string)($m['image_url']??''));if($rawImg===''){$rawImg='/storage/cms-images/avatars/avatar-'.(($i%4)+1).'.jpg';}$img=e(self::staticAssetUrl($rawImg));$topCards.="<article class='overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']}'><img src='{$img}' alt='{$name}' width='960' height='768' loading='lazy' decoding='async' class='aspect-[5/4] w-full object-cover'><div class='p-7'><h3 class='text-2xl font-semibold {$theme['text']}'>{$name}</h3><p class='mt-1 text-sm font-medium {$theme['sub']}'>{$role}</p><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$bio}</p></div></article>";}$compact='';foreach(array_slice($leadMembers,2,2) as $j=>$m){$memberIndex=$j+2;$name=e($m['name']??'');$role=e($m['role']??'');$rawImg=trim((string)($m['image_url']??''));if($rawImg===''){$rawImg='/storage/cms-images/avatars/avatar-'.(($memberIndex%4)+1).'.jpg';}$img=e(self::staticAssetUrl($rawImg));$compact.="<div class='flex items-center gap-4'><img src='{$img}' alt='' width='112' height='112' loading='lazy' decoding='async' class='h-14 w-14 rounded-2xl object-cover'><div><strong class='{$theme['text']}'>{$name}</strong><p class='text-sm {$theme['sub']}'>{$role}</p></div></div>";}$body="<div class='grid gap-7 lg:grid-cols-2'>{$topCards}</div><div class='mt-8 grid gap-4 border-t pt-7 sm:grid-cols-2 {$theme['border']}'>{$compact}</div>";
+                    }elseif($type==='team_leadership_premium'){$leadMembers=array_slice($members,0,4);$topCards='';foreach(array_slice($leadMembers,0,2) as $i=>$m){$name=e($m['name']??'');$role=e($m['role']??'');$bio=e($m['bio']??'');$rawImg=trim((string)($m['image_url']??''));if($rawImg===''){$rawImg='/storage/cms-images/avatars/avatar-'.(($i%4)+1).'.jpg';}$img=e(self::staticAssetUrl($rawImg));$topCards.="<article class='overflow-hidden rounded-3xl border {$theme['border']} {$theme['card']}'><img src='{$img}' alt='{$name}' width='960' height='768' loading='lazy' decoding='async' class='aspect-[5/4] w-full object-cover'><div class='p-7'><h3 class='text-2xl font-semibold {$theme['text']}'>{$name}</h3><p class='mt-1 text-sm font-medium {$theme['sub']}'>{$role}</p><p class='mt-3 text-sm leading-6 {$theme['sub']}'>{$bio}</p></div></article>";}$compact='';foreach(array_slice($leadMembers,2,2) as $j=>$m){$memberIndex=$j+2;$name=e($m['name']??'');$role=e($m['role']??'');$rawImg=trim((string)($m['image_url']??''));if($rawImg===''){$rawImg='/storage/cms-images/avatars/avatar-'.(($memberIndex%4)+1).'.jpg';}$img=e(self::staticAssetUrl($rawImg));$compact.="<div class='flex items-center gap-4'><img src='{$img}' alt='' width='112' height='112' loading='lazy' decoding='async' class='h-14 w-14 rounded-2xl object-cover'><div><strong class='{$theme['text']}'>{$name}</strong><p class='{$theme['sub']}'>{$role}</p></div></div>";}$body="<div class='grid gap-7 lg:grid-cols-2'>{$topCards}</div><div class='mt-8 grid gap-4 border-t pt-7 sm:grid-cols-2 {$theme['border']}'>{$compact}</div>";
                     }else{$body="<div class='grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>".implode('',array_slice($cards,0,8))."</div>";}
                     $html.="<section class='px-6 py-20 {$theme['bg']}'><div class='mx-auto max-w-7xl'>{$head}{$body}</div></section>";
                     break;
@@ -3258,21 +3622,27 @@ HTML;
 
                 $html .= "</div><div class='grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4'>";
 
-                foreach ($members as $member) {
+                foreach ($members as $memberIndex => $member) {
                     $name = e($member['name'] ?? '');
                     $role = e($member['role'] ?? '');
                     $bio = e($member['bio'] ?? '');
                     $imageUrl = self::staticAssetUrl($member['image_url'] ?? '');
+                    $memberCard = self::sparkTwItem($block, 'members', $memberIndex, 'card', "overflow-hidden rounded-2xl border {$theme['border']} {$theme['card']}");
+                    $memberImage = self::sparkTwItem($block, 'members', $memberIndex, 'image', 'aspect-[4/3] w-full object-cover');
+                    $memberContent = self::sparkTwItem($block, 'members', $memberIndex, 'content', 'space-y-2 p-5');
+                    $memberNameClass = self::sparkTwItem($block, 'members', $memberIndex, 'name', "block text-base font-semibold {$theme['text']}");
+                    $memberRoleClass = self::sparkTwItem($block, 'members', $memberIndex, 'role', "block text-sm font-medium {$theme['sub']}");
+                    $memberBioClass = self::sparkTwItem($block, 'members', $memberIndex, 'bio', "block pt-1 text-sm leading-6 {$theme['sub']}");
 
                     $html .= "
-                        <article class='overflow-hidden rounded-2xl border {$theme['border']} {$theme['card']}'>
-                            <img src='{$imageUrl}' alt='{$name}' width='960' height='720' loading='lazy' decoding='async' class='aspect-[4/3] w-full object-cover' loading='lazy'>
-                            <div class='space-y-2 p-5'>
-                                <h3 class='block text-base font-semibold {$theme['text']}'>{$name}</h3>
-                                <p class='block text-sm font-medium {$theme['sub']}'>{$role}</p>";
+                        <article class='{$memberCard}'>
+                            <img src='{$imageUrl}' alt='{$name}' width='960' height='720' loading='lazy' decoding='async' class='{$memberImage}'>
+                            <div class='{$memberContent}'>
+                                <h3 class='{$memberNameClass}'>{$name}</h3>
+                                <p class='{$memberRoleClass}'>{$role}</p>";
 
                     if ($bio !== '') {
-                        $html .= "<p class='block pt-1 text-sm leading-6 {$theme['sub']}'>{$bio}</p>";
+                        $html .= "<p class='{$memberBioClass}'>{$bio}</p>";
                     }
 
                     $html .= "</div></article>";
@@ -3306,7 +3676,8 @@ HTML;
                     $variant = (string) ($block['type'] ?? 'testimonials_wall_of_love');
                     $uid = 'cosmic-testimonials-'.$index.'-'.substr(md5(json_encode($block)),0,8);
                     $html .= "<section id='{$uid}' class='relative overflow-hidden px-7 py-28 {$theme['bg']}'><div class='mx-auto max-w-7xl'>";
-                    $html .= "<div class='mx-auto mb-14 max-w-3xl text-center'><span class='block text-xs font-semibold uppercase tracking-[.32em] {$theme['sub']}'>{$eyebrow}</span><h2 class='mt-4 block text-4xl font-bold tracking-tight sm:text-5xl {$theme['text']}'>{$heading}</h2><p class='mx-auto mt-5 block max-w-2xl text-base leading-7 {$theme['sub']}'>{$text}</p></div>";
+                    $headingSize = $variant === 'testimonials_review_carousel_pro' ? '!text-3xl sm:!text-4xl !leading-tight' : 'text-4xl sm:text-5xl';
+                    $html .= "<div class='mx-auto mb-14 max-w-3xl text-center'><span class='block text-xs font-semibold uppercase tracking-[.32em] {$theme['sub']}'>{$eyebrow}</span><h2 class='mt-4 block {$headingSize} font-bold tracking-tight {$theme['text']}'>{$heading}</h2><p class='mx-auto mt-5 block max-w-2xl text-base leading-7 {$theme['sub']}'>{$text}</p></div>";
 
                     if ($variant === 'testimonials_video_premium') {
                         $rawVideo = trim((string)($block['video_url'] ?? '')) ?: 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
@@ -3358,7 +3729,7 @@ HTML;
                     if ($variant === 'testimonials_scrolling_marquee') {
                         $html .= "<style>#{$uid} [data-marquee]::-webkit-scrollbar{display:none;width:0;height:0}</style><script>(function(){var r=document.getElementById('{$uid}'),el=r&&r.querySelector('[data-marquee]');if(!el)return;var pause=false,last=performance.now();el.addEventListener('mouseenter',function(){pause=true});el.addEventListener('mouseleave',function(){pause=false});el.addEventListener('focusin',function(){pause=true});el.addEventListener('focusout',function(){pause=false});function t(n){if(!pause&&el.scrollWidth>el.clientWidth){el.scrollLeft+=(n-last)*.035;if(el.scrollLeft>=el.scrollWidth-el.clientWidth-2)el.scrollLeft=0}last=n;requestAnimationFrame(t)}requestAnimationFrame(t)})();</script>";
                     } elseif ($variant === 'testimonials_review_carousel_pro') {
-                        $html .= "<style>#{$uid} [data-carousel]::-webkit-scrollbar{display:none;width:0;height:0}</style><script>(function(){var r=document.getElementById('{$uid}'),el=r&&r.querySelector('[data-carousel]');if(!el)return;function m(d){el.scrollBy({left:d*Math.max(280,el.clientWidth*.72),behavior:'smooth'})}r.querySelector('[data-prev]').addEventListener('click',function(){m(-1)});r.querySelector('[data-next]').addEventListener('click',function(){m(1)})})();</script>";
+                        $html .= "<style>#{$uid} h2{font-size:clamp(1.875rem,3.2vw,2.5rem)!important;line-height:1.12!important}#{$uid} [data-carousel]::-webkit-scrollbar{display:none;width:0;height:0}</style><script>(function(){var r=document.getElementById('{$uid}'),el=r&&r.querySelector('[data-carousel]');if(!el)return;function m(d){el.scrollBy({left:d*Math.max(280,el.clientWidth*.72),behavior:'smooth'})}r.querySelector('[data-prev]').addEventListener('click',function(){m(-1)});r.querySelector('[data-next]').addEventListener('click',function(){m(1)})})();</script>";
                     } elseif ($variant === 'testimonials_card_stack') {
                         $html .= "<script>(function(){var r=document.getElementById('{$uid}'),c=r&&r.querySelectorAll('[data-stack-card]');if(!c||!c.length)return;var i=0,o=r.querySelector('[data-stack-count]');function s(n){i=(n+c.length)%c.length;c.forEach(function(x,j){var d=(j-i+c.length)%c.length;if(d>2){x.style.display='none';return;}x.style.display='';x.style.position=d===0?'relative':'absolute';x.style.inset=d===0?'auto':'0 0 auto 0';x.style.top=d===0?'auto':'0';x.style.transform='translateY('+(d*14)+'px) scale('+(1-d*.035)+') rotate('+(d%2?1:-1)+'deg)';x.style.zIndex=30-d;x.style.opacity=1-d*.18;});if(o)o.textContent=(i+1)+' / '+c.length}var p=r.querySelector('[data-stack-prev]'),q=r.querySelector('[data-stack-next]');if(p)p.addEventListener('click',function(){s(i-1)});if(q)q.addEventListener('click',function(){s(i+1)});s(0)})();</script>";
                     }
@@ -3402,7 +3773,7 @@ HTML;
                         <div class='grid md:grid-cols-3 gap-8'>
                 ";
 
-                foreach ($testimonials as $item) {
+                foreach ($testimonials as $testimonialIndex => $item) {
 
                     $avatar = $item['avatar'] ?? '';
 
@@ -3418,15 +3789,21 @@ HTML;
                     $rating  = (int)($item['rating'] ?? 5);
 
                     $stars = str_repeat('★', max(0, min($rating, 5)));
+                    $testimonialCard = self::sparkTwItem($block, 'testimonials', $testimonialIndex, 'card', "{$theme['card']} border {$theme['border']} rounded-3xl p-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl");
+                    $testimonialRating = self::sparkTwItem($block, 'testimonials', $testimonialIndex, 'rating', 'mb-5 text-xl text-yellow-400');
+                    $testimonialQuote = self::sparkTwItem($block, 'testimonials', $testimonialIndex, 'quote', "italic leading-8 {$theme['sub']}");
+                    $testimonialAvatar = self::sparkTwItem($block, 'testimonials', $testimonialIndex, 'avatar', 'w-14 h-14 rounded-full object-cover');
+                    $testimonialName = self::sparkTwItem($block, 'testimonials', $testimonialIndex, 'name', "font-bold {$theme['text']}");
+                    $testimonialCompany = self::sparkTwItem($block, 'testimonials', $testimonialIndex, 'company', "text-sm {$theme['sub']}");
 
                     $html .= "
-                        <div class='{$theme['card']} border {$theme['border']} rounded-3xl p-7 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl'>
+                        <div class='{$testimonialCard}'>
 
-                            <div class='mb-5 text-xl text-yellow-400'>
+                            <div class='{$testimonialRating}'>
                                 {$stars}
                             </div>
 
-                            <p class='italic leading-8 {$theme['sub']}'>
+                            <p class='{$testimonialQuote}'>
                                 {$quote}
                             </p>
 
@@ -3435,7 +3812,7 @@ HTML;
                                 <img
                                     src='{$avatar}'
                                     alt='{$name}'
-                                    width='56' height='56' loading='lazy' decoding='async' class='w-14 h-14 rounded-full object-cover'
+                                    width='56' height='56' loading='lazy' decoding='async' class='{$testimonialAvatar}'
                                 >
 
                                 <div>
@@ -3647,43 +4024,52 @@ HTML;
                             $buttonClasses = $buttonNumber === 1
                                 ? ($lightMedia ? $primaryTheme['bg'] . ' text-white hover:opacity-90' : 'bg-white text-slate-950 hover:bg-white/90')
                                 : ($lightMedia ? 'border border-slate-900/20 bg-white/55 text-slate-950 hover:bg-white/80' : 'border border-white/35 bg-black/20 text-white hover:border-white/60 hover:bg-black/35');
+                            $buttonClass = self::sparkTwPath($block, ['slides', $slideIndex, 'ctas', $buttonNumber - 1], 'button', "rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition {$buttonClasses}");
 
-                            $buttons .= "<a href='{$buttonUrl}' class='rounded-full px-6 py-3.5 text-sm font-bold backdrop-blur transition {$buttonClasses}'>{$buttonLabel}</a>";
+                            $buttons .= "<a href='{$buttonUrl}' class='{$buttonClass}'>{$buttonLabel}</a>";
                         }
 
                         $floating = '';
                         if (trim($slide['button_4_text']) !== '') {
                             $floatingUrl = e($slide['button_4_url'] ?: '#');
                             $floatingLabel = e($slide['button_4_text']);
-                            $floating = "<a href='{$floatingUrl}' class='mr-[30px] rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold text-white backdrop-blur transition hover:border-white/50 hover:bg-black/55'>{$floatingLabel}</a>";
+                            $floatingClass = self::sparkTwPath($block, ['slides', $slideIndex, 'ctas', 3], 'button', 'mr-[30px] rounded-full border border-white/25 bg-black/35 px-4 py-2 text-xs font-bold text-white backdrop-blur transition hover:border-white/50 hover:bg-black/55');
+                            $floating = "<a href='{$floatingUrl}' class='{$floatingClass}'>{$floatingLabel}</a>";
                         }
 
                         $activeClasses = $slideIndex === 0 ? 'z-10 opacity-100' : 'z-0 opacity-0';
                         $ariaHidden = $slideIndex === 0 ? 'false' : 'true';
+                        $slideClass = self::sparkTwItem($block, 'slides', $slideIndex, 'slide', "absolute inset-0 transition-opacity duration-700 {$activeClasses}");
+                        $imageClass = self::sparkTwItem($block, 'slides', $slideIndex, 'image', 'absolute inset-0 h-full w-full object-cover');
+                        $eyebrowClass = self::sparkTwItem($block, 'slides', $slideIndex, 'eyebrow', "mb-5 text-xs font-bold uppercase tracking-[0.32em] sm:text-sm {$sliderEyebrow}");
+                        $headingClass = self::sparkTwItem($block, 'slides', $slideIndex, 'heading', 'max-w-3xl text-[3rem] font-bold leading-[0.98] tracking-[-0.04em] sm:text-[4rem] lg:text-[5rem]');
+                        $descriptionClass = self::sparkTwItem($block, 'slides', $slideIndex, 'description', "mt-7 max-w-2xl text-base leading-8 sm:text-lg {$sliderBody}");
+                        $ctaGroupClass = self::sparkTwItem($block, 'slides', $slideIndex, 'cta_group', 'mt-9 flex flex-wrap gap-3');
                         $media = $imageUrl !== ''
-                            ? "<img src='{$imageUrl}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async' class='absolute inset-0 h-full w-full object-cover'>"
-                            : "<div class='absolute inset-0 bg-slate-900'></div>";
+                            ? "<img src='{$imageUrl}' alt='' width='1920' height='1080' loading='eager' fetchpriority='high' decoding='async' class='{$imageClass}'>"
+                            : "<div class='{$imageClass} bg-slate-900'></div>";
 
                         $slideMarkup .= "
-                        <article data-cosmic-slide='{$slideIndex}' aria-hidden='{$ariaHidden}' class='absolute inset-0 transition-opacity duration-700 {$activeClasses}'>
+                        <article data-cosmic-slide='{$slideIndex}' aria-hidden='{$ariaHidden}' class='{$slideClass}'>
                             {$media}
                             <div class='absolute inset-0 {$sliderOverlayClass}' style='{$sliderOverlayStyle}'></div>
                             <div class='absolute inset-0 bg-gradient-to-r {$sliderGradientX}'></div>
                             <div class='absolute inset-0 bg-gradient-to-t {$sliderGradientY}'></div>
                             <div class='relative z-10 mx-auto flex min-h-[620px] max-w-7xl items-center px-6 py-0 sm:min-h-[700px] sm:px-10 lg:min-h-[760px] lg:px-14'>
                                 <div class='max-w-3xl {$sliderText}' aria-live='polite'>
-                                    " . ($eyebrow !== '' ? "<p class='mb-5 text-xs font-bold uppercase tracking-[0.32em] sm:text-sm {$sliderEyebrow}'>{$eyebrow}</p>" : '') . "
-                                    <h2 class='max-w-3xl text-[3rem] font-bold leading-[0.98] tracking-[-0.04em] sm:text-[4rem] lg:text-[5rem]'>{$heading}</h2>
-                                    <p class='mt-7 max-w-2xl text-base leading-8 sm:text-lg {$sliderBody}'>{$description}</p>
-                                    <div class='mt-9 flex flex-wrap gap-3'>{$buttons}</div>
+                                    " . ($eyebrow !== '' ? "<p class='{$eyebrowClass}'>{$eyebrow}</p>" : '') . "
+                                    <h2 class='{$headingClass}'>{$heading}</h2>
+                                    <p class='{$descriptionClass}'>{$description}</p>
+                                    <div class='{$ctaGroupClass}'>{$buttons}</div>
                                 </div>
                             </div>
                             <div class='absolute bottom-6 right-32 z-30 hidden items-center sm:flex'>{$floating}</div>
                         </article>";
 
                         $dotClasses = $slideIndex === 0 ? 'w-8 bg-white' : 'w-2.5 bg-white/45 hover:bg-white/70';
+                        $dotClass = self::sparkTwItem($block, 'slides', $slideIndex, 'dot', "h-2.5 rounded-full transition-all {$dotClasses}");
                         $current = $slideIndex === 0 ? " aria-current='true'" : '';
-                        $dotMarkup .= "<button type='button' data-slider-dot='{$slideIndex}' class='h-2.5 rounded-full transition-all {$dotClasses}' aria-label='Show slide " . ($slideIndex + 1) . "'{$current}></button>";
+                        $dotMarkup .= "<button type='button' data-slider-dot='{$slideIndex}' class='{$dotClass}' aria-label='Show slide " . ($slideIndex + 1) . "'{$current}></button>";
                     }
 
                     $html .= "
@@ -4044,6 +4430,9 @@ HTML;
                 $premiumBody = $lightMedia ? 'text-slate-700' : 'text-white/75';
                 $premiumSecondary = $lightMedia ? 'border-slate-900/20 bg-white/55 text-slate-950' : 'border-white/45 bg-white/5 text-white';
                 $premiumScroll = $lightMedia ? 'text-slate-700' : 'text-white/75';
+                $premiumContentClasses = self::sparkTw($block, 'wrapper_6', 'relative mx-auto flex max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12');
+                $premiumPrimaryButtonClasses = self::sparkTw($block, 'button_2', "inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}");
+                $premiumSecondaryButtonClasses = self::sparkTw($block, 'button_3', "inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold {$premiumSecondary}");
                 $premiumBackgroundMedia = $premiumVideoEmbedUrl
                     ? "<div class='absolute inset-0 overflow-hidden'>
                             <img src='{$posterUrl}' alt='' aria-hidden='true' class='absolute inset-0 h-full w-full object-cover sm:hidden'>
@@ -4060,12 +4449,12 @@ HTML;
                     <div class='absolute inset-0 {$premiumOverlayBase}' style='{$premiumOverlayStyle}'></div>
                     <div class='absolute inset-0 bg-gradient-to-r {$premiumGradientX}'></div>
                     <div class='absolute inset-0 bg-gradient-to-t {$premiumGradientY}'></div>
-                    <div class='relative mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
+                    <div class='{$premiumContentClasses}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
                         <div class='flex items-center justify-between border-b pb-5 {$premiumBorder}'><span class='text-[11px] font-bold uppercase tracking-[.34em] {$premiumEyebrow}'>{$eyebrow}</span><span data-cosmic-type='badge' class='rounded-full border px-4 py-2 text-[11px] font-semibold {$premiumBadge}'>{$mediaBadge}</span></div>
                         <div class='max-w-4xl py-0'>
                             <h1 class='max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$premiumHeading}'>{$heading}</h1>
                             <p class='mt-7 max-w-2xl text-base leading-7 sm:text-lg sm:leading-8 {$premiumBody}'>{$text}</p>
-                            <div class='mt-9 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[52px] items-center justify-center rounded-full border px-7 font-bold {$premiumSecondary}'>{$secondaryLabel}</a></div>
+                            <div class='mt-9 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='{$premiumPrimaryButtonClasses}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='{$premiumSecondaryButtonClasses}'>{$secondaryLabel}</a></div>
                         </div>
                         <div class='flex items-center justify-between border-t pt-5 {$premiumBorder}'><span class='text-xs font-semibold uppercase tracking-[.2em] {$premiumScroll}'>{$scrollLabel}</span><span class='flex h-10 w-6 items-start justify-center rounded-full border p-1 {$premiumBorder}'><span class='h-2 w-1 rounded-full " . ($lightMedia ? "bg-slate-900" : "bg-white") . "'></span></span></div>
                     </div>
@@ -4097,7 +4486,8 @@ HTML;
                 $composerSurface = $isPrimarySection ? 'border-white/20 bg-white/10 text-white' : "{$theme['card']} {$theme['border']} {$theme['text']}";
                 $familyGlow = e((string) ($primaryTheme['gradient']['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
                 $decorOpacity = in_array($resolvedTheme, ['white', 'surface', 'stone'], true) ? '0.45' : '1';
-                $chipHtml = ''; foreach ($chips as $chip) { $chipHtml .= "<span class='rounded-full border px-3 py-2 text-xs font-semibold {$theme['border']} {$theme['surface']} {$theme['sub']}'>{$chip}</span>"; }
+                $chipHtml = ''; foreach ($chips as $chipIndex => $chip) { $chipClass = self::sparkTwItem($block, 'chips', $chipIndex, 'chip', "rounded-full border px-3 py-2 text-xs font-semibold {$theme['border']} {$theme['surface']} {$theme['sub']}"); $chipHtml .= "<span class='{$chipClass}'>{$chip}</span>"; }
+                $featureRow = self::sparkTw($block, 'wrapper_7', 'flex items-center gap-3');
 
                 $html .= "
                 <section class='relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
@@ -4105,7 +4495,7 @@ HTML;
                     <div class='relative mx-auto grid w-full max-w-7xl items-center gap-12 lg:grid-cols-[.88fr_1.12fr] lg:gap-16'>
                         <div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1><p class='mt-6 max-w-xl text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-8 flex flex-col gap-3 sm:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div><div class='mt-8 flex flex-wrap gap-2'>{$chipHtml}</div></div>
                         <div class='relative rounded-[2rem] border p-4 shadow-2xl sm:p-6 {$theme['border']} {$theme['surface']}'>
-                            <div class='flex items-center justify-between border-b pb-4 {$theme['border']}'><div class='flex items-center gap-3'><div class='grid h-11 w-11 place-items-center rounded-2xl {$primaryTheme['bg']} {$primaryTheme['text']}'>✦</div><div><strong class='block text-sm {$theme['text']}'>{$assistantLabel}</strong><span class='mt-1 block text-xs {$theme['sub']}'>{$assistantStatus}</span></div></div><span class='rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[.18em] {$theme['border']} {$theme['bg']} {$theme['sub']}'>Live preview</span></div>
+                            <div class='flex items-center justify-between border-b pb-4 {$theme['border']}'><div class='{$featureRow}'><div class='grid h-11 w-11 place-items-center rounded-2xl {$primaryTheme['bg']} {$primaryTheme['text']}'>✦</div><div><strong class='block text-sm {$theme['text']}'>{$assistantLabel}</strong><span class='mt-1 block text-xs {$theme['sub']}'>{$assistantStatus}</span></div></div><span class='rounded-full border px-3 py-1 text-[10px] font-bold uppercase tracking-[.18em] {$theme['border']} {$theme['bg']} {$theme['sub']}'>Live preview</span></div>
                             <div class='space-y-4 py-6'><div class='ml-auto max-w-[82%] rounded-[1.4rem] rounded-br-md px-5 py-4 text-sm leading-6 {$userBubble}'>{$userMessage}</div><div class='max-w-[88%] rounded-[1.4rem] rounded-bl-md border px-5 py-4 text-sm leading-6 {$assistantBubble}'>{$assistantMessage}</div></div>
                             <div class='flex items-center gap-3 rounded-2xl border p-3 {$composerSurface}'><span class='min-w-0 flex-1 text-sm {$theme['sub']}'>{$promptPlaceholder}</span><span class='grid h-10 w-10 shrink-0 place-items-center rounded-xl {$primaryTheme['bg']} text-white'>↑</span></div>
                         </div>
@@ -4140,14 +4530,32 @@ HTML;
                 $metricSub = $isPrimarySection ? 'text-white/70' : $theme['sub'];
                 $beforeStyle = $beforeImage ? "background-image:url('{$beforeImage}');background-size:cover;background-position:center;" : '';
                 $afterStyle = $afterImage ? "background-image:url('{$afterImage}');background-size:cover;background-position:center;" : '';
-                $metricHtml = ''; for ($i=0; $i<3; $i++) { $metricHtml .= "<div class='rounded-2xl border p-5 {$metricSurface}'><strong class='block text-3xl font-semibold tracking-tight'>{$metricValues[$i]}</strong><span class='mt-2 block text-sm {$metricSub}'>{$metricLabels[$i]}</span></div>"; }
-                $logoHtml = ''; foreach ($logos as $logo) { $logoHtml .= "<span class='text-xs font-black tracking-[.15em] {$theme['text']}'>{$logo}</span>"; }
+                $beforePanelClass = self::sparkTwItem($block, 'showcase_panels', 'before', 'card', 'relative min-h-[300px] overflow-hidden rounded-[1.45rem] sm:min-h-[390px]') . ' grayscale';
+                $beforeOverlayClass = self::sparkTwItem($block, 'showcase_panels', 'before', 'overlay', 'absolute inset-0 bg-slate-950/50');
+                $beforeContentClass = self::sparkTwItem($block, 'showcase_panels', 'before', 'content', 'absolute inset-x-0 bottom-0 p-5 text-white sm:p-7');
+                $beforeLabelClass = self::sparkTwItem($block, 'showcase_panels', 'before', 'label', 'text-[11px] font-bold uppercase tracking-[.24em] text-white/70');
+                $beforeCaptionClass = self::sparkTwItem($block, 'showcase_panels', 'before', 'caption', 'mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl');
+                $afterPanelClass = self::sparkTwItem($block, 'showcase_panels', 'after', 'card', 'relative min-h-[300px] overflow-hidden rounded-[1.45rem] sm:min-h-[390px]');
+                $afterOverlayClass = self::sparkTwItem($block, 'showcase_panels', 'after', 'overlay', 'absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent');
+                $afterContentClass = self::sparkTwItem($block, 'showcase_panels', 'after', 'content', 'absolute inset-x-0 bottom-0 p-5 text-white sm:p-7');
+                $afterLabelClass = self::sparkTwItem($block, 'showcase_panels', 'after', 'label', 'text-[11px] font-bold uppercase tracking-[.24em] text-white/70');
+                $afterCaptionClass = self::sparkTwItem($block, 'showcase_panels', 'after', 'caption', 'mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl');
+                $metricHtml = ''; for ($i=0; $i<3; $i++) {
+                    $metricCardClass = self::sparkTwItem($block, 'metrics', $i, 'card', "rounded-2xl border p-5 {$metricSurface}");
+                    $metricValueClass = self::sparkTwItem($block, 'metrics', $i, 'value', 'block text-3xl font-semibold tracking-tight');
+                    $metricLabelClass = self::sparkTwItem($block, 'metrics', $i, 'label', "mt-2 block text-sm {$metricSub}");
+                    $metricHtml .= "<div class='{$metricCardClass}'><strong class='{$metricValueClass}'>{$metricValues[$i]}</strong><span class='{$metricLabelClass}'>{$metricLabels[$i]}</span></div>";
+                }
+                $logoHtml = ''; foreach ($logos as $logoIndex => $logo) {
+                    $logoClass = self::sparkTwItem($block, 'logos', $logoIndex, 'label', "text-xs font-black tracking-[.15em] {$theme['text']}");
+                    $logoHtml .= "<span class='{$logoClass}'>{$logo}</span>";
+                }
 
                 $html .= "
                 <section class='relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
                     <div class='relative mx-auto w-full max-w-7xl'>
                         <div class='grid items-end gap-10 lg:grid-cols-[1fr_.72fr] lg:gap-16'><div><span class='text-xs font-bold uppercase tracking-[.28em] {$theme['sub']}'>{$eyebrow}</span><h1 class='mt-5 max-w-4xl text-4xl font-semibold leading-[.98] tracking-[-.045em] sm:text-5xl lg:text-6xl xl:text-7xl {$theme['text']}'>{$heading}</h1></div><div class='lg:pb-2'><p class='text-base leading-7 sm:text-lg sm:leading-8 {$theme['sub']}'>{$text}</p><div class='mt-7 flex flex-col gap-3 sm:flex-row lg:flex-col xl:flex-row'><a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a><a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a></div></div></div>
-                        <div class='mt-12 rounded-[2rem] border p-3 shadow-2xl sm:p-4 {$theme['border']} {$theme['surface']}'><div class='grid gap-3 md:grid-cols-2'><div class='relative min-h-[300px] overflow-hidden rounded-[1.45rem] grayscale sm:min-h-[390px]' style=\"{$beforeStyle}\"><div class='absolute inset-0 bg-slate-950/50'></div><div class='absolute inset-x-0 bottom-0 p-5 text-white sm:p-7'><span class='text-[11px] font-bold uppercase tracking-[.24em] text-white/70'>{$beforeLabel}</span><strong class='mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl'>{$beforeCaption}</strong></div></div><div class='relative min-h-[300px] overflow-hidden rounded-[1.45rem] sm:min-h-[390px]' style=\"{$afterStyle}\"><div class='absolute inset-0 bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent'></div><div class='absolute inset-x-0 bottom-0 p-5 text-white sm:p-7'><span class='text-[11px] font-bold uppercase tracking-[.24em] text-white/70'>{$afterLabel}</span><strong class='mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl'>{$afterCaption}</strong></div></div></div></div>
+                        <div class='mt-12 rounded-[2rem] border p-3 shadow-2xl sm:p-4 {$theme['border']} {$theme['surface']}'><div class='grid gap-3 md:grid-cols-2'><div class='{$beforePanelClass}' style=\"{$beforeStyle}\"><div class='{$beforeOverlayClass}'></div><div class='{$beforeContentClass}'><span class='{$beforeLabelClass}'>{$beforeLabel}</span><strong class='{$beforeCaptionClass}'>{$beforeCaption}</strong></div></div><div class='{$afterPanelClass}' style=\"{$afterStyle}\"><div class='{$afterOverlayClass}'></div><div class='{$afterContentClass}'><span class='{$afterLabelClass}'>{$afterLabel}</span><strong class='{$afterCaptionClass}'>{$afterCaption}</strong></div></div></div></div>
                         <div class='mt-6 grid gap-3 sm:grid-cols-3'>{$metricHtml}</div>
                         <div class='mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-t pt-7 {$theme['border']}'><span class='text-[10px] font-bold uppercase tracking-[.24em] {$theme['sub']}'>Selected client work</span><div class='flex flex-wrap items-center gap-x-8 gap-y-3'>{$logoHtml}</div></div>
                     </div>
@@ -4184,7 +4592,11 @@ HTML;
                 $familyGlow = e((string) ($primaryTheme['gradient']['glowSoft'] ?? 'rgba(124, 58, 237, 0.20)'));
                 $decorOpacity = in_array($resolvedTheme, ['white', 'surface', 'stone'], true) ? '0.45' : '1';
                 $imageStyle = $imageUrl ? "background-image:url('{$imageUrl}');background-size:cover;background-position:center;" : '';
-                $cardHtml = ''; foreach ($cardLabels as $label) { $cardHtml .= "<div class='rounded-2xl border px-4 py-4 text-sm font-semibold {$featureCard}'>{$label}</div>"; }
+                $cardHtml = ''; foreach ($cardLabels as $cardIndex => $label) {
+                    $cardClass = self::sparkTwItem($block, 'proof_cards', $cardIndex, 'card', "rounded-2xl border px-4 py-4 text-sm font-semibold {$featureCard}");
+                    $labelClass = self::sparkTwItem($block, 'proof_cards', $cardIndex, 'label', '');
+                    $cardHtml .= "<div class='{$cardClass}'><span class='{$labelClass}'>{$label}</span></div>";
+                }
 
                 $html .= "
                 <section class='relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
@@ -4274,10 +4686,29 @@ HTML;
                 $isPrimarySection = $resolvedTheme === 'primary';
                 $primaryButtonBg = $isPrimarySection ? 'bg-white' : $primaryTheme['bg'];
                 $primaryButtonText = $isPrimarySection ? 'text-slate-950' : 'text-white';
-                $metricCards = "<div class='rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-3xl font-semibold tracking-tight {$theme['text']}'>{$metricOneValue}</strong><span class='mt-2 block text-xs font-medium {$theme['sub']}'>{$metricOneLabel}</span></div><div class='rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-3xl font-semibold tracking-tight {$theme['text']}'>{$metricTwoValue}</strong><span class='mt-2 block text-xs font-medium {$theme['sub']}'>{$metricTwoLabel}</span></div><div class='rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-3xl font-semibold tracking-tight {$theme['text']}'>{$metricThreeValue}</strong><span class='mt-2 block text-xs font-medium {$theme['sub']}'>{$metricThreeLabel}</span></div>";
+                $navItemsHtml = '';
+                foreach (['Projects','Analytics','Customers','Automations'] as $navIndex => $navLabel) {
+                    $navClass = self::sparkTwItem($block, 'nav_items', $navIndex, 'item', "mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}");
+                    $navItemsHtml .= "<div class='{$navClass}'>" . e($navLabel) . "</div>";
+                }
+                $metricCards = '';
+                $metricPairs = [[$metricOneValue, $metricOneLabel], [$metricTwoValue, $metricTwoLabel], [$metricThreeValue, $metricThreeLabel]];
+                foreach ($metricPairs as $metricIndex => [$metricValue, $metricLabel]) {
+                    $metricCardClass = self::sparkTwItem($block, 'metrics', $metricIndex, 'card', "rounded-2xl border p-5 {$theme['border']} {$theme['bg']}");
+                    $metricValueClass = self::sparkTwItem($block, 'metrics', $metricIndex, 'value', "block text-3xl font-semibold tracking-tight {$theme['text']}");
+                    $metricLabelClass = self::sparkTwItem($block, 'metrics', $metricIndex, 'label', "mt-2 block text-xs font-medium {$theme['sub']}");
+                    $metricCards .= "<div class='{$metricCardClass}'><strong class='{$metricValueClass}'>{$metricValue}</strong><span class='{$metricLabelClass}'>{$metricLabel}</span></div>";
+                }
                 $bars = '';
-                foreach ([38,58,48,72,66,88,78,96,84,100] as $index => $height) { $opacity = 0.42 + ($index * 0.045); $bars .= "<span class='flex-1 rounded-t-lg {$primaryTheme['bg']}' style='height:{$height}%;opacity:{$opacity}'></span>"; }
-                $logoHtml = ''; foreach ($logos as $logo) { $logoHtml .= "<span class='text-xs font-bold tracking-[.16em] {$theme['sub']}'>{$logo}</span>"; }
+                foreach ([38,58,48,72,66,88,78,96,84,100] as $index => $height) {
+                    $opacity = 0.42 + ($index * 0.045);
+                    $barClass = self::sparkTwItem($block, 'chart_bars', $index, 'bar', "flex-1 rounded-t-lg {$primaryTheme['bg']}");
+                    $bars .= "<span class='{$barClass}' style='height:{$height}%;opacity:{$opacity}'></span>";
+                }
+                $logoHtml = ''; foreach ($logos as $logoIndex => $logo) {
+                    $logoClass = self::sparkTwItem($block, 'logos', $logoIndex, 'label', "text-xs font-bold tracking-[.16em] {$theme['sub']}");
+                    $logoHtml .= "<span class='{$logoClass}'>{$logo}</span>";
+                }
 
                 $html .= "
                 <section class='relative flex items-center overflow-hidden px-6 py-0 sm:px-10 lg:px-14 {$theme['bg']}' style='min-height:calc(100svh - var(--cosmic-header-flow-offset,0px))'>
@@ -4290,7 +4721,7 @@ HTML;
                         </div>
                         <div class='mt-14 overflow-hidden rounded-[2rem] border shadow-2xl {$theme['border']}'>
                             <div class='flex items-center justify-between border-b px-5 py-4 sm:px-7 {$theme['border']} {$theme['surface']}'><div><strong class='block text-sm {$theme['text']}'>{$dashboardTitle}</strong><span class='mt-1 block text-xs {$theme['sub']}'>{$dashboardSubtitle}</span></div><div class='flex gap-1.5'><span class='h-2.5 w-2.5 rounded-full bg-rose-400'></span><span class='h-2.5 w-2.5 rounded-full bg-amber-400'></span><span class='h-2.5 w-2.5 rounded-full bg-emerald-400'></span></div></div>
-                            <div class='grid lg:grid-cols-[240px_minmax(0,1fr)] {$theme['surface']}'><aside class='hidden border-r p-5 lg:block {$theme['border']}'><div class='rounded-xl px-3 py-2 text-xs font-semibold {$primaryTheme['card']} {$primaryTheme['text']}'>Overview</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Projects</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Analytics</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Customers</div><div class='mt-2 rounded-xl px-3 py-2 text-xs {$theme['sub']}'>Automations</div></aside><div class='p-5 sm:p-7'><div class='grid gap-4 md:grid-cols-3'>{$metricCards}</div><div class='mt-4 rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-sm {$theme['text']}'>{$chartLabel}</strong><div class='mt-7 flex h-40 items-end gap-2 sm:gap-3'>{$bars}</div></div></div></div>
+                            <div class='grid lg:grid-cols-[240px_minmax(0,1fr)] {$theme['surface']}'><aside class='hidden border-r p-5 lg:block {$theme['border']}'><div class='rounded-xl px-3 py-2 text-xs font-semibold {$primaryTheme['card']} {$primaryTheme['text']}'>Overview</div>{$navItemsHtml}</aside><div class='p-5 sm:p-7'><div class='grid gap-4 md:grid-cols-3'>{$metricCards}</div><div class='mt-4 rounded-2xl border p-5 {$theme['border']} {$theme['bg']}'><strong class='block text-sm {$theme['text']}'>{$chartLabel}</strong><div class='mt-7 flex h-40 items-end gap-2 sm:gap-3'>{$bars}</div></div></div></div>
                         </div>
                         <div class='mt-8 border-t pt-7 text-center {$theme['border']}'><p class='text-[11px] font-bold uppercase tracking-[.26em] {$theme['sub']}'>Trusted by teams building what comes next</p><div class='mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4'>{$logoHtml}</div></div>
                     </div>
@@ -4313,6 +4744,8 @@ HTML;
                 $metricLabel = e($block['metric_label'] ?? 'Faster path to launch');
                 $badgeOne = e($block['badge_one'] ?? 'Strategy-led');
                 $badgeTwo = e($block['badge_two'] ?? 'Conversion-ready');
+                $badgeOneClass = self::sparkTwItem($block, 'badges', 0, 'badge', "rounded-full border px-4 py-2 text-xs font-semibold {$theme['border']} {$theme['sub']}");
+                $badgeTwoClass = self::sparkTwItem($block, 'badges', 1, 'badge', "rounded-full border px-4 py-2 text-xs font-semibold {$theme['border']} {$theme['sub']}");
                 $imageUrl = e(self::staticAssetUrl($block['image_url'] ?? ''));
                 $primaryTheme = self::getTheme($primaryColor);
                 $resolvedTheme = (string) ($blockTheme ?? $block['resolvedTheme'] ?? $selectedThemeName ?? 'surface');
@@ -4333,7 +4766,7 @@ HTML;
                                     <a href='{$primaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full px-7 font-bold {$primaryButtonBg} {$primaryButtonText}'>{$primaryLabel}</a>
                                     <a href='{$secondaryUrl}' class='inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold {$theme['border']} {$theme['text']}'>{$secondaryLabel}</a>
                                 </div>
-                                <div class='mt-8 flex flex-wrap gap-2'><span class='rounded-full border px-4 py-2 text-xs font-semibold {$theme['border']} {$theme['sub']}'>{$badgeOne}</span><span class='rounded-full border px-4 py-2 text-xs font-semibold {$theme['border']} {$theme['sub']}'>{$badgeTwo}</span></div>
+                                <div class='mt-8 flex flex-wrap gap-2'><span class='{$badgeOneClass}'>{$badgeOne}</span><span class='{$badgeTwoClass}'>{$badgeTwo}</span></div>
                             </div>
                             <div class='relative min-h-[480px] sm:min-h-[560px]'>
                                 <div class='absolute inset-4 overflow-hidden rounded-[2.25rem] border shadow-2xl sm:inset-8 {$theme['border']}' style=\"{$imageStyle}\"><div class='absolute inset-0 bg-gradient-to-br from-slate-950/10 via-transparent to-slate-950/45'></div></div>
@@ -4625,20 +5058,29 @@ HTML;
                         <div class='grid gap-6 md:grid-cols-3 lg:gap-7'>
                 ";
 
-                foreach (($block['plans'] ?? []) as $plan) {
+                foreach (($block['plans'] ?? []) as $planIndex => $plan) {
 
                     $featured = !empty($plan['featured']);
+                    $planCard = self::sparkTwItem($block, 'plans', $planIndex, 'card', "relative rounded-3xl border {$theme['border']} {$theme['card']} p-7 lg:p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl " . ($featured ? "scale-105 ring-2 ring-white/40" : ""));
+                    $planTitle = self::sparkTwItem($block, 'plans', $planIndex, 'title', "text-2xl font-bold {$theme['text']}");
+                    $priceWrap = self::sparkTwItem($block, 'plans', $planIndex, 'price_wrap', 'mt-5 flex items-end gap-2');
+                    $planPrice = self::sparkTwItem($block, 'plans', $planIndex, 'price', "text-4xl font-bold sm:text-5xl {$theme['text']}");
+                    $planPeriod = self::sparkTwItem($block, 'plans', $planIndex, 'period', "mb-2 {$theme['sub']}");
+                    $planDesc = self::sparkTwItem($block, 'plans', $planIndex, 'desc', "mt-5 leading-7 {$theme['sub']}");
+                    $featuresWrap = self::sparkTwItem($block, 'plans', $planIndex, 'features', 'mt-7 space-y-3');
+                    $badgeWrap = self::sparkTwItem($block, 'plans', $planIndex, 'badge_wrap', 'absolute -top-3 left-1/2 z-10 -translate-x-1/2');
+                    $badgeClass = self::sparkTwItem($block, 'plans', $planIndex, 'badge', "inline-flex whitespace-nowrap rounded-full px-3 py-1.5 {$primaryTheme['bg']} {$primaryTheme['text']} text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm");
+                    $ctaWrap = self::sparkTwItem($block, 'plans', $planIndex, 'cta_wrap', 'mt-8');
+                    $ctaClass = self::sparkTwItem($block, 'plans', $planIndex, 'cta', "w-full inline-flex items-center justify-center min-h-[52px] px-8 rounded-full font-bold transition {$btnBg} {$btnText}");
 
                     $html .= "
-                        <div class='relative rounded-3xl border {$theme['border']} {$theme['card']} p-7 lg:p-8 transition-all duration-300 hover:-translate-y-2 hover:shadow-2xl " .
-                        ($featured ? "scale-105 ring-2 ring-white/40" : "") .
-                        "'>";
+                        <div class='{$planCard}'>";
 
                     if (!empty($plan['badge'])) {
 
                         $html .= "
-                            <div class='absolute -top-3 left-1/2 z-10 -translate-x-1/2'>
-                                <span class='inline-flex whitespace-nowrap rounded-full px-3 py-1.5 {$primaryTheme['bg']} {$primaryTheme['text']} text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm'>
+                            <div class='{$badgeWrap}'>
+                                <span class='{$badgeClass}'>
                                     " . e($plan['badge']) . "
                                 </span>
                             </div>";
@@ -4650,39 +5092,42 @@ HTML;
                                 " . e($plan['title']) . "
                             </h3>
 
-                            <div class='mt-5 flex items-end gap-2'>
+                            <div class='{$priceWrap}'>
 
-                                <span class='text-4xl font-bold sm:text-5xl {$theme['text']}'>
+                                <span class='{$planPrice}'>
                                     " . e($plan['price']) . "
                                 </span>
 
-                                <span class='mb-2 {$theme['sub']}'>
+                                <span class='{$planPeriod}'>
                                     " . e($plan['period']) . "
                                 </span>
 
                             </div>
 
-                            <div class='mt-5 leading-7 {$theme['sub']}'>
+                            <div class='{$planDesc}'>
                                 " . e($plan['description']) . "
                             </div>
 
-                            <div class='mt-7 space-y-3'>
+                            <div class='{$featuresWrap}'>
                     ";
 
-                    foreach (($plan['features'] ?? []) as $feature) {
+                    foreach (($plan['features'] ?? []) as $featureIndex => $feature) {
 
                         $featureText = is_array($feature)
                             ? ($feature['text'] ?? '')
                             : $feature;
+                        $featureRow = self::sparkTwPath($block, ['plans',$planIndex,'features',$featureIndex], 'row', 'flex items-center gap-3');
+                        $featureIcon = self::sparkTwPath($block, ['plans',$planIndex,'features',$featureIndex], 'icon', "w-5 h-5 {$theme['text']}");
+                        $featureTextClass = self::sparkTwPath($block, ['plans',$planIndex,'features',$featureIndex], 'text', $theme['text']);
 
                         $html .= "
                             <div class='flex items-center gap-3'>
 
-                                <svg class='w-5 h-5 {$theme['text']}' fill='none' stroke='currentColor' stroke-width='2.5' viewBox='0 0 24 24'>
+                                <svg class='{$featureIcon}' fill='none' stroke='currentColor' stroke-width='2.5' viewBox='0 0 24 24'>
                                     <path stroke-linecap='round' stroke-linejoin='round' d='M5 13l4 4L19 7'/>
                                 </svg>
 
-                                <span class='{$theme['text']}'>
+                                <span class='{$featureTextClass}'>
                                     " . e($featureText) . "
                                 </span>
 
@@ -4692,11 +5137,11 @@ HTML;
                     $html .= "
                             </div>
 
-                            <div class='mt-8'>
+                            <div class='{$ctaWrap}'>
 
                                 <a
                                     href='" . e($plan['button_url'] ?? '#') . "'
-                                    class='w-full inline-flex items-center justify-center min-h-[52px] px-8 rounded-full font-bold transition {$btnBg} {$btnText}'
+                                    class='{$ctaClass}'
                                 >
                                     " . e($plan['button_label'] ?? 'Get Started') . "
                                 </a>
@@ -5359,13 +5804,28 @@ HTML;
                     $image1 = e(self::staticAssetUrl((string) ($block['image_url'] ?? '/storage/cms-images/background/background-1.avif')));
                     $image2 = e(self::staticAssetUrl((string) ($block['image_url_2'] ?? '/storage/cms-images/background/background-2.avif')));
                     $image3 = e(self::staticAssetUrl((string) ($block['image_url_3'] ?? '/storage/cms-images/background/background-3.avif')));
-                    $copy = "<div class='p5-copy'><p>{$eyebrow}</p><h1>{$heading}</h1><div class='p5-body'>{$body}</div><div class='p5-actions'><a href='{$primaryUrl}'>{$primaryLabel}</a><a class='secondary' href='{$secondaryUrl}'>{$secondaryLabel}</a></div></div>";
-                    if ($p5Type === 'hero_device_showcase_premium') $visual = "<div class='p5-device'><img src='{$image1}' alt='' decoding='async'><img loading='lazy' decoding='async' src='{$image2}' alt=''></div>";
-                    elseif ($p5Type === 'hero_app_screens_carousel_premium') $visual = "<div class='p5-screens'><img src='{$image1}' alt='' decoding='async'><img loading='lazy' decoding='async' src='{$image2}' alt=''><img loading='lazy' decoding='async' src='{$image3}' alt=''></div>";
-                    elseif ($p5Type === 'hero_editorial_image_sequence_premium') $visual = "<div class='p5-editorial'><img src='{$image1}' alt='' decoding='async'><img loading='lazy' decoding='async' src='{$image2}' alt=''><img loading='lazy' decoding='async' src='{$image3}' alt=''></div>";
-                    elseif ($p5Type === 'hero_interactive_bento_premium') $visual = "<div class='p5-bento'><img src='{$image1}' alt='' decoding='async'><img loading='lazy' decoding='async' src='{$image2}' alt=''><img loading='lazy' decoding='async' src='{$image3}' alt=''></div>";
-                    else $visual = "<div class='p5-abstract'><i></i><i></i><i></i><i></i></div>";
-                    $html .= "<section id='{$p5Id}' class='cosmic-p5{$stateClass}' data-type='{$p5Type}' style='{$heroStyle};{$gradientVars}'><div class='p5-grid'>{$copy}{$visual}</div></section><style>
+                    $p5SectionTw = e(self::sparkTw($block, 'section', ''));
+                    $p5WrapperTw = e(self::sparkTw($block, 'wrapper', ''));
+                    $p5ContentTw = e(self::sparkTw($block, 'content', ''));
+                    $p5EyebrowTw = e(self::sparkTw($block, 'eyebrow', ''));
+                    $p5HeadingTw = e(self::sparkTw($block, 'heading', ''));
+                    $p5DescriptionTw = e(self::sparkTw($block, 'description', ''));
+                    $p5ActionsTw = e(self::sparkTw($block, 'actions', ''));
+                    $p5PrimaryTw = e(self::sparkTw($block, 'primary_button', ''));
+                    $p5SecondaryTw = e(self::sparkTw($block, 'secondary_button', ''));
+                    $p5MediaStageTw = e(self::sparkTw($block, 'media_stage', ''));
+                    $p5Image0 = e(self::sparkTwPath($block, ['images',0], 'image', ''));
+                    $p5Image1 = e(self::sparkTwPath($block, ['images',1], 'image', ''));
+                    $p5Image2 = e(self::sparkTwPath($block, ['images',2], 'image', ''));
+                    $p5Frame0 = e(self::sparkTwPath($block, ['images',0], 'frame', ''));
+                    $p5Frame1 = e(self::sparkTwPath($block, ['images',1], 'frame', ''));
+                    $copy = "<div class='p5-copy {$p5ContentTw}'><p class='{$p5EyebrowTw}'>{$eyebrow}</p><h1 class='{$p5HeadingTw}'>{$heading}</h1><div class='p5-body {$p5DescriptionTw}'>{$body}</div><div class='p5-actions {$p5ActionsTw}'><a class='{$p5PrimaryTw}' href='{$primaryUrl}'>{$primaryLabel}</a><a class='secondary {$p5SecondaryTw}' href='{$secondaryUrl}'>{$secondaryLabel}</a></div></div>";
+                    if ($p5Type === 'hero_device_showcase_premium') $visual = "<div class='p5-device {$p5MediaStageTw}'><img class='{$p5Frame0} {$p5Image0}' src='{$image1}' alt='' decoding='async'><img class='{$p5Frame1} {$p5Image1}' loading='lazy' decoding='async' src='{$image2}' alt=''></div>";
+                    elseif ($p5Type === 'hero_app_screens_carousel_premium') $visual = "<div class='p5-screens {$p5MediaStageTw}'><img class='{$p5Image0}' src='{$image1}' alt='' decoding='async'><img class='{$p5Image1}' loading='lazy' decoding='async' src='{$image2}' alt=''><img class='{$p5Image2}' loading='lazy' decoding='async' src='{$image3}' alt=''></div>";
+                    elseif ($p5Type === 'hero_editorial_image_sequence_premium') $visual = "<div class='p5-editorial {$p5MediaStageTw}'><img class='{$p5Image0}' src='{$image1}' alt='' decoding='async'><img class='{$p5Image1}' loading='lazy' decoding='async' src='{$image2}' alt=''><img class='{$p5Image2}' loading='lazy' decoding='async' src='{$image3}' alt=''></div>";
+                    elseif ($p5Type === 'hero_interactive_bento_premium') $visual = "<div class='p5-bento {$p5MediaStageTw}'><img class='{$p5Image0}' src='{$image1}' alt='' decoding='async'><img class='{$p5Image1}' loading='lazy' decoding='async' src='{$image2}' alt=''><img class='{$p5Image2}' loading='lazy' decoding='async' src='{$image3}' alt=''></div>";
+                    else { $beams=''; for($beamIndex=0;$beamIndex<4;$beamIndex++){ $beamTw=e(self::sparkTwPath($block,['trails',$beamIndex],'beam','')); $beams.="<i class='{$beamTw}'></i>"; } $visual = "<div class='p5-abstract {$p5MediaStageTw}'>{$beams}</div>"; }
+                    $html .= "<section id='{$p5Id}' class='cosmic-p5 {$p5SectionTw}{$stateClass}' data-type='{$p5Type}' style='{$heroStyle};{$gradientVars}'><div class='p5-grid {$p5WrapperTw}'>{$copy}{$visual}</div></section><style>
 #{$p5Id}{min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));overflow:hidden}#{$p5Id} *{box-sizing:border-box}#{$p5Id} .p5-grid{display:grid;grid-template-columns:.9fr 1.1fr;align-items:center;gap:4rem;min-height:calc(100svh - var(--cosmic-header-flow-offset,0px));max-width:80rem;margin:auto;padding:0 3.5rem}#{$p5Id} .p5-copy{max-width:44rem}#{$p5Id} .p5-copy>p{font-size:.75rem;font-weight:800;letter-spacing:.3em;color:rgba(255,255,255,.65)}#{$p5Id} h1{font-size:clamp(2.25rem,4.6vw,4.5rem)!important;line-height:.98;letter-spacing:-.045em;margin:1.25rem 0}#{$p5Id} .p5-body{max-width:38rem;line-height:1.8;color:rgba(255,255,255,.72)}#{$p5Id} .p5-actions{display:flex;gap:.75rem;flex-wrap:wrap;margin-top:2rem}#{$p5Id} .p5-actions a{padding:.85rem 1.3rem;border-radius:999px;background:#fff;color:#0f172a;text-decoration:none;font-weight:800}#{$p5Id} .p5-actions a.secondary{background:rgba(255,255,255,.06);color:#fff;border:1px solid rgba(255,255,255,.25)}#{$p5Id} img{width:100%;height:100%;object-fit:cover}#{$p5Id} .p5-device,#{$p5Id} .p5-screens,#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento,#{$p5Id} .p5-abstract{position:relative;height:30rem}
 #{$p5Id} .p5-device img:first-child{position:absolute;inset:8% 4%;height:76%;border:8px solid #1e293b;border-radius:1.8rem;animation:p5Float 5s ease-in-out infinite}#{$p5Id} .p5-device img:last-child{position:absolute;right:2%;bottom:2%;width:28%;height:58%;border:7px solid #1e293b;border-radius:1.7rem;animation:p5Float 4.4s .6s ease-in-out infinite}#{$p5Id} .p5-screens img{position:absolute;left:50%;top:50%;width:38%;height:88%;border-radius:1.6rem;transform:translate(-50%,-50%);box-shadow:0 2rem 5rem #0008;border:1px solid rgba(255,255,255,.15)}#{$p5Id} .p5-screens img:nth-child(2){transform:translate(-115%,-50%) scale(.82);opacity:.55}#{$p5Id} .p5-screens img:nth-child(3){transform:translate(15%,-50%) scale(.82);opacity:.55}#{$p5Id} .p5-editorial,#{$p5Id} .p5-bento{display:grid;grid-template-columns:1fr 1fr;gap:.75rem}#{$p5Id} .p5-editorial img,#{$p5Id} .p5-bento img{border-radius:1.6rem;min-height:0}#{$p5Id} .p5-editorial img:first-child,#{$p5Id} .p5-bento img:first-child{grid-row:span 2}#{$p5Id} .p5-bento img{transition:transform .35s ease}#{$p5Id} .p5-bento img:hover{transform:scale(1.025)}
 #{$p5Id} .p5-abstract{border:1px solid rgba(255,255,255,.12);border-radius:2rem;background-image:radial-gradient(circle at 70% 25%,var(--p5-glow-soft),transparent 38%),linear-gradient(rgba(255,255,255,.08) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.08) 1px,transparent 1px);background-size:auto,42px 42px,42px 42px}#{$p5Id}[data-type='hero_light_trails_premium'] .p5-abstract{background-image: none;left:-20%;width:140%;height:1px;background:linear-gradient(90deg,transparent,var(--p5-glow),transparent);animation:p5Beam 4s ease-in-out infinite}#{$p5Id} .p5-abstract i:nth-child(1){top:20%}#{$p5Id} .p5-abstract i:nth-child(2){top:40%;animation-delay:.4s}#{$p5Id} .p5-abstract i:nth-child(3){top:60%;animation-delay:.8s}#{$p5Id} .p5-abstract i:nth-child(4){top:80%;animation-delay:1.2s}
@@ -5647,30 +6107,48 @@ HTML;
                     $isVertical = $animatedType === 'hero_vertical_story_premium';
                     $isKenBurns = $animatedType === 'hero_ken_burns_premium';
                     $isLayered = in_array($animatedType, ['hero_parallax_layers_premium', 'hero_mouse_parallax_premium'], true);
+                    // Batch 8: animated heroes expose the same semantic Tailwind aliases
+                    // as the React builder. Runtime motion/state classes remain separate.
+                    $sectionTw = e(self::sparkTw($block, 'section', ''));
+                    $mediaWrapTw = e(self::sparkTw($block, 'media', ''));
+                    $overlayColorTw = e(self::sparkTw($block, 'overlay_color', ''));
+                    $overlayTw = e(self::sparkTw($block, 'overlay', ''));
+                    $wrapperTw = e(self::sparkTw($block, 'wrapper', ''));
+                    $contentTw = e(self::sparkTw($block, 'content', ''));
+                    $eyebrowTw = e(self::sparkTw($block, 'eyebrow', ''));
+                    $headingTw = e(self::sparkTw($block, 'heading', ''));
+                    $descriptionTw = e(self::sparkTw($block, 'description', ''));
+                    $actionsTw = e(self::sparkTw($block, 'actions', ''));
+                    $primaryButtonTw = e(self::sparkTw($block, 'primary_button', ''));
+                    $secondaryButtonTw = e(self::sparkTw($block, 'secondary_button', ''));
+                    $progressTw = e(self::sparkTw($block, 'progress', ''));
                     $mediaMarkup = '';
                     foreach ($images as $imageIndex => $rawImage) {
                         $image = e(self::staticAssetUrl($rawImage));
                         $activeClass = $imageIndex === 0 ? 'is-active' : '';
                         $kenClass = $isKenBurns && $imageIndex === 0 ? ' cosmic-motion-kenburns' : '';
                         $layerAttr = $isLayered ? " data-motion-layer='{$imageIndex}'" : '';
-                        $mediaMarkup .= "<div class='cosmic-motion-media {$activeClass}{$kenClass}' data-slide='{$imageIndex}'{$layerAttr}><img src='{$image}' alt='' width='1920' height='1080' " . ($imageIndex === 0 ? "loading='eager' fetchpriority='high'" : "loading='lazy'") . " decoding='async'></div>";
+                        $layerTw = e(self::sparkTwPath($block, ['images', $imageIndex], 'layer', ''));
+                        $imageTw = e(self::sparkTwPath($block, ['images', $imageIndex], 'image', ''));
+                        $mediaMarkup .= "<div class='cosmic-motion-media {$layerTw} {$activeClass}{$kenClass}' data-slide='{$imageIndex}'{$layerAttr}><img class='{$imageTw}' src='{$image}' alt='' width='1920' height='1080' " . ($imageIndex === 0 ? "loading='eager' fetchpriority='high'" : "loading='lazy'") . " decoding='async'></div>";
                     }
                     $dots = '';
                     if (in_array($animatedType, ['hero_crossfade_gallery_premium','hero_cinematic_slider_premium','hero_split_slider_premium','hero_vertical_story_premium'], true) && count($images) > 1) {
                         foreach ($images as $imageIndex => $_) {
-                            $dots .= "<span class='cosmic-motion-dot " . ($imageIndex === 0 ? 'is-active' : '') . "' data-dot='{$imageIndex}'></span>";
+                            $dotTw = e(self::sparkTwPath($block, ['images', $imageIndex], 'dot', ''));
+                            $dots .= "<span class='cosmic-motion-dot {$dotTw} " . ($imageIndex === 0 ? 'is-active' : '') . "' data-dot='{$imageIndex}'></span>";
                         }
                     }
                     $layoutClass = $isSplit ? ' cosmic-motion-split' : '';
                     $html .= "
-<section id='{$animatedId}' class='cosmic-hero-media-edge cosmic-motion-hero{$layoutClass}{$stateClass}' data-motion-type='{$animatedType}' data-interval='{$interval}'>
-  <div class='cosmic-motion-media-wrap'>{$mediaMarkup}<div class='cosmic-motion-overlay' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion-gradient'></div></div>
-  <div class='cosmic-motion-copy-wrap'><div class='cosmic-motion-copy'>
-    <p class='cosmic-motion-eyebrow'>{$eyebrow}</p>
-    <h1>{$heading}</h1>
-    <p class='cosmic-motion-body'>{$body}</p>
-    <div class='cosmic-motion-actions'><a href='{$primaryUrl}' class='cosmic-motion-primary'{$lightPrimaryStyle}>{$primaryLabel}</a><a href='{$secondaryUrl}' class='cosmic-motion-secondary'>{$secondaryLabel}</a></div>
-    " . ($dots !== '' ? "<div class='cosmic-motion-progress'>{$dots}</div>" : '') . "
+<section id='{$animatedId}' class='cosmic-hero-media-edge cosmic-motion-hero {$sectionTw}{$layoutClass}{$stateClass}' data-motion-type='{$animatedType}' data-interval='{$interval}'>
+  <div class='cosmic-motion-media-wrap {$mediaWrapTw}'>{$mediaMarkup}<div class='cosmic-motion-overlay {$overlayColorTw}' style='opacity:{$overlay};background:{$overlayHex}'></div><div class='cosmic-motion-gradient {$overlayTw}'></div></div>
+  <div class='cosmic-motion-copy-wrap {$wrapperTw}'><div class='cosmic-motion-copy {$contentTw}'>
+    <p class='cosmic-motion-eyebrow {$eyebrowTw}'>{$eyebrow}</p>
+    <h1 class='{$headingTw}'>{$heading}</h1>
+    <p class='cosmic-motion-body {$descriptionTw}'>{$body}</p>
+    <div class='cosmic-motion-actions {$actionsTw}'><a href='{$primaryUrl}' class='cosmic-motion-primary {$primaryButtonTw}'{$lightPrimaryStyle}>{$primaryLabel}</a><a href='{$secondaryUrl}' class='cosmic-motion-secondary {$secondaryButtonTw}'>{$secondaryLabel}</a></div>
+    " . ($dots !== '' ? "<div class='cosmic-motion-progress {$progressTw}'>{$dots}</div>" : '') . "
   </div></div>
 </section>
 <style>
@@ -5690,6 +6168,14 @@ HTML;
             }
 
             $fragment = substr($html, $fragmentStart);
+
+            // Batch 6: registered Spark extras must survive static preview, export
+            // and live publish in the same before/after position as Builder.
+            $fragmentWithFieldExtras = self::applySparkFieldExtrasToFragment($fragment, $block);
+            if ($fragmentWithFieldExtras !== $fragment) {
+                $fragment = $fragmentWithFieldExtras;
+                $html = substr($html, 0, $fragmentStart).$fragment;
+            }
 
             $universalBackgroundUrl = trim((string) ($block['universal_background_image_url'] ?? ''));
             $universalVideoUrl = trim((string) ($block['universal_background_video_url'] ?? ''));
@@ -5713,10 +6199,18 @@ HTML;
                 }else{
                     $overlay='linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle,135deg)),rgb(255 255 255 / var(--cosmic-local-overlay-light-strong,var(--cosmic-bg-overlay-light-strong,.88))),rgb(255 255 255 / var(--cosmic-local-overlay-light-soft,var(--cosmic-bg-overlay-light-soft,.62))))';
                 }
+                $persistedOverlay=trim((string)($block['universal_background_overlay']??''));
+                $overlayMode=strtolower(trim((string)($block['universal_background_overlay_mode']??'auto')));
+                if($overlayMode==='custom' && str_starts_with($persistedOverlay,'linear-gradient(') && !str_contains($persistedOverlay,';')){
+                    $overlay=$persistedOverlay;
+                }
                 $position = trim((string) ($block['universal_background_position'] ?? 'center center'));
                 if (! preg_match('/^(?:left|center|right|top|bottom|\d{1,3}%)(?:\s+(?:left|center|right|top|bottom|\d{1,3}%))?$/i', $position)) {
                     $position = 'center center';
                 }
+                $size=strtolower(trim((string)($block['universal_background_size']??'cover')));
+                if(!in_array($size,['cover','contain'],true))$size='cover';
+                $posterUrl=trim((string)($block['universal_background_video_poster_url']??''));
                 $backgroundState = e($backgroundStateRaw);
                 $positionEscaped = e($position);
                 $clearChildBackgrounds = "<style>.cosmic-universal-background-host>section,.cosmic-universal-background-host>.cosmic-universal-content>section,.cosmic-universal-background-host>.cosmic-universal-content>div,.cosmic-universal-background-host>.cosmic-universal-content>div>section:first-child{background-color:transparent!important;background-image:none!important}</style>";
@@ -5733,13 +6227,14 @@ HTML;
                         $videoLayer = "<iframe aria-hidden='true' tabindex='-1' title='' src='" . e($embed) . "' allow='autoplay; fullscreen; picture-in-picture' style=\"pointer-events:none;position:absolute;left:50%;top:50%;width:177.78vh;min-width:100%;height:56.25vw;min-height:100%;transform:translate(-50%,-50%);border:0\"></iframe>";
                     } else {
                         $videoUrl = e(self::staticAssetUrl($universalVideoUrl));
-                        $videoLayer = "<video aria-hidden='true' autoplay muted loop playsinline preload='metadata' style=\"pointer-events:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover\"><source src='{$videoUrl}'></video>";
+                        $posterAttr=$posterUrl!=='' ? " poster='".e(self::staticAssetUrl($posterUrl))."'" : '';
+                        $videoLayer = "<video aria-hidden='true' autoplay muted loop playsinline preload='metadata'{$posterAttr} style=\"pointer-events:none;position:absolute;inset:0;width:100%;height:100%;object-fit:{$size};object-position:{$positionEscaped}\"><source src='{$videoUrl}'></video>";
                     }
                     $fragment = "<div data-cosmic-universal-background='1' data-cosmic-background-type='video' data-cosmic-background-state='{$backgroundState}' class='cosmic-universal-background-host' style=\"position:relative;overflow:hidden\">{$videoLayer}<div aria-hidden='true' style=\"pointer-events:none;position:absolute;inset:0;background:{$overlayEscaped}\"></div>{$clearChildBackgrounds}<div class='cosmic-universal-content' style=\"position:relative;z-index:1\">{$fragment}</div></div>";
                 } else {
                     $backgroundUrl = e(self::staticAssetUrl($universalBackgroundUrl));
                     $overlayEscaped = e($overlay);
-                    $fragment = "<div data-cosmic-universal-background='1' data-cosmic-background-type='image' data-cosmic-background-state='{$backgroundState}' class='cosmic-universal-background-host' style=\"position:relative;overflow:hidden;background-image:{$overlayEscaped},url('{$backgroundUrl}');background-size:cover;background-position:{$positionEscaped};background-repeat:no-repeat\">{$clearChildBackgrounds}<div class='cosmic-universal-content'>{$fragment}</div></div>";
+                    $fragment = "<div data-cosmic-universal-background='1' data-cosmic-background-type='image' data-cosmic-background-state='{$backgroundState}' class='cosmic-universal-background-host' style=\"position:relative;overflow:hidden;background-image:{$overlayEscaped},url('{$backgroundUrl}');background-size:{$size};background-position:{$positionEscaped};background-repeat:no-repeat\">{$clearChildBackgrounds}<div class='cosmic-universal-content'>{$fragment}</div></div>";
                 }
                 $html = substr($html, 0, $fragmentStart) . $fragment;
             }
@@ -5751,6 +6246,8 @@ HTML;
                 && !Str::contains($blockTypeLower, ['fullscreen','cinematic'])
                 && !array_key_exists('section_padding_y', $design);
             if ($fragment !== '' && (!empty($design) || $heroNeedsDefaultPadding)) {
+                $hasLegacyDesignTypography = collect(['heading_size','body_size','heading_line_height','body_line_height','letter_spacing','text_align'])
+                    ->contains(fn ($key) => array_key_exists($key, $design) && $design[$key] !== null && $design[$key] !== '');
                 $limits=[
                     'heading_size'=>[20,112],'body_size'=>[12,26],
                     'heading_line_height'=>[.88,1.6],'body_line_height'=>[1.15,2],
@@ -5803,8 +6300,9 @@ HTML;
                 }
                 $align=in_array(($design['text_align']??''),['left','center','right'],true)?$design['text_align']:'';
                 if($align!=='')$vars.='--luna-text-align:'.$align.';';
-                $css="<style>.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py,revert)!important;padding-bottom:var(--luna-section-py,revert)!important;padding-left:var(--luna-section-px,revert)!important;padding-right:var(--luna-section-px,revert)!important;min-height:var(--luna-section-min-height,revert)!important}.cosmic-luna-design-host h1{font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size))!important;line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line))!important;letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking))!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host h2{font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size))!important;line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line))!important;letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking))!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host p,.cosmic-luna-design-host li{font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size))!important;line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line))!important}.cosmic-luna-design-host img{border-radius:var(--luna-image-radius,revert)!important}@media(max-width:1024px){.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important}}@media(max-width:767px){.cosmic-luna-design-host h1{font-size:min(var(--cosmic-local-h1-size,var(--cosmic-type-h1-size)),64px)!important}.cosmic-luna-design-host h2{font-size:min(var(--cosmic-local-h2-size,var(--cosmic-type-h2-size)),64px)!important}.cosmic-luna-design-host h3{font-size:min(var(--cosmic-local-h3-size,var(--cosmic-type-h3-size)),64px)!important}.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important}}</style>";
-                $fragment="<div class='cosmic-luna-design-host' data-luna-design='1' style=\"".e($vars)."\">{$css}{$fragment}</div>";
+                $css="<style>.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py,revert)!important;padding-bottom:var(--luna-section-py,revert)!important;padding-left:var(--luna-section-px,revert)!important;padding-right:var(--luna-section-px,revert)!important;min-height:var(--luna-section-min-height,revert)!important}.cosmic-luna-design-host[data-luna-design-typography='1'] h1{font-size:var(--cosmic-local-h1-size,revert)!important;line-height:var(--cosmic-local-h1-line,revert)!important;letter-spacing:var(--cosmic-local-h1-tracking,revert)!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host[data-luna-design-typography='1'] h2{font-size:var(--cosmic-local-h2-size,revert)!important;line-height:var(--cosmic-local-h2-line,revert)!important;letter-spacing:var(--cosmic-local-h2-tracking,revert)!important;text-align:var(--luna-text-align,revert)!important;overflow-wrap:anywhere}.cosmic-luna-design-host[data-luna-design-typography='1'] p,.cosmic-luna-design-host[data-luna-design-typography='1'] li{font-size:var(--cosmic-local-body-size,revert)!important;line-height:var(--cosmic-local-body-line,revert)!important}.cosmic-luna-design-host img{border-radius:var(--luna-image-radius,revert)!important}@media(max-width:1024px){.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-tablet,min(var(--luna-section-py,72px),112px))!important}}@media(max-width:767px){.cosmic-luna-design-host[data-luna-design-typography='1'] h1{font-size:min(var(--cosmic-local-h1-size,var(--cosmic-type-h1-size)),64px)!important}.cosmic-luna-design-host[data-luna-design-typography='1'] h2{font-size:min(var(--cosmic-local-h2-size,var(--cosmic-type-h2-size)),64px)!important}.cosmic-luna-design-host[data-luna-design-typography='1'] h3{font-size:min(var(--cosmic-local-h3-size,var(--cosmic-type-h3-size)),64px)!important}.cosmic-luna-design-host>section,.cosmic-luna-design-host>div>section:first-child{padding-top:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important;padding-bottom:var(--luna-section-py-mobile,min(var(--luna-section-py,72px),112px))!important}}</style>";
+                $typographyAttribute = $hasLegacyDesignTypography ? " data-luna-design-typography='1'" : '';
+                $fragment="<div class='cosmic-luna-design-host' data-luna-design='1'{$typographyAttribute} style=\"".e($vars)."\">{$css}{$fragment}</div>";
                 $html=substr($html,0,$fragmentStart).$fragment;
             }
 
@@ -5936,7 +6434,7 @@ HTML;
                 $implementationTypeAttr = e($implementationType);
                 $semanticIndex = (int) $index;
                 $renderContractVersion = e(self::renderContractVersion());
-                $tailwindSchemaState = is_array($block['luna_tailwind_schema']['slots'] ?? null) && $block['luna_tailwind_schema']['slots'] !== []
+                $tailwindSchemaState = app(\App\Services\SparkTailwindSchemaContract::class)->isSchemaBacked($block)
                     ? 'schema_backed'
                     : 'legacy_fallback';
                 $taggedFragment = preg_replace(
@@ -5994,18 +6492,18 @@ HTML;
 /* Batch 2 semantic migration: every exported Spark resolves typography from the
    same central contract. These selectors intentionally beat legacy scoped Spark
    sizes while preserving color, spacing, layout and media styling. */
-section[data-cosmic-spark='1'] :is(h1,[data-cosmic-type=h1]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size))!important;line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line))!important;font-weight:var(--cosmic-local-h1-weight,var(--cosmic-type-h1-weight))!important;letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking))!important}
-section[data-cosmic-spark='1'] :is(h2,[data-cosmic-type=h2]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size))!important;line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line))!important;font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight))!important;letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking))!important}
-section[data-cosmic-spark='1'] :is(h3,[data-cosmic-type=h3]),section[data-cosmic-spark='1'] [data-luna-target=heading]:not([data-cosmic-type]):not(h1):not(h2):not(h4):not(h5):not(h6){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h3-size,var(--cosmic-type-h3-size))!important;line-height:var(--cosmic-local-h3-line,var(--cosmic-type-h3-line))!important;font-weight:var(--cosmic-local-h3-weight,var(--cosmic-type-h3-weight))!important;letter-spacing:var(--cosmic-local-h3-tracking,var(--cosmic-type-h3-tracking))!important}
-section[data-cosmic-spark='1'] :is(h4,[data-cosmic-type=h4]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h4-size,var(--cosmic-type-h4-size))!important;line-height:var(--cosmic-local-h4-line,var(--cosmic-type-h4-line))!important;font-weight:var(--cosmic-local-h4-weight,var(--cosmic-type-h4-weight))!important;letter-spacing:var(--cosmic-local-h4-tracking,var(--cosmic-type-h4-tracking))!important}section[data-cosmic-spark='1'] :is(h5,[data-cosmic-type=h5]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h5-size,var(--cosmic-type-h5-size))!important;line-height:var(--cosmic-local-h5-line,var(--cosmic-type-h5-line))!important;font-weight:var(--cosmic-local-h5-weight,var(--cosmic-type-h5-weight))!important;letter-spacing:var(--cosmic-local-h5-tracking,var(--cosmic-type-h5-tracking))!important}
-section[data-cosmic-spark='1'] :is(h6,[data-cosmic-type=h6]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h6-size,var(--cosmic-type-h6-size))!important;line-height:var(--cosmic-local-h6-line,var(--cosmic-type-h6-line))!important;font-weight:var(--cosmic-local-h6-weight,var(--cosmic-type-h6-weight))!important;letter-spacing:var(--cosmic-local-h6-tracking,var(--cosmic-type-h6-tracking))!important}
-section[data-cosmic-spark='1'] :is(article,[data-repeatable-item],[data-cosmic-repeatable-item]) :is(h2,h3,[data-luna-target=heading]:not([data-cosmic-type])){font-size:var(--cosmic-local-card-title-size,var(--cosmic-type-card-title-size))!important;line-height:var(--cosmic-local-card-title-line,var(--cosmic-type-card-title-line))!important}
+section[data-cosmic-spark='1'] :is([data-cosmic-type=h1],[data-luna-target=heading][data-cosmic-heading-level='1']){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size))!important;line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line))!important;font-weight:var(--cosmic-local-h1-weight,var(--cosmic-type-h1-weight))!important;letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking))!important}
+section[data-cosmic-spark='1'] :is([data-cosmic-type=h2],[data-luna-target=heading][data-cosmic-heading-level='2']){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size))!important;line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line))!important;font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight))!important;letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking))!important}
+section[data-cosmic-spark='1'] [data-cosmic-type=h3],section[data-cosmic-spark='1'] [data-luna-target=heading]:not([data-cosmic-type]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h3-size,var(--cosmic-type-h3-size))!important;line-height:var(--cosmic-local-h3-line,var(--cosmic-type-h3-line))!important;font-weight:var(--cosmic-local-h3-weight,var(--cosmic-type-h3-weight))!important;letter-spacing:var(--cosmic-local-h3-tracking,var(--cosmic-type-h3-tracking))!important}
+section[data-cosmic-spark='1'] [data-cosmic-type=h4]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h4-size,var(--cosmic-type-h4-size))!important;line-height:var(--cosmic-local-h4-line,var(--cosmic-type-h4-line))!important;font-weight:var(--cosmic-local-h4-weight,var(--cosmic-type-h4-weight))!important;letter-spacing:var(--cosmic-local-h4-tracking,var(--cosmic-type-h4-tracking))!important}section[data-cosmic-spark='1'] [data-cosmic-type=h5]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h5-size,var(--cosmic-type-h5-size))!important;line-height:var(--cosmic-local-h5-line,var(--cosmic-type-h5-line))!important;font-weight:var(--cosmic-local-h5-weight,var(--cosmic-type-h5-weight))!important;letter-spacing:var(--cosmic-local-h5-tracking,var(--cosmic-type-h5-tracking))!important}
+section[data-cosmic-spark='1'] [data-cosmic-type=h6]{font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h6-size,var(--cosmic-type-h6-size))!important;line-height:var(--cosmic-local-h6-line,var(--cosmic-type-h6-line))!important;font-weight:var(--cosmic-local-h6-weight,var(--cosmic-type-h6-weight))!important;letter-spacing:var(--cosmic-local-h6-tracking,var(--cosmic-type-h6-tracking))!important}
+section[data-cosmic-spark='1'] :is(article,[data-repeatable-item],[data-cosmic-repeatable-item]) :is([data-cosmic-type=card-title],[data-luna-target=heading]:not([data-cosmic-type])){font-size:var(--cosmic-local-card-title-size,var(--cosmic-type-card-title-size))!important;line-height:var(--cosmic-local-card-title-line,var(--cosmic-type-card-title-line))!important}
 
-section[data-cosmic-spark='1'] :is(p,li,[data-cosmic-type=body],[data-luna-target=text]:not([data-cosmic-type])){font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size))!important;line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line))!important;font-weight:var(--cosmic-local-body-weight,var(--cosmic-type-body-weight))!important;letter-spacing:var(--cosmic-local-body-tracking,var(--cosmic-type-body-tracking))!important}
+section[data-cosmic-spark='1'] :is([data-cosmic-type=body],[data-luna-target=text]:not([data-cosmic-type])){font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size))!important;line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line))!important;font-weight:var(--cosmic-local-body-weight,var(--cosmic-type-body-weight))!important;letter-spacing:var(--cosmic-local-body-tracking,var(--cosmic-type-body-tracking))!important}
 section[data-cosmic-spark='1'][data-cosmic-block-type^='hero_'] [data-luna-target=text]:not([data-cosmic-type]),section[data-cosmic-spark='1'][data-cosmic-block-type='hero'] [data-luna-target=text]:not([data-cosmic-type]),section[data-cosmic-spark='1'] [data-cosmic-type=lead]{font-size:var(--cosmic-local-lead-size,var(--cosmic-type-lead-size))!important;line-height:var(--cosmic-local-lead-line,var(--cosmic-type-lead-line))!important;font-weight:var(--cosmic-local-lead-weight,var(--cosmic-type-lead-weight))!important;letter-spacing:var(--cosmic-local-lead-tracking,var(--cosmic-type-lead-tracking))!important}
 section[data-cosmic-spark='1'] [data-luna-target=label]:not([data-cosmic-type]),section[data-cosmic-spark='1'] [data-cosmic-type=eyebrow]{font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-eyebrow-size,var(--cosmic-type-eyebrow-size))!important;line-height:var(--cosmic-local-eyebrow-line,var(--cosmic-type-eyebrow-line))!important;font-weight:var(--cosmic-local-eyebrow-weight,var(--cosmic-type-eyebrow-weight))!important;letter-spacing:var(--cosmic-local-eyebrow-tracking,var(--cosmic-type-eyebrow-tracking))!important}
 section[data-cosmic-spark='1'] :is(article,[data-repeatable-item],[data-cosmic-repeatable-item]) [data-luna-target=label]:not([data-cosmic-type]),section[data-cosmic-spark='1'] [data-cosmic-type=small]{font-size:var(--cosmic-local-small-size,var(--cosmic-type-small-size))!important;line-height:var(--cosmic-local-small-line,var(--cosmic-type-small-line))!important;font-weight:var(--cosmic-local-small-weight,var(--cosmic-type-small-weight))!important;letter-spacing:var(--cosmic-local-small-tracking,var(--cosmic-type-small-tracking))!important}
-section[data-cosmic-spark='1'] :is(a,button,[role=button],[data-cosmic-luna-display=button],[data-cosmic-type=button]){font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-button-size,var(--cosmic-type-button-size))!important;line-height:var(--cosmic-local-button-line,var(--cosmic-type-button-line))!important;font-weight:var(--cosmic-local-button-weight,var(--cosmic-type-button-weight))!important;letter-spacing:var(--cosmic-local-button-tracking,var(--cosmic-type-button-tracking))!important}
+section[data-cosmic-spark='1'] :is([data-cosmic-luna-display=button],[data-cosmic-type=button]){font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-button-size,var(--cosmic-type-button-size))!important;line-height:var(--cosmic-local-button-line,var(--cosmic-type-button-line))!important;font-weight:var(--cosmic-local-button-weight,var(--cosmic-type-button-weight))!important;letter-spacing:var(--cosmic-local-button-tracking,var(--cosmic-type-button-tracking))!important}
 section[data-cosmic-spark='1'] [data-cosmic-type-lock='1']{font-size:var(--cosmic-local-locked-size,revert)!important;line-height:var(--cosmic-local-locked-line,revert)!important;font-weight:var(--cosmic-local-locked-weight,revert)!important;letter-spacing:var(--cosmic-local-locked-tracking,revert)!important}
 </style>
 CSS;
@@ -6050,10 +6548,10 @@ section[data-cosmic-spark='1']:is([data-cosmic-resolved-theme='light'],[data-cos
 section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary']{--cosmic-current-text:var(--cosmic-on-primary);--cosmic-current-muted:var(--cosmic-on-primary-muted)}
 section[data-cosmic-spark='1']:is([data-cosmic-resolved-theme='light'],[data-cosmic-resolved-theme='white'],[data-cosmic-resolved-theme='surface']){--cosmic-current-text:var(--cosmic-on-surface);--cosmic-current-muted:var(--cosmic-on-surface-muted)}
 section[data-cosmic-spark='1']:is([data-cosmic-resolved-theme='light'],[data-cosmic-resolved-theme='white'],[data-cosmic-resolved-theme='surface']) :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type='h1'],[data-cosmic-type='h2'],[data-cosmic-type='h3'],[data-cosmic-type='h4'],[data-cosmic-type='h5'],[data-cosmic-type='h6']):not([data-cosmic-preserve-heading-color]):not([class*='text-white']):not([class*='-50']):not([class*='-100']):not([class*='-200']):not(:where([class*='text-white'] *,[class*='text-blue-50'] *,[class*='text-slate-50'] *,[class*='text-gray-50'] *,[class*='text-zinc-50'] *,[class*='text-neutral-50'] *,[class*='text-'][class*='-50'] *,[class*='text-'][class*='-100'] *,[class*='text-'][class*='-200'] *)){color:var(--cosmic-local-heading-color,var(--cosmic-color-heading,var(--cosmic-heading-primary,#243447)))!important}
-section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary'] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type='h1'],[data-cosmic-type='h2'],[data-cosmic-type='h3'],[data-cosmic-type='h4'],[data-cosmic-type='h5'],[data-cosmic-type='h6']):not([data-cosmic-preserve-heading-color]){color:var(--cosmic-color-on-dark,var(--cosmic-on-primary,#F8FAFC))!important}
+section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary'] :is(h1,h2,h3,h4,h5,h6,[data-cosmic-type='h1'],[data-cosmic-type='h2'],[data-cosmic-type='h3'],[data-cosmic-type='h4'],[data-cosmic-type='h5'],[data-cosmic-type='h6']):not([data-cosmic-preserve-heading-color]){color:var(--cosmic-color-on-primary,var(--cosmic-on-primary,#F8FAFC))!important}
 /* Exact class-token matching avoids treating unrelated opacity/transition
    utilities on light cards as dark highlighted foregrounds. */
-section[data-cosmic-spark='1'] article:is([class~='text-white'],[class~='text-amber-50'],[class~='text-blue-50'],[class~='text-emerald-50'],[class~='text-fuchsia-50'],[class~='text-indigo-50'],[class~='text-lime-50'],[class~='text-neutral-100'],[class~='text-orange-50'],[class~='text-rose-50'],[class~='text-slate-50'],[class~='text-slate-100'],[class~='text-teal-50'],[class~='text-violet-50'],:has(:is(h1,h2,h3,h4,h5,h6,p,span,blockquote,li):is([class~='text-white'],[class~='text-amber-50'],[class~='text-blue-50'],[class~='text-emerald-50'],[class~='text-fuchsia-50'],[class~='text-indigo-50'],[class~='text-lime-50'],[class~='text-neutral-100'],[class~='text-orange-50'],[class~='text-rose-50'],[class~='text-slate-50'],[class~='text-slate-100'],[class~='text-teal-50'],[class~='text-violet-50']))) :is(h1,h2,h3,h4,h5,h6,p,span,blockquote,li){color:var(--cosmic-color-on-secondary,var(--cosmic-color-on-dark,#FFFFFF))!important}
+section[data-cosmic-spark='1'] article:not(.cosmic-surface-contrast):is([class~='text-white'],[class~='text-amber-50'],[class~='text-blue-50'],[class~='text-emerald-50'],[class~='text-fuchsia-50'],[class~='text-indigo-50'],[class~='text-lime-50'],[class~='text-neutral-100'],[class~='text-orange-50'],[class~='text-rose-50'],[class~='text-slate-50'],[class~='text-slate-100'],[class~='text-teal-50'],[class~='text-violet-50']) :is(h1,h2,h3,h4,h5,h6,p,span,blockquote,li){color:var(--cosmic-color-on-secondary,var(--cosmic-color-on-dark,#FFFFFF))!important}
 section[data-cosmic-spark='1'].cosmic-theme-gradient{background-color:var(--cosmic-local-bg-primary,var(--cosmic-bg-primary));background-image:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 0%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 100%)!important;background-size:100% 100%}
 section[data-cosmic-spark='1'].cosmic-theme-gradient--subtle{background-image:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),color-mix(in srgb,var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 72%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))) 0%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,color-mix(in srgb,var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 70%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via))) 100%)!important}
 section[data-cosmic-spark='1'].cosmic-theme-gradient--deep{background-image:linear-gradient(var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle)),var(--cosmic-local-gradient-from,var(--cosmic-bg-gradient-from)) 0%,var(--cosmic-local-gradient-via,var(--cosmic-bg-gradient-via)) 48%,var(--cosmic-local-gradient-to,var(--cosmic-bg-gradient-to)) 100%)!important}
@@ -6069,17 +6567,46 @@ CSS;
 --cosmic-section-px:28px;
 --cosmic-section-px-tablet:24px;
 --cosmic-section-px-mobile:20px;
---cosmic-section-container:88rem;
---cosmic-section-container-wide:96rem;
---cosmic-section-container-narrow:52rem;
+--cosmic-container-narrow:52rem;
+--cosmic-container-content:72rem;
+--cosmic-container-default:88rem;
+--cosmic-container-wide:96rem;
+--cosmic-container-full:100%;
+--cosmic-section-container:var(--cosmic-container-default);
+--cosmic-section-container-wide:var(--cosmic-container-wide);
+--cosmic-section-container-narrow:var(--cosmic-container-narrow);
 --cosmic-section-gap:56px;
 --cosmic-section-gap-tablet:44px;
 --cosmic-section-gap-mobile:32px;
+--cosmic-space-grid:24px;
+--cosmic-space-grid-tablet:20px;
+--cosmic-space-grid-mobile:16px;
+--cosmic-space-card:32px;
+--cosmic-space-card-tablet:28px;
+--cosmic-space-card-mobile:22px;
 --cosmic-section-min-height:0px;
 --cosmic-radius-card:24px;
 --cosmic-radius-image:24px;
 --cosmic-radius-button:9999px;
 --cosmic-radius-input:10px;
+--cosmic-radius-modal:32px;
+--cosmic-radius-section:32px;
+--cosmic-button-height:52px;
+--cosmic-button-height-tablet:50px;
+--cosmic-button-height-mobile:48px;
+--cosmic-button-px:24px;
+--cosmic-button-px-tablet:22px;
+--cosmic-button-px-mobile:18px;
+--cosmic-button-font-weight:700;
+--cosmic-button-hover-shift:-1px;
+--cosmic-card-padding:var(--cosmic-space-card);
+--cosmic-card-padding-tablet:var(--cosmic-space-card-tablet);
+--cosmic-card-padding-mobile:var(--cosmic-space-card-mobile);
+--cosmic-shadow-none:none;
+--cosmic-shadow-sm:0 4px 14px rgba(15,23,42,.06);
+--cosmic-shadow-md:0 12px 30px rgba(15,23,42,.09);
+--cosmic-shadow-lg:0 22px 55px rgba(15,23,42,.13);
+--cosmic-card-shadow:var(--cosmic-shadow-sm);
 --cosmic-media-object-fit:cover;
 --cosmic-color-on-dark:#ffffff;
 --cosmic-on-primary-muted:rgba(248,250,252,.82)
@@ -6096,13 +6623,14 @@ min-height:var(--cosmic-local-section-min-height,var(--cosmic-section-min-height
 .cosmic-section-container--wide{max-width:var(--cosmic-local-section-container,var(--cosmic-section-container-wide))}
 .cosmic-section-container--narrow{max-width:var(--cosmic-local-section-container,var(--cosmic-section-container-narrow))}
 .cosmic-section-stack{display:flex;flex-direction:column;gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap))}
+.cosmic-surface-contrast{-webkit-text-fill-color:currentColor!important}.cosmic-primary-contrast{color:var(--cosmic-color-on-primary,#fff)!important;-webkit-text-fill-color:currentColor!important}.cosmic-surface-contrast :is(h1,h2,h3,h4,h5,h6,p,span),.cosmic-primary-contrast :is(h1,h2,h3,h4,h5,h6,p,span){-webkit-text-fill-color:currentColor!important}[data-cosmic-bento-list='true']{gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid,24px))!important}
 @media(max-width:1024px){
 .cosmic-section,[data-cosmic-section-wrapper='1']{padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)));padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)));padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet));padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))}
-.cosmic-section-stack{gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap-tablet))}
+.cosmic-section-stack{gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap-tablet))}[data-cosmic-bento-list='true']{gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-tablet,20px))!important}
 }
 @media(max-width:767px){
 .cosmic-section,[data-cosmic-section-wrapper='1']{padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)));padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)));padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile));padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))}
-.cosmic-section-stack{gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap-mobile))}
+.cosmic-section-stack{gap:var(--cosmic-local-section-gap,var(--cosmic-section-gap-mobile))}[data-cosmic-bento-list='true']{gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-mobile,16px))!important}
 }
 
 /* Batch 4: migrate all compiled Spark roots to the centralized wrapper rhythm.
@@ -6119,7 +6647,22 @@ padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px))!important;
 padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px))!important
 }
 section[data-cosmic-spark='1']>:is(div,article)[class*='mx-auto'][class*='max-w-']{
-width:100%;max-width:var(--cosmic-local-section-container,var(--cosmic-section-container))!important;margin-left:auto!important;margin-right:auto!important
+width:100%;margin-left:auto!important;margin-right:auto!important
+}
+section[data-cosmic-spark='1']>:is(div,article):is(.max-w-screen-2xl,.max-w-screen-xl){
+max-width:var(--cosmic-local-container-wide,var(--cosmic-container-wide,var(--cosmic-section-container-wide,96rem)))!important
+}
+section[data-cosmic-spark='1']>:is(div,article):is(.max-w-7xl,.max-w-6xl){
+max-width:var(--cosmic-local-section-container,var(--cosmic-container-default,var(--cosmic-section-container)))!important
+}
+section[data-cosmic-spark='1']>:is(div,article):is(.max-w-5xl,.max-w-4xl,.max-w-3xl){
+max-width:var(--cosmic-local-container-content,var(--cosmic-container-content,72rem))!important
+}
+section[data-cosmic-spark='1']>:is(div,article):is(.max-w-2xl,.max-w-xl){
+max-width:var(--cosmic-local-container-narrow,var(--cosmic-container-narrow,52rem))!important
+}
+section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([class*='cosmic-tw-slot--']){
+gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid,24px))!important
 }
 @media(max-width:1024px){
 section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']){
@@ -6141,6 +6684,56 @@ padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!impo
 padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important
 }}
 
+/* Global component compatibility for legacy registered Sparks. */
+section[data-cosmic-spark='1'] :is(button,a)[class*='px-'][class*='py-']:not([aria-label]):not([data-cosmic-preserve-button]){
+min-height:var(--cosmic-local-button-height,var(--cosmic-button-height));
+padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px))!important;
+padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px))!important;
+border-radius:var(--cosmic-local-button-radius,var(--cosmic-radius-button))!important;
+font-weight:var(--cosmic-local-button-weight,var(--cosmic-button-font-weight))!important
+}
+section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border'][class*='p-']:not(.rounded-full):not([data-cosmic-preserve-padding]){
+padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding))!important;
+border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card))!important
+}
+section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='shadow']:not(.rounded-full):not([data-cosmic-preserve-shadow]){
+box-shadow:var(--cosmic-local-card-shadow,var(--cosmic-card-shadow))!important;
+border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card))!important
+}
+section[data-cosmic-spark='1'] :is(input[type='text'],input[type='email'],input[type='tel'],input[type='url'],input[type='number'],input[type='search'],input:not([type]),textarea,select):not([data-cosmic-preserve-form]){
+border-radius:var(--cosmic-local-input-radius,var(--cosmic-radius-input,10px))!important
+}
+section[data-cosmic-spark='1'] section[class*='rounded']:not([data-cosmic-preserve-radius]):not([class*='cosmic-tw-slot--']){
+border-radius:var(--cosmic-local-section-radius,var(--cosmic-radius-section,32px))!important
+}
+section[data-cosmic-spark='1'] :is(button,a)[class*='px-'][class*='py-']:not([aria-label]):not([data-cosmic-preserve-button]):hover{
+transform:translateY(var(--cosmic-local-button-hover-shift,var(--cosmic-button-hover-shift,-1px)))
+}
+@media(max-width:1024px){
+section[data-cosmic-spark='1'] :is(button,a)[class*='px-'][class*='py-']:not([aria-label]):not([data-cosmic-preserve-button]){
+min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-tablet,var(--cosmic-button-height)));
+padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px)))!important;
+padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px)))!important
+}
+section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border'][class*='p-']:not(.rounded-full):not([data-cosmic-preserve-padding]){
+padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-tablet,var(--cosmic-card-padding)))!important
+}
+section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([class*='cosmic-tw-slot--']){
+gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-tablet,20px))!important
+}}
+@media(max-width:767px){
+section[data-cosmic-spark='1'] :is(button,a)[class*='px-'][class*='py-']:not([aria-label]):not([data-cosmic-preserve-button]){
+min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-mobile,var(--cosmic-button-height)));
+padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px)))!important;
+padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px)))!important
+}
+section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border'][class*='p-']:not(.rounded-full):not([data-cosmic-preserve-padding]){
+padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-mobile,var(--cosmic-card-padding)))!important
+}
+section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([class*='cosmic-tw-slot--']){
+gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-mobile,16px))!important
+}}
+
 /* Visual parity: centralized media radius and hero contrast. */
 section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']) img:not(.rounded-full):not([data-cosmic-preserve-radius]){
 border-radius:var(--cosmic-local-image-radius,var(--cosmic-radius-image,24px))!important
@@ -6153,7 +6746,7 @@ section[data-cosmic-spark='1'][data-cosmic-block-type*='banner'][class*='text-wh
 section[data-cosmic-spark='1'][data-cosmic-block-type*='cinematic'] :is(h1,h2,h3,h4,h5,h6),
 section[data-cosmic-spark='1'][data-cosmic-block-type*='fullscreen'] :is(h1,h2,h3,h4,h5,h6),
 section[data-cosmic-spark='1'][data-cosmic-resolved-theme='primary'] :is([data-cosmic-type='h1'],[data-cosmic-type='h2'],[data-cosmic-type='h3'],[data-cosmic-type='h4'],[data-cosmic-type='h5'],[data-cosmic-type='h6']){
-color:var(--cosmic-color-on-dark,#fff)!important
+color:var(--cosmic-color-on-primary,#fff)!important
 }
 section[data-cosmic-spark='1'][data-cosmic-block-type*='hero'][class*='text-white'] :is(p,li),
 section[data-cosmic-spark='1'][data-cosmic-block-type*='banner'][class*='text-white'] :is(p,li),
@@ -6173,15 +6766,20 @@ CSS;
             'button_px'=>'--cosmic-button-px',
             'button_px_tablet'=>'--cosmic-button-px-tablet',
             'button_px_mobile'=>'--cosmic-button-px-mobile',
+            'button_weight'=>'--cosmic-button-font-weight',
+            'button_hover_shift'=>'--cosmic-button-hover-shift',
             'card_radius'=>'--cosmic-radius-card',
             'card_padding'=>'--cosmic-card-padding',
             'card_padding_tablet'=>'--cosmic-card-padding-tablet',
             'card_padding_mobile'=>'--cosmic-card-padding-mobile',
+            'card_shadow'=>'--cosmic-card-shadow',
             'image_radius'=>'--cosmic-radius-image',
             'input_radius'=>'--cosmic-radius-input',
             'input_height'=>'--cosmic-input-height',
             'input_height_tablet'=>'--cosmic-input-height-tablet',
             'input_height_mobile'=>'--cosmic-input-height-mobile',
+            'modal_radius'=>'--cosmic-radius-modal',
+            'section_radius'=>'--cosmic-radius-section',
             'media_object_fit'=>'--cosmic-media-object-fit',
         ];
         $globalComponentVars='';
@@ -6193,28 +6791,65 @@ CSS;
                 if(in_array($value,['cover','contain','fill','none','scale-down'],true))$globalComponentVars.=$var.':'.$value.';';
                 continue;
             }
+            if($key==='button_weight'){
+                if(preg_match('/^[1-9]00$/',$value))$globalComponentVars.=$var.':'.$value.';';
+                continue;
+            }
+            if($key==='card_shadow'){
+                $safeShadows=['none','var(--cosmic-shadow-none)','var(--cosmic-shadow-sm)','var(--cosmic-shadow-md)','var(--cosmic-shadow-lg)'];
+                if(in_array($value,$safeShadows,true))$globalComponentVars.=$var.':'.$value.';';
+                continue;
+            }
             if(is_numeric($value))$globalComponentVars.=$var.':'.$value.'px;';
-            elseif(preg_match('/^[0-9.]+(?:px|rem|em|%)$/i',$value))$globalComponentVars.=$var.':'.$value.';';
+            elseif(preg_match('/^-?[0-9.]+(?:px|rem|em|%)$/i',$value))$globalComponentVars.=$var.':'.$value.';';
         }
         $globalComponentCss=$globalComponentVars!==''?"<style data-cosmic-component-settings>:root{{$globalComponentVars}}</style>":'';
 
         $globalTypography=is_array($context['typography']??null)?$context['typography']:[];
         $globalTypographyVars='';
+        $globalTypographyTablet='';
+        $globalTypographyMobile='';
+        $safeTypographyMeasure='/^(?:-?[0-9.]+(?:px|rem|em|%)?|clamp\(\s*-?[0-9.]+(?:px|rem|em|%)?\s*,\s*-?[0-9.]+(?:vw|vh|rem|em|px|%)\s*,\s*-?[0-9.]+(?:px|rem|em|%)?\s*\))$/i';
         foreach($globalTypography as $key=>$value){
             if(!is_scalar($value))continue;
-            if(preg_match('/^(h1|h2|h3|h4|h5|h6|card-title|stat-title|card-body|lead|body|eyebrow|small|badge|meta|button)_size_(tablet|mobile)$/',(string)$key,$m)){
-                $raw=trim((string)$value);
-                if($raw!==''&&preg_match('/^-?[0-9.]+(?:px|rem|em|%)?$/i',$raw)){
-                    $globalTypographyVars.='--cosmic-type-'.$m[1].'-size-'.$m[2].':'.$raw.';';
+            $key=(string)$key;
+            $raw=trim((string)$value);
+            if($raw==='')continue;
+
+            if(in_array($key,['font_display','font_body'],true)){
+                // Font stacks are user-controlled design tokens, so keep this
+                // deliberately conservative: names, generics, spaces, commas,
+                // quotes and hyphens only. No CSS delimiters/functions.
+                if(preg_match('/^[A-Za-z0-9 ,"\'-]{1,220}$/',$raw)){
+                    $globalTypographyVars.='--cosmic-font-'.($key==='font_display'?'display':'body').':'.$raw.';';
                 }
                 continue;
             }
-            if(!preg_match('/^(h1|h2|h3|h4|h5|h6|card-title|stat-title|card-body|lead|body|eyebrow|small|badge|meta|button)_(size|line|weight|tracking)$/',(string)$key,$m))continue;
-            $raw=trim((string)$value);
-            if($raw===''||!preg_match('/^-?[0-9.]+(?:px|rem|em|%)?$/i',$raw))continue;
-            $globalTypographyVars.='--cosmic-type-'.$m[1].'-'.$m[2].':'.$raw.';';
+
+            if(preg_match('/^(h1|h2|h3|h4|h5|h6|card-title|stat-title|card-body|lead|body|eyebrow|small|badge|meta|button)_size_(tablet|mobile)$/',$key,$m)){
+                if(!preg_match($safeTypographyMeasure,$raw))continue;
+                $globalTypographyVars.='--cosmic-type-'.$m[1].'-size-'.$m[2].':'.$raw.';';
+                if($m[2]==='tablet')$globalTypographyTablet.='--cosmic-type-'.$m[1].'-size:'.$raw.';';
+                else $globalTypographyMobile.='--cosmic-type-'.$m[1].'-size:'.$raw.';';
+                continue;
+            }
+
+            if(!preg_match('/^(h1|h2|h3|h4|h5|h6|card-title|stat-title|card-body|lead|body|eyebrow|small|badge|meta|button)_(size|line|weight|tracking)$/',$key,$m))continue;
+            $field=$m[2];
+            $valid=$field==='size'||$field==='tracking'
+                ? (bool)preg_match($safeTypographyMeasure,$raw)
+                : (bool)preg_match('/^-?[0-9.]+$/',$raw);
+            if(!$valid)continue;
+            $globalTypographyVars.='--cosmic-type-'.$m[1].'-'.$field.':'.$raw.';';
         }
-        $globalTypographyCss=$globalTypographyVars!==''?"<style data-cosmic-typography-settings>:root{{$globalTypographyVars}}</style>":'';
+        $globalTypographyCss='';
+        if($globalTypographyVars!==''||$globalTypographyTablet!==''||$globalTypographyMobile!==''){
+            $globalTypographyCss='<style data-cosmic-typography-settings>';
+            if($globalTypographyVars!=='')$globalTypographyCss.=':root{'.$globalTypographyVars.'}';
+            if($globalTypographyTablet!=='')$globalTypographyCss.='@media(max-width:1024px){:root{'.$globalTypographyTablet.'}}';
+            if($globalTypographyMobile!=='')$globalTypographyCss.='@media(max-width:767px){:root{'.$globalTypographyMobile.'}}';
+            $globalTypographyCss.='</style>';
+        }
 
         $globalBackground=is_array($context['background_style']??null)?$context['background_style']:[];
         $activeTheme=self::getTheme($primaryColor ?: 'midnight');
@@ -6327,11 +6962,39 @@ CSS;
             $raw=trim((string)$globalSection[$key]);
             if($raw===''||!preg_match('/^-?[0-9.]+(?:px|rem|em|%|vh|svh|vw)?$/i',$raw))continue;
             $globalSectionVars.=$var.':'.$raw.';';
+            if($key==='container_default')$globalSectionVars.='--cosmic-section-container:'.$raw.';';
+            if($key==='container_wide')$globalSectionVars.='--cosmic-container-wide:'.$raw.';';
+            if($key==='container_narrow')$globalSectionVars.='--cosmic-container-narrow:'.$raw.';';
         }
         $globalSectionCss=$globalSectionVars!==''?"<style data-cosmic-section-wrapper-settings>:root{{$globalSectionVars}}</style>":'';
 
-        // Global Cosmic CTA default: rounded buttons across preview/export/live.
-        $html = $typographyCss . $globalTypographyCss . $globalComponentCss . $backgroundOverlayCss . $globalBackgroundCss . $semanticPaletteCss . $sectionWrapperCss . $globalSectionCss . "<style data-cosmic-button-default>section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button']){border-radius:100px!important}section[data-cosmic-spark='1'] [class~='rounded-full']{border-radius:9999px!important}</style>" . $html;
+        // Global CTA radius remains configurable. Non-button pills/avatars keep
+        // their authored round shape instead of forcing CTA pills globally.
+        $globalPriorityCss=<<<'CSS'
+<style data-cosmic-global-priority-hotfix>
+section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not([data-cosmic-preserve-spacing]){padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py)))!important;padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py)))!important;padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px))!important;padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px))!important}
+section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([data-cosmic-preserve-gap]){gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid,24px))!important}
+section[data-cosmic-spark='1'] :is(h1,[data-cosmic-type='h1']):not([data-cosmic-preserve-typography]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size))!important;line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line))!important;font-weight:var(--cosmic-local-h1-weight,var(--cosmic-type-h1-weight))!important;letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking))!important}
+section[data-cosmic-spark='1'] :is(h2,[data-cosmic-type='h2']):not([data-cosmic-preserve-typography]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size))!important;line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line))!important;font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight))!important;letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking))!important}
+section[data-cosmic-spark='1'] :is(h3,[data-cosmic-type='h3'],[data-luna-target='heading']:not([data-cosmic-type]):not(h1):not(h2):not(h4):not(h5):not(h6)):not([data-cosmic-preserve-typography]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h3-size,var(--cosmic-type-h3-size))!important;line-height:var(--cosmic-local-h3-line,var(--cosmic-type-h3-line))!important;font-weight:var(--cosmic-local-h3-weight,var(--cosmic-type-h3-weight))!important;letter-spacing:var(--cosmic-local-h3-tracking,var(--cosmic-type-h3-tracking))!important}
+section[data-cosmic-spark='1'] :is(h4,[data-cosmic-type='h4']):not([data-cosmic-preserve-typography]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h4-size,var(--cosmic-type-h4-size))!important;line-height:var(--cosmic-local-h4-line,var(--cosmic-type-h4-line))!important;font-weight:var(--cosmic-local-h4-weight,var(--cosmic-type-h4-weight))!important;letter-spacing:var(--cosmic-local-h4-tracking,var(--cosmic-type-h4-tracking))!important}
+section[data-cosmic-spark='1'] :is(h5,[data-cosmic-type='h5']):not([data-cosmic-preserve-typography]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h5-size,var(--cosmic-type-h5-size))!important;line-height:var(--cosmic-local-h5-line,var(--cosmic-type-h5-line))!important;font-weight:var(--cosmic-local-h5-weight,var(--cosmic-type-h5-weight))!important;letter-spacing:var(--cosmic-local-h5-tracking,var(--cosmic-type-h5-tracking))!important}
+section[data-cosmic-spark='1'] :is(h6,[data-cosmic-type='h6']):not([data-cosmic-preserve-typography]){font-family:var(--cosmic-local-font-display,var(--cosmic-font-display))!important;font-size:var(--cosmic-local-h6-size,var(--cosmic-type-h6-size))!important;line-height:var(--cosmic-local-h6-line,var(--cosmic-type-h6-line))!important;font-weight:var(--cosmic-local-h6-weight,var(--cosmic-type-h6-weight))!important;letter-spacing:var(--cosmic-local-h6-tracking,var(--cosmic-type-h6-tracking))!important}
+section[data-cosmic-spark='1'] :is(p,li,[data-cosmic-type='body'],[data-luna-target='text']:not([data-cosmic-type])):not([data-cosmic-preserve-typography]){font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size))!important;line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line))!important;font-weight:var(--cosmic-local-body-weight,var(--cosmic-type-body-weight))!important;letter-spacing:var(--cosmic-local-body-tracking,var(--cosmic-type-body-tracking))!important}
+section[data-cosmic-spark='1'] [data-cosmic-type='lead']:not([data-cosmic-preserve-typography]){font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-lead-size,var(--cosmic-type-lead-size))!important;line-height:var(--cosmic-local-lead-line,var(--cosmic-type-lead-line))!important;font-weight:var(--cosmic-local-lead-weight,var(--cosmic-type-lead-weight))!important;letter-spacing:var(--cosmic-local-lead-tracking,var(--cosmic-type-lead-tracking))!important}
+section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button'],[data-cosmic-type='button']):not([aria-label]):not([data-cosmic-preserve-button]){min-height:var(--cosmic-local-button-height,var(--cosmic-button-height))!important;padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px))!important;padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px))!important;border-radius:var(--cosmic-local-button-radius,var(--cosmic-radius-button))!important;font-family:var(--cosmic-local-font-body,var(--cosmic-font-body))!important;font-size:var(--cosmic-local-button-size,var(--cosmic-type-button-size))!important;font-weight:var(--cosmic-local-button-weight,var(--cosmic-button-font-weight,var(--cosmic-type-button-weight)))!important}
+section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border']:not(.rounded-full):not([data-cosmic-preserve-radius]){border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card))!important}
+section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border'][class*='p-']:not(.rounded-full):not([data-cosmic-preserve-padding]){padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding))!important}
+section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='shadow']:not(.rounded-full):not([data-cosmic-preserve-shadow]){box-shadow:var(--cosmic-local-card-shadow,var(--cosmic-card-shadow))!important}
+section[data-cosmic-spark='1'] img[class*='rounded']:not(.rounded-full):not([data-cosmic-preserve-radius]){border-radius:var(--cosmic-local-image-radius,var(--cosmic-radius-image))!important}
+section[data-cosmic-spark='1'] img:not([data-cosmic-preserve-fit]){object-fit:var(--cosmic-local-media-object-fit,var(--cosmic-media-object-fit,cover))}
+section[data-cosmic-spark='1'] :is(input[type='text'],input[type='email'],input[type='tel'],input[type='url'],input[type='number'],input[type='search'],input:not([type]),textarea,select):not([data-cosmic-preserve-form]){border-radius:var(--cosmic-local-input-radius,var(--cosmic-radius-input,10px))!important}
+section[data-cosmic-spark='1'] section[class*='rounded']:not([data-cosmic-preserve-radius]){border-radius:var(--cosmic-local-section-radius,var(--cosmic-radius-section,32px))!important}
+@media(max-width:1024px){section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not([data-cosmic-preserve-spacing]){padding-top:var(--cosmic-local-section-py,var(--cosmic-section-py-tablet))!important;padding-bottom:var(--cosmic-local-section-py,var(--cosmic-section-py-tablet))!important;padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))!important;padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet))!important}section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([data-cosmic-preserve-gap]){gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-tablet,20px))!important}section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button'],[data-cosmic-type='button']):not([aria-label]):not([data-cosmic-preserve-button]){min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-tablet,var(--cosmic-button-height)))!important;padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px)))!important;padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px)))!important}section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border'][class*='p-']:not(.rounded-full):not([data-cosmic-preserve-padding]){padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-tablet,var(--cosmic-card-padding)))!important}}
+@media(max-width:767px){section[data-cosmic-spark='1']:not([data-cosmic-block-type*='fullscreen']):not([data-cosmic-block-type*='cinematic']):not([data-cosmic-preserve-spacing]){padding-top:var(--cosmic-local-section-py,var(--cosmic-section-py-mobile))!important;padding-bottom:var(--cosmic-local-section-py,var(--cosmic-section-py-mobile))!important;padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important;padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile))!important}section[data-cosmic-spark='1'] :is(.grid,[data-cosmic-layout='grid'])[class*='gap-']:not([data-cosmic-preserve-gap]){gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-mobile,16px))!important}section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button'],[data-cosmic-type='button']):not([aria-label]):not([data-cosmic-preserve-button]){min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-mobile,var(--cosmic-button-height)))!important;padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px)))!important;padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px)))!important}section[data-cosmic-spark='1'] :is(div,article,li)[class*='rounded'][class*='border'][class*='p-']:not(.rounded-full):not([data-cosmic-preserve-padding]){padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-mobile,var(--cosmic-card-padding)))!important}}
+</style>
+CSS;
+        $html = $typographyCss . $globalTypographyCss . $globalComponentCss . $backgroundOverlayCss . $globalBackgroundCss . $semanticPaletteCss . $sectionWrapperCss . $globalSectionCss . self::sparkFieldExtrasCoreCss() . "<style data-cosmic-button-default>section[data-cosmic-spark='1'] :is(button,a,[role='button'],[data-cosmic-luna-display='button']):not([aria-label]):not([data-cosmic-preserve-button]){border-radius:var(--cosmic-local-button-radius,var(--cosmic-radius-button,9999px))!important}section[data-cosmic-spark='1'] [class~='rounded-full']:not(button):not(a):not([role='button']){border-radius:9999px!important}</style>" . $globalPriorityCss . $html;
 
         return self::normalizePublishedAssetUrls($html);
     }
@@ -6359,8 +7022,10 @@ CSS;
         };
         $esc = static fn($value) => e((string) $value);
 
-        $alignment = in_array(($block['alignment'] ?? 'left'), ['left','center','right'], true) ? $block['alignment'] : 'left';
-        $mediaPosition = in_array(($block['media_position'] ?? 'none'), ['left','right','background','top','none'], true) ? $block['media_position'] : 'none';
+        $alignmentRaw = (string) ($block['alignment'] ?? 'left');
+        $alignment = in_array($alignmentRaw, ['left','center','right'], true) ? $alignmentRaw : 'left';
+        $mediaPositionRaw = (string) ($block['media_position'] ?? 'none');
+        $mediaPosition = in_array($mediaPositionRaw, ['left','right','background','top','none'], true) ? $mediaPositionRaw : 'none';
         $layout = (string) ($block['layout'] ?? 'editorial');
         $key = preg_replace('/[^a-zA-Z0-9_-]/', '', (string) ($block['custom_spark_key'] ?? 'custom'));
 
@@ -6431,25 +7096,26 @@ CSS;
 
         $primitiveShadow=['none'=>'none','sm'=>'0 1px 3px rgba(15,23,42,.08)','md'=>'0 8px 24px rgba(15,23,42,.10)','lg'=>'0 18px 50px rgba(15,23,42,.13)','xl'=>'0 28px 80px rgba(15,23,42,.16)'];
         $renderElements = null;
-        $renderElements = static function(array $nodes, int $depth=0) use (&$renderElements,$esc,$hex,$num,$iconSvg,$headingColor,$bodyColor,$accent,$cardBg,$cardRadius,$buttonRadius,$primitiveShadow): string {
+        $renderElements = static function(array $nodes, int $depth=0, string $storageCollectionPath='elements', string $logicalCollectionPath='rows', string $role='row') use (&$renderElements,$esc,$hex,$num,$iconSvg,$headingColor,$bodyColor,$accent,$cardBg,$cardRadius,$imageRadius,$buttonRadius,$primitiveShadow): string {
             if($depth>5)return '';$html='';
-            foreach(array_slice($nodes,0,40) as $node){if(!is_array($node))continue;$type=(string)($node['type']??'');$st=is_array($node['style']??null)?$node['style']:[];
+            foreach(array_slice($nodes,0,40) as $nodeIndex=>$node){if(!is_array($node))continue;$type=(string)($node['type']??'');$st=is_array($node['style']??null)?$node['style']:[];
                 $bg=(string)($st['background']??'transparent');$bg=$bg==='transparent'?'transparent':$hex($bg,'transparent');$fg=$hex($st['color']??null,$bodyColor);$styles=[];
                 if(isset($st['gap']))$styles[]='gap:'.$num($st['gap'],0).'px';if(isset($st['width']))$styles[]='width:'.$num($st['width'],100).'%';if(isset($st['max_width']))$styles[]='max-width:'.$num($st['max_width'],1200).'px';if(isset($st['min_height']))$styles[]='min-height:'.$num($st['min_height'],0).'px';if(isset($st['padding']))$styles[]='padding:'.$num($st['padding'],0).'px';if(isset($st['padding_x'])){$styles[]='padding-left:'.$num($st['padding_x'],0).'px';$styles[]='padding-right:'.$num($st['padding_x'],0).'px';}if(isset($st['padding_y'])){$styles[]='padding-top:'.$num($st['padding_y'],0).'px';$styles[]='padding-bottom:'.$num($st['padding_y'],0).'px';}if(isset($st['radius']))$styles[]='border-radius:'.$num($st['radius'],0).'px';if($bg!=='transparent')$styles[]='background:'.$bg;$styles[]='color:'.$fg;if(isset($st['border_width'])&&$num($st['border_width'],0)>0)$styles[]='border:'.$num($st['border_width'],1).'px solid '.$hex($st['border_color']??null,'rgba(15,23,42,.12)');if(isset($primitiveShadow[$st['shadow']??'']))$styles[]='box-shadow:'.$primitiveShadow[$st['shadow']];if(isset($st['text_align']))$styles[]='text-align:'.$esc($st['text_align']);if(isset($st['font_size']))$styles[]='font-size:'.$num($st['font_size'],16).'px';if(isset($st['font_weight']))$styles[]='font-weight:'.$num($st['font_weight'],400);if(isset($st['line_height']))$styles[]='line-height:'.$num($st['line_height'],1.4);if(isset($st['aspect_ratio']))$styles[]='aspect-ratio:'.$num($st['aspect_ratio'],1);if(isset($st['opacity']))$styles[]='opacity:'.max(0,min(1,$num($st['opacity'],1)));if(isset($st['position']))$styles[]='position:'.$esc($st['position']);foreach(['top','right','bottom','left'] as $edge)if(isset($st[$edge]))$styles[]=$edge.':'.$num($st[$edge],0).'px';if(isset($st['z_index']))$styles[]='z-index:'.$num($st['z_index'],0);if(isset($st['overflow']))$styles[]='overflow:'.$esc($st['overflow']);if(isset($st['order']))$styles[]='order:'.$num($st['order'],0);if(isset($st['grow']))$styles[]='flex-grow:'.$num($st['grow'],0);if(isset($st['basis']))$styles[]='flex-basis:'.$num($st['basis'],50).'%';if(isset($st['self_align'])){$self=['start'=>'flex-start','center'=>'center','end'=>'flex-end','stretch'=>'stretch','auto'=>'auto'];$styles[]='align-self:'.($self[$st['self_align']]??'auto');}if(isset($st['tablet_width']))$styles[]='--af-tablet-width:'.$num($st['tablet_width'],100).'%';if(isset($st['mobile_width']))$styles[]='--af-mobile-width:'.$num($st['mobile_width'],100).'%';if(isset($st['tablet_columns']))$styles[]='--af-tablet-columns:'.max(1,min(8,(int)$num($st['tablet_columns'],2)));if(isset($st['mobile_columns']))$styles[]='--af-mobile-columns:'.max(1,min(4,(int)$num($st['mobile_columns'],1)));if(isset($st['tablet_gap']))$styles[]='--af-tablet-gap:'.$num($st['tablet_gap'],0).'px';if(isset($st['mobile_gap']))$styles[]='--af-mobile-gap:'.$num($st['mobile_gap'],0).'px';if(isset($st['tablet_padding']))$styles[]='--af-tablet-padding:'.$num($st['tablet_padding'],0).'px';if(isset($st['mobile_padding']))$styles[]='--af-mobile-padding:'.$num($st['mobile_padding'],0).'px';if(isset($st['tablet_order']))$styles[]='--af-tablet-order:'.$num($st['tablet_order'],0);if(isset($st['mobile_order']))$styles[]='--af-mobile-order:'.$num($st['mobile_order'],0);if(isset($st['tablet_position']))$styles[]='--af-tablet-position:'.$esc($st['tablet_position']);if(isset($st['mobile_position']))$styles[]='--af-mobile-position:'.$esc($st['mobile_position']);if(isset($st['tablet_min_height']))$styles[]='--af-tablet-min-height:'.$num($st['tablet_min_height'],0).'px';if(isset($st['mobile_min_height']))$styles[]='--af-mobile-min-height:'.$num($st['mobile_min_height'],0).'px';$style=implode(';',$styles);
-                $children=$renderElements(is_array($node['children']??null)?$node['children']:[],$depth+1);$text=$esc($node['text']??'');$label=$esc($node['label']??'');$url=$esc($node['url']??'#');
-                if(in_array($type,['group','row','column','grid','stack','card'],true)){if($type==='row')$layout='display:flex;flex-wrap:wrap;flex-direction:row;';elseif($type==='grid')$layout='display:grid;grid-template-columns:repeat('.max(1,min(12,(int)($st['columns']??3))).',minmax(0,1fr));';else $layout='display:flex;flex-direction:column;';$html.="<div class='cosmic-flex-el cosmic-flex-{$type}' style='{$layout}{$style}'>{$children}</div>";}
-                elseif($type==='heading')$html.="<h2 class='cosmic-flex-el cosmic-flex-heading' style='margin:0;color:{$headingColor};{$style}'>{$text}</h2>";
-                elseif($type==='text')$html.="<p class='cosmic-flex-el cosmic-flex-text' style='margin:0;color:{$bodyColor};{$style}'>{$text}</p>";
-                elseif($type==='button')$html.="<a class='cosmic-flex-el cosmic-flex-button' href='{$url}' style='display:inline-flex;align-items:center;justify-content:center;padding:12px 22px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-weight:700;text-decoration:none;{$style}'>".($label?:$text?:'Learn more')."</a>";
-                elseif($type==='image'){ $src=$esc($node['src']??'');$alt=$esc($node['alt']??'');if($src!=='')$html.="<img class='cosmic-flex-el cosmic-flex-image' src='{$src}' alt='{$alt}' loading='lazy' decoding='async' style='display:block;width:100%;border-radius:{$imageRadius}px;object-fit:".$esc($st['object_fit']??'cover').";object-position:".$esc($st['object_position']??'center').";{$style}'>"; }
-                elseif($type==='icon')$html.="<span class='cosmic-flex-el cosmic-flex-icon' style='display:inline-flex;{$style}'>".$iconSvg($node['icon']??'',$fg?:$accent)."</span>";
-                elseif($type==='badge')$html.="<span class='cosmic-flex-el cosmic-flex-badge' style='display:inline-flex;width:max-content;padding:7px 12px;border-radius:999px;background:{$cardBg};font-weight:700;{$style}'>".($label?:$text)."</span>";
-                elseif($type==='list'){ $lis='';foreach(array_slice(is_array($node['items']??null)?$node['items']:[],0,20) as $it){$val=is_array($it)?($it['text']??$it['label']??$it['value']??''):$it;$lis.='<li>'.$esc($val).'</li>';}$html.="<ul class='cosmic-flex-el cosmic-flex-list' style='margin:0;padding-left:22px;{$style}'>{$lis}</ul>";}
-                elseif($type==='divider')$html.="<hr class='cosmic-flex-el cosmic-flex-divider' style='width:100%;border:0;border-top:".$num($st['border_width']??1,1)."px solid ".$hex($st['border_color']??null,'rgba(15,23,42,.12)').";{$style}'>";
-                elseif($type==='stat')$html.="<div class='cosmic-flex-el cosmic-flex-stat' style='{$style}'><strong style='display:block;font-size:2rem;color:{$headingColor}'>".$esc($node['value']??'')."</strong>".($label!==''?"<span style='color:{$bodyColor}'>{$label}</span>":'')."</div>";
+                $storagePath=$storageCollectionPath.'.'.$nodeIndex;$logicalPath=$logicalCollectionPath.'.'.$nodeIndex;$collectionName=$role==='row'?'rows':($role==='column'?'columns':'extras');$stableRaw=trim((string)($node['_cosmic_id']??$node['key']??($role.'_'.$nodeIndex)));$stableId=$esc($stableRaw!==''?$stableRaw:($role.'_'.$nodeIndex));$targetType=$type==='heading'?'heading':($type==='button'?'button':($type==='image'?'image':($type==='video'?'video':($type==='badge'?'label':($type==='row'?'row':($type==='column'?'column':($type==='card'?'card':'text')))))));$fieldKey=in_array($type,['heading','text'],true)?'text':($type==='button'?(array_key_exists('label',$node)?'label':'text'):(in_array($type,['image','video'],true)?'src':($type==='badge'?(array_key_exists('label',$node)?'label':'text'):($type==='stat'?'value':''))));$fieldPath=$fieldKey!==''?$storagePath.'.'.$fieldKey:'';$attrs="data-cosmic-ai-flex-role='".$esc($role)."' data-cosmic-ai-flex-collection='".$esc($collectionName)."' data-cosmic-ai-flex-collection-path='".$esc($storageCollectionPath)."' data-cosmic-ai-flex-logical-collection-path='".$esc($logicalCollectionPath)."' data-cosmic-ai-flex-logical-path='".$esc($logicalPath)."' data-cosmic-ai-flex-item-index='".(int)$nodeIndex."' data-cosmic-ai-flex-stable-id='{$stableId}' data-luna-target='".$esc($targetType)."'".($fieldPath!==''?" data-cosmic-field-path='".$esc($fieldPath)."'":'');$nextRole=$role==='row'?'column':'extra';$childStorageCollection=$storagePath.'.children';$childLogicalCollection=$role==='row'?$logicalPath.'.columns':($role==='column'?$logicalPath.'.extras':$logicalPath.'.children');$children=$renderElements(is_array($node['children']??null)?$node['children']:[],$depth+1,$childStorageCollection,$childLogicalCollection,$nextRole);$text=$esc($node['text']??'');$label=$esc($node['label']??'');$url=$esc($node['url']??'#');
+                if(in_array($type,['group','row','column','grid','stack','card'],true)){if($type==='row')$layout='display:flex;flex-wrap:wrap;flex-direction:row;';elseif($type==='grid')$layout='display:grid;grid-template-columns:repeat('.max(1,min(12,(int)($st['columns']??3))).',minmax(0,1fr));';else $layout='display:flex;flex-direction:column;';$html.="<div {$attrs} class='cosmic-flex-el cosmic-flex-{$type}' style='{$layout}{$style}'>{$children}</div>";}
+                elseif($type==='heading')$html.="<h2 {$attrs} class='cosmic-flex-el cosmic-flex-heading' style='margin:0;color:{$headingColor};{$style}'>{$text}</h2>";
+                elseif($type==='text')$html.="<p {$attrs} class='cosmic-flex-el cosmic-flex-text' style='margin:0;color:{$bodyColor};{$style}'>{$text}</p>";
+                elseif($type==='button')$html.="<a {$attrs} class='cosmic-flex-el cosmic-flex-button' href='{$url}' style='display:inline-flex;align-items:center;justify-content:center;padding:12px 22px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-weight:700;text-decoration:none;{$style}'>".($label?:$text?:'Learn more')."</a>";
+                elseif($type==='image'){ $src=$esc($node['src']??'');$alt=$esc($node['alt']??'');if($src!=='')$html.="<img {$attrs} class='cosmic-flex-el cosmic-flex-image' src='{$src}' alt='{$alt}' loading='lazy' decoding='async' style='display:block;width:100%;border-radius:{$imageRadius}px;object-fit:".$esc($st['object_fit']??'cover').";object-position:".$esc($st['object_position']??'center').";{$style}'>";else $html.="<div {$attrs} class='cosmic-flex-el cosmic-flex-image' data-cosmic-extra-empty-media='image' style='display:block;width:100%;min-height:96px;border-radius:{$imageRadius}px;background:rgba(0,0,0,.05);{$style}'></div>"; }
+                elseif($type==='video'){ $src=$esc($node['src']??'');$poster=$esc($node['poster']??'');if($src!==''){$controls=($node['controls']??true)?' controls':'';$autoplay=!empty($node['autoplay'])?' autoplay':'';$muted=($node['muted']??true)?' muted':'';$loop=!empty($node['loop'])?' loop':'';$plays=($node['plays_inline']??true)?' playsinline':'';$posterAttr=$poster!==''?" poster='{$poster}'":'';$html.="<video {$attrs} class='cosmic-flex-el cosmic-flex-video' src='{$src}'{$posterAttr}{$controls}{$autoplay}{$muted}{$loop}{$plays} style='display:block;width:100%;border-radius:{$imageRadius}px;object-fit:".$esc($st['object_fit']??'cover').";object-position:".$esc($st['object_position']??'center').";{$style}'></video>";}else $html.="<div {$attrs} class='cosmic-flex-el cosmic-flex-video' data-cosmic-extra-empty-media='video' style='display:block;width:100%;min-height:96px;border-radius:{$imageRadius}px;background:rgba(0,0,0,.05);{$style}'></div>";}
+                elseif($type==='icon')$html.="<span {$attrs} class='cosmic-flex-el cosmic-flex-icon' style='display:inline-flex;{$style}'>".$iconSvg($node['icon']??'',$fg?:$accent)."</span>";
+                elseif($type==='badge')$html.="<span {$attrs} class='cosmic-flex-el cosmic-flex-badge' style='display:inline-flex;width:max-content;padding:7px 12px;border-radius:999px;background:{$cardBg};font-weight:700;{$style}'>".($label?:$text)."</span>";
+                elseif($type==='list'){ $lis='';foreach(array_slice(is_array($node['items']??null)?$node['items']:[],0,20) as $it){$val=is_array($it)?($it['text']??$it['label']??$it['value']??''):$it;$lis.='<li>'.$esc($val).'</li>';}$html.="<ul {$attrs} class='cosmic-flex-el cosmic-flex-list' style='margin:0;padding-left:22px;{$style}'>{$lis}</ul>";}
+                elseif($type==='divider')$html.="<hr {$attrs} class='cosmic-flex-el cosmic-flex-divider' style='width:100%;border:0;border-top:".$num($st['border_width']??1,1)."px solid ".$hex($st['border_color']??null,'rgba(15,23,42,.12)').";{$style}'>";
+                elseif($type==='stat')$html.="<div {$attrs} class='cosmic-flex-el cosmic-flex-stat' style='{$style}'><strong style='display:block;font-size:2rem;color:{$headingColor}'>".$esc($node['value']??'')."</strong>".($label!==''?"<span style='color:{$bodyColor}'>{$label}</span>":'')."</div>";
                 elseif($type==='form'){
                     $fields=is_array($node['fields']??null)?array_slice($node['fields'],0,12):[];$columns=((int)($node['columns']??2))===1?1:2;$title=$esc($node['title']??'');$note=$esc($node['note']??'');$button=$esc($node['button_label']??'Submit');$success=$esc($node['success_message']??'Thank you! Your inquiry has been sent successfully.');$align=in_array(($node['button_alignment']??'left'),['left','center','right'],true)?$node['button_alignment']:'left';$justify=$align==='center'?'center':($align==='right'?'flex-end':'flex-start');$requiredNames=[];
-                    $form="<form action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form data-custom-spark-form class='cosmic-flex-el cosmic-flex-form' style='width:100%;display:grid;gap:16px;{$style}'><input type='hidden' name='_cosmic_form_name' value='".($title?:'Website inquiry')."'><input type='hidden' name='_cosmic_success_message' value='{$success}'><label aria-hidden='true' style='position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden'>Company<input name='company' tabindex='-1' autocomplete='off'></label>";
+                    $form="<form {$attrs} action='./cosmic-sync/contact.php' method='post' data-cosmic-contact-form data-custom-spark-form class='cosmic-flex-el cosmic-flex-form' style='width:100%;display:grid;gap:16px;{$style}'><input type='hidden' name='_cosmic_form_name' value='".($title?:'Website inquiry')."'><input type='hidden' name='_cosmic_success_message' value='{$success}'><label aria-hidden='true' style='position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden'>Company<input name='company' tabindex='-1' autocomplete='off'></label>";
                     if($title!=='')$form.="<div style='font-size:20px;font-weight:800;color:{$headingColor}'>{$title}</div>";
                     $form.="<div class='cc-form-grid' style='display:grid;grid-template-columns:repeat({$columns},minmax(0,1fr));gap:12px'>";
                     foreach($fields as $i=>$field){if(!is_array($field))continue;$rawName=strtolower(trim((string)($field['name']??('field_'.($i+1)))));$safeName=preg_replace('/[^a-z0-9_]/','_',$rawName);$safeName=trim((string)preg_replace('/_+/','_',$safeName),'_');if($safeName===''||!preg_match('/^[a-z]/',$safeName))$safeName='field_'.($i+1);$safeName=substr($safeName,0,64);$ft=in_array(($field['type']??'text'),['text','email','tel','number','date','time','textarea','select','checkbox','radio','hidden'],true)?$field['type']:'text';$labelText=$esc($field['label']??$field['placeholder']??$safeName);$placeholder=$esc($field['placeholder']??$field['label']??$safeName);$required=!empty($field['required']);if($required&&$ft!=='hidden')$requiredNames[]=$safeName;$req=$required?' required':'';$span=(($field['width']??'')==='full'&&$columns===2)?'grid-column:1/-1;':'';$base="{$span}width:100%;box-sizing:border-box;border:1px solid rgba(15,23,42,.12);border-radius:12px;background:rgba(255,255,255,.72);color:{$bodyColor};font-size:14px;padding:0 13px";$options=is_array($field['options']??null)?array_slice($field['options'],0,20):[];
@@ -6462,7 +7128,7 @@ CSS;
                     }
                     $form.="</div>";if($requiredNames)$form.="<input type='hidden' name='_cosmic_required' value='".$esc(implode(',',array_values(array_unique($requiredNames))))."'>";$form.="<div style='display:flex;flex-wrap:wrap;align-items:center;justify-content:{$justify};gap:12px'><button type='submit' style='border:0;cursor:pointer;padding:12px 22px;border-radius:{$buttonRadius}px;background:{$accent};color:{$headingColor};font-weight:800'>{$button}</button>".($note!==''?"<span style='font-size:13px;color:{$bodyColor}'>{$note}</span>":'')."</div><p data-cosmic-contact-status aria-live='polite' style='margin:0;font-size:12px;color:{$bodyColor}'></p></form>";$html.=$form;
                 }
-                elseif($type==='spacer')$html.="<div class='cosmic-flex-el cosmic-flex-spacer' aria-hidden='true' style='height:".$num($st['min_height']??24,24)."px;{$style}'></div>";
+                elseif($type==='spacer')$html.="<div {$attrs} class='cosmic-flex-el cosmic-flex-spacer' aria-hidden='true' style='height:".$num($st['min_height']??24,24)."px;{$style}'></div>";
             }return $html;
         };
 
@@ -6717,7 +7383,7 @@ HTML;
         }
 
         $elements = is_array($block['elements'] ?? null) ? $block['elements'] : [];
-        if ($elements) { $body = "<div class='cosmic-flex-elements' style='position:relative;z-index:2;margin:0 auto;max-width:{$maxWidth}px;width:100%'>".$renderElements($elements,0)."</div>"; $itemsHtml = ''; }
+        if ($elements) { $body = "<div class='cosmic-flex-elements' data-cosmic-ai-flex-structure='rows-columns-extras' style='position:relative;z-index:2;margin:0 auto;max-width:{$maxWidth}px;width:100%'>".$renderElements($elements,0,'elements','rows','row')."</div>"; $itemsHtml = ''; }
 
         $background = '';
         if ($mediaPosition === 'background' && $image !== '') {

@@ -1,3 +1,0 @@
-export default function ContactDetailsPreview() {
-    return <div className="grid h-full grid-cols-2 gap-2 rounded-xl border border-slate-700 bg-slate-950 p-3"><div className="flex flex-col justify-center gap-3 p-2"><span className="h-2 w-12 rounded bg-violet-400" /><span className="h-3 w-full rounded bg-slate-100" /><span className="h-2 w-4/5 rounded bg-slate-500" /></div><div className="grid grid-cols-2 gap-2">{[1, 2, 3, 4].map((item) => <div key={item} className="rounded-lg border border-slate-700 p-2"><span className="mb-2 block h-1.5 w-8 rounded bg-slate-500" /><span className="block h-2 w-full rounded bg-slate-100" /></div>)}</div></div>;
-}

@@ -10,6 +10,7 @@ import { BlockRegistry } from "./SparkRegistry";
 import { BlockRegistry as BuilderBlockRegistry } from "../BlockRegistry";
 import { createSparkTailwindRuntime } from "../Blocks/Shared/sparkTailwindRuntime";
 import { colorFamilies, installCustomBrandTheme } from "../../../theme/colorFamilies";
+import { useAppearance } from "../../../Appearance/AppearanceContext";
 
 const categoryFor = (type) => {
     if (type.startsWith("mini_hero_")) return "Mini Heroes";
@@ -300,6 +301,7 @@ export default function AddSectionModal({
     open,
     onClose,
     onAdd,
+    onCustomize = null,
     onReplace = null,
     websiteContext = "",
     websiteId = null,
@@ -308,6 +310,7 @@ export default function AddSectionModal({
     trialToken = null,
     ownedOnly = false,
     contextLabel = null,
+    insertionContext = null,
     onOwnershipChanged = null,
     websiteTheme = null,
     commerce = null,
@@ -316,11 +319,17 @@ export default function AddSectionModal({
     preloadedCatalogLoading = false,
     preloadedCatalogLoaded = false,
     preparedVisibleCount = 0,
+    overlayClassName = "z-[900]",
+    lunaSparksCount = 0,
+    onOpenLunaSparks = null,
 }) {
     const { setBalance } = useCreditBalance();
+    const { resolvedTheme: appAppearanceTheme } = useAppearance();
+    const appDark = appAppearanceTheme === "dark";
     const [tab, setTab] = useState("marketplace");
     const [query, setQuery] = useState("");
     const [category, setCategory] = useState("All");
+    const [pickerStage, setPickerStage] = useState("categories");
     const [aiResults, setAiResults] = useState(null);
     const [aiPrompt, setAiPrompt] = useState("");
     const [aiSearchBusy, setAiSearchBusy] = useState(false);
@@ -332,6 +341,7 @@ export default function AddSectionModal({
     const [mode, setMode] = useState("quick");
     const [instruction, setInstruction] = useState("");
     const [previewSpark, setPreviewSpark] = useState(null);
+    const [pickerSparkKey, setPickerSparkKey] = useState(null);
     const [previewVariantIndex, setPreviewVariantIndex] = useState(0);
     const [personalizingSpark, setPersonalizingSpark] = useState(false);
     const [personalizeProgress, setPersonalizeProgress] = useState(0);
@@ -342,6 +352,27 @@ export default function AddSectionModal({
 
     const previewVariants = ["primary", "white", "surface"];
     const previewVariant = previewVariants[previewVariantIndex];
+
+    // Every Add/Insert session starts clean. This prevents the previous category,
+    // Spark, search, or preview variant from leaking into a later insertion flow.
+    useEffect(() => {
+        if (!open) return;
+        setTab('marketplace');
+        setQuery('');
+        setCategory('All');
+        setPickerStage('categories');
+        setAiResults(null);
+        setAiPrompt('');
+        setSelected(null);
+        setMode('quick');
+        setInstruction('');
+        setPreviewSpark(null);
+        setPickerSparkKey(null);
+        setPreviewVariantIndex(0);
+        setBusyKey(null);
+        setPopupActive(false);
+        marketplaceScrollRef.current?.scrollTo?.({ top: 0, behavior: 'auto' });
+    }, [open, contextLabel]);
 
     useEffect(() => {
         if (previewSpark) setPreviewVariantIndex(0);
@@ -388,7 +419,10 @@ export default function AddSectionModal({
         // One global Spark picker serves Add, Insert Above, and Insert Below.
         // Placement is handled by Builder; the library itself always stays complete.
         setTab("marketplace");
+        setCategory("All");
+        setPickerStage("categories");
         setPreviewSpark(null);
+        setPickerSparkKey(null);
         setSelected(null);
         setMode("quick");
         setInstruction("");
@@ -431,6 +465,20 @@ export default function AddSectionModal({
     const registry = useMemo(() => new Map(BlockRegistry.map((item) => [item.type, item])), []);
     const items = useMemo(() => catalog.map((spark) => ({ ...spark, registry: registry.get(spark.key) })).filter((spark) => spark.registry), [catalog, registry]);
     const categories = useMemo(() => ["All", ...new Set(items.map((item) => item.category || categoryFor(item.key)))], [items]);
+    const categoryCards = useMemo(() => {
+        const countsByCategory = new Map();
+        items.forEach((item) => {
+            const name = item.category || categoryFor(item.key);
+            if (!name || name === "All") return;
+            countsByCategory.set(name, (countsByCategory.get(name) || 0) + 1);
+        });
+        const preferred = ["Hero", "Services", "Features", "Proof", "Testimonials", "Pricing", "Team", "FAQ", "Contact", "Case Studies", "Posts / Updates", "Events", "Careers", "Mini Heroes", "Other"];
+        const ordered = [
+            ...preferred.filter((name) => countsByCategory.has(name)),
+            ...Array.from(countsByCategory.keys()).filter((name) => !preferred.includes(name)).sort((a, b) => a.localeCompare(b)),
+        ];
+        return ordered.map((name) => ({ name, count: countsByCategory.get(name) || 0 }));
+    }, [items]);
     const counts = useMemo(() => ({
         owned: items.filter((item) => item.owned).length,
         favorites: items.filter((item) => item.favorited).length,
@@ -448,6 +496,106 @@ export default function AddSectionModal({
         const haystack = `${item.name} ${item.description} ${item.category} ${item.collection || ""}`.toLowerCase();
         return haystack.includes(query.trim().toLowerCase());
     }).sort((a, b) => aiResults ? ((aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999)) : 0), [items, tab, category, query, aiResults, aiResultMap]);
+
+    const categorySparkItems = useMemo(() => {
+        if (category === "All") {
+            if (!aiResults) return [];
+            return items
+                .filter((item) => aiResultMap.has(item.key))
+                .sort((a, b) => (aiResultMap.get(a.key)?.rank || 999) - (aiResultMap.get(b.key)?.rank || 999));
+        }
+        return items.filter((item) => (item.category || categoryFor(item.key)) === category);
+    }, [items, category, aiResults, aiResultMap]);
+
+    const pickerSpark = useMemo(() => {
+        if (!pickerSparkKey) return categorySparkItems[0] || null;
+        return items.find((item) => item.key === pickerSparkKey) || categorySparkItems[0] || null;
+    }, [items, categorySparkItems, pickerSparkKey]);
+
+    const blockForSpark = (spark) => {
+        if (!spark?.registry) return null;
+        const schemaDefaults = BuilderBlockRegistry[spark.key]?.schema?.defaults || {};
+        return {
+            ...structuredClone(schemaDefaults),
+            ...structuredClone(spark.registry.payload || {}),
+            type: spark.key,
+        };
+    };
+
+    const blankLunaFlexBlock = () => ({
+        type: 'luna_custom_section',
+        custom_spark_key: `luna-blank-${Date.now()}`,
+        custom_spark_saved: false,
+        semantic_type: 'custom',
+        source_type: 'blank_luna',
+        category: 'content',
+        layout: 'editorial',
+        alignment: 'left',
+        media_position: 'none',
+        density: 'balanced',
+        accent_shape: 'none',
+        section_mood: 'auto',
+        eyebrow: '',
+        heading: 'New Luna Section',
+        heading_accent_text: '',
+        text: '',
+        primary_label: '',
+        primary_url: '#',
+        secondary_label: '',
+        secondary_url: '#',
+        image_url: '',
+        items: [],
+        elements: [],
+        theme: 'auto',
+        ai_flex: {
+            source: 'blank',
+            mode: 'ai_flex',
+            skip_spark_match: true,
+            generated: false,
+        },
+    });
+
+    const startBlankWithLuna = () => {
+        if (!onCustomize) return;
+        const block = blankLunaFlexBlock();
+        onCustomize(block, {
+            spark: { name: 'Start Blank with Luna', key: block.custom_spark_key, category: 'Luna' },
+            insertionContext,
+            category: 'Luna',
+            creationSource: 'blank_luna',
+            aiFlexMode: true,
+            skipSparkMatch: true,
+        });
+        onClose();
+    };
+
+    const chooseCategory = (name) => {
+        const matches = items.filter((item) => (item.category || categoryFor(item.key)) === name);
+        const initial = matches.find((item) => item.owned && !item.trial_locked) || matches.find((item) => !item.trial_locked) || matches[0] || null;
+        setCategory(name);
+        setPickerSparkKey(initial?.key || null);
+        setPreviewVariantIndex(0);
+
+        // Hotfix: when Add Section is connected to Builder's reusable Section
+        // Editor, choosing a category should enter that editor immediately. The
+        // editor already exposes every compatible Spark layout plus contextual
+        // Luna, so this removes the redundant category-specific preview screen.
+        // The new block is still only a popup draft; Builder commits it later
+        // when the user presses Add Section in the Section Editor.
+        if (onCustomize && initial?.owned && !initial?.trial_locked) {
+            const block = blockForSpark(initial);
+            if (block) {
+                onCustomize(block, { spark: initial, insertionContext, category: name });
+                onClose();
+                return;
+            }
+        }
+
+        // Locked/unowned categories keep the marketplace step so the user can
+        // unlock a Spark before opening the Section Editor.
+        setPickerStage("sparks");
+        window.requestAnimationFrame(() => marketplaceScrollRef.current?.scrollTo({ top: 0, behavior: "auto" }));
+    };
 
     const sparkRevealKey = `${tab}|${category}|${query.trim().toLowerCase()}|${aiResults ? 'ai' : 'browse'}|${filteredItems.length}`;
     const {
@@ -478,6 +626,7 @@ export default function AddSectionModal({
             setAiPrompt(prompt);
             setCategory('All');
             setTab('marketplace');
+            setPickerStage('sparks');
             window.requestAnimationFrame(() => marketplaceScrollRef.current?.scrollTo({ top: 0, behavior: 'auto' }));
         } catch (error) {
             showCosmicNotification({ title: 'Luna search unavailable', message: error.response?.data?.message || 'Normal Spark search is still available.', tone: 'error' });
@@ -517,6 +666,20 @@ export default function AddSectionModal({
         }
     };
 
+    const addPickerSparkQuick = (spark) => {
+        if (!spark || !spark.owned || spark.trial_locked) return;
+        const block = blockForSpark(spark);
+        if (!block) return;
+        if (onCustomize) {
+            onCustomize(block, { spark, insertionContext });
+            onClose();
+            return;
+        }
+        onAdd(block);
+        showCosmicNotification({ title: isContextualInsert ? 'Section inserted' : 'Section added', message: isContextualInsert && insertionAnchorLabel ? `${spark.name} was inserted ${insertionPosition === 'above' ? 'above' : 'below'} ${insertionAnchorLabel}.` : `${spark.name} was added to this page.`, tone: 'success' });
+        onClose();
+    };
+
     const addSpark = async () => {
         if (!selected) return;
         setBusyKey(selected.key);
@@ -527,11 +690,13 @@ export default function AddSectionModal({
                 // with missing arrays until the user edits them. Registry payload remains the
                 // final override so intentionally customized marketplace copy still wins.
                 const schemaDefaults = BuilderBlockRegistry[selected.key]?.schema?.defaults || {};
-                onAdd({
+                const block = {
                     ...structuredClone(schemaDefaults),
                     ...structuredClone(selected.registry.payload || {}),
                     type: selected.key,
-                });
+                };
+                if (onCustomize) onCustomize(block, { spark: selected, insertionContext });
+                else onAdd(block);
             } else {
                 if (trialMode) throw new Error("AI Spark personalization is available after sign up. Quick Add remains available in trial.");
                 setPersonalizingSpark(true);
@@ -552,9 +717,10 @@ export default function AddSectionModal({
                 setPersonalizeProgress(100);
                 await new Promise((resolve) => window.setTimeout(resolve, 400));
                 setBalance(data.credit_balance);
-                onAdd(block);
+                if (onCustomize) onCustomize(block, { spark: selected, insertionContext });
+                else onAdd(block);
             }
-            showCosmicNotification({ title: "Spark added", message: `${selected.name} was added to this page.`, tone: "success" });
+            if (!onCustomize) showCosmicNotification({ title: isContextualInsert ? 'Section inserted' : 'Spark added', message: isContextualInsert && insertionAnchorLabel ? `${selected.name} was inserted ${insertionPosition === 'above' ? 'above' : 'below'} ${insertionAnchorLabel}.` : `${selected.name} was added to this page.`, tone: 'success' });
             setSelected(null);
             setInstruction("");
             setMode("quick");
@@ -567,47 +733,157 @@ export default function AddSectionModal({
         }
     };
 
-    return <div className="fixed inset-0 z-[900] flex items-center justify-center p-4 sm:p-6">
-        <button type="button" onClick={onClose} className="absolute inset-0 bg-black/75 backdrop-blur-sm" aria-label="Close Add Spark" />
+    const modalContextLabel = String(contextLabel || "Add Section");
+    const isContextualInsert = /insert section/i.test(modalContextLabel);
+    const insertionPosition = String(insertionContext?.position || '').toLowerCase();
+    const insertionAnchorLabel = String(insertionContext?.anchorLabel || '').trim();
+    const insertionHint = isContextualInsert && insertionAnchorLabel
+        ? `This new section will be inserted ${insertionPosition === 'above' ? 'above' : 'below'} ${insertionAnchorLabel}.`
+        : '';
+
+    return <div className={`fixed inset-0 ${overlayClassName} flex items-center justify-center p-4 sm:p-6`}>
+        <button type="button" onClick={onClose} style={{ backgroundColor: 'rgba(2, 6, 23, 0.66)', backdropFilter: 'blur(8px)' }} className="absolute inset-0 bg-black/75 backdrop-blur-sm" aria-label="Close Add Spark" />
         <section
+            id="cosmic-add-section-modal"
             role="dialog"
             aria-modal="true"
+            data-cosmic-app-modal="add-section"
+            data-appearance={appDark ? 'dark' : 'light'}
             onPointerEnter={() => setPopupActive(true)}
             onPointerLeave={() => setPopupActive(false)}
-            className={`cosmic-add-spark-modal relative z-10 flex max-h-[92vh] w-full max-w-6xl flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#111116] text-white shadow-2xl shadow-black/70 ${popupActive ? 'is-active' : ''}`}
+            className={`cosmic-add-spark-modal cosmic-native-text-layer relative z-10 flex max-h-[92vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl border shadow-2xl ${appDark ? 'border-white/10 bg-[#111116] text-white shadow-black/70' : 'border-slate-200 bg-white text-slate-950 shadow-slate-950/20'} ${popupActive ? 'is-active' : ''}`}
         >
-            <header className="cosmic-add-spark-header border-b border-white/10 px-5 py-5 sm:px-7">
-                <div className="flex items-start justify-between gap-4">
-                    <div><p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-300">Cosmic Builder</p><h2 className="mt-1 text-2xl font-semibold">✨ {contextLabel || 'Add Spark'}</h2><p className="mt-1 text-sm text-slate-400">{trialMode ? '10 Sparks are ready to use in your trial. Keep scrolling to preview the full library; sign up to unlock the rest.' : contextLabel?.startsWith('Insert Spark') ? 'Choose any Spark from the full library. Owned Sparks can be added now; marketplace Sparks can be purchased here.' : 'Reuse your owned layouts, or discover a new one in the Marketplace.'}</p></div>
-                    <button onClick={onClose} className="rounded-xl border border-white/10 px-3 py-2 text-slate-400 hover:bg-white/5 hover:text-white">✕</button>
-                </div>
-                <div className="mt-5 flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                    <div className="flex max-w-full gap-1 overflow-x-auto rounded-xl border border-white/10 bg-black/20 p-1">
-                        {trialMode ? <span className="whitespace-nowrap rounded-lg bg-white px-3 py-2 text-sm font-semibold text-slate-950">Trial Sparks ({counts.marketplace})</span> : <>
-                            <button onClick={() => setTab("marketplace")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "marketplace" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>All Sparks ({counts.marketplace})</button>
-                            <button onClick={() => setTab("owned")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "owned" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Owned ({counts.owned})</button>
-                            <button onClick={() => setTab("favorites")} className={`whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold ${tab === "favorites" ? "bg-white text-slate-950" : "text-slate-400 hover:text-white"}`}>Favorites ({counts.favorites})</button>
-                        </>}
-                    </div>
-                    <div className="flex w-full items-center gap-2 lg:w-auto">
-                        <input value={query} onChange={(event) => { setQuery(event.target.value); if (aiResults) clearAiSearch(); }} onKeyDown={(event) => { if (event.key === 'Enter' && !trialMode) { event.preventDefault(); runAiSearch(); } }} placeholder="Search, or describe the Spark you need..." className="h-11 min-w-0 flex-1 rounded-xl border border-white/10 bg-white/[0.04] px-4 text-sm placeholder:text-slate-600 focus:border-violet-400 focus:outline-none lg:w-80" />
-                        {!trialMode && <button type="button" disabled={aiSearchBusy || query.trim().length < 2} onClick={runAiSearch} className="inline-flex h-11 shrink-0 items-center gap-1.5 rounded-xl bg-violet-400 px-3 text-xs font-bold text-slate-950 disabled:cursor-not-allowed disabled:opacity-50" title="Let Luna rank the best matching Sparks"><span aria-hidden="true">✦</span>{aiSearchBusy ? 'Searching…' : 'Ask Luna'}</button>}
-                    </div>
-                </div>
-                {trialMode && <div className="mt-4 flex flex-col gap-2 rounded-2xl border border-violet-400/20 bg-violet-400/[0.07] px-4 py-3 text-sm sm:flex-row sm:items-center sm:justify-between"><div><b className="text-violet-200">Trial access: 10 Sparks available</b><p className="mt-0.5 text-xs text-slate-400">Preview everything. Create a free account to unlock the full Spark library.</p></div><Link href={trialSignupUrl} className="shrink-0 rounded-xl bg-violet-400 px-4 py-2 text-center text-xs font-bold text-slate-950">Sign up to unlock</Link></div>}
-                {aiResults && <div className="mt-3 flex flex-wrap items-center gap-2 text-xs text-slate-400"><span><b className="text-violet-200">✦ Luna results</b> for “{aiPrompt}” · {visible.length} match{visible.length === 1 ? '' : 'es'}</span><button type="button" onClick={clearAiSearch} className="rounded-full border border-white/10 px-2.5 py-1 text-[11px] font-semibold text-slate-300 hover:text-white">Clear AI results</button></div>}
-                <div className="mt-4 flex gap-2 overflow-x-auto pb-1">{categories.map((item) => <button key={item} onClick={() => setCategory(item)} className={`whitespace-nowrap rounded-full px-3 py-1.5 text-xs font-semibold ${category === item ? "bg-violet-400 text-slate-950" : "border border-white/10 text-slate-400 hover:text-white"}`}>{item}</button>)}</div>
-            </header>
+            <button type="button" onClick={onClose} className={`absolute right-4 top-4 z-30 grid h-10 w-10 place-items-center rounded-xl border text-sm shadow-sm transition ${appDark ? 'border-white/10 bg-[#18181d] text-slate-300 hover:bg-white/10 hover:text-white' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`} aria-label="Close Add Section">✕</button>
+            {pickerStage === "categories" ? (
+                <div className={`cosmic-add-section-library grid min-h-[620px] flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_320px] ${appDark ? 'bg-[#111116] text-white' : 'bg-white text-slate-950'}`}>
+                    <div className="min-w-0 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8">
+                        <div className="flex items-start justify-between gap-4 pr-12">
+                            <div>
+                                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-600">{modalContextLabel}</p>
+                                <h2 className="mt-1 text-2xl font-semibold tracking-tight">Choose a section type</h2>
+                                <p className={`mt-1.5 max-w-2xl text-sm leading-6 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Pick a section type, or start blank with Luna for a brand-new AI Flex section. Blank Luna sections skip the preset picker and open directly in the Section Editor.</p>
+                                {insertionHint ? <p className={`mt-2 text-xs font-semibold ${appDark ? 'text-violet-300' : 'text-violet-700'}`}>{insertionHint}</p> : null}
+                            </div>
+                        </div>
 
-            <div ref={marketplaceScrollRef} className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-5 sm:p-7">
-                {loading && catalog.length === 0 ? <div className="flex min-h-[420px] flex-col items-center justify-center rounded-2xl border border-dashed border-white/10 bg-white/[0.02] px-6 text-center"><div className="h-10 w-10 animate-spin rounded-full border-4 border-white/10 border-t-violet-400" /><h3 className="mt-4 text-base font-semibold text-white">Loading Sparks…</h3><p className="mt-1 text-sm text-slate-400">Preparing Sparks in the background.</p><div className="mt-6 grid w-full max-w-3xl gap-3 sm:grid-cols-3">{Array.from({ length: 6 }).map((_, index) => <div key={index} className="h-28 animate-pulse rounded-xl bg-white/[0.04]" />)}</div></div> : visible.length ? <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{visible.map((spark, sparkIndex) => <article key={spark.key} style={{ contentVisibility: "auto", containIntrinsicSize: "420px" }} className="cosmic-spark-card relative overflow-hidden rounded-xl border border-white/10 bg-white/[0.025]">
-                    <div className={`h-40 overflow-hidden p-3 ${spark.trial_locked ? "blur-[3px] saturate-50 opacity-55" : ""}`}><div className="pointer-events-none h-full w-full"><SparkVisual spark={spark} previewVariant={["primary", "white", "surface", "white", "primary"][sparkIndex % 5]} websiteTheme={websiteTheme || "midnight"} /></div></div>
-                    <div className="p-4"><div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-wider text-violet-300">{spark.category}</p><h3 className="mt-1 text-base font-semibold">{spark.name}</h3></div><div className="flex items-center gap-2">{!trialMode && <button type="button" disabled={busyKey === `favorite-${spark.key}`} onClick={() => toggleFavorite(spark)} className={`cosmic-flat-icon flex h-8 w-8 items-center justify-center rounded-lg border text-sm ${spark.favorited ? "border-rose-300/30 bg-rose-400/10 text-rose-200" : "border-white/10 text-slate-400 hover:text-white"}`}>{spark.favorited ? "♥" : "♡"}</button>}{spark.trial_locked ? <span className="rounded-full border border-white/15 bg-white/[0.06] px-2.5 py-1 text-[10px] font-bold text-slate-200">🔒 Locked</span> : spark.owned ? <span className="cosmic-owned-badge rounded-full border border-emerald-400/20 bg-emerald-400/10 px-2.5 py-1 text-[10px] font-bold text-emerald-200">{trialMode ? "Trial" : "✓ Owned"}</span> : Number(spark.credits || 0) === 0 ? <span className="rounded-full bg-cyan-300/10 px-2.5 py-1 text-[10px] font-bold text-cyan-100">Built-in · Free</span> : <span className="rounded-full bg-amber-300/10 px-2.5 py-1 text-[10px] font-bold text-amber-100">⚡ {spark.credits}</span>}</div></div><p className={`mt-2 line-clamp-2 text-xs leading-5 text-slate-400 ${spark.trial_locked ? "blur-[2px] select-none opacity-55" : ""}`}>{spark.description}</p>{aiResults && aiResultMap.get(spark.key)?.reason && <p className="mt-2 rounded-lg border border-violet-300/10 bg-violet-400/[0.06] px-2.5 py-2 text-[11px] leading-4 text-violet-100"><b>✦ Luna:</b> {aiResultMap.get(spark.key).reason}</p>}<div className="mt-4 flex gap-2"><button type="button" onClick={() => spark.can_preview === false ? showCosmicNotification({ title: "Preview locked", message: spark.preview_access?.message || "Upgrade your plan to preview this Spark.", tone: "warning" }) : setPreviewSpark(spark)} className="rounded-xl border border-white/10 px-4 py-2.5 text-sm font-bold text-slate-200 transition hover:border-violet-400/40 hover:bg-white/5">Preview</button>{spark.trial_locked ? <Link href={trialSignupUrl} className="flex-1 rounded-xl bg-violet-400 px-4 py-2.5 text-center text-sm font-bold text-slate-950">Sign up to unlock</Link> : spark.owned ? <button onClick={() => setSelected(spark)} className="flex-1 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950 hover:bg-violet-100">Add to Page</button> : spark.can_install === false && spark.usage_state?.upgrade_url ? <Link href={spark.usage_state.upgrade_url} className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">{spark.usage_state.actionLabel || "Upgrade to add"}</Link> : spark.can_install === false && spark.usage_state?.action === "buy_credits" ? <Link href="/credits" className="flex-1 rounded-xl bg-amber-200 px-4 py-2.5 text-center text-sm font-bold text-slate-950">Add credits</Link> : <button disabled={busyKey === spark.key || spark.can_install === false} onClick={() => unlock(spark)} className="flex-1 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold hover:bg-violet-500 disabled:opacity-50">{busyKey === spark.key ? "Buying..." : spark.usage_state?.actionLabel || (Number(spark.credits || 0) === 0 ? "Add Free Spark" : `Buy · ⚡ ${spark.credits}`)}</button>}</div></div>
-                </article>)}
-                    {hasMoreSparks && <div ref={sparkSentinelRef} data-cosmic-infinite-sentinel="sparks" className="col-span-full h-px w-full" aria-hidden="true" />}
-                    {isRevealingSparks && <div className="col-span-full py-3 text-center text-xs text-slate-500">Loading more Sparks…</div>}
-                </div> : <div className="rounded-2xl border border-dashed border-white/10 p-12 text-center"><div className="text-3xl">✨</div><h3 className="mt-3 font-semibold">{tab === "owned" ? "No owned Sparks found" : tab === "favorites" ? "No favorite Sparks yet" : "No Sparks match your search"}</h3><p className="mt-1 text-sm text-slate-500">{tab === "owned" ? "Open the Marketplace tab and add your first reusable Spark." : tab === "favorites" ? "Use the heart button to save Sparks here for quick access." : "Try another category or search phrase."}</p>{tab === "owned" && <button onClick={() => setTab("marketplace")} className="mt-5 rounded-xl bg-white px-4 py-2.5 text-sm font-bold text-slate-950">Browse Marketplace</button>}</div>}
-            </div>
+                        {loading && catalog.length === 0 ? (
+                            <div className={`mt-8 grid min-h-[420px] place-items-center rounded-2xl border border-dashed ${appDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
+                                <div className="text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-violet-200 border-t-violet-600" /><p className="mt-4 text-sm font-semibold">Preparing section types…</p></div>
+                            </div>
+                        ) : (
+                            <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                                <button
+                                    type="button"
+                                    onClick={startBlankWithLuna}
+                                    className={`group min-h-40 rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${appDark ? 'border-violet-400/35 bg-gradient-to-br from-violet-500/10 to-indigo-500/5 hover:border-violet-300' : 'border-violet-200 bg-gradient-to-br from-violet-50 to-indigo-50 shadow-sm hover:border-violet-400'}`}
+                                >
+                                    <div className={`grid h-10 w-10 place-items-center rounded-xl text-lg font-bold ${appDark ? 'bg-violet-400/15 text-violet-200' : 'bg-violet-600 text-white'}`}>✦</div>
+                                    <div className="mt-8 flex items-end justify-between gap-3">
+                                        <div>
+                                            <div className="text-base font-semibold">Start Blank with Luna</div>
+                                            <div className={`mt-1 text-xs leading-5 ${appDark ? 'text-violet-200/70' : 'text-violet-700'}`}>Build a new AI Flex section from scratch</div>
+                                        </div>
+                                        <span className="text-lg text-violet-500 transition group-hover:translate-x-1" aria-hidden="true">→</span>
+                                    </div>
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={() => onOpenLunaSparks?.()}
+                                    disabled={!onOpenLunaSparks}
+                                    className={`group min-h-40 rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 ${appDark ? 'border-fuchsia-400/25 bg-white/[0.035] hover:border-fuchsia-300' : 'border-fuchsia-200 bg-white shadow-sm hover:border-fuchsia-400'}`}
+                                >
+                                    <div className={`grid h-10 w-10 place-items-center rounded-xl text-lg font-bold ${appDark ? 'bg-fuchsia-400/10 text-fuchsia-300' : 'bg-fuchsia-50 text-fuchsia-700'}`}>▣</div>
+                                    <div className="mt-8 flex items-end justify-between gap-3">
+                                        <div>
+                                            <div className="text-base font-semibold">Luna Sparks ✦</div>
+                                            <div className={`mt-1 text-xs ${appDark ? 'text-slate-500' : 'text-slate-500'}`}>{Number(lunaSparksCount || 0)} saved Luna Spark{Number(lunaSparksCount || 0) === 1 ? '' : 's'}</div>
+                                        </div>
+                                        <span className="text-lg text-fuchsia-500 transition group-hover:translate-x-1" aria-hidden="true">→</span>
+                                    </div>
+                                </button>
+                                {categoryCards.map((item) => (
+                                    <button
+                                        key={item.name}
+                                        type="button"
+                                        onClick={() => chooseCategory(item.name)}
+                                        className={`group min-h-40 rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:border-violet-400 hover:shadow-lg ${appDark ? 'border-white/10 bg-white/[0.035]' : 'border-slate-200 bg-white shadow-sm'}`}
+                                    >
+                                        <div className={`grid h-10 w-10 place-items-center rounded-xl text-lg font-bold ${appDark ? 'bg-violet-400/10 text-violet-300' : 'bg-violet-50 text-violet-700'}`}>✦</div>
+                                        <div className="mt-8 flex items-end justify-between gap-3">
+                                            <div><div className="text-base font-semibold">{item.name}</div><div className={`mt-1 text-xs ${appDark ? 'text-slate-500' : 'text-slate-500'}`}>{item.count} Spark{item.count === 1 ? '' : 's'}</div></div>
+                                            <span className="text-lg text-violet-500 transition group-hover:translate-x-1" aria-hidden="true">→</span>
+                                        </div>
+                                    </button>
+                                ))}
+                            </div>
+                        )}
+                    </div>
+
+                    <aside className={`flex min-h-0 flex-col border-t p-5 lg:border-l lg:border-t-0 ${appDark ? 'border-white/10 bg-[#0d0d12]' : 'border-slate-200 bg-slate-50'}`}>
+                        <div>
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-500">✦ Luna · {isContextualInsert ? modalContextLabel : 'Add Section'}</p>
+                            <h3 className="mt-2 text-base font-semibold">Need help choosing?</h3>
+                            <p className={`mt-1 text-xs leading-5 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Describe the section you want. Luna will rank matching Sparks without changing the Builder.</p>
+                        </div>
+                        <div className="mt-auto pt-6">
+                            <textarea
+                                value={query}
+                                onChange={(event) => { setQuery(event.target.value); if (aiResults) clearAiSearch(); }}
+                                rows={5}
+                                placeholder="e.g. Add a premium services section with four cards"
+                                className={`w-full resize-none rounded-xl border px-3.5 py-3 text-sm outline-none transition focus:border-violet-400 ${appDark ? 'border-white/10 bg-black/20 text-white placeholder:text-slate-600' : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`}
+                            />
+                            <button type="button" disabled={trialMode || aiSearchBusy || query.trim().length < 2} onClick={runAiSearch} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"><span aria-hidden="true">✦</span>{aiSearchBusy ? 'Searching…' : 'Ask Luna'}</button>
+                            <div className={`mt-4 rounded-xl border px-3 py-3 text-xs leading-5 ${appDark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}><b className={appDark ? 'text-slate-200' : 'text-slate-800'}>Whole page?</b><br/>Use the whole-page Luna chat when you want Luna to plan multiple sections together.</div>
+                        </div>
+                    </aside>
+                </div>
+            ) : (
+                <>
+                    <header className={`shrink-0 border-b px-5 py-4 pr-16 sm:px-7 sm:pr-20 ${appDark ? 'border-white/10 bg-[#111116]' : 'border-slate-200 bg-white'}`}>
+                        <div className="flex items-start justify-between gap-4">
+                            <div className="min-w-0">
+                                <button type="button" onClick={() => { setPickerStage('categories'); setCategory('All'); setPickerSparkKey(null); clearAiSearch(); }} className={`mb-2 inline-flex items-center gap-1 text-xs font-semibold ${appDark ? 'text-slate-400 hover:text-white' : 'text-slate-500 hover:text-slate-900'}`}>← Section types</button>
+                                <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-violet-500">{modalContextLabel} · {category}</p>
+                                <h2 className="mt-1 truncate text-xl font-semibold">{pickerSpark?.name || `Choose a ${category} Spark`}</h2>
+                            </div>
+                        </div>
+                        <div className="mt-4 flex max-w-full gap-2 overflow-x-auto pb-1">
+                            {categorySparkItems.map((spark) => {
+                                const active = pickerSpark?.key === spark.key;
+                                return <button key={spark.key} type="button" onClick={() => { setPickerSparkKey(spark.key); setPreviewVariantIndex(0); }} aria-pressed={active} data-active={active ? 'true' : 'false'} className={`cosmic-add-section-spark-tab shrink-0 rounded-lg border px-3 py-2 text-xs font-semibold transition ${active ? 'border-violet-600 bg-violet-100 text-violet-900 ring-1 ring-violet-200' : appDark ? 'border-white/10 bg-white/[0.03] text-slate-300 hover:border-violet-400/50 hover:text-white' : 'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50'}`}>{spark.name}{!spark.owned && !spark.trial_locked ? <span className="ml-1.5 text-[10px] text-amber-500">⚡{Number(spark.credits || 0)}</span> : null}</button>;
+                            })}
+                        </div>
+                    </header>
+
+                    <div className={`cosmic-add-section-stage grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_300px] ${appDark ? 'bg-[#111116]' : 'bg-white'}`}>
+                        <div ref={marketplaceScrollRef} className="min-h-0 overflow-y-auto p-4 sm:p-5">
+                            {pickerSpark ? (
+                                <div className={`overflow-hidden rounded-2xl border ${appDark ? 'border-white/10 bg-black/20' : 'border-slate-200 bg-slate-50'}`}>
+                                    <UnifiedSparkPreviewEngine spark={pickerSpark} previewVariant={previewVariant} websiteTheme={websiteTheme} commerce={commerce} contentWorkspace={contentWorkspace} interactive={true} />
+                                </div>
+                            ) : <div className="grid min-h-[420px] place-items-center text-sm text-slate-500">No Sparks found in this category.</div>}
+                        </div>
+                        <aside className={`flex min-h-0 flex-col border-t p-4 lg:border-l lg:border-t-0 ${appDark ? 'border-white/10 bg-[#0d0d12]' : 'border-slate-200 bg-slate-50'}`}>
+                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-500">✦ Luna · {category}</p>
+                            <h3 className="mt-2 text-sm font-semibold">{pickerSpark?.name || category}</h3>
+                            <p className={`mt-1 text-xs leading-5 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Click the Spark buttons to compare layouts. Nothing is added until you confirm below.</p>
+                            {insertionHint ? <p className={`mt-2 rounded-lg border px-2.5 py-2 text-[11px] font-semibold leading-4 ${appDark ? 'border-violet-400/20 bg-violet-400/[0.06] text-violet-200' : 'border-violet-200 bg-violet-50 text-violet-800'}`}>{insertionHint}</p> : null}
+                            {pickerSpark?.description ? <p className={`mt-4 rounded-xl border p-3 text-xs leading-5 ${appDark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>{pickerSpark.description}</p> : null}
+                        </aside>
+                    </div>
+
+                    <footer className={`flex shrink-0 flex-wrap items-center justify-between gap-3 border-t px-5 py-3 sm:px-7 ${appDark ? 'border-white/10 bg-[#111116]' : 'border-slate-200 bg-white'}`}>
+                        <div className="flex items-center gap-2">
+                            {previewVariants.map((variant, index) => <button key={variant} type="button" onClick={() => setPreviewVariantIndex(index)} aria-pressed={previewVariantIndex === index} className={`rounded-lg px-3 py-1.5 text-xs font-semibold capitalize ${previewVariantIndex === index ? 'bg-violet-600 text-white' : appDark ? 'text-slate-400 hover:bg-white/5 hover:text-white' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}>{variant}</button>)}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button type="button" onClick={onClose} className={`rounded-xl border px-4 py-2 text-sm font-semibold ${appDark ? 'border-white/10 text-slate-300' : 'border-slate-300 text-slate-700'}`}>Cancel</button>
+                            {pickerSpark?.trial_locked ? <Link href={trialSignupUrl} className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white">Sign up to unlock</Link> : pickerSpark?.owned ? <button type="button" onClick={() => addPickerSparkQuick(pickerSpark)} className="rounded-xl bg-slate-950 px-5 py-2 text-sm font-bold text-white hover:bg-slate-800">Customize Section</button> : pickerSpark ? <button type="button" disabled={busyKey === pickerSpark.key || pickerSpark.can_install === false} onClick={() => unlock(pickerSpark)} className="rounded-xl bg-violet-600 px-5 py-2 text-sm font-bold text-white hover:bg-violet-500 disabled:opacity-40">{busyKey === pickerSpark.key ? 'Adding…' : Number(pickerSpark.credits || 0) === 0 ? 'Add Free Spark' : `Unlock · ⚡ ${pickerSpark.credits}`}</button> : null}
+                        </div>
+                    </footer>
+                </>
+            )}
         </section>
 
         {previewSpark && (
@@ -654,7 +930,7 @@ export default function AddSectionModal({
                         {previewSpark.trial_locked ? (
                             <Link href={trialSignupUrl} className="rounded-xl bg-violet-400 px-5 py-2.5 text-sm font-bold text-slate-950">Sign up to unlock</Link>
                         ) : previewSpark.owned ? (
-                            <button type="button" onClick={() => { setSelected(previewSpark); setPreviewSpark(null); }} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-950">Add to Page</button>
+                            <button type="button" onClick={() => { setPreviewSpark(null); addPickerSparkQuick(previewSpark); }} className="rounded-xl bg-white px-5 py-2.5 text-sm font-bold text-slate-950">Customize Section</button>
                         ) : (
                             <button type="button" disabled={busyKey === previewSpark.key || previewSpark.can_install === false} onClick={() => unlock(previewSpark)} className="rounded-xl bg-violet-600 px-5 py-2.5 text-sm font-bold text-white disabled:opacity-50">
                                 {busyKey === previewSpark.key ? "Buying..." : previewSpark.slot_blocked ? "Owned Spark slots full" : previewSpark.can_install === false ? "Upgrade to add" : Number(previewSpark.credits || 0) === 0 ? "Add Free Spark" : `Buy Spark · ⚡ ${previewSpark.credits}`}
@@ -732,7 +1008,7 @@ export default function AddSectionModal({
 
                 <div className="cosmic-add-owned-spark-actions mt-5 flex justify-end gap-2">
                     <button type="button" onClick={() => setSelected(null)} className="rounded-xl border border-white/10 px-4 py-2 text-sm font-semibold text-slate-300">Cancel</button>
-                    <button type="button" disabled={busyKey === selected.key} onClick={addSpark} className="rounded-xl bg-white px-5 py-2 text-sm font-bold text-slate-950 disabled:opacity-50">{busyKey === selected.key ? "Adding..." : mode === "ai" ? "Personalize & Add · ⚡20" : "Add to Page · FREE"}</button>
+                    <button type="button" disabled={busyKey === selected.key} onClick={addSpark} className="rounded-xl bg-white px-5 py-2 text-sm font-bold text-slate-950 disabled:opacity-50">{busyKey === selected.key ? "Preparing..." : mode === "ai" ? "Personalize & Customize · ⚡20" : "Customize Section"}</button>
                 </div>
             </section>
         </div>}

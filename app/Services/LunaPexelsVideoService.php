@@ -19,6 +19,45 @@ final class LunaPexelsVideoService
         'testimonials_video_premium',
     ];
 
+    /**
+     * Resolve one landscape clip for a universal section background without
+     * requiring the Spark itself to expose a native video_url field.
+     */
+    public function backgroundFor(string $prompt, array $block = []): array
+    {
+        $query = $this->buildQuery($prompt, $block, 'universal_background_video');
+
+        if (! filled(config('services.pexels.api_key'))) {
+            return [
+                'url' => '',
+                'source' => 'unavailable',
+                'query' => $query,
+                'attribution' => null,
+            ];
+        }
+
+        $video = $this->searchBest($query, false);
+        if (! $video) {
+            return [
+                'url' => '',
+                'source' => 'unavailable',
+                'query' => $query,
+                'attribution' => null,
+            ];
+        }
+
+        return [
+            'url' => (string) $video['url'],
+            'source' => 'pexels',
+            'query' => $query,
+            'attribution' => [
+                'provider' => 'Pexels',
+                'creator' => (string) ($video['creator'] ?? ''),
+                'source_url' => (string) ($video['source_url'] ?? ''),
+            ],
+        ];
+    }
+
     public function apply(string $prompt, array $blocks): array
     {
         if (! filled(config('services.pexels.api_key'))) {

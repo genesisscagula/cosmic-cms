@@ -330,6 +330,22 @@ class CmsHtmlCompilerTest extends TestCase
         }
     }
 
+    public function test_commerce_checkout_with_products_compiles_scoped_item_rows(): void
+    {
+        $html = CmsHtmlCompiler::compile(
+            [['type' => 'commerce_checkout_classic']],
+            'emerald',
+            ['commerce' => ['products' => [[
+                'id' => 7,
+                'title' => 'QA Product',
+                'regular_price_minor' => 1000,
+            ]]]],
+        );
+
+        $this->assertStringContainsString('QA Product', $html);
+        $this->assertStringContainsString('cosmic-tw-path--items__0__row', $html);
+    }
+
     public function test_local_card_radius_override_is_emitted_for_static_preview_export_and_live(): void
     {
         foreach (['services_bento', 'pricing_cards', 'team_modern'] as $type) {
@@ -389,5 +405,23 @@ class CmsHtmlCompilerTest extends TestCase
             );
             $this->assertStringContainsString('bg-[#F8F8F7]', $html, $type);
         }
+    }
+
+    public function test_interactive_service_tabs_use_the_toggleable_hidden_attribute(): void
+    {
+        $html = CmsHtmlCompiler::compile([[
+            'type' => 'services_interactive_tabs',
+            'tab_count' => 3,
+        ]], 'emerald');
+
+        $this->assertStringContainsString("data-panel='0' class=", $html);
+        $this->assertStringNotContainsString("data-panel='0' class='hidden", $html);
+        $this->assertMatchesRegularExpression("/data-panel='1' class='[^']*' hidden>/", $html);
+        $this->assertMatchesRegularExpression("/data-panel='2' class='[^']*' hidden>/", $html);
+        $this->assertStringContainsString("var inactive=p.getAttribute('data-panel')!==n;p.hidden=inactive", $html);
+        $this->assertStringContainsString("p.classList.toggle('hidden',inactive)", $html);
+        $this->assertStringContainsString("data-active-class=", $html);
+        $this->assertStringContainsString("data-inactive-class=", $html);
+        $this->assertStringContainsString("x.classList.add.apply(x.classList,next)", $html);
     }
 }

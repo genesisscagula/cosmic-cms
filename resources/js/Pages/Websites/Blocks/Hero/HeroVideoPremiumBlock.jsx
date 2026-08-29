@@ -111,7 +111,7 @@ export function HeroVideoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
 
                 <button type="button" aria-label="Edit background video" onPointerDown={openVideoEditor} className={sparkTw(block, "button", "absolute inset-0 z-[5] cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-violet-300")} />
 
-                <div className={sparkTw(block, "wrapper_6", "pointer-events-none relative z-10 mx-auto flex max-w-7xl flex-col justify-between px-6 py-0 sm:px-10 lg:px-14")} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+                <div className={sparkTw(block, "wrapper_6", "pointer-events-none relative z-10 mx-auto flex max-w-7xl flex-col justify-between px-6 py-8 sm:px-10 sm:py-10 lg:px-14 lg:py-12")} style={{minHeight:"var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
                     <div className={sparkTw(block, "wrapper_7", `pointer-events-auto flex items-center justify-between border-b pb-5 ${mediaStyle.topBorder}`)}>
                         <EditableText value={data.eyebrow} className={sparkTw(block, "text", `text-[11px] font-bold uppercase tracking-[.34em] ${mediaStyle.eyebrow}`)} onSave={(eyebrow) => onUpdate({ eyebrow })} />
                         <EditableText value={data.media_badge} cosmicType="badge" className={sparkTw(block, "text_2", `rounded-full border px-4 py-2 text-[11px] font-semibold backdrop-blur-md ${mediaStyle.badge}`)} onSave={(media_badge) => onUpdate({ media_badge })} />

@@ -3,7 +3,7 @@ import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem, sparkTwPath } from "../Shared/sparkTailwindRuntime";
 
 export const ServicesFeatureComparisonSchema = {
     type: "services_feature_comparison",
@@ -72,7 +72,7 @@ export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme })
                     <div className={sparkTw(block, "wrapper_5", `hidden border-b p-6 lg:block ${border}`)}>
                         <span className={sparkTw(block, "label", `text-xs font-bold uppercase tracking-[.22em] ${muted}`)}>Capabilities</span>
                     </div>
-                    {options.map((option) => <article key={option.key} data-cosmic-contrast-surface={option.featured && !isPrimary ? "brand" : undefined} className={sparkTw(block, "card", `group relative border-b p-6 sm:p-7 ${border} ${option.featured ? featuredCard : baseCard}`)}>
+                    {options.map((option, optionIndex) => <article key={option.key} data-cosmic-contrast-surface={option.featured && !isPrimary ? "brand" : undefined} className={sparkTwItem(block, "options", optionIndex, "card", `group relative border-b p-6 sm:p-7 ${border} ${option.featured ? featuredCard : baseCard}`)}>
                         {option.featured && <EditableText value={data.option_two_badge} className={sparkTw(block, "text_4", `mb-5 inline-flex rounded-full px-3 py-1 text-[10px] font-black tracking-[.16em] ${primaryTheme.bg} ${primaryTheme.text}`)} onSave={save("option_two_badge")} />}
                         <EditableText value={data[`${option.key}_kicker`]} className={sparkTw(block, "text_5", `block text-[11px] font-bold uppercase tracking-[.2em] ${option.featured && !isPrimary ? "text-white/65" : muted}`)} onSave={save(`${option.key}_kicker`)} />
                         <EditableText value={data[`${option.key}_name`]} data-cosmic-preserve-heading-color={option.featured && !isPrimary ? "1" : undefined} className={sparkTw(block, "text_6", "mt-3 block text-2xl font-semibold tracking-[-.03em]")} onSave={save(`${option.key}_name`)} />
@@ -84,7 +84,7 @@ export function ServicesFeatureComparisonBlock({ block, onUpdate, globalTheme })
                             <RepeatableRemoveButton hoverScope="item" overlay placement="row" label="Remove feature row" disabled={rowCount<=1} onRemove={()=>{const all=["one","two","three","four","five","six","seven","eight"];const patch={feature_row_count:rowCount-1};for(let x=rowIndex;x<rowCount-1;x++){const a=all[x],b=all[x+1];patch[`feature_${a}`]=data[`feature_${b}`]??"";options.forEach(({key})=>{patch[`${key}_${a}`]=data[`${key}_${b}`]??"";});}onUpdate(patch)}} />
                             <EditableText value={data[`feature_${word}`]} className={sparkTw(block, "text_8", "text-sm font-semibold")} onSave={save(`feature_${word}`)} />
                         </div>
-                        {options.map((option) => <div key={`${word}-${option.key}`} data-cosmic-contrast-surface={option.featured && !isPrimary ? "brand" : undefined} className={sparkTw(block, "wrapper_8", `group relative border-b p-5 text-sm lg:p-6 ${border} ${option.featured ? featuredCard : baseCard}`)}>
+                        {options.map((option, optionIndex) => <div key={`${word}-${option.key}`} data-cosmic-contrast-surface={option.featured && !isPrimary ? "brand" : undefined} className={sparkTwPath(block, ["features", rowIndex, "options", optionIndex], "cell", `group relative border-b p-5 text-sm lg:p-6 ${border} ${option.featured ? featuredCard : baseCard}`)}>
                             <EditableText value={data[`${option.key}_${word}`]} className={sparkTw(block, "feature_value", option.featured && !isPrimary ? "font-semibold text-white" : "font-semibold")} onSave={save(`${option.key}_${word}`)} />
                         </div>)}
                     </div>)}

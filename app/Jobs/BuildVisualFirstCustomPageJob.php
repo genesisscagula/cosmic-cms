@@ -27,7 +27,7 @@ class BuildVisualFirstCustomPageJob implements ShouldQueue
         public ?string $screenshotPath = null,
         public ?string $screenshotMime = null,
     ) {
-        $this->onQueue((string) config('cosmic-queue.queues.ai_builds', 'ai-builds'));
+        $this->onQueue((string) config('cosmic-queue.queues.ai_builds', 'ai'));
     }
 
     public function handle(VisualFirstFullPageBuildService $builder): void

@@ -14,6 +14,7 @@ final class LunaIntentGateway
     public function __construct(
         private readonly LunaContextResolverService $contextResolver,
         private readonly LunaModelDepartmentService $models,
+        private readonly LunaActionContractRegistry $actionContracts,
     )
     {
         $path=resource_path('luna/canonical_intent_schema.json');
@@ -34,7 +35,7 @@ final class LunaIntentGateway
     public function route(string $message,array $siteMemory=[],array $context=[]): array
     {
         $message=trim($message);
-        $prior=$this->priorContext($siteMemory);
+        $prior=$this->priorContextForSurface($siteMemory,$context);
         $resolution=$this->contextResolver->resolve($message,$prior,$context);
         if(($resolution['is_followup']??false)===true) $prior['resolved_followup']=$resolution;
         // Split entrance: V1 handles ordinary turns; V2 handles turns carrying
@@ -89,7 +90,7 @@ final class LunaIntentGateway
     public function classifyAction(string $message,array $siteMemory=[],array $context=[]): array
     {
         $message=trim($message);
-        $prior=$this->priorContext($siteMemory);
+        $prior=$this->priorContextForSurface($siteMemory,$context);
         $resolution=$this->contextResolver->resolve($message,$prior,$context);
         if(($resolution['is_followup']??false)===true) $prior['resolved_followup']=$resolution;
         // Split router contract. Once API 1 V2 has classified an attached-image
@@ -125,6 +126,8 @@ final class LunaIntentGateway
         $sparkTarget=null;
         $referenceScope=null;
         $referenceMode=null;
+        $scopeAction=$actionScope==='sparks' ? null : $this->localScopeAction($message,$actionScope);
+        if($scopeAction!==null && !$this->actionContracts->hasAction($actionScope,$scopeAction)) $scopeAction=null;
         if($actionScope==='sparks'){
             $sparkAction=$actionSource==='reference'
                 ? 'reference_spark'
@@ -214,6 +217,8 @@ final class LunaIntentGateway
             'menu_scope'=>$actionScope,
             'spark_action'=>$sparkAction,
             'model_department'=>$actionScope==='sparks' ? $this->models->departmentForSparkAction($sparkAction) : 'terra',
+            'scope_action'=>$scopeAction,
+            'action_contract'=>$this->actionContracts->routingMetadata($actionScope,$actionScope==='sparks'?$sparkAction:$scopeAction),
             'spark_target'=>$sparkTarget,
             'reference_scope'=>$referenceScope,
             'reference_mode'=>$referenceMode,
@@ -244,6 +249,8 @@ final class LunaIntentGateway
             'menu_scope'=>$actionScope,
             'spark_action'=>$sparkAction,
             'model_department'=>$actionScope==='sparks' ? $this->models->departmentForSparkAction($sparkAction) : 'terra',
+            'scope_action'=>$scopeAction,
+            'action_contract'=>$this->actionContracts->routingMetadata($actionScope,$actionScope==='sparks'?$sparkAction:$scopeAction),
             'spark_target'=>$sparkTarget,
             'reference_scope'=>$referenceScope,
             'reference_mode'=>$referenceMode,
@@ -289,6 +296,7 @@ final class LunaIntentGateway
             'menu_scope'=>data_get($schema,'routing.menu_scope'),
             'spark_action'=>data_get($schema,'routing.spark_action'),
             'spark_target'=>data_get($schema,'routing.spark_target'),
+            'action_contract'=>data_get($schema,'routing.action_contract'),
             'action'=>$schema['action']??'update',
             'scope'=>$schema['scope']??'page',
             'domain'=>$schema['domain']??null,
@@ -307,6 +315,34 @@ final class LunaIntentGateway
     {
         unset($siteMemory['routing_context']);
         return $siteMemory;
+    }
+
+
+    /**
+     * Batch 7: isolate routing memory by assistant surface. The contextual popup
+     * has an explicit transport target and must not inherit Global Luna's last
+     * routed action. Global Luna may keep page/site routing continuity, but must
+     * not inherit a stale local section/item target from a prior popup edit.
+     */
+    private function priorContextForSurface(array $siteMemory,array $context=[]): array
+    {
+        $prior=$this->priorContext($siteMemory);
+        $surface=(string)($context['assistant_surface']??'global_builder');
+        if($surface==='contextual_popup'){
+            return [
+                'last_verified_action'=>[],
+                'current'=>[],
+                'last_routing_context'=>[],
+            ];
+        }
+
+        $verified=is_array($prior['last_verified_action']??null)?$prior['last_verified_action']:[];
+        $routing=is_array($prior['last_routing_context']??null)?$prior['last_routing_context']:[];
+        $verifiedScope=(string)($verified['scope']??data_get($verified,'target.type',''));
+        $routingScope=(string)($routing['scope']??data_get($routing,'target.type',''));
+        if(in_array($verifiedScope,['section','item','element','spark'],true)) $prior['last_verified_action']=[];
+        if(in_array($routingScope,['section','item','element','spark'],true)) $prior['last_routing_context']=[];
+        return $prior;
     }
 
     private function priorContext(array $siteMemory): array
@@ -461,15 +497,7 @@ PROMPT;
     /** API 3 Spark menu. Keep branch names stable because executors key off them. */
     private function sparkActions(): array
     {
-        return [
-            'edit_spark',
-            'change_spark',
-            'add_spark',
-            'remove_spark',
-            'custom_spark',
-            'reference_spark',
-            'reorder_spark',
-        ];
+        return $this->actionContracts->actions('sparks');
     }
 
     /**
@@ -881,22 +909,7 @@ PROMPT;
     /** API 3 menu for STANDARD actions. Keep this intentionally small and stable. */
     private function actionScopes(): array
     {
-        return [
-            'sparks',
-            'global',
-            'header',
-            'footer',
-            'navigation',
-            'theme',
-            'page',
-            'publish',
-            'media',
-            'posts',
-            'commerce',
-            'seo',
-            'settings',
-            'navigate',
-        ];
+        return $this->actionContracts->scopes();
     }
 
     /**
@@ -1024,6 +1037,89 @@ PROMPT;
         if(in_array($priorScope,$this->actionScopes(),true)) return $priorScope;
 
         return 'settings';
+    }
+
+    /** Batch 2 bounded sub-router for Global + Theme contracts. */
+    private function localScopeAction(string $message,string $scope): ?string
+    {
+        if($scope==='global'){
+            if(preg_match('/\b(reset|restore defaults?|default settings?)\b/i',$message)) return 'reset_global';
+            if(preg_match('/\b(font|fonts|typography|h1|h2|h3|headings?|body text|paragraph)\b/i',$message)) return 'typography';
+            if(preg_match('/\b(button|buttons|button radius|pill|fully rounded|square buttons?|sharp buttons?)\b/i',$message)) return 'buttons';
+            if(preg_match('/\b(container|content width|max width|max-width)\b/i',$message)) return 'container';
+            if(preg_match('/\b(spacing|padding|gap|section spacing|vertical rhythm)\b/i',$message)) return 'spacing';
+            if(preg_match('/\b(background|backgrounds|page background|site background)\b/i',$message)) return 'backgrounds';
+            if(preg_match('/\b(colors?|colours?|palette)\b/i',$message)) return 'colors';
+            if(preg_match('/\b(custom|unique|bespoke)\b/i',$message)) return 'custom_global';
+            return 'edit_global';
+        }
+        if($scope==='header'){
+            if(preg_match('/\b(custom|unique|bespoke)\b.{0,25}\bheader\b|\bheader\b.{0,25}\b(custom|unique|bespoke)\b/i',$message)) return 'custom_header';
+            if(preg_match('/\b(overlay|over the hero|over hero|over the banner|over banner)\b/i',$message)) return 'overlay_header';
+            if(preg_match('/\btransparent\b/i',$message)) return 'transparent_header';
+            if(preg_match('/\bsticky\b/i',$message)) return 'sticky_header';
+            if(preg_match('/\blogo\b/i',$message)) return 'logo';
+            if(preg_match('/\b(cta|call to action|button)\b/i',$message)) return 'header_cta';
+            if(preg_match('/\b(spacing|padding|height|compact|taller|shorter)\b/i',$message)) return 'header_spacing';
+            if(preg_match('/\b(mobile|hamburger)\b/i',$message)) return 'mobile_header';
+            if(preg_match('/\b(change|switch|use|apply)\b.{0,30}\bheader\b|\bheader\b.{0,25}\b(layout|style|variant)\b/i',$message)) return 'change_header';
+            return 'edit_header';
+        }
+        if($scope==='footer'){
+            if(preg_match('/\b(custom|unique|bespoke)\b.{0,25}\bfooter\b|\bfooter\b.{0,25}\b(custom|unique|bespoke)\b/i',$message)) return 'custom_footer';
+            if(preg_match('/\b(mega footer|mega-footer)\b/i',$message)) return 'mega_footer';
+            if(preg_match('/\b(simple|minimal)\b.{0,20}\bfooter\b|\bfooter\b.{0,20}\b(simple|minimal)\b/i',$message)) return 'simple_footer';
+            if(preg_match('/\b(columns?|column count)\b/i',$message)) return 'footer_columns';
+            if(preg_match('/\b(cta|call to action|button)\b/i',$message)) return 'footer_cta';
+            if(preg_match('/\b(social|facebook|instagram|linkedin|youtube|tiktok|x\.com|twitter)\b/i',$message)) return 'footer_socials';
+            if(preg_match('/\b(logo|brand|branding|copyright)\b/i',$message)) return 'footer_brand';
+            if(preg_match('/\b(background|theme|primary|surface|white)\b/i',$message)) return 'footer_background';
+            if(preg_match('/\b(change|switch|use|apply)\b.{0,30}\bfooter\b|\bfooter\b.{0,25}\b(layout|style|variant)\b/i',$message)) return 'change_footer';
+            return 'edit_footer';
+        }
+        if($scope==='navigation'){
+            if(preg_match('/\b(?:create|build|make)\s+(?:a\s+)?(?:new\s+)?(?:main\s+)?(?:menu|navigation)\b/i',$message)) return 'create_menu';
+            if(preg_match('/\b(?:put|add|move)\s+.+?\s+(?:under|inside|into)\s+.+/i',$message) || preg_match('/\b(?:submenu|sub-menu)\b.*\badd\b|\badd\b.*\b(?:submenu|sub-menu)\b/i',$message)) return 'add_submenu_item';
+            if(preg_match('/\b(?:remove|delete)\b.*\b(?:submenu|sub-menu)\b|\b(?:remove|delete)\s+.+?\s+(?:under|from under)\s+.+/i',$message)) return 'remove_submenu_item';
+            if(preg_match('/\b(?:rename|change\s+(?:the\s+)?label)\b/i',$message)) return 'rename_menu_item';
+            if(preg_match('/\b(?:change|set|update)\b.*\b(?:url|link|destination)\b|\b(?:url|link|destination)\b.*\b(?:to|as)\b/i',$message)) return 'change_menu_link';
+            if(preg_match('/\b(?:move|reorder)\b.*\b(?:menu|navigation|nav|before|after|first|last|start|end)\b/i',$message)) return 'reorder_menu';
+            if(preg_match('/\b(?:remove|delete)\b/i',$message)) return 'remove_menu_item';
+            if(preg_match('/\badd\b/i',$message)) return 'add_menu_item';
+            return 'edit_menu_item';
+        }
+        if($scope==='publish'){
+            if(preg_match('/\b(?:status|state|what(?:\'s| is) published|published status|publish status)\b/i',$message)) return 'publish_status';
+            if(preg_match('/\b(?:export|download)\b.{0,30}\b(?:site|website|package|connector)\b|\bdeployment connector\b/i',$message)) return 'export_site';
+            if(preg_match('/\bpreview\b/i',$message)){
+                return preg_match('/\b(?:site|website|all pages|whole site|entire site)\b/i',$message) ? 'preview_site' : 'preview_page';
+            }
+            if(preg_match('/\bunpublish\b/i',$message)) return 'unpublish_page';
+            $site=preg_match('/\b(?:site|website|all pages|whole site|entire site)\b/i',$message);
+            $republish=preg_match('/\brepublish\b/i',$message);
+            if($site) return $republish ? 'republish_site' : 'publish_site';
+            return $republish ? 'republish_page' : 'publish_page';
+        }
+        if($scope==='page'){
+            if(preg_match('/\b(regenerate|rebuild|generate again|redo)\b.{0,30}\bpage\b|\bpage\b.{0,30}\b(regenerate|rebuild|redo)\b/i',$message)) return 'regenerate_page';
+            if(preg_match('/\b(duplicate|clone|copy)\b.{0,25}\bpage\b|\bpage\b.{0,25}\b(duplicate|clone|copy)\b/i',$message)) return 'duplicate_page';
+            if(preg_match('/\b(delete|remove)\b.{0,25}\bpage\b|\b(delete|remove)\s+(?:the\s+)?(?:about|services|pricing|contact|home)\b/i',$message)) return 'delete_page';
+            if(preg_match('/\b(rename|change the name|change page title)\b/i',$message)) return 'rename_page';
+            if(preg_match('/\b(seo|meta description|meta title|seo title|canonical|indexable|noindex|og image|open graph)\b/i',$message)) return 'page_seo';
+            if(preg_match('/\b(page style|layout|clean layout|premium layout|balanced layout)\b/i',$message)) return 'page_layout';
+            if(preg_match('/\b(slug|parent page|page type|page settings|settings)\b/i',$message)) return 'page_settings';
+            if(preg_match('/\b(add|create|build|generate|make)\b.{0,35}\bpage\b/i',$message)) return 'add_page';
+            return 'edit_page';
+        }
+        if($scope==='theme'){
+            if(preg_match('/\b(from|based on|match|use)\b.{0,30}\blogo\b|\blogo\b.{0,30}\b(theme|palette|colors?|colours?)\b/i',$message)) return 'theme_from_logo';
+            if(preg_match('/\b(reset|restore)\b.{0,20}\b(theme|palette)\b|\bdefault theme\b/i',$message)) return 'reset_theme';
+            if(preg_match('/#[0-9a-f]{6}\b/i',$message) || preg_match('/\bbrand(?:ing)?\b.{0,25}\b(theme|palette|colors?|colours?)\b/i',$message)) return 'brand_theme';
+            if(preg_match('/\b(custom|unique|bespoke|create a new)\b.{0,20}\b(theme|palette)\b/i',$message)) return 'custom_theme';
+            if(preg_match('/\b(change|switch|use|apply|set)\b.{0,35}\b(theme|palette|color family|colour family)\b|\b(theme|palette)\b.{0,25}\b(to|as)\b/i',$message)) return 'change_theme';
+            return 'edit_theme';
+        }
+        return null;
     }
 
     /**

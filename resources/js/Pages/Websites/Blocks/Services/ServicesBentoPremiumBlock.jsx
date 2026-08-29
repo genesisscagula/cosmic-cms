@@ -2,7 +2,7 @@ import { EditableButton } from "../Shared/EditableButton";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
 
 export const ServicesBentoPremiumSchema = {
     type: "services_bento_premium",
@@ -84,33 +84,33 @@ export function ServicesBentoPremiumBlock({ block, onUpdate, globalTheme }) {
                 </div>
 
                 <div className={sparkTw(block, "wrapper_5", "mt-12 grid gap-4 lg:grid-cols-12")}>
-                    <article className={sparkTw(block, "card", `rounded-[2rem] border p-7 sm:p-9 lg:col-span-7 lg:row-span-2 ${card}`)}>
+                    <article className={sparkTwItem(block, "services", 0, "card", `rounded-[2rem] border p-7 sm:p-9 lg:col-span-7 lg:row-span-2 ${card}`)}>
                         <div className={sparkTw(block, "wrapper_6", "flex items-center justify-between gap-4")}>
-                            <EditableText value={data.featured_number} className={sparkTw(block, "text_4", `text-xs font-black tracking-[.22em] ${muted}`)} onSave={(featured_number)=>onUpdate({featured_number})}/>
+                            <EditableText value={data.featured_number} className={sparkTwItem(block, "services", 0, "number", `text-xs font-black tracking-[.22em] ${muted}`)} onSave={(featured_number)=>onUpdate({featured_number})}/>
                             <span className={sparkTw(block, "label", `h-2.5 w-2.5 rounded-full ${isPrimary ? "bg-white" : primaryTheme.bg}`)} />
                         </div>
-                        <EditableText value={data.featured_title} className={sparkTw(block, "text_5", "mt-14 block max-w-2xl text-3xl font-semibold tracking-[-.035em] sm:text-4xl")} onSave={(featured_title)=>onUpdate({featured_title})}/>
-                        <EditableText value={data.featured_text} isTextArea className={sparkTw(block, "text_6", `mt-5 block max-w-2xl text-base leading-7 ${muted}`)} onSave={(featured_text)=>onUpdate({featured_text})}/>
+                        <EditableText value={data.featured_title} className={sparkTwItem(block, "services", 0, "title", "mt-14 block max-w-2xl text-3xl font-semibold tracking-[-.035em] sm:text-4xl")} onSave={(featured_title)=>onUpdate({featured_title})}/>
+                        <EditableText value={data.featured_text} isTextArea className={sparkTwItem(block, "services", 0, "desc", `mt-5 block max-w-2xl text-base leading-7 ${muted}`)} onSave={(featured_text)=>onUpdate({featured_text})}/>
                         <div className={sparkTw(block, "wrapper_7", `mt-10 border-t pt-6 ${isPrimary ? "border-white/20" : theme.border}`)}>
-                            <EditableText value={data.featured_meta} className={sparkTw(block, "text_7", `text-sm font-semibold ${muted}`)} onSave={(featured_meta)=>onUpdate({featured_meta})}/>
+                            <EditableText value={data.featured_meta} className={sparkTwItem(block, "services", 0, "meta", `text-sm font-semibold ${muted}`)} onSave={(featured_meta)=>onUpdate({featured_meta})}/>
                         </div>
                     </article>
 
-                    {visibleSmallCards.slice(0,2).map(([number,title,text]) => (
-                        <article key={title} className={sparkTw(block, "card_2", `rounded-[2rem] border p-6 lg:col-span-5 ${card}`)}>
-                            <EditableText value={data[number]} className={sparkTw(block, "text_8", `text-[11px] font-black tracking-[.2em] ${muted}`)} onSave={(v)=>onUpdate({[number]:v})}/>
-                            <EditableText value={data[title]} className={sparkTw(block, "text_9", "mt-8 block text-xl font-semibold tracking-[-.02em]")} onSave={(v)=>onUpdate({[title]:v})}/>
-                            <EditableText value={data[text]} isTextArea className={sparkTw(block, "text_10", `mt-3 block text-sm leading-6 ${muted}`)} onSave={(v)=>onUpdate({[text]:v})}/>
+                    {visibleSmallCards.slice(0,2).map(([number,title,text], localIndex) => { const serviceIndex=localIndex+1; return (
+                        <article key={title} className={sparkTwItem(block, "services", serviceIndex, "card", `rounded-[2rem] border p-6 lg:col-span-5 ${card}`)}>
+                            <EditableText value={data[number]} className={sparkTwItem(block, "services", serviceIndex, "number", `text-[11px] font-black tracking-[.2em] ${muted}`)} onSave={(v)=>onUpdate({[number]:v})}/>
+                            <EditableText value={data[title]} className={sparkTwItem(block, "services", serviceIndex, "title", "mt-8 block text-xl font-semibold tracking-[-.02em]")} onSave={(v)=>onUpdate({[title]:v})}/>
+                            <EditableText value={data[text]} isTextArea className={sparkTwItem(block, "services", serviceIndex, "desc", `mt-3 block text-sm leading-6 ${muted}`)} onSave={(v)=>onUpdate({[text]:v})}/>
                         </article>
-                    ))}
+                    )})}
 
-                    {visibleSmallCards.slice(2).map(([number,title,text]) => (
-                        <article key={title} className={sparkTw(block, "card_3", `rounded-[2rem] border p-6 lg:col-span-4 ${card}`)}>
-                            <EditableText value={data[number]} className={sparkTw(block, "text_11", `text-[11px] font-black tracking-[.2em] ${muted}`)} onSave={(v)=>onUpdate({[number]:v})}/>
-                            <EditableText value={data[title]} className={sparkTw(block, "text_12", "mt-8 block text-lg font-semibold tracking-[-.02em]")} onSave={(v)=>onUpdate({[title]:v})}/>
-                            <EditableText value={data[text]} isTextArea className={sparkTw(block, "text_13", `mt-3 block text-sm leading-6 ${muted}`)} onSave={(v)=>onUpdate({[text]:v})}/>
+                    {visibleSmallCards.slice(2).map(([number,title,text], localIndex) => { const serviceIndex=localIndex+3; return (
+                        <article key={title} className={sparkTwItem(block, "services", serviceIndex, "card", `rounded-[2rem] border p-6 lg:col-span-4 ${card}`)}>
+                            <EditableText value={data[number]} className={sparkTwItem(block, "services", serviceIndex, "number", `text-[11px] font-black tracking-[.2em] ${muted}`)} onSave={(v)=>onUpdate({[number]:v})}/>
+                            <EditableText value={data[title]} className={sparkTwItem(block, "services", serviceIndex, "title", "mt-8 block text-lg font-semibold tracking-[-.02em]")} onSave={(v)=>onUpdate({[title]:v})}/>
+                            <EditableText value={data[text]} isTextArea className={sparkTwItem(block, "services", serviceIndex, "desc", `mt-3 block text-sm leading-6 ${muted}`)} onSave={(v)=>onUpdate({[text]:v})}/>
                         </article>
-                    ))}
+                    )})}
 
                     <article data-cosmic-services-bento-proof="true" className={sparkTw(block, "card_4", `rounded-[2rem] border p-6 lg:col-span-4 ${soft}`)}>
                         <EditableText value={data.proof_value || `${serviceCount} services`} className={sparkTw(block, "text_14", "cosmic-services-bento-proof-value block text-3xl font-semibold tracking-[-.035em]")} onSave={(proof_value)=>onUpdate({proof_value})}/>

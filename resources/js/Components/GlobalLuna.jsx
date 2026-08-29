@@ -3,6 +3,7 @@ import { router } from '@inertiajs/react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useCreditBalance } from '@/Hooks/useCreditBalance';
 import { handoffToBuilder, normalizeBuilderUrl } from '@/Support/builderHandoff';
+import { useAppearance } from '@/Appearance/AppearanceContext';
 
 const lunaText = (value, fallback = '') => {
     if (typeof value === 'string') return value;
@@ -55,6 +56,8 @@ const starterOptions=(site)=>[
 
 export default function GlobalLuna({initialPage=null,authenticated=false}){
     const {balance,setBalance}=useCreditBalance();
+    const {resolvedTheme: appAppearanceTheme}=useAppearance();
+    const appDark=appAppearanceTheme==='dark';
     const initialAuthenticated=useMemo(()=>inferAuthenticated(initialPage,authenticated),[]);
     const initial=useMemo(()=>readSession(),[]);
     const [open,setOpen]=useState(initial.open);
@@ -119,18 +122,18 @@ export default function GlobalLuna({initialPage=null,authenticated=false}){
             const starterSite=detail.starterSite&&typeof detail.starterSite==='object'
                 ? detail.starterSite
                 : {installed:false,status:'idle',pages:[]};
+            const building=starterBuildingStatuses.has(starterSite.status);
+            const installed=Boolean(starterSite.installed);
             setStarterSiteContext({websiteId,websiteName,starterSite});
             setOpen(true);
             setInput('');
             setStatus(starterBuildingStatuses.has(starterSite.status)?`Building… ${starterSite.progress||0}%`:'Ready');
             setMessages(current=>{
-                const building=starterBuildingStatuses.has(starterSite.status);
-                const installed=Boolean(starterSite.installed);
                 const text=building
                     ? `I’m building the ${starterSite.bundle_name||'starter site'} now. I’ll keep the page progress here and share the staging preview when it’s ready.`
                     : installed
-                        ? `Your ${starterSite.bundle_name||'starter bundle'} is installed. Want me to plan any missing pages, or would you like to open one in Builder?`
-                        : `Want me to build something for ${websiteName}? Tell me about the business, preferred style, and the 5–6 pages you want. I’ll keep every page inside one matching Cosmic bundle.`;
+                        ? `Your ${starterSite.bundle_name||'starter bundle'} is installed. You can open any page in Builder.`
+                        : `Starter Pages uses the industry and business details already saved for ${websiteName}. I’m selecting the best matching bundle now — no extra prompt needed.`;
                 const last=current[current.length-1];
                 if(last?.role==='assistant'&&last?.text===text)return current;
                 return [...current,{
@@ -140,7 +143,9 @@ export default function GlobalLuna({initialPage=null,authenticated=false}){
                     options:installed&&starterTerminalStatuses.has(starterSite.status)?starterOptions(starterSite):[],
                 }];
             });
-            window.requestAnimationFrame(()=>inputRef.current?.focus?.());
+            if(!installed&&!building){
+                window.setTimeout(()=>planStarterSite('',websiteId),80);
+            }
         };
         window.addEventListener('cosmic:luna-open-starter-site',openStarterSite);
         return ()=>window.removeEventListener('cosmic:luna-open-starter-site',openStarterSite);
@@ -264,24 +269,26 @@ useEffect(()=>{
         }
     };
 
-    const planStarterSite=async(message)=>{
+    const planStarterSite=async(message='',websiteIdOverride=null)=>{
         try{
-            setStatus('Planning starter pages…');
-            const {data}=await axios.post(route('starter-sites.plan',starterWebsiteId),{prompt:message});
+            const targetWebsiteId=Number(websiteIdOverride||starterWebsiteId||0);
+            if(!targetWebsiteId)return;
+            setStatus('Selecting starter bundle…');
+            const {data}=await axios.post(route('starter-sites.plan',targetWebsiteId),{prompt:String(message||'').trim()||null});
             if(Number.isFinite(Number(data.credit_balance)))setBalance(Number(data.credit_balance));
             const plan=data.plan||{};
             const balanceNow=Number(data.credit_balance??balance??0);
             const cost=Number(plan.credit_cost||0);
             setMessages(current=>[...current,{
                 role:'assistant',
-                text:`I recommend ${plan.bundle_name||'this registered bundle'}: ${plan.page_count||0} matching pages, ${plan.build_page_count||0} to build, and ${plan.preserved_page_count||0} existing pages preserved. Review the page plan below.`,
+                text:`Starter Pages Ready — I selected ${plan.bundle_name||'the best matching registered bundle'} from this website’s industry and business details. ${plan.page_count||0} matching pages are prepared; ${plan.preserved_page_count||0} existing populated pages will stay untouched.`,
                 starterPlan:plan,
                 confirmation:{
                     kind:'starter_site_install',
-                    originalMessage:message,
+                    originalMessage:'',
                     bundleKey:plan.bundle_key,
-                    confirmLabel:Number(plan.build_page_count||0)>0?`Build ${plan.build_page_count} pages`:'Install bundle',
-                    cancelLabel:'Change request',
+                    confirmLabel:Number(plan.build_page_count||0)>0?'Install Starter Pages':'Keep Starter Pages',
+                    cancelLabel:'Not now',
                     disabled:cost>balanceNow,
                 },
             }]);
@@ -354,7 +361,7 @@ useEffect(()=>{
                     token:data.confirmation_token,
                     confirmLabel:data.confirm_label||'Confirm',
                     cancelLabel:data.cancel_label||'Cancel',
-                    originalMessage:message,
+                    originalMessage:'',
                 }:null,
             }]);
             setStatus(data.status_label||'Ready');
@@ -403,7 +410,6 @@ useEffect(()=>{
         setMessages(current=>current.map(item=>item===messageRecord?{...item,confirmation:null}:item));
         try{
             const {data}=await axios.post(route('starter-sites.install',starterWebsiteId),{
-                prompt:confirmation.originalMessage,
                 bundle_key:confirmation.bundleKey,
                 confirmed:true,
             });
@@ -446,11 +452,11 @@ useEffect(()=>{
             title="Ask Luna"
         ><span className="text-lg">✦</span> Ask Luna</button>}
 
-        {open&&<section className="fixed bottom-6 right-6 z-[990] flex max-h-[72vh] w-[420px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-violet-300/20 bg-[#111318]/95 text-white shadow-2xl backdrop-blur-xl">
-            <header className="flex items-start justify-between border-b border-white/10 px-4 py-3">
+        {open&&<section className={`fixed bottom-6 right-6 z-[990] flex max-h-[72vh] w-[420px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${appDark?'border-violet-300/20 bg-[#111318]/95 text-white':'border-slate-200 bg-white text-slate-900'}`}>
+            <header className={`flex items-start justify-between border-b px-4 py-3 ${appDark?'border-white/10':'border-slate-200'}`}>
                 <div className="min-w-0">
                     <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-300">✦ Luna · {starterSiteContext?'Starter site':areaLabel}</p>
-                    <p className="mt-1 truncate text-xs text-slate-400">{starterSiteContext?<>Bundle builder · ⚡ {Number(balance||0).toLocaleString()}</>:effectiveAuthenticated ? <>Help & navigation · ⚡ {Number(balance||0).toLocaleString()}</> : 'Luna preview · Explore Cosmic CMS'}</p>
+                    <p className="mt-1 truncate text-xs text-slate-400">{starterSiteContext?<>Starter Pages · ⚡ {Number(balance||0).toLocaleString()}</>:effectiveAuthenticated ? <>Help & navigation · ⚡ {Number(balance||0).toLocaleString()}</> : 'Luna preview · Explore Cosmic CMS'}</p>
                 </div>
                 <div className="flex items-center gap-1">
                     <button type="button" onClick={clearConversation} disabled={busy||messages.length===0} title="Clear conversation" className="rounded-lg px-2 py-1.5 text-[10px] font-semibold text-slate-400 hover:bg-white/10 hover:text-white disabled:cursor-not-allowed disabled:opacity-30">Clear</button>
@@ -458,9 +464,9 @@ useEffect(()=>{
                 </div>
             </header>
 
-            <div className="border-b border-white/5 px-4 py-3 text-xs leading-5 text-slate-400">
+            <div className={`border-b px-4 py-3 text-xs leading-5 ${appDark?'border-white/5 text-slate-400':'border-slate-100 text-slate-600'}`}>
                 {starterSiteContext
-                    ? 'Describe the website once. Luna will choose one registered bundle, preserve populated pages, and build the matching missing pages.'
+                    ? 'Cosmic selects a matching starter bundle from the website details you already provided. Review it, then install — no second prompt required.'
                     : effectiveAuthenticated
                     ? 'Outside the Builder, Luna can answer questions, navigate, and handle safe workspace actions like creating or renaming pages.'
                     : 'Ask Luna about Cosmic CMS, plans, or start building when you are ready.'}
@@ -469,7 +475,7 @@ useEffect(()=>{
             <div className="min-h-28 flex-1 space-y-2 overflow-y-auto px-4 py-3">
                 {messages.length?messages.slice(-20).map((message,index)=><div key={`${index}-${lunaText(message.text,'')}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}>
                     <div className="max-w-[86%]">
-                        <div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'?'bg-violet-500 text-white':'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{lunaText(message.text,'')}</div>
+                        <div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'?'bg-violet-600 text-white':(appDark?'border border-white/10 bg-white/[0.05] text-slate-200':'border border-slate-200 bg-slate-50 text-slate-700')}`}>{lunaText(message.text,'')}</div>
                         {message.role==='assistant'&&message.starterPlan?<div className="mt-2 rounded-xl border border-violet-300/15 bg-violet-400/[0.06] p-3">
                             <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-bold uppercase tracking-[.14em] text-violet-300">Registered bundle</p><p className="mt-1 text-xs font-semibold text-white">{message.starterPlan.bundle_name}</p></div><p className="shrink-0 text-[11px] font-semibold text-amber-200">⚡ {Number(message.starterPlan.credit_cost||0).toLocaleString()}</p></div>
                             <div className="mt-2 grid grid-cols-2 gap-1.5">{(message.starterPlan.pages||[]).map(page=><div key={`${page.slug}-${page.template_key}`} className="rounded-lg border border-white/10 bg-black/20 px-2 py-1.5"><p className="truncate text-[11px] font-semibold text-slate-200">{page.title}</p><p className="mt-0.5 text-[9px] uppercase tracking-wide text-slate-500">{page.install_action}</p></div>)}</div>
@@ -484,7 +490,7 @@ useEffect(()=>{
                         {message.role==='assistant'&&Array.isArray(message.options)&&message.options.length>0?<div className="mt-2 flex flex-wrap gap-1.5">{message.options.map((option,optionIndex)=><button key={`${optionIndex}-${option.label}`} type="button" onClick={()=>option.url?router.visit(option.url):(option.send_message?send(option.send_message):null)} className="rounded-lg border border-violet-300/20 bg-violet-400/10 px-2.5 py-1.5 text-[11px] font-semibold text-violet-200 transition hover:bg-violet-400/20">{option.label}</button>)}</div>:null}
                         {message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={busy||message.confirmation.disabled} onClick={()=>message.confirmation.kind==='starter_site_install'?installStarterSite(message.confirmation,message):send(message.confirmation.originalMessage,message.confirmation.token)} className={`rounded-lg px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-40 ${message.confirmation.kind==='starter_site_install'?'bg-emerald-500 hover:bg-emerald-400':'bg-rose-500 hover:bg-rose-400'}`}>{message.confirmation.confirmLabel}</button><button type="button" disabled={busy} onClick={()=>setMessages(current=>current.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">{message.confirmation.cancelLabel}</button></div>:null}
                     </div>
-                </div>):<div className="rounded-xl border border-violet-300/10 bg-violet-400/[0.05] px-3 py-2 text-xs leading-5 text-slate-400">
+                </div>):<div className={`rounded-xl border px-3 py-2 text-xs leading-5 ${appDark?'border-violet-300/10 bg-violet-400/[0.05] text-slate-400':'border-violet-200 bg-violet-50 text-slate-600'}`}>
                     {effectiveAuthenticated
                         ? 'Try “Create an About Us page in Cosmic React”, “Open Orders for my store”, or “Rename Contact to Get a Quote”.'
                         : 'Try “What can Luna do?”, “Show me the plans”, or “Start building a website”.'}
@@ -493,21 +499,10 @@ useEffect(()=>{
                 <div ref={endRef} className="h-px" aria-hidden="true"/>
             </div>
 
-            <div className="border-t border-white/10 p-4">
-                <textarea
-                    ref={inputRef}
-                    value={input}
-                    onChange={event=>setInput(event.target.value)}
-                    onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}}}
-                    rows={3}
-                    placeholder={starterSiteContext?'Describe the website and pages you want…':'Ask Luna…'}
-                    className="w-full resize-none rounded-xl border border-white/10 bg-black/25 px-3 py-3 text-sm leading-6 text-white outline-none placeholder:text-slate-600 focus:border-violet-300/40"
-                />
-                <div className="mt-3 flex items-center justify-between">
-                    <span className="text-[10px] text-slate-600">{starterSiteContext?'Planning is free · page builds use credits':effectiveAuthenticated ? 'Luna requests use credits' : 'Sign in or start a build for full Luna access'}</span>
-                    <button type="button" onClick={()=>send()} disabled={busy||!input.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{busy?'Working…':'Send'}</button>
-                </div>
-            </div>
+            {starterSiteContext ? <div className="border-t border-white/10 px-4 py-3 text-[10px] leading-5 text-slate-500">Bundle selection uses saved website context. AI page generation starts only after you choose <strong className="text-slate-300">Install Starter Pages</strong>.</div> : <div className={`border-t p-4 ${appDark?'border-white/10':'border-slate-200'}`}>
+                <textarea ref={inputRef} value={input} onChange={event=>setInput(event.target.value)} onKeyDown={event=>{if(event.key==='Enter'&&!event.shiftKey){event.preventDefault();send();}}} rows={3} placeholder="Ask Luna…" className={`w-full resize-none rounded-xl border px-3 py-3 text-sm leading-6 outline-none focus:border-violet-400 ${appDark?'border-white/10 bg-black/25 text-white placeholder:text-slate-600':'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`} />
+                <div className="mt-3 flex items-center justify-between"><span className="text-[10px] text-slate-600">{effectiveAuthenticated ? 'Luna requests use credits' : 'Sign in or start a build for full Luna access'}</span><button type="button" onClick={()=>send()} disabled={busy||!input.trim()} className="rounded-lg bg-violet-500 px-4 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{busy?'Working…':'Send'}</button></div>
+            </div>}
         </section>}
     </>;
 }

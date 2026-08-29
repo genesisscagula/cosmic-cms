@@ -10,6 +10,7 @@ export const cosmicComponentVars = (settings = {}) => {
         button_px_mobile: "--cosmic-button-px-mobile",
         button_radius: "--cosmic-radius-button",
         button_weight: "--cosmic-button-font-weight",
+        button_hover_shift: "--cosmic-button-hover-shift",
         button_primary_bg: "--cosmic-button-primary-bg",
         button_primary_text: "--cosmic-button-primary-text",
         button_secondary_bg: "--cosmic-button-secondary-bg",

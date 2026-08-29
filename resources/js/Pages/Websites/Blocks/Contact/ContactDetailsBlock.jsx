@@ -1,6 +1,6 @@
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
 
 export const ContactDetailsSchema = {
     type: "contact_details", title: "Contact Details", category: "Contact",
@@ -27,9 +27,9 @@ export function ContactDetailsBlock({ block, onUpdate, globalTheme }) {
                 <EditableText value={data.text} isTextArea className={sparkTw(block, "auto_6", `block max-w-xl text-base leading-7 ${theme.sub}`)} onSave={(text) => onUpdate({ text })} />
             </div>
             <div className={sparkTw(block, "auto_7", `grid overflow-hidden rounded-2xl border sm:grid-cols-2 ${theme.border} ${theme.card}`)}>
-                {items.map(([label, key], index) => <div key={key} className={sparkTw(block, "auto_8", `min-h-36 p-6 ${index < 2 ? "border-b" : ""} ${index % 2 === 0 ? "sm:border-r" : ""} ${theme.border}`)}>
-                    <span className={sparkTw(block, "auto_9", `block text-xs font-semibold uppercase tracking-[0.18em] ${theme.sub}`)}>{label}</span>
-                    <EditableText value={data[key]} isTextArea={key === "address"} className={sparkTw(block, "auto_10", `mt-4 block text-base font-semibold leading-6 ${theme.text}`)} onSave={(value) => onUpdate({ [key]: value })} />
+                {items.map(([label, key], index) => <div key={key} className={sparkTwItem(block, "details", index, "card", `min-h-36 p-6 ${index < 2 ? "border-b" : ""} ${index % 2 === 0 ? "sm:border-r" : ""} ${theme.border}`)}>
+                    <span className={sparkTwItem(block, "details", index, "label", `block text-xs font-semibold uppercase tracking-[0.18em] ${theme.sub}`)}>{label}</span>
+                    <EditableText value={data[key]} isTextArea={key === "address"} className={sparkTwItem(block, "details", index, "value", `mt-4 block text-base font-semibold leading-6 ${theme.text}`)} onSave={(value) => onUpdate({ [key]: value })} />
                 </div>)}
             </div>
         </div>

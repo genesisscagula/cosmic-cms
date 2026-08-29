@@ -71,7 +71,7 @@ export default function Dashboard({ websites, dashboard }) {
     }, []);
 
     return (
-        <div id="cosmic-dashboard" data-cosmic-dashboard className="cosmic-app-shell cosmic-dashboard-shell min-h-screen md:flex">
+        <div id="cosmic-dashboard" data-cosmic-dashboard className="cosmic-app-shell cosmic-dashboard-shell min-h-screen font-dashboard md:flex">
             <Navigation activeTab={activeTab} onTabChange={changeTab} dashboard={dashboard} />
 
             <main id="cosmic-dashboard-main" className="cosmic-dashboard-main relative min-w-0 flex-1 px-4 py-6 sm:px-6 lg:px-10 lg:py-10">

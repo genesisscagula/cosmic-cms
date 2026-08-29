@@ -14,12 +14,14 @@ final class LunaSparkSchemaEditorService
         private readonly SparkTailwindSchemaValidator $validator,
         private readonly TailwindUtilityConflictResolver $conflicts,
         private readonly LunaModelDepartmentService $models,
+        private readonly LunaAiFlexEditPolicyService $editPolicy,
+        private readonly LunaStructuralActionService $structuralActions,
     ) {}
 
     /**
-     * API 4: Luna receives one selected Spark's complete editable block data plus
-     * its complete CURRENT rendered Tailwind slot schema and returns that same
-     * editable schema in full.
+     * Selected-Spark editor: Luna receives the complete current context, but
+     * returns only a minimal patch. The server expands that patch against the
+     * authoritative current schema and runs the existing strict validator.
      */
     public function edit(string $request, array $block, array $sparkTarget, array $elementContext=[], array $conversation=[]): array
     {
@@ -46,13 +48,25 @@ final class LunaSparkSchemaEditorService
 
         $editable=$this->editableBlock($block);
         $tailwind=$this->currentTailwindSchema($block,$elementContext);
-        if(($tailwind['slots']??[])===[]){
+        if(($tailwind['slots']??[])===[] && $sparkType!=='luna_custom_section'){
             Log::warning('[LunaRouter] API 4 rejected',[
                 'reason'=>'tailwind_inventory_missing',
                 'spark_type'=>$sparkType,
                 'target_index'=>$sparkTarget['index']??null,
             ]);
             return ['ok'=>false,'reason'=>'tailwind_inventory_missing'];
+        }
+        if(($tailwind['slots']??[])===[] && $sparkType==='luna_custom_section'){
+            // AI Flex sections are structured-schema renderers. Their visual controls
+            // live primarily in visual_style/style_overrides/elements[].style and do
+            // not require a Tailwind DOM inventory to make a safe incremental edit.
+            // Rejecting an empty inventory here made valid follow-ups such as
+            // "reduce the section padding more" fail even though the current draft
+            // already contained an editable visual_style path.
+            Log::debug('[LunaRouter] AI Flex editable-only mode',[
+                'spark_type'=>$sparkType,
+                'target_index'=>$sparkTarget['index']??null,
+            ]);
         }
 
         Log::debug('[LunaRouter] API 4 started',[
@@ -71,46 +85,71 @@ final class LunaSparkSchemaEditorService
         if($apiKey==='') return ['ok'=>false,'reason'=>'api_unavailable'];
 
         $system=<<<'PROMPT'
-You are Luna's fourth routing/editing API inside Cosmic CMS.
-APIs 1-3 have already selected one exact Spark instance. Edit ONLY that Spark.
+You are Luna's selected-Spark editor inside Cosmic CMS.
+The routing APIs have already locked one exact Spark instance. Edit ONLY that Spark.
 
 You receive:
 1. USER REQUEST
 2. LOCKED SPARK TARGET
-3. FULL EDITABLE SPARK SCHEMA
-4. FULL CURRENT TAILWIND SCHEMA for the rendered slots in this Spark
+3. LOCKED ELEMENT CONTEXT (when the user clicked a specific card/item/element)
+4. FULL EDITABLE SPARK SCHEMA
+5. FULL CURRENT TAILWIND SCHEMA
 
-Return JSON only:
+Return JSON only. For ordinary edits use MINIMAL PATCHES; for structural add/remove/move/duplicate requests use STRUCTURAL ACTIONS:
 {
   "spark_type":"EXACT_LOCKED_TYPE",
-  "editable": { COMPLETE editable Spark schema },
-  "tailwind": {
-    "version": 1,
-    "spark_type":"EXACT_LOCKED_TYPE",
-    "slots": {
-      "slot_name":{"classes":["complete","current","class","list"],"role":"slot_name","locked":false}
-    }
-  }
+  "editable_patch": {
+    "existing.dot.path": "new value"
+  },
+  "tailwind_patch": {
+    "existing_slot_name": ["complete","desired","class","list"]
+  },
+  "structural_actions": []
 }
 
+STRUCTURAL ACTION objects are finite and server-validated. Use ONLY these action names:
+- add_extra, update_extra, remove_extra, move_extra, duplicate_extra
+- add_row, remove_row, move_row, duplicate_row
+- add_column, remove_column, move_column, duplicate_column
+Registered-Spark field extra example:
+{"action":"add_extra","target_field":"heading","placement":"after","extra":{"type":"image","data":{"src":"","alt":""}}}
+AI Flex examples:
+{"action":"add_column","collection_path":"rows.0.columns"}
+{"action":"add_extra","collection_path":"rows.0.columns.1.extras","extra":{"type":"button","label":"Learn more","url":"#"}}
+{"action":"move_extra","collection_path":"rows.0.columns.0.extras","item_index":0,"destination_collection_path":"rows.0.columns.1.extras","to_index":0}
+
 Rules:
-- BUILDER CONVERSATION is the authoritative natural-language context for pronouns and follow-ups such as "it", "that", "a little more", "a little tighter", and "same as before". Resolve those references from the conversation before choosing schema changes.
-- Return the COMPLETE editable object and COMPLETE Tailwind slots object, not a patch.
-- Preserve every unrelated editable field and every unrelated Tailwind slot/class exactly.
-- Change only fields/classes necessary to satisfy USER REQUEST.
-- Never add/remove/rename internal database/system fields. They are intentionally absent.
-- spark_type must exactly match LOCKED SPARK TARGET.
-- Tailwind slot names must come only from FULL CURRENT TAILWIND SCHEMA. Never invent a slot.
-- Each Tailwind slot's classes is the complete desired class list after the edit.
-- Use valid Tailwind utilities only. No CSS, HTML, JS, style attributes, explanations, comments, markdown, or reply text.
-- For plural natural targets such as "buttons", edit all appropriate customer-facing button/CTA slots in this selected Spark.
-- For "primary"/"secondary"/specific wording, edit only the matching role/slot.
-- For relative follow-ups, the supplied schema is CURRENT persisted/rendered state; modify from it, not from an original default.
+- Understand the user's natural-language intent; do not keyword-match blindly.
+- Negation/preservation is binding: "do not change radius", "keep layout", "leave image alone" means those fields/slots MUST remain untouched.
+- BUILDER CONVERSATION is authoritative for follow-ups such as "it", "that", "a little more", "same one", and "same as before".
+- LOCKED ELEMENT CONTEXT is authoritative when it identifies a specific item/card/element. Prefer an item-specific V2 slot/path over a shared slot when the user targeted one item.
+- FULL schemas are context, NOT output. Return only paths/slots that actually need changing.
+- editable_patch paths must already exist in FULL EDITABLE SPARK SCHEMA. Never invent a field/path.
+- Never mutate field_extras directly through editable_patch. For "add X before/after/below/above this field", use structural_actions and an exact target_field anchor. "below/under/after" => placement=after; "above/before/over" => placement=before.
+- Never change the length/order of AI Flex elements/children through editable_patch. Use structural_actions for Rows -> Columns -> Extras CRUD.
+- Structural requests MUST return structural_actions with editable_patch={} and tailwind_patch={}. Do not mix structural actions with ordinary patches in one response.
+- For add_extra, include the requested type. Registered Spark types: text,heading,image,button,icon,badge,video,divider,spacer. AI Flex also supports group,grid,stack,card,list,stat,form. For a newly requested image with no supplied URL, return an empty src; the server resolves a contextual Unsplash asset or an explicitly requested generated image after structural validation. Never invent an external URL. For video, an empty src remains valid until the user chooses media.
+- Use LOCKED ELEMENT CONTEXT fieldPath for exact registered-field targeting when available. For AI Flex, prefer logicalCollectionPath/logicalPath and stableId from LOCKED ELEMENT CONTEXT.
+- add_row targets collection_path="rows". add_column targets a specific "rows.N.columns". AI Flex add_extra targets a specific "rows.N.columns.M.extras".
+- remove/move/duplicate actions require an exact item_index (or the clicked item from LOCKED ELEMENT CONTEXT). Cross-column move_extra must include destination_collection_path.
+- tailwind_patch keys must already exist in FULL CURRENT TAILWIND SCHEMA. Never invent or rename a slot. Exact repeater keys such as cards__1__title or services__2__card address one specific item and MUST be preferred for singular item requests.
+- Each tailwind_patch value is the COMPLETE desired class list for that one slot after the edit.
+- Preserve every unrelated field and slot by omitting it from the patch.
+- If the user asks for multiple compatible visual changes, include all required paths/slots in the same response.
+- If the user asks only for visual polish (premium/modern/polished/cleaner), KEEP the current Spark/layout and restyle its available slots. Do not turn that into a replacement/layout change.
+- Structural renderer utilities must be preserved. Do not remove positioning/display/overflow utilities merely to change a color, gradient, radius, typography, or spacing treatment.
+- Use valid Tailwind utilities only. No CSS, HTML, JS, style attributes, markdown, explanation, or reply prose.
 - Preserve responsive/state variants unless the request explicitly changes them.
-- When LOCKED SPARK TARGET implementation_type/type is luna_custom_section, treat semantic_type as its logical role (hero/services/testimonials/faq/contact/etc.) and edit its visible AI Flex fields directly.
-- For AI Flex visual_style color fields, semantic values are allowed: primary, surface, surface_alt, white, on_primary, on_surface, on_dark, accent, or an explicit HEX.
-- If changing an AI Flex section background to primary, also maintain readable contrast by using on_primary for heading/body where appropriate; if changing back to a light surface, use on_surface unless the user explicitly asks otherwise.
+- For plural targets such as "buttons" or "cards", edit all appropriate customer-facing slots in this selected Spark; for "second card"/"this title", edit only the exact item-specific slot when available.
+- When implementation_type/type is luna_custom_section, treat semantic_type as the logical role and edit its visible AI Flex fields directly.
+- AI Flex is a structured renderer, not a Tailwind-only Spark. Prefer existing visual_style.*, style_overrides.*, and elements.*.style.* paths for spacing, geometry, colors, typography, layout, media presentation, and responsive changes when those paths already exist. An empty Tailwind inventory is valid for AI Flex; use editable_patch only in that case.
+- For follow-up AI Flex requests such as "reduce more spacing", "a little smaller", "move it higher", or "make the cards tighter", use the CURRENT editable values as the baseline and make a further incremental change. Never reconstruct or regenerate the section unless the user explicitly asks for a redesign/rebuild.
+- For section-level spacing on AI Flex, prefer visual_style.section_padding_y / section_padding_x / content_gap when present. For a specifically targeted nested element, prefer the exact existing elements.N.style.padding / padding_x / padding_y / gap path instead of changing the whole section.
+- Design-only AI Flex edits must preserve heading/body/button copy, URLs, images, item counts, and semantic_type unless the user explicitly asks to change them.
+- For AI Flex visual_style colors, semantic values are allowed: primary, surface, surface_alt, white, on_primary, on_surface, on_dark, accent, or an explicit HEX.
+- If the request cannot be represented by existing editable paths/slots, return empty patches rather than changing an unrelated property.
 PROMPT;
+        $system .= "\n\n".$this->editPolicy->directive();
 
         try{
             $response=Http::withToken($apiKey)
@@ -121,7 +160,7 @@ PROMPT;
                     'response_format'=>['type'=>'json_object'],
                     'messages'=>[
                         ['role'=>'system','content'=>$system],
-                        ['role'=>'user','content'=>"BUILDER CONVERSATION (oldest to newest):\n".json_encode($this->conversationContext($conversation),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT USER REQUEST:\n{$request}\n\nLOCKED SPARK TARGET:\n".json_encode($sparkTarget,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nFULL EDITABLE SPARK SCHEMA:\n".json_encode($editable,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nFULL CURRENT TAILWIND SCHEMA:\n".json_encode($tailwind,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
+                        ['role'=>'user','content'=>"BUILDER CONVERSATION (oldest to newest):\n".json_encode($this->conversationContext($conversation),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nCURRENT USER REQUEST:\n{$request}\n\nLOCKED SPARK TARGET:\n".json_encode($sparkTarget,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nLOCKED ELEMENT CONTEXT:\n".json_encode($this->lockedElementContext($elementContext),JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nFULL EDITABLE SPARK SCHEMA:\n".json_encode($editable,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)."\n\nFULL CURRENT TAILWIND SCHEMA:\n".json_encode($tailwind,JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE)],
                     ],
                 ])->throw()->json();
 
@@ -132,7 +171,52 @@ PROMPT;
                 ]);
                 return ['ok'=>false,'reason'=>'invalid_json'];
             }
-            $result=$this->validateResult($sparkType,$editable,$tailwind,$decoded,$block);
+            $policyGuard=$this->editPolicy->guard($request,$decoded,$elementContext);
+            if(($policyGuard['ok']??false)!==true){
+                Log::warning('[LunaRouter] API 4 policy rejected',[
+                    'spark_type'=>$sparkType,
+                    'target_index'=>$sparkTarget['index']??null,
+                    'reason'=>$policyGuard['reason']??'ai_flex_policy_rejected',
+                    'details'=>$policyGuard['details']??[],
+                ]);
+                return [
+                    'ok'=>false,
+                    'reason'=>$policyGuard['reason']??'ai_flex_policy_rejected',
+                    'details'=>$policyGuard['details']??[],
+                ];
+            }
+            $structuralPlan=$decoded['structural_actions']??[];
+            if(is_array($structuralPlan) && $structuralPlan!==[]){
+                $editablePatch=is_array($decoded['editable_patch']??null)?$decoded['editable_patch']:[];
+                $tailwindPatch=is_array($decoded['tailwind_patch']??null)?$decoded['tailwind_patch']:[];
+                if($editablePatch!==[] || $tailwindPatch!==[]){
+                    return ['ok'=>false,'reason'=>'mixed_structural_and_patch_protocol'];
+                }
+                $structural=$this->structuralActions->apply($block,$structuralPlan,$elementContext);
+                if(($structural['ok']??false)!==true){
+                    Log::warning('[LunaRouter] API 4 structural action rejected',[
+                        'spark_type'=>$sparkType,'target_index'=>$sparkTarget['index']??null,
+                        'reason'=>$structural['reason']??'structural_action_rejected',
+                        'failed_action_index'=>$structural['failed_action_index']??null,
+                    ]);
+                    return $structural;
+                }
+                Log::debug('[LunaRouter] API 4 structural action validated',[
+                    'spark_type'=>$sparkType,'target_index'=>$sparkTarget['index']??null,
+                    'operations'=>$structural['operations']??[],
+                ]);
+                return array_merge($structural,[
+                    'protocol'=>'structural_actions_v1',
+                    'editable'=>$this->editableBlock($structural['block']),
+                    'tailwind'=>$tailwind,
+                ]);
+            }
+
+            $expanded=$this->expandPatchResponse($sparkType,$editable,$tailwind,$decoded);
+            if(($expanded['ok']??false)!==true){
+                return $expanded;
+            }
+            $result=$this->validateResult($sparkType,$editable,$tailwind,$expanded['decoded'],$block);
             if(($result['ok']??false)===true){
                 Log::debug('[LunaRouter] API 4 validated',[
                     'spark_type'=>$sparkType,
@@ -160,6 +244,76 @@ PROMPT;
             report($e);
             return ['ok'=>false,'reason'=>'api_error'];
         }
+    }
+
+    /** Expand Luna's minimal patch into a complete candidate for the strict
+     * validator. Full-schema responses remain accepted temporarily so rolling
+     * deployments/older model prompts fail safely during the migration. */
+    private function expandPatchResponse(string $sparkType,array $beforeEditable,array $beforeTailwind,array $decoded): array
+    {
+        if((string)($decoded['spark_type']??'')!==$sparkType){
+            return ['ok'=>false,'reason'=>'spark_type_mismatch'];
+        }
+
+        if(is_array($decoded['editable']??null) && is_array($decoded['tailwind']??null)){
+            return ['ok'=>true,'decoded'=>$decoded,'protocol'=>'legacy_full_schema'];
+        }
+
+        $editablePatch=$decoded['editable_patch']??[];
+        $tailwindPatch=$decoded['tailwind_patch']??[];
+        if(!is_array($editablePatch)||!is_array($tailwindPatch)){
+            return ['ok'=>false,'reason'=>'patch_schema_invalid'];
+        }
+
+        $editable=$beforeEditable;
+        foreach($editablePatch as $path=>$value){
+            if(!is_string($path)||trim($path)===''||!Arr::has($beforeEditable,$path)){
+                return ['ok'=>false,'reason'=>'editable_patch_path_invalid','path'=>$path];
+            }
+            Arr::set($editable,$path,$value);
+        }
+
+        $tailwind=$beforeTailwind;
+        foreach($tailwindPatch as $slot=>$classes){
+            if(!is_string($slot)||!array_key_exists($slot,(array)($beforeTailwind['slots']??[]))){
+                return ['ok'=>false,'reason'=>'tailwind_patch_slot_invalid','slot'=>$slot];
+            }
+            if(is_array($classes)&&array_key_exists('classes',$classes)) $classes=$classes['classes'];
+            if(!is_string($classes)&&!is_array($classes)){
+                return ['ok'=>false,'reason'=>'tailwind_patch_classes_invalid','slot'=>$slot];
+            }
+            $tailwind['slots'][$slot]['classes']=$this->contract->tokenize($classes);
+        }
+
+        return [
+            'ok'=>true,
+            'protocol'=>'minimal_patch_v2',
+            'decoded'=>[
+                'spark_type'=>$sparkType,
+                'editable'=>$editable,
+                'tailwind'=>$tailwind,
+            ],
+        ];
+    }
+
+    /** Keep clicked-element targeting compact and deterministic. Renderer
+     * inventory is already supplied separately as the Tailwind schema. */
+    private function lockedElementContext(array $context): array
+    {
+        $allowed=[
+            'tailwindTargetIndex','tailwind_target_index','tailwindPath','tailwind_path',
+            'tailwindSlot','tailwind_slot','itemIndex','item_index','collectionIndex',
+            'collection_index','itemKey','item_key','collectionKey','collection_key',
+            'tag','role','text','label','field','fieldPath','field_path','elementId','element_id',
+            'collectionPath','collection_path','logicalCollectionPath','logical_collection_path',
+            'logicalPath','logical_path','stableId','stable_id','extraId','extra_id','blockType','block_type',
+        ];
+        $out=Arr::only($context,$allowed);
+        foreach($out as $key=>$value){
+            if(is_string($value)) $out[$key]=Str::limit(trim($value),1000,'');
+            elseif(is_array($value)) $out[$key]=array_slice($value,0,20,true);
+        }
+        return $out;
     }
 
     private function validateResult(string $sparkType,array $beforeEditable,array $beforeTailwind,array $decoded,array $originalBlock): array
@@ -272,7 +426,7 @@ PROMPT;
         // as add/remove overlays over the Spark's original renderer classes.
         $persisted=$this->contract->fromBlock($sparkType,$originalBlock);
         foreach($tailwindDiff as $slot=>$delta){
-            $existing=is_array($persisted['slots'][$slot]??null)?$persisted['slots'][$slot]:[];
+            $existing=$this->persistedTailwindDefinition($persisted,$slot);
             $existingAdd=$this->contract->tokenize($existing['add']??[]);
             $existingRemove=$this->contract->tokenize($existing['remove']??[]);
 
@@ -293,12 +447,12 @@ PROMPT;
                 if(!in_array($token,$existingAdd,true)) $existingAdd[]=$token;
             }
 
-            $persisted['slots'][$slot]=[
+            $this->putPersistedTailwindDefinition($persisted,$slot,[
                 'add'=>array_values(array_unique($existingAdd)),
                 'remove'=>array_values(array_unique($existingRemove)),
                 'role'=>(string)(data_get($beforeTailwind,"slots.{$slot}.role",$slot)),
                 'locked'=>(bool)(data_get($beforeTailwind,"slots.{$slot}.locked",false)),
-            ];
+            ]);
         }
         Arr::set($next,$this->contract->storageKey(),$persisted);
 
@@ -397,6 +551,88 @@ PROMPT;
         )->all();
     }
 
+    /**
+     * Exact repeater slots are flattened only for the Luna API payload:
+     *   cards__1__title => collections.cards[1].styles.title
+     *   plans__1__features__2__label => nested collection style
+     * Shared aliases (card/title/button) remain in top-level slots.
+     */
+    private function parseScopedTailwindSlot(string $slot): ?array
+    {
+        $parts=array_values(array_filter(explode('__',$slot),fn($part)=>$part!==''));
+        if(count($parts)<3 || count($parts)%2===0) return null;
+        $style=(string)array_pop($parts);
+        $path=[];
+        foreach($parts as $index=>$part){
+            if($index%2===0){
+                $name=$this->contract->normalizeSlot((string)$part);
+                if($name==='') return null;
+                $path[]=$name;
+            }else{
+                $path[]=ctype_digit((string)$part)?(int)$part:(string)$part;
+            }
+        }
+        $path=$this->contract->normalizeScopePath($path);
+        if($path===[]) return null;
+        return ['path'=>$path,'style'=>$this->contract->normalizeSlot($style)];
+    }
+
+    private function persistedTailwindDefinition(array $schema,string $slot): array
+    {
+        $scoped=$this->parseScopedTailwindSlot($slot);
+        if($scoped===null){
+            $definition=$schema['styles'][$slot]??$schema['slots'][$slot]??[];
+            return is_array($definition)?$definition:[];
+        }
+        $scope=$this->contract->scopeAtPath($schema,$scoped['path']);
+        $definition=is_array($scope)?($scope['styles'][$scoped['style']]??[]):[];
+        return is_array($definition)?$definition:[];
+    }
+
+    private function putPersistedTailwindDefinition(array &$schema,string $slot,array $definition): void
+    {
+        $scoped=$this->parseScopedTailwindSlot($slot);
+        if($scoped===null){
+            // New semantic shared aliases live in V2 styles; old auto_* bindings
+            // remain in legacy slots so existing sites are not rewritten en masse.
+            if(array_key_exists($slot,(array)($schema['styles']??[])) || !array_key_exists($slot,(array)($schema['slots']??[]))){
+                $schema['styles'][$slot]=$definition;
+            }else{
+                $schema['slots'][$slot]=$definition;
+            }
+            return;
+        }
+
+        $cursor=&$schema['collections'];
+        $path=$scoped['path'];
+        for($i=0;$i<count($path);$i+=2){
+            $collection=(string)$path[$i];
+            $selector=$path[$i+1];
+            if(!isset($cursor[$collection]) || !is_array($cursor[$collection])) $cursor[$collection]=[];
+            $index=is_int($selector)?$selector:null;
+            if($index===null){
+                foreach($cursor[$collection] as $candidateIndex=>$candidate){
+                    if(is_array($candidate) && (string)($candidate['key']??'')===(string)$selector){$index=$candidateIndex;break;}
+                }
+                if($index===null){
+                    $index=count($cursor[$collection]);
+                    $cursor[$collection][$index]=['key'=>(string)$selector,'styles'=>[],'collections'=>[]];
+                }
+            }
+            while(count($cursor[$collection])<=$index){
+                $cursor[$collection][]=['styles'=>[],'collections'=>[]];
+            }
+            if(!is_array($cursor[$collection][$index]??null)) $cursor[$collection][$index]=['styles'=>[],'collections'=>[]];
+            $cursor[$collection][$index]['styles']=is_array($cursor[$collection][$index]['styles']??null)?$cursor[$collection][$index]['styles']:[];
+            $cursor[$collection][$index]['collections']=is_array($cursor[$collection][$index]['collections']??null)?$cursor[$collection][$index]['collections']:[];
+            if($i===count($path)-2){
+                $cursor[$collection][$index]['styles'][$scoped['style']]=$definition;
+                return;
+            }
+            $cursor=&$cursor[$collection][$index]['collections'];
+        }
+    }
+
     private function currentTailwindSchema(array $block,array $elementContext): array
     {
         $sparkType=(string)($block['type']??'');
@@ -414,7 +650,7 @@ PROMPT;
                 if($slot==='') continue;
                 $classes=$this->validator->validateClasses((string)($row['classes']??''));
                 if(($classes['errors']??[])!==[]) continue;
-                $existing=$stored['slots'][$slot]??[];
+                $existing=$this->persistedTailwindDefinition($stored,$slot);
 
                 $tag=Str::lower(trim((string)($row['tag']??'')));
                 $text=trim(preg_replace('/\s+/',' ',(string)($row['text']??'')));
@@ -447,8 +683,9 @@ PROMPT;
             }
         }
 
-        // Preserve persisted slots that are not currently visible in inventory.
-        foreach((array)($stored['slots']??[]) as $slot=>$definition){
+        // Preserve persisted shared V2 styles and legacy slots that are not
+        // currently visible in the DOM inventory (responsive/conditional nodes).
+        foreach(array_merge((array)($stored['slots']??[]),(array)($stored['styles']??[])) as $slot=>$definition){
             $slot=$this->contract->normalizeSlot((string)$slot);
             if($slot===''||isset($slots[$slot])) continue;
             $resolved=$this->contract->resolveSlot($block,$slot,'');

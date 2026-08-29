@@ -4,7 +4,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { getHeroThemeState } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
 
 export const HeroAgencyShowcaseSchema = {
     type: "hero_agency_showcase",
@@ -72,12 +72,12 @@ export function HeroAgencyShowcaseBlock({ block, blockIndex, onUpdate, globalThe
                 <div className={sparkTw(block, "wrapper_6", `mt-12 rounded-[2rem] border p-3 shadow-2xl sm:p-4 ${theme.border} ${theme.surface}`)}>
                     <div className={sparkTw(block, "wrapper_7", "grid gap-3 md:grid-cols-2")}>
                         {[['before','before_image_url'],['after','after_image_url']].map(([prefix,imageKey]) => (
-                            <div key={prefix} className={sparkTw(block, "wrapper_8", "relative min-h-[300px] overflow-hidden rounded-[1.45rem] sm:min-h-[390px]")}>
-                                <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data[imageKey]} className={sparkTw(block, "image", `absolute inset-0 h-full w-full object-cover ${prefix === 'before' ? 'grayscale' : ''}`)} onSave={(value)=>onUpdate({[imageKey]:value})}/>
-                                <div className={sparkTw(block, "wrapper_9", `pointer-events-none absolute inset-0 ${prefix === 'before' ? 'bg-slate-950/50' : 'bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent'}`)} />
-                                <div className={sparkTw(block, "wrapper_10", "absolute inset-x-0 bottom-0 p-5 text-white sm:p-7")}>
-                                    <EditableText value={data[`${prefix}_label`]} className={sparkTw(block, "text_4", "text-[11px] font-bold uppercase tracking-[.24em] text-white/70")} onSave={(v)=>onUpdate({[`${prefix}_label`]:v})}/>
-                                    <EditableText value={data[`${prefix}_caption`]} className={sparkTw(block, "text_5", "mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl")} onSave={(v)=>onUpdate({[`${prefix}_caption`]:v})}/>
+                            <div key={prefix} className={sparkTwItem(block, "showcase_panels", prefix, "card", sparkTw(block, "wrapper_8", "relative min-h-[300px] overflow-hidden rounded-[1.45rem] sm:min-h-[390px]"))}>
+                                <EditableImage websiteId={websiteId} blockIndex={blockIndex} src={data[imageKey]} className={sparkTwItem(block, "showcase_panels", prefix, "image", sparkTw(block, "image", `absolute inset-0 h-full w-full object-cover ${prefix === 'before' ? 'grayscale' : ''}`))} onSave={(value)=>onUpdate({[imageKey]:value})}/>
+                                <div className={sparkTwItem(block, "showcase_panels", prefix, "overlay", sparkTw(block, "wrapper_9", `pointer-events-none absolute inset-0 ${prefix === 'before' ? 'bg-slate-950/50' : 'bg-gradient-to-t from-slate-950/70 via-slate-950/10 to-transparent'}`))} />
+                                <div className={sparkTwItem(block, "showcase_panels", prefix, "content", sparkTw(block, "wrapper_10", "absolute inset-x-0 bottom-0 p-5 text-white sm:p-7"))}>
+                                    <EditableText value={data[`${prefix}_label`]} className={sparkTwItem(block, "showcase_panels", prefix, "label", sparkTw(block, "text_4", "text-[11px] font-bold uppercase tracking-[.24em] text-white/70"))} onSave={(v)=>onUpdate({[`${prefix}_label`]:v})}/>
+                                    <EditableText value={data[`${prefix}_caption`]} className={sparkTwItem(block, "showcase_panels", prefix, "caption", sparkTw(block, "text_5", "mt-2 block max-w-sm text-xl font-semibold leading-tight text-white sm:text-2xl"))} onSave={(v)=>onUpdate({[`${prefix}_caption`]:v})}/>
                                 </div>
                             </div>
                         ))}
@@ -88,14 +88,14 @@ export function HeroAgencyShowcaseBlock({ block, blockIndex, onUpdate, globalThe
                     {[1,2,3].map((index) => {
                         const valueKey = `metric_${['one','two','three'][index-1]}_value`;
                         const labelKey = `metric_${['one','two','three'][index-1]}_label`;
-                        return <div key={index} className={sparkTw(block, "wrapper_12", `rounded-2xl border p-5 ${metricSurface}`)}><EditableText value={data[valueKey]} className={sparkTw(block, "text_6", "block text-3xl font-semibold tracking-tight")} onSave={(v)=>onUpdate({[valueKey]:v})}/><EditableText value={data[labelKey]} className={sparkTw(block, "text_7", `mt-2 block text-sm ${isPrimary ? 'text-white/70' : theme.sub}`)} onSave={(v)=>onUpdate({[labelKey]:v})}/></div>
+                        return <div key={index} className={sparkTwItem(block, "metrics", index - 1, "card", sparkTw(block, "wrapper_12", `rounded-2xl border p-5 ${metricSurface}`))}><EditableText value={data[valueKey]} className={sparkTwItem(block, "metrics", index - 1, "value", sparkTw(block, "text_6", "block text-3xl font-semibold tracking-tight"))} onSave={(v)=>onUpdate({[valueKey]:v})}/><EditableText value={data[labelKey]} className={sparkTwItem(block, "metrics", index - 1, "label", sparkTw(block, "text_7", `mt-2 block text-sm ${isPrimary ? 'text-white/70' : theme.sub}`))} onSave={(v)=>onUpdate({[labelKey]:v})}/></div>
                     })}
                 </div>
 
                 <div className={sparkTw(block, "wrapper_13", `mt-8 flex flex-wrap items-center justify-between gap-x-8 gap-y-4 border-t pt-7 ${theme.border}`)}>
                     <span className={sparkTw(block, "label", `text-[10px] font-bold uppercase tracking-[.24em] ${theme.sub}`)}>Selected client work</span>
                     <div className={sparkTw(block, "wrapper_14", "flex flex-wrap items-center gap-x-8 gap-y-3")}>
-                        {["logo_one","logo_two","logo_three","logo_four"].map((key)=><EditableText key={key} value={data[key]} className={sparkTw(block, "text_8", `text-xs font-black tracking-[.15em] ${theme.text}`)} onSave={(v)=>onUpdate({[key]:v})}/>) }
+                        {["logo_one","logo_two","logo_three","logo_four"].map((key, index)=><EditableText key={key} value={data[key]} className={sparkTwItem(block, "logos", index, "label", sparkTw(block, "text_8", `text-xs font-black tracking-[.15em] ${theme.text}`))} onSave={(v)=>onUpdate({[key]:v})}/>) }
                     </div>
                 </div>
             </div>

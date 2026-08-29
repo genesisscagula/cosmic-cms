@@ -5,7 +5,7 @@ import { getEffectiveTheme } from '../../../../theme/Theme';
 import { colorFamilies } from '../../../../theme/colorFamilies';
 import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
 
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwPath } from "../Shared/sparkTailwindRuntime";
 const schema = (type, title, purpose, defaults = {}) => ({
     type,
     title,
@@ -86,15 +86,15 @@ const commerceControlScheme = (colors) => {
 };
 
 const Section = ({ colors, children, block }) => (
-    <section className={sparkTw(block, "auto_1", "group/repeatable-section w-full px-6 py-16 md:px-12 lg:py-20")} style={{ background: colors.background, color: colors.text }}>
-        <div className={sparkTw(block, "auto_2", "mx-auto max-w-7xl")}>{children}</div>
+    <section className={sparkTw(block, "section_1", "group/repeatable-section w-full px-6 py-16 md:px-12 lg:py-20")} style={{ background: colors.background, color: colors.text }}>
+        <div className={sparkTw(block, "wrapper_2", "mx-auto max-w-7xl")}>{children}</div>
     </section>
 );
 
 const Head = ({ block }) => (
-    <div className={sparkTw(block, "auto_3", "mb-8 max-w-2xl")}>
-        <h2 className={sparkTw(block, "auto_4", "text-3xl font-semibold tracking-[-0.035em] md:text-4xl")}>{block.heading}</h2>
-        {block.text ? <p className={sparkTw(block, "auto_5", "mt-3 max-w-xl text-[15px] leading-7 opacity-70")}>{block.text}</p> : null}
+    <div className={sparkTw(block, "element_3", "mb-8 max-w-2xl")}>
+        <h2 className={sparkTw(block, "heading_4", "text-3xl font-semibold tracking-[-0.035em] md:text-4xl")}>{block.heading}</h2>
+        {block.text ? <p className={sparkTw(block, "element_5", "mt-3 max-w-xl text-[15px] leading-7 opacity-70")}>{block.text}</p> : null}
     </div>
 );
 
@@ -102,17 +102,17 @@ const ProductBindingBar = ({ block, commerce, onUpdate, builderMode }) => {
     if (!builderMode) return null;
     const products = (commerce?.products || []).filter((product) => product?.status === 'published' && product?.visibility !== 'hidden');
     return (
-        <div className={sparkTw(block, "auto_6", "mb-4 flex flex-col gap-2 rounded-xl border border-dashed border-violet-400/40 bg-violet-500/5 p-3 sm:flex-row sm:items-center sm:justify-between")}>
+        <div className={sparkTw(block, "card_6", "mb-4 flex flex-col gap-2 rounded-xl border border-dashed border-violet-400/40 bg-violet-500/5 p-3 sm:flex-row sm:items-center sm:justify-between")}>
             <div>
-                <p className={sparkTw(block, "auto_7", "text-[10px] font-bold uppercase tracking-[0.16em] text-violet-500")}>Commerce data binding</p>
-                <p className={sparkTw(block, "auto_8", "text-xs opacity-65")}>Choose the live product this Spark represents in Builder and Preview.</p>
+                <p className={sparkTw(block, "eyebrow_7", "text-[10px] font-bold uppercase tracking-[0.16em] text-violet-500")}>Commerce data binding</p>
+                <p className={sparkTw(block, "element_8", "text-xs opacity-65")}>Choose the live product this Spark represents in Builder and Preview.</p>
             </div>
             <select
                 value={block?.product_id || products[0]?.id || ''}
                 onChange={(event) => onUpdate?.({ product_id: Number(event.target.value) || null })}
-                className={sparkTw(block, "auto_9", "w-full max-w-full rounded-lg border border-current/15 bg-transparent px-3 py-2 text-sm font-semibold sm:w-auto sm:min-w-[220px]")}
+                className={sparkTw(block, "card_9", "w-full max-w-full rounded-lg border border-current/15 bg-transparent px-3 py-2 text-sm font-semibold sm:w-auto sm:min-w-[220px]")}
             >
-                {products.length ? products.map((product) => <option key={product.id} value={product.id} className={sparkTw(block, "auto_10", "text-slate-900")}>{product.title}</option>) : <option value="">No published products</option>}
+                {products.length ? products.map((product) => <option key={product.id} value={product.id} className={sparkTw(block, "element_10", "text-slate-900")}>{product.title}</option>) : <option value="">No published products</option>}
             </select>
         </div>
     );
@@ -132,13 +132,13 @@ function CommerceCatalogToolbar({ categories, search, setSearch, category, setCa
     const controls = commerceControlScheme(colors);
     const selectStyle = { borderColor: colors.border, color: colors.text, background: colors.surface, colorScheme: controls.colorScheme };
     return (
-        <div className={sparkTw(block, "auto_11", "mb-7 grid gap-3 rounded-2xl border p-3 sm:grid-cols-[1fr_auto_auto]")} style={{ borderColor: colors.border, background: colors.surface }}>
-            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products" className={sparkTw(block, "auto_12", "min-h-11 rounded-xl border bg-transparent px-4 text-sm outline-none")} style={{ borderColor: colors.border, color: colors.text }} />
-            <select value={category} onChange={(event) => setCategory(event.target.value)} className={sparkTw(block, "auto_13", "min-h-11 rounded-xl border px-3 text-sm font-semibold")} style={selectStyle}>
+        <div className={sparkTw(block, "grid_11", "mb-7 grid gap-3 rounded-2xl border p-3 sm:grid-cols-[1fr_auto_auto]")} style={{ borderColor: colors.border, background: colors.surface }}>
+            <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Search products" className={sparkTw(block, "card_12", "min-h-11 rounded-xl border bg-transparent px-4 text-sm outline-none")} style={{ borderColor: colors.border, color: colors.text }} />
+            <select value={category} onChange={(event) => setCategory(event.target.value)} className={sparkTw(block, "card_13", "min-h-11 rounded-xl border px-3 text-sm font-semibold")} style={selectStyle}>
                 <option value="" style={controls.optionStyle}>All categories</option>
                 {categories.map((item) => <option key={item.id} value={String(item.id)} style={controls.optionStyle}>{item.name}</option>)}
             </select>
-            <select value={sort} onChange={(event) => setSort(event.target.value)} className={sparkTw(block, "auto_14", "min-h-11 rounded-xl border px-3 text-sm font-semibold")} style={selectStyle}>
+            <select value={sort} onChange={(event) => setSort(event.target.value)} className={sparkTw(block, "card_14", "min-h-11 rounded-xl border px-3 text-sm font-semibold")} style={selectStyle}>
                 <option value="featured" style={controls.optionStyle}>Featured</option>
                 <option value="newest" style={controls.optionStyle}>Newest</option>
                 <option value="price_asc" style={controls.optionStyle}>Price: low to high</option>
@@ -176,33 +176,33 @@ function CommerceCatalogBlock({ block, globalTheme, commerce, variant = 'grid' }
             {toolbar}
             {products.length ? (
                 variant === 'editorial' ? (
-                    <div className={sparkTw(block, "auto_15", "grid gap-6 md:grid-cols-2 lg:grid-cols-12")}>
+                    <div className={sparkTw(block, "grid_15", "grid gap-6 md:grid-cols-2 lg:grid-cols-12")}>
                         {products.map((product, index) => (
-                            <a key={product.id} href={productUrl(product)} className={sparkTw(block, "auto_16", `group overflow-hidden rounded-[26px] border ${index % 5 === 0 ? 'lg:col-span-7' : 'lg:col-span-5'}`)} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
-                                <img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "auto_17", `w-full object-cover transition duration-500 group-hover:scale-[1.02] ${index % 5 === 0 ? 'aspect-[16/10]' : 'aspect-[4/3]'}`)} />
-                                <div className={sparkTw(block, "auto_18", "p-6 sm:p-7")}>
-                                    <p className={sparkTw(block, "auto_19", "text-[10px] font-bold uppercase tracking-[0.18em] opacity-55")}>{(product.category_ids || []).map((id) => categoryMap.get(Number(id))).filter(Boolean)[0] || 'Collection'}</p>
-                                    <div className={sparkTw(block, "auto_20", "mt-2 flex items-end justify-between gap-5")}><h3 className={sparkTw(block, "auto_21", "text-xl font-semibold tracking-[-0.03em]")}>{product.title}</h3><p className={sparkTw(block, "auto_22", "shrink-0 text-base font-bold")}>{c.money(productPriceMinor(product))}</p></div>
+                            <a key={product.id} href={productUrl(product)} className={sparkTw(block, "card_16", `group overflow-hidden rounded-[26px] border ${index % 5 === 0 ? 'lg:col-span-7' : 'lg:col-span-5'}`)} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
+                                <img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "image_17", `w-full object-cover transition duration-500 group-hover:scale-[1.02] ${index % 5 === 0 ? 'aspect-[16/10]' : 'aspect-[4/3]'}`)} />
+                                <div className={sparkTw(block, "element_18", "p-6 sm:p-7")}>
+                                    <p className={sparkTw(block, "eyebrow_19", "text-[10px] font-bold uppercase tracking-[0.18em] opacity-55")}>{(product.category_ids || []).map((id) => categoryMap.get(Number(id))).filter(Boolean)[0] || 'Collection'}</p>
+                                    <div className={sparkTw(block, "row_20", "mt-2 flex items-end justify-between gap-5")}><h3 className={sparkTw(block, "title_21", "text-xl font-semibold tracking-[-0.03em]")}>{product.title}</h3><p className={sparkTw(block, "title_22", "shrink-0 text-base font-bold")}>{c.money(productPriceMinor(product))}</p></div>
                                 </div>
                             </a>
                         ))}
                     </div>
                 ) : variant === 'compact' ? (
-                    <div className={sparkTw(block, "auto_23", "divide-y rounded-2xl border")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
+                    <div className={sparkTw(block, "card_23", "divide-y rounded-2xl border")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
                         {products.map((product) => (
-                            <a key={product.id} href={productUrl(product)} className={sparkTw(block, "auto_24", "grid grid-cols-[72px_1fr_auto] items-center gap-4 p-3.5 transition hover:bg-black/5")} style={{ borderColor: c.colors.border }}>
-                                <img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "auto_25", "h-[72px] w-[72px] rounded-xl object-cover")} />
-                                <div className={sparkTw(block, "auto_26", "min-w-0")}><h3 className={sparkTw(block, "auto_27", "truncate text-sm font-semibold")}>{product.title}</h3><p className={sparkTw(block, "auto_28", "mt-1 truncate text-xs opacity-60")}>{(product.category_ids || []).map((id) => categoryMap.get(Number(id))).filter(Boolean).join(' · ') || 'Catalog product'}</p></div>
-                                <div className={sparkTw(block, "auto_29", "text-right")}><p className={sparkTw(block, "auto_30", "text-sm font-bold")}>{c.money(productPriceMinor(product))}</p>{product.track_inventory ? <p className={sparkTw(block, "auto_31", "mt-1 text-[11px] opacity-60")}>{Number(product.stock_quantity || 0) > 0 ? `${product.stock_quantity} in stock` : (product.allow_backorders ? 'Backorder' : 'Out of stock')}</p> : null}</div>
+                            <a key={product.id} href={productUrl(product)} className={sparkTw(block, "grid_24", "grid grid-cols-[72px_1fr_auto] items-center gap-4 p-3.5 transition hover:bg-black/5")} style={{ borderColor: c.colors.border }}>
+                                <img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "image_25", "h-[72px] w-[72px] rounded-xl object-cover")} />
+                                <div className={sparkTw(block, "element_26", "min-w-0")}><h3 className={sparkTw(block, "title_27", "truncate text-sm font-semibold")}>{product.title}</h3><p className={sparkTw(block, "element_28", "mt-1 truncate text-xs opacity-60")}>{(product.category_ids || []).map((id) => categoryMap.get(Number(id))).filter(Boolean).join(' · ') || 'Catalog product'}</p></div>
+                                <div className={sparkTw(block, "element_29", "text-right")}><p className={sparkTw(block, "title_30", "text-sm font-bold")}>{c.money(productPriceMinor(product))}</p>{product.track_inventory ? <p className={sparkTw(block, "element_31", "mt-1 text-[11px] opacity-60")}>{Number(product.stock_quantity || 0) > 0 ? `${product.stock_quantity} in stock` : (product.allow_backorders ? 'Backorder' : 'Out of stock')}</p> : null}</div>
                             </a>
                         ))}
                     </div>
                 ) : (
-                    <div className={sparkTw(block, "auto_32", "grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>
+                    <div className={sparkTw(block, "grid_32", "grid gap-5 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4")}>
                         {products.map((product) => (
-                            <a key={product.id} href={productUrl(product)} className={sparkTw(block, "auto_33", "group overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl")} style={{ borderColor: c.colors.border, background: c.colors.surface, boxShadow: '0 12px 35px rgba(2,6,23,.10)' }}>
-                                <img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "auto_34", "aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-[1.025]")} />
-                                <div className={sparkTw(block, "auto_35", "p-5")}><h3 className={sparkTw(block, "auto_36", "text-[16px] font-semibold tracking-[-0.02em]")}>{product.title}</h3><div className={sparkTw(block, "auto_37", "mt-3 flex items-center justify-between gap-3")}><p className={sparkTw(block, "auto_38", "text-[15px] font-bold")}>{c.money(productPriceMinor(product))}</p>{product.is_featured ? <span className={sparkTw(block, "auto_39", "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide")} style={{ background: `${c.colors.accent}1F`, color: c.colors.accent }}>Featured</span> : null}</div></div>
+                            <a key={product.id} href={productUrl(product)} className={sparkTw(block, "card_33", "group overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl")} style={{ borderColor: c.colors.border, background: c.colors.surface, boxShadow: '0 12px 35px rgba(2,6,23,.10)' }}>
+                                <img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "image_34", "aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-[1.025]")} />
+                                <div className={sparkTw(block, "element_35", "p-5")}><h3 className={sparkTw(block, "title_36", "text-[16px] font-semibold tracking-[-0.02em]")}>{product.title}</h3><div className={sparkTw(block, "row_37", "mt-3 flex items-center justify-between gap-3")}><p className={sparkTw(block, "title_38", "text-[15px] font-bold")}>{c.money(productPriceMinor(product))}</p>{product.is_featured ? <span className={sparkTw(block, "eyebrow_39", "rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide")} style={{ background: `${c.colors.accent}1F`, color: c.colors.accent }}>Featured</span> : null}</div></div>
                             </a>
                         ))}
                     </div>
@@ -218,9 +218,9 @@ export function CommerceCatalogCompactBlock(props) { return <CommerceCatalogBloc
 
 
 const ProductCard = ({ product, c, block }) => (
-    <a href={productUrl(product)} className={sparkTw(block, "auto_40", "group overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl")} style={{ borderColor: c.colors.border, background: c.colors.surface, boxShadow: '0 12px 35px rgba(2,6,23,.10)' }}>
-        <img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "auto_41", "aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-[1.025]")} />
-        <div className={sparkTw(block, "auto_42", "p-5")}><h3 className={sparkTw(block, "auto_43", "text-[16px] font-semibold tracking-[-0.02em]")}>{product.title}</h3><p className={sparkTw(block, "auto_44", "mt-2 text-[15px] font-bold")}>{c.money(productPriceMinor(product))}</p></div>
+    <a href={productUrl(product)} className={sparkTw(block, "card_40", "group overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl")} style={{ borderColor: c.colors.border, background: c.colors.surface, boxShadow: '0 12px 35px rgba(2,6,23,.10)' }}>
+        <img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "image_41", "aspect-[4/5] w-full object-cover transition duration-500 group-hover:scale-[1.025]")} />
+        <div className={sparkTw(block, "element_42", "p-5")}><h3 className={sparkTw(block, "title_43", "text-[16px] font-semibold tracking-[-0.02em]")}>{product.title}</h3><p className={sparkTw(block, "title_44", "mt-2 text-[15px] font-bold")}>{c.money(productPriceMinor(product))}</p></div>
     </a>
 );
 
@@ -228,27 +228,27 @@ export function CommerceFeaturedProductsBlock({ block, globalTheme, commerce }) 
     const c = useCommerce(block, globalTheme, commerce);
     const featured = c.products.filter((product) => product.is_featured);
     const products = (featured.length ? featured : c.products).slice(0, Number(block.limit || 4));
-    return <Section block={block} colors={c.colors}><Head block={block} />{products.length ? <div data-commerce-body className={sparkTw(block, "auto_45", "grid gap-5 sm:grid-cols-2 lg:grid-cols-4")}>{products.map((product) => <ProductCard block={block} key={product.id} product={product} c={c} />)}</div> : <Empty block={block} text="Mark products as featured to populate this Spark." />}</Section>;
+    return <Section block={block} colors={c.colors}><Head block={block} />{products.length ? <div data-commerce-body className={sparkTw(block, "grid_45", "grid gap-5 sm:grid-cols-2 lg:grid-cols-4")}>{products.map((product) => <ProductCard block={block} key={product.id} product={product} c={c} />)}</div> : <Empty block={block} text="Mark products as featured to populate this Spark." />}</Section>;
 }
 
 const CategoryBindingBar = ({ block, commerce, onUpdate, builderMode }) => {
     if (!builderMode) return null;
     const categories = commerce?.categories || [];
-    return <div className={sparkTw(block, "auto_46", "mb-4 flex flex-col gap-2 rounded-xl border border-dashed border-violet-400/40 bg-violet-500/5 p-3 sm:flex-row sm:items-center sm:justify-between")}><div><p className={sparkTw(block, "auto_47", "text-[10px] font-bold uppercase tracking-[0.16em] text-violet-500")}>Collection binding</p><p className={sparkTw(block, "auto_48", "text-xs opacity-65")}>Choose which live category this Spark merchandises.</p></div><select value={block?.category_id || categories[0]?.id || ''} onChange={(event)=>onUpdate?.({category_id:Number(event.target.value)||null})} className={sparkTw(block, "auto_49", "w-full max-w-full rounded-lg border border-current/15 bg-transparent px-3 py-2 text-sm font-semibold sm:w-auto sm:min-w-[220px]")}>{categories.length ? categories.map((category)=><option key={category.id} value={category.id} className={sparkTw(block, "auto_50", "text-slate-900")}>{category.name}</option>) : <option value="">No categories</option>}</select></div>;
+    return <div className={sparkTw(block, "card_46", "mb-4 flex flex-col gap-2 rounded-xl border border-dashed border-violet-400/40 bg-violet-500/5 p-3 sm:flex-row sm:items-center sm:justify-between")}><div><p className={sparkTw(block, "eyebrow_47", "text-[10px] font-bold uppercase tracking-[0.16em] text-violet-500")}>Collection binding</p><p className={sparkTw(block, "element_48", "text-xs opacity-65")}>Choose which live category this Spark merchandises.</p></div><select value={block?.category_id || categories[0]?.id || ''} onChange={(event)=>onUpdate?.({category_id:Number(event.target.value)||null})} className={sparkTw(block, "card_49", "w-full max-w-full rounded-lg border border-current/15 bg-transparent px-3 py-2 text-sm font-semibold sm:w-auto sm:min-w-[220px]")}>{categories.length ? categories.map((category)=><option key={category.id} value={category.id} className={sparkTw(block, "element_50", "text-slate-900")}>{category.name}</option>) : <option value="">No categories</option>}</select></div>;
 };
 
 export function CommerceFeaturedCollectionBlock({ block, globalTheme, commerce, onUpdate, builderMode = false }) {
     const c = useCommerce(block, globalTheme, commerce);
     const category = c.categories.find((item)=>Number(item.id)===Number(block.category_id)) || c.categories[0] || null;
     const products = category ? c.products.filter((product)=>(product.category_ids || []).map(Number).includes(Number(category.id))).slice(0, Number(block.limit || 4)) : [];
-    return <Section block={block} colors={c.colors}><CategoryBindingBar block={block} commerce={commerce} onUpdate={onUpdate} builderMode={builderMode} /><div className={sparkTw(block, "auto_51", "mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between")}><Head block={{...block, heading:block.heading || category?.name || 'Featured collection'}} />{category ? <a href={categoryUrl(category)} className={sparkTw(block, "auto_52", "inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-bold")} style={{borderColor:c.colors.border, background:c.colors.surface}}>{block.button_label || 'View collection'}</a> : null}</div>{products.length ? <div data-commerce-body className={sparkTw(block, "auto_53", "grid gap-5 sm:grid-cols-2 lg:grid-cols-4")}>{products.map((product)=><ProductCard block={block} key={product.id} product={product} c={c} />)}</div> : <Empty block={block} text="Choose a category with published products to populate this collection." />}</Section>;
+    return <Section block={block} colors={c.colors}><CategoryBindingBar block={block} commerce={commerce} onUpdate={onUpdate} builderMode={builderMode} /><div className={sparkTw(block, "row_51", "mb-8 flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between")}><Head block={{...block, heading:block.heading || category?.name || 'Featured collection'}} />{category ? <a href={categoryUrl(category)} className={sparkTw(block, "card_52", "inline-flex min-h-11 shrink-0 items-center justify-center rounded-xl border px-5 py-2.5 text-sm font-bold")} style={{borderColor:c.colors.border, background:c.colors.surface}}>{block.button_label || 'View collection'}</a> : null}</div>{products.length ? <div data-commerce-body className={sparkTw(block, "grid_53", "grid gap-5 sm:grid-cols-2 lg:grid-cols-4")}>{products.map((product)=><ProductCard block={block} key={product.id} product={product} c={c} />)}</div> : <Empty block={block} text="Choose a category with published products to populate this collection." />}</Section>;
 }
 
 export function CommercePromoSplitBlock({ block, blockIndex, onUpdate, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
     const { website, page } = usePage().props;
     const websiteId = website?.id || page?.website_id;
-    return <Section block={block} colors={c.colors}><div className={sparkTw(block, "auto_54", "grid overflow-hidden rounded-[30px] border lg:grid-cols-[1.02fr_.98fr]")} style={{borderColor:c.colors.border, background:c.colors.surface}}><div className={sparkTw(block, "auto_55", "flex flex-col justify-center p-7 sm:p-10 lg:p-12")}><p className={sparkTw(block, "auto_56", "text-[11px] font-bold uppercase tracking-[0.2em]")} style={{color:c.colors.accent}}>{block.eyebrow || 'Limited collection'}</p><h2 className={sparkTw(block, "auto_57", "mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl")}>{block.heading}</h2><p className={sparkTw(block, "auto_58", "mt-4 max-w-xl text-[15px] leading-7")} style={{color:c.colors.muted}}>{block.text}</p><div><a href={block.button_url || '/shop'} className={sparkTw(block, "auto_59", "mt-7 inline-flex min-h-11 items-center justify-center rounded-xl px-5 py-2.5 text-sm font-bold")} style={{background:c.colors.accent, color:c.colors.background}}>{block.button_label || 'Shop the collection'}</a></div></div><div className={sparkTw(block, "auto_60", "min-h-[300px] overflow-hidden")}><EditableImage websiteId={websiteId} blockIndex={blockIndex} src={block.image_url || '/storage/cms-images/background/background-3.avif'} alt={block.image_alt || block.heading || ''} className={sparkTw(block, "auto_61", "h-full min-h-[300px] w-full object-cover")} imageQuery={block.image_alt || block.heading || 'premium product collection'} blockType={CommercePromoSplitSchema.type} onSave={(image_url) => onUpdate?.({ image_url })} /></div></div></Section>;
+    return <Section block={block} colors={c.colors}><div className={sparkTw(block, "grid_54", "grid overflow-hidden rounded-[30px] border lg:grid-cols-[1.02fr_.98fr]")} style={{borderColor:c.colors.border, background:c.colors.surface}}><div className={sparkTw(block, "row_55", "flex flex-col justify-center p-7 sm:p-10 lg:p-12")}><p className={sparkTw(block, "eyebrow_56", "text-[11px] font-bold uppercase tracking-[0.2em]")} style={{color:c.colors.accent}}>{block.eyebrow || 'Limited collection'}</p><h2 className={sparkTw(block, "heading_57", "mt-4 text-3xl font-semibold tracking-[-0.04em] sm:text-4xl")}>{block.heading}</h2><p className={sparkTw(block, "element_58", "mt-4 max-w-xl text-[15px] leading-7")} style={{color:c.colors.muted}}>{block.text}</p><div><a href={block.button_url || '/shop'} className={sparkTw(block, "title_59", "mt-7 inline-flex min-h-11 items-center justify-center rounded-xl px-5 py-2.5 text-sm font-bold")} style={{background:c.colors.accent, color:c.colors.background}}>{block.button_label || 'Shop the collection'}</a></div></div><div className={sparkTw(block, "element_60", "min-h-[300px] overflow-hidden")}><EditableImage websiteId={websiteId} blockIndex={blockIndex} src={block.image_url || '/storage/cms-images/background/background-3.avif'} alt={block.image_alt || block.heading || ''} className={sparkTw(block, "image_61", "h-full min-h-[300px] w-full object-cover")} imageQuery={block.image_alt || block.heading || 'premium product collection'} blockType={CommercePromoSplitSchema.type} onSave={(image_url) => onUpdate?.({ image_url })} /></div></div></Section>;
 }
 
 export function CommerceBenefitsStripBlock({ block, onUpdate, globalTheme, commerce }) {
@@ -270,7 +270,7 @@ export function CommerceBenefitsStripBlock({ block, onUpdate, globalTheme, comme
         patch[`benefit_${benefitCount}_text`] = '';
         onUpdate?.(patch);
     };
-    return <Section block={block} colors={c.colors}><div><div className={sparkTw(block, "auto_62", "rounded-[26px] border px-6 py-7 sm:px-8")} style={{borderColor:c.colors.border, background:c.colors.surface}}>{block.heading ? <h2 className={sparkTw(block, "auto_63", "mb-6 text-xl font-semibold tracking-[-0.03em]")}>{block.heading}</h2> : null}<div className={sparkTw(block, "auto_64", "grid gap-5 sm:grid-cols-2 lg:grid-cols-4")}>{items.map((item,index)=><div key={item.slot} className={sparkTw(block, "auto_65", "group relative flex gap-3 pr-9")}><RepeatableRemoveButton hoverScope="card" overlay onRemove={() => removeBenefit(index)} disabled={benefitCount <= 1} label="Remove benefit"/><div className={sparkTw(block, "auto_66", "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black")} style={{background:`${c.colors.accent}1F`, color:c.colors.accent}}>✓</div><div><h3 className={sparkTw(block, "auto_67", "text-sm font-bold")}>{item.title}</h3><p className={sparkTw(block, "auto_68", "mt-1 text-xs leading-5")} style={{color:c.colors.muted}}>{item.text}</p></div></div>)}</div></div><RepeatableControls onAdd={() => benefitCount < 4 && onUpdate?.({ benefit_count: benefitCount + 1 })} onRemove={() => {}} canAdd={benefitCount < 4} canRemove={false} addLabel="Add benefit" showRemove={false}/></div></Section>;
+    return <Section block={block} colors={c.colors}><div><div className={sparkTw(block, "section_62", "rounded-[26px] border px-6 py-7 sm:px-8")} style={{borderColor:c.colors.border, background:c.colors.surface}}>{block.heading ? <h2 className={sparkTw(block, "title_63", "mb-6 text-xl font-semibold tracking-[-0.03em]")}>{block.heading}</h2> : null}<div className={sparkTw(block, "grid_64", "grid gap-5 sm:grid-cols-2 lg:grid-cols-4")}>{items.map((item,index)=><div key={item.slot} className={sparkTw(block, "row_65", "group relative flex gap-3 pr-9")}><RepeatableRemoveButton hoverScope="card" overlay onRemove={() => removeBenefit(index)} disabled={benefitCount <= 1} label="Remove benefit"/><div className={sparkTw(block, "title_66", "mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-black")} style={{background:`${c.colors.accent}1F`, color:c.colors.accent}}>✓</div><div><h3 className={sparkTw(block, "title_67", "text-sm font-bold")}>{item.title}</h3><p className={sparkTw(block, "element_68", "mt-1 text-xs leading-5")} style={{color:c.colors.muted}}>{item.text}</p></div></div>)}</div></div><RepeatableControls onAdd={() => benefitCount < 4 && onUpdate?.({ benefit_count: benefitCount + 1 })} onRemove={() => {}} canAdd={benefitCount < 4} canRemove={false} addLabel="Add benefit" showRemove={false}/></div></Section>;
 }
 
 export function CommerceProductGridBlock({ block, globalTheme, commerce }) {
@@ -283,15 +283,15 @@ export function CommerceProductGridBlock({ block, globalTheme, commerce }) {
         <Section block={block} colors={c.colors}>
             <Head block={block} />
             {products.length ? (
-                <div className={sparkTw(block, "auto_69", "grid gap-5 sm:grid-cols-2 lg:grid-cols-4")}>
+                <div className={sparkTw(block, "grid_69", "grid gap-5 sm:grid-cols-2 lg:grid-cols-4")}>
                     {products.map((product) => (
-                        <a key={product.id} href={productUrl(product)} className={sparkTw(block, "auto_70", "group overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl")} style={{ borderColor: c.colors.border, background: c.colors.surface, boxShadow: '0 12px 35px rgba(2,6,23,.10)' }}>
-                            <div className={sparkTw(block, "auto_71", "overflow-hidden bg-black/5")}><img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "auto_72", "aspect-square w-full object-cover transition duration-500 group-hover:scale-[1.025]")} /></div>
-                            <div className={sparkTw(block, "auto_73", "p-5")}>
-                                <h3 className={sparkTw(block, "auto_74", "text-[16px] font-semibold tracking-[-0.02em]")}>{product.title}</h3>
-                                <div className={sparkTw(block, "auto_75", "mt-3 flex items-center justify-between gap-3")}>
-                                    <p className={sparkTw(block, "auto_76", "text-[15px] font-bold")}>{c.money(productPriceMinor(product))}</p>
-                                    {product.track_inventory ? <span className={sparkTw(block, "auto_77", "rounded-full px-2.5 py-1 text-[11px] font-semibold")} style={{ background: `${c.colors.accent}1F`, color: c.colors.accent }}>{Number(product.stock_quantity || 0) > 0 ? `${product.stock_quantity} in stock` : (product.allow_backorders ? 'Backorder' : 'Out of stock')}</span> : null}
+                        <a key={product.id} href={productUrl(product)} className={sparkTw(block, "card_70", "group overflow-hidden rounded-[22px] border transition duration-300 hover:-translate-y-1 hover:shadow-2xl")} style={{ borderColor: c.colors.border, background: c.colors.surface, boxShadow: '0 12px 35px rgba(2,6,23,.10)' }}>
+                            <div className={sparkTw(block, "element_71", "overflow-hidden bg-black/5")}><img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "image_72", "aspect-square w-full object-cover transition duration-500 group-hover:scale-[1.025]")} /></div>
+                            <div className={sparkTw(block, "element_73", "p-5")}>
+                                <h3 className={sparkTw(block, "title_74", "text-[16px] font-semibold tracking-[-0.02em]")}>{product.title}</h3>
+                                <div className={sparkTw(block, "row_75", "mt-3 flex items-center justify-between gap-3")}>
+                                    <p className={sparkTw(block, "title_76", "text-[15px] font-bold")}>{c.money(productPriceMinor(product))}</p>
+                                    {product.track_inventory ? <span className={sparkTw(block, "title_77", "rounded-full px-2.5 py-1 text-[11px] font-semibold")} style={{ background: `${c.colors.accent}1F`, color: c.colors.accent }}>{Number(product.stock_quantity || 0) > 0 ? `${product.stock_quantity} in stock` : (product.allow_backorders ? 'Backorder' : 'Out of stock')}</span> : null}
                                 </div>
                             </div>
                         </a>
@@ -308,11 +308,11 @@ export function CommerceCategoriesBlock({ block, globalTheme, commerce }) {
         <Section block={block} colors={c.colors}>
             <Head block={block} />
             {c.categories.length ? (
-                <div className={sparkTw(block, "auto_78", "grid gap-4 sm:grid-cols-2 lg:grid-cols-3")}>
+                <div className={sparkTw(block, "grid_78", "grid gap-4 sm:grid-cols-2 lg:grid-cols-3")}>
                     {c.categories.map((category) => (
-                        <a key={category.id} href={categoryUrl(category)} className={sparkTw(block, "auto_79", "rounded-2xl border p-6")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
-                            <div className={sparkTw(block, "auto_80", "text-lg font-bold")}>{category.name}</div>
-                            <p className={sparkTw(block, "auto_81", "mt-2 text-sm opacity-65")}>{category.description || 'Explore this collection'}</p>
+                        <a key={category.id} href={categoryUrl(category)} className={sparkTw(block, "card_79", "rounded-2xl border p-6")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
+                            <div className={sparkTw(block, "title_80", "text-lg font-bold")}>{category.name}</div>
+                            <p className={sparkTw(block, "element_81", "mt-2 text-sm opacity-65")}>{category.description || 'Explore this collection'}</p>
                         </a>
                     ))}
                 </div>
@@ -334,10 +334,10 @@ export function CommerceProductGalleryBlock({ block, globalTheme, commerce, onUp
             <ProductBindingBar block={block} commerce={commerce} onUpdate={onUpdate} builderMode={builderMode} />
             <Head block={{ ...block, heading: block.heading || c.product?.title || 'Product gallery' }} />
             {c.product ? (
-                <div className={sparkTw(block, "auto_82", "grid gap-4 md:grid-cols-[2fr_1fr]")}>
-                    <img src={images[0]} alt={c.product.featured_image_alt || c.product.title || ''} className={sparkTw(block, "auto_83", "aspect-square w-full rounded-2xl object-cover")} />
-                    <div className={sparkTw(block, "auto_84", "grid grid-cols-2 gap-3")}>
-                        {images.slice(1, 5).map((url, index) => <img key={`${url}-${index}`} src={url} alt="" className={sparkTw(block, "auto_85", "aspect-square w-full rounded-xl object-cover")} />)}
+                <div className={sparkTw(block, "grid_82", "grid gap-4 md:grid-cols-[2fr_1fr]")}>
+                    <img src={images[0]} alt={c.product.featured_image_alt || c.product.title || ''} className={sparkTw(block, "image_83", "aspect-square w-full rounded-2xl object-cover")} />
+                    <div className={sparkTw(block, "grid_84", "grid grid-cols-2 gap-3")}>
+                        {images.slice(1, 5).map((url, index) => <img key={`${url}-${index}`} src={url} alt="" className={sparkTw(block, "image_85", "aspect-square w-full rounded-xl object-cover")} />)}
                     </div>
                 </div>
             ) : <Empty block={block} text="Create and publish a product to connect this gallery." />}
@@ -351,12 +351,12 @@ export function CommercePriceBlock({ block, globalTheme, commerce, onUpdate, bui
     return (
         <Section block={block} colors={c.colors}>
             <ProductBindingBar block={block} commerce={commerce} onUpdate={onUpdate} builderMode={builderMode} />
-            <div className={sparkTw(block, "auto_86", "rounded-2xl border p-6")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
-                <p className={sparkTw(block, "auto_87", "text-xs font-semibold uppercase tracking-widest opacity-60")}>{block.label}</p>
+            <div className={sparkTw(block, "card_86", "rounded-2xl border p-6")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
+                <p className={sparkTw(block, "eyebrow_87", "text-xs font-semibold uppercase tracking-widest opacity-60")}>{block.label}</p>
                 {product ? (
-                    <div className={sparkTw(block, "auto_88", "mt-2 flex items-end gap-3")}>
-                        <span className={sparkTw(block, "auto_89", "text-4xl font-black")}>{c.money(productPriceMinor(product))}</span>
-                        {product.sale_price_minor != null ? <span className={sparkTw(block, "auto_90", "pb-1 text-lg line-through opacity-45")}>{c.money(product.regular_price_minor)}</span> : null}
+                    <div className={sparkTw(block, "row_88", "mt-2 flex items-end gap-3")}>
+                        <span className={sparkTw(block, "heading_89", "text-4xl font-black")}>{c.money(productPriceMinor(product))}</span>
+                        {product.sale_price_minor != null ? <span className={sparkTw(block, "element_90", "pb-1 text-lg line-through opacity-45")}>{c.money(product.regular_price_minor)}</span> : null}
                     </div>
                 ) : <Empty block={block} text="Create and publish a product to show live pricing." />}
             </div>
@@ -374,24 +374,24 @@ export function CommerceVariationSelectorBlock({ block, globalTheme, commerce, o
             <ProductBindingBar block={block} commerce={commerce} onUpdate={onUpdate} builderMode={builderMode} />
             <Head block={block} />
             {options.length ? (
-                <div className={sparkTw(block, "auto_91", "space-y-5")}>
+                <div className={sparkTw(block, "list_91", "space-y-5")}>
                     {options.map((option) => (
                         <div key={option.id}>
-                            <p className={sparkTw(block, "auto_92", "mb-2 text-sm font-semibold")}>{option.name}</p>
-                            <div className={sparkTw(block, "auto_93", "flex flex-wrap gap-2")}>
+                            <p className={sparkTw(block, "title_92", "mb-2 text-sm font-semibold")}>{option.name}</p>
+                            <div className={sparkTw(block, "row_93", "flex flex-wrap gap-2")}>
                                 {(option.values || []).map((value) => (
                                     <button
                                         key={value.id}
                                         type="button"
                                         onClick={() => setSelected((current) => ({ ...current, [option.id]: value.id }))}
-                                        className={sparkTw(block, "auto_94", "rounded-xl border px-4 py-2 text-sm font-semibold")}
+                                        className={sparkTw(block, "card_94", "rounded-xl border px-4 py-2 text-sm font-semibold")}
                                         style={{
                                             borderColor: selected[option.id] === value.id ? c.colors.accent : c.colors.border,
                                             background: selected[option.id] === value.id ? c.colors.accent : 'transparent',
                                             color: selected[option.id] === value.id ? 'white' : c.colors.text,
                                         }}
                                     >
-                                        {value.swatch_hex ? <span className={sparkTw(block, "auto_95", "mr-2 inline-block h-3 w-3 rounded-full align-middle")} style={{ background: value.swatch_hex }} /> : null}
+                                        {value.swatch_hex ? <span className={sparkTw(block, "element_95", "mr-2 inline-block h-3 w-3 rounded-full align-middle")} style={{ background: value.swatch_hex }} /> : null}
                                         {value.label}
                                     </button>
                                 ))}
@@ -417,13 +417,13 @@ export function CommerceRelatedProductsBlock({ block, globalTheme, commerce, onU
             <ProductBindingBar block={block} commerce={commerce} onUpdate={onUpdate} builderMode={builderMode} />
             <Head block={block} />
             {related.length ? (
-                <div className={sparkTw(block, "auto_96", "grid gap-5 sm:grid-cols-2 lg:grid-cols-4")}>
+                <div className={sparkTw(block, "grid_96", "grid gap-5 sm:grid-cols-2 lg:grid-cols-4")}>
                     {related.map((candidate) => (
-                        <a key={candidate.id} href={productUrl(candidate)} className={sparkTw(block, "auto_97", "overflow-hidden rounded-2xl border")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
-                            <img src={imageUrl(candidate)} alt={candidate.featured_image_alt || candidate.title || ''} className={sparkTw(block, "auto_98", "aspect-square w-full object-cover")} />
-                            <div className={sparkTw(block, "auto_99", "p-4")}>
+                        <a key={candidate.id} href={productUrl(candidate)} className={sparkTw(block, "card_97", "overflow-hidden rounded-2xl border")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
+                            <img src={imageUrl(candidate)} alt={candidate.featured_image_alt || candidate.title || ''} className={sparkTw(block, "image_98", "aspect-square w-full object-cover")} />
+                            <div className={sparkTw(block, "element_99", "p-4")}>
                                 <b>{candidate.title}</b>
-                                <p className={sparkTw(block, "auto_100", "mt-1 text-sm")}>{c.money(productPriceMinor(candidate))}</p>
+                                <p className={sparkTw(block, "element_100", "mt-1 text-sm")}>{c.money(productPriceMinor(candidate))}</p>
                             </div>
                         </a>
                     ))}
@@ -437,12 +437,12 @@ function CartPreviewLines({ c, compact = false, block }) {
     const products = c.products.slice(0, compact ? 3 : 2);
     if (!products.length) return <Empty block={block} text="Live cart items will appear here on the protected Cart route." />;
     return (
-        <div className={sparkTw(block, "auto_101", compact ? 'divide-y rounded-2xl border' : 'space-y-3')} style={compact ? { borderColor: c.colors.border } : undefined}>
+        <div className={sparkTw(block, "product_list", compact ? 'divide-y rounded-2xl border' : 'space-y-3')} style={compact ? { borderColor: c.colors.border } : undefined}>
             {products.map((product, index) => (
-                <div key={product.id} className={sparkTw(block, "auto_102", compact ? 'grid grid-cols-[64px_1fr_auto] items-center gap-3 p-3' : 'grid grid-cols-[82px_1fr_auto] items-center gap-4 rounded-2xl border p-3.5')} style={!compact ? { borderColor: c.colors.border, background: c.colors.surface } : undefined}>
-                    <img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "auto_103", compact ? 'h-16 w-16 rounded-xl object-cover' : 'h-[82px] w-[82px] rounded-xl object-cover')} />
-                    <div className={sparkTw(block, "auto_104", "min-w-0")}><h3 className={sparkTw(block, "auto_105", "truncate text-sm font-bold")}>{product.title}</h3><p className={sparkTw(block, "auto_106", "mt-1 text-xs")} style={{ color: c.colors.muted }}>Qty {index + 1} · Demo preview</p></div>
-                    <strong className={sparkTw(block, "auto_107", "text-sm")}>{c.money(productPriceMinor(product) == null ? null : productPriceMinor(product) * (index + 1))}</strong>
+                <div key={product.id} className={sparkTwPath(block, ["items", index], "row", compact ? 'grid grid-cols-[64px_1fr_auto] items-center gap-3 p-3' : 'grid grid-cols-[82px_1fr_auto] items-center gap-4 rounded-2xl border p-3.5')} style={!compact ? { borderColor: c.colors.border, background: c.colors.surface } : undefined}>
+                    <img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTwPath(block, ["items", index], "image", compact ? 'h-16 w-16 rounded-xl object-cover' : 'h-[82px] w-[82px] rounded-xl object-cover')} />
+                    <div className={sparkTw(block, "element_104", "min-w-0")}><h3 className={sparkTw(block, "title_105", "truncate text-sm font-bold")}>{product.title}</h3><p className={sparkTw(block, "element_106", "mt-1 text-xs")} style={{ color: c.colors.muted }}>Qty {index + 1} · Demo preview</p></div>
+                    <strong className={sparkTw(block, "element_107", "text-sm")}>{c.money(productPriceMinor(product) == null ? null : productPriceMinor(product) * (index + 1))}</strong>
                 </div>
             ))}
         </div>
@@ -451,14 +451,14 @@ function CartPreviewLines({ c, compact = false, block }) {
 
 function CartSummaryCard({ block, c, checkoutUrl, emphasized = false }) {
     const previewSubtotal = c.products.slice(0, 2).reduce((sum, product, index) => sum + Number(productPriceMinor(product) || 0) * (index + 1), 0);
-    return <aside className={sparkTw(block, "auto_108", `rounded-[26px] border p-6 ${emphasized ? 'lg:sticky lg:top-6' : ''}`)} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
-        <p className={sparkTw(block, "auto_109", "text-[11px] font-bold uppercase tracking-[0.18em]")} style={{ color: c.colors.muted }}>Order summary</p>
-        <div className={sparkTw(block, "auto_110", "mt-5 flex items-center justify-between text-sm")}><span style={{ color: c.colors.muted }}>Preview subtotal</span><strong>{c.money(previewSubtotal)}</strong></div>
-        <div className={sparkTw(block, "auto_111", "mt-3 flex items-center justify-between text-sm")}><span style={{ color: c.colors.muted }}>Shipping & tax</span><span>At checkout</span></div>
-        <div className={sparkTw(block, "auto_112", "my-5 border-t")} style={{ borderColor: c.colors.border }} />
-        <div className={sparkTw(block, "auto_113", "flex items-center justify-between")}><strong>Estimated total</strong><strong className={sparkTw(block, "auto_114", "text-xl")}>{c.money(previewSubtotal)}</strong></div>
-        <a href={checkoutUrl} className={sparkTw(block, "auto_115", "mt-6 block w-full rounded-xl px-4 py-3 text-center text-sm font-bold")} style={{ background: c.colors.accent, color: c.colors.background }}>{block.checkout_label || 'Proceed to checkout'}</a>
-        <p className={sparkTw(block, "auto_116", "mt-3 text-center text-[11px] leading-5")} style={{ color: c.colors.muted }}>Builder preview only. Live quantities, coupons and totals remain controlled by the commerce runtime.</p>
+    return <aside className={sparkTw(block, "card_108", `rounded-[26px] border p-6 ${emphasized ? 'lg:sticky lg:top-6' : ''}`)} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
+        <p className={sparkTw(block, "eyebrow_109", "text-[11px] font-bold uppercase tracking-[0.18em]")} style={{ color: c.colors.muted }}>Order summary</p>
+        <div className={sparkTw(block, "row_110", "mt-5 flex items-center justify-between text-sm")}><span style={{ color: c.colors.muted }}>Preview subtotal</span><strong>{c.money(previewSubtotal)}</strong></div>
+        <div className={sparkTw(block, "row_111", "mt-3 flex items-center justify-between text-sm")}><span style={{ color: c.colors.muted }}>Shipping & tax</span><span>At checkout</span></div>
+        <div className={sparkTw(block, "element_112", "my-5 border-t")} style={{ borderColor: c.colors.border }} />
+        <div className={sparkTw(block, "row_113", "flex items-center justify-between")}><strong>Estimated total</strong><strong className={sparkTw(block, "element_114", "text-xl")}>{c.money(previewSubtotal)}</strong></div>
+        <a href={checkoutUrl} className={sparkTw(block, "title_115", "mt-6 block w-full rounded-xl px-4 py-3 text-center text-sm font-bold")} style={{ background: c.colors.accent, color: c.colors.background }}>{block.checkout_label || 'Proceed to checkout'}</a>
+        <p className={sparkTw(block, "element_116", "mt-3 text-center text-[11px] leading-5")} style={{ color: c.colors.muted }}>Builder preview only. Live quantities, coupons and totals remain controlled by the commerce runtime.</p>
     </aside>;
 }
 
@@ -466,28 +466,28 @@ export function CommerceCartClassicBlock({ block, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
     const checkoutUrl = commerce?.runtime_urls?.checkout || '/checkout';
     const shopUrl = commerce?.runtime_urls?.shop || '/shop';
-    return <Section block={block} colors={c.colors}><Head block={block} /><div className={sparkTw(block, "auto_117", "grid gap-7 lg:grid-cols-[1fr_360px]")}><div><CartPreviewLines block={block} c={c} /><a href={shopUrl} className={sparkTw(block, "auto_118", "mt-5 inline-flex text-sm font-bold")} style={{ color: c.colors.accent }}>← {block.continue_label || 'Continue shopping'}</a></div><CartSummaryCard block={block} c={c} checkoutUrl={checkoutUrl} /></div></Section>;
+    return <Section block={block} colors={c.colors}><Head block={block} /><div className={sparkTw(block, "grid_117", "grid gap-7 lg:grid-cols-[1fr_360px]")}><div><CartPreviewLines block={block} c={c} /><a href={shopUrl} className={sparkTw(block, "title_118", "mt-5 inline-flex text-sm font-bold")} style={{ color: c.colors.accent }}>← {block.continue_label || 'Continue shopping'}</a></div><CartSummaryCard block={block} c={c} checkoutUrl={checkoutUrl} /></div></Section>;
 }
 
 export function CommerceCartSplitBlock({ block, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
     const checkoutUrl = commerce?.runtime_urls?.checkout || '/checkout';
     const shopUrl = commerce?.runtime_urls?.shop || '/shop';
-    return <Section block={block} colors={c.colors}><div className={sparkTw(block, "auto_119", "grid gap-8 lg:grid-cols-[1.2fr_.8fr] lg:items-start")}><div><Head block={block} /><CartPreviewLines block={block} c={c} /><a href={shopUrl} className={sparkTw(block, "auto_120", "mt-5 inline-flex text-sm font-bold")} style={{ color: c.colors.accent }}>← {block.continue_label || 'Keep shopping'}</a></div><CartSummaryCard block={block} c={c} checkoutUrl={checkoutUrl} emphasized /></div></Section>;
+    return <Section block={block} colors={c.colors}><div className={sparkTw(block, "grid_119", "grid gap-8 lg:grid-cols-[1.2fr_.8fr] lg:items-start")}><div><Head block={block} /><CartPreviewLines block={block} c={c} /><a href={shopUrl} className={sparkTw(block, "title_120", "mt-5 inline-flex text-sm font-bold")} style={{ color: c.colors.accent }}>← {block.continue_label || 'Keep shopping'}</a></div><CartSummaryCard block={block} c={c} checkoutUrl={checkoutUrl} emphasized /></div></Section>;
 }
 
 export function CommerceCartCompactBlock({ block, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
     const checkoutUrl = commerce?.runtime_urls?.checkout || '/checkout';
     const shopUrl = commerce?.runtime_urls?.shop || '/shop';
-    return <Section block={block} colors={c.colors}><div className={sparkTw(block, "auto_121", "mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between")}><Head block={block} /><a href={shopUrl} className={sparkTw(block, "auto_122", "shrink-0 text-sm font-bold")} style={{ color: c.colors.accent }}>← {block.continue_label || 'Back to shop'}</a></div><div className={sparkTw(block, "auto_123", "grid gap-5 lg:grid-cols-[1fr_320px]")}><CartPreviewLines block={block} c={c} compact /><CartSummaryCard block={block} c={c} checkoutUrl={checkoutUrl} /></div></Section>;
+    return <Section block={block} colors={c.colors}><div className={sparkTw(block, "row_121", "mb-6 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between")}><Head block={block} /><a href={shopUrl} className={sparkTw(block, "title_122", "shrink-0 text-sm font-bold")} style={{ color: c.colors.accent }}>← {block.continue_label || 'Back to shop'}</a></div><div className={sparkTw(block, "grid_123", "grid gap-5 lg:grid-cols-[1fr_320px]")}><CartPreviewLines block={block} c={c} compact /><CartSummaryCard block={block} c={c} checkoutUrl={checkoutUrl} /></div></Section>;
 }
 
 
 function CheckoutField({ label, placeholder, wide = false, c, block }) {
-    return <label className={sparkTw(block, "auto_124", wide ? 'sm:col-span-2' : '')}>
-        <span className={sparkTw(block, "auto_125", "mb-1.5 block text-[11px] font-bold uppercase tracking-[0.13em]")} style={{ color: c.colors.muted }}>{label}</span>
-        <div className={sparkTw(block, "auto_126", "min-h-11 rounded-xl border px-3.5 py-3 text-sm")} style={{ borderColor: c.colors.border, background: c.colors.surface, color: c.colors.muted }}>{placeholder}</div>
+    return <label className={sparkTw(block, "field", wide ? 'sm:col-span-2' : '')}>
+        <span className={sparkTw(block, "eyebrow_125", "mb-1.5 block text-[11px] font-bold uppercase tracking-[0.13em]")} style={{ color: c.colors.muted }}>{label}</span>
+        <div className={sparkTw(block, "card_126", "min-h-11 rounded-xl border px-3.5 py-3 text-sm")} style={{ borderColor: c.colors.border, background: c.colors.surface, color: c.colors.muted }}>{placeholder}</div>
     </label>;
 }
 
@@ -501,15 +501,15 @@ function CheckoutCustomerPanel({ c, compact = false, block }) {
     ];
     const countries = c.countries?.length ? c.countries : fallbackCountries;
     const [country, setCountry] = useState('');
-    return <div className={sparkTw(block, "auto_127", `rounded-[26px] border ${compact ? 'p-4 sm:p-5' : 'p-5 sm:p-6'}`)} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
-        <div className={sparkTw(block, "auto_128", "flex items-center justify-between gap-4")}><h3 className={sparkTw(block, "auto_129", "text-base font-bold")}>Customer details</h3><span className={sparkTw(block, "auto_130", "text-[10px] font-bold uppercase tracking-[0.14em]")} style={{ color: c.colors.accent }}>Runtime bound</span></div>
-        <div className={sparkTw(block, "auto_131", "mt-5 grid gap-3 sm:grid-cols-2")}>
+    return <div className={sparkTw(block, "card_127", `rounded-[26px] border ${compact ? 'p-4 sm:p-5' : 'p-5 sm:p-6'}`)} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
+        <div className={sparkTw(block, "row_128", "flex items-center justify-between gap-4")}><h3 className={sparkTw(block, "title_129", "text-base font-bold")}>Customer details</h3><span className={sparkTw(block, "eyebrow_130", "text-[10px] font-bold uppercase tracking-[0.14em]")} style={{ color: c.colors.accent }}>Runtime bound</span></div>
+        <div className={sparkTw(block, "grid_131", "mt-5 grid gap-3 sm:grid-cols-2")}>
             <CheckoutField block={block} label="First name" placeholder="Alex" c={c} />
             <CheckoutField block={block} label="Last name" placeholder="Morgan" c={c} />
             <CheckoutField block={block} label="Email" placeholder="alex@example.com" wide c={c} />
             <label>
-                <span className={sparkTw(block, "auto_132", "mb-1.5 block text-[11px] font-bold uppercase tracking-[0.13em]")} style={{ color: c.colors.muted }}>Country</span>
-                <select value={country} onChange={(event) => setCountry(event.target.value)} className={sparkTw(block, "auto_133", "min-h-11 w-full rounded-xl border px-3.5 text-sm outline-none")} style={{ borderColor: c.colors.border, background: c.colors.surface, color: c.colors.text, colorScheme: controls.colorScheme }}>
+                <span className={sparkTw(block, "eyebrow_132", "mb-1.5 block text-[11px] font-bold uppercase tracking-[0.13em]")} style={{ color: c.colors.muted }}>Country</span>
+                <select value={country} onChange={(event) => setCountry(event.target.value)} className={sparkTw(block, "card_133", "min-h-11 w-full rounded-xl border px-3.5 text-sm outline-none")} style={{ borderColor: c.colors.border, background: c.colors.surface, color: c.colors.text, colorScheme: controls.colorScheme }}>
                     <option value="" style={controls.optionStyle}>Select country / region</option>
                     {countries.map((item) => <option key={item.code} value={item.code} style={controls.optionStyle}>{item.name}</option>)}
                 </select>
@@ -517,47 +517,47 @@ function CheckoutCustomerPanel({ c, compact = false, block }) {
             <CheckoutField block={block} label="Region" placeholder={country ? 'State / province / region' : 'Choose country first'} c={c} />
             {!compact ? <CheckoutField block={block} label="Street address" placeholder="123 Commerce Street" wide c={c} /> : null}
         </div>
-        <p className={sparkTw(block, "auto_134", "mt-3 text-[11px] leading-5")} style={{ color: c.colors.muted }}>{country ? `Preview destination: ${countries.find((item) => item.code === country)?.name || country}. Live checkout recalculates shipping and tax.` : 'Choose a country to preview the destination control. Live checkout remains server-calculated.'}</p>
+        <p className={sparkTw(block, "element_134", "mt-3 text-[11px] leading-5")} style={{ color: c.colors.muted }}>{country ? `Preview destination: ${countries.find((item) => item.code === country)?.name || country}. Live checkout recalculates shipping and tax.` : 'Choose a country to preview the destination control. Live checkout remains server-calculated.'}</p>
     </div>;
 }
 
 function CheckoutDeliveryPanel({ c, block }) {
-    return <div className={sparkTw(block, "auto_135", "rounded-[26px] border p-5 sm:p-6")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
-        <h3 className={sparkTw(block, "auto_136", "text-base font-bold")}>Delivery & promo</h3>
-        <div className={sparkTw(block, "auto_137", "mt-5 grid gap-3 sm:grid-cols-2")}><CheckoutField block={block} label="Shipping" placeholder="Calculated by destination" c={c} /><CheckoutField block={block} label="Promo code" placeholder="Enter code" c={c} /></div>
-        <p className={sparkTw(block, "auto_138", "mt-4 text-xs leading-5")} style={{ color: c.colors.muted }}>Live checkout recalculates shipping, coupons and tax on the protected runtime route.</p>
+    return <div className={sparkTw(block, "card_135", "rounded-[26px] border p-5 sm:p-6")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
+        <h3 className={sparkTw(block, "title_136", "text-base font-bold")}>Delivery & promo</h3>
+        <div className={sparkTw(block, "grid_137", "mt-5 grid gap-3 sm:grid-cols-2")}><CheckoutField block={block} label="Shipping" placeholder="Calculated by destination" c={c} /><CheckoutField block={block} label="Promo code" placeholder="Enter code" c={c} /></div>
+        <p className={sparkTw(block, "element_138", "mt-4 text-xs leading-5")} style={{ color: c.colors.muted }}>Live checkout recalculates shipping, coupons and tax on the protected runtime route.</p>
     </div>;
 }
 
 function CheckoutOrderSummary({ block, c, emphasized = false }) {
     const items = c.products.slice(0, 2);
     const subtotal = items.reduce((sum, product, index) => sum + Number(productPriceMinor(product) || 0) * (index + 1), 0);
-    return <aside className={sparkTw(block, "auto_139", `rounded-[26px] border p-5 sm:p-6 ${emphasized ? 'lg:sticky lg:top-6' : ''}`)} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
-        <div className={sparkTw(block, "auto_140", "flex items-center justify-between")}><h3 className={sparkTw(block, "auto_141", "text-base font-bold")}>Order summary</h3><span className={sparkTw(block, "auto_142", "text-[10px] font-bold uppercase tracking-[0.14em]")} style={{ color: c.colors.accent }}>Preview</span></div>
-        <div className={sparkTw(block, "auto_143", "mt-5 space-y-3")}>{items.length ? items.map((product, index) => <div key={product.id} className={sparkTw(block, "auto_144", "group relative flex items-center gap-3")}><img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTw(block, "auto_145", "h-12 w-12 rounded-xl object-cover")} /><div className={sparkTw(block, "auto_146", "min-w-0 flex-1")}><p className={sparkTw(block, "auto_147", "truncate text-sm font-semibold")}>{product.title}</p><p className={sparkTw(block, "auto_148", "text-[11px]")} style={{ color: c.colors.muted }}>Qty {index + 1}</p></div><strong className={sparkTw(block, "auto_149", "text-xs")}>{c.money(Number(productPriceMinor(product) || 0) * (index + 1))}</strong></div>) : <p className={sparkTw(block, "auto_150", "text-sm")} style={{ color: c.colors.muted }}>Live order items appear at checkout.</p>}</div>
-        <div className={sparkTw(block, "auto_151", "my-5 border-t")} style={{ borderColor: c.colors.border }} />
-        <div className={sparkTw(block, "auto_152", "flex items-center justify-between text-sm")}><span style={{ color: c.colors.muted }}>Preview subtotal</span><strong>{c.money(subtotal)}</strong></div>
-        <div className={sparkTw(block, "auto_153", "mt-3 flex items-center justify-between text-sm")}><span style={{ color: c.colors.muted }}>Shipping & tax</span><span>Calculated live</span></div>
-        <div className={sparkTw(block, "auto_154", "my-5 border-t")} style={{ borderColor: c.colors.border }} />
-        <div className={sparkTw(block, "auto_155", "flex items-center justify-between")}><strong>Total</strong><strong className={sparkTw(block, "auto_156", "text-xl")}>{c.money(subtotal)}</strong></div>
-        <div className={sparkTw(block, "auto_157", "mt-6 rounded-xl px-4 py-3 text-center text-sm font-bold")} style={{ background: c.colors.accent, color: c.colors.background }}>{block.payment_label || 'Continue to payment'}</div>
-        <p className={sparkTw(block, "auto_158", "mt-3 text-center text-[11px] leading-5")} style={{ color: c.colors.muted }}>{block.help_text || 'Secure checkout powered by the commerce runtime.'}</p>
+    return <aside className={sparkTw(block, "card_139", `rounded-[26px] border p-5 sm:p-6 ${emphasized ? 'lg:sticky lg:top-6' : ''}`)} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
+        <div className={sparkTw(block, "row_140", "flex items-center justify-between")}><h3 className={sparkTw(block, "title_141", "text-base font-bold")}>Order summary</h3><span className={sparkTw(block, "eyebrow_142", "text-[10px] font-bold uppercase tracking-[0.14em]")} style={{ color: c.colors.accent }}>Preview</span></div>
+        <div className={sparkTw(block, "list_143", "mt-5 space-y-3")}>{items.length ? items.map((product, index) => <div key={product.id} className={sparkTwPath(block, ["items", index], "row", "group relative flex items-center gap-3")}><img src={imageUrl(product)} alt={product.featured_image_alt || product.title || ''} className={sparkTwPath(block, ["items", index], "image", "h-12 w-12 rounded-xl object-cover")} /><div className={sparkTwPath(block, ["items", index], "content", "min-w-0 flex-1")}><p className={sparkTwPath(block, ["items", index], "title", "truncate text-sm font-semibold")}>{product.title}</p><p className={sparkTwPath(block, ["items", index], "meta", "text-[11px]")} style={{ color: c.colors.muted }}>Qty {index + 1}</p></div><strong className={sparkTwPath(block, ["items", index], "price", "text-xs")}>{c.money(Number(productPriceMinor(product) || 0) * (index + 1))}</strong></div>) : <p className={sparkTw(block, "element_150", "text-sm")} style={{ color: c.colors.muted }}>Live order items appear at checkout.</p>}</div>
+        <div className={sparkTw(block, "element_151", "my-5 border-t")} style={{ borderColor: c.colors.border }} />
+        <div className={sparkTw(block, "row_152", "flex items-center justify-between text-sm")}><span style={{ color: c.colors.muted }}>Preview subtotal</span><strong>{c.money(subtotal)}</strong></div>
+        <div className={sparkTw(block, "row_153", "mt-3 flex items-center justify-between text-sm")}><span style={{ color: c.colors.muted }}>Shipping & tax</span><span>Calculated live</span></div>
+        <div className={sparkTw(block, "element_154", "my-5 border-t")} style={{ borderColor: c.colors.border }} />
+        <div className={sparkTw(block, "row_155", "flex items-center justify-between")}><strong>Total</strong><strong className={sparkTw(block, "element_156", "text-xl")}>{c.money(subtotal)}</strong></div>
+        <div className={sparkTw(block, "title_157", "mt-6 rounded-xl px-4 py-3 text-center text-sm font-bold")} style={{ background: c.colors.accent, color: c.colors.background }}>{block.payment_label || 'Continue to payment'}</div>
+        <p className={sparkTw(block, "element_158", "mt-3 text-center text-[11px] leading-5")} style={{ color: c.colors.muted }}>{block.help_text || 'Secure checkout powered by the commerce runtime.'}</p>
     </aside>;
 }
 
 export function CommerceCheckoutClassicBlock({ block, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
-    return <Section block={block} colors={c.colors}><Head block={block} /><div className={sparkTw(block, "auto_159", "grid gap-6 lg:grid-cols-[1fr_360px]")}><div className={sparkTw(block, "auto_160", "space-y-5")}><CheckoutCustomerPanel block={block} c={c} /><CheckoutDeliveryPanel block={block} c={c} /></div><CheckoutOrderSummary block={block} c={c} /></div></Section>;
+    return <Section block={block} colors={c.colors}><Head block={block} /><div className={sparkTw(block, "grid_159", "grid gap-6 lg:grid-cols-[1fr_360px]")}><div className={sparkTw(block, "list_160", "space-y-5")}><CheckoutCustomerPanel block={block} c={c} /><CheckoutDeliveryPanel block={block} c={c} /></div><CheckoutOrderSummary block={block} c={c} /></div></Section>;
 }
 
 export function CommerceCheckoutSplitBlock({ block, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
-    return <Section block={block} colors={c.colors}><div className={sparkTw(block, "auto_161", "grid gap-8 lg:grid-cols-[1.12fr_.88fr] lg:items-start")}><div><Head block={block} /><div className={sparkTw(block, "auto_162", "space-y-5")}><CheckoutCustomerPanel block={block} c={c} /><CheckoutDeliveryPanel block={block} c={c} /></div></div><CheckoutOrderSummary block={block} c={c} emphasized /></div></Section>;
+    return <Section block={block} colors={c.colors}><div className={sparkTw(block, "grid_161", "grid gap-8 lg:grid-cols-[1.12fr_.88fr] lg:items-start")}><div><Head block={block} /><div className={sparkTw(block, "list_162", "space-y-5")}><CheckoutCustomerPanel block={block} c={c} /><CheckoutDeliveryPanel block={block} c={c} /></div></div><CheckoutOrderSummary block={block} c={c} emphasized /></div></Section>;
 }
 
 export function CommerceCheckoutExpressBlock({ block, globalTheme, commerce }) {
     const c = useCommerce(block, globalTheme, commerce);
-    return <Section block={block} colors={c.colors}><div className={sparkTw(block, "auto_163", "mx-auto max-w-5xl")}><div className={sparkTw(block, "auto_164", "text-center")}><div className={sparkTw(block, "auto_165", "mx-auto max-w-2xl")}><Head block={block} /></div></div><div className={sparkTw(block, "auto_166", "mt-7 grid gap-5 lg:grid-cols-[1fr_330px]")}><CheckoutCustomerPanel block={block} c={c} compact /><CheckoutOrderSummary block={block} c={c} /></div></div></Section>;
+    return <Section block={block} colors={c.colors}><div className={sparkTw(block, "wrapper_163", "mx-auto max-w-5xl")}><div className={sparkTw(block, "element_164", "text-center")}><div className={sparkTw(block, "wrapper_165", "mx-auto max-w-2xl")}><Head block={block} /></div></div><div className={sparkTw(block, "grid_166", "mt-7 grid gap-5 lg:grid-cols-[1fr_330px]")}><CheckoutCustomerPanel block={block} c={c} compact /><CheckoutOrderSummary block={block} c={c} /></div></div></Section>;
 }
 
 export function CommerceMiniCartBlock({ block, globalTheme, commerce }) {
@@ -565,18 +565,18 @@ export function CommerceMiniCartBlock({ block, globalTheme, commerce }) {
     const cartUrl = commerce?.runtime_urls?.cart || '/cart';
     return (
         <Section block={block} colors={c.colors}>
-            <div className={sparkTw(block, "auto_167", "ml-auto max-w-md rounded-3xl border p-6 shadow-xl")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
-                <div className={sparkTw(block, "auto_168", "flex items-center justify-between")}>
-                    <h2 className={sparkTw(block, "auto_169", "text-xl font-bold")}>{block.heading}</h2>
-                    <span className={sparkTw(block, "auto_170", "rounded-full px-2.5 py-1 text-xs font-bold")} style={{ background: c.colors.accent, color: 'white' }}>Live cart</span>
+            <div className={sparkTw(block, "card_167", "ml-auto max-w-md rounded-3xl border p-6 shadow-xl")} style={{ borderColor: c.colors.border, background: c.colors.surface }}>
+                <div className={sparkTw(block, "row_168", "flex items-center justify-between")}>
+                    <h2 className={sparkTw(block, "title_169", "text-xl font-bold")}>{block.heading}</h2>
+                    <span className={sparkTw(block, "title_170", "rounded-full px-2.5 py-1 text-xs font-bold")} style={{ background: c.colors.accent, color: 'white' }}>Live cart</span>
                 </div>
-                <p className={sparkTw(block, "auto_171", "py-10 text-center text-sm opacity-60")}>{block.empty_text}</p>
-                <a href={cartUrl} className={sparkTw(block, "auto_172", "mt-4 block w-full rounded-xl px-4 py-3 text-center font-bold")} style={{ background: c.colors.accent, color: 'white' }}>{block.button_label}</a>
+                <p className={sparkTw(block, "element_171", "py-10 text-center text-sm opacity-60")}>{block.empty_text}</p>
+                <a href={cartUrl} className={sparkTw(block, "title_172", "mt-4 block w-full rounded-xl px-4 py-3 text-center font-bold")} style={{ background: c.colors.accent, color: 'white' }}>{block.button_label}</a>
             </div>
         </Section>
     );
 }
 
 function Empty({ text, block }) {
-    return <div className={sparkTw(block, "auto_173", "rounded-2xl border border-dashed border-current/20 p-8 text-center text-sm opacity-60")}>{text}</div>;
+    return <div className={sparkTw(block, "card_173", "rounded-2xl border border-dashed border-current/20 p-8 text-center text-sm opacity-60")}>{text}</div>;
 }

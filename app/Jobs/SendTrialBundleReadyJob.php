@@ -3,6 +3,7 @@
 namespace App\Jobs;
 
 use App\Models\TrialGeneration;
+use App\Services\TrialStagingPublisherService;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -26,7 +27,7 @@ final class SendTrialBundleReadyJob implements ShouldQueue
         $this->afterCommit();
     }
 
-    public function handle(): void
+    public function handle(TrialStagingPublisherService $staging): void
     {
         $trial = TrialGeneration::query()->find($this->trialId);
         if (! $trial || blank($trial->email) || $trial->bundle_status !== 'ready' || ! $trial->page_id) return;
@@ -35,7 +36,12 @@ final class SendTrialBundleReadyJob implements ShouldQueue
 
         $base = rtrim((string) config('cosmic-mail.public_url', config('app.url')), '/');
         $builderUrl = $base.'/pages/'.$trial->page_id.'/builder?token='.urlencode((string) $trial->token);
-        $previewUrl = $base.'/preview/'.($trial->website?->slug ?: $trial->website_id).'/';
+        $previewUrl = $staging->existingUrl($trial);
+        if (! $previewUrl) {
+            Log::warning('[TrialBundleReadyMail] Verified staging URL is not ready yet.', ['trial_id' => $trial->id]);
+            $this->release(120);
+            return;
+        }
 
         try {
             Mail::send('emails.trial-bundle-ready', compact('trial','builderUrl','previewUrl'), function ($message) use ($trial): void {

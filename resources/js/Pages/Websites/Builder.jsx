@@ -12,13 +12,17 @@ import { BlockRegistry as MarketplaceSparkRegistry } from "./Components/SparkReg
 import PageTemplatesModal from "./Components/PageTemplatesModal";
 import SavePageTemplateModal from "./Components/SavePageTemplateModal";
 import GeneratePageModal from "./Components/GeneratePageModal";
+import GlobalStylingModal from "./Components/GlobalStylingModal";
 
 import ThemeSelector from "./Theme/ThemeSelector";
+import PageStyleSelector from "./PageStyle/PageStyleSelector";
 import { colorFamilies, installCustomBrandTheme } from "../../theme/colorFamilies";
 import { resolveSemanticPalette } from "../../theme/semanticPalette";
 
 import { BlockRegistry } from "./BlockRegistry";
-import { createSparkTailwindRuntime } from "./Blocks/Shared/sparkTailwindRuntime";
+import { createSparkTailwindRuntime, hasSparkTailwindSchema } from "./Blocks/Shared/sparkTailwindRuntime";
+import { cloneSparkFieldExtrasWithFreshIds, normalizeBlockFieldExtras } from "./Blocks/Shared/sparkExtrasContract";
+import { findPrimaryNestedRepeater, findRepeaterForFieldPath, getNestedValue, mutateNestedRepeater, updateNestedValue } from "./Blocks/Shared/nestedRepeaterEngine";
 import { cosmicTypographyVars } from "./Components/CosmicTypography";
 import { cosmicSectionVars, cosmicLocalSectionVars } from "./Components/CosmicSection";
 import { cosmicBackgroundVars, cosmicLocalBackgroundVars, cosmicOverlayForState } from "./Components/CosmicBackground";
@@ -29,8 +33,20 @@ import { DarkCyanHeader, GlassmorphismHeader } from './GenerateHeader';
 import { MinimalFooter } from './GenerateFooter';
 import MediaPickerModal from '@/Components/Media/MediaPickerModal';
 import renderContract from '../../../render-contract.json';
+import { useAppearance } from '../../Appearance/AppearanceContext';
 
 const MEDIA_FIELD_PATTERN = /(image|photo|avatar|poster|logo|video|media)/i;
+
+const cloneBuilderEditValue = (value) => {
+    if (typeof structuredClone === 'function') {
+        try { return structuredClone(value); } catch (_) {}
+    }
+    return JSON.parse(JSON.stringify(value));
+};
+
+const builderEditStateEquals = (left, right) => {
+    try { return JSON.stringify(left) === JSON.stringify(right); } catch (_) { return false; }
+};
 
 const isWebsiteUploadedMedia = (value, websiteId) => {
     if (typeof value !== 'string' || !websiteId) return false;
@@ -134,7 +150,7 @@ const normalizeRenderKeys = (blocks = []) => {
         used.add(renderKey);
 
         return {
-            ...block,
+            ...normalizeBlockFieldExtras(block),
             _renderKey: renderKey,
         };
     });
@@ -196,7 +212,187 @@ const normalizeGlobalFooterBlock = (footer = {}) => ({
     },
 });
 
+function BuilderToolbarDropdown({ menuKey, label, activeMenu, setActiveMenu, trialMode = false, darkMode = true, align = 'left', tone = 'default', onPrimaryAction = null, primaryDisabled = false, children }) {
+    const rootRef = useRef(null);
+    const triggerRef = useRef(null);
+    const panelRef = useRef(null);
+    const open = activeMenu === menuKey;
+
+    useEffect(() => {
+        if (!open) return undefined;
+        const closeOutside = (event) => {
+            if (!rootRef.current?.contains(event.target)) setActiveMenu(null);
+        };
+        const closeOnEscape = (event) => {
+            if (event.key === 'Escape') {
+                setActiveMenu(null);
+                window.requestAnimationFrame(() => triggerRef.current?.focus());
+            }
+        };
+        document.addEventListener('mousedown', closeOutside);
+        document.addEventListener('keydown', closeOnEscape);
+        return () => {
+            document.removeEventListener('mousedown', closeOutside);
+            document.removeEventListener('keydown', closeOnEscape);
+        };
+    }, [open, setActiveMenu]);
+
+    const moveMenuFocus = (direction) => {
+        const items = Array.from(panelRef.current?.querySelectorAll('[role="menuitem"]:not([disabled])') || []);
+        if (!items.length) return;
+        const currentIndex = items.indexOf(document.activeElement);
+        const nextIndex = currentIndex < 0
+            ? (direction > 0 ? 0 : items.length - 1)
+            : (currentIndex + direction + items.length) % items.length;
+        items[nextIndex]?.focus();
+    };
+
+    const handleMenuKeyDown = (event) => {
+        if (event.key === 'ArrowDown') { event.preventDefault(); moveMenuFocus(1); }
+        if (event.key === 'ArrowUp') { event.preventDefault(); moveMenuFocus(-1); }
+        if (event.key === 'Home') { event.preventDefault(); panelRef.current?.querySelector('[role="menuitem"]:not([disabled])')?.focus(); }
+        if (event.key === 'End') {
+            event.preventDefault();
+            const items = panelRef.current?.querySelectorAll('[role="menuitem"]:not([disabled])');
+            items?.[items.length - 1]?.focus();
+        }
+    };
+
+    const publishTone = tone === 'publish';
+    const lightAppearance = trialMode || !darkMode;
+    const triggerClass = publishTone
+        ? 'border-emerald-500 bg-emerald-600 text-white hover:bg-emerald-500 focus:ring-emerald-300'
+        : lightAppearance
+            ? 'border-slate-300 bg-slate-100 text-slate-700 hover:bg-slate-200 focus:ring-violet-300'
+            : 'border-white/10 bg-white/[0.045] text-slate-200 hover:border-violet-400/35 hover:bg-violet-500/10 focus:ring-violet-400';
+
+    return (
+        <div ref={rootRef} className="relative shrink-0">
+            {publishTone && onPrimaryAction ? (
+                <div className={`cosmic-toolbar-split-trigger inline-flex h-9 overflow-hidden rounded-lg border ${triggerClass}`}>
+                    <button type="button" onClick={onPrimaryAction} disabled={primaryDisabled} className="px-3 text-xs font-semibold transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-200 disabled:cursor-not-allowed disabled:opacity-60">{label}</button>
+                    <button ref={triggerRef} type="button" aria-label="Open publish options" aria-haspopup="menu" aria-expanded={open} onClick={() => setActiveMenu(open ? null : menuKey)} className="border-l border-white/25 px-2 transition hover:bg-white/10 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-emerald-200">
+                        <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={`h-3.5 w-3.5 transition ${open ? 'rotate-180' : ''}`}><path d="m5.5 7.5 4.5 4.5 4.5-4.5" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                    </button>
+                </div>
+            ) : (
+            <button
+                ref={triggerRef}
+                type="button"
+                aria-haspopup="menu"
+                aria-expanded={open}
+                onKeyDown={(event) => {
+                    if ((event.key === 'ArrowDown' || event.key === 'Enter' || event.key === ' ') && !open) {
+                        event.preventDefault();
+                        setActiveMenu(menuKey);
+                        window.requestAnimationFrame(() => panelRef.current?.querySelector('[role="menuitem"]:not([disabled])')?.focus());
+                    } else if (event.key === 'ArrowDown' && open) {
+                        event.preventDefault();
+                        window.requestAnimationFrame(() => moveMenuFocus(1));
+                    }
+                }}
+                onClick={() => setActiveMenu(open ? null : menuKey)}
+                className={`cosmic-toolbar-menu-trigger inline-flex h-9 items-center gap-2 rounded-lg border px-3 text-xs font-semibold transition focus:outline-none focus:ring-2 ${triggerClass}`}
+            >
+                <span>{label}</span>
+                <svg aria-hidden="true" viewBox="0 0 20 20" fill="none" stroke="currentColor" strokeWidth="1.8" className={`h-3.5 w-3.5 transition ${open ? 'rotate-180' : ''}`}>
+                    <path d="m5.5 7.5 4.5 4.5 4.5-4.5" strokeLinecap="round" strokeLinejoin="round" />
+                </svg>
+            </button>
+            )}
+            {open && (
+                <div ref={panelRef} role="menu" data-appearance={lightAppearance ? 'light' : 'dark'} onKeyDown={handleMenuKeyDown} className={`cosmic-toolbar-menu-panel absolute top-11 z-[10030] max-h-[min(70vh,32rem)] w-[min(16rem,calc(100vw-2rem))] overflow-x-hidden overflow-y-auto rounded-2xl border p-1.5 shadow-2xl ${align === 'right' ? 'right-0' : 'left-0'} ${lightAppearance ? 'border-slate-200 bg-white text-slate-800' : 'border-white/10 bg-[#15151a] text-slate-100'}`}>
+                    {children}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function DesignToggleModal({ open, title, eyebrow = 'Design', description, enabled, setEnabled, onCancel, onApply, disabled = false, unavailableMessage = '', trialMode = false, darkMode = true, enableLabel = 'Enabled', disableLabel = 'Disabled' }) {
+    useEffect(() => {
+        if (!open) return undefined;
+        const closeOnEscape = (event) => {
+            if (event.key === 'Escape') onCancel?.();
+        };
+        document.addEventListener('keydown', closeOnEscape);
+        return () => document.removeEventListener('keydown', closeOnEscape);
+    }, [open, onCancel]);
+
+    if (!open) return null;
+    const light = trialMode || !darkMode;
+
+    return (
+        <div
+            className="cosmic-app-modal-backdrop cosmic-design-toggle-backdrop fixed inset-0 z-[10080] flex items-center justify-center p-4"
+            data-cosmic-modal-backdrop="design-toggle"
+            data-appearance={light ? 'light' : 'dark'}
+            style={{ backgroundColor: 'rgba(2, 6, 23, 0.58)', WebkitBackdropFilter: 'blur(8px)', backdropFilter: 'blur(8px)' }}
+            onMouseDown={(event) => {
+                if (event.target === event.currentTarget) onCancel?.();
+            }}
+        >
+            <div
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby={`cosmic-design-toggle-${String(title || 'setting').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`}
+                data-cosmic-app-modal="design-toggle"
+                data-appearance={light ? 'light' : 'dark'}
+                className={`cosmic-design-toggle-panel w-full max-w-lg overflow-hidden rounded-3xl border shadow-2xl ${light ? 'cosmic-design-toggle-panel--light border-slate-200 bg-white text-slate-900' : 'border-white/10 bg-[#111318] text-white'}`}
+            >
+                <div className={`flex items-start justify-between gap-4 border-b px-5 py-4 ${light ? 'border-slate-200' : 'border-white/10'}`}>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-500">{eyebrow}</p>
+                        <h3 id={`cosmic-design-toggle-${String(title || 'setting').toLowerCase().replace(/[^a-z0-9]+/g, '-')}`} className={`mt-1 text-lg font-bold ${light ? 'text-slate-950' : 'text-white'}`}>{title}</h3>
+                        {description ? <p className={`mt-1 max-w-md text-xs leading-5 ${light ? 'text-slate-600' : 'text-slate-400'}`}>{description}</p> : null}
+                    </div>
+                    <button type="button" onClick={onCancel} className={`h-9 w-9 rounded-xl text-lg transition ${light ? 'text-slate-500 hover:bg-slate-100 hover:text-slate-900' : 'text-slate-400 hover:bg-white/10 hover:text-white'}`} aria-label={`Close ${title}`}>×</button>
+                </div>
+
+                <div className="p-5">
+                    {disabled && unavailableMessage ? (
+                        <div className={`mb-4 rounded-2xl border px-4 py-3 text-xs leading-5 ${light ? 'border-amber-200 bg-amber-50 text-amber-800' : 'border-amber-300/15 bg-amber-400/10 text-amber-200'}`}>
+                            {unavailableMessage}
+                        </div>
+                    ) : null}
+
+                    <button
+                        type="button"
+                        role="switch"
+                        aria-checked={enabled}
+                        disabled={disabled}
+                        onClick={() => !disabled && setEnabled?.(!enabled)}
+                        className={`cosmic-design-toggle-switch flex w-full items-center justify-between gap-4 rounded-2xl border p-4 text-left transition disabled:cursor-not-allowed disabled:opacity-50 ${enabled
+                            ? light
+                                ? 'border-violet-300 bg-violet-50'
+                                : 'border-violet-400/45 bg-violet-500/12'
+                            : light
+                                ? 'border-slate-200 bg-slate-50 hover:bg-white'
+                                : 'border-white/10 bg-white/[0.025] hover:bg-white/[0.05]'
+                        }`}
+                    >
+                        <div>
+                            <p className={`text-sm font-bold ${light ? 'text-slate-950' : 'text-white'}`}>{enabled ? enableLabel : disableLabel}</p>
+                            <p className={`mt-1 text-[11px] ${light ? 'text-slate-500' : 'text-slate-400'}`}>Click to {enabled ? 'turn this setting off' : 'turn this setting on'}.</p>
+                        </div>
+                        <span className={`relative inline-flex h-7 w-12 shrink-0 rounded-full p-1 transition ${enabled ? 'bg-violet-600' : light ? 'bg-slate-300' : 'bg-slate-700'}`}>
+                            <span className={`h-5 w-5 rounded-full bg-white shadow-sm transition ${enabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                        </span>
+                    </button>
+                </div>
+
+                <div className={`flex items-center justify-end gap-2 border-t px-5 py-4 ${light ? 'border-slate-200 bg-slate-50' : 'border-white/10 bg-white/[0.02]'}`}>
+                    <button type="button" onClick={onCancel} className={`rounded-xl border px-4 py-2 text-xs font-bold transition ${light ? 'border-slate-300 bg-white text-slate-700 hover:bg-slate-100' : 'border-white/10 text-slate-300 hover:bg-white/5'}`}>Cancel</button>
+                    <button type="button" onClick={onApply} disabled={disabled} className="rounded-xl bg-violet-600 px-4 py-2 text-xs font-bold text-white transition hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40">Apply</button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export default function Builder({ page, website, previewUrl: initialPreviewUrl = null, previewDeployment: initialPreviewDeployment = null, blogPosts: initialBlogPosts = [], hasWebsiteContent = false, websiteContext = "", websitePages = [], trialMode = false, trialToken = null, trialExperience = null, websiteMediaPack = null, trialCapabilities = {}, cosmicPricing = {}, pageStyle = 'balanced', pageStyleOptions = [], themeAccess: builderThemeAccess = null, commerce = { enabled:false, currency:'USD', currency_decimals:2, products:[], categories:[] }, contentWorkspace = { types: [] }, websiteAccessRole = null }) {
+    const { resolvedTheme: appAppearanceTheme } = useAppearance();
+    const appDark = appAppearanceTheme === 'dark';
     const { props } = usePage();
     const currentPlanKey = builderThemeAccess?.plan_key || props?.auth?.effectivePlanKey || props?.auth?.user?.plan_key || 'starter';
     // The Builder receives a route-specific entitlement payload because this
@@ -316,34 +512,39 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     padding-right: var(--luna-section-px, revert) !important;
                     min-height: var(--luna-section-min-height, revert) !important;
                 }
-                .cosmic-luna-design-host h1 {
-                    font-size: var(--cosmic-local-h1-size, var(--cosmic-type-h1-size)) !important;
-                    line-height: var(--cosmic-local-h1-line, var(--cosmic-type-h1-line)) !important;
-                    letter-spacing: var(--cosmic-local-h1-tracking, var(--cosmic-type-h1-tracking)) !important;
+                .cosmic-luna-design-host[data-luna-design-typography='1'] h1 {
+                    font-size: var(--cosmic-local-h1-size, revert) !important;
+                    line-height: var(--cosmic-local-h1-line, revert) !important;
+                    letter-spacing: var(--cosmic-local-h1-tracking, revert) !important;
                     text-align: var(--luna-text-align, revert) !important;
                     overflow-wrap: anywhere;
                 }
-                .cosmic-luna-design-host h2 {
-                    font-size: var(--cosmic-local-h2-size, var(--cosmic-type-h2-size)) !important;
-                    line-height: var(--cosmic-local-h2-line, var(--cosmic-type-h2-line)) !important;
-                    letter-spacing: var(--cosmic-local-h2-tracking, var(--cosmic-type-h2-tracking)) !important;
+                .cosmic-luna-design-host[data-luna-design-typography='1'] h2 {
+                    font-size: var(--cosmic-local-h2-size, revert) !important;
+                    line-height: var(--cosmic-local-h2-line, revert) !important;
+                    letter-spacing: var(--cosmic-local-h2-tracking, revert) !important;
                     text-align: var(--luna-text-align, revert) !important;
                     overflow-wrap: anywhere;
                 }
-                .cosmic-luna-design-host h3 {
-                    font-size: var(--cosmic-local-h3-size, var(--cosmic-type-h3-size)) !important;
-                    line-height: var(--cosmic-local-h3-line, var(--cosmic-type-h3-line)) !important;
-                    letter-spacing: var(--cosmic-local-h3-tracking, var(--cosmic-type-h3-tracking)) !important;
+                .cosmic-luna-design-host[data-luna-design-typography='1'] h3 {
+                    font-size: var(--cosmic-local-h3-size, revert) !important;
+                    line-height: var(--cosmic-local-h3-line, revert) !important;
+                    letter-spacing: var(--cosmic-local-h3-tracking, revert) !important;
                     text-align: var(--luna-text-align, revert) !important;
                     overflow-wrap: anywhere;
                 }
-                .cosmic-luna-design-host p,
-                .cosmic-luna-design-host li {
-                    font-size: var(--luna-body-size, revert) !important;
-                    line-height: var(--luna-body-line, revert) !important;
+                .cosmic-luna-design-host[data-luna-design-typography='1'] p,
+                .cosmic-luna-design-host[data-luna-design-typography='1'] li {
+                    font-size: var(--cosmic-local-body-size, revert) !important;
+                    line-height: var(--cosmic-local-body-line, revert) !important;
                 }
                 .cosmic-luna-design-host img { border-radius: var(--luna-image-radius, revert) !important; }
-                .cosmic-luna-design-host [class*="rounded"] { border-radius: var(--luna-card-radius, revert); }
+                /* Legacy card-radius fallback must never override button/link Tailwind slots.
+                   Button shape is owned by the active Spark Tailwind schema so popup AI-Flex
+                   mutations such as rounded-none render immediately. */
+                .cosmic-luna-design-host :is(article,[data-cosmic-card="true"],[data-luna-target="card"],[class*="cosmic-card"]) {
+                    border-radius: var(--luna-card-radius, revert);
+                }
                 @media (max-width: 1024px) {
                     .cosmic-luna-design-host > section,
                     .cosmic-luna-design-host > div > section:first-child {
@@ -359,9 +560,9 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                         padding-left: min(var(--luna-section-px, 24px), 40px) !important;
                         padding-right: min(var(--luna-section-px, 24px), 40px) !important;
                     }
-                    .cosmic-luna-design-host h1 { font-size: min(var(--cosmic-local-h1-size, var(--cosmic-type-h1-size)), 64px) !important; }
-                    .cosmic-luna-design-host h2 { font-size: min(var(--cosmic-local-h2-size, var(--cosmic-type-h2-size)), 64px) !important; }
-                    .cosmic-luna-design-host h3 { font-size: min(var(--cosmic-local-h3-size, var(--cosmic-type-h3-size)), 64px) !important; }
+                    .cosmic-luna-design-host[data-luna-design-typography='1'] h1 { font-size: min(var(--cosmic-local-h1-size, 64px), 64px) !important; }
+                    .cosmic-luna-design-host[data-luna-design-typography='1'] h2 { font-size: min(var(--cosmic-local-h2-size, 64px), 64px) !important; }
+                    .cosmic-luna-design-host[data-luna-design-typography='1'] h3 { font-size: min(var(--cosmic-local-h3-size, 64px), 64px) !important; }
                 }
             `;
             document.head.appendChild(style);
@@ -429,9 +630,18 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [customSparkLibrary, setCustomSparkLibrary] = useState([]);
     const [customSparkLibraryOpen, setCustomSparkLibraryOpen] = useState(false);
     const [customSparkLibraryBusy, setCustomSparkLibraryBusy] = useState(false);
+    const [savedSparks, setSavedSparks] = useState([]);
+    const [savedSparksOpen, setSavedSparksOpen] = useState(false);
+    const [savedSparksBusy, setSavedSparksBusy] = useState(false);
+    const [savedSparksFilter, setSavedSparksFilter] = useState('all');
+    const [savedSparksInstallMode, setSavedSparksInstallMode] = useState('append');
     const [aiResult, setAiResult] = useState(null);
     const [aiLoading, setAiLoading] = useState(false);
 
+    const [builderToolbarMenu, setBuilderToolbarMenu] = useState(null);
+    const [globalStylingOpen, setGlobalStylingOpen] = useState(false);
+    const [designToggleModal, setDesignToggleModal] = useState(null);
+    const [designToggleDraft, setDesignToggleDraft] = useState(false);
     const [themeMenu, setThemeMenu] = useState(null);
     const [footerThemeMenu, setFooterThemeMenu] = useState(false);
     const [layoutMenu, setLayoutMenu] = useState(null);
@@ -459,6 +669,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [trialPreviewStatus, setTrialPreviewStatus] = useState({ readyPages: 0, pageCount: 0, message: '' });
     const [saveError, setSaveError] = useState('');
     const [hasUnsavedTheme, setHasUnsavedTheme] = useState(false);
+    const themeSessionSnapshotRef = useRef(null);
     const [showTrialEmailModal, setShowTrialEmailModal] = useState(() => Boolean(
         trialMode && trialToken && !trialExperience?.email_captured
     ));
@@ -483,6 +694,15 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const [lunaDirectText, setLunaDirectText] = useState('');
     const [lunaDirectLink, setLunaDirectLink] = useState('');
     const [lunaManualOpen, setLunaManualOpen] = useState(false);
+    // Popup isolation contract: the Builder stays frozen while a local editor is open.
+    // Every manual, Spark, media, or contextual Luna mutation is written to an
+    // isolated popup draft. Only Apply copies that draft into the Builder form.
+    const [editSession, setEditSession] = useState(null);
+    const [editSessionDraft, setEditSessionDraft] = useState(null);
+    const [editSessionMediaUrl, setEditSessionMediaUrl] = useState('');
+    const [editSessionLunaPrompt, setEditSessionLunaPrompt] = useState('');
+    const [editSessionLunaStartIndex, setEditSessionLunaStartIndex] = useState(0);
+    const [sectionSparkLayoutsExpanded, setSectionSparkLayoutsExpanded] = useState(false);
     const [headerNavManualOpenSignal, setHeaderNavManualOpenSignal] = useState(0);
     const [lunaSmartSectionBusy, setLunaSmartSectionBusy] = useState('');
 
@@ -769,94 +989,116 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     const creditMessage = (cost) => `Cost: ${cost} Cosmic Credits. Balance: ${effectiveCreditBalance} → ${Math.max(0, effectiveCreditBalance - cost)}.`;
 
+    const beginThemeSession = () => {
+        if (themeSessionSnapshotRef.current) return;
+        themeSessionSnapshotRef.current = {
+            globalSelections: JSON.parse(JSON.stringify(globalSelections || {})),
+            data: JSON.parse(JSON.stringify(data || {})),
+            currentPageStyle,
+            hasUnsavedTheme,
+        };
+    };
+
+    const cancelThemeSession = () => {
+        const snapshot = themeSessionSnapshotRef.current;
+        if (!snapshot) return;
+        setGlobalSelections(snapshot.globalSelections || {});
+        setData(snapshot.data || {});
+        setCurrentPageStyle(snapshot.currentPageStyle || 'balanced');
+        setHasUnsavedTheme(Boolean(snapshot.hasUnsavedTheme));
+        themeSessionSnapshotRef.current = null;
+    };
+
+    const applyThemeSession = async ({ selectedTheme = null, generatedTheme = null } = {}) => {
+        // Theme modal is popup-local: nothing touches the Builder until this
+        // explicit Apply/Save Theme bridge is invoked.
+        if (generatedTheme?.palette) {
+            const customTheme = {
+                ...generatedTheme,
+                key: 'my-brand',
+                name: generatedTheme.name || 'Luna Custom Theme',
+            };
+            installCustomBrandTheme(customTheme);
+            setGlobalSelections((current) => ({
+                ...current,
+                primary: 'my-brand',
+                custom_brand_theme: customTheme,
+                brand_palette: customTheme.palette,
+                brand_source: 'luna',
+                logo_theme_sync_state: 'theme_changed',
+            }));
+        } else if (selectedTheme) {
+            await handleThemeChange(selectedTheme);
+        }
+        themeSessionSnapshotRef.current = null;
+        setHasUnsavedTheme(true);
+        showCosmicNotification({ title: 'Theme applied', message: 'The selected theme is now in your Builder draft. Save or publish the website when ready.', tone: 'success', mode: 'toast', duration: 2600 });
+    };
+
     const handleThemeChange = async (theme) => {
         if (!theme || theme === globalSelections?.primary) return;
         const isBrandTheme = theme === 'my-brand' && globalSelections?.custom_brand_theme;
-        const cost = isBrandTheme ? 0 : Number(cosmicPricing?.themes?.[theme]?.credits || 20);
-        const confirmed = await confirmCosmicAction({
-            title: `Change theme to ${colorFamilies[theme]?.name || (isBrandTheme ? 'My Brand Theme' : theme)}?`,
-            message: isBrandTheme
-                ? 'Apply your saved custom brand colors. No additional Cosmic Credits are required.'
-                : (trialMode
-                    ? creditMessage(cost)
-                    : `This theme costs ${cost} Cosmic Credits if it has not already been unlocked. The credit charge is finalized when you publish.`),
-            confirmLabel: isBrandTheme ? 'Apply Theme' : (trialMode ? `Use ${cost} Credits` : `Select theme · ${cost} Credits`),
-        });
-        if (!confirmed) return;
+        const hasRealLogo = data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png');
+        const brandThemeMatchesCurrentLogo = Boolean(
+            isBrandTheme
+            && hasRealLogo
+            && globalSelections?.custom_brand_theme?.source_logo_url
+            && String(globalSelections.custom_brand_theme.source_logo_url) === String(data.global_header.logo_image_url)
+        );
+        const cssLogoMatched = String(globalSelections?.logo_theme_sync_source || '') === 'css_logo_to_theme'
+            || String(data.global_header?.logo_theme_match_mode || '') === 'css';
+        const nextThemeFilter = cssLogoMatched ? logoFilterFor(theme) : null;
 
-        try {
-            const hasRealLogo = data.global_header?.logo_image_url && !String(data.global_header.logo_image_url).includes('your-logo.png');
-            const brandThemeMatchesCurrentLogo = Boolean(
-                isBrandTheme
-                && hasRealLogo
-                && globalSelections?.custom_brand_theme?.source_logo_url
-                && String(globalSelections.custom_brand_theme.source_logo_url) === String(data.global_header.logo_image_url)
-            );
-            if (trialMode) {
-                const response = await axios.post(route('trial-pages.theme.apply', { trial: trialToken, page: page.id }), {
-                    theme,
-                    sync_source: brandThemeMatchesCurrentLogo ? 'theme_to_logo' : 'manual_theme_change',
-                });
-                if (Number.isFinite(Number(response.data.credit_balance))) setCreditBalance(Number(response.data.credit_balance));
-            }
-            const cssLogoMatched = String(globalSelections?.logo_theme_sync_source || '') === 'css_logo_to_theme'
-                || String(data.global_header?.logo_theme_match_mode || '') === 'css';
-            const nextThemeFilter = cssLogoMatched ? logoFilterFor(theme) : null;
+        setGlobalSelections((prev) => ({
+            ...prev,
+            primary: theme,
+            ...(hasRealLogo ? (brandThemeMatchesCurrentLogo
+                ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'theme_to_logo', logo_theme_synced_theme: theme }
+                : (cssLogoMatched
+                    ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'css_logo_to_theme', logo_theme_synced_theme: theme }
+                    : { logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'manual_theme_change', logo_theme_synced_theme: null })) : {}),
+        }));
 
-            setGlobalSelections((prev) => ({
-                ...prev,
-                primary: theme,
-                ...(hasRealLogo ? (brandThemeMatchesCurrentLogo
-                    ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'theme_to_logo', logo_theme_synced_theme: theme }
-                    : (cssLogoMatched
-                        ? { logo_theme_sync_state: 'synced', logo_theme_sync_source: 'css_logo_to_theme', logo_theme_synced_theme: theme }
-                        : { logo_theme_sync_state: 'theme_changed', logo_theme_sync_source: 'manual_theme_change', logo_theme_synced_theme: null })) : {}),
+        if (hasRealLogo && cssLogoMatched && nextThemeFilter) {
+            setData((current) => ({
+                ...current,
+                global_header: { ...(current.global_header || {}), logo_filter: nextThemeFilter, logo_filter_key: theme, logo_theme_match_mode: 'css' },
+                global_footer: { ...(current.global_footer || {}), logo_filter: nextThemeFilter, logo_filter_key: theme, logo_theme_match_mode: 'css' },
             }));
-
-            if (hasRealLogo && cssLogoMatched && nextThemeFilter) {
-                setData((current) => ({
-                    ...current,
-                    global_header: {
-                        ...(current.global_header || {}),
-                        logo_filter: nextThemeFilter,
-                        logo_filter_key: theme,
-                        logo_theme_match_mode: 'css',
-                    },
-                    global_footer: {
-                        ...(current.global_footer || {}),
-                        logo_filter: nextThemeFilter,
-                        logo_filter_key: theme,
-                        logo_theme_match_mode: 'css',
-                    },
-                }));
-            }
-            if (['stone', 'white'].includes(String(theme).toLowerCase()) && data.global_header?.overlay_header_on_banner) {
-                updateHeader({ overlay_header_on_banner: false });
-                showCosmicNotification({
-                    title: 'Overlay Header turned off',
-                    message: 'Overlay Header isn’t compatible with Warm Stone or Studio White. Choose another theme to enable it.',
-                    tone: 'info',
-                });
-            }
-            if (hasRealLogo) {
-                setLogoSyncState((brandThemeMatchesCurrentLogo || cssLogoMatched) ? 'synced' : 'theme_changed');
-                if (!brandThemeMatchesCurrentLogo && !cssLogoMatched) {
-                    const selectedFamily = colorFamilies[theme] || colorFamilies.midnight;
-                    const selectedPalette = theme === 'my-brand'
-                        ? (globalSelections?.custom_brand_theme?.palette || selectedFamily?.palette || {})
-                        : (selectedFamily?.palette || {});
-                    setPendingThemeLogoAdapt({
-                        theme,
-                        themeName: selectedFamily?.name || (theme === 'my-brand' ? 'My Brand Theme' : theme),
-                        logoUrl: data.global_header.logo_image_url,
-                        palette: selectedPalette,
-                    });
-                }
-            }
-            setHasUnsavedTheme(true);
-        } catch (error) {
-            showCosmicNotification({ title: 'Theme change unavailable', message: error.response?.data?.message || 'Cosmic could not apply this theme.', tone: 'error' });
         }
+        if (['stone', 'white'].includes(String(theme).toLowerCase()) && data.global_header?.overlay_header_on_banner) {
+            updateHeader({ overlay_header_on_banner: false });
+        }
+        if (hasRealLogo) setLogoSyncState((brandThemeMatchesCurrentLogo || cssLogoMatched) ? 'synced' : 'theme_changed');
+        setHasUnsavedTheme(true);
+    };
+
+    const askThemeLuna = async (prompt) => {
+        const instruction = `THEME-ONLY PREVIEW REQUEST. Preserve all user content, Sparks, page structure, navigation, header/footer structure, and page ordering. Only adjust the website color family, typography, background treatment, or theme component tokens requested. ${String(prompt || '').trim()}`;
+        return sendPageAiRequest(instruction, false, null, {
+            assistantSurface: 'contextual_popup',
+            targetScope: 'theme',
+            theme_only: true,
+            isolatedConversation: true,
+        });
+    };
+
+    const themeLunaIntent = async (prompt, themeIds = []) => {
+        const { data: response } = await axios.post(`/websites/${website.id}/theme-luna/intent`, {
+            prompt: String(prompt || '').trim(),
+            theme_ids: Array.isArray(themeIds) ? themeIds : [],
+        });
+        return response;
+    };
+
+    const generateThemeLunaCustom = async ({ direction, seedColor = null, colorFamilySchema = {} } = {}) => {
+        const { data: response } = await axios.post(`/websites/${website.id}/theme-luna/generate`, {
+            direction: String(direction || '').trim(),
+            seed_color: seedColor || null,
+            color_family_schema: colorFamilySchema,
+            base_theme: globalSelections?.primary || 'midnight',
+        });
+        return response;
     };
 
     const prepareLogoCropSource = async (url) => {
@@ -2027,19 +2269,48 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         };
 
         const blocks = [...data.blocks];
+        let insertionIndex = blocks.length;
 
         if (sparkInsertTarget) {
-            const insertionIndex = sparkInsertTarget.position === 'above'
-                ? sparkInsertTarget.index
-                : sparkInsertTarget.index + 1;
+            const anchorByKey = sparkInsertTarget.anchorRenderKey
+                ? blocks.findIndex((candidate) => candidate?._renderKey === sparkInsertTarget.anchorRenderKey)
+                : -1;
+            const anchorIndex = anchorByKey >= 0
+                ? anchorByKey
+                : Math.min(Math.max(Number(sparkInsertTarget.index) || 0, 0), Math.max(blocks.length - 1, 0));
+            insertionIndex = sparkInsertTarget.position === 'above'
+                ? anchorIndex
+                : Math.min(anchorIndex + 1, blocks.length);
             blocks.splice(insertionIndex, 0, newBlock);
         } else {
             blocks.push(newBlock);
         }
 
+        const insertedFromEditSection = sparkInsertTarget?.source === 'edit-section';
         setData("blocks", blocks);
         setSparkInsertTarget(null);
         setIsModalOpen(false);
+        if (insertedFromEditSection) cancelEditSession();
+
+        // After React commits the new block, take the user directly to it.
+        // Query by the new index instead of mutating persistent block data.
+        window.setTimeout(() => {
+            const candidates = Array.from(document.querySelectorAll(`[data-cosmic-block-index="${insertionIndex}"]`));
+            const target = candidates.find((node) => {
+                const rect = node.getBoundingClientRect();
+                const style = window.getComputedStyle(node);
+                return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+            }) || candidates[0];
+            if (!target) return;
+            target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (typeof target.animate === 'function') {
+                target.animate([
+                    { outline: '0 solid rgba(124,58,237,0)', outlineOffset: '0px' },
+                    { outline: '3px solid rgba(124,58,237,.65)', outlineOffset: '5px' },
+                    { outline: '0 solid rgba(124,58,237,0)', outlineOffset: '10px' },
+                ], { duration: 1100, easing: 'ease-out' });
+            }
+        }, 90);
     };
 
     const lunaSectionCategory = (type='') => {
@@ -2830,6 +3101,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
         // keep auto as default if missing
         duplicated.theme = duplicated.theme || "auto";
+        duplicated.field_extras = cloneSparkFieldExtrasWithFreshIds(duplicated.field_extras);
         duplicated._renderKey = createRenderKey();
 
         // insert directly below current block
@@ -2839,7 +3111,110 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     };
 
-    const getCompatibleLayouts = (blockType) => {
+    const normalizeSparkFamilyToken = (value) => String(value || '')
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, ' ')
+        .trim();
+
+    const aiFlexSparkFamilyTerms = (block = {}) => {
+        const sourceCategory = BlockRegistry[String(block.source_type || '')]?.schema?.category || '';
+        const semantic = normalizeSparkFamilyToken(block.semantic_type || block.category || sourceCategory || block.layout || '');
+        const aliases = {
+            hero: ['hero', 'banner'],
+            banner: ['hero', 'banner'],
+            service: ['service', 'services', 'capabilities'],
+            services: ['service', 'services', 'capabilities'],
+            process: ['process', 'workflow', 'steps', 'journey', 'how it works', 'features'],
+            workflow: ['process', 'workflow', 'steps', 'journey', 'how it works', 'features'],
+            steps: ['process', 'workflow', 'steps', 'journey', 'how it works', 'features'],
+            feature: ['feature', 'features', 'benefits'],
+            features: ['feature', 'features', 'benefits'],
+            testimonial: ['testimonial', 'testimonials', 'reviews', 'proof'],
+            testimonials: ['testimonial', 'testimonials', 'reviews', 'proof'],
+            review: ['testimonial', 'testimonials', 'reviews', 'proof'],
+            pricing: ['pricing', 'price', 'plans'],
+            faq: ['faq', 'questions'],
+            team: ['team', 'people', 'leadership'],
+            portfolio: ['portfolio', 'projects', 'work', 'gallery'],
+            project: ['portfolio', 'projects', 'work', 'gallery'],
+            gallery: ['gallery', 'portfolio', 'projects', 'work'],
+            contact: ['contact', 'inquiry', 'form'],
+            cta: ['cta', 'call to action'],
+            stats: ['stats', 'statistics', 'metrics', 'numbers'],
+            statistics: ['stats', 'statistics', 'metrics', 'numbers'],
+            about: ['about', 'story', 'content'],
+        };
+        const direct = semantic ? semantic.split(/\s+/).filter(Boolean) : [];
+        const expanded = aliases[semantic] || direct.flatMap((term) => aliases[term] || [term]);
+        return [...new Set([...direct, ...expanded, sourceCategory].map(normalizeSparkFamilyToken).filter(Boolean))];
+    };
+
+    const aiFlexCompatibleLayouts = (block = {}) => {
+        const terms = aiFlexSparkFamilyTerms(block);
+        if (!terms.length) return [];
+
+        const catalogByKey = new Map(sparkCatalog.map((spark) => [spark.key, spark]));
+        const marketplaceByType = new Map(MarketplaceSparkRegistry.map((spark) => [spark.type, spark]));
+
+        const related = Object.entries(BlockRegistry)
+            .filter(([type]) => type !== 'luna_custom_section')
+            .map(([type, registryItem]) => {
+                const schema = registryItem?.schema || {};
+                const searchable = normalizeSparkFamilyToken([
+                    type,
+                    schema.title,
+                    schema.category,
+                    schema.purpose,
+                    schema.description,
+                    ...(Array.isArray(schema.tags) ? schema.tags : []),
+                ].filter(Boolean).join(' '));
+                let score = 0;
+                terms.forEach((term) => {
+                    if (!term) return;
+                    if (normalizeSparkFamilyToken(type).startsWith(`${term} `) || normalizeSparkFamilyToken(type).startsWith(`${term}_`) || String(type).toLowerCase().startsWith(`${term}_`)) score += 8;
+                    if (normalizeSparkFamilyToken(schema.category) === term) score += 7;
+                    if (normalizeSparkFamilyToken(schema.title).includes(term)) score += 5;
+                    if (searchable.includes(term)) score += 2;
+                });
+                return { type, registryItem, score };
+            })
+            .filter((item) => item.score > 0)
+            .sort((a, b) => b.score - a.score || String(a.registryItem?.schema?.title || a.type).localeCompare(String(b.registryItem?.schema?.title || b.type)))
+            .slice(0, 24)
+            .map(({ type, registryItem }) => {
+                const catalogItem = catalogByKey.get(type);
+                const marketplaceItem = marketplaceByType.get(type);
+                return {
+                    id: type,
+                    type,
+                    title: registryItem.schema?.title || type.replaceAll('_', ' '),
+                    description: catalogItem?.description || registryItem.schema?.description || '',
+                    kind: 'block-type',
+                    owned: Boolean(catalogItem?.owned),
+                    credits: Number(catalogItem?.credits || 0),
+                    canPreview: catalogItem?.can_preview !== false,
+                    canInstall: catalogItem?.can_install !== false,
+                    usageState: catalogItem?.usage_state || null,
+                    catalogItem: catalogItem && marketplaceItem ? { ...catalogItem, registry: marketplaceItem } : null,
+                };
+            });
+
+        return [{
+            id: 'luna_custom_section',
+            type: 'luna_custom_section',
+            title: BlockRegistry.luna_custom_section?.schema?.title || 'Cosmic AI Custom Section',
+            description: 'Current AI Flex design. Keep customizing it with Luna or switch to a related Spark.',
+            kind: 'block-type',
+            owned: true,
+            credits: 0,
+            canPreview: true,
+            canInstall: true,
+            usageState: 'current',
+            catalogItem: null,
+        }, ...related];
+    };
+
+    const getCompatibleLayouts = (blockType, block = null) => {
         const blogSparkGroup = BLOG_SPARK_GROUPS[blockType];
 
         // Blog sections use three free visual variants within the same block type.
@@ -2856,6 +3231,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     preview: spark.preview,
                     kind: 'blog-variant',
                 }));
+        }
+
+        if (blockType === 'luna_custom_section') {
+            return aiFlexCompatibleLayouts(block || {});
         }
 
         const currentBlock = BlockRegistry[blockType];
@@ -2897,6 +3276,114 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     const isCurrentLayout = (block, layout) => layout.kind === 'blog-variant'
         ? (block.layout_variant || BlockRegistry[block.type]?.schema?.defaults?.layout_variant) === layout.layoutVariant
         : block.type === layout.type;
+
+    // Batch 4: layout switching is presentation-first. Preserve user-owned copy/media
+    // while allowing the destination Spark defaults to own layout/style fields.
+    const sparkContentKey = (key) => {
+        const normalized = String(key || '').toLowerCase();
+        if (!normalized || ['type','theme','layout_variant','semantic_type','category','styles','style','tw','class','classname'].includes(normalized)) return false;
+        if (/(?:^|_)(?:style|styles|tw|class|classes|radius|shadow|gap|padding|margin|columns?|grid|layout|theme|variant|animation|transition|opacity|width|height)$/.test(normalized)) return false;
+        if (['items','services','slides','features','testimonials','reviews','faqs','questions','plans','pricing','stats','cards','logos','members','team','steps'].includes(normalized)) return true;
+        return /(?:^|_)(?:eyebrow|heading|subheading|title|subtitle|text|description|body|intro|label|url|href|image|image_url|image_alt|video|video_url|icon|name|role|quote|author|price|period|number|value|question|answer|stat|caption|alt)$/.test(normalized);
+    };
+
+    const sparkContentSnapshot = (block = {}) => Object.fromEntries(
+        Object.entries(block).filter(([key, value]) => sparkContentKey(key) && value !== undefined)
+    );
+
+    const preserveCompatibleSparkContent = (reference = {}, replacement = {}) => {
+        const next = { ...replacement };
+        Object.entries(reference).forEach(([key, value]) => {
+            if (!sparkContentKey(key) || !Object.hasOwn(next, key)) return;
+            if (value === null || value === '' || (Array.isArray(value) && value.length === 0)) return;
+            const targetValue = next[key];
+            if (targetValue !== null && Array.isArray(value) !== Array.isArray(targetValue) && typeof value !== typeof targetValue) return;
+            // Repeater arrays are retained whole so stable item IDs/order/private copy survive.
+            next[key] = cloneBuilderEditValue(value);
+        });
+        return next;
+    };
+
+    const sparkCapabilityManifest = (block = {}) => {
+        const keys = Object.keys(block || {});
+        const repeaterKeys = ['items','services','slides','features','testimonials','reviews','faqs','questions','plans','pricing','stats','cards','logos','members','team','steps'].filter((key)=>Array.isArray(block?.[key]));
+        const mediaKeys = keys.filter((key)=>/(image|photo|avatar|poster|logo|video|media)/i.test(key));
+        return {
+            type: String(block?.type || ''),
+            repeaters: repeaterKeys,
+            media: mediaKeys,
+            hasButtons: keys.some((key)=>/(button|cta|primary_label|secondary_label|url)/i.test(key)),
+            hasStyles: Boolean(block?.styles || block?.style || block?.luna_tailwind_schema || block?.luna_component_overrides || block?.luna_section_overrides),
+            supportsOverflowPreservation: repeaterKeys.length > 0,
+        };
+    };
+
+    const isSafeBuilderBlockCandidate = (candidate, fallback = null) => {
+        if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return false;
+        const type = String(candidate.type || fallback?.type || '').trim();
+        if (!type) return false;
+        const manifest = sparkCapabilityManifest(candidate);
+        for (const key of manifest.repeaters) {
+            if (!Array.isArray(candidate[key])) return false;
+            if (candidate[key].some((item)=>item !== null && (typeof item !== 'object' || Array.isArray(item)))) return false;
+        }
+        return true;
+    };
+
+    const checkpointEditSessionState = () => {
+        if (!editSession?.open) return;
+        const snapshot = cloneBuilderEditValue(currentPopupEditState());
+        setEditSession((current)=>current?.open ? {...current,lastValid:snapshot} : current);
+    };
+
+    const restoreLastValidEditSessionState = () => {
+        if (!editSession?.open) return;
+        const lastValid = cloneBuilderEditValue(editSession.lastValid || editSession.original || {});
+        setEditSessionDraft(lastValid);
+    };
+
+    const previewSectionSparkLayout = (index, layout) => {
+        if (!editSession?.open || editSession.scope !== 'section' || !Number.isInteger(index)) return;
+        const popupState = currentPopupEditState();
+        const currentBlock = popupState.blocks?.[index];
+        if (!currentBlock || !layout || isCurrentLayout(currentBlock, layout)) return;
+
+        const blocks = [...(popupState.blocks || [])];
+        if (layout.kind === 'blog-variant') {
+            blocks[index] = { ...currentBlock, layout_variant: layout.layoutVariant, _renderKey: createRenderKey() };
+            setPopupDraftBlocks(blocks);
+            return;
+        }
+
+        const destinationDefaults = BlockRegistry[layout.type]?.schema?.defaults;
+        if (!destinationDefaults) return;
+
+        // Keep a reversible content memory per visited Spark. It is working-state data
+        // only until Apply, and ensures click-click experimentation never destroys copy.
+        const contentMemory = cloneBuilderEditValue(currentBlock._spark_content_memory || {});
+        contentMemory[currentBlock.type] = sparkContentSnapshot(currentBlock);
+
+        let replacement = preserveCompatibleSparkContent(currentBlock, cloneBuilderEditValue(destinationDefaults));
+        if (contentMemory[layout.type]) {
+            replacement = preserveCompatibleSparkContent(contentMemory[layout.type], replacement);
+        }
+
+        const sourceManifest = sparkCapabilityManifest(currentBlock);
+        const destinationManifest = sparkCapabilityManifest(destinationDefaults);
+        const overflowPreserved = Object.fromEntries(sourceManifest.repeaters.map((key)=>[key,Array.isArray(currentBlock?.[key]) ? currentBlock[key].length : 0]));
+        blocks[index] = {
+            ...replacement,
+            type: layout.type,
+            theme: currentBlock.theme || 'auto',
+            field_extras: cloneBuilderEditValue(currentBlock.field_extras || {}),
+            _spark_content_memory: contentMemory,
+            _spark_capability_manifest: destinationManifest,
+            _spark_overflow_preserved: overflowPreserved,
+            _renderKey: createRenderKey(),
+        };
+        setPopupDraftBlocks(blocks);
+        setEditSession((current)=>current?.open ? {...current,lastValid:{...cloneBuilderEditValue(currentPopupEditState()),blocks:cloneBuilderEditValue(blocks)}} : current);
+    };
 
     const unlockLayoutSpark = async (layout) => {
         if (!layout?.type || layout.owned || layoutBusyKey) return;
@@ -2977,6 +3464,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             ...sharedContent,
             type: layout.type,
             theme: currentBlock.theme || 'auto',
+            field_extras: cloneBuilderEditValue(currentBlock.field_extras || {}),
             _renderKey: createRenderKey(),
         };
 
@@ -3007,6 +3495,48 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         ? 'Overlay Header is available for this hero/banner.'
         : 'Move or add a hero/banner to the first section to use Overlay Header.';
     const overlayHeaderActive = Boolean(data.global_header?.overlay_header_on_banner && firstBlockIsBanner && overlayHeaderCompatible);
+    const megaFooterEnabled = Boolean(data.global_footer?.mega_enabled ?? data.global_footer?.mega_footer?.enabled);
+
+    const openDesignToggle = (setting) => {
+        setBuilderToolbarMenu(null);
+        if (setting === 'overlay_header') {
+            setDesignToggleDraft(Boolean(data.global_header?.overlay_header_on_banner));
+        } else if (setting === 'mega_footer') {
+            setDesignToggleDraft(megaFooterEnabled);
+        }
+        setDesignToggleModal(setting);
+    };
+
+    const closeDesignToggle = () => {
+        setDesignToggleModal(null);
+        setDesignToggleDraft(false);
+    };
+
+    const applyDesignToggle = () => {
+        if (designToggleModal === 'overlay_header') {
+            if (!firstBlockIsBanner) return;
+            const currentEnabled = Boolean(data.global_header?.overlay_header_on_banner);
+            if (currentEnabled !== Boolean(designToggleDraft)) {
+                updateHeader({ overlay_header_on_banner: Boolean(designToggleDraft) });
+                setPageStatus('draft');
+            }
+        } else if (designToggleModal === 'mega_footer') {
+            const enabled = Boolean(designToggleDraft);
+            if (megaFooterEnabled !== enabled) {
+                updateFooter({
+                    mega_enabled: enabled,
+                    mega_footer: {
+                        ...(data.global_footer?.mega_footer || {}),
+                        enabled,
+                        theme: data.global_footer?.mega_footer?.theme || 'auto',
+                    },
+                });
+                setPageStatus('draft');
+            }
+        }
+        setDesignToggleModal(null);
+    };
+
     const overlayHeaderRef = useRef(null);
     const [overlayHeaderHeight, setOverlayHeaderHeight] = useState(80);
 
@@ -3323,6 +3853,89 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         } finally { setCustomSparkLibraryBusy(false); }
     };
 
+    const openSavedSparks = async ({ filter = 'all', installMode = 'append' } = {}) => {
+        if (savedSparksBusy) return;
+        setSavedSparksBusy(true);
+        try {
+            const { data: response } = await axios.get('/saved-sparks');
+            setSavedSparks(response.saved_sparks || []);
+            setSavedSparksFilter(filter);
+            setSavedSparksInstallMode(installMode);
+            setSavedSparksOpen(true);
+        } catch (error) {
+            showCosmicNotification({ title:'Unable to load Saved Sparks', message:error?.response?.data?.message || 'Please try again.', tone:'error', mode:'toast' });
+        } finally { setSavedSparksBusy(false); }
+    };
+
+    const openLunaSparksFromAddSection = async () => {
+        setIsModalOpen(false);
+        await openSavedSparks({ filter:'luna', installMode:'customize' });
+    };
+
+    const saveBlockToSavedSparks = async (block, index) => {
+        if (!block?.type || savedSparksBusy) return;
+        setSavedSparksBusy(true);
+        const registryTitle = BlockRegistry?.[block.type]?.schema?.title || BlockRegistry?.[block.type]?.title;
+        const name = String(block.heading || block.title || registryTitle || block.type.replaceAll('_', ' ')).trim().slice(0, 140);
+        try {
+            const { data: response } = await axios.post('/saved-sparks', { name, spark_type:block.type, payload:block });
+            setSavedSparks((current) => [response.saved_spark, ...current]);
+            showCosmicNotification({ title:'Spark saved', message:response.message || 'Section added to Saved Sparks.', tone:'success', mode:'toast' });
+        } catch (error) {
+            showCosmicNotification({ title:'Unable to save Spark', message:error?.response?.data?.message || 'Please try again.', tone:'error', mode:'toast' });
+        } finally { setSavedSparksBusy(false); }
+    };
+
+    const saveAppliedLunaSpark = async (block) => {
+        if (!block || block.type !== 'luna_custom_section') return null;
+        const aiName = String(block?.ai_flex?.spark_name || '').trim();
+        const fallbackName = String(block.heading || block.title || 'Luna Spark').trim();
+        const name = (aiName || fallbackName || 'Luna Spark').slice(0, 140);
+        const payload = cloneBuilderEditValue(block);
+        delete payload._renderKey;
+        const { data: response } = await axios.post('/saved-sparks', {
+            name,
+            spark_type: 'luna_custom_section',
+            payload,
+            source: 'luna',
+        });
+        if (response?.saved_spark) {
+            setSavedSparks((current) => [response.saved_spark, ...current.filter((spark) => spark.id !== response.saved_spark.id)]);
+        }
+        return response?.saved_spark || null;
+    };
+
+    const installSavedSpark = (savedSpark) => {
+        const storedPayload = savedSpark?.payload && typeof savedSpark.payload === 'object' ? savedSpark.payload : null;
+        if (!storedPayload) return;
+        // Saved Sparks may carry library-only provenance metadata. Never leak it
+        // into page blocks: reuse the exact section schema/content, but keep
+        // Saved-Spark bookkeeping inside the library record only.
+        const payload = cloneBuilderEditValue(storedPayload);
+        delete payload._saved_spark_meta;
+        delete payload._renderKey;
+        if (savedSparksInstallMode === 'customize') {
+            setSavedSparksOpen(false);
+            beginNewSectionEdit(payload, {
+                spark: { name: savedSpark?.name || 'Luna Spark', key: payload.custom_spark_key || `luna-saved-${savedSpark?.id || Date.now()}`, category: savedSpark?.source === 'luna' ? 'Luna Sparks' : 'Saved Sparks' },
+                creationSource: savedSpark?.source === 'luna' ? 'luna_saved' : 'saved_spark',
+                aiFlexMode: Boolean(payload?.ai_flex),
+                skipSparkMatch: savedSpark?.source === 'luna',
+            });
+            return;
+        }
+        const targetIndex = (data.blocks || []).length;
+        setData('blocks', normalizeRenderKeys([...(data.blocks || []), payload]));
+        setSavedSparksOpen(false);
+        // Wait for React to mount the appended Spark, then take the user directly
+        // to the new section instead of leaving them at the top of the Builder.
+        window.requestAnimationFrame(() => window.requestAnimationFrame(() => {
+            const target = builderCanvasRef.current?.querySelector?.(`[data-luna-section-index="${targetIndex}"]`);
+            target?.scrollIntoView?.({ behavior:'smooth', block:'center', inline:'nearest' });
+        }));
+        showCosmicNotification({ title:'Saved Spark added', message:'The section was appended to this page.', tone:'success', mode:'toast' });
+    };
+
     const duplicateSavedCustomSpark = async (spark) => {
         if (!spark?.key || customSparkLibraryBusy) return;
         setCustomSparkLibraryBusy(true);
@@ -3424,6 +4037,11 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         try {
             const form = new FormData();
             form.append('prompt', prompt);
+            // Batch 7: transport-level assistant jurisdiction. Contextual popup
+            // Luna and lower-right Global Luna share the executor endpoint, but
+            // they must never share implicit scope/target authority.
+            const lunaAssistantSurface = editSession?.open ? 'contextual_popup' : 'global_builder';
+            form.append('assistant_surface', lunaAssistantSurface);
             if (lunaReferenceImage) form.append('reference_image', lunaReferenceImage);
             form.append('block', JSON.stringify(stripClientBlockFields([currentBlock])[0]));
             form.append('target_scope', cosmicAiChat.targetScope || 'section');
@@ -3453,6 +4071,275 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         return () => window.cancelAnimationFrame(frame);
     }, [lunaMessages, pageAiBusy, lunaStatus, lunaChatOpen]);
 
+
+    const snapshotBuilderEditState = () => ({
+        blocks: cloneBuilderEditValue(data.blocks || []),
+        global_header: cloneBuilderEditValue(data.global_header || {}),
+        global_footer: cloneBuilderEditValue(data.global_footer || {}),
+    });
+
+    const currentBuilderEditState = () => ({
+        blocks: data.blocks || [],
+        global_header: data.global_header || {},
+        global_footer: data.global_footer || {},
+    });
+
+    const currentPopupEditState = () => editSession?.open && editSessionDraft
+        ? editSessionDraft
+        : currentBuilderEditState();
+
+    const updatePopupDraft = (updater) => {
+        if (!editSession?.open) return false;
+        setEditSessionDraft((current) => {
+            const base = cloneBuilderEditValue(current || editSession.original || snapshotBuilderEditState());
+            const next = typeof updater === 'function' ? updater(base) : updater;
+            return cloneBuilderEditValue(next || base);
+        });
+        return true;
+    };
+
+    const setPopupDraftBlocks = (blocks) => updatePopupDraft((current) => ({
+        ...current,
+        blocks: cloneBuilderEditValue(blocks || []),
+    }));
+
+    const previewSectionTheme = (index, theme) => {
+        if (!editSession?.open || editSession.scope !== 'section' || !Number.isInteger(index)) return;
+        if (!['primary', 'white', 'surface'].includes(theme)) return;
+
+        const popupState = currentPopupEditState();
+        const blocks = [...(popupState.blocks || [])];
+        const currentBlock = blocks[index];
+        if (!currentBlock || currentBlock.theme === theme) return;
+
+        blocks[index] = { ...currentBlock, theme, _renderKey: createRenderKey() };
+        setPopupDraftBlocks(blocks);
+    };
+
+    const setPopupDraftHeader = (header) => updatePopupDraft((current) => ({
+        ...current,
+        global_header: cloneBuilderEditValue(header || {}),
+    }));
+
+    const setPopupDraftFooter = (footer) => updatePopupDraft((current) => ({
+        ...current,
+        global_footer: cloneBuilderEditValue(footer || {}),
+    }));
+
+    const beginEditSession = ({ scope='element', blockIndex=null, label='Selected item', target=null } = {}) => {
+        // A new popup always starts from the Builder's currently accepted state.
+        // Unapplied popup work is discarded instead of ever being written behind
+        // the modal and then rolled back later.
+        const original = snapshotBuilderEditState();
+
+        const normalizedBlockIndex = Number.isInteger(Number(blockIndex)) ? Number(blockIndex) : null;
+        const normalizedScope = scope === 'section'
+            ? 'section'
+            : target?.scope === 'header'
+                ? 'header'
+                : target?.scope === 'footer'
+                    ? 'footer'
+                    : normalizedBlockIndex !== null
+                        ? 'section'
+                        : 'page';
+        setEditSessionMediaUrl(String(target?.currentValue || ''));
+        setEditSessionDraft(cloneBuilderEditValue(original));
+        setEditSession({
+            open: true,
+            scope,
+            blockIndex: normalizedBlockIndex,
+            label: String(label || 'Selected item'),
+            target: target ? cloneBuilderEditValue(target) : null,
+            original,
+            lastValid: cloneBuilderEditValue(original),
+            globalLunaConversation: cloneBuilderEditValue(Array.isArray(lunaSessionConversationRef.current) ? lunaSessionConversationRef.current : []),
+            openedAt: Date.now(),
+        });
+        // Contextual Luna gets an isolated temporary conversation. This keeps
+        // local follow-ups ("smaller", "only card 2") from polluting the
+        // lower-right whole-site Luna thread.
+        lunaSessionConversationRef.current = [];
+        setEditSessionLunaStartIndex(lunaMessages.length);
+        setEditSessionLunaPrompt('');
+        setSectionSparkLayoutsExpanded(false);
+        setLunaScope({ type:normalizedScope, blockIndex:normalizedBlockIndex, label:String(label || 'Selected item') });
+        setLunaElementTarget(target ? cloneBuilderEditValue(target) : null);
+        setLunaChatOpen(false);
+        setLunaManualOpen(false);
+        setPageAiError('');
+        setPageAiPrompt('');
+    };
+
+    const beginNewSectionEdit = (block, meta = {}) => {
+        if (!block || typeof block !== 'object') return;
+        const original = snapshotBuilderEditState();
+        const newBlock = {
+            ...bindDefaultCommerceProduct(cloneBuilderEditValue(block), commerce),
+            theme: block.theme || 'auto',
+            _renderKey: createRenderKey(),
+        };
+        const draft = cloneBuilderEditValue(original);
+        const draftBlocks = [...(draft.blocks || [])];
+        const insertTarget = sparkInsertTarget ? cloneBuilderEditValue(sparkInsertTarget) : null;
+        let insertionIndex = draftBlocks.length;
+        if (insertTarget) {
+            const anchorByKey = insertTarget.anchorRenderKey
+                ? draftBlocks.findIndex((candidate) => candidate?._renderKey === insertTarget.anchorRenderKey)
+                : -1;
+            const anchorIndex = anchorByKey >= 0
+                ? anchorByKey
+                : Math.min(Math.max(Number(insertTarget.index) || 0, 0), Math.max(draftBlocks.length - 1, 0));
+            insertionIndex = insertTarget.position === 'above'
+                ? anchorIndex
+                : Math.min(anchorIndex + 1, draftBlocks.length);
+            draftBlocks.splice(insertionIndex, 0, newBlock);
+        } else {
+            draftBlocks.push(newBlock);
+        }
+        draft.blocks = draftBlocks;
+        const sparkName = String(meta?.spark?.name || block?.type || 'New Section');
+        setEditSessionDraft(cloneBuilderEditValue(draft));
+        setEditSession({
+            open: true,
+            scope: 'section',
+            blockIndex: insertionIndex,
+            label: sparkName,
+            target: null,
+            original,
+            lastValid: cloneBuilderEditValue(draft),
+            commitMode: 'create_section',
+            insertionIndex,
+            insertionPosition: insertTarget?.position || 'bottom',
+            insertionAnchorLabel: insertTarget?.anchorLabel || null,
+            insertedRenderKey: newBlock._renderKey,
+            creationSource: meta?.creationSource || (block?.ai_flex?.source === 'blank' ? 'blank_luna' : 'spark'),
+            aiFlexMode: Boolean(meta?.aiFlexMode || block?.ai_flex?.mode === 'ai_flex'),
+            skipSparkMatch: Boolean(meta?.skipSparkMatch || block?.ai_flex?.skip_spark_match),
+            globalLunaConversation: cloneBuilderEditValue(Array.isArray(lunaSessionConversationRef.current) ? lunaSessionConversationRef.current : []),
+            openedAt: Date.now(),
+        });
+        lunaSessionConversationRef.current = [];
+        setEditSessionLunaStartIndex(lunaMessages.length);
+        setEditSessionLunaPrompt('');
+        setSectionSparkLayoutsExpanded(false);
+        setLunaScope({ type:'section', blockIndex:insertionIndex, label:sparkName });
+        setLunaElementTarget(null);
+        setLunaChatOpen(false);
+        setLunaManualOpen(false);
+        setPageAiError('');
+        setPageAiPrompt('');
+        setSparkInsertTarget(null);
+        setIsModalOpen(false);
+    };
+
+    const editSessionHasChanges = editSession?.open
+        ? !builderEditStateEquals(editSession.original, editSessionDraft || editSession.original)
+        : false;
+
+    const cancelEditSession = () => {
+        if (!editSession?.open) return;
+        // Builder was never mutated by the popup, so cancel only discards the
+        // isolated draft and contextual conversation.
+        lunaSessionConversationRef.current = cloneBuilderEditValue(editSession.globalLunaConversation || []);
+        setEditSessionDraft(null);
+        setEditSession(null);
+        setEditSessionMediaUrl('');
+        setEditSessionLunaPrompt('');
+        setLunaElementTarget(null);
+        setLunaDirectText('');
+        setLunaDirectLink('');
+        setLunaDirectVideoUrl('');
+        setLunaScope({type:'page',blockIndex:null,label:'Whole Page'});
+    };
+
+    const applyEditSession = async () => {
+        if (!editSession?.open) return;
+        const session = editSession;
+        const label = session.label || 'Selection';
+        const draft = cloneBuilderEditValue(editSessionDraft || session.original || snapshotBuilderEditState());
+        const creatingSection = session.commitMode === 'create_section';
+        if (editSessionHasChanges || creatingSection) {
+            setData('blocks', normalizeRenderKeys(draft.blocks || []));
+            if (!creatingSection) {
+                setData('global_header', cloneBuilderEditValue(draft.global_header || {}));
+                setData('global_footer', cloneBuilderEditValue(draft.global_footer || {}));
+            }
+        }
+        if (creatingSection && session.creationSource === 'blank_luna') {
+            const appliedBlock = draft.blocks?.[session.blockIndex];
+            if (appliedBlock?.type === 'luna_custom_section' && appliedBlock?.ai_flex?.generated) {
+                try {
+                    await saveAppliedLunaSpark(appliedBlock);
+                } catch (error) {
+                    showCosmicNotification({
+                        title: 'Section added, Luna Spark not saved',
+                        message: error?.response?.data?.message || 'The section is on the page, but its reusable Luna Spark copy could not be saved.',
+                        tone: 'error', mode: 'toast', duration: 4200,
+                    });
+                }
+            }
+        }
+        lunaSessionConversationRef.current = cloneBuilderEditValue(session.globalLunaConversation || []);
+        setEditSessionDraft(null);
+        setEditSession(null);
+        setEditSessionMediaUrl('');
+        setEditSessionLunaPrompt('');
+        setLunaElementTarget(null);
+        setLunaScope({type:'page',blockIndex:null,label:'Whole Page'});
+        showCosmicNotification({
+            title: creatingSection ? 'Section added' : (editSessionHasChanges ? 'Changes applied' : 'No changes to apply'),
+            message: creatingSection
+                ? `${label} was added to the page after customization. Save the page when you are ready.`
+                : editSessionHasChanges
+                    ? `${label} is updated in the Builder working copy. Save the page when you are ready.`
+                    : `${label} was left unchanged.`,
+            tone: 'success',
+            mode: 'toast',
+            duration: 2600,
+        });
+        if (creatingSection) {
+            const renderKey = session.insertedRenderKey;
+            const fallbackIndex = Number(session.insertionIndex);
+            window.setTimeout(() => {
+                const keyMatch = renderKey ? document.querySelector(`[data-cosmic-render-key="${renderKey}"]`) : null;
+                const candidates = Number.isInteger(fallbackIndex)
+                    ? Array.from(document.querySelectorAll(`[data-cosmic-block-index="${fallbackIndex}"]`))
+                    : [];
+                const target = keyMatch || candidates.find((node) => {
+                    const rect = node.getBoundingClientRect();
+                    const style = window.getComputedStyle(node);
+                    return rect.width > 0 && rect.height > 0 && style.display !== 'none' && style.visibility !== 'hidden';
+                }) || candidates[0];
+                if (!target) return;
+                target.scrollIntoView({ behavior:'smooth', block:'center' });
+            }, 120);
+        }
+    };
+
+    useEffect(() => {
+        if (!editSession?.open) return undefined;
+        const onKeyDown = (event) => {
+            if (event.key !== 'Escape') return;
+            event.preventDefault();
+            cancelEditSession();
+        };
+        window.addEventListener('keydown', onKeyDown);
+        return () => window.removeEventListener('keydown', onKeyDown);
+    }, [editSession]);
+
+    const contextualLunaMessages = editSession?.open ? lunaMessages.slice(editSessionLunaStartIndex) : [];
+
+    const sendContextualLunaRequest = async () => {
+        const prompt = String(editSessionLunaPrompt || '').trim();
+        if (!editSession?.open || !prompt || pageAiBusy) return;
+        setEditSessionLunaPrompt('');
+        // Scope/target were resolved before opening the popup and remain stable
+        // while the global Luna control is suppressed. Add the user turn locally
+        // because directPrompt intentionally bypasses the global composer append.
+        setLunaMessages((messages)=>[...messages,{role:'user',text:prompt,scope:editSession.label || lunaScope.label}]);
+        checkpointEditSessionState();
+        await sendPageAiRequest(prompt, false, null, { assistantSurface:'contextual_popup' });
+    };
 
     const openLunaChat = (scope = { type:'page', blockIndex:null, label:'Whole Page' }) => {
         setLunaScope(scope);
@@ -3521,10 +4408,30 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     const resolveLunaItemTarget = (root, target, block) => {
         if (!(root instanceof Element) || !(target instanceof Element)) return null;
-        const repeater=findPrimaryRepeater(block);
+
+        // Batch 4 AI Flex contract: rendered Universal Elements expose their
+        // logical Rows/Columns/Extras role plus the real elements/children path.
+        // Prefer this deterministic metadata over visual-card heuristics.
+        const aiFlexNode=target.closest?.('[data-cosmic-ai-flex-collection-path][data-cosmic-ai-flex-item-index]');
+        if(aiFlexNode && root.contains(aiFlexNode)){
+            const collectionPath=String(aiFlexNode.getAttribute('data-cosmic-ai-flex-collection-path')||'');
+            const collectionKey=String(aiFlexNode.getAttribute('data-cosmic-ai-flex-collection')||'extras');
+            const logicalCollectionPath=String(aiFlexNode.getAttribute('data-cosmic-ai-flex-logical-collection-path')||'');
+            const logicalPath=String(aiFlexNode.getAttribute('data-cosmic-ai-flex-logical-path')||'');
+            const stableId=String(aiFlexNode.getAttribute('data-cosmic-ai-flex-stable-id')||'');
+            const index=Number(aiFlexNode.getAttribute('data-cosmic-ai-flex-item-index'));
+            const items=getNestedValue(block,collectionPath);
+            if(Array.isArray(items) && Number.isInteger(index) && index>=0 && index<items.length){
+                return {index,count:items.length,collectionKey,collectionPath,logicalCollectionPath,logicalPath,stableId,mode:'ai-flex',node:aiFlexNode};
+            }
+        }
+
+        const fieldPath=String(target.closest?.('[data-cosmic-field-path]')?.getAttribute?.('data-cosmic-field-path')||'');
+        const repeater=findRepeaterForFieldPath(block,fieldPath) || findPrimaryRepeater(block);
         if(!repeater) return null;
 
         const repeaterKey=String(repeater.path?.[repeater.path.length-1]||'');
+        const collectionPath=String(repeater.pathString||repeater.path?.join?.('.')||'');
         const activeNode=target.closest('[data-cosmic-active-item-index],[data-cosmic-slider-active-index]')
             || root.querySelector('[data-cosmic-active-item-index],[data-cosmic-slider-active-index]');
         if(activeNode && root.contains(activeNode)){
@@ -3536,7 +4443,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 || (activeNode.hasAttribute('data-cosmic-slider-active-index')?'slides':repeaterKey)
             );
             if(Number.isInteger(index) && index>=0 && index<repeater.items.length && collectionKey===repeaterKey){
-                return {index,count:repeater.items.length,collectionKey,mode:'active'};
+                return {index,count:repeater.items.length,collectionKey,collectionPath,mode:'active'};
             }
         }
 
@@ -3554,7 +4461,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 return identities.some((value)=>cardText.includes(value))?index:null;
             }).filter((index)=>Number.isInteger(index));
             if(matchingItems.length===1){
-                return {index:matchingItems[0],count:Number(card.count),collectionKey:repeaterKey,mode:'card',card};
+                return {index:matchingItems[0],count:Number(card.count),collectionKey:repeaterKey,collectionPath,mode:'card',card};
             }
         }
         return null;
@@ -3562,21 +4469,19 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     const openLunaHoverTarget = (hoverTarget) => {
         if (!hoverTarget) return;
-        const { blockIndex, type='section', currentValue='', url='', itemIndex=null, itemCount=null, collectionKey='' } = hoverTarget;
+        const { blockIndex, type='section', currentValue='', url='', itemIndex=null, itemCount=null, collectionKey='', collectionPath='', fieldPath='' } = hoverTarget;
         const isSection = type === 'section';
         const isCard = type === 'card';
         const sectionTitle=BlockRegistry[data.blocks?.[blockIndex]?.type]?.schema?.title || data.blocks?.[blockIndex]?.heading || 'Selected Section';
         const itemName=collectionKey==='slides'?'Slide':collectionKey==='testimonials'?'Testimonial':collectionKey==='faqs'?'FAQ':isCard?'Card':'Item';
         const label = isSection ? sectionTitle : (Number.isInteger(Number(itemIndex)) ? `${itemName} ${Number(itemIndex)+1} · ${sectionTitle}` : `${type.charAt(0).toUpperCase()+type.slice(1)} · Section ${blockIndex+1}`);
+        const target = isSection ? null : { type, currentValue, url, itemIndex, itemCount, collectionKey, collectionPath:String(collectionPath||''), fieldPath:String(fieldPath||'') };
         setLunaScope({ type:'section', blockIndex, label });
-        setLunaElementTarget(isSection ? null : { type, currentValue, url, itemIndex, itemCount, collectionKey });
-        setLunaManualOpen(false);
+        setLunaElementTarget(target);
         setLunaDirectText((isSection||isCard) ? '' : String(currentValue||''));
         setLunaDirectLink((isSection||isCard) ? '' : String(url||''));
-        setPageAiError('');
-        setPageAiPrompt('');
         setLunaDirectVideoUrl('');
-        announceLunaContext(label,{manual:true,focus:true});
+        beginEditSession({ scope:isSection?'section':'element', blockIndex, label, target });
     };
     useEffect(() => {
         const handleLunaTarget = (event) => {
@@ -3591,6 +4496,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             const itemIndex=itemTarget?Number(itemTarget.index):null;
             const itemCount=itemTarget?Number(itemTarget.count):null;
             const collectionKey=String(itemTarget?.collectionKey||'');
+            const collectionPath=String(itemTarget?.collectionPath||'');
+            const logicalCollectionPath=String(itemTarget?.logicalCollectionPath||'');
+            const logicalPath=String(itemTarget?.logicalPath||'');
+            const stableId=String(itemTarget?.stableId||'');
 
             const type = String(detail.type || 'element');
             const currentValue = String(detail.currentValue || '').slice(0, 1200);
@@ -3600,8 +4509,17 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 : type === 'label' ? 'Label'
                 : 'Text';
 
-            setLunaScope({type:'section',blockIndex,label:`${label} · Section ${blockIndex + 1}`});
-            setLunaElementTarget({
+            // Background media belongs to the SECTION editor. Treating a full-bleed
+            // background as an image element creates a conflicting image-edit hover
+            // target over the whole section. Regular inline/card images stay editable.
+            if (type === 'background image') {
+                const sectionTitle=BlockRegistry[data.blocks?.[blockIndex]?.type]?.schema?.title || data.blocks?.[blockIndex]?.heading || `Section ${blockIndex + 1}`;
+                beginEditSession({ scope:'section', blockIndex, label:sectionTitle, target:null });
+                return;
+            }
+
+            const fieldPath = String(detail.fieldPath || source?.closest?.('[data-cosmic-field-path]')?.getAttribute?.('data-cosmic-field-path') || '');
+            const target = {
                 type,
                 currentValue,
                 url: String(detail.url || ''),
@@ -3610,14 +4528,19 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 itemIndex,
                 itemCount,
                 collectionKey,
-            });
-            setLunaManualOpen(false);
+                collectionPath,
+                logicalCollectionPath,
+                logicalPath,
+                stableId,
+                fieldPath,
+            };
+            const itemName=collectionKey==='slides'?'Slide':collectionKey==='testimonials'?'Testimonial':collectionKey==='faqs'?'FAQ':'Item';
+            const targetLabel=itemTarget?`${label} · ${itemName} ${itemIndex+1}`:`${label} · Section ${blockIndex + 1}`;
+            setLunaScope({type:'section',blockIndex,label:targetLabel});
+            setLunaElementTarget(target);
             setLunaDirectText(currentValue);
             setLunaDirectLink(String(detail.url || ''));
-            setPageAiError('');
-            setPageAiPrompt('');
-            const itemName=collectionKey==='slides'?'Slide':collectionKey==='testimonials'?'Testimonial':collectionKey==='faqs'?'FAQ':'Item';
-            announceLunaContext(itemTarget?`${label} · ${itemName} ${itemIndex+1}`:`${label} · Section ${blockIndex + 1}`,{manual:true,focus:true});
+            beginEditSession({ scope:'element', blockIndex, label:targetLabel, target });
         };
 
         window.addEventListener('cosmic:luna-target', handleLunaTarget);
@@ -3655,6 +4578,51 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Undone — I restored the previous design.'}]);
     };
 
+    const findSectionBackgroundImageSlot = (block={}) => {
+        if (!block || typeof block !== 'object') return null;
+        const directKeys = [
+            'universal_background_image_url',
+            'background_image_url',
+            'background_image',
+            'hero_background_image',
+            'background_url',
+            'backgroundImageUrl',
+            'backgroundImage',
+        ];
+        for (const key of directKeys) {
+            const value = block?.[key];
+            if (typeof value === 'string' && value.trim()) return { key, url:value.trim(), kind:key==='universal_background_image_url'?'universal':'authored' };
+        }
+        const type=String(block?.type||'').toLowerCase();
+        const mediaPosition=String(block?.media_position||block?.visual_style?.media_position||'').toLowerCase();
+        const imageUrl=typeof block?.image_url==='string' ? block.image_url.trim() : '';
+        const backgroundType = mediaPosition==='background'
+            || /(hero|banner|background|parallax|fullscreen|cinematic|editorial_overlay|image_cta|mini_hero|mask_reveal|curtain_reveal)/.test(type);
+        if (imageUrl && backgroundType) return { key:'image_url', url:imageUrl, kind:'authored' };
+        return null;
+    };
+
+    const applySectionAuthoredBackgroundImage = (assetUrl) => {
+        const url=String(assetUrl||'').trim();
+        const index=Number(editSession?.blockIndex);
+        if(!url || !editSession?.open || editSession.scope!=='section' || !Number.isInteger(index)) return false;
+        const activeState=currentPopupEditState();
+        const block=activeState.blocks?.[index];
+        if(!block) return false;
+        const slot=findSectionBackgroundImageSlot(block);
+        if(!slot) return false;
+        const next={...block,[slot.key]:url,_renderKey:block._renderKey||createRenderKey()};
+        if(slot.key==='universal_background_image_url'){
+            next.universal_background_enabled=true;
+            next.universal_background_type='image';
+        }
+        const nextBlocks=normalizeRenderKeys((activeState.blocks||[]).map((candidate,i)=>i===index?next:candidate));
+        setPopupDraftBlocks(nextBlocks);
+        setPageAiError('');
+        showCosmicNotification({title:'Background image updated',message:'Media Library image updated in this section popup draft. Apply to keep it.',tone:'success',mode:'toast',duration:2400});
+        return true;
+    };
+
         const normalizeMediaComparable = (value='') => {
         try {
             const raw=String(value||'').trim();
@@ -3669,7 +4637,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     const replaceFirstSelectedMedia = (assetUrl) => {
         const index=lunaScope?.blockIndex;
-        if(!Number.isInteger(index) || !data.blocks?.[index] || !assetUrl)return false;
+        const activeState=currentPopupEditState();
+        if(!Number.isInteger(index) || !activeState.blocks?.[index] || !assetUrl)return false;
         const wanted=normalizeMediaComparable(lunaElementTarget?.currentValue||'');
         const itemIndex=Number(lunaElementTarget?.itemIndex);
         const hasItemTarget=Number.isInteger(itemIndex) && itemIndex>=0;
@@ -3713,7 +4682,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             return count;
         };
 
-        const block=data.blocks[index];
+        const block=activeState.blocks[index];
         let next=block;
         let replaced=false;
 
@@ -3737,8 +4706,10 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         }
 
         if(!replaced)return false;
-        pushLunaUndoSnapshot();
-        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((candidate,i)=>i===index?{...next,_renderKey:candidate._renderKey}:candidate)));
+        if(!editSession?.open) pushLunaUndoSnapshot();
+        const nextBlocks=normalizeRenderKeys((activeState.blocks||[]).map((candidate,i)=>i===index?{...next,_renderKey:candidate._renderKey}:candidate));
+        if(editSession?.open) setPopupDraftBlocks(nextBlocks);
+        else setData('blocks',nextBlocks);
         setLunaElementTarget((current)=>current?{...current,currentValue:assetUrl}:current);
         return true;
     };
@@ -3756,21 +4727,31 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 footer:data.global_footer||{},
                 theme:globalSelections||{},
             },...stack].slice(0,10));
-            setData((current)=>({
-                ...current,
-                ...(!footerOnly ? {global_header:{...(current.global_header||{}),logo_image_url:asset.url,logo_height:52,logo_max_width:240}} : {}),
-                ...(!headerOnly ? {global_footer:{...(current.global_footer||{}),logo_image_url:asset.url,logo_height:48,logo_max_width:240}} : {}),
-            }));
+            if(editSession?.open){
+                updatePopupDraft((current)=>({
+                    ...current,
+                    ...(!footerOnly ? {global_header:{...(current.global_header||{}),logo_image_url:asset.url,logo_height:52,logo_max_width:240}} : {}),
+                    ...(!headerOnly ? {global_footer:{...(current.global_footer||{}),logo_image_url:asset.url,logo_height:48,logo_max_width:240}} : {}),
+                }));
+            }else{
+                setData((current)=>({
+                    ...current,
+                    ...(!footerOnly ? {global_header:{...(current.global_header||{}),logo_image_url:asset.url,logo_height:52,logo_max_width:240}} : {}),
+                    ...(!headerOnly ? {global_footer:{...(current.global_footer||{}),logo_image_url:asset.url,logo_height:48,logo_max_width:240}} : {}),
+                }));
+            }
             setLunaElementTarget((current)=>current?{...current,currentValue:asset.url}:current);
+            if(editSession?.open) setEditSessionMediaUrl(asset.url);
             setPageAiPrompt('');
-            setLunaMessages((messages)=>[...messages,{role:'assistant',text:headerOnly?'Header logo updated from the Media Library. · 0 credits':footerOnly?'Footer logo updated from the Media Library. · 0 credits':'Logo updated from the Media Library. · 0 credits'}]);
+            setLunaMessages((messages)=>[...messages,{role:'assistant',text:editSession?.open?'I placed the selected logo in this popup draft. Apply when you are happy. · 0 credits':headerOnly?'Header logo updated from the Media Library. · 0 credits':footerOnly?'Footer logo updated from the Media Library. · 0 credits':'Logo updated from the Media Library. · 0 credits'}]);
             return;
         }
         if(replaceFirstSelectedMedia(asset.url)){
+            if(editSession?.open) setEditSessionMediaUrl(asset.url);
             setPageAiPrompt('');
             setPageAiError('');
-            setLunaMessages((messages)=>[...messages,{role:'assistant',text:'I used the selected Media Library image here.'}]);
-            showCosmicNotification({title:'Image updated',message:'The selected Media Library image was applied.',tone:'success',mode:'toast',duration:2400});
+            setLunaMessages((messages)=>[...messages,{role:'assistant',text:editSession?.open?'I placed the selected image in this popup draft. Apply when you are happy.':'I used the selected Media Library image here.'}]);
+            if(!editSession?.open) showCosmicNotification({title:'Image updated',message:'The selected Media Library image was applied.',tone:'success',mode:'toast',duration:2400});
         }else{
             setPageAiError('I could not map the selected image to one unique content field. Re-select the exact image and try again.');
             showCosmicNotification({title:'Image not applied',message:'Cosmic could not identify one unique image field for this selection.',tone:'error'});
@@ -3811,27 +4792,24 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     const openLunaForFooterLogo = () => {
         const current=String(data.global_footer?.logo_image_url||'');
+        const target={type:'logo',fieldPath:'footer.logo_image_url',currentValue:current};
         setLunaScope({type:'footer',blockIndex:null,label:'Footer Logo'});
-        setLunaElementTarget({type:'logo',fieldPath:'footer.logo_image_url',currentValue:current});
-        setLunaManualOpen(false);
+        setLunaElementTarget(target);
         setPageAiError('');
         setPageAiPrompt('');
-        announceLunaContext('Footer Logo',{manual:true,focus:true});
+        beginEditSession({scope:'element',blockIndex:null,label:'Footer Logo',target});
     };
 
     const openLunaForFooterElement = (target={}) => {
         const label=target.label || 'Footer Element';
+        const resolved={type:target.type || 'text',fieldPath:target.fieldPath || 'footer',currentValue:String(target.currentValue || ''),currentUrl:String(target.currentUrl || '')};
         setLunaScope({type:'footer',blockIndex:null,label});
-        setLunaElementTarget({
-            type:target.type || 'text',
-            fieldPath:target.fieldPath || 'footer',
-            currentValue:String(target.currentValue || ''),
-            currentUrl:String(target.currentUrl || ''),
-        });
-        setLunaManualOpen(false);
+        setLunaElementTarget(resolved);
+        setLunaDirectText(resolved.currentValue);
+        setLunaDirectLink(resolved.currentUrl);
         setPageAiError('');
         setPageAiPrompt('');
-        announceLunaContext(label,{manual:true,focus:true});
+        beginEditSession({scope:'element',blockIndex:null,label,target:resolved});
     };
 
     const openHeaderLogoManual = () => {
@@ -3849,17 +4827,14 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
     };
 
     const openLunaForHeaderCta = () => {
+        const target={type:'button',fieldPath:'header.cta',currentValue:String(data.global_header?.cta_label||''),currentUrl:String(data.global_header?.cta_url||'#')};
         setLunaScope({type:'header',blockIndex:null,label:'Header CTA'});
-        setLunaElementTarget({
-            type:'button',
-            fieldPath:'header.cta',
-            currentValue:String(data.global_header?.cta_label||''),
-            currentUrl:String(data.global_header?.cta_url||'#'),
-        });
-        setLunaManualOpen(false);
+        setLunaElementTarget(target);
+        setLunaDirectText(target.currentValue);
+        setLunaDirectLink(target.currentUrl);
         setPageAiError('');
         setPageAiPrompt('');
-        announceLunaContext('Header CTA',{manual:true,focus:true});
+        beginEditSession({scope:'element',blockIndex:null,label:'Header CTA',target});
     };
 
     const openLunaForHeaderNavigation = () => {
@@ -3877,12 +4852,12 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     const openLunaForLogo = () => {
         const current=String(data.global_header?.logo_image_url||'');
+        const target={type:'logo',fieldPath:'header.logo_image_url',currentValue:current};
         setLunaScope({type:'header',blockIndex:null,label:'Header Logo'});
-        setLunaElementTarget({type:'logo',fieldPath:'header.logo_image_url',currentValue:current});
-        setLunaManualOpen(false);
+        setLunaElementTarget(target);
         setPageAiError('');
         setPageAiPrompt('');
-        announceLunaContext('Header Logo',{manual:true,focus:true});
+        beginEditSession({scope:'element',blockIndex:null,label:'Header Logo',target});
     };
 
     const runLunaGeneratedImage = async (prompt) => {
@@ -3954,7 +4929,8 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
 
     const replaceSelectedScalar = (nextValue, nextUrl = null) => {
         const index=lunaScope?.blockIndex;
-        if(!Number.isInteger(index) || !data.blocks?.[index] || !lunaElementTarget) return false;
+        const activeState=currentPopupEditState();
+        if(!Number.isInteger(index) || !activeState.blocks?.[index] || !lunaElementTarget) return false;
         const wanted=String(lunaElementTarget.currentValue||'');
         const itemIndex=Number(lunaElementTarget?.itemIndex);
         const hasItemTarget=Number.isInteger(itemIndex) && itemIndex>=0;
@@ -4003,7 +4979,7 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
             return count;
         };
 
-        const block=data.blocks[index];
+        const block=activeState.blocks[index];
         let next=block;
         let changed=false;
 
@@ -4030,34 +5006,121 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         }
 
         if(!changed) return false;
-        pushLunaUndoSnapshot();
-        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((candidate,i)=>i===index?{...next,_renderKey:candidate._renderKey||createRenderKey()}:candidate)));
+        if(!editSession?.open) pushLunaUndoSnapshot();
+        const nextBlocks=normalizeRenderKeys((activeState.blocks||[]).map((candidate,i)=>i===index?{...next,_renderKey:candidate._renderKey||createRenderKey()}:candidate));
+        if(editSession?.open) setPopupDraftBlocks(nextBlocks);
+        else setData('blocks',nextBlocks);
         setLunaElementTarget((current)=>current?{...current,currentValue:String(nextValue),url:nextUrl!==null?String(nextUrl):current.url}:current);
         return true;
     };
 
-    const saveLunaDirectElement = () => {
+    const stageDirectElementText = (value) => {
+        setLunaDirectText(value);
+        if(editSession?.open) saveLunaDirectElement(value,lunaDirectLink,{silent:true});
+    };
+
+    const stageDirectElementLink = (value) => {
+        setLunaDirectLink(value);
+        if(editSession?.open) saveLunaDirectElement(lunaDirectText,value,{silent:true});
+    };
+
+    const syncPopupElementFieldsFromAiMutation = (beforeBlock, afterBlock) => {
+        if(!editSession?.open || !lunaElementTarget || !beforeBlock || !afterBlock) return;
+        const targetType=String(lunaElementTarget.type||'').toLowerCase();
+        const urlKey=/(^|_)(url|href|link)$/i;
+        const mediaKey=/(image|photo|avatar|poster|thumbnail|background).*?(url)?$/i;
+        const diffs=[];
+        const walk=(before,after,path=[])=>{
+            if(typeof before==='string' && typeof after==='string' && before!==after){ diffs.push({path,key:String(path[path.length-1]||''),before,after}); return; }
+            if(Array.isArray(before) && Array.isArray(after)){
+                const count=Math.min(before.length,after.length);
+                for(let i=0;i<count;i++) walk(before[i],after[i],[...path,i]);
+                return;
+            }
+            if(before && after && typeof before==='object' && typeof after==='object'){
+                const keys=new Set([...Object.keys(before),...Object.keys(after)]);
+                keys.forEach((key)=>walk(before[key],after[key],[...path,key]));
+            }
+        };
+        walk(beforeBlock,afterBlock);
+        if(['heading','text','label','button'].includes(targetType)){
+            const contentDiff=diffs.find((diff)=>!urlKey.test(diff.key) && !mediaKey.test(diff.key) && !/tailwind|class|style/i.test(diff.key));
+            if(contentDiff){
+                setLunaDirectText(contentDiff.after);
+                setLunaElementTarget((current)=>current?{...current,currentValue:contentDiff.after}:current);
+            }
+            if(targetType==='button'){
+                const linkDiff=diffs.find((diff)=>urlKey.test(diff.key));
+                if(linkDiff){
+                    setLunaDirectLink(linkDiff.after);
+                    setLunaElementTarget((current)=>current?{...current,url:linkDiff.after,currentUrl:linkDiff.after}:current);
+                }
+            }
+        }
+        if(['image','background image','logo'].includes(targetType)){
+            const imageDiff=diffs.find((diff)=>mediaKey.test(diff.key));
+            if(imageDiff){
+                setEditSessionMediaUrl(imageDiff.after);
+                setLunaElementTarget((current)=>current?{...current,currentValue:imageDiff.after}:current);
+            }
+        }
+    };
+
+    const previewSelectedMediaUrl = () => {
+        const url=String(editSessionMediaUrl||'').trim();
+        if(!url){ return; }
         const type=String(lunaElementTarget?.type||'').toLowerCase();
-        if(!lunaElementTarget || !['heading','text','label','button'].includes(type)) return;
-        const next=String(lunaDirectText||'').trim();
-        if(!next){ setPageAiError('Enter a value before saving.'); return; }
-        const nextUrl=type==='button'?String(lunaDirectLink||'#').trim()||'#':null;
+        if(type==='logo'){
+            const fieldPath=String(lunaElementTarget?.fieldPath||'');
+            const activeState=currentPopupEditState();
+            if(fieldPath==='header.logo_image_url'){
+                const nextHeader={...(activeState.global_header||{}),logo_image_url:url};
+                if(editSession?.open) setPopupDraftHeader(nextHeader); else setData('global_header',nextHeader);
+            }else if(fieldPath==='footer.logo_image_url'){
+                const nextFooter={...(activeState.global_footer||{}),logo_image_url:url};
+                if(editSession?.open) setPopupDraftFooter(nextFooter); else setData('global_footer',nextFooter);
+            }
+            setLunaElementTarget((current)=>current?{...current,currentValue:url}:current);
+            setPageAiError('');
+            if(!editSession?.open) showCosmicNotification({title:'Logo updated',message:'The logo was updated.',tone:'success',mode:'toast',duration:2200});
+            return;
+        }
+        if(replaceFirstSelectedMedia(url)){
+            setPageAiError('');
+            setLunaElementTarget((current)=>current?{...current,currentValue:url}:current);
+            if(!editSession?.open) showCosmicNotification({title:'Image updated',message:'The image was updated.',tone:'success',mode:'toast',duration:2200});
+        }else{
+            setPageAiError('Cosmic could not map this image to one unique content field. Re-select the exact image and try again.');
+        }
+    };
+
+    const saveLunaDirectElement = (nextTextValue = lunaDirectText, nextLinkValue = lunaDirectLink, options = {}) => {
+        const type=String(lunaElementTarget?.type||'').toLowerCase();
+        if(!lunaElementTarget || !['heading','text','label','button'].includes(type)) return false;
+        const silent=Boolean(options?.silent);
+        const next=String(nextTextValue??'');
+        if(!next.trim()){ if(!silent) setPageAiError('Enter a value before saving.'); return false; }
+        const nextUrl=type==='button'?String(nextLinkValue||'#').trim()||'#':null;
         const fieldPath=String(lunaElementTarget?.fieldPath||'');
 
         // Global shell targets use direct stored fields instead of trying to map
         // them back to a page Spark.
         if(lunaScope.type==='header' && fieldPath==='header.cta'){
-            pushLunaUndoSnapshot();
-            setData('global_header',{
-                ...(data.global_header||{}),
+            if(!editSession?.open) pushLunaUndoSnapshot();
+            const activeState=currentPopupEditState();
+            const nextHeader={
+                ...(activeState.global_header||{}),
                 cta_label:next,
                 cta_url:nextUrl||'#',
-            });
+            };
+            if(editSession?.open) setPopupDraftHeader(nextHeader); else setData('global_header',nextHeader);
             setLunaElementTarget((current)=>current?{...current,currentValue:next,currentUrl:nextUrl||'#'}:current);
             setPageAiError('');
-            setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Header CTA updated directly. · 0 credits'}]);
-            showCosmicNotification({title:'Saved',message:'The header CTA was updated.',tone:'success',mode:'toast',duration:2200});
-            return;
+            if(!silent){
+                setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Header CTA updated directly. · 0 credits'}]);
+                showCosmicNotification({title:editSession?.open?'Draft updated':'Saved',message:editSession?.open?'Header CTA updated in this popup draft. Apply to keep it.':'The header CTA was updated.',tone:'success',mode:'toast',duration:2200});
+            }
+            return true;
         }
 
         if(lunaScope.type==='footer' && fieldPath.startsWith('footer.')){
@@ -4069,106 +5132,138 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                     if(!rest.length)return {...(source||{}),[head]:value};
                     return {...(source||{}),[head]:updateNested(source?.[head]||{},rest,value)};
                 };
-                pushLunaUndoSnapshot();
-                setData('global_footer',updateNested(data.global_footer||{},path,next));
+                if(!editSession?.open) pushLunaUndoSnapshot();
+                const activeState=currentPopupEditState();
+                const nextFooter=updateNested(activeState.global_footer||{},path,next);
+                if(editSession?.open) setPopupDraftFooter(nextFooter); else setData('global_footer',nextFooter);
                 setLunaElementTarget((current)=>current?{...current,currentValue:next}:current);
                 setPageAiError('');
-                setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Footer content updated directly. · 0 credits'}]);
-                showCosmicNotification({title:'Saved',message:'The footer content was updated.',tone:'success',mode:'toast',duration:2200});
-                return;
+                if(!silent){
+                    setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Footer content updated directly. · 0 credits'}]);
+                    showCosmicNotification({title:editSession?.open?'Draft updated':'Saved',message:editSession?.open?'Footer content updated in this popup draft. Apply to keep it.':'The footer content was updated.',tone:'success',mode:'toast',duration:2200});
+                }
+                return true;
             }
         }
 
         if(!replaceSelectedScalar(next,nextUrl)){
-            setPageAiError('I could not map this rendered element back to its content field.');
-            return;
+            if(!silent) setPageAiError('I could not map this rendered element back to its content field.');
+            return false;
         }
         setPageAiError('');
         const itemNumber=Number(lunaElementTarget?.itemIndex)+1;
         const itemName=lunaElementTarget?.collectionKey==='slides'?'Slide':lunaElementTarget?.collectionKey==='testimonials'?'Testimonial':lunaElementTarget?.collectionKey==='faqs'?'FAQ':'Item';
         const targetSuffix=lunaElementTarget?.itemIndex!==null && lunaElementTarget?.itemIndex!==undefined && Number.isInteger(Number(lunaElementTarget.itemIndex))?` on ${itemName} ${itemNumber} only`:'';
-        setLunaMessages((messages)=>[...messages,{role:'assistant',text:`${type==='button'?'Button':'Content'}${targetSuffix} updated directly. · 0 credits`}]);
-        showCosmicNotification({title:'Saved',message:'The selected content was updated.',tone:'success',mode:'toast',duration:2200});
+        if(!silent){
+            setLunaMessages((messages)=>[...messages,{role:'assistant',text:`${type==='button'?'Button':'Content'}${targetSuffix} updated directly. · 0 credits`}]);
+            showCosmicNotification({title:editSession?.open?'Draft updated':'Saved',message:editSession?.open?'The selected content is updated in this popup draft. Apply to keep it.':'The selected content was updated.',tone:'success',mode:'toast',duration:2200});
+        }
+        return true;
     };
 
-    const findPrimaryRepeater = (value, path=[]) => {
-        if(Array.isArray(value) && value.length && value.every((item)=>item && typeof item==='object' && !Array.isArray(item))){
-            return {path,items:value};
-        }
-        if(value && typeof value==='object'){
-            for(const [key,child] of Object.entries(value)){
-                if(['images','media','gallery_images'].includes(String(key).toLowerCase())) continue;
-                const found=findPrimaryRepeater(child,[...path,key]);
-                if(found) return found;
-            }
-        }
-        return null;
-    };
+    // Batch 3: one path-based repeater engine now handles top-level and nested
+    // arrays (Rows -> Columns -> Extras later) without coupling Luna to a
+    // hard-coded collection name.
+    const findPrimaryRepeater = (value) => findPrimaryNestedRepeater(value);
+
     const selectedRepeater = lunaScope?.type==='section' && Number.isInteger(lunaScope?.blockIndex)
-        ? findPrimaryRepeater(data.blocks?.[lunaScope.blockIndex])
+        ? findRepeaterForFieldPath(
+            currentPopupEditState().blocks?.[lunaScope.blockIndex],
+            lunaElementTarget?.fieldPath || '',
+            lunaElementTarget?.collectionKey || '',
+        )
         : null;
 
-    const updateAtPath = (source,path,updater) => {
-        if(!path.length) return updater(source);
-        const [head,...rest]=path;
-        return {...source,[head]:updateAtPath(source?.[head],rest,updater)};
+    const updateAtPath = (source,path,updater) => updateNestedValue(source,path,updater);
+
+    const resolveSelectedRepeater = (block) => findRepeaterForFieldPath(
+        block,
+        lunaElementTarget?.fieldPath || '',
+        lunaElementTarget?.collectionKey || '',
+    ) || findPrimaryRepeater(block);
+
+    const commitNestedRepeaterMutation = (index, result, successText) => {
+        if(!result?.changed || !Number.isInteger(index)) return false;
+        const activeState=currentPopupEditState();
+        const blocks=activeState.blocks||[];
+        const current=blocks[index];
+        if(!current) return false;
+        if(!editSession?.open) pushLunaUndoSnapshot();
+        const nextBlocks=normalizeRenderKeys(blocks.map((item,i)=>i===index?{
+            ...result.block,
+            _renderKey:item._renderKey||createRenderKey(),
+        }:item));
+        if(editSession?.open) setPopupDraftBlocks(nextBlocks);
+        else setData('blocks',nextBlocks);
+        setPageAiError('');
+        if(successText) setLunaMessages((messages)=>[...messages,{role:'assistant',text:successText}]);
+        return true;
     };
 
     const mutateSelectedRepeater = (action) => {
         const index=lunaScope?.blockIndex;
-        const block=data.blocks?.[index];
-        const repeater=findPrimaryRepeater(block);
+        const activeState=currentPopupEditState();
+        const block=activeState.blocks?.[index];
+        const repeater=resolveSelectedRepeater(block);
         if(!Number.isInteger(index)||!block||!repeater) return false;
-        let nextItems=[...repeater.items];
-        if(action==='add'){
-            const template=nextItems[nextItems.length-1] || {};
-            const clone=JSON.parse(JSON.stringify(template));
-            // Keep the design/schema intact while making the new item clearly editable.
-            for(const key of Object.keys(clone)){
-                if(typeof clone[key]==='string' && /(title|heading|name|label)$/i.test(key)) clone[key]='New item';
-            }
-            nextItems.push(clone);
-        }else if(action==='remove'){
-            if(nextItems.length<=1) return false;
-            nextItems.pop();
-        }else return false;
-        pushLunaUndoSnapshot();
-        const nextBlock=updateAtPath(block,repeater.path,()=>nextItems);
-        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((item,i)=>i===index?{...nextBlock,_renderKey:item._renderKey||createRenderKey()}:item)));
-        setLunaMessages((messages)=>[...messages,{role:'assistant',text:`${action==='add'?'Item added':'Last item removed'} while preserving this layout. · 0 credits`}]);
-        return true;
+
+        const result=mutateNestedRepeater(block,{
+            path:repeater.path,
+            action:action==='remove'?'remove':'add',
+            itemIndex:action==='remove'?repeater.items.length-1:null,
+        });
+        if(!result.changed){
+            if(result.reason==='minimum_items') setPageAiError('Keep at least one item in this collection.');
+            return false;
+        }
+        return commitNestedRepeaterMutation(
+            index,
+            result,
+            `${action==='add'?'Item added':'Last item removed'} while preserving this layout. · 0 credits`,
+        );
     };
 
     const mutateSelectedCard = (action) => {
         const index=lunaScope?.blockIndex;
         const itemIndex=Number(lunaElementTarget?.itemIndex);
-        const block=data.blocks?.[index];
-        const repeater=findPrimaryRepeater(block);
+        const activeState=currentPopupEditState();
+        const block=activeState.blocks?.[index];
+        const repeater=resolveSelectedRepeater(block);
         if(!Number.isInteger(index)||!block||!repeater||!Number.isInteger(itemIndex)||itemIndex<0||itemIndex>=repeater.items.length) return false;
-        let nextItems=[...repeater.items];
-        if(action==='delete'){
-            if(nextItems.length<=1){ setPageAiError('Keep at least one card in this section.'); return false; }
-            nextItems.splice(itemIndex,1);
-        }else if(action==='duplicate'){
-            nextItems.splice(itemIndex+1,0,JSON.parse(JSON.stringify(nextItems[itemIndex])));
-        }else if(action==='add'){
-            const template=nextItems[nextItems.length-1] || nextItems[itemIndex] || {};
-            const clone=JSON.parse(JSON.stringify(template));
-            for(const key of Object.keys(clone)){
-                if(typeof clone[key]==='string' && /(title|heading|name|label)$/i.test(key)) clone[key]='New item';
-                if(typeof clone[key]==='string' && /(description|text|body|content)$/i.test(key)) clone[key]='Add your content here.';
-            }
-            nextItems.push(clone);
-        }else return false;
-        pushLunaUndoSnapshot();
-        const nextBlock=updateAtPath(block,repeater.path,()=>nextItems);
-        setData('blocks',normalizeRenderKeys((data.blocks||[]).map((item,i)=>i===index?{...nextBlock,_renderKey:item._renderKey||createRenderKey()}:item)));
-        setPageAiError('');
-        setLunaMessages((messages)=>[...messages,{role:'assistant',text:action==='delete'?'Card deleted. · 0 credits':action==='duplicate'?'Card duplicated directly after the selected card. · 0 credits':'New card added using the existing card structure. · 0 credits'}]);
+
+        const engineAction=action==='delete'?'remove':action;
+        const result=mutateNestedRepeater(block,{
+            path:repeater.path,
+            action:engineAction,
+            itemIndex,
+        });
+        if(!result.changed){
+            if(result.reason==='minimum_items') setPageAiError('Keep at least one card in this section.');
+            return false;
+        }
+
+        const success=commitNestedRepeaterMutation(
+            index,
+            result,
+            action==='delete'
+                ? 'Card deleted. · 0 credits'
+                : action==='duplicate'
+                    ? 'Card duplicated directly after the selected card. · 0 credits'
+                    : 'New card added using the existing card structure. · 0 credits',
+        );
+        if(!success) return false;
+
         if(action==='delete') setLunaElementTarget(null);
         else {
-            const nextIndex=action==='duplicate'?itemIndex+1:nextItems.length-1;
-            setLunaElementTarget((current)=>current?{...current,itemIndex:nextIndex,itemCount:nextItems.length,currentValue:''}:current);
+            const nextIndex=Number(result.itemIndex);
+            const nextRepeaterCount=repeater.items.length+1;
+            setLunaElementTarget((current)=>current?{
+                ...current,
+                itemIndex:Number.isInteger(nextIndex)?nextIndex:current.itemIndex,
+                itemCount:nextRepeaterCount,
+                collectionKey:result.collectionKey||current.collectionKey,
+                currentValue:'',
+            }:current);
         }
         return true;
     };
@@ -4179,6 +5274,9 @@ const lunaResolvedBackgroundState = (index=lunaScope?.blockIndex) => {
         return ['primary','dark','midnight','obsidian','charcoal','navy'].includes(resolved) ? 'primary' : 'light';
     };
     const lunaUniversalOverlayForState = (state, block = null) => {
+        if(String(block?.universal_background_overlay_mode||'').toLowerCase()==='custom' && String(block?.universal_background_overlay||'').trim()) {
+            return String(block.universal_background_overlay).trim();
+        }
         const themeKey=String(globalSelections?.primary||'midnight');
         const family=themeKey==='my-brand'
             ? (globalSelections?.custom_brand_theme || colorFamilies.midnight)
@@ -4249,7 +5347,14 @@ const lunaResolvedBackgroundState = (index=lunaScope?.blockIndex) => {
             universal_background_type:'video',
             universal_background_video_url:url,
             universal_background_image_url:'',
-        },'Background video applied. The overlay follows this section’s current theme state. · 0 credits');
+        },'Background video applied. The current Spark and layout were preserved. · 0 credits');
+    };
+
+    const applyLunaUniversalVideoPoster = (url) => {
+        if(!url) return false;
+        return updateLunaUniversalBackground({
+            universal_background_video_poster_url:url,
+        },'Background video poster updated. · 0 credits');
     };
 
     const removeLunaUniversalBackground = () => updateLunaUniversalBackground({
@@ -4257,7 +5362,10 @@ const lunaResolvedBackgroundState = (index=lunaScope?.blockIndex) => {
         universal_background_type:'',
         universal_background_image_url:'',
         universal_background_video_url:'',
+        universal_background_video_poster_url:'',
         universal_background_overlay:'',
+        universal_background_overlay_mode:'',
+        universal_background_size:'cover',
     },'Background media removed. The Spark is back to its normal theme background. · 0 credits');
 
     const removeLunaSelectedSection = () => {
@@ -4370,16 +5478,15 @@ const blockHasVideoSlot = (value) => {
             setPageAiError('Use a YouTube, Vimeo, MP4, WebM, OGG, or uploaded /storage/ video URL.');
             return;
         }
-        if(!applyDirectLunaVideoUrl(value)){
-            setPageAiError('This section does not expose a background video slot.');
+        if(!applyLunaUniversalVideo(value)){
+            setPageAiError('Select a section before applying a background video.');
             return;
         }
         setPageAiError('');
         setLunaDirectVideoUrl('');
         setPageAiPrompt('');
-        setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Video updated directly. · 0 credits'}]);
         setLunaStatus('Done');
-        showCosmicNotification({title:'Video updated',message:'The section now uses the selected video.',tone:'success',mode:'toast',duration:2600});
+        showCosmicNotification({title:'Background video updated',message:'The current Spark was preserved.',tone:'success',mode:'toast',duration:2600});
     };
 
 
@@ -4395,10 +5502,14 @@ const blockHasVideoSlot = (value) => {
             const response = await axios.post(`/trials/${encodeURIComponent(trialToken)}/images/upload`, form, { headers:{ Accept:'application/json' } });
             const url = response.data?.url;
             if (!url) throw new Error('No image URL was returned.');
-            if (lunaMediaLibraryPurpose==='section-video-poster' && applyDirectLunaVideoPoster(url)) {
+            if (lunaMediaLibraryPurpose==='section-video-poster' && applyLunaUniversalVideoPoster(url)) {
                 setLunaMediaLibraryPurpose('element');
                 setPageAiPrompt('');
                 setLunaStatus('Ready');
+            } else if (lunaMediaLibraryPurpose==='section-authored-background-image' && applySectionAuthoredBackgroundImage(url)) {
+                setLunaMediaLibraryPurpose('element');
+                setPageAiPrompt('');
+                setLunaStatus('Done');
             } else if (lunaMediaLibraryPurpose==='section-background-image' && applyLunaUniversalImage(url)) {
                 setLunaMediaLibraryPurpose('element');
                 setPageAiPrompt('');
@@ -4428,6 +5539,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         directPrompt = typeof directPrompt === 'string' ? directPrompt : null;
         const prompt = String(directPrompt ?? pageAiPrompt).trim();
         if (!prompt || pageAiBusy || (!trialMode && !website?.id)) return;
+        const lunaAssistantSurface = ['contextual_popup','global_builder'].includes(String(requestOptions?.assistantSurface || ''))
+            ? String(requestOptions.assistantSurface)
+            : (editSession?.open ? 'contextual_popup' : 'global_builder');
         const targetType=String(lunaElementTarget?.type||'').toLowerCase();
         const lowerPrompt=prompt.toLowerCase();
         // Batch 2: normal build/update requests execute directly.
@@ -4543,7 +5657,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             if (!role || !content) return null;
             return { role, content:content.slice(0,6000) };
         };
-        const existingSessionConversation = Array.isArray(lunaSessionConversationRef.current)
+        const isolatedConversation = Boolean(requestOptions?.isolatedConversation);
+        const existingSessionConversation = !isolatedConversation && Array.isArray(lunaSessionConversationRef.current)
             ? lunaSessionConversationRef.current.map(sanitizeLunaSessionTurn).filter(Boolean)
             : [];
         const referenceImageForRequest = lunaReferenceImage instanceof File
@@ -4563,7 +5678,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         ];
         // Keep UI and AI session history separate: UI messages can contain
         // confirmation metadata/chrome, while Luna receives only role+content.
-        lunaSessionConversationRef.current = requestConversation;
+        if (!isolatedConversation) lunaSessionConversationRef.current = requestConversation;
         if (directPrompt === null) setLunaMessages((messages)=>[...messages,{
             role:'user',
             text:prompt,
@@ -4584,7 +5699,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         const inspectIntent = /\b(inspect|check|audit)\b/i.test(prompt);
         const deleteIntent = /\b(delete)\b/i.test(prompt);
         const actionIntent = buildIntent || updateIntent || inspectIntent || publishIntent || deleteIntent || navigateIntent;
-        const phases = buildIntent
+        const blankLunaPipeline = lunaAssistantSurface === 'contextual_popup' && editSession?.creationSource === 'blank_luna';
+        const phases = blankLunaPipeline
+            ? ['Understanding your request…','Building the section structure…','Adding prompt-specific content…','Verifying the result…']
+            : buildIntent
             ? ['Understanding your request…','Planning the changes…','Applying the design…','Building the update…','Verifying the result…']
             : updateIntent
                 ? ['Understanding your request…','Planning the changes…','Applying the design…','Building the update…','Verifying the result…']
@@ -4594,11 +5712,12 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         ? ['Understanding your request…','Verifying the result…']
                         : ['Understanding your request…'];
         let lunaPhaseIndex=0;
-        const lunaStatusTimer = actionIntent ? window.setInterval(()=>{
+        const lunaStatusTimer = (actionIntent || blankLunaPipeline) ? window.setInterval(()=>{
             lunaPhaseIndex=Math.min(lunaPhaseIndex+1,phases.length-1);
             setLunaStatus(phases[lunaPhaseIndex]);
         },1800) : null;
         const rememberLunaAssistantReply = (text) => {
+            if (isolatedConversation) return;
             const content=String(text||'').trim();
             if(!content) return;
             lunaSessionConversationRef.current=[
@@ -4609,15 +5728,20 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
         try {
             const form = new FormData();
             form.append('prompt', prompt);
+            form.append('assistant_surface', lunaAssistantSurface);
+            if (requestOptions?.theme_only) form.append('theme_only', '1');
             if (referenceImageForRequest) { form.append('reference_image', referenceImageForRequest, referenceImageForRequest.name); form.append('router_variant', 'v2_reference'); }
             if (Number.isInteger(Number(requestOptions?.reference_target_index))) form.append('reference_target_index', String(Number(requestOptions.reference_target_index)));
             if (['replace','above','below'].includes(String(requestOptions?.reference_placement || ''))) form.append('reference_placement', String(requestOptions.reference_placement));
             // Send the complete current Builder-session conversation to every
             // Luna routing/edit API. Backend remains a validator/executor.
             form.append('conversation', JSON.stringify(requestConversation));
-            form.append('blocks', JSON.stringify(stripClientBlockFields(data.blocks || [])));
-            form.append('header', JSON.stringify(data.global_header || {}));
-            form.append('footer', JSON.stringify(data.global_footer || {}));
+            const requestEditState = lunaAssistantSurface === 'contextual_popup' && editSession?.open
+                ? currentPopupEditState()
+                : currentBuilderEditState();
+            form.append('blocks', JSON.stringify(stripClientBlockFields(requestEditState.blocks || [])));
+            form.append('header', JSON.stringify(requestEditState.global_header || {}));
+            form.append('footer', JSON.stringify(requestEditState.global_footer || {}));
             form.append('theme', JSON.stringify(globalSelections || {}));
             form.append('typography', JSON.stringify(globalSelections?.typography || {}));
             form.append('background_style', JSON.stringify(globalSelections?.background_style || {}));
@@ -4676,7 +5800,21 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             };
             form.append('site_memory', JSON.stringify(compactLunaSiteMemoryForRequest(lunaSiteMemory || {})));
             if (page?.id) form.append('current_page_id', String(page.id));
-            form.append('target_scope', lunaScope.type === 'section' ? 'section' : lunaScope.type === 'header' ? 'header' : lunaScope.type === 'footer' ? 'footer' : 'page');
+            const popupTargetScope = editSession?.open
+                ? (editSession.scope === 'section' || Number.isInteger(editSession.blockIndex) ? 'section' : lunaScope.type)
+                : lunaScope.type;
+            const requestTargetScope = lunaAssistantSurface === 'contextual_popup'
+                ? (requestOptions?.targetScope === 'theme' ? 'theme' : popupTargetScope === 'section' ? 'section' : popupTargetScope === 'header' ? 'header' : popupTargetScope === 'footer' ? 'footer' : 'page')
+                : 'page';
+            form.append('target_scope', requestTargetScope);
+            // Batch 2: a section created through Start Blank with Luna is a pure
+            // AI Flex lane. Tell the popup API explicitly so it never depends on
+            // wording-based redesign detection or registered Spark matching.
+            if (lunaAssistantSurface === 'contextual_popup' && editSession?.open && editSession?.creationSource === 'blank_luna') {
+                form.append('creation_source', 'blank_luna');
+                form.append('ai_flex_mode', editSession?.aiFlexMode ? '1' : '0');
+                form.append('skip_spark_match', editSession?.skipSparkMatch ? '1' : '0');
+            }
             if(lunaScope.type==='header'){
                 form.append('shell_context', 'global_header_brand_theme_logo_navigation_page_redesign');
                 form.append('page_redesign_mode', 'registered_templates_only');
@@ -4684,36 +5822,56 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             if(lunaScope.type==='footer'){
                 form.append('shell_context', 'global_footer_mega_footer_navigation_contact_social_cta_branding_copyright');
             }
-            if (lunaScope.type === 'section' && Number.isInteger(lunaScope.blockIndex)) {
-                form.append('target_index', String(lunaScope.blockIndex));
-                const targetBlock=data.blocks?.[lunaScope.blockIndex];
+            const requestTargetIndex = lunaAssistantSurface === 'contextual_popup' && Number.isInteger(editSession?.blockIndex)
+                ? editSession.blockIndex
+                : lunaScope.blockIndex;
+            if (requestTargetScope === 'section' && Number.isInteger(requestTargetIndex)) {
+                form.append('target_index', String(requestTargetIndex));
+                const targetBlock=requestEditState.blocks?.[requestTargetIndex];
                 if(targetBlock){
-                    form.append('target_resolved_theme', String(resolveBlockTheme(targetBlock,lunaScope.blockIndex) || 'auto'));
+                    form.append('target_resolved_theme', String(resolveBlockTheme(targetBlock,requestTargetIndex) || 'auto'));
                 }
             }
             let requestElementContext = lunaElementTarget ? { ...lunaElementTarget } : {};
-            const collectTailwindInventory = (sectionNode, limit = 80) => {
+            const collectTailwindInventory = (sectionNode, limit = 160) => {
                 const seen = new Set();
                 const inventory = [];
                 if (!sectionNode) return inventory;
                 sectionNode.querySelectorAll('[class*="cosmic-tw-slot--"]').forEach((node) => {
                     if (!(node instanceof Element) || inventory.length >= limit) return;
                     const marker = Array.from(node.classList).find((token)=>token.startsWith('cosmic-tw-slot--'));
-                    const slot = marker ? marker.slice('cosmic-tw-slot--'.length) : '';
+                    const pathMarker = Array.from(node.classList).find((token)=>token.startsWith('cosmic-tw-path--'));
+                    const sharedSlot = marker ? marker.slice('cosmic-tw-slot--'.length) : '';
+                    const scopedSlot = pathMarker ? pathMarker.slice('cosmic-tw-path--'.length) : '';
+                    // V2 repeaters expose an exact address such as cards__1__title.
+                    // Prefer that address over the shared alias so Card 2 never
+                    // collapses into the same Luna slot as Card 1/Card 3.
+                    const slot = scopedSlot || sharedSlot;
                     if (!slot) return;
-                    const classes = Array.from(node.classList).filter((token)=>!token.startsWith('cosmic-tw-slot--')).join(' ');
+                    const classes = Array.from(node.classList).filter((token)=>!token.startsWith('cosmic-tw-slot--') && !token.startsWith('cosmic-tw-path--')).join(' ');
                     const role = String(node.getAttribute('data-luna-target') || node.getAttribute('data-cosmic-luna-display') || '');
                     const text = String(node.textContent || '').replace(/\s+/g,' ').trim().slice(0,90);
                     const key = `${slot}|${node.tagName}|${classes}|${role}|${text}`;
                     if (seen.has(key)) return;
                     seen.add(key);
-                    inventory.push({ slot, tag:node.tagName.toLowerCase(), role, classes, text });
+                    inventory.push({ slot, shared_slot: sharedSlot, scoped: Boolean(scopedSlot), tag:node.tagName.toLowerCase(), role, classes, text });
                 });
                 return inventory;
             };
+            const resolveRenderedSectionNode = (index) => {
+                if (!Number.isInteger(Number(index))) return null;
+                // Contextual popup draft is the visual source of truth. The frozen
+                // Builder behind the modal may still render an older Spark/layout,
+                // so querying it first can give Luna stale Tailwind slot inventory.
+                if (lunaAssistantSurface === 'contextual_popup' && editSession?.open) {
+                    const popupNode = document.querySelector(`[data-popup-section-preview="true"] [data-luna-section-index="${Number(index)}"]`);
+                    if (popupNode) return popupNode;
+                }
+                return document.querySelector(`[data-luna-section-index="${Number(index)}"]`);
+            };
             if (lunaScope.type === 'section' && Number.isInteger(lunaScope.blockIndex)) {
-                const sectionNode = document.querySelector(`[data-luna-section-index="${lunaScope.blockIndex}"]`);
-                const inventory = collectTailwindInventory(sectionNode, 80);
+                const sectionNode = resolveRenderedSectionNode(lunaScope.blockIndex);
+                const inventory = collectTailwindInventory(sectionNode, 160);
                 if (inventory.length) requestElementContext.tailwindInventory = inventory;
             } else if (lunaScope.type === 'page') {
                 // Whole-page styling requests only need the named target section's
@@ -4757,8 +5915,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     }
                 }
                 if (candidateIndex >= 0) {
-                    const sectionNode = document.querySelector(`[data-luna-section-index="${candidateIndex}"]`);
-                    const inventory = collectTailwindInventory(sectionNode, 80);
+                    const sectionNode = resolveRenderedSectionNode(candidateIndex);
+                    const inventory = collectTailwindInventory(sectionNode, 160);
                     if (inventory.length) {
                         requestElementContext.tailwindInventory = inventory;
                         requestElementContext.tailwindTargetIndex = candidateIndex;
@@ -4766,7 +5924,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     }
                 }
             }
-            if (lunaElementTarget && !(videoIntent && lunaScope.type==='section')) {
+            if (lunaAssistantSurface === 'contextual_popup' && lunaElementTarget && !(videoIntent && lunaScope.type==='section')) {
                 const activeNode = document.activeElement instanceof Element ? document.activeElement : null;
                 const marker = activeNode ? Array.from(activeNode.classList).find((token)=>token.startsWith('cosmic-tw-slot--')) : null;
                 if (marker) requestElementContext.tailwindSlot = marker.slice('cosmic-tw-slot--'.length);
@@ -4777,16 +5935,21 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     if(lunaElementTarget.collectionKey){
                         form.append('target_collection_key', String(lunaElementTarget.collectionKey));
                     }
+                    if(lunaElementTarget.collectionPath){
+                        form.append('target_collection_path', String(lunaElementTarget.collectionPath));
+                    }
                 }
             }
-            if (!lunaElementTarget && ['section','page'].includes(lunaScope.type) && Object.keys(requestElementContext).length) {
+            if (lunaAssistantSurface === 'contextual_popup' && !lunaElementTarget && ['section','page'].includes(lunaScope.type) && Object.keys(requestElementContext).length) {
                 form.append('element_context', JSON.stringify(requestElementContext));
             }
             if (confirmed) form.append('confirmed', '1');
             if (pendingActionToken) form.append('pending_action_token', String(pendingActionToken));
             const lunaEndpoint = trialMode
                 ? route('trial-luna.chat', { trial: trialToken })
-                : `/websites/${website.id}/custom-page-ai`;
+                : lunaAssistantSurface === 'contextual_popup'
+                    ? `/websites/${website.id}/luna-popup`
+                    : `/websites/${website.id}/custom-page-ai`;
             // Let Axios/browser generate the multipart boundary so Laravel receives
             // the actual reference image bytes reliably.
             const { data: response } = await axios.post(lunaEndpoint, form);
@@ -4868,21 +6031,38 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 if(response.navigate_url) router.visit(response.navigate_url);
                 return;
             }
-            setLunaUndoStack((stack)=>[{
-                blocks: stripClientBlockFields(data.blocks || []),
-                header: data.global_header || {},
-                footer: data.global_footer || {},
-                theme: globalSelections || {},
-            }, ...stack].slice(0,10));
-            if (Array.isArray(response.blocks)) {
+            if (lunaAssistantSurface !== 'contextual_popup') {
+                setLunaUndoStack((stack)=>[{
+                    blocks: stripClientBlockFields(data.blocks || []),
+                    header: data.global_header || {},
+                    footer: data.global_footer || {},
+                    theme: globalSelections || {},
+                }, ...stack].slice(0,10));
+            }
+            const contextualThemeBoundary=Boolean(lunaAssistantSurface === 'contextual_popup' && requestTargetScope === 'theme');
+            if (Array.isArray(response.blocks) && !contextualThemeBoundary) {
                 let responseBlocks=response.blocks;
+                // Contextual popup Luna may inspect page context, but a selected
+                // section/element is a hard mutation boundary. Never accept AI
+                // changes to sibling blocks from a local popup request.
+                if (editSession?.open && Number.isInteger(editSession.blockIndex)) {
+                    const targetIndex=editSession.blockIndex;
+                    const targetResponse=responseBlocks[targetIndex];
+                    const popupState=currentPopupEditState();
+                    const currentTarget=popupState.blocks?.[targetIndex];
+                    if (!isSafeBuilderBlockCandidate(targetResponse,currentTarget)) {
+                        restoreLastValidEditSessionState();
+                        throw new Error('Luna returned an invalid section mutation. Your last valid preview was restored.');
+                    }
+                    responseBlocks=(popupState.blocks || []).map((currentBlock,index)=>index===targetIndex ? {...targetResponse,_spark_capability_manifest:sparkCapabilityManifest(targetResponse)} : currentBlock);
+                }
                 if (videoIntent && pastedVideoUrl && lunaScope.type==='section' && Number.isInteger(lunaScope.blockIndex) && responseBlocks[lunaScope.blockIndex]) {
                     const patched=replaceFirstVideoUrl(responseBlocks[lunaScope.blockIndex], pastedVideoUrl);
                     if (patched.replaced) responseBlocks=responseBlocks.map((block,index)=>index===lunaScope.blockIndex?patched.value:block);
                 }
                 const explicitThemeRequest=/\b(theme|color family|colour family|emerald|coffee|midnight|violet|terracotta|espresso|obsidian|navy|void|rose|indigo|amber|charcoal|teal|ruby|forest|sapphire|plum|olive)\b/i.test(prompt);
-                setData('blocks', normalizeRenderKeys(responseBlocks.map((block,index)=>{
-                    const previous=data.blocks?.[index];
+                const normalizedResponseBlocks=normalizeRenderKeys(responseBlocks.map((block,index)=>{
+                    const previous=requestEditState.blocks?.[index];
                     return {
                         ...block,
                         ...(!explicitThemeRequest && previous?.theme!=null ? {theme:previous.theme} : {}),
@@ -4892,21 +6072,55 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         } : {}),
                         _renderKey:previous?._renderKey || createRenderKey(),
                     };
-                })));
+                }));
+                if (lunaAssistantSurface === 'contextual_popup' && editSession?.open) {
+                    if(Number.isInteger(editSession.blockIndex)){
+                        syncPopupElementFieldsFromAiMutation(requestEditState.blocks?.[editSession.blockIndex],normalizedResponseBlocks?.[editSession.blockIndex]);
+                    }
+                    setPopupDraftBlocks(normalizedResponseBlocks);
+                    setEditSession((current)=>current?.open ? {...current,lastValid:{...cloneBuilderEditValue(currentPopupEditState()),blocks:cloneBuilderEditValue(normalizedResponseBlocks)}} : current);
+                } else {
+                    setData('blocks', normalizedResponseBlocks);
+                }
             }
-            if (response.header) setData('global_header', response.header);
-            if (response.footer) setData('global_footer', response.footer);
-            if (response.logo_company_name) {
+            const contextualBlockBoundary=Boolean(editSession?.open && Number.isInteger(editSession.blockIndex));
+            const contextualObjectBoundary=contextualBlockBoundary || contextualThemeBoundary;
+            if (response.header && !contextualObjectBoundary) {
+                if (lunaAssistantSurface === 'contextual_popup' && editSession?.open && requestTargetScope === 'header') {
+                    setPopupDraftHeader(response.header);
+                    if(String(lunaElementTarget?.fieldPath||'')==='header.cta'){
+                        setLunaDirectText(String(response.header?.cta_label ?? lunaDirectText));
+                        setLunaDirectLink(String(response.header?.cta_url ?? lunaDirectLink));
+                        setLunaElementTarget((current)=>current?{...current,currentValue:String(response.header?.cta_label ?? current.currentValue),currentUrl:String(response.header?.cta_url ?? (current.currentUrl || '#'))}:current);
+                    }
+                } else if (lunaAssistantSurface !== 'contextual_popup') setData('global_header', response.header);
+            }
+            if (response.footer && !contextualObjectBoundary) {
+                if (lunaAssistantSurface === 'contextual_popup' && editSession?.open && requestTargetScope === 'footer') {
+                    setPopupDraftFooter(response.footer);
+                    const footerFieldPath=String(lunaElementTarget?.fieldPath||'');
+                    if(footerFieldPath.startsWith('footer.')){
+                        const parts=footerFieldPath.replace(/^footer\./,'').split('.').filter(Boolean);
+                        let resolved=response.footer;
+                        for(const part of parts) resolved=resolved?.[part];
+                        if(typeof resolved==='string'){
+                            setLunaDirectText(resolved);
+                            setLunaElementTarget((current)=>current?{...current,currentValue:resolved}:current);
+                        }
+                    }
+                } else if (lunaAssistantSurface !== 'contextual_popup') setData('global_footer', response.footer);
+            }
+            if (lunaAssistantSurface !== 'contextual_popup' && response.logo_company_name) {
                 const logoReadyForCrop=await runLunaLogoGeneration(response.logo_company_name);
                 if(logoReadyForCrop){
                     response.reply='I generated the logo. Review its framing in the crop window, then choose Save Logo to apply it to the header and footer.';
                 }
             }
-            if (response.theme_key) {
+            if (response.theme_key && lunaAssistantSurface !== 'contextual_popup' && !contextualBlockBoundary) {
                 setGlobalSelections((current)=>({...current,primary:response.theme_key}));
                 setHasUnsavedTheme(true);
             }
-            if (response.brand_color_family && typeof response.brand_color_family === 'object') {
+            if (lunaAssistantSurface !== 'contextual_popup' && !contextualBlockBoundary && response.brand_color_family && typeof response.brand_color_family === 'object') {
                 const family=response.brand_color_family;
                 const customTheme={
                     key:'my-brand',
@@ -4963,7 +6177,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 }));
                 setHasUnsavedTheme(true);
             }
-            if (response.typography_settings && typeof response.typography_settings === 'object') {
+            if (lunaAssistantSurface !== 'contextual_popup' && response.typography_settings && typeof response.typography_settings === 'object') {
                 setGlobalSelections((current)=>({
                     ...current,
                     typography:{
@@ -4973,7 +6187,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 }));
                 setHasUnsavedTheme(true);
             }
-            if (response.background_style && typeof response.background_style === 'object') {
+            if (lunaAssistantSurface !== 'contextual_popup' && response.background_style && typeof response.background_style === 'object') {
                 setGlobalSelections((current)=>({
                     ...current,
                     background_style:{
@@ -4983,7 +6197,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 }));
                 setHasUnsavedTheme(true);
             }
-            if (response.section_layout && typeof response.section_layout === 'object') {
+            if (lunaAssistantSurface !== 'contextual_popup' && !contextualThemeBoundary && response.section_layout && typeof response.section_layout === 'object') {
                 setGlobalSelections((current)=>({
                     ...current,
                     section_layout:{
@@ -4993,7 +6207,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 }));
                 setHasUnsavedTheme(true);
             }
-            if (response.components && typeof response.components === 'object') {
+            if (lunaAssistantSurface !== 'contextual_popup' && response.components && typeof response.components === 'object') {
                 setGlobalSelections((current)=>({
                     ...current,
                     components:{
@@ -5003,10 +6217,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 }));
                 setHasUnsavedTheme(true);
             }
-            if (response.page_style && ['balanced','clean','premium'].includes(String(response.page_style).toLowerCase())) {
+            if (lunaAssistantSurface !== 'contextual_popup' && !contextualThemeBoundary && response.page_style && ['balanced','clean','premium'].includes(String(response.page_style).toLowerCase())) {
                 setCurrentPageStyle(String(response.page_style).toLowerCase());
             }
-            if (response.site_memory && typeof response.site_memory === 'object') {
+            if (!isolatedConversation && response.site_memory && typeof response.site_memory === 'object') {
                 setLunaSiteMemory(response.site_memory);
                 try { window.localStorage.setItem(lunaMemoryKey, JSON.stringify(response.site_memory)); } catch (_) {}
             }
@@ -5016,6 +6230,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             const lunaReply = `${response.reply || 'Done.'}${Number(response.credit_cost) > 0 ? ` · ${Number(response.credit_cost)} credits` : ''}`;
             rememberLunaAssistantReply(lunaReply);
             setLunaMessages((messages)=>[...messages,{role:'assistant',text:lunaReply}]);
+            // Contextual surfaces (notably Theme Luna) need the validated AI
+            // payload to build a popup-local candidate card. Returning it does
+            // not mutate Builder state; the caller decides whether/when to apply.
+            return response;
         } catch (error) {
             const rawMessage = error?.response?.data?.message || error?.response?.data?.errors?.prompt?.[0] || error?.message || '';
             const isNetworkFailure = /curl|timed out|timeout|resolve|network|api\.openai\.com|connection/i.test(String(rawMessage));
@@ -5070,8 +6288,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             const Component = registryItem.component;
             const universalBackgroundUrl = String(block?.universal_background_image_url || '').trim();
             const universalVideoUrl = String(block?.universal_background_video_url || '').trim();
+            const universalVideoPoster = String(block?.universal_background_video_poster_url || '').trim();
             const universalVideoProvider = cosmicBackgroundVideoProvider(universalVideoUrl);
             const universalType = String(block?.universal_background_type || (universalVideoUrl?'video':'image')).trim();
+            const universalSize = ['cover','contain'].includes(String(block?.universal_background_size||'cover').toLowerCase()) ? String(block?.universal_background_size||'cover').toLowerCase() : 'cover';
             const universalState = String(block?.universal_background_state || resolvedTheme || 'light').toLowerCase();
             const universalOverlay = lunaUniversalOverlayForState(universalState,block);
             const universalCinematic = /cinematic|fullscreen|parallax|video|ken_burns|crossfade/.test(String(block?.type||'').toLowerCase())
@@ -5079,6 +6299,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             const universalPosition = String(block?.universal_background_position || 'center center').trim() || 'center center';
             const universalEnabled = Boolean(block?.universal_background_enabled && ((universalType==='video'&&universalVideoUrl)||(universalType!=='video'&&universalBackgroundUrl)));
             const design = block?.luna_design_overrides || {};
+            const hasLegacyDesignTypography = ['heading_size','body_size','heading_line_height','body_line_height','letter_spacing','text_align']
+                .some((key)=>design[key]!==null&&design[key]!==undefined&&design[key]!=='');
             const blockType=String(block?.type||'').toLowerCase();
             const heroNeedsDefaultPadding=(index===0 || /hero|banner/.test(blockType))
                 && !/fullscreen|cinematic/.test(blockType)
@@ -5165,7 +6387,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 '--cosmic-gradient-angle': 'var(--cosmic-local-gradient-angle,var(--cosmic-bg-gradient-angle))',
                 ...(universalEnabled && universalType!=='video' ? {
                     backgroundImage: `${universalOverlay}, url("${universalBackgroundUrl.replace(/"/g,'&quot;')}")`,
-                    backgroundSize: 'cover',
+                    backgroundSize: universalSize,
                     backgroundPosition: universalPosition,
                     backgroundRepeat: 'no-repeat',
                 } : {}),
@@ -5246,7 +6468,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     data-cosmic-design-system="1"
                     data-cosmic-block-index={index}
                     data-cosmic-block-type={block.type}
-                    data-cosmic-tailwind-schema={block?.luna_tailwind_schema?.slots && Object.keys(block.luna_tailwind_schema.slots).length ? 'schema_backed' : 'legacy_fallback'}
+                    data-cosmic-tailwind-schema={hasSparkTailwindSchema(block) ? 'schema_backed' : 'legacy_fallback'}
                     data-cosmic-resolved-theme={resolvedTheme}
                     data-cosmic-card-surface={localCardSurface || undefined}
                     data-cosmic-universal-background={universalEnabled ? '1' : undefined}
@@ -5255,12 +6477,13 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     data-cosmic-overlay-mode={universalEnabled ? (universalCinematic ? 'cinematic' : (universalState==='primary'?'primary':'light')) : undefined}
                     data-cosmic-layout-mode={/fullscreen|cinematic/.test(blockType) ? 'immersive' : (/hero|banner/.test(blockType) ? 'hero' : 'standard')}
                     data-luna-design={(Object.keys(design).length || heroNeedsDefaultPadding) ? '1' : undefined}
+                    data-luna-design-typography={hasLegacyDesignTypography ? '1' : undefined}
                     className={`cosmic-render-shell ${universalEnabled ? 'cosmic-universal-background-host ' : ''}${(Object.keys(design).length || heroNeedsDefaultPadding) ? 'cosmic-luna-design-host' : ''}`}
                     style={designVars}
                 >
                     {universalEnabled && universalType==='video' ? <>
                         {universalVideoProvider.type==='file'
-                            ? <video aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full object-cover" autoPlay muted loop playsInline preload="metadata"><source src={universalVideoProvider.src}/></video>
+                            ? <video aria-hidden="true" className="pointer-events-none absolute inset-0 h-full w-full" style={{objectFit:universalSize,objectPosition:universalPosition}} poster={universalVideoPoster||undefined} autoPlay muted loop playsInline preload="metadata"><source src={universalVideoProvider.src}/></video>
                             : <iframe aria-hidden="true" tabIndex="-1" title="" src={universalVideoProvider.src}
                                 allow="autoplay; fullscreen; picture-in-picture"
                                 className="pointer-events-none absolute left-1/2 top-1/2 h-[56.25vw] min-h-full w-[177.78vh] min-w-full -translate-x-1/2 -translate-y-1/2 border-0"
@@ -5390,15 +6613,127 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
 </div>}
 
 {customSparkLibraryOpen && <div className="fixed inset-0 z-[10020] flex items-center justify-center bg-slate-950/55 p-4 backdrop-blur-sm" onClick={()=>setCustomSparkLibraryOpen(false)}><div className="w-full max-w-2xl rounded-2xl border border-white/10 bg-white p-5 shadow-2xl" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between"><div><h3 className="text-lg font-black text-slate-900">Saved Custom Sparks</h3><p className="text-xs text-slate-500">Reusable only inside this Custom Website.</p></div><button type="button" onClick={()=>setCustomSparkLibraryOpen(false)} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-slate-100">×</button></div><div className="mt-4 grid max-h-[55vh] gap-3 overflow-auto sm:grid-cols-2">{customSparkLibrary.length?customSparkLibrary.map(spark=><button key={spark.key} type="button" onClick={()=>duplicateSavedCustomSpark(spark)} disabled={customSparkLibraryBusy} className="rounded-xl border border-slate-200 p-4 text-left hover:border-emerald-300 hover:bg-emerald-50/40 disabled:opacity-50"><div className="text-sm font-bold text-slate-900">{spark.name || 'Saved Custom Spark'}</div><div className="mt-1 text-[10px] text-slate-500">Install on this page</div></button>):<div className="col-span-2 rounded-xl border border-dashed border-slate-200 p-8 text-center text-sm text-slate-500">No saved Custom Sparks yet.</div>}</div></div></div>}
-            {aiOnlyBuilder && !lunaChatOpen && <button
+{savedSparksOpen && <div className="fixed inset-0 z-[10140] flex items-center justify-center p-4" style={{backgroundColor:'rgba(2,6,23,.62)',backdropFilter:'blur(8px)'}} onMouseDown={(e)=>{if(e.target===e.currentTarget)setSavedSparksOpen(false)}}><section role="dialog" aria-modal="true" aria-labelledby="saved-sparks-title" className="w-full max-w-4xl overflow-hidden rounded-3xl border border-slate-200 bg-white text-slate-900 shadow-2xl"><header className="flex items-start justify-between border-b border-slate-200 px-6 py-5"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-600">Library</p><h2 id="saved-sparks-title" className="mt-1 text-2xl font-black">Saved Sparks</h2><p className="mt-1 text-sm text-slate-500">Reusable sections you saved from the Builder.</p><div className="mt-3 flex gap-2"><button type="button" onClick={()=>setSavedSparksFilter('all')} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${savedSparksFilter==='all'?'border-violet-500 bg-violet-50 text-violet-800':'border-slate-200 bg-white text-slate-600'}`}>All</button><button type="button" onClick={()=>setSavedSparksFilter('luna')} className={`rounded-lg border px-3 py-1.5 text-xs font-bold ${savedSparksFilter==='luna'?'border-fuchsia-500 bg-fuchsia-50 text-fuchsia-800':'border-slate-200 bg-white text-slate-600'}`}>Luna Sparks ✦</button></div></div><button type="button" onClick={()=>setSavedSparksOpen(false)} className="h-10 w-10 rounded-xl border border-slate-200 text-xl text-slate-500 hover:bg-slate-100">×</button></header><div className="grid max-h-[65vh] gap-3 overflow-y-auto p-6 sm:grid-cols-2 lg:grid-cols-3">{savedSparks.filter((spark)=>savedSparksFilter!=='luna'||spark.source==='luna').length?savedSparks.filter((spark)=>savedSparksFilter!=='luna'||spark.source==='luna').map(spark=><button key={spark.id} type="button" onClick={()=>installSavedSpark(spark)} className="cosmic-saved-spark-card rounded-2xl border border-slate-200 bg-slate-50 p-5 text-left transition hover:border-violet-300 hover:bg-violet-50"><span className="block text-sm font-black text-slate-900">{spark.name}</span><span className="mt-2 block text-[10px] font-bold uppercase tracking-wider text-slate-500">{spark.source==='luna'?'Luna Spark ✦':String(spark.spark_type||'spark').replaceAll('_',' ')}</span><span className="mt-5 block text-xs font-bold text-violet-700">{savedSparksInstallMode==='customize'?'Customize section →':'Add to page →'}</span></button>):<div className="col-span-full rounded-2xl border border-dashed border-slate-300 px-6 py-14 text-center"><p className="font-bold text-slate-800">{savedSparksFilter==='luna'?'No Luna Sparks yet':'No Saved Sparks yet'}</p><p className="mt-2 text-sm text-slate-500">{savedSparksFilter==='luna'?'Use Start Blank with Luna, generate your section, then Apply.':'Hover a section and use the save icon in its upper-left corner.'}</p></div>}</div></section></div>}
+{editSession?.open && <div className="cosmic-native-text-overlay fixed inset-0 z-[10120] flex items-center justify-center bg-slate-950/70 p-2 sm:p-3" onMouseDown={(event)=>{ if(event.target===event.currentTarget) cancelEditSession(); }}>
+                <div className={`cosmic-edit-session-dialog cosmic-native-text-layer flex w-full flex-col overflow-hidden rounded-3xl border shadow-2xl ${appDark?'border-slate-700 bg-slate-950 text-slate-100':'border-slate-200 bg-white text-slate-800'} ${editSession.scope==='section'?'h-[96dvh] max-w-[1680px]':'max-h-[94dvh] max-w-7xl'}`} onMouseDown={(event)=>event.stopPropagation()}>
+                    <div className={`flex items-start justify-between gap-4 border-b px-6 py-4 sm:px-8 ${appDark?'border-slate-800 bg-slate-950':'border-slate-200 bg-white'}`}>
+                        <div className="min-w-0">
+                            <p className="text-[11px] font-bold uppercase tracking-[.14em] text-violet-600">{editSession.commitMode === 'create_section' ? 'Add · Customize Section' : `Edit · ${editSession.scope === 'section' ? 'Section' : 'Selected element'}`}</p>
+                            <h3 className={`mt-1 truncate text-lg font-semibold ${appDark?'text-white':'text-slate-900'}`}>{editSession.label}</h3>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                            {editSession.scope === 'section' && Number.isInteger(editSession.blockIndex) && editSession.commitMode !== 'create_section' ? <>
+                                <button
+                                    type="button"
+                                    disabled={editSessionHasChanges}
+                                    title={editSessionHasChanges ? 'Apply or cancel the current section changes before inserting another section.' : `Add a new section above ${editSession.label}`}
+                                    onClick={()=>{setSparkInsertTarget({index:editSession.blockIndex,position:'above',source:'edit-section',anchorRenderKey:data.blocks?.[editSession.blockIndex]?._renderKey||null,anchorLabel:editSession.label});setIsModalOpen(true);}}
+                                    className={`cosmic-section-insert-action hidden rounded-xl border px-3 py-2 text-xs font-semibold transition sm:inline-flex ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-500 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-800'} disabled:cursor-not-allowed disabled:opacity-40`}
+                                >+ Add Above</button>
+                                <button
+                                    type="button"
+                                    disabled={editSessionHasChanges}
+                                    title={editSessionHasChanges ? 'Apply or cancel the current section changes before inserting another section.' : `Add a new section below ${editSession.label}`}
+                                    onClick={()=>{setSparkInsertTarget({index:editSession.blockIndex,position:'below',source:'edit-section',anchorRenderKey:data.blocks?.[editSession.blockIndex]?._renderKey||null,anchorLabel:editSession.label});setIsModalOpen(true);}}
+                                    className={`cosmic-section-insert-action hidden rounded-xl border px-3 py-2 text-xs font-semibold transition sm:inline-flex ${appDark?'border-slate-700 bg-slate-900 text-slate-200 hover:border-violet-500 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-800'} disabled:cursor-not-allowed disabled:opacity-40`}
+                                >+ Add Below</button>
+                            </> : null}
+                            <button type="button" onClick={cancelEditSession} className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl text-xl ${appDark?'text-slate-400 hover:bg-white/10 hover:text-white':'text-slate-400 hover:bg-slate-100 hover:text-slate-700'}`} aria-label="Cancel editing">×</button>
+                        </div>
+                    </div>
+                    <div className={`grid min-h-0 flex-1 overflow-y-auto ${editSession.scope==='section'?'lg:grid-cols-[minmax(0,4fr)_minmax(340px,1fr)]':'lg:grid-cols-[minmax(0,3fr)_minmax(300px,1fr)]'}`}>
+                        <div className={`${editSession.scope==='section'?'px-5 py-4 sm:px-7 lg:px-8':'p-5 sm:p-6'} ${appDark?'bg-slate-950':'bg-white'}`}>
+                            <div className={editSession.scope==='section'?'':`rounded-2xl border p-5 ${appDark?'border-slate-800 bg-slate-900':'border-slate-200 bg-slate-50'}`}>
+                                {['heading','text','label','button'].includes(String(editSession.target?.type||'').toLowerCase()) ? <div className="mt-5 space-y-3">
+                                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500">{String(editSession.target?.type||'').toLowerCase()==='button'?'Button label':'Content'}</label>
+                                    {String(editSession.target?.type||'').toLowerCase()==='text' && String(lunaDirectText||'').length>90
+                                        ? <textarea value={lunaDirectText} onChange={e=>stageDirectElementText(e.target.value)} rows={6} className="w-full resize-y rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm leading-6 text-slate-900 outline-none focus:border-violet-400"/>
+                                        : <input value={lunaDirectText} onChange={e=>stageDirectElementText(e.target.value)} className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-violet-400"/>}
+                                    {String(editSession.target?.type||'').toLowerCase()==='button' ? <><label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Button URL</label><input value={lunaDirectLink} onChange={e=>stageDirectElementLink(e.target.value)} placeholder="# or https://..." className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-violet-400"/></> : null}
+                                </div> : null}
+                                {['image','background image','logo'].includes(String(editSession.target?.type||'').toLowerCase()) ? <div className="mt-5 space-y-3">
+                                    {(editSessionMediaUrl || lunaElementTarget?.currentValue) ? <div className="overflow-hidden rounded-2xl border border-slate-200 bg-white p-2"><img src={editSessionMediaUrl || lunaElementTarget.currentValue} alt="Current selection" className="max-h-64 w-full rounded-xl object-contain"/></div> : null}
+                                    <label className="block text-[11px] font-bold uppercase tracking-wide text-slate-500">Image URL</label>
+                                    <input value={editSessionMediaUrl} onChange={e=>setEditSessionMediaUrl(e.target.value)} onBlur={previewSelectedMediaUrl} onKeyDown={e=>{if(e.key==='Enter'){e.preventDefault();previewSelectedMediaUrl();}}} placeholder="https://... or /storage/..." className="w-full rounded-xl border border-slate-300 bg-white px-3 py-2.5 text-sm text-slate-900 outline-none focus:border-violet-400"/>
+                                    <div className="flex flex-wrap gap-2">
+                                        {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('element');setLunaMediaLibraryKind('image');setLunaMediaLibraryOpen(true);}} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Media Library</button> : <button type="button" onClick={()=>String(editSession.target?.type||'').toLowerCase()==='logo'?logoUploadRef.current?.click?.():lunaImageUploadRef.current?.click?.()} className="rounded-xl border border-slate-300 bg-white px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100">Upload</button>}
+                                    </div>
+                                </div> : null}
+                                {String(editSession.target?.type||'').toLowerCase()==='card' ? <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">Select the card heading, text, button, or image for a direct content edit. Use the Section editor when you want to change the whole layout.</div> : null}
+                                {editSession.scope === 'section' && Number.isInteger(editSession.blockIndex) ? (()=>{
+                                    const activeBlock=editSessionDraft?.blocks?.[editSession.blockIndex] || editSession.original?.blocks?.[editSession.blockIndex];
+                                    const layouts=getCompatibleLayouts(activeBlock?.type, activeBlock).sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
+                                    const backgroundMedia=findSectionBackgroundImageSlot(activeBlock);
+                                    return <div className="space-y-3">
+                                        {backgroundMedia ? <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2.5 ${appDark?'border-slate-700 bg-slate-900':'border-slate-200 bg-slate-50'}`}>
+                                            <div className="flex min-w-0 items-center gap-3">
+                                                <div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white"><img src={backgroundMedia.url} alt="Current section background" className="h-full w-full object-cover"/></div>
+                                                <div className="min-w-0"><p className={`text-xs font-bold ${appDark?'text-slate-100':'text-slate-900'}`}>Section background image</p><p className="mt-0.5 truncate text-[11px] text-slate-500">Change only this section's authored background media.</p></div>
+                                            </div>
+                                            {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-authored-background-image');setLunaMediaLibraryKind('image');setLunaMediaLibraryOpen(true);}} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${appDark?'border-slate-700 bg-slate-950 text-slate-200 hover:border-violet-500':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50'}`}>Media Library</button> : <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-authored-background-image');lunaImageUploadRef.current?.click?.();}} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700">Upload image</button>}
+                                        </div> : null}
+                                        {sparkCatalogLoading && !sparkCatalogLoaded ? <div className="rounded-xl border border-dashed border-slate-200 p-3 text-xs text-slate-500">Loading related layouts…</div> : null}
+                                        <div className="space-y-2">
+                                            <div className={`${sectionSparkLayoutsExpanded?'flex flex-wrap':'flex flex-nowrap overflow-hidden'} gap-2.5`}>
+                                                {layouts.map(layout=>{const active=isCurrentLayout(activeBlock,layout);return <button key={`${layout.kind}:${layout.id}`} type="button" onClick={()=>previewSectionSparkLayout(editSession.blockIndex,layout)} aria-pressed={active} className={`shrink-0 rounded-lg border px-3 py-2.5 text-left text-[13px] font-semibold leading-5 transition ${active?'border-violet-600 bg-violet-100 text-violet-900 shadow-sm ring-1 ring-violet-200':'border-slate-300 bg-white text-slate-800 shadow-sm hover:border-violet-400 hover:bg-violet-50'}`} style={{color:active?'#4c1d95':'#1e293b',WebkitTextFillColor:active?'#4c1d95':'#1e293b'}}><span className="block">{layout.title}</span></button>})}
+                                                {!layouts.length && !sparkCatalogLoading ? <div className="rounded-xl border border-dashed border-slate-200 p-3 text-xs text-slate-500">No related Spark layouts are registered for this section family yet.</div> : null}
+                                            </div>
+                                            {layouts.length > 1 ? <button type="button" onClick={()=>setSectionSparkLayoutsExpanded(value=>!value)} aria-expanded={sectionSparkLayoutsExpanded} className={`cosmic-section-layout-toggle inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${appDark?'border-slate-700 bg-slate-900 text-slate-300 hover:border-violet-500 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-800'}`}>{sectionSparkLayoutsExpanded?'Show Less':'Show More'}<span aria-hidden="true">{sectionSparkLayoutsExpanded?'↑':'↓'}</span></button> : null}
+                                        </div>
+                                        <div data-popup-section-preview="true" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
+                                            <div className="bg-white">
+                                                <div className="pointer-events-none min-w-0" aria-label="Section working preview">
+                                                    {activeBlock ? renderBlock(activeBlock, editSession.blockIndex) : null}
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>;
+                                })() : null}
+                                {pageAiError ? <div className="mt-4 rounded-xl bg-rose-50 px-3 py-2 text-xs text-rose-700">{pageAiError}</div> : null}
+                            </div>
+                        </div>
+                        <aside className={`flex flex-col self-stretch border-t px-5 py-4 sm:px-6 lg:border-l lg:border-t-0 ${appDark?'border-slate-800 bg-slate-950 text-white':'border-slate-200 bg-slate-50 text-slate-900'}`}>
+                            <p className="text-[11px] font-bold uppercase tracking-[.14em] text-violet-300">✦ Luna · Contextual</p>
+                            <h4 className={`mt-1 text-[15px] font-semibold ${appDark?'text-slate-100':'text-slate-900'}`}>{editSession.label}</h4>
+                            <p className={`mt-1 text-xs leading-5 ${appDark?'text-slate-300':'text-slate-600'}`}>{editSession.commitMode === 'create_section' ? 'Customize this new section manually or with Luna. The Builder stays unchanged until you add it.' : 'Luna can only work on this selected target. Her changes stay inside this popup until you Apply.'}</p>
+                            <div className="mt-4 flex flex-1 flex-col justify-end gap-3">
+                                {contextualLunaMessages.length ? contextualLunaMessages.map((message, messageIndex)=><div key={`${messageIndex}-${message.role}`} data-luna-message-role={message.role} className={`cosmic-contextual-luna-message rounded-xl px-3 py-2.5 text-[13px] font-medium leading-5 ${message.role==='user'?'ml-5 bg-violet-600 text-white':(appDark?'mr-3 border border-white/10 bg-white/[0.04] text-slate-100':'mr-3 border border-slate-200 bg-white text-slate-700 shadow-sm')}`}>{message.text || message.content || ''}</div>) : <div className={`rounded-xl border p-3 text-[13px] font-medium leading-5 ${appDark?'border-white/10 bg-white/[0.04] text-slate-200':'border-slate-200 bg-white text-slate-700 shadow-sm'}`}>{editSession.commitMode === 'create_section' ? 'Describe the structure and content you want. Luna builds the layout first, fills it with content, and keeps it as a draft until Add Section.' : 'Ask for a rewrite, image, spacing tweak, border-radius change, or a custom design. Nothing is permanent until Apply.'}</div>}
+                                {pageAiBusy ? <div data-luna-message-role="status" className="cosmic-contextual-luna-message mr-3 rounded-xl border border-violet-300/15 bg-violet-400/[0.06] px-3 py-2.5 text-xs text-violet-200">{lunaStatus || 'Luna is working…'}</div> : null}
+                            </div>
+                            {pageAiError ? <div className="mt-3 rounded-xl bg-rose-500/10 px-3 py-2 text-xs text-rose-200">{pageAiError}</div> : null}
+                            <div className={`mt-4 border-t pt-3 ${appDark?'border-white/10':'border-slate-200'}`}>
+                                <textarea value={editSessionLunaPrompt} onChange={e=>setEditSessionLunaPrompt(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendContextualLunaRequest();}}} rows={4} placeholder={editSession.scope==='section'?'e.g. Reduce the border radius and make the cards feel more premium.':'e.g. Rewrite this to sound more confident.'} className={`w-full resize-none rounded-xl border px-3 py-2.5 text-xs leading-5 outline-none focus:border-violet-400 ${appDark?'border-white/10 bg-white/[0.05] text-white placeholder:text-slate-600':'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`}/>
+                                <div className="mt-2 flex items-center justify-between gap-2">
+                                    <span className={`text-[10px] ${appDark?'text-slate-500':'text-slate-500'}`}>AI/API requests may use credits.</span>
+                                    <button type="button" onClick={sendContextualLunaRequest} disabled={pageAiBusy||!editSessionLunaPrompt.trim()} className="rounded-xl bg-violet-500 px-3 py-2 text-xs font-bold text-white hover:bg-violet-400 disabled:opacity-40">{pageAiBusy?'Working…':'Ask Luna'}</button>
+                                </div>
+                            </div>
+                        </aside>
+                    </div>
+                    <div className={`flex flex-wrap items-center justify-between gap-3 border-t px-6 py-4 sm:px-8 ${appDark?'border-slate-800 bg-slate-950':'border-slate-200 bg-white'}`}>
+                        <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-xs text-slate-500">{editSession.commitMode === 'create_section' ? 'This is a temporary new-section draft. The Builder is still unchanged.' : (editSessionHasChanges ? 'This popup has changes that are not applied yet.' : 'No changes yet.')}</p>
+                            {editSession.scope === 'section' && Number.isInteger(editSession.blockIndex) ? <div className="flex items-center gap-1 rounded-xl border border-slate-200 bg-slate-100 p-1" role="group" aria-label="Section background">
+                                {['primary','white','surface'].map(theme=>{const activeTheme=resolveBlockTheme(editSessionDraft?.blocks?.[editSession.blockIndex] || editSession.original?.blocks?.[editSession.blockIndex] || {}, editSession.blockIndex)===theme;return <button key={theme} type="button" onClick={()=>previewSectionTheme(editSession.blockIndex,theme)} aria-pressed={activeTheme} className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${activeTheme?'bg-violet-600 text-white shadow-sm':'bg-transparent text-slate-700 hover:bg-white hover:text-slate-950'}`} style={{color:activeTheme?'#ffffff':'#334155',WebkitTextFillColor:activeTheme?'#ffffff':'#334155'}}>{theme.charAt(0).toUpperCase()+theme.slice(1)}</button>})}
+                            </div> : null}
+                        </div>
+                        <div className="flex items-center gap-2">
+                            <button type="button" onClick={cancelEditSession} className="rounded-xl border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-50">Cancel</button>
+                            <button type="button" onClick={applyEditSession} className="rounded-xl bg-slate-950 px-5 py-2 text-sm font-bold text-white hover:bg-slate-800">{editSession.commitMode === 'create_section' ? 'Add Section' : 'Apply'}</button>
+                        </div>
+                    </div>
+                </div>
+            </div>}
+
+            {aiOnlyBuilder && !lunaChatOpen && !editSession?.open && <button
   type="button"
-  onClick={()=>openLunaChat(lunaScope.type==='section' ? lunaScope : {type:'page',blockIndex:null,label:'Whole Page'})}
+  onClick={()=>openLunaChat({type:'page',blockIndex:null,label:'Whole Page'})}
   className="fixed bottom-6 right-6 z-[960] inline-flex h-14 items-center gap-2 rounded-full border border-violet-300/30 bg-gradient-to-r from-violet-600 to-indigo-600 px-5 text-sm font-black text-white shadow-2xl shadow-violet-950/40 transition hover:-translate-y-0.5 hover:shadow-violet-950/60"
   title="Ask Luna about this website"
 ><span className="text-lg" aria-hidden="true">✦</span> Ask Luna</button>}
 
-{aiOnlyBuilder && lunaChatOpen && <div className="fixed bottom-4 right-4 z-[970] flex h-[calc(100dvh-2rem)] max-h-[940px] min-h-[620px] w-[440px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border border-violet-300/20 bg-[#111318]/95 text-white shadow-2xl backdrop-blur-xl">
-  <div className="flex items-start justify-between border-b border-white/10 px-4 py-3">
+{aiOnlyBuilder && lunaChatOpen && !editSession?.open && <div className={`cosmic-native-text-layer fixed bottom-4 right-4 z-[970] flex h-[calc(100dvh-2rem)] max-h-[940px] min-h-[620px] w-[440px] max-w-[calc(100vw-1rem)] flex-col overflow-hidden rounded-2xl border shadow-2xl ${appDark?'border-violet-300/20 bg-[#111318]/95 text-white':'border-slate-200 bg-white text-slate-900'}`}>
+  <div className={`flex items-start justify-between border-b px-4 py-3 ${appDark?'border-white/10':'border-slate-200'}`}>
     <div>
       <p className="text-[10px] font-black uppercase tracking-[.18em] text-violet-300">✦ Luna · {lunaScope.type==='section'?'Selected Section':lunaScope.type==='header'?'Site Header':lunaScope.type==='footer'?'Site Footer':'Whole Page'}</p>
       <h3 className="mt-1 max-w-[300px] truncate text-sm font-bold">{lunaScope.label}</h3>
@@ -5417,8 +6752,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
   </div>
   <div className="min-h-0 flex-1 space-y-2 overflow-y-auto px-4 pt-3 pb-2">
     {lunaMessages.length ? lunaMessages.slice(-12).map((message,i)=><div key={`${i}-${message.text}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}><div className="max-w-[86%]"><div className={`rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'
-    ?'bg-violet-500 text-white'
-    :'border border-white/10 bg-white/[0.05] text-slate-200'}`}>{message.text}</div>{message.role==='user'&&message.referenceAttachment?<div className="mt-1.5 ml-auto w-fit max-w-full overflow-hidden rounded-xl border border-violet-300/20 bg-violet-500/10">{message.referenceAttachment.previewUrl?<img src={message.referenceAttachment.previewUrl} alt={message.referenceAttachment.name || 'Design reference'} className="block max-h-44 w-auto max-w-[280px] object-contain"/>:null}<div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-semibold text-violet-100"><span aria-hidden="true">▧</span><span className="max-w-[220px] truncate">{message.referenceAttachment.name || 'Design reference'}</span><span className="text-violet-300/60">sent</span></div></div>:null}{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true,message.confirmation.token);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Delete · {message.confirmation.cost} credits</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Keep content</button></div>:null}{message.role==='assistant'&&message.referenceReplaceConfirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,referenceReplaceConfirmation:null}:item));sendPageAiRequest(message.referenceReplaceConfirmation.prompt,true,null);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Replace page</button><button type="button" disabled={pageAiBusy} onClick={()=>{lunaPendingReferenceImageRef.current=null;setLunaMessages(messages=>messages.map(item=>item===message?{...item,referenceReplaceConfirmation:null}:item));}} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Cancel</button></div>:null}{message.role==='assistant'&&message.referencePlacement?<div className="mt-2 space-y-2">{message.referencePlacement.selectedTarget==null?<div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">{(message.referencePlacement.targets||[]).map((target)=><button key={`ref-target-${target.index}`} type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:target}}:item))} className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2.5 py-1.5 text-[10px] font-semibold text-violet-100 hover:bg-violet-500/20 disabled:opacity-40">{target.label || `Section ${Number(target.index)+1}`}</button>)}</div>:<div><div className="mb-1.5 text-[10px] font-semibold text-slate-400">Relative to {message.referencePlacement.selectedTarget.label || `Section ${Number(message.referencePlacement.selectedTarget.index)+1}`}</div><div className="flex flex-wrap gap-1.5"><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'above'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert above</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'below'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert below</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'replace'})} className="rounded-lg bg-violet-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Replace</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:null}}:item))} className="rounded-lg px-2 py-1.5 text-[10px] font-semibold text-slate-500 hover:text-slate-300 disabled:opacity-40">Back</button></div></div>}</div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
+    ?'bg-violet-600 text-white'
+    :(appDark?'border border-white/10 bg-white/[0.05] text-slate-200':'border border-slate-200 bg-slate-50 text-slate-700')}`}>{message.text}</div>{message.role==='user'&&message.referenceAttachment?<div className="mt-1.5 ml-auto w-fit max-w-full overflow-hidden rounded-xl border border-violet-300/20 bg-violet-500/10">{message.referenceAttachment.previewUrl?<img src={message.referenceAttachment.previewUrl} alt={message.referenceAttachment.name || 'Design reference'} className="block max-h-44 w-auto max-w-[280px] object-contain"/>:null}<div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[10px] font-semibold text-violet-100"><span aria-hidden="true">▧</span><span className="max-w-[220px] truncate">{message.referenceAttachment.name || 'Design reference'}</span><span className="text-violet-300/60">sent</span></div></div>:null}{message.role==='assistant'&&message.confirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item));sendPageAiRequest(message.confirmation.prompt,true,message.confirmation.token);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Delete · {message.confirmation.cost} credits</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,confirmation:null}:item))} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Keep content</button></div>:null}{message.role==='assistant'&&message.referenceReplaceConfirmation?<div className="mt-2 flex gap-2"><button type="button" disabled={pageAiBusy} onClick={()=>{setLunaMessages(messages=>messages.map(item=>item===message?{...item,referenceReplaceConfirmation:null}:item));sendPageAiRequest(message.referenceReplaceConfirmation.prompt,true,null);}} className="rounded-lg bg-violet-500 px-3 py-1.5 text-[11px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Replace page</button><button type="button" disabled={pageAiBusy} onClick={()=>{lunaPendingReferenceImageRef.current=null;setLunaMessages(messages=>messages.map(item=>item===message?{...item,referenceReplaceConfirmation:null}:item));}} className="rounded-lg border border-white/10 px-3 py-1.5 text-[11px] font-semibold text-slate-300 hover:bg-white/5 disabled:opacity-40">Cancel</button></div>:null}{message.role==='assistant'&&message.referencePlacement?<div className="mt-2 space-y-2">{message.referencePlacement.selectedTarget==null?<div className="flex max-h-40 flex-wrap gap-1.5 overflow-y-auto">{(message.referencePlacement.targets||[]).map((target)=><button key={`ref-target-${target.index}`} type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:target}}:item))} className="rounded-lg border border-violet-300/20 bg-violet-500/10 px-2.5 py-1.5 text-[10px] font-semibold text-violet-100 hover:bg-violet-500/20 disabled:opacity-40">{target.label || `Section ${Number(target.index)+1}`}</button>)}</div>:<div><div className="mb-1.5 text-[10px] font-semibold text-slate-400">Relative to {message.referencePlacement.selectedTarget.label || `Section ${Number(message.referencePlacement.selectedTarget.index)+1}`}</div><div className="flex flex-wrap gap-1.5"><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'above'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert above</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'below'})} className="rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-200 hover:bg-white/5 disabled:opacity-40">Insert below</button><button type="button" disabled={pageAiBusy} onClick={()=>sendPageAiRequest(message.referencePlacement.prompt,false,null,{reference_target_index:Number(message.referencePlacement.selectedTarget.index),reference_placement:'replace'})} className="rounded-lg bg-violet-500 px-2.5 py-1.5 text-[10px] font-bold text-white hover:bg-violet-400 disabled:opacity-40">Replace</button><button type="button" disabled={pageAiBusy} onClick={()=>setLunaMessages(messages=>messages.map(item=>item===message?{...item,referencePlacement:{...item.referencePlacement,selectedTarget:null}}:item))} className="rounded-lg px-2 py-1.5 text-[10px] font-semibold text-slate-500 hover:text-slate-300 disabled:opacity-40">Back</button></div></div>}</div>:null}</div></div>) : <div className="text-xs text-slate-500">Tell Luna what you want to change.</div>}
     {(pageAiBusy||lunaContextTyping)?<div className="flex items-center gap-2 text-xs font-semibold text-violet-300" role="status" aria-live="polite"><span className="h-3.5 w-3.5 shrink-0 animate-spin rounded-full border-2 border-violet-300/25 border-t-violet-300" aria-hidden="true"/><span>{lunaStatus}</span></div>:null}
     <div ref={lunaMessagesEndRef} aria-hidden="true" className="h-px" />
   </div>
@@ -5473,9 +6808,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
       <p className="mt-1 text-[11px] leading-4 text-slate-400">Click a heading, paragraph, label, button, or image in this section to edit that content directly. For layout, backgrounds, spacing, adding/removing items, or redesign, ask Luna.</p>
     </div> : null}
 
-    {lunaManualOpen && lunaScope.type==='section' && Number.isInteger(lunaScope?.blockIndex) && !isLunaVideoSection ? <div className="mb-3 rounded-xl border border-sky-300/15 bg-sky-500/[0.04] p-3">
-      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-sky-300">Section image · 0 credits</p>
-      <p className="mt-1 text-[11px] leading-4 text-slate-400">For sliders, this replaces the active slide image. For image heroes, it replaces the background image.</p>
+    {lunaManualOpen && lunaScope.type==='section' && Number.isInteger(lunaScope?.blockIndex) ? <div className="mb-3 rounded-xl border border-sky-300/15 bg-sky-500/[0.04] p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-sky-300">Section background image · 0 credits</p>
+      <p className="mt-1 text-[11px] leading-4 text-slate-400">Applies one isolated background image behind this section without replacing card, avatar, gallery, or hero media.</p>
       <div className="mt-2 flex gap-2">
         {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-background-image');setLunaMediaLibraryKind('image');setLunaMediaLibraryOpen(true);}}
           className="rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200 hover:border-sky-300/30">Media Library</button>
@@ -5484,8 +6819,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
       </div>
     </div> : null}
 
-    {lunaManualOpen && lunaScope.type==='section' && isLunaVideoSection ? <div className="mb-3 rounded-xl border border-violet-300/15 bg-violet-500/[0.05] p-3">
-      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-violet-300">Video background · 0 credits</p>
+    {lunaManualOpen && lunaScope.type==='section' && Number.isInteger(lunaScope?.blockIndex) ? <div className="mb-3 rounded-xl border border-violet-300/15 bg-violet-500/[0.05] p-3">
+      <p className="text-[10px] font-bold uppercase tracking-[.14em] text-violet-300">Section background video · 0 credits</p>
       <input value={lunaDirectVideoUrl} onChange={e=>setLunaDirectVideoUrl(e.target.value)}
         placeholder="Paste YouTube, Vimeo, MP4, WebM, OGG or /storage/ video URL"
         className="mt-2 w-full rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs text-white outline-none focus:border-violet-300/40"/>
@@ -5497,7 +6832,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
       </div>
       <div className="mt-3 border-t border-white/10 pt-3">
         <p className="text-[10px] font-bold uppercase tracking-[.14em] text-slate-400">Video thumbnail / poster</p>
-        <p className="mt-1 text-[11px] leading-4 text-slate-500">Used while the video loads and as the mobile/fallback image.</p>
+        <p className="mt-1 text-[11px] leading-4 text-slate-500">Used while a file video loads and as its fallback poster image.</p>
         <div className="mt-2">
           {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-video-poster');setLunaMediaLibraryKind('image');setLunaMediaLibraryOpen(true);}}
             className="rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-slate-200 hover:border-violet-300/30">Choose thumbnail from Media Library</button>
@@ -5573,6 +6908,61 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
   </div>
 </div>}
             {cosmicAiChat.open && <div className="fixed right-6 top-24 z-[970] flex max-h-[72vh] w-[420px] max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-2xl border border-emerald-300/20 bg-[#111318]/95 text-white shadow-2xl backdrop-blur-xl"><div className="flex items-start justify-between border-b border-white/10 px-4 py-3"><div><p className="text-[10px] font-black uppercase tracking-[.18em] text-emerald-300">✨ Cosmic AI · {cosmicAiChat.targetScope==='element' ? `Element: ${cosmicAiChat.targetKey || 'selected'}` : 'This Spark only'}</p><h3 className="mt-1 max-w-[300px] truncate text-sm font-bold">{cosmicAiChat.name}</h3>{cosmicAiChat.qa?.score?<><p className="mt-0.5 text-[10px] text-slate-500">Last visual QA: {cosmicAiChat.qa.score}%</p>{cosmicAiChat.qa?.breakdown?<div className="mt-2 grid grid-cols-3 gap-1.5">{Object.entries(cosmicAiChat.qa.breakdown).map(([label,score])=><div key={label} className="rounded-md border border-white/10 bg-white/5 px-2 py-1"><div className="truncate text-[8px] font-bold uppercase tracking-wide text-slate-500">{label}</div><div className="text-[10px] font-black text-emerald-300">{Number(score)||0}%</div></div>)}</div>:null}</>:null}</div><div className="flex items-center gap-1"><button type="button" onClick={undoCosmicAiSpark} disabled={cosmicAiBusy||!(cosmicAiChat.revisions||[]).length} className="rounded-lg border border-white/10 px-2 py-1.5 text-[10px] font-bold text-slate-300 hover:bg-white/10 disabled:opacity-30" title="Restore previous Cosmic AI version">↶ Undo AI</button><button type="button" onClick={()=>setCosmicAiChat((current)=>({...current,open:false}))} className="h-8 w-8 rounded-lg text-slate-400 hover:bg-white/10 hover:text-white">×</button></div></div><div className="min-h-28 flex-1 space-y-3 overflow-y-auto px-4 py-4">{!(cosmicAiChat.messages||[]).length?<div className="rounded-xl border border-dashed border-white/10 p-4 text-xs leading-5 text-slate-400">Ask Cosmic AI to adjust this selected Spark, compare it with the stored reference, or use a new source asset. Other sections will not be changed.</div>:(cosmicAiChat.messages||[]).map((message,i)=><div key={`${message.at||i}-${i}`} className={`flex ${message.role==='user'?'justify-end':'justify-start'}`}><div className={`max-w-[88%] rounded-2xl px-3 py-2 text-xs leading-5 ${message.role==='user'?'bg-emerald-500 text-white':'border border-white/10 bg-white/[0.05] text-slate-200'} ${message.pending?'opacity-60':''}`}>{message.text}</div></div>)}{cosmicAiBusy?<div className="text-xs text-emerald-300">Cosmic AI is working on this Spark…</div>:null}</div>{cosmicAiError?<div className="mx-4 mb-2 rounded-lg bg-rose-500/10 px-3 py-2 text-[11px] text-rose-300">{cosmicAiError}</div>:null}<div className="border-t border-white/10 p-3"><textarea value={cosmicAiPrompt} onChange={e=>setCosmicAiPrompt(e.target.value)} onKeyDown={e=>{if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendCosmicAiMessage();}}} rows={3} placeholder="e.g. Move the background image right and reduce the hero height…" className="w-full resize-none rounded-xl border border-white/10 bg-black/25 px-3 py-2 text-xs leading-5 outline-none focus:border-emerald-300/40"/><div className="mt-2 flex items-center justify-between gap-2"><label className="min-w-0 cursor-pointer rounded-lg border border-white/10 px-2.5 py-1.5 text-[10px] font-semibold text-slate-300 hover:bg-white/5"><span className="block max-w-[190px] truncate">📎 {cosmicAiAsset?.name || 'Attach source image'}</span><input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={e=>setCosmicAiAsset(e.target.files?.[0]||null)}/></label><button type="button" onClick={sendCosmicAiMessage} disabled={cosmicAiBusy||!cosmicAiPrompt.trim()} className="rounded-lg bg-emerald-500 px-3 py-1.5 text-[11px] font-bold text-white disabled:opacity-40">{cosmicAiBusy?'Working…':'Send'}</button></div></div></div>}
+            <GlobalStylingModal
+                open={globalStylingOpen}
+                value={{
+                    typography: globalSelections?.typography || {},
+                    section_layout: globalSelections?.section_layout || {},
+                    components: globalSelections?.components || {},
+                }}
+                onCancel={() => setGlobalStylingOpen(false)}
+                onApply={(styling) => {
+                    setGlobalSelections((current) => ({
+                        ...current,
+                        typography: styling?.typography || {},
+                        section_layout: styling?.section_layout || {},
+                        components: styling?.components || {},
+                    }));
+                    setHasUnsavedTheme(true);
+                    setGlobalStylingOpen(false);
+                    showCosmicNotification({
+                        title: 'Global styling applied',
+                        message: 'Typography, layout and component styles are updated in the Builder draft. Save Draft or Publish when you are ready.',
+                        tone: 'success',
+                    });
+                }}
+                trialMode={trialMode}
+                darkMode={appDark}
+            />
+            <DesignToggleModal
+                open={designToggleModal === 'overlay_header'}
+                title="Overlay Header"
+                description="Place the global header over the first hero or banner for a more immersive opening section. This setting is only committed when you click Apply."
+                enabled={designToggleDraft}
+                setEnabled={setDesignToggleDraft}
+                onCancel={closeDesignToggle}
+                onApply={applyDesignToggle}
+                disabled={!firstBlockIsBanner}
+                unavailableMessage={overlayCompatibilityMessage}
+                trialMode={trialMode}
+                darkMode={appDark}
+                enableLabel="Overlay enabled"
+                disableLabel="Overlay disabled"
+            />
+            <DesignToggleModal
+                open={designToggleModal === 'mega_footer'}
+                title="Mega Footer"
+                description="Switch between the compact footer and the richer multi-column Mega Footer. Your choice stays in this popup until Apply."
+                enabled={designToggleDraft}
+                setEnabled={setDesignToggleDraft}
+                onCancel={closeDesignToggle}
+                onApply={applyDesignToggle}
+                trialMode={trialMode}
+                darkMode={appDark}
+                enableLabel="Mega Footer enabled"
+                disableLabel="Compact footer"
+            />
+
             {trialMode && (
                 <div className="border-b border-emerald-200 bg-gradient-to-r from-emerald-50 via-white to-cyan-50 px-4 py-3 text-center">
                     <p className="text-sm font-semibold text-slate-900">Love what you created?</p>
@@ -5590,10 +6980,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 </div>
             )}
             <Head title={`Builder — ${page.title}`} />
-            <div className={`cosmic-builder-shell min-h-screen ${trialMode ? 'bg-slate-100 text-slate-900' : 'bg-[#09090b] text-slate-100'}`}>
+            <div className={`cosmic-builder-shell min-h-screen font-manrope ${trialMode ? 'bg-slate-100 text-slate-900' : 'bg-[#09090b] text-slate-100'}`}>
                 <header data-cosmic-builder-header className={`sticky top-0 z-[60] backdrop-blur-xl ${trialMode ? 'border-b border-slate-200 bg-white/95' : 'border-b border-white/10 bg-[#09090b]/95'}`}>
                     <div className={`mx-auto max-w-[1760px] px-4 py-3 sm:px-6 ${trialMode ? 'flex min-h-[76px] flex-wrap items-center justify-between gap-3 xl:grid xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center' : 'grid min-h-[64px] grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-4'}`}>
-                        <div className="flex min-w-0 items-center gap-3">
+                        <div className="flex min-w-0 flex-wrap items-center gap-3">
                             {capabilities.canNavigateAway && (
                                 <Link
                                     href={route('pages.index', website.id)}
@@ -5627,43 +7017,94 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 </div>
                             </div>
 
+                            {!customWebsiteMode && (
+                                <>
+                                    <BuilderToolbarDropdown menuKey="design" label="Design" activeMenu={builderToolbarMenu} setActiveMenu={setBuilderToolbarMenu} trialMode={trialMode} darkMode={appDark}>
+                                        <div className={`px-3 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Appearance</div>
+                                        {capabilities.canChangeTheme && (
+                                            <button type="button" role="menuitem" onClick={() => { setBuilderToolbarMenu(null); document.querySelector('[data-cosmic-theme-selector-host] button')?.click(); }} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                                <span className="inline-flex items-center gap-2"><span aria-hidden="true">🎨</span> Theme</span><span aria-hidden="true" className="opacity-50">→</span>
+                                            </button>
+                                        )}
+                                        <button type="button" role="menuitem" onClick={() => { setBuilderToolbarMenu(null); document.querySelector('.cosmic-page-style-trigger')?.click(); }} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                            <span className="inline-flex items-center gap-2"><span aria-hidden="true">✦</span> Page Style</span><span aria-hidden="true" className="opacity-50">→</span>
+                                        </button>
+                                        {capabilities.canSave && (
+                                            <button type="button" role="menuitem" onClick={() => { setBuilderToolbarMenu(null); setGlobalStylingOpen(true); }} className={`cosmic-global-styling-trigger flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                                <span className="inline-flex items-center gap-2"><span aria-hidden="true" className="font-black">Aa</span> Global Styling</span><span aria-hidden="true" className="opacity-50">→</span>
+                                            </button>
+                                        )}
 
+                                        {capabilities.canEditGlobalShell && (
+                                            <>
+                                                <div className={`mx-2 my-1 h-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} />
+                                                <div className={`px-3 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Layout</div>
+                                                <button type="button" role="menuitem" onClick={() => openDesignToggle('overlay_header')} title={overlayCompatibilityMessage} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                                    <span className="inline-flex items-center gap-2"><span aria-hidden="true">↥</span> Overlay Header</span><span className={`h-2.5 w-2.5 rounded-full ${data.global_header?.overlay_header_on_banner ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+                                                </button>
+                                                {data.global_footer && (
+                                                    <button type="button" role="menuitem" onClick={() => openDesignToggle('mega_footer')} className={`flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                                        <span className="inline-flex items-center gap-2"><span aria-hidden="true">▤</span> Mega Footer</span><span className={`h-2.5 w-2.5 rounded-full ${megaFooterEnabled ? 'bg-emerald-400' : 'bg-slate-500'}`} />
+                                                    </button>
+                                                )}
+                                            </>
+                                        )}
+                                    </BuilderToolbarDropdown>
 
-                            {!aiOnlyBuilder && !customWebsiteMode && !trialMode && capabilities.canGenerateAi && (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsGeneratePageOpen(true)}
-                                    className="cosmic-generate-page-trigger hidden h-9 shrink-0 items-center gap-1.5 rounded-lg border border-violet-400/25 bg-violet-500/10 px-3 text-xs font-semibold text-violet-100 transition hover:border-violet-400/40 hover:bg-violet-500/20 focus:outline-none focus:ring-2 focus:ring-violet-400 lg:inline-flex"
-                                >
-                                    <span className="cosmic-generate-page-icon" aria-hidden="true">✦</span>
-                                    Generate Page
-                                </button>
+                                    <BuilderToolbarDropdown menuKey="build" label="Build" activeMenu={builderToolbarMenu} setActiveMenu={setBuilderToolbarMenu} trialMode={trialMode} darkMode={appDark}>
+                                        <div className={`px-3 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Create</div>
+                                        {(capabilities.canManageBlocks || capabilities.canGenerateAi || trialMode) && (
+                                            <button type="button" role="menuitem" data-cosmic-build-action="add-section" onClick={() => { setBuilderToolbarMenu(null); setSparkInsertTarget(null); setIsModalOpen(true); }} className={`cosmic-add-spark-button flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                                <span className="inline-flex items-center gap-2"><span aria-hidden="true">＋</span> Add Section</span><span aria-hidden="true" className="text-emerald-400">✦</span>
+                                            </button>
+                                        )}
+                                        {(capabilities.canGenerateAi || capabilities.canManageBlocks || trialMode) && (
+                                            <button type="button" role="menuitem" data-cosmic-build-action="templates" onClick={() => { setBuilderToolbarMenu(null); setIsTemplatesOpen(true); }} className={`cosmic-templates-trigger flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                                <span className="inline-flex items-center gap-2"><span aria-hidden="true">▣</span> Templates</span><span className="rounded-full bg-fuchsia-300 px-1.5 py-0.5 text-[8px] font-black tracking-wide text-fuchsia-950">NEW</span>
+                                            </button>
+                                        )}
+                                        {!trialMode && capabilities.canGenerateAi && (
+                                            <button type="button" role="menuitem" data-cosmic-build-action="generate-page" onClick={() => { setBuilderToolbarMenu(null); setIsGeneratePageOpen(true); }} className={`cosmic-generate-page-trigger flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition ${trialMode ? 'hover:bg-slate-100' : 'hover:bg-white/[0.06]'}`}>
+                                                <span className="inline-flex items-center gap-2"><span className="cosmic-generate-page-icon" aria-hidden="true">✦</span> Generate Page</span><span aria-hidden="true" className="opacity-50">→</span>
+                                            </button>
+                                        )}
+                                        {!trialMode && capabilities.canManageBlocks && (
+                                            <>
+                                                <div className={`mx-2 my-1 h-px ${trialMode ? 'bg-slate-200' : 'bg-white/10'}`} />
+                                                <div className={`px-3 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-[.16em] ${trialMode ? 'text-slate-400' : 'text-slate-500'}`}>Library</div>
+                                                <button type="button" role="menuitem" data-cosmic-build-action="saved-sparks" onClick={() => { setBuilderToolbarMenu(null); openSavedSparks(); }} disabled={savedSparksBusy} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06] disabled:cursor-wait disabled:opacity-40">
+                                                    <span className="inline-flex items-center gap-2"><span aria-hidden="true">✦</span> Saved Sparks</span><span aria-hidden="true" className="opacity-50">→</span>
+                                                </button>
+                                            </>
+                                        )}
+                                    </BuilderToolbarDropdown>
+
+                                    <PageStyleSelector
+                                        pageId={page.id}
+                                        currentStyle={currentPageStyle}
+                                        suggestions={styleOptions}
+                                        blocks={data.blocks}
+                                        disabled={isSaving || isPublishing}
+                                        trialMode={trialMode}
+                                        darkMode={appDark}
+                                        trialToken={trialToken}
+                                        creditBalance={effectiveCreditBalance}
+                                        creditCost={0}
+                                        onApplied={(response) => {
+                                            if (response?.page_style) setCurrentPageStyle(String(response.page_style).toLowerCase());
+                                            if (Array.isArray(response?.blocks)) setData((current) => ({ ...current, blocks: response.blocks }));
+                                            setPageStatus('draft');
+                                        }}
+                                    />
+                                </>
                             )}
 
                             {customWebsiteMode && (
-                                <div className="flex items-center gap-2">
-                                    <button type="button" onClick={() => setCustomSparkOpen(true)} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-emerald-300/30 bg-emerald-400/10 px-3 text-xs font-bold text-emerald-100 transition hover:bg-emerald-400/15">
-                                        ✨ Build Full Page <span className="rounded bg-black/20 px-1.5 py-0.5 text-[10px]">FREE</span>
-                                    </button>
-                                    <button type="button" onClick={()=>{setPageAiError('');setPageAiOpen(true)}} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-violet-300/25 bg-violet-400/10 px-3 text-xs font-bold text-violet-100 transition hover:bg-violet-400/15">
-                                        ✨ Ask Cosmic Page
-                                    </button>
-                                    <button type="button" onClick={openCustomSparkLibrary} disabled={customSparkLibraryBusy} className="inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg border border-cyan-300/25 bg-cyan-400/10 px-3 text-xs font-bold text-cyan-100 transition hover:bg-cyan-400/15 disabled:opacity-40">
-                                        ✦ Saved Sparks
-                                    </button>
-                                </div>
-                            )}
-
-                            {!aiOnlyBuilder && !customWebsiteMode && (capabilities.canGenerateAi || trialMode) && (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsTemplatesOpen(true)}
-                                    className="cosmic-templates-trigger hidden h-9 shrink-0 items-center gap-1.5 rounded-lg border border-fuchsia-300/35 bg-gradient-to-r from-violet-500/20 via-fuchsia-500/15 to-cyan-400/10 px-3 text-xs font-bold text-fuchsia-50 shadow-[0_0_20px_rgba(168,85,247,0.12)] transition hover:border-fuchsia-300/60 hover:from-violet-500/30 hover:via-fuchsia-500/25 focus:outline-none focus:ring-2 focus:ring-fuchsia-400 lg:inline-flex"
-                                >
-                                    <span aria-hidden="true">▣</span>
-                                    Templates
-                                    <span className="rounded-full bg-fuchsia-300 px-1.5 py-0.5 text-[8px] font-black tracking-wide text-fuchsia-950">NEW</span>
-                                </button>
+                                <BuilderToolbarDropdown menuKey="build" label="Build" activeMenu={builderToolbarMenu} setActiveMenu={setBuilderToolbarMenu} trialMode={trialMode} darkMode={appDark}>
+                                    <button type="button" role="menuitem" data-cosmic-build-action="build-full-page" onClick={() => { setBuilderToolbarMenu(null); setCustomSparkOpen(true); }} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06]"><span>✨ Build Full Page</span><span className="rounded bg-emerald-400/15 px-1.5 py-0.5 text-[9px] text-emerald-300">FREE</span></button>
+                                    <button type="button" role="menuitem" data-cosmic-build-action="ask-page" onClick={() => { setBuilderToolbarMenu(null); setPageAiError(''); setPageAiOpen(true); }} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06]"><span>✨ Ask Cosmic Page</span><span aria-hidden="true" className="opacity-50">→</span></button>
+                                    <button type="button" role="menuitem" data-cosmic-build-action="saved-sparks" onClick={() => { setBuilderToolbarMenu(null); openSavedSparks(); }} disabled={savedSparksBusy} className="flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06] disabled:opacity-40"><span>▣ Saved Sparks</span><span aria-hidden="true" className="opacity-50">→</span></button>
+                                </BuilderToolbarDropdown>
                             )}
                         </div>
 
@@ -5693,7 +7134,8 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
 
 
 
-                            {!aiOnlyBuilder && !customWebsiteMode && capabilities.canChangeTheme && (
+                            {!customWebsiteMode && capabilities.canChangeTheme && (
+                                <div data-cosmic-theme-selector-host className="absolute h-px w-px overflow-hidden opacity-0 pointer-events-none">
                                 <ThemeSelector
                                     compact
                                     value={globalSelections.primary}
@@ -5705,20 +7147,15 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                     onMatchBrandToLogo={matchThemeToLogo}
                                     brandMatchBusy={logoBusy && logoAiAction === 'theme_to_logo'}
                                     onChange={handleThemeChange}
+                                    onOpenSession={beginThemeSession}
+                                    onCancelSession={cancelThemeSession}
+                                    onApplySession={applyThemeSession}
+                                    onAskLuna={askThemeLuna}
+                                    onThemeLunaIntent={themeLunaIntent}
+                                    onGenerateCustomTheme={generateThemeLunaCustom}
+                                    lunaBusy={pageAiBusy}
                                 />
-                            )}
-
-                            {!aiOnlyBuilder && !customWebsiteMode && (capabilities.canGenerateAi || trialMode) && (
-                                <button
-                                    type="button"
-                                    onClick={() => setIsModalOpen(true)}
-                                    className="cosmic-add-spark-button inline-flex h-9 shrink-0 items-center rounded-lg border border-emerald-300 bg-emerald-50 px-3 text-xs font-semibold text-emerald-800 transition hover:bg-emerald-100 focus:outline-none focus:ring-2 focus:ring-emerald-400"
-                                >
-                                    <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="mr-1.5 h-3.5 w-3.5 text-emerald-600">
-                                        <path d="M10 2.5c.28 3.92 1.68 5.32 5.6 5.6-3.92.28-5.32 1.68-5.6 5.6-.28-3.92-1.68-5.32-5.6-5.6 3.92-.28 5.32-1.68 5.6-5.6Zm5.25 9.75c.1 1.4.6 1.9 2 2-1.4.1-1.9.6-2 2-.1-1.4-.6-1.9-2-2 1.4-.1 1.9-.6 2-2Z" />
-                                    </svg>
-                                    <span className="hidden sm:inline">Add Spark</span>
-                                </button>
+                                </div>
                             )}
 
                             {trialMode && trialToken && (
@@ -5777,86 +7214,45 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 </button>
                             )}
 
-                            {capabilities.canPublish && (
-                                <div className="relative inline-flex h-9 shrink-0 items-stretch">
-                                    <button
-                                        type="button"
-                                        onClick={handlePublish}
-                                        disabled={isSaving || isPublishing || isCheckingHealth}
-                                        className={`cosmic-primary-action inline-flex min-w-[88px] items-center justify-center bg-emerald-600 px-4 text-xs font-bold text-white transition hover:bg-emerald-500 focus:z-10 focus:outline-none focus:ring-2 focus:ring-emerald-300 disabled:cursor-not-allowed disabled:opacity-50 ${websiteAccessRole === 'website_editor' ? 'rounded-lg' : 'rounded-l-lg'}`}
-                                    >
-                                        {isCheckingHealth ? 'Checking…' : isPublishing ? 'Publishing…' : 'Publish'}
-                                    </button>
+                            {!trialMode && previewUrl && (
+                                <a
+                                    href={previewUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    data-cosmic-builder-preview
+                                    title={previewDeploymentError || (previewIsStale ? 'Open the deployed preview. Your latest unsaved or unpublished changes may not be included yet.' : 'Open the latest deployed preview in a new tab.')}
+                                    className="cosmic-builder-preview inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-lg border border-white/10 bg-white/[0.045] px-3 text-xs font-semibold text-slate-200 transition hover:border-sky-400/35 hover:bg-sky-500/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-sky-400"
+                                >
+                                    <span className={`h-1.5 w-1.5 rounded-full ${previewDeploymentError ? 'bg-red-400' : previewIsStale ? 'bg-amber-400' : 'bg-emerald-400'}`} />
+                                    Preview <span aria-hidden="true">↗</span>
+                                </a>
+                            )}
 
-                                    {websiteAccessRole !== 'website_editor' && <details className="group relative">
-                                        <summary
-                                            className="cosmic-publish-menu-trigger inline-flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-r-lg border-l border-emerald-500 bg-emerald-600 text-white transition hover:bg-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-300 [&::-webkit-details-marker]:hidden"
-                                            aria-label="More publish actions"
-                                            title="More actions"
-                                        >
-                                            <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4 transition-transform group-open:rotate-180">
-                                                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 0 1 1.06.02L10 11.17l3.71-3.94a.75.75 0 1 1 1.1 1.02l-4.25 4.5a.75.75 0 0 1-1.1 0l-4.25-4.5a.75.75 0 0 1 .02-1.04Z" clipRule="evenodd" />
-                                            </svg>
-                                        </summary>
-
-                                        <div className="cosmic-publish-menu absolute right-0 z-[10020] mt-2 w-44 overflow-hidden rounded-xl border border-slate-200 bg-white p-1.5 shadow-2xl">
-                                            {capabilities.canSave && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => saveDraft()}
-                                                    disabled={isSaving || isPublishing}
-                                                    className="cosmic-publish-menu-item flex w-full items-center rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-50"
-                                                >
-                                                    {isSaving ? 'Saving…' : 'Save Draft'}
-                                                </button>
-                                            )}
-
-                                            {capabilities.canSave && (
-                                                <button
-                                                    type="button"
-                                                    onClick={() => setIsSaveTemplateOpen(true)}
-                                                    disabled={isSavingTemplate || !data.blocks?.length}
-                                                    className="cosmic-publish-menu-item cosmic-publish-template-item flex w-full items-center justify-between rounded-lg px-3 py-2 text-left text-xs font-semibold text-slate-700 transition hover:bg-violet-50 hover:text-violet-700 disabled:cursor-not-allowed disabled:opacity-40"
-                                                >
-                                                    <span>Save as Template</span>
-                                                    <span aria-hidden="true" className="text-violet-400">▣</span>
-                                                </button>
-                                            )}
-
-                                            <a
-                                                href={route('dashboard', { tab: 'health', website: website.id })}
-                                                className="cosmic-publish-menu-item flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-                                            >
-                                                <span className="inline-flex items-center gap-2"><span className="text-emerald-500">✚</span> Website Health</span>
-                                                <span aria-hidden="true" className="text-slate-400">↗</span>
-                                            </a>
-
-                                            {previewUrl ? (
-                                                <a
-                                                    href={previewUrl}
-                                                    target="_blank"
-                                                    rel="noopener noreferrer"
-                                                    title={previewDeploymentError || (previewIsStale ? 'Publish your latest changes to refresh this preview.' : 'Open the latest deployed preview in a new tab.')}
-                                                    className="cosmic-publish-menu-item flex w-full items-center justify-between rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 transition hover:bg-slate-100"
-                                                >
-                                                    <span className="inline-flex items-center gap-2">
-                                                        <span className={`h-1.5 w-1.5 rounded-full ${previewDeploymentError ? 'bg-red-400' : previewIsStale ? 'bg-amber-400' : 'bg-emerald-500'}`} />
-                                                        Preview
-                                                    </span>
-                                                    <span aria-hidden="true" className="text-slate-400">↗</span>
-                                                </a>
-                                            ) : (
-                                                <span
-                                                    title="Publish once to create a preview link."
-                                                    className="cosmic-publish-menu-item cosmic-publish-menu-disabled flex w-full cursor-not-allowed items-center gap-2 rounded-lg px-3 py-2 text-xs font-semibold text-slate-400"
-                                                >
-                                                    <span className="h-1.5 w-1.5 rounded-full bg-slate-300" />
-                                                    Preview
-                                                </span>
-                                            )}
-                                        </div>
-                                    </details>}
-                                </div>
+                            {!trialMode && (capabilities.canPublish || capabilities.canSave) && (
+                                <BuilderToolbarDropdown menuKey="publish" label={isPublishing ? 'Publishing…' : 'Publish'} activeMenu={builderToolbarMenu} setActiveMenu={setBuilderToolbarMenu} darkMode={appDark} align="right" tone="publish" onPrimaryAction={() => { setBuilderToolbarMenu(null); handlePublish(); }} primaryDisabled={isSaving || isPublishing || isCheckingHealth}>
+                                    <div className="px-3 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-[.16em] text-slate-500">Website</div>
+                                    {capabilities.canPublish && (
+                                        <button type="button" role="menuitem" data-cosmic-publish-action="publish" onClick={() => { setBuilderToolbarMenu(null); handlePublish(); }} disabled={isSaving || isPublishing || isCheckingHealth} className="cosmic-primary-action flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-bold text-emerald-300 transition hover:bg-emerald-500/10 disabled:opacity-40">
+                                            <span>{isCheckingHealth ? 'Checking website…' : isPublishing ? 'Publishing…' : 'Publish Website'}</span><span aria-hidden="true">↑</span>
+                                        </button>
+                                    )}
+                                    {capabilities.canSave && (
+                                        <button type="button" role="menuitem" data-cosmic-publish-action="save-draft" onClick={() => { setBuilderToolbarMenu(null); saveDraft(); }} disabled={isSaving || isPublishing} className="cosmic-publish-menu-item flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06] disabled:opacity-40"><span>{isSaving ? 'Saving…' : 'Save Draft'}</span>{hasUnsavedChanges ? <span className="h-2 w-2 rounded-full bg-amber-400" title="Unsaved changes" /> : <span className="text-[9px] font-bold uppercase tracking-wide text-emerald-400">Saved</span>}</button>
+                                    )}
+                                    {capabilities.canSave && (
+                                        <button type="button" role="menuitem" data-cosmic-publish-action="save-template" onClick={() => { setBuilderToolbarMenu(null); setIsSaveTemplateOpen(true); }} disabled={isSavingTemplate || !data.blocks?.length} className="cosmic-publish-menu-item cosmic-publish-template-item flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition hover:bg-white/[0.06] disabled:opacity-40"><span>Save as Template</span><span aria-hidden="true" className="text-violet-300">▣</span></button>
+                                    )}
+                                    <div className="mx-2 my-1 h-px bg-white/10" />
+                                    <div className="px-3 pb-1 pt-1.5 text-[9px] font-black uppercase tracking-[.16em] text-slate-500">Review</div>
+                                    {previewUrl ? (
+                                        <a href={previewUrl} target="_blank" rel="noopener noreferrer" data-cosmic-publish-action="preview" onClick={() => setBuilderToolbarMenu(null)} title={previewDeploymentError || (previewIsStale ? 'Open the deployed preview. Your latest changes may still need publishing.' : 'Open the latest deployed preview in a new tab.')} className="cosmic-publish-menu-item flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold transition hover:bg-white/[0.06]"><span className="inline-flex items-center gap-2"><span className={`h-1.5 w-1.5 rounded-full ${previewDeploymentError ? 'bg-red-400' : previewIsStale ? 'bg-amber-400' : 'bg-emerald-400'}`} /> Preview Website</span><span aria-hidden="true" className="opacity-50">↗</span></a>
+                                    ) : (
+                                        <span className="cosmic-publish-menu-disabled flex w-full cursor-not-allowed items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold text-slate-500"><span className="inline-flex items-center gap-2"><span className="h-1.5 w-1.5 rounded-full bg-slate-500" /> Preview Website</span><span className="text-[9px] uppercase tracking-wide">Not ready</span></span>
+                                    )}
+                                    {websiteAccessRole !== 'website_editor' && (
+                                        <a href={route('dashboard', { tab: 'health', website: website.id })} data-cosmic-publish-action="health" onClick={() => setBuilderToolbarMenu(null)} className="cosmic-publish-menu-item flex w-full items-center justify-between rounded-xl px-3 py-2.5 text-xs font-semibold transition hover:bg-white/[0.06]"><span className="inline-flex items-center gap-2"><span className="text-emerald-400">✚</span> Website Health</span><span aria-hidden="true" className="opacity-50">↗</span></a>
+                                    )}
+                                </BuilderToolbarDropdown>
                             )}
                             {websiteAccessRole === 'website_editor' && (
                                 <Link method="post" as="button" href={route('logout')} className="inline-flex h-9 shrink-0 items-center justify-center rounded-lg border border-white/10 px-3 text-xs font-semibold text-slate-300 transition hover:bg-white/10 hover:text-white">Log out</Link>
@@ -5898,18 +7294,18 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         .cosmic-overlay-first-spark > .cosmic-builder-spark {
                             position: relative;
                         }
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > section:not([class*="cosmic-tw-slot--"]),
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section:not([class*="cosmic-tw-slot--"]),
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not([class*="cosmic-tw-slot--"]),
-                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not([class*="cosmic-tw-slot--"]):not([class*="cosmic-tw-slot--"]) {
-                            padding-top: calc(var(--cosmic-overlay-header-height, 80px) + var(--cosmic-overlay-first-spark-padding, clamp(3.25rem, 5vw, 5.5rem))) !important;
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
+                        .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
+                            padding-top: calc(var(--cosmic-overlay-header-height, 80px) + var(--cosmic-overlay-first-spark-padding, clamp(4rem, 6vw, 6rem))) !important;
                         }
                         @media (max-width: 639px) {
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > section:not([class*="cosmic-tw-slot--"]),
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section:not([class*="cosmic-tw-slot--"]),
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not([class*="cosmic-tw-slot--"]),
-                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not([class*="cosmic-tw-slot--"]):not([class*="cosmic-tw-slot--"]) {
-                                padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 2.75rem)) !important;
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > section,
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > section,
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section,
+                            .cosmic-overlay-first-spark > .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child {
+                                padding-top: calc(var(--cosmic-overlay-header-height, 72px) + var(--cosmic-overlay-first-spark-padding-mobile, 3rem)) !important;
                             }
                         }
                         /* Sparks live/export visual contract: keep Builder spacing and overflow
@@ -5926,8 +7322,10 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
                             box-sizing: border-box;
                             max-width: 100%;
-                            padding-top: 50px !important;
-                            padding-bottom: 50px !important;
+                            padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, 56px)) !important;
+                            padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, 56px)) !important;
+                            padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, 20px)) !important;
+                            padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, 20px)) !important;
                         }
                         .cosmic-builder-spark :is(img,video,iframe,svg,canvas) {
                             max-width: 100%;
@@ -5949,14 +7347,28 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             opacity:0; transform:scale(.92); pointer-events:none; transition:opacity .15s ease,transform .15s ease;
                         }
                         .cosmic-builder-spark:hover > .cosmic-luna-hover-trigger { opacity:1; transform:scale(1); pointer-events:auto; }
-                        @media (min-width: 640px) {
+                        .cosmic-section-delete-trigger { background:linear-gradient(135deg,#ef4444,#be123c); box-shadow:0 10px 28px rgba(190,24,93,.28); }
+                        @media (min-width: 768px) {
                             .cosmic-builder-spark > section:not(.cosmic-tw-own-section-y),
                         .cosmic-builder-spark > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-y),
                         .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-y),
                         .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
-                            padding-top: 80px !important;
-                            padding-bottom: 80px !important;
+                            padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, 80px)) !important;
+                            padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, 80px)) !important;
+                            padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, 24px)) !important;
+                            padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, 24px)) !important;
                         }
+                        }
+                        @media (min-width: 1025px) {
+                            .cosmic-builder-spark > section:not(.cosmic-tw-own-section-y),
+                            .cosmic-builder-spark > [data-cosmic-render-shell] > section:not(.cosmic-tw-own-section-y),
+                            .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > section:not(.cosmic-tw-own-section-y),
+                            .cosmic-builder-spark > [data-cosmic-render-shell] > .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y) {
+                                padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py, 100px)) !important;
+                                padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py, 100px)) !important;
+                                padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px, 28px)) !important;
+                                padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px, 28px)) !important;
+                            }
                         }
                         @media (max-width: 639px) {
                             .cosmic-builder-spark table {
@@ -5969,7 +7381,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         }
                         /* Tailwind ownership: page style never rewrites customer-facing button utilities. */
 `}</style>
-                    <div ref={builderCanvasRef} data-cosmic-preview-isolation="true" data-cosmic-page-style={normalizedPageStyle} className={`cosmic-builder-canvas cosmic-preview-isolation mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl lg:w-[min(86vw,1560px)] ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
+                    <div ref={builderCanvasRef} data-cosmic-preview-isolation="true" data-cosmic-page-style={normalizedPageStyle} className={`cosmic-builder-canvas cosmic-preview-isolation mx-auto w-full max-w-[1560px] overflow-visible rounded-xl bg-white shadow-2xl ${trialMode ? 'border border-slate-200 shadow-slate-300/60' : 'border border-white/10 shadow-black/30'}`}>
                         <div
                             className="relative flex w-full flex-col items-stretch overflow-hidden rounded-[11px]"
                             style={{
@@ -6036,27 +7448,50 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                         return;
                                     }
                                     const explicit=target.closest('[data-luna-target]');
-                                    const semantic=explicit || target.closest('h1,h2,h3,h4,h5,h6,p,button,a,img,[role="button"]');
+                                    const semantic=explicit || target.closest('h1,h2,h3,h4,h5,h6,p,button,a,img,video,[role="button"]');
                                     const itemTarget=resolveLunaItemTarget(root,target,data.blocks?.[index]);
                                     const card=itemTarget?.mode==='card'?itemTarget.card:null;
                                     const preferCard=Boolean(card && (!semantic || semantic===card.node || target===card.node));
-                                    const node=preferCard ? card.node : (semantic && root.contains(semantic) ? semantic : root);
-                                    const tag=node===root ? '' : (node.tagName?.toLowerCase?.()||'');
+                                    let node=preferCard ? card.node : (semantic && root.contains(semantic) ? semantic : root);
+                                    let tag=node===root ? '' : (node.tagName?.toLowerCase?.()||'');
+                                    // Some premium Sparks use a large interactive wrapper around most of a hero.
+                                    // Treat that wrapper as the section itself so the section-level Luna trigger
+                                    // cannot accidentally open the Button editor. Real compact CTAs remain element targets.
+                                    if(node!==root && (tag==='button'||tag==='a'||node.getAttribute?.('role')==='button')){
+                                        const rrGuard=root.getBoundingClientRect();
+                                        const nrGuard=node.getBoundingClientRect();
+                                        const broadInteractive=nrGuard.width >= rrGuard.width*0.6 || nrGuard.height >= rrGuard.height*0.3;
+                                        if(broadInteractive && !node.getAttribute?.('data-luna-target')){ node=root; tag=''; }
+                                    }
                                     const explicitType=node===root ? '' : String(node.getAttribute?.('data-luna-target')||'');
-                                    const type=preferCard ? 'card' : (node===root ? 'section' : (explicitType || (/^h[1-6]$/.test(tag)?'heading':tag==='img'?'image':(tag==='button'||tag==='a'||node.getAttribute('role')==='button')?'button':'text')));
+                                    // A background image covers the section canvas, so its hover
+                                    // affordance must open the Section editor rather than a competing
+                                    // image editor. Inline/card images remain element-editable.
+                                    if (explicitType === 'background image' || node.getAttribute?.('data-cosmic-background-media') === 'true') {
+                                        node=root;
+                                        tag='';
+                                    }
+                                    const normalizedExplicitType=node===root ? '' : String(node.getAttribute?.('data-luna-target')||'');
+                                    const type=preferCard ? 'card' : (node===root ? 'section' : (normalizedExplicitType || (/^h[1-6]$/.test(tag)?'heading':tag==='img'?'image':tag==='video'?'video':(tag==='button'||tag==='a'||node.getAttribute('role')==='button')?'button':'text')));
                                     const imageNode=type.includes('image') ? (tag==='img'?node:node.querySelector?.('img')) : null;
-                                    const currentValue=type.includes('image') ? String(imageNode?.getAttribute?.('src')||'') : (type==='section' ? '' : type==='card' ? String(card?.text||'') : String(node.textContent||'').trim().slice(0,1200));
+                                    const videoNode=type==='video' ? (tag==='video'?node:node.querySelector?.('video')) : null;
+                                    const currentValue=type.includes('image') ? String(imageNode?.getAttribute?.('src')||'') : type==='video' ? String(videoNode?.getAttribute?.('src')||'') : (type==='section' ? '' : type==='card' ? String(card?.text||'') : String(node.textContent||'').trim().slice(0,1200));
                                     const url=tag==='a'?String(node.getAttribute('href')||''):'';
+                                    const fieldPath=String((node===root?null:node.closest?.('[data-cosmic-field-path]'))?.getAttribute?.('data-cosmic-field-path')||'');
                                     // Even when the user targets text/button/image inside a card,
                                     // retain the parent repeater item index so direct edits cannot
                                     // accidentally mutate an earlier cloned sibling with the same copy.
                                     const itemIndex=itemTarget?Number(itemTarget.index):null;
                                     const itemCount=itemTarget?Number(itemTarget.count):null;
                                     const collectionKey=String(itemTarget?.collectionKey||'');
+                                    const collectionPath=String(itemTarget?.collectionPath||'');
                                     const rr=root.getBoundingClientRect(); const nr=node.getBoundingClientRect();
-                                    const top=Math.max(8,Math.min(root.clientHeight-42,(node===root?12:nr.top-rr.top+8)));
-                                    const left=Math.max(8,Math.min(root.clientWidth-42,(node===root?root.clientWidth-46:nr.right-rr.left-26)));
-                                    setLunaHoverTarget((current)=> current && current.blockIndex===index && current.type===type && current.currentValue===currentValue && current.itemIndex===itemIndex && current.collectionKey===collectionKey && Math.abs(current.top-top)<2 && Math.abs(current.left-left)<2 ? current : {blockIndex:index,type,currentValue,url,itemIndex,itemCount,collectionKey,top,left});
+                                    let top=Math.max(8,Math.min(root.clientHeight-42,(node===root?12:nr.top-rr.top+8)));
+                                    let left=Math.max(8,Math.min(root.clientWidth-84,(node===root?root.clientWidth-88:nr.right-rr.left-26)));
+                                    // The upper-left corner is reserved for the section-level
+                                    // Saved Spark control. Keep contextual edit targets clear of it.
+                                    if (top < 66 && left < 70) left = Math.min(root.clientWidth - 42, 72);
+                                    setLunaHoverTarget((current)=> current && current.blockIndex===index && current.type===type && current.currentValue===currentValue && current.itemIndex===itemIndex && current.collectionKey===collectionKey && current.collectionPath===collectionPath && current.fieldPath===fieldPath && Math.abs(current.top-top)<2 && Math.abs(current.left-left)<2 ? current : {blockIndex:index,type,currentValue,url,itemIndex,itemCount,collectionKey,collectionPath,fieldPath,top,left});
                                 }}
                                 onMouseLeave={()=>setLunaHoverTarget((current)=>current?.blockIndex===index?null:current)}
                                 onClick={(event)=>{
@@ -6071,6 +7506,9 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                             >
 
                                 {renderBlock(block,index)}
+                                <div className="cosmic-section-control-rail absolute left-4 top-4 z-[72] flex items-center gap-2 opacity-0 transition group-hover:opacity-100 focus-within:opacity-100">
+                                    <button type="button" onClick={(event)=>{event.preventDefault();event.stopPropagation();saveBlockToSavedSparks(block,index)}} disabled={savedSparksBusy} title="Save section to Saved Sparks" aria-label="Save section to Saved Sparks" className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-violet-300 bg-white text-slate-800 shadow-lg transition hover:border-violet-500 hover:text-violet-700 disabled:opacity-50">▣</button>
+                                </div>
                                 {lunaHoverTarget?.blockIndex===index && (
                                     <button
                                         type="button"
@@ -6080,7 +7518,12 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                         aria-label={`Ask Luna about this ${lunaHoverTarget.type}`}
                                         onMouseMove={(event)=>event.stopPropagation()}
                                         onClick={(event)=>{ event.preventDefault(); event.stopPropagation(); openLunaHoverTarget(lunaHoverTarget); }}
-                                    >✦</button>
+                                    ><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>
+                                )}
+                                {lunaHoverTarget?.blockIndex===index && (
+                                    <button type="button" className="cosmic-luna-hover-trigger cosmic-section-delete-trigger" style={{ top:`${lunaHoverTarget.top}px`, left:`${lunaHoverTarget.left + 42}px` }} title="Delete this section" aria-label="Delete this section" onMouseMove={(event)=>event.stopPropagation()} onClick={async(event)=>{event.preventDefault();event.stopPropagation();const confirmed=await confirmCosmicAction({title:'Delete this section?',message:'This removes the section from the current Builder draft.',confirmLabel:'Delete section',tone:'error'});if(confirmed){removeBlock(index);setLunaHoverTarget(null);}}}>
+                                        <svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M3 6h18"/><path d="M8 6V4h8v2"/><path d="m19 6-1 14H6L5 6"/><path d="M10 11v5M14 11v5"/></svg>
+                                    </button>
                                 )}
 
                             </div>
@@ -6237,7 +7680,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 onClick={() => { setSparkInsertTarget(null); setIsModalOpen(true); }}
                                 className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 hover:scale-[1.02] hover:shadow-xl transition text-white font-bold"
                             >
-                                ✨ Add Spark
+                                ✨ Add Section
                             </button>}
 
                             {/* Builder */}
@@ -6313,11 +7756,12 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 />
             )}
 
-            {!aiOnlyBuilder && (capabilities.canGenerateAi || trialMode) && (
+            {(capabilities.canGenerateAi || trialMode) && (
                 <AddSectionModal
                     open={isModalOpen}
                     onClose={() => { setIsModalOpen(false); setSparkInsertTarget(null); }}
                     onAdd={addBlock}
+                    onCustomize={beginNewSectionEdit}
                     hasBlocks={(data.blocks?.length ?? 0) > 0}
                     hasWebsiteContent={hasWebsiteContent}
                     websiteContext={websiteContext}
@@ -6334,7 +7778,11 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     preloadedCatalogLoaded={sparkCatalogLoaded}
                     preparedVisibleCount={preparedSparkCount}
                     ownedOnly={false}
-                    contextLabel={sparkInsertTarget ? `Insert Spark ${sparkInsertTarget.position}` : 'Add Spark'}
+                    contextLabel={sparkInsertTarget ? `Insert Section ${sparkInsertTarget.position}` : 'Add Section'}
+                    insertionContext={sparkInsertTarget ? { position: sparkInsertTarget.position, anchorLabel: sparkInsertTarget.anchorLabel || editSession?.label || 'current section' } : null}
+                    overlayClassName={sparkInsertTarget?.source === 'edit-section' ? 'z-[10240]' : 'z-[900]'}
+                    lunaSparksCount={savedSparks.filter((spark) => spark.source === 'luna').length}
+                    onOpenLunaSparks={trialMode ? null : openLunaSparksFromAddSection}
                     onOwnershipChanged={(sparkKey) => setSparkCatalog((current) => current.map((spark) => spark.key === sparkKey ? { ...spark, owned: true } : spark))}
                 />
             )}
@@ -6675,11 +8123,22 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                     if (!asset?.url) return;
                     setLunaMediaLibraryOpen(false);
                     if(lunaElementTarget?.type==='logo'){
+                        // Logo replacement leaves the generic selected-element popup entirely.
+                        // The chosen asset goes straight into the dedicated cropper so the old
+                        // placeholder/"Your Logo" preview cannot sit above the crop workflow.
+                        if(editSession?.open) cancelEditSession();
                         openLogoCrop(
                             asset.url,
                             logoCompanyName || data.global_header?.logo_text || website?.name,
                             {sourceKind:'upload',entryPrompt:false,autoAdaptTheme:false},
                         );
+                        return;
+                    }
+                    if(lunaMediaLibraryPurpose==='section-authored-background-image'){
+                        if(!applySectionAuthoredBackgroundImage(asset.url)){
+                            setPageAiError('This Spark no longer exposes an authored background image slot.');
+                        }
+                        setLunaMediaLibraryPurpose('element');
                         return;
                     }
                     if(lunaMediaLibraryPurpose==='section-background-image'){
@@ -6688,25 +8147,18 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                         return;
                     }
                     if(lunaMediaLibraryPurpose==='section-background-video'){
-                        // Video sections already own a real `video_url` field. Updating the
-                        // universal background only adds a second layer behind the Spark, so
-                        // the original hero video stays visible and makes Media Library Apply
-                        // look like it did nothing. Replace the Spark's native video slot first.
-                        const applied = applyDirectLunaVideoUrl(asset.url);
+                        const applied = applyLunaUniversalVideo(asset.url);
                         if(applied){
                             setPageAiError('');
                             setLunaDirectVideoUrl('');
-                            setLunaMessages((messages)=>[...messages,{role:'assistant',text:'Video selected from your Media Library. · 0 credits'}]);
-                            showCosmicNotification({title:'Video updated',message:'Media Library video applied to this section.',tone:'success',mode:'toast',duration:2600});
-                        }else{
-                            setPageAiError('This section does not expose a background video slot.');
+                            showCosmicNotification({title:'Background video updated',message:'Media Library video applied without replacing the Spark.',tone:'success',mode:'toast',duration:2600});
                         }
                         setLunaMediaLibraryPurpose('element');
                         return;
                     }
                     if(lunaMediaLibraryPurpose==='section-video-poster'){
-                        if(!applyDirectLunaVideoPoster(asset.url)){
-                            setPageAiError('This video section does not expose a thumbnail/poster slot.');
+                        if(!applyLunaUniversalVideoPoster(asset.url)){
+                            setPageAiError('Choose a valid poster image.');
                         }
                         setLunaMediaLibraryPurpose('element');
                         return;
@@ -6734,6 +8186,7 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                 onSelect={(asset) => {
                     if (!asset?.url) return;
                     setLogoMediaLibraryOpen(false);
+                    if(editSession?.open) cancelEditSession();
                     openLogoCrop(asset.url, logoCompanyName || data.global_header?.logo_text || website?.name, { sourceKind:'upload' });
                 }}
             /> : null}

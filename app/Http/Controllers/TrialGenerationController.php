@@ -136,7 +136,7 @@ class TrialGenerationController extends Controller
 
     public function store(Request $request)
     {
-        set_time_limit(240);
+        set_time_limit(480);
 
         $validated = $request->validate([
             'prompt' => ['required', 'string', 'min:20', 'max:2000'],
@@ -203,11 +203,9 @@ class TrialGenerationController extends Controller
         $trial->update(['media_pack_id' => $mediaPack->id]);
 
         try {
-            // Production trial hand-off: do not keep the public HTTP request open
-            // while an AI page is being generated. Create the complete page shell
-            // immediately, queue Home first, then let each completed page dispatch
-            // exactly one next page.
-            Log::info('[TrialGeneration] Creating asynchronous trial shell.', ['trial' => $trial->id]);
+            // Build Home before handing the visitor to Builder. This keeps the
+            // first screen useful while every inner page remains asynchronous.
+            Log::info('[TrialGeneration] Creating Home-first trial shell.', ['trial' => $trial->id]);
 
             $finalThemeSettings = $this->myBrandThemes->ensureInSettings(
                 $this->regenerationThemeForPrompt($profile['industry'], $validated['prompt'])
@@ -244,7 +242,15 @@ class TrialGenerationController extends Controller
                 ->first(fn (array $item) => (bool) ($item['is_home'] ?? false));
 
             if (is_array($homeRecipe) && (int) ($homeRecipe['page_id'] ?? 0) > 0) {
-                BuildTrialSiteBundleJob::dispatch($trial->id, (int) $homeRecipe['page_id']);
+                BuildTrialSiteBundleJob::dispatchSync($trial->id, (int) $homeRecipe['page_id']);
+            }
+
+            $page->refresh();
+            $freshTrial = $trial->fresh();
+            $homeStatus = collect((array) data_get($freshTrial->bundle_manifest, 'pages', []))
+                ->firstWhere('page_id', $page->id)['build_status'] ?? null;
+            if (! is_array($page->blocks) || $page->blocks === [] || $homeStatus !== 'ready') {
+                throw new \RuntimeException($freshTrial->bundle_error ?: 'The trial Home page could not be completed.');
             }
 
             // Logo generation is intentionally deferred from this request too.
@@ -254,7 +260,7 @@ class TrialGenerationController extends Controller
                 'token' => $trial->token,
             ], false);
 
-            Log::info('[TrialGeneration] Async Builder redirect prepared.', [
+            Log::info('[TrialGeneration] Home-first Builder redirect prepared.', [
                 'trial' => $trial->id,
                 'page' => $page->id,
                 'builder_url' => $builderUrl,
@@ -274,7 +280,7 @@ class TrialGenerationController extends Controller
                 'bundle_key' => data_get($freshTrial->bundle_manifest, 'bundle_key'),
                 'bundle_status' => $freshTrial->bundle_status,
                 'bundle_page_count' => (int) data_get($freshTrial->bundle_manifest, 'page_count', 1),
-                'message' => 'Your Builder is ready. Home is building first; the remaining pages will continue automatically.',
+                'message' => 'Your Home page is ready. The remaining pages will continue automatically in the background.',
             ])->header('X-Cosmic-Builder-Url', $builderUrl);
         } catch (TransporterException $exception) {
             Log::warning('Public trial generation unavailable', [
@@ -368,8 +374,15 @@ class TrialGenerationController extends Controller
             // manifest staging_url write was interrupted.
             $previewUrl = $this->trialStagingPublisher->existingUrl($trial);
 
-            if (! $previewUrl && $trial->bundle_status === 'ready') {
-                $previewUrl = $this->trialStagingPublisher->publish($trial->fresh());
+            if (! $previewUrl) {
+                $hasReadyPage = collect(data_get($trial->bundle_manifest, 'pages', []))
+                    ->contains(fn (array $page): bool => ($page['build_status'] ?? null) === 'ready');
+
+                if ($trial->bundle_status === 'ready') {
+                    $previewUrl = $this->trialStagingPublisher->publish($trial->fresh());
+                } elseif ($hasReadyPage) {
+                    $previewUrl = $this->trialStagingPublisher->publishProgressive($trial->fresh());
+                }
             }
         } catch (\Throwable $exception) {
             Log::warning('[TrialStaging] Preview status repair deferred.', [

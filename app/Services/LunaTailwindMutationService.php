@@ -19,7 +19,8 @@ final class LunaTailwindMutationService
         $inventory = $elementContext['tailwindInventory'] ?? $elementContext['tailwind_inventory'] ?? [];
         if (! is_array($inventory)) $inventory = [];
         $clean = [];
-        foreach (array_slice($inventory, 0, 80) as $row) {
+        $inventoryLimit = (int) config('spark-tailwind-schema.limits.max_slots', 160);
+        foreach (array_slice($inventory, 0, $inventoryLimit) as $row) {
             if (! is_array($row)) continue;
             $slot = $this->contract->normalizeSlot((string) ($row['slot'] ?? ''));
             if ($slot === '' || ! preg_match((string) config('spark-tailwind-schema.slot_pattern'), $slot)) continue;

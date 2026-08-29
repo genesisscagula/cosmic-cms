@@ -11,6 +11,8 @@ export default function PublicHeader({
     getStartedHref = '/pricing',
     sticky = true,
     className = '',
+    logoSrc = null,
+    logoAlt = 'Cosmic CMS',
 }) {
     const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -36,23 +38,29 @@ export default function PublicHeader({
     return (
         <>
             <header className={`${sticky ? 'sticky top-0' : 'relative'} z-50 border-b border-slate-200/80 bg-white/95 backdrop-blur-xl ${className}`}>
-                <div className="mx-auto flex min-h-[72px] max-w-7xl items-center justify-between px-5 py-3 sm:px-6 lg:px-8">
+                <div className="mx-auto flex min-h-[72px] max-w-[1440px] items-center justify-between px-5 py-3 sm:px-6 lg:px-8">
                     <Link href="/" className="flex items-center gap-3" aria-label="Cosmic CMS home">
-                        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 text-lg font-black text-white shadow-sm shadow-emerald-200">
-                            ✦
-                        </span>
-                        <span>
-                            <span className="block text-lg font-black tracking-tight text-slate-950">Cosmic CMS</span>
-                            <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">AI website platform</span>
-                        </span>
+                        {logoSrc ? (
+                            <img src={logoSrc} alt={logoAlt} className="h-14 w-auto max-w-[270px] object-contain sm:h-[3.75rem]" />
+                        ) : (
+                            <>
+                                <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-600 to-green-700 text-lg font-black text-white shadow-sm shadow-emerald-200">
+                                    ✦
+                                </span>
+                                <span>
+                                    <span className="block text-lg font-black tracking-tight text-slate-950">Cosmic CMS</span>
+                                    <span className="block text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">AI website platform</span>
+                                </span>
+                            </>
+                        )}
                     </Link>
 
-                    <nav className="hidden items-center gap-8 lg:flex" aria-label="Primary navigation">
+                    <nav className="hidden items-center gap-9 lg:flex" aria-label="Primary navigation">
                         {NAV_ITEMS.map((item) => (
                             <a
                                 key={item.href}
                                 href={item.href}
-                                className="text-sm font-semibold text-slate-600 transition hover:text-slate-950"
+                                className="text-[15px] font-semibold text-slate-600 transition hover:text-slate-950"
                             >
                                 {item.label}
                             </a>
@@ -60,10 +68,10 @@ export default function PublicHeader({
                     </nav>
 
                     <div className="hidden items-center gap-3 lg:flex">
-                        <Link href="/login" className="rounded-lg px-4 py-2 text-sm font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950">
+                        <Link href="/login" className="rounded-lg px-4 py-2 text-[15px] font-bold text-slate-600 transition hover:bg-slate-100 hover:text-slate-950">
                             Log in
                         </Link>
-                        <Link href={getStartedHref} className="rounded-lg bg-emerald-700 px-5 py-2.5 text-sm font-bold text-white shadow-sm shadow-emerald-100 transition hover:bg-emerald-800">
+                        <Link href={getStartedHref} className="rounded-lg bg-emerald-700 px-5 py-2.5 text-[15px] font-bold text-white shadow-sm shadow-emerald-100 transition hover:bg-emerald-800">
                             Get started
                         </Link>
                     </div>

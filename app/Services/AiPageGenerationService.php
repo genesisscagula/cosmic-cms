@@ -478,14 +478,14 @@ class AiPageGenerationService
      */
     private function applyLocalTestimonialAvatars(array &$block): void
     {
-        $folder = '/cosmic-images/avatar/';
+        $folder = '/storage/cms-images/avatars/';
         $avatars = [
-            $folder . 'avatar-1.svg',
-            $folder . 'avatar-2.svg',
-            $folder . 'avatar-3.svg',
-            $folder . 'avatar-4.svg',
-            $folder . 'avatar-5.svg',
-            $folder . 'avatar-6.svg',
+            $folder . 'avatar-1.jpg',
+            $folder . 'avatar-2.jpg',
+            $folder . 'avatar-3.jpg',
+            $folder . 'avatar-4.jpg',
+            $folder . 'avatar-5.jpg',
+            $folder . 'avatar-6.jpg',
         ];
 
         $items = $block['items'] ?? $block['testimonials'] ?? $block['reviews'] ?? null;

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\AiFlexStructureContract;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -48,13 +49,15 @@ class LunaAiFlexSparkService
 You are Sol, Cosmic CMS's senior section composer. Return JSON only with {"block":{...}}.
 Create ONE structured AI Flex section using the existing luna_custom_section renderer. Never output HTML, CSS, JSX, scripts, arbitrary Tailwind classes, or executable code.
 The user's current Cosmic theme is authoritative. A screenshot/reference, when mentioned, is composition inspiration only: borrow hierarchy/layout ideas but preserve the active site's palette, typography, button language, surfaces and brand character unless the user explicitly asks to change the theme.
-Allowed block keys: type,custom_spark_key,custom_spark_saved,semantic_type,source_type,category,layout,alignment,media_position,density,accent_shape,section_mood,eyebrow,heading,heading_accent_text,text,primary_label,primary_url,secondary_label,secondary_url,image_url,items,theme,visual_style,review,form,ai_flex.
+Allowed block keys: type,custom_spark_key,custom_spark_saved,semantic_type,source_type,category,layout,alignment,media_position,density,accent_shape,section_mood,eyebrow,heading,heading_accent_text,text,primary_label,primary_url,secondary_label,secondary_url,image_url,image_query,items,elements,theme,visual_style,review,form,ai_flex.
 Required: type="luna_custom_section", custom_spark_saved=false, theme="auto". semantic_type is the logical section role (hero, services, testimonials, faq, contact, pricing, cta, content, etc.). When replacing a source section, preserve/inherit its logical role.
-AI FLEX UNIVERSAL ELEMENTS (v4): Prefer an `elements` tree whenever the requested/reference composition cannot be faithfully represented by the legacy heading/text/items fields. Allowed element types: group,row,column,grid,stack,card,heading,text,button,image,icon,badge,list,divider,stat,spacer,form. Nest containers safely (max depth 5). A form element is structured only: type=form, optional title/note/button_label/success_message/columns/button_alignment, and fields[]. Allowed field controls: text,email,tel,number,date,time,textarea,select,checkbox,radio,hidden. Each field may use name,label,placeholder,type,required,width,options,min,max,step,value,autocomplete. Never emit form HTML, scripts, endpoints, event handlers, raw CSS or Tailwind. Each non-form element may use only structured fields: type,key,text,label,url,src,alt,icon,value,items,children and a structured style object. Never emit className, HTML, CSS, JSX, JavaScript or Tailwind. Allowed style keys: gap,columns,width,max_width,min_height,padding,padding_x,padding_y,radius,background,color,border_color,border_width,shadow,align,justify,text_align,font_size,font_weight,line_height,aspect_ratio,object_fit,object_position,opacity,position,top,right,bottom,left,z_index,overflow,order,grow,basis,self_align,tablet_width,mobile_width,tablet_columns,mobile_columns,tablet_gap,mobile_gap,tablet_padding,mobile_padding,tablet_order,mobile_order,tablet_position,mobile_position,tablet_min_height,mobile_min_height. Use responsive geometry intentionally: desktop may use asymmetric columns, controlled absolute/floating cards, overlap and off-axis media; tablet/mobile must collapse safely without horizontal overflow. Use semantic colors primary,surface,surface_alt,white,on_primary,on_surface,on_dark,accent or explicit HEX.
+AI FLEX UNIVERSAL ELEMENTS (v5): Prefer an `elements` tree whenever the requested/reference composition cannot be faithfully represented by the legacy heading/text/items fields. CANONICAL STRUCTURE: `elements[]` is the Rows repeater. Every root element MUST be type=row. Every row.children[] is the Columns repeater and MUST contain only type=column nodes. Every column.children[] is the Extras repeater and may contain safe content/container elements. Do not place primitives directly at root or directly under a row. Allowed element types: group,row,column,grid,stack,card,heading,text,button,image,video,icon,badge,list,divider,stat,spacer,form. Nest containers safely (max depth 5). A form element is structured only: type=form, optional title/note/button_label/success_message/columns/button_alignment, and fields[]. Allowed field controls: text,email,tel,number,date,time,textarea,select,checkbox,radio,hidden. Each field may use name,label,placeholder,type,required,width,options,min,max,step,value,autocomplete. Never emit form HTML, scripts, endpoints, event handlers, raw CSS or Tailwind. Each non-form element may use only structured fields: type,key,text,label,url,src,alt,icon,value,items,children and a structured style object. Video elements may additionally use poster,controls,autoplay,muted,loop,plays_inline. Never emit className, HTML, CSS, JSX, JavaScript or Tailwind. Allowed style keys: gap,columns,width,max_width,min_height,padding,padding_x,padding_y,radius,background,color,border_color,border_width,shadow,align,justify,text_align,font_size,font_weight,line_height,aspect_ratio,object_fit,object_position,opacity,position,top,right,bottom,left,z_index,overflow,order,grow,basis,self_align,tablet_width,mobile_width,tablet_columns,mobile_columns,tablet_gap,mobile_gap,tablet_padding,mobile_padding,tablet_order,mobile_order,tablet_position,mobile_position,tablet_min_height,mobile_min_height. Use responsive geometry intentionally: desktop may use asymmetric columns, controlled absolute/floating cards, overlap and off-axis media; tablet/mobile must collapse safely without horizontal overflow. Use semantic colors primary,surface,surface_alt,white,on_primary,on_surface,on_dark,accent or explicit HEX.
+COSMIC SPACING BASELINE: unless the user explicitly requests tighter or wider spacing, use a 1280px content max-width, section padding 80px vertical / 48px horizontal on desktop, 60px vertical on tablet, and 44px vertical / 22px horizontal on mobile. Use 32px between primary columns, 24px on tablet, and 20px on mobile. Use 24px between repeated cards and 16-20px between related copy elements. Do not place headings, copy, buttons, or media flush against section edges.
 Allowed layout: editorial,split,feature-grid,card-grid,media-led,stacked,centered.
 Allowed alignment: left,center,right. Allowed media_position: left,right,background,top,none.
 items is an array of content cards with only title,text,icon,label,url,image_url.
-ai_flex is metadata only: {"version":1,"source":"sol","reference_mode":"composition_only","theme_policy":"inherit","intent":"short description"}.
+ai_flex is metadata only: {"version":1,"source":"sol","reference_mode":"composition_only","theme_policy":"inherit","intent":"short description","spark_name":"2-5 word reusable section name"}.
+Always set ai_flex.spark_name to a concise, distinctive reusable library name based on the generated composition (for example "Midnight Services Grid" or "Editorial Testimonial Split"). Do not ask the user to name it.
 visual_style may use only renderer-supported scalar design values; prefer theme inheritance and restrained values. Do not invent remote image URLs. Preserve useful source content when replacing a section.
 PROMPT;
         $payload = [
@@ -116,6 +119,203 @@ PROMPT;
         throw new \RuntimeException('AI Flex generation failed after all model attempts.', 0, $lastError);
     }
 
+    /**
+     * Start Blank uses two mutation passes after API 1 has classified the turn.
+     * Pass one owns geometry; pass two may only supply content inside that
+     * validated geometry. This prevents copy generation from flattening an
+     * explicitly requested split/asymmetric composition.
+     */
+    public function generateStaged(string $request, array $theme = [], array $pageContext = []): array
+    {
+        $structure = $this->generate(
+            "STRUCTURE PASS ONLY. Build the exact responsive section composition requested below. Prioritize explicit row/column count, widths, order, media side, alignment, and requested controls. Use short neutral placeholders for content.\n\nUSER REQUEST:\n{$request}",
+            $theme,
+            array_merge($pageContext, ['generation_stage' => 'structure']),
+            [],
+        );
+
+        $contentCandidate = $this->generate(
+            "CONTENT PASS. Fill the supplied validated section structure with useful, prompt-specific copy and media intent. Preserve its element types, nesting, column geometry, responsive order, layout, and media position exactly. Do not flatten, remove, reorder, or add structural nodes.\n\nUSER REQUEST:\n{$request}",
+            $theme,
+            array_merge($pageContext, ['generation_stage' => 'content', 'structure_locked' => true]),
+            $structure,
+        );
+
+        $completed = $this->mergeStagedContent($structure, $contentCandidate);
+        $completed = $this->enforceExplicitSplitRequest($completed, $request);
+        $completed['ai_flex'] = array_merge(is_array($completed['ai_flex'] ?? null) ? $completed['ai_flex'] : [], [
+            'pipeline' => 'intent_structure_content',
+            'structure_locked' => true,
+            'stages' => ['intent', 'structure', 'content'],
+        ]);
+
+        return $this->validate($completed, $structure);
+    }
+
+    /**
+     * Explicit geometry in the user's prompt is a hard requirement, not a hint.
+     * Models occasionally flatten a requested image/copy split during the content
+     * pass; normalize that narrow case into the canonical Rows → Columns tree.
+     */
+    private function enforceExplicitSplitRequest(array $block, string $request): array
+    {
+        $twoColumns = (bool) preg_match('/\b(?:two|2)\s+(?:responsive\s+)?columns?\b/i', $request);
+        $hasImage = (bool) preg_match('/\b(?:image|photo|picture|visual)\b/i', $request);
+        if (! $twoColumns || ! $hasImage) return $block;
+
+        $imageRight = (bool) preg_match('/\b(?:image|photo|picture|visual)\s+(?:on\s+the\s+)?right\b/i', $request);
+        $imageLeft = (bool) preg_match('/\b(?:image|photo|picture|visual)\s+(?:on\s+the\s+)?left\b/i', $request) || ! $imageRight;
+        $heading = trim((string) ($block['heading'] ?? 'A thoughtful approach, built around you'));
+        $text = trim((string) ($block['text'] ?? 'Clear strategy, careful execution, and a collaborative path to the right result.'));
+        $label = trim((string) ($block['primary_label'] ?? 'Learn more'));
+        $url = trim((string) ($block['primary_url'] ?? '#')) ?: '#';
+
+        $imageColumn = [
+            'type' => 'column',
+            'style' => ['width' => 50, 'tablet_width' => 50, 'mobile_width' => 100, 'mobile_order' => $imageLeft ? 1 : 2],
+            'children' => [[
+                'type' => 'image',
+                'src' => trim((string) ($block['image_url'] ?? '')),
+                'alt' => $heading,
+                'style' => ['width' => 100, 'min_height' => 440, 'mobile_min_height' => 280, 'aspect_ratio' => 1.25, 'object_fit' => 'cover', 'radius' => 24],
+            ]],
+        ];
+        $contentColumn = [
+            'type' => 'column',
+            'style' => ['width' => 50, 'tablet_width' => 50, 'mobile_width' => 100, 'mobile_order' => $imageLeft ? 2 : 1],
+            'children' => array_values(array_filter([
+                trim((string) ($block['eyebrow'] ?? '')) !== '' ? ['type' => 'badge', 'text' => trim((string) $block['eyebrow'])] : null,
+                ['type' => 'heading', 'text' => $heading, 'style' => ['font_size' => 56, 'font_weight' => 700, 'line_height' => 1]],
+                ['type' => 'text', 'text' => $text, 'style' => ['font_size' => 18, 'line_height' => 1.6]],
+                ['type' => 'button', 'label' => $label, 'url' => $url],
+            ])),
+        ];
+
+        $block['layout'] = 'split';
+        $block['alignment'] = 'left';
+        $block['media_position'] = $imageLeft ? 'left' : 'right';
+        $block['image_url'] = trim((string) ($block['image_url'] ?? ''));
+        $block['elements'] = [[
+            'type' => 'row',
+            'style' => ['gap' => 48, 'tablet_gap' => 32, 'mobile_gap' => 24, 'align' => 'center'],
+            'children' => $imageLeft ? [$imageColumn, $contentColumn] : [$contentColumn, $imageColumn],
+        ]];
+        $block['ai_flex'] = array_merge(is_array($block['ai_flex'] ?? null) ? $block['ai_flex'] : [], [
+            'intent' => 'verified two-column image and content split',
+        ]);
+
+        return $block;
+    }
+
+    private function mergeStagedContent(array $structure, array $content): array
+    {
+        $contentKeys = [
+            'eyebrow','heading','heading_accent_text','text','primary_label','primary_url',
+            'secondary_label','secondary_url','image_url','image_query','items','review','form',
+        ];
+        foreach ($contentKeys as $key) {
+            if (array_key_exists($key, $content)) $structure[$key] = $content[$key];
+        }
+
+        if (is_array($structure['elements'] ?? null) && is_array($content['elements'] ?? null)) {
+            $structure['elements'] = $this->mergeElementContent($structure['elements'], $content['elements']);
+        }
+
+        return $structure;
+    }
+
+    private function mergeElementContent(array $structureNodes, array $contentNodes): array
+    {
+        $editable = ['text','label','url','src','alt','icon','value','items','title','note','button_label','success_message','fields'];
+        foreach ($structureNodes as $index => $node) {
+            if (! is_array($node)) continue;
+            $candidate = is_array($contentNodes[$index] ?? null) ? $contentNodes[$index] : [];
+            foreach ($editable as $key) {
+                if (array_key_exists($key, $candidate)) $node[$key] = $candidate[$key];
+            }
+            if (is_array($node['children'] ?? null)) {
+                $node['children'] = $this->mergeElementContent(
+                    $node['children'],
+                    is_array($candidate['children'] ?? null) ? $candidate['children'] : [],
+                );
+            }
+            $structureNodes[$index] = $node;
+        }
+        return $structureNodes;
+    }
+
+    /** Generate prompt-aware content for the global Website Shell Mega Footer. */
+    public function generateMegaFooter(string $request, array $siteContext = [], array $menu = [], array $theme = []): array
+    {
+        $apiKey = (string) config('openai.api_key');
+        if ($apiKey === '') throw new \RuntimeException('OpenAI API key is not configured.');
+
+        $system = <<<'PROMPT'
+You are Sol, Cosmic CMS's AI Flex footer composer. Return JSON only as {"footer":{...}}.
+Create one concise global Mega Footer that matches the supplied business prompt, industry, brand tone, and actual website navigation.
+Never output HTML, CSS, JSX, scripts, Tailwind classes, or executable code.
+The footer object may use only: tagline,primary_label,primary_url,columns.
+columns must contain 1-4 objects shaped as {"title":"...","items":[{"label":"...","url":"..."}]}.
+Use only the exact labels and URLs supplied in available_navigation. Do not invent pages, routes, email addresses, phone numbers, street addresses, social profiles, legal claims, awards, guarantees, or business facts.
+Group the available pages into useful prompt-aware menus and include every supplied page exactly once. Keep headings, tagline, and CTA short. Prefer the supplied Contact page for the primary CTA when present.
+PROMPT;
+        $payload = [
+            'request' => $request,
+            'site_context' => $siteContext,
+            'available_navigation' => array_values($menu),
+            'active_theme' => $theme,
+        ];
+        $endpoint = rtrim((string) (config('openai.base_uri') ?: 'https://api.openai.com/v1'), '/').'/chat/completions';
+        $messages = [
+            ['role' => 'system', 'content' => $system],
+            ['role' => 'user', 'content' => json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE)],
+        ];
+        $attempts = [
+            ['model' => $this->models->sol(), 'json_mode' => true, 'department' => 'sol_footer'],
+            ['model' => $this->models->sol(), 'json_mode' => false, 'department' => 'sol_footer_retry'],
+        ];
+        if ($this->models->terra() !== $this->models->sol()) {
+            $attempts[] = ['model' => $this->models->terra(), 'json_mode' => true, 'department' => 'terra_footer_fallback'];
+        }
+
+        $lastError = null;
+        foreach ($attempts as $attempt) {
+            try {
+                $body = ['model' => $attempt['model'], 'messages' => $messages];
+                if ($attempt['json_mode']) $body['response_format'] = ['type' => 'json_object'];
+                $response = Http::withToken($apiKey)->connectTimeout(30)->timeout(150)
+                    ->post($endpoint, $body)->throw()->json();
+                $decoded = json_decode((string) data_get($response, 'choices.0.message.content', ''), true);
+                $footer = is_array($decoded['footer'] ?? null) ? $decoded['footer'] : [];
+                if ($footer === [] || ! is_array($footer['columns'] ?? null)) {
+                    throw new \RuntimeException('AI Flex returned no valid Mega Footer object.');
+                }
+                $footer['ai_flex'] = [
+                    'version' => 1,
+                    'source' => 'sol',
+                    'intent' => 'prompt-aware global mega footer',
+                    'model' => (string) $attempt['model'],
+                    'department' => (string) $attempt['department'],
+                ];
+                Log::debug('[AiFlex] global Mega Footer generated', [
+                    'model' => $attempt['model'],
+                    'department' => $attempt['department'],
+                    'column_count' => count($footer['columns']),
+                ]);
+                return $footer;
+            } catch (\Throwable $exception) {
+                $lastError = $exception;
+                Log::warning('[AiFlex] global Mega Footer generation attempt failed', [
+                    'model' => $attempt['model'],
+                    'department' => $attempt['department'],
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+        }
+
+        throw new \RuntimeException('AI Flex Mega Footer generation failed after all model attempts.', 0, $lastError);
+    }
+
     /** Convert an uploaded screenshot/reference into one validated AI Flex block. */
     public function generateFromReference($file, string $request, array $theme = [], array $pageContext = [], array $source = [], string $referenceMode = 'layout_only'): array
     {
@@ -140,9 +340,9 @@ Preserve the screenshot's composition: hierarchy, proportions, alignment, media 
 If reference_mode=layout_only, the ACTIVE COSMIC THEME IS AUTHORITATIVE: do not copy screenshot colors/fonts/brand styling; use theme inheritance.
 If reference_mode=layout_and_theme, you may infer visual colors/style from the screenshot into renderer-supported visual_style values; do not invent a separate arbitrary design system.
 When replacing a source section, preserve its semantic role and useful current copy/CTA meaning unless the user explicitly asks to replace content.
-Allowed block keys: type,custom_spark_key,custom_spark_saved,semantic_type,source_type,category,layout,alignment,media_position,density,accent_shape,section_mood,eyebrow,heading,heading_accent_text,text,primary_label,primary_url,secondary_label,secondary_url,image_url,items,theme,visual_style,review,form,ai_flex.
+Allowed block keys: type,custom_spark_key,custom_spark_saved,semantic_type,source_type,category,layout,alignment,media_position,density,accent_shape,section_mood,eyebrow,heading,heading_accent_text,text,primary_label,primary_url,secondary_label,secondary_url,image_url,image_query,items,elements,theme,visual_style,review,form,ai_flex.
 Allowed layout: editorial,split,feature-grid,card-grid,media-led,stacked,centered. media_position: left,right,background,top,none. alignment: left,center,right.
-For custom screenshot UI, use elements with the Universal Elements v4 responsive layout contract. Preserve asymmetric geometry, deliberate overlap, floating cards and non-equal columns when visible. Use tablet/mobile style keys so those layouts collapse safely. Responsive geometry style keys include position,top,right,bottom,left,z_index,overflow,order,grow,basis,self_align,tablet_width,mobile_width,tablet_columns,mobile_columns,tablet_gap,mobile_gap,tablet_padding,mobile_padding,tablet_order,mobile_order,tablet_position,mobile_position,tablet_min_height,mobile_min_height. Absolute/floating desktop elements should normally become relative on tablet/mobile. Allowed element types: group,row,column,grid,stack,card,heading,text,button,image,icon,badge,list,divider,stat,spacer,form. A form element may contain title,note,button_label,success_message,columns,button_alignment,fields. Fields may be text,email,tel,number,date,time,textarea,select,checkbox,radio,hidden with name,label,placeholder,required,width,options,min,max,step,value,autocomplete. Never emit form HTML, endpoints, scripts, event handlers or raw CSS.
+For custom screenshot UI, use elements with the Universal Elements v5 responsive layout contract. Root elements are rows; row.children are columns; column.children are extras. Preserve asymmetric geometry, deliberate overlap, floating cards and non-equal columns when visible. Use tablet/mobile style keys so those layouts collapse safely. Responsive geometry style keys include position,top,right,bottom,left,z_index,overflow,order,grow,basis,self_align,tablet_width,mobile_width,tablet_columns,mobile_columns,tablet_gap,mobile_gap,tablet_padding,mobile_padding,tablet_order,mobile_order,tablet_position,mobile_position,tablet_min_height,mobile_min_height. Absolute/floating desktop elements should normally become relative on tablet/mobile. Allowed element types: group,row,column,grid,stack,card,heading,text,button,image,video,icon,badge,list,divider,stat,spacer,form. A form element may contain title,note,button_label,success_message,columns,button_alignment,fields. Fields may be text,email,tel,number,date,time,textarea,select,checkbox,radio,hidden with name,label,placeholder,required,width,options,min,max,step,value,autocomplete. Never emit form HTML, endpoints, scripts, event handlers or raw CSS.
 Never invent a remote image URL. image_url must remain empty unless a source section already has a usable image URL.
 ai_flex metadata must identify source=sol, reference_mode, theme_policy and a short intent.
 PROMPT;
@@ -274,7 +474,7 @@ STANDARD COSMIC SPACING CONTRACT:
 - Avoid generic SaaS dashboards, repetitive equal card grids, blank decorative cards, and large unused whitespace.
 
 REFERENCE MODE IS AI FLEX ONLY. Never choose, request, imitate by key, or fall back to a registered Spark/template.
-For ai_flex include a complete structured luna_custom_section block using: type,semantic_type,category,layout,alignment,media_position,density,accent_shape,section_mood,eyebrow,heading,heading_accent_text,text,primary_label,primary_url,secondary_label,secondary_url,image_url,image_query,items,elements,theme,visual_style,ai_flex. For custom compositions, prefer elements using the AI Flex Universal Elements v4 responsive layout contract. Forms may be placed anywhere in the elements tree using type=form and safe fields[]. Never emit HTML/CSS/JS/Tailwind.
+For ai_flex include a complete structured luna_custom_section block using: type,semantic_type,category,layout,alignment,media_position,density,accent_shape,section_mood,eyebrow,heading,heading_accent_text,text,primary_label,primary_url,secondary_label,secondary_url,image_url,image_query,items,elements,theme,visual_style,ai_flex. For custom compositions, prefer elements using the AI Flex Universal Elements v5 Rows -> Columns -> Extras responsive layout contract. Forms may be placed anywhere in the elements tree using type=form and safe fields[]. Never emit HTML/CSS/JS/Tailwind.
 For every visually important photo, keep image_url/src empty and provide a specific image_query describing subject, framing, industry, lighting, and composition. Item images and image elements may also use image_query. Do not create image placeholders when an icon or text treatment is more appropriate.
 If reference_mode=layout_only preserve the active Cosmic theme. If layout_and_theme, translate the screenshot brand DNA into supported visual_style values and the supplied semantic theme.
 Keep the meaningful section order. Do not create duplicate filler sections. Aim for 5-9 purposeful sections. ai_flex metadata: source=sol, reference_mode, theme_policy, intent, composition_profile="premium_reference_dna_v1".
@@ -475,7 +675,7 @@ PROMPT;
     private function sanitizeElements(array $elements, int $depth = 0, int &$budget = 0): array
     {
         if ($depth > 5 || $budget >= 80) return [];
-        $allowedTypes = ['group','row','column','grid','stack','card','heading','text','button','image','icon','badge','list','divider','stat','spacer','form'];
+        $allowedTypes = ['group','row','column','grid','stack','card','heading','text','button','image','video','icon','badge','list','divider','stat','spacer','form'];
         $containerTypes = ['group','row','column','grid','stack','card'];
         $allowedStyle = ['gap','columns','width','max_width','min_height','padding','padding_x','padding_y','radius','background','color','border_color','border_width','shadow','align','justify','text_align','font_size','font_weight','line_height','aspect_ratio','object_fit','object_position','opacity','position','top','right','bottom','left','z_index','overflow','order','grow','basis','self_align','tablet_width','mobile_width','tablet_columns','mobile_columns','tablet_gap','mobile_gap','tablet_padding','mobile_padding','tablet_order','mobile_order','tablet_position','mobile_position','tablet_min_height','mobile_min_height'];
         $out = [];
@@ -485,8 +685,15 @@ PROMPT;
             if (!in_array($type, $allowedTypes, true)) continue;
             $budget++;
             $node = ['type'=>$type];
-            foreach (['key','text','label','url','src','alt','icon','value'] as $key) {
+            foreach (['_cosmic_id','key','text','label','url','src','poster','alt','icon','value'] as $key) {
                 if (isset($raw[$key]) && is_scalar($raw[$key])) $node[$key] = mb_substr((string)$raw[$key], 0, $key === 'text' ? 4000 : 500);
+            }
+            if ($type === 'video') {
+                $node['controls'] = array_key_exists('controls', $raw) ? (bool) $raw['controls'] : true;
+                $node['autoplay'] = !empty($raw['autoplay']);
+                $node['muted'] = array_key_exists('muted', $raw) ? (bool) $raw['muted'] : true;
+                $node['loop'] = !empty($raw['loop']);
+                $node['plays_inline'] = array_key_exists('plays_inline', $raw) ? (bool) $raw['plays_inline'] : true;
             }
             if (isset($raw['items']) && is_array($raw['items'])) {
                 $node['items'] = collect($raw['items'])->take(20)->map(function ($item) {
@@ -553,7 +760,7 @@ PROMPT;
 
     public function validate(array $block, array $source = []): array
     {
-        $allowed = ['type','custom_spark_key','custom_spark_saved','semantic_type','source_type','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','items','elements','theme','visual_style','review','form','runtime','style_overrides','ai_flex'];
+        $allowed = ['type','custom_spark_key','custom_spark_saved','semantic_type','source_type','category','layout','alignment','media_position','density','accent_shape','section_mood','eyebrow','heading','heading_accent_text','text','primary_label','primary_url','secondary_label','secondary_url','image_url','image_query','items','elements','theme','visual_style','review','form','runtime','style_overrides','ai_flex'];
         $block = array_intersect_key($block, array_flip($allowed));
         $block['type'] = 'luna_custom_section';
         $block['custom_spark_key'] = 'ai-flex-'.Str::lower(Str::random(12));
@@ -581,10 +788,38 @@ PROMPT;
         $block['alignment'] = in_array($block['alignment'] ?? '', ['left','center','right'], true) ? $block['alignment'] : 'left';
         $block['media_position'] = in_array($block['media_position'] ?? '', ['left','right','background','top','none'], true) ? $block['media_position'] : 'none';
         $block['items'] = collect(is_array($block['items'] ?? null) ? $block['items'] : [])->take(12)->map(fn($item) => is_array($item) ? array_intersect_key($item,array_flip(['title','text','icon','label','url','image_url'])) : [])->values()->all();
+        $visual = is_array($block['visual_style'] ?? null) ? $block['visual_style'] : [];
+        $block['visual_style'] = array_merge([
+            'content_max_width' => 1280,
+            'section_padding_x' => 48,
+            'section_padding_y' => 80,
+            'section_padding_y_tablet' => 60,
+            'section_padding_y_mobile' => 44,
+            'content_gap' => 32,
+            'content_gap_tablet' => 24,
+            'content_gap_mobile' => 20,
+            'item_gap' => 24,
+        ], $visual);
         $elementBudget = 0;
         $block['elements'] = $this->sanitizeElements(is_array($block['elements'] ?? null) ? $block['elements'] : [], 0, $elementBudget);
-        $block['ai_flex'] = array_merge(['version'=>1,'source'=>'sol','reference_mode'=>'composition_only','theme_policy'=>'inherit'], is_array($block['ai_flex'] ?? null) ? array_intersect_key($block['ai_flex'],array_flip(['version','source','reference_mode','theme_policy','intent','model','department','composition_profile'])) : []);
-        foreach (['heading','eyebrow','text','primary_label','primary_url','secondary_label','secondary_url','image_url','semantic_type','source_type','category','density','accent_shape','section_mood'] as $key) {
+        foreach ($block['elements'] as &$row) {
+            if (! is_array($row) || ($row['type'] ?? '') !== 'row') continue;
+            $row['style'] = array_merge([
+                'gap' => 32,
+                'tablet_gap' => 24,
+                'mobile_gap' => 20,
+                'align' => 'center',
+            ], is_array($row['style'] ?? null) ? $row['style'] : []);
+        }
+        unset($row);
+        if ($block['elements'] !== []) $block['elements'] = AiFlexStructureContract::canonicalizeElements($block['elements']);
+        $block['ai_flex'] = array_merge(['version'=>1,'source'=>'sol','reference_mode'=>'composition_only','theme_policy'=>'inherit'], is_array($block['ai_flex'] ?? null) ? array_intersect_key($block['ai_flex'],array_flip(['version','source','reference_mode','theme_policy','intent','spark_name','model','department','composition_profile','structure_contract','structure_version','structure_storage','pipeline','structure_locked','stages'])) : []);
+        if ($block['elements'] !== []) {
+            $block['ai_flex']['structure_contract'] = AiFlexStructureContract::CONTRACT;
+            $block['ai_flex']['structure_version'] = AiFlexStructureContract::VERSION;
+            $block['ai_flex']['structure_storage'] = AiFlexStructureContract::STORAGE_KEY;
+        }
+        foreach (['heading','eyebrow','text','primary_label','primary_url','secondary_label','secondary_url','image_url','image_query','semantic_type','source_type','category','density','accent_shape','section_mood'] as $key) {
             if (isset($block[$key]) && !is_scalar($block[$key])) unset($block[$key]);
         }
         if (trim((string)($block['heading'] ?? '')) === '' && !empty($source['heading'])) $block['heading'] = $source['heading'];

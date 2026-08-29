@@ -57,15 +57,43 @@ final class TrialStagingPublisherService
     /** Publish a complete unclaimed trial bundle to its no-index staging site. */
     public function publish(TrialGeneration $trial): ?string
     {
-        return Cache::lock('trial-staging-publish:'.$trial->id, 180)->block(10, function () use ($trial): ?string {
+        return $this->publishBundle($trial, true);
+    }
+
+    /**
+     * Publish the pages that are already built so Preview is useful as soon as
+     * Home is ready. The final bundle job calls publish() again and atomically
+     * replaces this progressive deployment with the complete website.
+     */
+    public function publishProgressive(TrialGeneration $trial): ?string
+    {
+        return $this->publishBundle($trial, false);
+    }
+
+    private function publishBundle(TrialGeneration $trial, bool $requireComplete): ?string
+    {
+        return Cache::lock('trial-staging-publish:'.$trial->id, 180)->block(10, function () use ($trial, $requireComplete): ?string {
             $trial=TrialGeneration::query()->with('website.pages')->find($trial->id);
             if(!$trial || $trial->claimed_at || $trial->status!=='ready' || !$trial->website)return null;
 
             $manifestPages=collect(data_get($trial->bundle_manifest,'pages',[]));
-            if($manifestPages->isEmpty() || !$manifestPages->every(fn($page)=>($page['build_status']??null)==='ready'))return null;
+            if($manifestPages->isEmpty())return null;
+            if($requireComplete && !$manifestPages->every(fn($page)=>($page['build_status']??null)==='ready'))return null;
+
+            $readyPageIds=$manifestPages
+                ->filter(fn($page)=>($page['build_status']??null)==='ready')
+                ->pluck('page_id')
+                ->map(fn($id)=>(int)$id)
+                ->filter()
+                ->values();
+            if($readyPageIds->isEmpty())return null;
 
             $website=$trial->website;
-            $pages=$website->pages()->orderBy('sort_order')->orderBy('id')->get();
+            $pages=$website->pages()
+                ->whereIn('id',$readyPageIds)
+                ->orderBy('sort_order')
+                ->orderBy('id')
+                ->get();
             if($pages->isEmpty() || $pages->contains(fn(Page $page)=>!is_array($page->blocks) || $page->blocks===[]))return null;
 
             $this->syncTrialDesign($trial,$website);
@@ -75,7 +103,7 @@ final class TrialStagingPublisherService
                 $compiled[$page->id]=$this->publisher->publish($page,$website);
             }
 
-            DB::transaction(function () use ($trial,$website,$pages,$compiled): void {
+            DB::transaction(function () use ($trial,$website,$pages,$compiled,$requireComplete): void {
                 $publishedAt=now();
                 foreach($pages as $page){
                     Page::query()->whereKey($page->id)->update([
@@ -98,7 +126,12 @@ final class TrialStagingPublisherService
 
                 $manifest=is_array($trial->bundle_manifest)?$trial->bundle_manifest:[];
                 $manifest['staged_at']=$publishedAt->toIso8601String();
-                $trial->forceFill(['bundle_manifest'=>$manifest,'bundle_status'=>'ready','bundle_error'=>null])->save();
+                $updates=['bundle_manifest'=>$manifest];
+                if($requireComplete){
+                    $updates['bundle_status']='ready';
+                    $updates['bundle_error']=null;
+                }
+                $trial->forceFill($updates)->save();
             });
 
             $this->previews->deploy($website->fresh());

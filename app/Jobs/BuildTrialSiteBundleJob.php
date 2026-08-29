@@ -30,7 +30,7 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
         // Public trial pages are intentionally asynchronous even when a local
         // environment keeps QUEUE_CONNECTION=sync for unrelated jobs.
         $this->onConnection('database');
-        $this->onQueue((string) config('cosmic-queue.queues.ai_builds', 'ai-builds'));
+        $this->onQueue((string) config('cosmic-queue.queues.ai_builds', 'ai'));
         $this->afterCommit();
     }
 
@@ -91,6 +91,7 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
         } catch (Throwable $exception) {
             report($exception);
             $this->markPage($trial->id, $page->id, 'failed', $exception->getMessage());
+            throw $exception;
         }
 
         $bundleStatus=$this->refreshBundleStatus($trial->id);
@@ -182,18 +183,46 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
 
     private function dispatchNextQueuedPage(int $trialId): void
     {
-        $trial = TrialGeneration::query()->find($trialId);
-        if (! $trial || $trial->claimed_at) {
-            return;
-        }
+        $nextPageId = DB::transaction(function () use ($trialId): ?int {
+            $trial = TrialGeneration::query()->lockForUpdate()->find($trialId);
+            if (! $trial || $trial->claimed_at) {
+                return null;
+            }
 
-        $next = collect(data_get($trial->bundle_manifest, 'pages', []))
-            ->sortBy('sort_order')
-            ->first(fn (array $item) => ($item['build_status'] ?? null) === 'queued' && (int) ($item['page_id'] ?? 0) > 0);
+            $manifest = is_array($trial->bundle_manifest) ? $trial->bundle_manifest : [];
+            $pages = collect($manifest['pages'] ?? [])->sortBy('sort_order');
+            $next = $pages->first(fn (array $item) => ($item['build_status'] ?? null) === 'queued'
+                && (int) ($item['page_id'] ?? 0) > 0);
+            if (! is_array($next)) {
+                return null;
+            }
 
-        if (is_array($next)) {
-            self::dispatch($trialId, (int) $next['page_id']);
+            $pageId = (int) $next['page_id'];
+            $manifest['pages'] = collect($manifest['pages'] ?? [])->map(function (array $item) use ($pageId): array {
+                if ((int) ($item['page_id'] ?? 0) === $pageId) {
+                    $item['build_status'] = 'scheduled';
+                    $item['scheduled_at'] = now()->toIso8601String();
+                    $item['build_error'] = null;
+                }
+                return $item;
+            })->values()->all();
+            $trial->forceFill(['bundle_manifest' => $manifest, 'bundle_status' => 'building'])->save();
+
+            return $pageId;
+        });
+
+        if ($nextPageId) {
+            $delayMinutes = max(0, (int) config('cosmic.trial_inner_page_delay_minutes', 2));
+            self::dispatch($trialId, $nextPageId)
+                ->delay(now()->addMinutes($delayMinutes));
         }
+    }
+
+    public function failed(?Throwable $exception): void
+    {
+        $this->markPage($this->trialId, $this->pageId, 'failed', $exception?->getMessage() ?: 'Page generation failed.');
+        $this->refreshBundleStatus($this->trialId);
+        $this->dispatchNextQueuedPage($this->trialId);
     }
 
     private function refreshBundleStatus(int $trialId): string
@@ -208,7 +237,7 @@ final class BuildTrialSiteBundleJob implements ShouldQueue
         $errors = $pages->pluck('build_error')->filter()->take(5)->implode("\n");
         $status = match (true) {
             $statuses->every(fn ($value) => $value === 'ready') => 'ready',
-            $statuses->contains(fn ($value) => in_array($value, ['queued', 'building'], true)) => 'building',
+            $statuses->contains(fn ($value) => in_array($value, ['queued', 'scheduled', 'building'], true)) => 'building',
             $statuses->contains('ready') => 'partial',
             default => 'failed',
         };

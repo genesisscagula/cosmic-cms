@@ -43,6 +43,7 @@ export default function ThemeCard({
     brandMatchNeeded = false,
     onMatchBrandToLogo = null,
     brandMatchBusy = false,
+    isDark = false,
 }) {
     const [primary, surface, accent, text] = theme.colors;
     const isMyBrand = theme.id === 'my-brand';
@@ -61,12 +62,12 @@ export default function ThemeCard({
             aria-pressed={selected}
             aria-disabled={locked}
             tabIndex={0}
-            className={`cosmic-theme-card group relative overflow-hidden rounded-xl border text-left transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-[#111113] ${
+            className={`cosmic-theme-card group relative overflow-hidden rounded-xl border text-left transition-[border-color,background-color,box-shadow,transform] duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 focus-visible:ring-offset-2 focus-visible:ring-offset-transparent ${
                 selected
-                    ? "is-active border-violet-400/80 bg-violet-500/[0.07] shadow-[0_0_0_1px_rgba(167,139,250,0.22),0_16px_34px_rgba(0,0,0,0.28)]"
+                    ? (isDark ? "is-active border-violet-400/80 bg-violet-500/[0.07] shadow-[0_0_0_1px_rgba(167,139,250,0.22),0_16px_34px_rgba(0,0,0,0.28)]" : "is-active border-violet-400 bg-violet-50 shadow-[0_0_0_1px_rgba(139,92,246,0.14),0_12px_28px_rgba(15,23,42,0.10)]")
                     : locked
-                        ? "cursor-not-allowed border-amber-300/20 bg-[#151517]"
-                        : "border-white/10 bg-[#171719] hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.035]"
+                        ? (isDark ? "cursor-not-allowed border-amber-300/20 bg-[#151517]" : "cursor-not-allowed border-amber-200 bg-amber-50/30")
+                        : (isDark ? "border-white/10 bg-[#171719] hover:-translate-y-0.5 hover:border-white/25 hover:bg-white/[0.035]" : "border-slate-200 bg-white hover:-translate-y-0.5 hover:border-slate-300 hover:bg-slate-50")
             }`}
         >
             <div
@@ -124,30 +125,30 @@ export default function ThemeCard({
             <div className="p-3.5">
                 <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                        <div className="cosmic-theme-card-name truncate text-sm font-semibold text-white">
+                        <div className={`cosmic-theme-card-name truncate text-sm font-semibold ${isDark ? 'text-white' : 'text-slate-900'}`}>
                             {theme.name}
                         </div>
-                        <div className="cosmic-theme-card-category mt-1 text-xs text-slate-400">
+                        <div className={`cosmic-theme-card-category mt-1 text-xs ${isDark ? 'text-slate-400' : 'text-slate-600'}`}>
                             {theme.category}
                         </div>
                     </div>
 
-                    <span className={`relative z-10 shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${locked ? "bg-amber-400/10 text-amber-200" : "bg-violet-400/10 text-violet-300"}`}>
+                    <span className={`relative z-10 shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.12em] ${locked ? (isDark ? "bg-amber-400/10 text-amber-200" : "bg-amber-100 text-amber-700") : (isDark ? "bg-violet-400/10 text-violet-300" : "bg-violet-100 text-violet-700")}`}>
                         {selected ? "Active" : locked ? "🔒 Locked" : theme.featured ? "Featured" : `⚡${THEME_CREDITS[theme.id] ?? 20}`}
                     </span>
                 </div>
 
-                <p className="cosmic-theme-card-description mt-2 line-clamp-2 min-h-8 text-[11px] leading-4 text-slate-500">{theme.description}</p>
+                <p className={`cosmic-theme-card-description mt-2 line-clamp-2 min-h-8 text-[11px] leading-4 ${isDark ? 'text-slate-500' : 'text-slate-600'}`}>{theme.description}</p>
 
                 <div className="mt-3 flex items-center gap-1.5" aria-label={`${theme.name} color palette`}>
                     {[primary, surface, accent, text].map((color, index) => (
                         <span
                             key={`${color}-${index}`}
-                            className="h-2.5 w-2.5 rounded-full border border-white/15"
+                            className={`h-2.5 w-2.5 rounded-full border ${isDark ? 'border-white/15' : 'border-slate-200'}`}
                             style={{ backgroundColor: color }}
                         />
                     ))}
-                    <span className="cosmic-theme-card-palette-label ml-1 text-[10px] font-medium text-slate-500">Background · Surface · Accent · Text</span>
+                    <span className={`cosmic-theme-card-palette-label ml-1 text-[10px] font-medium ${isDark ? 'text-slate-500' : 'text-slate-500'}`}>Background · Surface · Accent · Text</span>
                 </div>
 
                 {canMatchBrandToLogo && brandMatchNeeded && (

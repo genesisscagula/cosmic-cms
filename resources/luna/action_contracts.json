@@ -1,0 +1,535 @@
+{
+  "version": 6,
+  "scopes": {
+    "sparks": {
+      "department": "terra",
+      "context": [
+        "current_page",
+        "page_spark_menu"
+      ],
+      "actions": {
+        "edit_spark": {
+          "mutation": "ai_schema",
+          "target": "existing_spark",
+          "executor": "spark_schema_editor",
+          "department": "terra"
+        },
+        "change_spark": {
+          "mutation": "deterministic_then_ai_content",
+          "target": "existing_spark",
+          "executor": "spark_structural",
+          "department": "terra"
+        },
+        "add_spark": {
+          "mutation": "deterministic_then_ai_content",
+          "target": "page",
+          "executor": "spark_structural",
+          "department": "terra"
+        },
+        "remove_spark": {
+          "mutation": "deterministic",
+          "target": "existing_spark",
+          "executor": "spark_structural",
+          "department": "terra"
+        },
+        "custom_spark": {
+          "mutation": "ai_composition",
+          "target": "page_or_existing_spark",
+          "executor": "ai_flex",
+          "department": "sol"
+        },
+        "reference_spark": {
+          "mutation": "ai_reference",
+          "target": "page_or_existing_spark",
+          "executor": "visual_reference",
+          "department": "sol"
+        },
+        "reorder_spark": {
+          "mutation": "deterministic",
+          "target": "existing_spark",
+          "executor": "spark_structural",
+          "department": "terra"
+        }
+      }
+    },
+    "global": {
+      "department": "terra",
+      "context": [
+        "global_settings",
+        "theme_tokens"
+      ],
+      "actions": {
+        "edit_global": {
+          "mutation": "bounded_tokens_or_ai",
+          "target": "global_settings",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "reset_global": {
+          "mutation": "deterministic",
+          "target": "global_settings",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "typography": {
+          "mutation": "bounded_tokens",
+          "target": "global_typography",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "colors": {
+          "mutation": "bounded_tokens",
+          "target": "global_colors",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "spacing": {
+          "mutation": "bounded_tokens",
+          "target": "global_spacing",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "buttons": {
+          "mutation": "bounded_tokens",
+          "target": "global_components",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "container": {
+          "mutation": "bounded_tokens",
+          "target": "global_layout",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "backgrounds": {
+          "mutation": "bounded_tokens",
+          "target": "global_background",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "custom_global": {
+          "mutation": "ai_schema",
+          "target": "global_settings",
+          "executor": "global_theme",
+          "department": "terra"
+        }
+      }
+    },
+    "header": {
+      "department": "terra",
+      "context": [
+        "active_header",
+        "theme_tokens"
+      ],
+      "actions": {
+        "edit_header": {
+          "mutation": "bounded_shell_or_ai",
+          "target": "active_header",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "change_header": {
+          "mutation": "deterministic",
+          "target": "active_header",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "overlay_header": {
+          "mutation": "deterministic",
+          "target": "active_header",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "sticky_header": {
+          "mutation": "deterministic",
+          "target": "active_header",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "transparent_header": {
+          "mutation": "deterministic",
+          "target": "active_header",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "logo": {
+          "mutation": "bounded_shell_or_existing_logo_pipeline",
+          "target": "header_logo",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "header_cta": {
+          "mutation": "bounded_shell",
+          "target": "header_cta",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "header_spacing": {
+          "mutation": "bounded_shell",
+          "target": "active_header",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "mobile_header": {
+          "mutation": "bounded_shell_or_ai",
+          "target": "active_header",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "custom_header": {
+          "mutation": "ai_schema",
+          "target": "active_header",
+          "executor": "header_footer",
+          "department": "terra"
+        }
+      }
+    },
+    "footer": {
+      "department": "terra",
+      "context": [
+        "active_footer",
+        "navigation",
+        "theme_tokens"
+      ],
+      "actions": {
+        "edit_footer": {
+          "mutation": "bounded_shell_or_ai",
+          "target": "active_footer",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "change_footer": {
+          "mutation": "deterministic",
+          "target": "active_footer",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "mega_footer": {
+          "mutation": "deterministic",
+          "target": "active_footer",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "simple_footer": {
+          "mutation": "deterministic",
+          "target": "active_footer",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "footer_columns": {
+          "mutation": "bounded_shell",
+          "target": "footer_columns",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "footer_cta": {
+          "mutation": "bounded_shell",
+          "target": "footer_cta",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "footer_socials": {
+          "mutation": "bounded_shell",
+          "target": "footer_socials",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "footer_brand": {
+          "mutation": "bounded_shell",
+          "target": "footer_brand",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "footer_background": {
+          "mutation": "bounded_shell",
+          "target": "active_footer",
+          "executor": "header_footer",
+          "department": "terra"
+        },
+        "custom_footer": {
+          "mutation": "ai_schema",
+          "target": "active_footer",
+          "executor": "header_footer",
+          "department": "terra"
+        }
+      }
+    },
+    "navigation": {
+      "department": "terra",
+      "context": [
+        "navigation",
+        "pages"
+      ],
+      "actions": {
+        "add_menu_item": {
+          "mutation": "bounded_navigation",
+          "target": "navigation",
+          "executor": "navigation",
+          "department": "terra"
+        },
+        "edit_menu_item": {
+          "mutation": "bounded_navigation",
+          "target": "navigation_item",
+          "executor": "navigation",
+          "department": "terra"
+        },
+        "remove_menu_item": {
+          "mutation": "deterministic",
+          "target": "navigation_item",
+          "executor": "navigation",
+          "department": "terra"
+        },
+        "reorder_menu": {
+          "mutation": "deterministic",
+          "target": "navigation",
+          "executor": "navigation",
+          "department": "terra"
+        },
+        "add_submenu_item": {
+          "mutation": "bounded_navigation",
+          "target": "navigation_item",
+          "executor": "navigation",
+          "department": "terra"
+        },
+        "remove_submenu_item": {
+          "mutation": "deterministic",
+          "target": "navigation_item",
+          "executor": "navigation",
+          "department": "terra"
+        },
+        "change_menu_link": {
+          "mutation": "bounded_navigation",
+          "target": "navigation_item",
+          "executor": "navigation",
+          "department": "terra"
+        },
+        "rename_menu_item": {
+          "mutation": "bounded_navigation",
+          "target": "navigation_item",
+          "executor": "navigation",
+          "department": "terra"
+        },
+        "create_menu": {
+          "mutation": "bounded_navigation",
+          "target": "navigation",
+          "executor": "navigation",
+          "department": "terra"
+        }
+      }
+    },
+    "theme": {
+      "department": "terra",
+      "context": [
+        "theme_tokens",
+        "brand"
+      ],
+      "actions": {
+        "change_theme": {
+          "mutation": "deterministic",
+          "target": "theme_tokens",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "edit_theme": {
+          "mutation": "bounded_tokens_or_ai",
+          "target": "theme_tokens",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "brand_theme": {
+          "mutation": "bounded_tokens_or_ai",
+          "target": "brand_theme",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "custom_theme": {
+          "mutation": "ai_schema",
+          "target": "theme_tokens",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "reset_theme": {
+          "mutation": "deterministic",
+          "target": "theme_tokens",
+          "executor": "global_theme",
+          "department": "terra"
+        },
+        "theme_from_logo": {
+          "mutation": "existing_logo_pipeline",
+          "target": "brand_theme",
+          "executor": "logo_theme",
+          "department": "sol"
+        }
+      }
+    },
+    "page": {
+      "department": "terra",
+      "context": [
+        "current_page",
+        "pages"
+      ],
+      "actions": {
+        "add_page": {
+          "mutation": "existing_page_pipeline",
+          "target": "website_pages",
+          "executor": "page_actions",
+          "department": "terra"
+        },
+        "edit_page": {
+          "mutation": "bounded_page_or_ai",
+          "target": "current_or_named_page",
+          "executor": "page_actions",
+          "department": "terra"
+        },
+        "rename_page": {
+          "mutation": "bounded_page",
+          "target": "current_or_named_page",
+          "executor": "page_actions",
+          "department": "terra"
+        },
+        "delete_page": {
+          "mutation": "destructive_confirmed",
+          "target": "current_or_named_page",
+          "executor": "page_actions",
+          "department": "terra"
+        },
+        "duplicate_page": {
+          "mutation": "deterministic",
+          "target": "current_or_named_page",
+          "executor": "page_actions",
+          "department": "terra"
+        },
+        "page_settings": {
+          "mutation": "bounded_page",
+          "target": "current_or_named_page",
+          "executor": "page_actions",
+          "department": "terra"
+        },
+        "page_seo": {
+          "mutation": "bounded_page",
+          "target": "current_or_named_page",
+          "executor": "page_actions",
+          "department": "terra"
+        },
+        "page_layout": {
+          "mutation": "bounded_page",
+          "target": "current_or_named_page",
+          "executor": "page_actions",
+          "department": "terra"
+        },
+        "regenerate_page": {
+          "mutation": "existing_page_generation_pipeline",
+          "target": "current_or_named_page",
+          "executor": "page_actions",
+          "department": "sol"
+        }
+      }
+    },
+    "publish": {
+      "department": "backend",
+      "context": [
+        "site",
+        "current_page",
+        "publish_state"
+      ],
+      "actions": {
+        "publish_site": {
+          "mutation": "existing_publish_pipeline",
+          "target": "website",
+          "executor": "publish_actions",
+          "department": "backend"
+        },
+        "publish_page": {
+          "mutation": "existing_publish_pipeline",
+          "target": "current_or_named_page",
+          "executor": "publish_actions",
+          "department": "backend"
+        },
+        "republish_site": {
+          "mutation": "existing_publish_pipeline",
+          "target": "website",
+          "executor": "publish_actions",
+          "department": "backend"
+        },
+        "republish_page": {
+          "mutation": "existing_publish_pipeline",
+          "target": "current_or_named_page",
+          "executor": "publish_actions",
+          "department": "backend"
+        },
+        "unpublish_page": {
+          "mutation": "deterministic_destructive",
+          "target": "current_or_named_page",
+          "executor": "publish_actions",
+          "department": "backend"
+        },
+        "preview_site": {
+          "mutation": "deterministic",
+          "target": "website_preview",
+          "executor": "publish_actions",
+          "department": "backend"
+        },
+        "preview_page": {
+          "mutation": "deterministic",
+          "target": "page_preview",
+          "executor": "publish_actions",
+          "department": "backend"
+        },
+        "export_site": {
+          "mutation": "deterministic",
+          "target": "website_export",
+          "executor": "publish_actions",
+          "department": "backend"
+        },
+        "publish_status": {
+          "mutation": "read_only",
+          "target": "publish_state",
+          "executor": "publish_actions",
+          "department": "backend"
+        }
+      }
+    },
+    "media": {
+      "department": "terra",
+      "context": [
+        "media"
+      ],
+      "actions": {}
+    },
+    "posts": {
+      "department": "terra",
+      "context": [
+        "posts"
+      ],
+      "actions": {}
+    },
+    "commerce": {
+      "department": "terra",
+      "context": [
+        "commerce"
+      ],
+      "actions": {}
+    },
+    "seo": {
+      "department": "terra",
+      "context": [
+        "seo"
+      ],
+      "actions": {}
+    },
+    "settings": {
+      "department": "terra",
+      "context": [
+        "settings"
+      ],
+      "actions": {}
+    },
+    "navigate": {
+      "department": "backend",
+      "context": [
+        "surface"
+      ],
+      "actions": {}
+    }
+  }
+}

@@ -2,7 +2,7 @@ import { Head, Link } from '@inertiajs/react';
 
 export default function GuestLayout({ children, title = 'Welcome to Cosmic CMS', subtitle, wide = false, forceLight = false }) {
     return (
-        <div className={`cosmic-guest-light ${forceLight ? 'cosmic-force-light' : ''} relative min-h-screen overflow-hidden bg-[#fbfffc] px-4 py-6 text-slate-900 sm:px-6 sm:py-10`}>
+        <div className={`cosmic-guest-light ${forceLight ? 'cosmic-force-light' : ''} relative min-h-screen overflow-hidden bg-[#fbfffc] px-4 py-6 font-sans text-slate-900 sm:px-6 sm:py-10`}>
             <Head title={title} />
 
             <div className="pointer-events-none absolute inset-0 overflow-hidden">
@@ -20,7 +20,7 @@ export default function GuestLayout({ children, title = 'Welcome to Cosmic CMS',
                     </span>
                 </Link>
 
-                <main className="rounded-3xl border border-emerald-100 bg-white/95 p-6 shadow-[0_24px_70px_rgba(15,23,42,0.10)] backdrop-blur sm:p-8">
+                <main className="rounded-3xl border border-emerald-100 bg-white/95 p-6 shadow-[0_24px_70px_rgba(15,23,42,0.10)] sm:p-8">
                     <h1 className="text-2xl font-black tracking-tight text-slate-950">{title}</h1>
                     {subtitle && <p className="mt-2 text-sm leading-6 text-slate-600">{subtitle}</p>}
                     <div className="mt-7">{children}</div>

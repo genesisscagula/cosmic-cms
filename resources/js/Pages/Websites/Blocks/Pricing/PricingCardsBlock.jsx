@@ -7,7 +7,7 @@ import { RepeatableControls, RepeatableRemoveButton } from "../Shared/Repeatable
 
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem, sparkTwPath } from "../Shared/sparkTailwindRuntime";
 
 
 
@@ -419,7 +419,7 @@ export function PricingCardsBlock({
 
                         <div
                             key={index}
-                            className={sparkTw(block, "auto_8", `
+                            className={sparkTwItem(block, "plans", index, "card", `
                                 relative
                                 rounded-3xl
                                 border
@@ -446,9 +446,9 @@ export function PricingCardsBlock({
 
                             {plan.badge && (
 
-                            <div className={sparkTw(block, "auto_9", "absolute -top-3 left-1/2 z-10 -translate-x-1/2")}>
+                            <div className={sparkTwItem(block, "plans", index, "badge_wrap", "absolute -top-3 left-1/2 z-10 -translate-x-1/2")}>
 
-                                    <span className={sparkTw(block, "auto_10", `inline-flex whitespace-nowrap rounded-full px-3 py-1.5 ${primaryTheme.bg} ${primaryTheme.text} text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm`)}>
+                                    <span className={sparkTwItem(block, "plans", index, "badge", `inline-flex whitespace-nowrap rounded-full px-3 py-1.5 ${primaryTheme.bg} ${primaryTheme.text} text-[10px] font-semibold uppercase tracking-[0.16em] shadow-sm`)}>
 
                                         <EditableText
                                             value={plan.badge}
@@ -467,17 +467,17 @@ export function PricingCardsBlock({
 
                             <EditableText
                                 value={plan.title}
-                                className={sparkTw(block, "auto_11", `block text-2xl font-bold ${theme.text}`)}
+                                className={sparkTwItem(block, "plans", index, "title", `block text-2xl font-bold ${theme.text}`)}
                                 onSave={(val) =>
                                     updatePlan(index, "title", val)
                                 }
                             />
 
-                            <div className={sparkTw(block, "auto_12", "mt-5 flex items-end gap-2")}>
+                            <div className={sparkTwItem(block, "plans", index, "price_wrap", "mt-5 flex items-end gap-2")}>
 
                                 <EditableText
                                     value={plan.price}
-                                className={sparkTw(block, "auto_13", `block text-4xl font-bold sm:text-5xl ${theme.text}`)}
+                                className={sparkTwItem(block, "plans", index, "price", `block text-4xl font-bold sm:text-5xl ${theme.text}`)}
                                     onSave={(val) =>
                                         updatePlan(index, "price", val)
                                     }
@@ -485,7 +485,7 @@ export function PricingCardsBlock({
 
                                 <EditableText
                                     value={plan.period}
-                                    className={sparkTw(block, "auto_14", `block mb-2 ${theme.sub}`)}
+                                    className={sparkTwItem(block, "plans", index, "period", `block mb-2 ${theme.sub}`)}
                                     onSave={(val) =>
                                         updatePlan(index, "period", val)
                                     }
@@ -496,7 +496,7 @@ export function PricingCardsBlock({
                             <EditableText
                                 value={plan.description}
                                 isTextArea={true}
-                            className={sparkTw(block, "auto_15", `block mt-5 leading-7 ${theme.sub}`)}
+                            className={sparkTwItem(block, "plans", index, "desc", `block mt-5 leading-7 ${theme.sub}`)}
                                 onSave={(val) =>
                                     updatePlan(index, "description", val)
                                 }
@@ -504,17 +504,17 @@ export function PricingCardsBlock({
 
                             {/* Features */}
 
-                            <div className={sparkTw(block, "auto_16", "mt-7 space-y-3")}>
+                            <div className={sparkTwItem(block, "plans", index, "features", "mt-7 space-y-3")}>
 
                                 {plan.features.map((feature, featureIndex) => (
 
                                     <div
                                         key={featureIndex}
-                                        className={sparkTw(block, "auto_17", "group/pricing-feature relative flex items-center gap-3 pr-10")}
+                                        className={sparkTwPath(block, ["plans", index, "features", featureIndex], "row", "group/pricing-feature relative flex items-center gap-3 pr-10")}
                                     >
 
                                         <svg
-										    className={sparkTw(block, "auto_18", `w-5 h-5 ${isPrimarySection ? "text-white" : theme.text}`)} data-cosmic-state-icon
+										    className={sparkTwPath(block, ["plans", index, "features", featureIndex], "icon", `w-5 h-5 ${isPrimarySection ? "text-white" : theme.text}`)} data-cosmic-state-icon
 										    fill="none"
 										    stroke="currentColor"
 										    strokeWidth="2.5"
@@ -529,7 +529,7 @@ export function PricingCardsBlock({
 
                                         <EditableText
                                             value={feature.text}
-                                            className={sparkTw(block, "auto_19", `${theme.text}`)}
+                                            className={sparkTwPath(block, ["plans", index, "features", featureIndex], "text", `${theme.text}`)}
                                             onSave={(val) =>
                                                 updateFeature(
                                                     index,

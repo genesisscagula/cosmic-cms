@@ -1,7 +1,7 @@
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeAt } from "../Shared/RepeatableControls";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem, sparkTwPath } from "../Shared/sparkTailwindRuntime";
 
 export const StatsModernSchema = {
     type: "stats_modern",
@@ -87,23 +87,23 @@ export function StatsModernBlock({ block, onUpdate, globalTheme }) {
                     {data.metrics.slice(0, 4).map((metric, index) => (
                         <article
                             key={index}
-                            className={sparkTw(block, "auto_8", `group relative min-w-0 border-b p-6 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 lg:p-7 ${theme.border}`)}
+                            className={sparkTwItem(block, "metrics", index, "card", `group relative min-w-0 border-b p-6 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 lg:p-7 ${theme.border}`)}
                         >
                             <EditableText
                                 value={metric.value}
-                                className={sparkTw(block, "auto_9", `block text-3xl font-bold tracking-tight sm:text-4xl ${theme.text}`)}
+                                className={sparkTwItem(block, "metrics", index, "value", `block text-3xl font-bold tracking-tight sm:text-4xl ${theme.text}`)}
                                 onSave={(value) => updateMetric(index, "value", value)}
                             />
                             <EditableText
                                 value={metric.label}
-                                className={sparkTw(block, "auto_10", `mt-3 block text-sm font-semibold ${theme.text}`)}
+                                className={sparkTwItem(block, "metrics", index, "label", `mt-3 block text-sm font-semibold ${theme.text}`)}
                                 onSave={(label) => updateMetric(index, "label", label)}
                             />
                             {metric.description && (
                                 <EditableText
                                     value={metric.description}
                                     isTextArea
-                                    className={sparkTw(block, "auto_11", `mt-2 block text-sm leading-6 ${theme.sub}`)}
+                                    className={sparkTwItem(block, "metrics", index, "desc", `mt-2 block text-sm leading-6 ${theme.sub}`)}
                                     onSave={(description) => updateMetric(index, "description", description)}
                                 />
                             )}

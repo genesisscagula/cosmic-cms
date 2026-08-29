@@ -27,11 +27,25 @@ export const cosmicSectionVars = (settings = {}) => {
         container_default: "--cosmic-container-default",
         container_full: "--cosmic-container-full",
     };
-    return Object.fromEntries(
+    const vars = Object.fromEntries(
         Object.entries(map)
             .filter(([key]) => settings[key] !== undefined && settings[key] !== null && settings[key] !== "")
             .map(([key, variable]) => [variable, String(settings[key])])
     );
+
+    // Keep the legacy CosmicSection container variables and the newer semantic
+    // container roles synchronized so one Global Styling control reaches both.
+    if (settings.container_default !== undefined && settings.container_default !== null && settings.container_default !== "") {
+        vars["--cosmic-section-container"] = String(settings.container_default);
+    }
+    if (settings.container_wide !== undefined && settings.container_wide !== null && settings.container_wide !== "") {
+        vars["--cosmic-container-wide"] = String(settings.container_wide);
+    }
+    if (settings.container_narrow !== undefined && settings.container_narrow !== null && settings.container_narrow !== "") {
+        vars["--cosmic-container-narrow"] = String(settings.container_narrow);
+    }
+
+    return vars;
 };
 
 export const cosmicLocalSectionVars = (settings = {}) => {

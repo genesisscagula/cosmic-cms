@@ -108,17 +108,28 @@
 }
 
 
-/* Cosmic Spark vertical rhythm: 50px mobile, 80px tablet/laptop/desktop.
-   The wrapper intentionally overrides legacy py-* utilities without changing hero min-heights. */
+/* Cosmic Spark rhythm follows Global Styling instead of fixed 50/80px values.
+   Local Luna section overrides remain authoritative through --cosmic-local-*. */
 .cosmic-builder-spark > section {
-    padding-top: 50px !important;
-    padding-bottom: 50px !important;
+    padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, var(--cosmic-space-section-y-mobile, 56px))) !important;
+    padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py-mobile, var(--cosmic-space-section-y-mobile, 56px))) !important;
+    padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, var(--cosmic-space-section-x-mobile, 20px))) !important;
+    padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px-mobile, var(--cosmic-space-section-x-mobile, 20px))) !important;
 }
-
-@media (min-width: 640px) {
+@media (min-width: 768px) {
     .cosmic-builder-spark > section {
-        padding-top: 80px !important;
-        padding-bottom: 80px !important;
+        padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, var(--cosmic-space-section-y-tablet, 80px))) !important;
+        padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py-tablet, var(--cosmic-space-section-y-tablet, 80px))) !important;
+        padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, var(--cosmic-space-section-x-tablet, 24px))) !important;
+        padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px-tablet, var(--cosmic-space-section-x-tablet, 24px))) !important;
+    }
+}
+@media (min-width: 1025px) {
+    .cosmic-builder-spark > section {
+        padding-top: var(--cosmic-local-section-py, var(--cosmic-section-py, var(--cosmic-space-section-y, 100px))) !important;
+        padding-bottom: var(--cosmic-local-section-py, var(--cosmic-section-py, var(--cosmic-space-section-y, 100px))) !important;
+        padding-left: var(--cosmic-local-section-px, var(--cosmic-section-px, var(--cosmic-space-section-x, 28px))) !important;
+        padding-right: var(--cosmic-local-section-px, var(--cosmic-section-px, var(--cosmic-space-section-x, 28px))) !important;
     }
 }
 @layer components {
@@ -144,7 +155,7 @@
 .cosmic-guest-light .text-rose-300 { color: #be123c !important; }
 .cosmic-guest-light input,
 .cosmic-guest-light select,
-.cosmic-guest-light textarea { color: #0f172a !important; background-color: #fff !important; border-color: #cbd5e1 !important; }
+.cosmic-guest-light textarea { color: #0f172a !important; background-color: #fff !important; border-color: #94a3b8 !important; border-width: 1px !important; }
 .cosmic-guest-light input::placeholder,
 .cosmic-guest-light textarea::placeholder { color: #94a3b8 !important; }
 .cosmic-guest-light input:focus,
@@ -185,7 +196,91 @@
 
 html { background: var(--cosmic-bg); }
 body { background: var(--cosmic-bg); color: var(--cosmic-text); }
+
+/* Application typography must stay on a native, unscaled text layer. Website
+   previews keep their own typography/render contract. */
+.cosmic-guest-light,
+.cosmic-authenticated-shell,
+.cosmic-dashboard-shell,
+.cosmic-dashboard-main,
+.cosmic-dashboard-tab-frame {
+    zoom: 1 !important;
+    filter: none !important;
+    perspective: none !important;
+    backface-visibility: visible !important;
+    will-change: auto !important;
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    text-rendering: auto;
+}
+
+.cosmic-guest-light,
+.cosmic-authenticated-shell,
+.cosmic-dashboard-shell {
+    transform: none !important;
+}
+
+.cosmic-guest-light main {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+}
+
 .cosmic-app-shell { background: var(--cosmic-bg); color: var(--cosmic-text); transition: background-color .2s ease, color .2s ease; }
+.cosmic-app-shell,
+.cosmic-dashboard-shell,
+.cosmic-builder-shell,
+.cosmic-builder-canvas {
+    zoom: 1;
+    perspective: none;
+    backface-visibility: visible;
+    will-change: auto;
+}
+
+/* The real dashboard and Builder canvas must remain native text layers. Never
+   promote either complete tree into a transformed/filtered bitmap surface. */
+.cosmic-dashboard-shell,
+.cosmic-builder-canvas {
+    transform: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+}
+
+/* Builder-only navigation editor. It lives inside preview isolation, so its
+   chrome owns explicit colors in both app appearances. The overlay deliberately
+   avoids backdrop-filter: blurring that ancestor backdrop rasterizes all site text. */
+.cosmic-nav-link-dialog-overlay {
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+}
+.cosmic-nav-link-dialog {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: initial !important;
+    filter: none !important;
+    opacity: 1 !important;
+}
+.cosmic-nav-link-dialog__eyebrow { color: #6d28d9 !important; -webkit-text-fill-color: #6d28d9 !important; }
+.cosmic-nav-link-dialog__title { color: #0f172a !important; -webkit-text-fill-color: #0f172a !important; }
+.cosmic-nav-link-dialog__label { color: #334155 !important; -webkit-text-fill-color: #334155 !important; }
+.cosmic-nav-link-dialog__help { color: #64748b !important; -webkit-text-fill-color: #64748b !important; }
+.cosmic-nav-link-dialog__close { color: #64748b !important; -webkit-text-fill-color: #64748b !important; }
+.cosmic-nav-link-dialog__input {
+    background: #ffffff !important;
+    border-color: #94a3b8 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    caret-color: #0f172a;
+}
+.cosmic-nav-link-dialog__input:focus { border-color: #7c3aed !important; --tw-ring-color: rgba(124,58,237,.18) !important; }
+.cosmic-nav-link-dialog__input::placeholder { color: #94a3b8 !important; -webkit-text-fill-color: #94a3b8 !important; opacity: 1; }
+.cosmic-nav-link-dialog__cancel { color: #475569 !important; -webkit-text-fill-color: #475569 !important; }
+.cosmic-nav-link-dialog__save {
+    background: #047857 !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+.cosmic-nav-link-dialog__save:hover { background: #065f46 !important; }
 .cosmic-theme-surface { background: var(--cosmic-surface); border-color: var(--cosmic-border); color: var(--cosmic-text); }
 .cosmic-theme-muted { color: var(--cosmic-text-muted); }
 
@@ -608,7 +703,8 @@ body { background: var(--cosmic-bg); color: var(--cosmic-text); }
 :root[data-theme="light"] .cosmic-guest-light select,
 :root[data-theme="light"] .cosmic-guest-light textarea {
     background: #fff !important;
-    border-color: #cbdad2 !important;
+    border-color: #94a3b8 !important;
+    border-width: 1px !important;
     color: #0f172a !important;
 }
 :root[data-theme="light"] .cosmic-guest-light input::placeholder,
@@ -851,6 +947,25 @@ html[data-theme] .cosmic-app-shell main {
 :root[data-theme="light"] [data-cosmic-builder-header] .bg-violet-500\/20 { background: #e5f6ed !important; }
 :root[data-theme="light"] [data-cosmic-builder-header] button,
 :root[data-theme="light"] [data-cosmic-builder-header] a { opacity: 1 !important; }
+
+/* Header toggle contrast follows the app appearance, not trial/account mode. */
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-mega-footer-toggle {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+}
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-mega-footer-toggle[data-active="true"] {
+    color: #065f46 !important;
+    -webkit-text-fill-color: #065f46 !important;
+    background: #ecfdf5 !important;
+    border-color: #6ee7b7 !important;
+}
+:root[data-theme="light"] [data-cosmic-builder-header] .cosmic-mega-footer-toggle__label {
+    color: inherit !important;
+    -webkit-text-fill-color: inherit !important;
+    opacity: 1 !important;
+}
 
 /* Unified alerts / confirmations. */
 :root[data-theme="light"] .cosmic-alert-overlay {
@@ -6846,9 +6961,14 @@ body .cosmic-start-quick-idea.rounded-full.border {
 
 /* Buttons/CTA anchors: radius and sizing can be controlled globally even for
    legacy Sparks. Avoid icon-only circular controls and navigation anchors. */
-.cosmic-render-shell :is(button,a)[class*="px-"][class*="py-"]:not(.rounded-full):not([aria-label]):not([data-cosmic-preserve-button]):not([class*="cosmic-tw-slot--"]) {
+.cosmic-render-shell :is(button,a)[class*="px-"][class*="py-"]:not([aria-label]):not([data-cosmic-preserve-button]):not([class*="cosmic-tw-slot--"]) {
+    min-height:var(--cosmic-local-button-height,var(--cosmic-button-height));
+    padding-inline:var(--cosmic-local-button-px,var(--cosmic-button-px)) !important;
     border-radius:var(--cosmic-local-button-radius,var(--cosmic-radius-button)) !important;
     font-weight:var(--cosmic-local-button-weight,var(--cosmic-button-font-weight));
+}
+.cosmic-render-shell :is(button,a)[class*="px-"][class*="py-"]:not([aria-label]):not([data-cosmic-preserve-button]):not([class*="cosmic-tw-slot--"]):hover {
+    transform:translateY(var(--cosmic-local-button-hover-shift,var(--cosmic-button-hover-shift,-1px)));
 }
 
 /* Form controls. This is deliberately type-based rather than every input so
@@ -6864,6 +6984,10 @@ body .cosmic-start-quick-idea.rounded-full.border {
 }
 .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="shadow"]:not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
     border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card)) !important;
+    box-shadow:var(--cosmic-local-card-shadow,var(--cosmic-card-shadow)) !important;
+}
+.cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"][class*="p-"]:not(.rounded-full):not([data-cosmic-preserve-padding]):not([class*="cosmic-tw-slot--"]) {
+    padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding)) !important;
 }
 
 /* Images with explicit rounded utilities inherit media radius. Background
@@ -6874,6 +6998,10 @@ body .cosmic-start-quick-idea.rounded-full.border {
 
 /* Legacy max-width container utilities get a global ceiling without forcing
    full-width/cinematic sections into a boxed layout. */
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] .max-w-screen-2xl,
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] .max-w-screen-xl {
+    max-width:var(--cosmic-local-container-wide,var(--cosmic-container-wide,var(--cosmic-section-container-wide,96rem))) !important;
+}
 .cosmic-render-shell[data-cosmic-layout-mode="standard"] .max-w-7xl,
 .cosmic-render-shell[data-cosmic-layout-mode="standard"] .max-w-6xl {
     max-width:var(--cosmic-local-section-container,var(--cosmic-container-default));
@@ -6888,13 +7016,75 @@ body .cosmic-start-quick-idea.rounded-full.border {
 
 /* Responsive component migration. */
 @media (max-width:1024px) {
-    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
-        --cosmic-card-padding:var(--cosmic-space-card-tablet);
+    .cosmic-render-shell :is(button,a)[class*="px-"][class*="py-"]:not([aria-label]):not([data-cosmic-preserve-button]):not([class*="cosmic-tw-slot--"]) {
+        min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-tablet,var(--cosmic-button-height)));
+        padding-inline:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px))) !important;
+    }
+    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"][class*="p-"]:not(.rounded-full):not([data-cosmic-preserve-padding]):not([class*="cosmic-tw-slot--"]) {
+        padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-tablet,var(--cosmic-space-card-tablet))) !important;
     }
 }
 @media (max-width:767px) {
-    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
-        --cosmic-card-padding:var(--cosmic-space-card-mobile);
+    .cosmic-render-shell :is(button,a)[class*="px-"][class*="py-"]:not([aria-label]):not([data-cosmic-preserve-button]):not([class*="cosmic-tw-slot--"]) {
+        min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-mobile,var(--cosmic-button-height)));
+        padding-inline:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px))) !important;
+    }
+    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"][class*="p-"]:not(.rounded-full):not([data-cosmic-preserve-padding]):not([class*="cosmic-tw-slot--"]) {
+        padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-mobile,var(--cosmic-space-card-mobile))) !important;
+    }
+}
+
+/* ==================================================================
+   Batch 10 — Global Layout & Component hardening
+   Apply global design tokens to legacy registered Sparks while preserving
+   explicit schema-backed/local override ownership.
+   ================================================================== */
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > section:not(.cosmic-tw-own-section-y):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y):not([class*="cosmic-tw-slot--"]) {
+    padding-top:var(--cosmic-local-section-py,var(--cosmic-section-py)) !important;
+    padding-bottom:var(--cosmic-local-section-py,var(--cosmic-section-py)) !important;
+    padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
+    padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
+}
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] :is(.max-w-5xl,.max-w-4xl,.max-w-3xl) {
+    max-width:var(--cosmic-local-container-content,var(--cosmic-container-content,72rem));
+}
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] :is(.max-w-2xl,.max-w-xl) {
+    max-width:var(--cosmic-local-container-narrow,var(--cosmic-container-narrow,52rem));
+}
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] :is(.grid,[data-cosmic-layout="grid"])[class*="gap-"]:not([class*="cosmic-tw-slot--"]) {
+    gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid,24px)) !important;
+}
+.cosmic-render-shell [data-cosmic-radius="section"],
+.cosmic-render-shell section[class*="rounded"]:not([data-cosmic-preserve-radius]):not([class*="cosmic-tw-slot--"]) {
+    border-radius:var(--cosmic-local-section-radius,var(--cosmic-radius-section,32px)) !important;
+}
+.cosmic-render-shell [role="dialog"]:not([data-cosmic-preserve-radius]),
+.cosmic-render-shell [data-cosmic-modal]:not([data-cosmic-preserve-radius]) {
+    border-radius:var(--cosmic-local-modal-radius,var(--cosmic-radius-modal,32px)) !important;
+}
+@media (max-width:1024px) {
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > section:not(.cosmic-tw-own-section-y):not([class*="cosmic-tw-slot--"]),
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y):not([class*="cosmic-tw-slot--"]) {
+        padding-top:var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)) !important;
+        padding-bottom:var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)) !important;
+        padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)) !important;
+        padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)) !important;
+    }
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"] :is(.grid,[data-cosmic-layout="grid"])[class*="gap-"]:not([class*="cosmic-tw-slot--"]) {
+        gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-tablet,20px)) !important;
+    }
+}
+@media (max-width:767px) {
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > section:not(.cosmic-tw-own-section-y):not([class*="cosmic-tw-slot--"]),
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > div > section:first-child:not(.cosmic-tw-own-section-y):not([class*="cosmic-tw-slot--"]) {
+        padding-top:var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)) !important;
+        padding-bottom:var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)) !important;
+        padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;
+        padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;
+    }
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"] :is(.grid,[data-cosmic-layout="grid"])[class*="gap-"]:not([class*="cosmic-tw-slot--"]) {
+        gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-mobile,16px)) !important;
     }
 }
 
@@ -6929,7 +7119,7 @@ body .cosmic-start-quick-idea.rounded-full.border {
 .cosmic-render-shell[data-cosmic-layout-mode="hero"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6):not([class*="cosmic-tw-slot--"]),
 .cosmic-render-shell[data-cosmic-layout-mode="immersive"][data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6):not([class*="cosmic-tw-slot--"]),
 .cosmic-render-shell[data-cosmic-resolved-theme="primary"] :is([data-cosmic-type="h1"],[data-cosmic-type="h2"],[data-cosmic-type="h3"],[data-cosmic-type="h4"],[data-cosmic-type="h5"],[data-cosmic-type="h6"]) {
-    color:var(--cosmic-color-on-dark,#fff) !important;
+    color:var(--cosmic-color-on-primary,#fff) !important;
 }
 .cosmic-render-shell[data-cosmic-layout-mode="hero"] section[class*="text-white"] :is(p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]),
 .cosmic-render-shell[data-cosmic-layout-mode="immersive"] section[class*="text-white"] :is(p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]),
@@ -7485,8 +7675,8 @@ body .cosmic-start-quick-idea.rounded-full.border {
 :root[data-theme="dark"] .cosmic-dashboard-tab-frame { --tab-accent-strong: rgb(var(--tab-accent)); }
 
 @keyframes cosmic-dashboard-tab-in {
-    from { opacity: 0; transform: translateY(5px); }
-    to { opacity: 1; transform: translateY(0); }
+    from { opacity: 0; }
+    to { opacity: 1; }
 }
 
 /* Consistent premium page heading rhythm without requiring tab rewrites. */
@@ -8164,6 +8354,125 @@ body .cosmic-start-quick-idea.rounded-full.border {
     color: #ffffff !important;
     -webkit-text-fill-color: #ffffff !important;
     stroke: currentColor !important;
+}
+
+/* ============================================================================
+   Light-mode popup ownership + semantic primary contrast
+   These controls belong to Builder chrome and must not inherit website/theme
+   button colors. Primary website sections use the generated on-primary token,
+   while light cards nested inside them return to surface text colors.
+   ========================================================================== */
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-section-insert-action,
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-section-layout-toggle {
+    appearance: none !important;
+    background: #ffffff !important;
+    background-image: none !important;
+    border-color: #cbd5e1 !important;
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    opacity: 1 !important;
+    box-shadow: 0 1px 2px rgba(15,23,42,.04) !important;
+}
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-section-insert-action:hover:not(:disabled),
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-section-layout-toggle:hover:not(:disabled) {
+    background: #f5f3ff !important;
+    border-color: #a78bfa !important;
+    color: #5b21b6 !important;
+    -webkit-text-fill-color: #5b21b6 !important;
+}
+:root[data-theme="light"] .cosmic-edit-session-dialog :is(.cosmic-section-insert-action,.cosmic-section-layout-toggle) * {
+    color: inherit !important;
+    -webkit-text-fill-color: inherit !important;
+}
+
+.cosmic-add-spark-modal[data-cosmic-app-modal="add-section"] {
+    opacity: 1 !important;
+    filter: none !important;
+    -webkit-text-fill-color: currentColor;
+}
+.cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"],
+.cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] > div,
+.cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] > header {
+    background: #ffffff !important;
+    color: #0f172a !important;
+}
+.cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] aside {
+    background: #f8fafc !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
+}
+.cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] button.group {
+    background: #ffffff !important;
+    background-image: none !important;
+    border-color: #e2e8f0 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+    opacity: 1 !important;
+    box-shadow: 0 1px 2px rgba(15,23,42,.05) !important;
+}
+.cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] button.group:hover {
+    background: #fafafa !important;
+    border-color: #a78bfa !important;
+    box-shadow: 0 12px 26px rgba(15,23,42,.10) !important;
+}
+.cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] button.group :is(div,span) {
+    -webkit-text-fill-color: currentColor !important;
+}
+
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-card:not([aria-disabled="true"]):hover {
+    transform: translateY(-2px) !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-card:not(.is-active):not([aria-disabled="true"]):hover {
+    background: #f8fafc !important;
+    border-color: #a78bfa !important;
+    box-shadow: 0 12px 24px rgba(15,23,42,.10) !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-card:hover :is(.cosmic-theme-card-name,.cosmic-theme-card-category,.cosmic-theme-card-description,.cosmic-theme-card-palette-label) {
+    opacity: 1 !important;
+    visibility: visible !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+.cosmic-render-shell[data-cosmic-resolved-theme="primary"] :is(h1,h2,h3,h4,h5,h6,p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]),
+.cosmic-render-shell[data-cosmic-background-state="primary"] :is(h1,h2,h3,h4,h5,h6,p,li,[data-cosmic-type="eyebrow"]):not([class*="cosmic-tw-slot--"]) {
+    color: var(--cosmic-color-on-primary,#fff) !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+.cosmic-render-shell[data-cosmic-resolved-theme="primary"] :is([class*="bg-white"],[class*="bg-slate-50"],[class*="bg-gray-50"],[class*="bg-zinc-50"],[class*="bg-neutral-50"]) :is(h1,h2,h3,h4,h5,h6,p,li),
+.cosmic-render-shell[data-cosmic-background-state="primary"] :is([class*="bg-white"],[class*="bg-slate-50"],[class*="bg-gray-50"],[class*="bg-zinc-50"],[class*="bg-neutral-50"]) :is(h1,h2,h3,h4,h5,h6,p,li) {
+    color: var(--cosmic-color-heading,#0f172a) !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+/* Mega footer editor: one compact contextual toolbar per column or menu row. */
+.cosmic-mega-footer-section .cosmic-footer-action-bar {
+    position: relative;
+    z-index: 30;
+    width: max-content;
+}
+.cosmic-mega-footer-section .cosmic-footer-action-bar .cosmic-footer-ai-control {
+    display: inline-flex;
+    position: relative !important;
+    inset: auto !important;
+}
+.cosmic-mega-footer-section[data-cosmic-mega-theme="primary"] .cosmic-footer-action-bar {
+    background: rgba(15,23,42,.94) !important;
+    border-color: rgba(255,255,255,.18) !important;
+}
+.cosmic-mega-footer-section[data-cosmic-mega-theme="white"] .cosmic-footer-action-bar,
+.cosmic-mega-footer-section[data-cosmic-mega-theme="surface"] .cosmic-footer-action-bar {
+    background: rgba(255,255,255,.98) !important;
+    border-color: #cbd5e1 !important;
+}
+.cosmic-mega-footer-section .cosmic-mega-menu-row {
+    min-height: 2.25rem;
+    padding-inline: .5rem !important;
+}
+.cosmic-mega-footer-section .cosmic-mega-menu-row:hover,
+.cosmic-mega-footer-section .cosmic-mega-menu-row:focus-within {
+    background: color-mix(in srgb, currentColor 7%, transparent) !important;
 }
 
 
@@ -9450,4 +9759,724 @@ header.cosmic-header-overlay,
 .cosmic-spark-preview-stage [class~="rounded-full"],
 .cosmic-website-preview [data-cosmic-spark] [class~="rounded-full"] {
     border-radius: 9999px !important;
+}
+
+
+/* Welcome launch-speed hotfix — isolate marketing page from legacy dark-theme public overrides. */
+.cosmic-welcome-page {
+    color-scheme: light !important;
+    background:#fff !important;
+    color:#162238 !important;
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif !important;
+}
+:root[data-theme="dark"] .cosmic-welcome-page { background:#fff !important; color:#07132c !important; }
+:root[data-theme="dark"] .cosmic-welcome-page > header { background:rgba(255,255,255,.96) !important; color:#07132c !important; }
+:root[data-theme="dark"] .cosmic-welcome-page footer { background:#03112a !important; color:#cbd5e1 !important; }
+:root[data-theme="dark"] .cosmic-welcome-page footer .text-white { color:#fff !important; }
+:root[data-theme="dark"] .cosmic-welcome-page footer .text-slate-500 { color:#64748b !important; }
+:root[data-theme="dark"] .cosmic-welcome-page #workflow { background:#03112a !important; color:#fff !important; }
+:root[data-theme="dark"] .cosmic-welcome-page #workflow .text-slate-300 { color:#cbd5e1 !important; }
+:root[data-theme="dark"] .cosmic-welcome-page #workflow .text-slate-400 { color:#94a3b8 !important; }
+:root[data-theme="dark"] .cosmic-welcome-page #workflow .text-emerald-300 { color:#6ee7b7 !important; }
+:root[data-theme="dark"] .cosmic-welcome-page #workflow .text-emerald-400 { color:#34d399 !important; }
+@media (min-width:1280px){
+  .cosmic-welcome-page main > section > .max-w-7xl,
+  .cosmic-welcome-page main > section > div > .max-w-7xl { max-width: 88rem; }
+}
+
+
+/* Welcome guide cards — isolate from global/public anchor text-fill overrides. */
+.cosmic-welcome-page .cosmic-welcome-guide-card,
+.cosmic-welcome-page .cosmic-welcome-guide-card * {
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+.cosmic-welcome-page .cosmic-welcome-guide-title {
+    color: #07132c !important;
+    -webkit-text-fill-color: #07132c !important;
+}
+.cosmic-welcome-page .cosmic-welcome-guide-cta {
+    color: #047857 !important;
+    -webkit-text-fill-color: #047857 !important;
+}
+
+
+/* Welcome guide icon visibility — isolate from global anchor/text-fill rules. */
+.cosmic-welcome-page .cosmic-welcome-guide-icon,
+.cosmic-welcome-page .cosmic-welcome-guide-icon * {
+    color: #047857 !important;
+    -webkit-text-fill-color: #047857 !important;
+    opacity: 1 !important;
+    visibility: visible !important;
+}
+
+
+/* ============================================================================
+   Light-mode Batch 2: Theme modal appearance ownership
+   Theme chooser is application chrome. Its presentation follows the app
+   appearance only; website/Spark theme variables must never recolor it.
+   `data-appearance` is emitted directly by ThemeModal so these guards remain
+   correct even though the dialog is portaled to document.body.
+   ========================================================================== */
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] {
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none;
+    -webkit-text-fill-color: currentColor;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] > div,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] aside {
+    opacity: 1 !important;
+    filter: none !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] h1,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] h2,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] h3,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] h4,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] h5,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] h6,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] p,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] span,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] button,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] input,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] textarea {
+    opacity: 1;
+    filter: none;
+    -webkit-text-fill-color: currentColor;
+}
+
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] {
+    background: #111113 !important;
+    color: #ffffff !important;
+    border-color: rgba(255,255,255,.10) !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] > header,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] > footer {
+    background: #18181b !important;
+    border-color: rgba(255,255,255,.10) !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] .cosmic-theme-luna-panel {
+    background: rgba(0,0,0,.20) !important;
+    border-color: rgba(255,255,255,.10) !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] input,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] textarea {
+    color: #ffffff !important;
+    caret-color: #ffffff;
+}
+
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: 0 28px 80px rgba(15,23,42,.20) !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] > header,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] > footer {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] > div {
+    background: #f8fafc !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-luna-panel {
+    background: #ffffff !important;
+    border-color: #e2e8f0 !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] input,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] textarea {
+    background-color: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+    caret-color: #0f172a;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] input::placeholder,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] textarea::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+    opacity: 1 !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-card {
+    opacity: 1 !important;
+    filter: none !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-card.is-active {
+    border-color: #8b5cf6 !important;
+    background: #f5f3ff !important;
+    box-shadow: 0 0 0 1px rgba(139,92,246,.12), 0 12px 28px rgba(15,23,42,.10) !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-card.is-active .cosmic-theme-active-check {
+    background: #7c3aed !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* ================================================================
+   Batch 4 — native text rendering / popup compositing isolation
+   ---------------------------------------------------------------
+   Builder application chrome must stay on a native browser text layer.
+   Full-screen backdrop filters and forced font smoothing can make small
+   UI text look soft/fuzzy even when the website preview itself is correct.
+   These guards intentionally target app chrome only; Spark-owned transforms,
+   filters and motion inside `.cosmic-render-shell` remain untouched.
+   ================================================================ */
+.cosmic-native-text-overlay {
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    filter: none !important;
+}
+
+.cosmic-native-text-layer {
+    transform: none !important;
+    filter: none !important;
+    opacity: 1 !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+    perspective: none !important;
+    backface-visibility: visible !important;
+    will-change: auto !important;
+}
+
+/* Restore platform-native glyph rasterization for Builder/modal UI.  Do not
+   apply this to the website render shell: published typography must retain
+   the Spark/theme contract and remain visually comparable to live output. */
+.cosmic-native-text-layer,
+.cosmic-native-text-layer :where(h1,h2,h3,h4,h5,h6,p,span,a,button,label,input,textarea,select,small,strong) {
+    -webkit-font-smoothing: auto !important;
+    -moz-osx-font-smoothing: auto !important;
+    text-rendering: auto !important;
+}
+
+/* The desktop Builder canvas itself must never be promoted as one bitmap.
+   Keep only the canvas root native; individual Sparks may still own motion. */
+.cosmic-builder-canvas.cosmic-preview-isolation {
+    transform: none !important;
+    zoom: 1 !important;
+    filter: none !important;
+    opacity: 1 !important;
+    perspective: none !important;
+    will-change: auto !important;
+    -webkit-font-smoothing: auto;
+    -moz-osx-font-smoothing: auto;
+    text-rendering: auto;
+}
+
+/* ============================================================================
+   Theme API Batch 2 — Theme popup control clarity / CSS bleed isolation
+   Keep popup controls owned by ThemeModal instead of broad light-mode dialog
+   button rules elsewhere in app.css.
+   ========================================================================== */
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-style-badge {
+    min-width: 2.5rem !important;
+    min-height: 2.5rem !important;
+    padding: 0 .375rem !important;
+    line-height: 1 !important;
+    box-sizing: border-box !important;
+    transform: none !important;
+    filter: none !important;
+}
+
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-filter-pill {
+    min-height: 2rem !important;
+    padding: .5rem .875rem !important;
+    line-height: 1 !important;
+    font-weight: 600 !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+    box-shadow: none !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-filter-pill:not(.is-active) {
+    background: #fff !important;
+    border-color: #cbd5e1 !important;
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-filter-pill:not(.is-active):hover {
+    background: #f5f3ff !important;
+    border-color: #c4b5fd !important;
+    color: #4c1d95 !important;
+    -webkit-text-fill-color: #4c1d95 !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-filter-pill.is-active {
+    background: #ede9fe !important;
+    border-color: #8b5cf6 !important;
+    color: #5b21b6 !important;
+    -webkit-text-fill-color: #5b21b6 !important;
+    box-shadow: inset 0 0 0 1px rgba(139,92,246,.08) !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] .cosmic-theme-filter-pill:not(.is-active) {
+    background: rgba(255,255,255,.035) !important;
+    border-color: rgba(255,255,255,.15) !important;
+    color: #cbd5e1 !important;
+    -webkit-text-fill-color: #cbd5e1 !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] .cosmic-theme-filter-pill.is-active {
+    background: rgba(139,92,246,.18) !important;
+    border-color: rgba(167,139,250,.65) !important;
+    color: #ddd6fe !important;
+    -webkit-text-fill-color: #ddd6fe !important;
+}
+
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-luna-theme-button {
+    min-height: 2.25rem !important;
+    padding: .5rem .875rem !important;
+    line-height: 1 !important;
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-luna-theme-strip {
+    border-color: #ddd6fe !important;
+    background: #f5f3ff !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-luna-theme-button:not([class*="bg-violet-6"]) {
+    background: #fff !important;
+    border-color: #c4b5fd !important;
+    color: #5b21b6 !important;
+    -webkit-text-fill-color: #5b21b6 !important;
+}
+
+/* Theme popup owns its own text and control colors. Prevent generic dialog
+   light-mode rules from washing out small labels and selectable controls. */
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] :is(.cosmic-theme-filter-pill,.cosmic-theme-style-badge,.cosmic-luna-theme-button) * {
+    -webkit-text-fill-color: currentColor !important;
+    color: inherit !important;
+}
+
+/* ============================================================================
+   Theme API Batch 4 — Luna Theme filter + reply contrast isolation
+   Generated palettes live in the library as a first-class Luna Theme filter.
+   ========================================================================== */
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-filter-pill.cosmic-luna-theme-filter,
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-filter-pill.cosmic-luna-theme-filter:not(.is-active),
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-filter-pill.cosmic-luna-theme-filter.is-active {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: .15rem !important;
+    border-color: transparent !important;
+    background: linear-gradient(135deg, #7c3aed 0%, #8b5cf6 48%, #c026d3 100%) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 5px 14px rgba(124,58,237,.18) !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-filter-pill.cosmic-luna-theme-filter:hover {
+    filter: brightness(1.06) !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-filter-pill.cosmic-luna-theme-filter.is-active {
+    box-shadow: 0 0 0 2px rgba(255,255,255,.9), 0 0 0 4px rgba(124,58,237,.38), 0 6px 16px rgba(124,58,237,.2) !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-filter-pill.cosmic-luna-theme-filter * {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-luna-message {
+    opacity: 1 !important;
+    filter: none !important;
+    text-shadow: none !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="light"] .cosmic-theme-luna-message.is-assistant {
+    background: #f8fafc !important;
+    border-color: #cbd5e1 !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"][data-appearance="dark"] .cosmic-theme-luna-message.is-assistant {
+    background: rgba(255,255,255,.07) !important;
+    border-color: rgba(255,255,255,.12) !important;
+    color: #f1f5f9 !important;
+    -webkit-text-fill-color: #f1f5f9 !important;
+}
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-theme-luna-message.is-user {
+    background: #7c3aed !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+#cosmic-theme-modal[data-cosmic-app-modal="theme"] .cosmic-luna-palette-card {
+    opacity: 1 !important;
+    filter: none !important;
+    transform: none !important;
+}
+
+/* Builder light-mode chrome must not inherit the website preview palette. */
+.cosmic-toolbar-menu-panel[data-appearance="light"] {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #172033 !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+.cosmic-toolbar-menu-panel[data-appearance="light"] :is(button, a, span, div) {
+    -webkit-text-fill-color: currentColor !important;
+}
+.cosmic-toolbar-menu-panel[data-appearance="light"] [role="menuitem"]:not([data-cosmic-publish-action="publish"]) {
+    color: #334155 !important;
+}
+.cosmic-toolbar-menu-panel[data-appearance="light"] [role="menuitem"]:hover,
+.cosmic-toolbar-menu-panel[data-appearance="light"] a:hover {
+    background: #f1f5f9 !important;
+    color: #0f172a !important;
+}
+
+html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-stage,
+html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-library {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-library > div:first-child h2 {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-library > div:first-child p {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+}
+html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-library button.group {
+    background: #ffffff !important;
+    border-color: #dbe3ee !important;
+    color: #172033 !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+html:not(.dark) body .cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-library button.group:hover {
+    background: #f8fafc !important;
+    border-color: #a78bfa !important;
+}
+
+[data-cosmic-app-modal="global-styling"][data-appearance="light"] .cosmic-global-styling-tab[data-active="true"] {
+    background: #7c3aed !important;
+    border-color: #7c3aed !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    box-shadow: 0 -1px 0 rgba(124,58,237,.15), 0 6px 16px rgba(124,58,237,.16) !important;
+}
+[data-cosmic-app-modal="global-styling"] .cosmic-global-styling-tab[data-active="true"] * {
+    color: inherit !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+
+.cosmic-toolbar-menu-panel [data-cosmic-build-action] {
+    margin-block: .3rem !important;
+}
+.cosmic-toolbar-menu-panel [data-cosmic-build-action] + [data-cosmic-build-action] {
+    margin-top: .45rem !important;
+}
+.cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-spark-tab {
+    background: #ffffff !important;
+    border-color: #cbd5e1 !important;
+    color: #334155 !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+.cosmic-add-spark-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-spark-tab[data-active="true"] {
+    background: #7c3aed !important;
+    border-color: #7c3aed !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+}
+
+/* Final Add Section ownership boundary. The Builder dialog can be mounted
+   under a website palette host, so an ID-scoped app surface must outrank all
+   generated Spark/theme background utilities. */
+#cosmic-add-section-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: currentColor !important;
+    border-color: #cbd5e1 !important;
+}
+#cosmic-add-section-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] > .cosmic-add-section-library,
+#cosmic-add-section-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-stage {
+    background: #f8fafc !important;
+    background-color: #f8fafc !important;
+    background-image: none !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: currentColor !important;
+}
+#cosmic-add-section-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] > .cosmic-add-section-library > div:first-child {
+    background: #f8fafc !important;
+    background-image: none !important;
+}
+#cosmic-add-section-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] > .cosmic-add-section-library > aside,
+#cosmic-add-section-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-stage > aside {
+    background: #ffffff !important;
+    background-image: none !important;
+    color: #0f172a !important;
+    border-color: #e2e8f0 !important;
+}
+#cosmic-add-section-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-library button.group {
+    background: #ffffff !important;
+    background-color: #ffffff !important;
+    background-image: none !important;
+    color: #172033 !important;
+    -webkit-text-fill-color: currentColor !important;
+    border-color: #dbe3ee !important;
+}
+#cosmic-add-section-modal[data-cosmic-app-modal="add-section"][data-appearance="light"] .cosmic-add-section-library :is(h1,h2,h3) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+
+/* Contextual Luna messages are app chrome, not Spark-authored copy. Keep their
+   contrast independent from the active website palette and text-fill rules. */
+.cosmic-edit-session-dialog .cosmic-contextual-luna-message[data-luna-message-role="assistant"] {
+    color: #334155 !important;
+    -webkit-text-fill-color: #334155 !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+.cosmic-edit-session-dialog .cosmic-contextual-luna-message[data-luna-message-role="user"] {
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 1 !important;
+}
+:root[data-theme="dark"] .cosmic-edit-session-dialog .cosmic-contextual-luna-message[data-luna-message-role="assistant"] {
+    color: #e2e8f0 !important;
+    -webkit-text-fill-color: #e2e8f0 !important;
+}
+
+/* ==================================================================
+   Global Styling Priority Hotfix
+   Spark Tailwind slot markers identify editable ownership, not an explicit
+   opt-out from the site-wide design system. Global tokens therefore apply to
+   authored/default Spark classes. Explicit preserve markers and --cosmic-local-*
+   variables remain the supported local-override layer.
+   ================================================================== */
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > section:not([data-cosmic-preserve-spacing]),
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > div > section:first-child:not([data-cosmic-preserve-spacing]) {
+    padding-top:var(--cosmic-local-section-py-top,var(--cosmic-local-section-py,var(--cosmic-section-py))) !important;
+    padding-bottom:var(--cosmic-local-section-py-bottom,var(--cosmic-local-section-py,var(--cosmic-section-py))) !important;
+    padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
+    padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px)) !important;
+}
+.cosmic-render-shell[data-cosmic-layout-mode="standard"] :is(.grid,[data-cosmic-layout="grid"])[class*="gap-"]:not([data-cosmic-preserve-gap]) {
+    gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid,24px)) !important;
+}
+.cosmic-render-shell :is(h1,[data-cosmic-type="h1"]):not([data-cosmic-preserve-typography]) {
+    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
+    font-size:var(--cosmic-local-h1-size,var(--cosmic-type-h1-size)) !important;
+    line-height:var(--cosmic-local-h1-line,var(--cosmic-type-h1-line)) !important;
+    font-weight:var(--cosmic-local-h1-weight,var(--cosmic-type-h1-weight)) !important;
+    letter-spacing:var(--cosmic-local-h1-tracking,var(--cosmic-type-h1-tracking)) !important;
+}
+.cosmic-render-shell :is(h2,[data-cosmic-type="h2"]):not([data-cosmic-preserve-typography]) {
+    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
+    font-size:var(--cosmic-local-h2-size,var(--cosmic-type-h2-size)) !important;
+    line-height:var(--cosmic-local-h2-line,var(--cosmic-type-h2-line)) !important;
+    font-weight:var(--cosmic-local-h2-weight,var(--cosmic-type-h2-weight)) !important;
+    letter-spacing:var(--cosmic-local-h2-tracking,var(--cosmic-type-h2-tracking)) !important;
+}
+.cosmic-render-shell :is(h3,[data-cosmic-type="h3"],[data-luna-target="heading"]:not([data-cosmic-type]):not(h1):not(h2):not(h4):not(h5):not(h6)):not([data-cosmic-preserve-typography]) {
+    font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;
+    font-size:var(--cosmic-local-h3-size,var(--cosmic-type-h3-size)) !important;
+    line-height:var(--cosmic-local-h3-line,var(--cosmic-type-h3-line)) !important;
+    font-weight:var(--cosmic-local-h3-weight,var(--cosmic-type-h3-weight)) !important;
+    letter-spacing:var(--cosmic-local-h3-tracking,var(--cosmic-type-h3-tracking)) !important;
+}
+.cosmic-render-shell :is(h4,[data-cosmic-type="h4"]):not([data-cosmic-preserve-typography]) {font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;font-size:var(--cosmic-local-h4-size,var(--cosmic-type-h4-size)) !important;line-height:var(--cosmic-local-h4-line,var(--cosmic-type-h4-line)) !important;font-weight:var(--cosmic-local-h4-weight,var(--cosmic-type-h4-weight)) !important;letter-spacing:var(--cosmic-local-h4-tracking,var(--cosmic-type-h4-tracking)) !important;}
+.cosmic-render-shell :is(h5,[data-cosmic-type="h5"]):not([data-cosmic-preserve-typography]) {font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;font-size:var(--cosmic-local-h5-size,var(--cosmic-type-h5-size)) !important;line-height:var(--cosmic-local-h5-line,var(--cosmic-type-h5-line)) !important;font-weight:var(--cosmic-local-h5-weight,var(--cosmic-type-h5-weight)) !important;letter-spacing:var(--cosmic-local-h5-tracking,var(--cosmic-type-h5-tracking)) !important;}
+.cosmic-render-shell :is(h6,[data-cosmic-type="h6"]):not([data-cosmic-preserve-typography]) {font-family:var(--cosmic-local-font-display,var(--cosmic-font-display)) !important;font-size:var(--cosmic-local-h6-size,var(--cosmic-type-h6-size)) !important;line-height:var(--cosmic-local-h6-line,var(--cosmic-type-h6-line)) !important;font-weight:var(--cosmic-local-h6-weight,var(--cosmic-type-h6-weight)) !important;letter-spacing:var(--cosmic-local-h6-tracking,var(--cosmic-type-h6-tracking)) !important;}
+.cosmic-render-shell :is(p,li,[data-cosmic-type="body"],[data-luna-target="text"]:not([data-cosmic-type])):not([data-cosmic-preserve-typography]) {font-family:var(--cosmic-local-font-body,var(--cosmic-font-body)) !important;font-size:var(--cosmic-local-body-size,var(--cosmic-type-body-size)) !important;line-height:var(--cosmic-local-body-line,var(--cosmic-type-body-line)) !important;font-weight:var(--cosmic-local-body-weight,var(--cosmic-type-body-weight)) !important;letter-spacing:var(--cosmic-local-body-tracking,var(--cosmic-type-body-tracking)) !important;}
+.cosmic-render-shell [data-cosmic-type="lead"]:not([data-cosmic-preserve-typography]) {font-family:var(--cosmic-local-font-body,var(--cosmic-font-body)) !important;font-size:var(--cosmic-local-lead-size,var(--cosmic-type-lead-size)) !important;line-height:var(--cosmic-local-lead-line,var(--cosmic-type-lead-line)) !important;font-weight:var(--cosmic-local-lead-weight,var(--cosmic-type-lead-weight)) !important;letter-spacing:var(--cosmic-local-lead-tracking,var(--cosmic-type-lead-tracking)) !important;}
+.cosmic-render-shell :is([data-cosmic-type="eyebrow"],[data-luna-target="label"]:not([data-cosmic-type])):not([data-cosmic-preserve-typography]) {font-family:var(--cosmic-local-font-body,var(--cosmic-font-body)) !important;font-size:var(--cosmic-local-eyebrow-size,var(--cosmic-type-eyebrow-size)) !important;line-height:var(--cosmic-local-eyebrow-line,var(--cosmic-type-eyebrow-line)) !important;font-weight:var(--cosmic-local-eyebrow-weight,var(--cosmic-type-eyebrow-weight)) !important;letter-spacing:var(--cosmic-local-eyebrow-tracking,var(--cosmic-type-eyebrow-tracking)) !important;}
+.cosmic-render-shell :is(button,a,[role="button"],[data-cosmic-luna-display="button"],[data-cosmic-type="button"]):not([aria-label]):not([data-cosmic-preserve-button]) {min-height:var(--cosmic-local-button-height,var(--cosmic-button-height)) !important;padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px)) !important;padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px)) !important;border-radius:var(--cosmic-local-button-radius,var(--cosmic-radius-button)) !important;font-family:var(--cosmic-local-font-body,var(--cosmic-font-body)) !important;font-size:var(--cosmic-local-button-size,var(--cosmic-type-button-size)) !important;font-weight:var(--cosmic-local-button-weight,var(--cosmic-button-font-weight,var(--cosmic-type-button-weight))) !important;}
+.cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {border-radius:var(--cosmic-local-card-radius,var(--cosmic-radius-card)) !important;}
+.cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"][class*="p-"]:not(.rounded-full):not([data-cosmic-preserve-padding]) {padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding)) !important;}
+.cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="shadow"]:not(.rounded-full):not([data-cosmic-preserve-shadow]) {box-shadow:var(--cosmic-local-card-shadow,var(--cosmic-card-shadow)) !important;}
+.cosmic-render-shell img[class*="rounded"]:not(.rounded-full):not([data-cosmic-preserve-radius]) {border-radius:var(--cosmic-local-image-radius,var(--cosmic-radius-image)) !important;}
+.cosmic-render-shell img:not([data-cosmic-preserve-fit]) {object-fit:var(--cosmic-local-media-object-fit,var(--cosmic-media-object-fit,cover));}
+.cosmic-render-shell :is(input[type="text"],input[type="email"],input[type="tel"],input[type="url"],input[type="number"],input[type="search"],input:not([type]),textarea,select):not([data-cosmic-preserve-form]) {border-radius:var(--cosmic-local-input-radius,var(--cosmic-radius-input,10px)) !important;}
+.cosmic-render-shell section[class*="rounded"]:not([data-cosmic-preserve-radius]) {border-radius:var(--cosmic-local-section-radius,var(--cosmic-radius-section,32px)) !important;}
+@media (max-width:1024px) {
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > section:not([data-cosmic-preserve-spacing]),.cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > div > section:first-child:not([data-cosmic-preserve-spacing]) {padding-top:var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)) !important;padding-bottom:var(--cosmic-local-section-py,var(--cosmic-section-py-tablet)) !important;padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)) !important;padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-tablet)) !important;}
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"] :is(.grid,[data-cosmic-layout="grid"])[class*="gap-"]:not([data-cosmic-preserve-gap]) {gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-tablet,20px)) !important;}
+    .cosmic-render-shell :is(button,a,[role="button"],[data-cosmic-luna-display="button"],[data-cosmic-type="button"]):not([aria-label]):not([data-cosmic-preserve-button]) {min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-tablet,var(--cosmic-button-height))) !important;padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px))) !important;padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px-tablet,var(--cosmic-button-px))) !important;}
+    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"][class*="p-"]:not(.rounded-full):not([data-cosmic-preserve-padding]) {padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-tablet,var(--cosmic-card-padding))) !important;}
+}
+@media (max-width:767px) {
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > section:not([data-cosmic-preserve-spacing]),.cosmic-render-shell[data-cosmic-layout-mode="standard"] .cosmic-render-content > div > section:first-child:not([data-cosmic-preserve-spacing]) {padding-top:var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)) !important;padding-bottom:var(--cosmic-local-section-py,var(--cosmic-section-py-mobile)) !important;padding-left:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;padding-right:var(--cosmic-local-section-px,var(--cosmic-section-px-mobile)) !important;}
+    .cosmic-render-shell[data-cosmic-layout-mode="standard"] :is(.grid,[data-cosmic-layout="grid"])[class*="gap-"]:not([data-cosmic-preserve-gap]) {gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-mobile,16px)) !important;}
+    .cosmic-render-shell :is(button,a,[role="button"],[data-cosmic-luna-display="button"],[data-cosmic-type="button"]):not([aria-label]):not([data-cosmic-preserve-button]) {min-height:var(--cosmic-local-button-height,var(--cosmic-button-height-mobile,var(--cosmic-button-height))) !important;padding-left:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px))) !important;padding-right:var(--cosmic-local-button-px,var(--cosmic-button-px-mobile,var(--cosmic-button-px))) !important;}
+    .cosmic-render-shell :is(div,article,li)[class*="rounded"][class*="border"][class*="p-"]:not(.rounded-full):not([data-cosmic-preserve-padding]) {padding:var(--cosmic-local-card-padding,var(--cosmic-card-padding-mobile,var(--cosmic-card-padding))) !important;}
+}
+
+
+/* ==================================================================
+   Light Surface Contrast + Bento Rhythm Hotfix
+   Website preview/content must own its semantic foreground independently of
+   application light-mode remaps. WebKit text-fill is explicitly reset so
+   inherited editor rules cannot leave white glyphs on light cards.
+   ================================================================== */
+.cosmic-render-shell .cosmic-surface-contrast {
+    /* Do not force --cosmic-color-on-surface here. Every surface component
+       already carries its resolved theme.text class. Forcing the global token
+       made light cards inherit white when a saved/custom palette had an old
+       on_surface value. Keep only the WebKit reset so the authored/resolved
+       foreground remains authoritative. */
+    -webkit-text-fill-color:currentColor !important;
+}
+.cosmic-render-shell .cosmic-primary-contrast {
+    color:var(--cosmic-color-on-primary,#ffffff) !important;
+    -webkit-text-fill-color:currentColor !important;
+}
+.cosmic-render-shell .cosmic-surface-contrast :is([data-luna-target="heading"],[data-luna-target="text"],[data-luna-target="label"],h1,h2,h3,h4,h5,h6,p,span),
+.cosmic-render-shell .cosmic-primary-contrast :is([data-luna-target="heading"],[data-luna-target="text"],[data-luna-target="label"],h1,h2,h3,h4,h5,h6,p,span) {
+    -webkit-text-fill-color:currentColor !important;
+}
+.cosmic-render-shell .cosmic-text-on-surface,
+.cosmic-render-shell .cosmic-text-on-surface-muted,
+.cosmic-render-shell .cosmic-text-on-accent,
+.cosmic-render-shell .cosmic-text-on-accent-muted {
+    -webkit-text-fill-color:currentColor !important;
+}
+/* Services Bento is a compact repeated-card list. It must not inherit the
+   large content-stack token (56px by default). Global grid-gap remains the
+   site-wide control and explicit --cosmic-local-grid-gap still wins. */
+.cosmic-render-shell [data-cosmic-bento-list="true"] {
+    gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid,24px)) !important;
+}
+@media (max-width:1024px) {
+    .cosmic-render-shell [data-cosmic-bento-list="true"] {gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-tablet,20px)) !important;}
+}
+@media (max-width:767px) {
+    .cosmic-render-shell [data-cosmic-bento-list="true"] {gap:var(--cosmic-local-grid-gap,var(--cosmic-space-grid-mobile,16px)) !important;}
+}
+
+/* Builder light-mode modal isolation: these controls live above the Builder and
+   must not inherit legacy public/button text-fill or page background overrides. */
+.cosmic-design-toggle-backdrop {
+    background: rgba(2, 6, 23, .58) !important;
+    background-color: rgba(2, 6, 23, .58) !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    backdrop-filter: blur(8px) !important;
+}
+.cosmic-app-modal-backdrop[data-cosmic-modal-backdrop] {
+    background: rgba(2, 6, 23, .58) !important;
+    background-color: rgba(2, 6, 23, .58) !important;
+    background-image: none !important;
+    -webkit-backdrop-filter: blur(8px) !important;
+    backdrop-filter: blur(8px) !important;
+}
+.cosmic-app-modal-backdrop[data-cosmic-modal-backdrop] > [data-cosmic-app-modal] {
+    opacity: 1 !important;
+    filter: none !important;
+    mix-blend-mode: normal !important;
+}
+.cosmic-design-toggle-panel--light {
+    background: #fff !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: initial !important;
+}
+.cosmic-design-toggle-panel--light .cosmic-design-toggle-switch,
+.cosmic-design-toggle-panel--light .cosmic-design-toggle-switch * {
+    opacity: 1 !important;
+    filter: none !important;
+    text-shadow: none !important;
+    mix-blend-mode: normal !important;
+}
+.cosmic-design-toggle-panel--light .cosmic-design-toggle-switch p:first-child {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+.cosmic-design-toggle-panel--light .cosmic-design-toggle-switch p + p {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+}
+
+/* Page Style is an application popup, not rendered website content. Keep its
+   selected card and copy legible even when legacy light-theme dialog rules run. */
+:root[data-theme="light"] #cosmic-page-style-modal {
+    background: #fff !important;
+    border-color: #d5e1da !important;
+    color: #0f172a !important;
+    -webkit-text-fill-color: initial !important;
+    box-shadow: 0 28px 80px rgba(15, 23, 42, .26), 0 2px 8px rgba(15, 23, 42, .08) !important;
+}
+:root[data-theme="light"] #cosmic-page-style-modal :is(h3, .cosmic-page-style-title) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+:root[data-theme="light"] #cosmic-page-style-modal p:not(.cosmic-page-style-direction):not(.cosmic-page-style-title) {
+    color: #5b6b7f !important;
+    -webkit-text-fill-color: #5b6b7f !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] #cosmic-page-style-modal .cosmic-page-style-direction {
+    color: #6d28d9 !important;
+    -webkit-text-fill-color: #6d28d9 !important;
+}
+:root[data-theme="light"] #cosmic-page-style-modal .cosmic-page-style-option {
+    background: #f8fafc !important;
+    border-color: #d8e0ea !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] #cosmic-page-style-modal .cosmic-page-style-option.is-selected {
+    background: #f3efff !important;
+    border-color: #8b5cf6 !important;
+}
+:root[data-theme="light"] #cosmic-page-style-modal .cosmic-page-style-option.is-selected .cosmic-page-style-cost {
+    background: #ddd2fe !important;
+    color: #5b21b6 !important;
+    -webkit-text-fill-color: #5b21b6 !important;
+}
+
+/* Saved Sparks light cards: global website button/theme rules must never turn
+   Builder library labels white on a light card. */
+.cosmic-saved-spark-card,
+.cosmic-saved-spark-card * {
+    opacity: 1 !important;
+    filter: none !important;
+    text-shadow: none !important;
+    mix-blend-mode: normal !important;
+}
+.cosmic-saved-spark-card > span:nth-child(1) {
+    color: #0f172a !important;
+    -webkit-text-fill-color: #0f172a !important;
+}
+.cosmic-saved-spark-card > span:nth-child(2) {
+    color: #64748b !important;
+    -webkit-text-fill-color: #64748b !important;
+}
+.cosmic-saved-spark-card > span:nth-child(3) {
+    color: #6d28d9 !important;
+    -webkit-text-fill-color: #6d28d9 !important;
+}
+.cosmic-saved-spark-card:hover > span:nth-child(3) {
+    color: #5b21b6 !important;
+    -webkit-text-fill-color: #5b21b6 !important;
+}
+
+/* Start Blank / edit-section Luna conversation. This is deliberately placed
+   after public-site theme rules so generated Spark colors cannot wash it out. */
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-contextual-luna-message[data-luna-message-role="assistant"] {
+    background: #ffffff !important;
+    border-color: #d7e0ea !important;
+    color: #243247 !important;
+    -webkit-text-fill-color: #243247 !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-contextual-luna-message[data-luna-message-role="user"] {
+    background: #7c3aed !important;
+    border-color: #7c3aed !important;
+    color: #ffffff !important;
+    -webkit-text-fill-color: #ffffff !important;
+    opacity: 1 !important;
+}
+:root[data-theme="light"] .cosmic-edit-session-dialog .cosmic-contextual-luna-message[data-luna-message-role="status"] {
+    background: #f3efff !important;
+    border-color: #c4b5fd !important;
+    color: #5b21b6 !important;
+    -webkit-text-fill-color: #5b21b6 !important;
+    opacity: 1 !important;
+    filter: none !important;
+}
+:root[data-theme="dark"] .cosmic-edit-session-dialog .cosmic-contextual-luna-message[data-luna-message-role="status"] {
+    color: #ddd6fe !important;
+    -webkit-text-fill-color: #ddd6fe !important;
+    opacity: 1 !important;
 }

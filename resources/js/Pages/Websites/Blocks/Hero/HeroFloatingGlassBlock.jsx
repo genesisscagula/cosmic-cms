@@ -6,7 +6,7 @@ import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
 
 export const HeroFloatingGlassSchema = {
     type: "hero_floating_glass",
@@ -56,7 +56,7 @@ export function HeroFloatingGlassBlock({ block, blockIndex, onUpdate, globalThem
                             <EditableButton label={data.secondary_label} url={data.secondary_url} className={sparkTw(block, "button_2", `inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold ${theme.border} ${theme.text}`)} onSave={(secondary_label,secondary_url)=>onUpdate({secondary_label,secondary_url})}/>
                         </div>
                         <div className={sparkTw(block, "wrapper_6", "mt-8 flex flex-wrap gap-2")}>
-                            {[['badge_one',data.badge_one],['badge_two',data.badge_two]].map(([key,value])=><EditableText key={key} value={value} className={sparkTw(block, "text_4", `rounded-full border px-4 py-2 text-xs font-semibold ${theme.border} ${theme.sub}`)} onSave={(v)=>onUpdate({[key]:v})}/>) }
+                            {[['badge_one',data.badge_one],['badge_two',data.badge_two]].map(([key,value], index)=><EditableText key={key} value={value} className={sparkTwItem(block, "badges", index, "badge", sparkTw(block, "text_4", `rounded-full border px-4 py-2 text-xs font-semibold ${theme.border} ${theme.sub}`))} onSave={(v)=>onUpdate({[key]:v})}/>) }
                         </div>
                     </div>
                     <div className={sparkTw(block, "wrapper_7", "relative min-h-[480px] sm:min-h-[560px]")}>

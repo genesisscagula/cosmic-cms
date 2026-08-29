@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'version' => 1,
+    'version' => 2,
 
     // New per-instance storage. Existing Sparks continue to render their
     // hard-coded classes until later migration batches populate this field.
@@ -34,11 +34,25 @@ return [
         'portrait', 'landscape',
     ],
 
-    // Structural utilities may be read by Luna but should not be removed by a
-    // normal visual edit unless a later mutation explicitly opts into a
-    // structural operation. This protects Spark markup contracts.
+    // Utilities that are globally protected by the existing mutation engine.
+    // Keep this list intentionally small: layout utilities can still be changed
+    // by explicit structural operations in later batches.
     'protected_utility_prefixes' => [
         'sr-only', 'not-sr-only', 'contents',
+    ],
+
+    // V2 structural classifier. Migration batches can copy matching utilities
+    // into a style definition's `base`/`protected` bucket so ordinary visual
+    // edits cannot accidentally remove renderer invariants (for example an
+    // overlay's absolute positioning). Classification alone does NOT globally
+    // lock these utilities.
+    'structural_utility_prefixes' => [
+        'static', 'fixed', 'absolute', 'relative', 'sticky',
+        'inset', 'inset-x', 'inset-y', 'top', 'right', 'bottom', 'left',
+        'z', 'isolate', 'isolation',
+        'block', 'inline-block', 'inline', 'flex', 'inline-flex', 'grid', 'inline-grid', 'hidden',
+        'overflow', 'overflow-x', 'overflow-y',
+        'pointer-events',
     ],
 
     // Disallow class payloads that could escape into markup or arbitrary CSS.
@@ -195,7 +209,15 @@ return [
     ],
 
     'limits' => [
+        // Legacy flat slots remain supported during migration.
         'max_slots' => 160,
+
+        // V2 shared styles + per-item/nested-item override guards.
+        'max_styles_per_scope' => 160,
+        'max_collections_per_scope' => 24,
+        'max_items_per_collection' => 64,
+        'max_collection_depth' => 4,
+
         'max_classes_per_slot' => 160,
         'max_class_length' => 180,
     ],

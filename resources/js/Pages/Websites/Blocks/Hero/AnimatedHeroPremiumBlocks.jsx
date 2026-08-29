@@ -8,7 +8,7 @@ import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/he
 import { resolveMediaOverlay, effectiveMediaOverlayOpacity } from "../../../../theme/mediaOverlay";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwPath } from "../Shared/sparkTailwindRuntime";
 const baseDefaults = {
     eyebrow: "MOTION, WITH PURPOSE",
     heading: "Make the first screen move.",
@@ -216,17 +216,17 @@ function AnimatedHeroPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) 
         <div
             data-cosmic-editable-hero-media="true"
             title={usesGallery ? "Click to edit hero images" : "Click to edit hero image"}
-            className={sparkTw(block, "auto_1", `absolute inset-0 cursor-pointer overflow-hidden ${split ? "lg:relative lg:min-h-[640px]" : ""}`)}
+            className={sparkTw(block, "media", `absolute inset-0 cursor-pointer overflow-hidden ${split ? "lg:relative lg:min-h-[640px]" : ""}`)}
         >
             {images.map((src, index) => (
                 <div
                     key={`${src}-${index}`}
                     data-motion-layer={layered ? String(index + 1) : undefined}
-                    className={sparkTw(block, "auto_2", `absolute inset-0 transition-all duration-1000 ease-out ${
+                    className={`${sparkTwPath(block, ["images", index], "layer", "absolute inset-0 transition-all duration-1000 ease-out")} ${
                         layered ? (index === 0 ? "opacity-100" : index === 1 ? "opacity-40 mix-blend-screen" : "opacity-20 mix-blend-overlay") :
                         vertical ? (index === active ? "translate-y-0 opacity-100" : index < active ? "-translate-y-full opacity-0" : "translate-y-full opacity-0") :
                         index === active ? "opacity-100 scale-100" : "opacity-0 scale-[1.025]"
-                    } ${block.type === "hero_ken_burns_premium" && index === 0 ? "cosmic-hero-kenburns" : ""}`)}
+                    } ${block.type === "hero_ken_burns_premium" && index === 0 ? "cosmic-hero-kenburns" : ""}`.trim()}
                 >
                     {index === 0 ? (
                         <EditableImage
@@ -237,39 +237,39 @@ function AnimatedHeroPremiumBlock({ block, blockIndex, onUpdate, globalTheme }) 
                             showOverlay={false}
                             isBackground
                             blockType={block.type}
-                            className={sparkTw(block, "auto_3", "absolute inset-0 h-full w-full")}
+                            className={sparkTwPath(block, ["images", index], "image", "absolute inset-0 h-full w-full")}
                             onSave={(value) => onUpdate({ image_url: value })}
                         />
                     ) : (
-                        <img src={src} alt="" className={sparkTw(block, "auto_4", "h-full w-full object-cover")} loading="lazy" decoding="async" />
+                        <img src={src} alt="" className={sparkTwPath(block, ["images", index], "image", "h-full w-full object-cover")} loading="lazy" decoding="async" />
                     )}
                 </div>
             ))}
-            <div className={sparkTw(block, "auto_5", "absolute inset-0")} style={{ backgroundColor: mediaOverlay.overlayColor, opacity: overlay }} />
-            <div className={sparkTw(block, "auto_6", `absolute inset-0 ${isLight ? "bg-gradient-to-r from-white/75 via-white/30 to-white/10" : "bg-gradient-to-r from-slate-950/70 via-slate-950/20 to-transparent"}`)} />
+            <div className={sparkTw(block, "overlay_color", "absolute inset-0")} style={{ backgroundColor: mediaOverlay.overlayColor, opacity: overlay }} />
+            <div className={sparkTw(block, "overlay", `absolute inset-0 ${isLight ? "bg-gradient-to-r from-white/75 via-white/30 to-white/10" : "bg-gradient-to-r from-slate-950/70 via-slate-950/20 to-transparent"}`)} />
         </div>
     );
 
     return (
-        <section ref={rootRef} data-cosmic-media-banner="true" onClick={handleMediaEdit} data-cosmic-hero-theme={heroState.requestedTheme} style={{minHeight: split ? "640px" : "var(--cosmic-hero-fold-height, calc(100svh - 80px))"}} className={sparkTw(block, "auto_7", `relative isolate overflow-hidden ${isLight ? `${theme.bg} ${theme.text}` : "bg-slate-950 text-white"} ${split ? "lg:grid lg:grid-cols-[0.9fr_1.1fr]" : ""}`)}>
+        <section ref={rootRef} data-cosmic-media-banner="true" onClick={handleMediaEdit} data-cosmic-hero-theme={heroState.requestedTheme} style={{minHeight: split ? "640px" : "var(--cosmic-hero-fold-height, calc(100svh - 80px))"}} className={sparkTw(block, "section", `relative isolate overflow-hidden ${isLight ? `${theme.bg} ${theme.text}` : "bg-slate-950 text-white"} ${split ? "lg:grid lg:grid-cols-[0.9fr_1.1fr]" : ""}`)}>
             {split ? null : media}
-            <div className={sparkTw(block, "auto_8", `relative z-20 mx-auto flex w-full max-w-7xl items-center px-6 py-0 sm:px-10 lg:px-14 ${split ? "lg:min-h-[640px]" : ""}`)} style={{minHeight: split ? "640px" : "var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
-                <div className={sparkTw(block, "auto_9", "max-w-3xl")}>
-                    <EditableText value={data.eyebrow} className={sparkTw(block, "auto_10", `text-xs font-bold uppercase tracking-[0.32em] ${isLight ? theme.sub : "text-white/70"}`)} onSave={(value) => onUpdate({ eyebrow: value })} />
-                    <EditableText value={data.heading} cosmicType="h1" className={sparkTw(block, "auto_11", `mt-6 block text-4xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${copyText}`)} onSave={(value) => onUpdate({ heading: value })} />
-                    <EditableText value={data.text} className={sparkTw(block, "auto_12", `mt-7 block max-w-2xl text-base leading-8 sm:text-lg ${copySub}`)} onSave={(value) => onUpdate({ text: value })} />
-                    <div className={sparkTw(block, "auto_13", "mt-9 flex flex-wrap gap-3")}>
-                        <EditableButton label={data.primary_label} url={data.primary_url} onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })} className={sparkTw(block, "auto_14", `rounded-full px-6 py-3.5 text-sm font-bold transition ${primaryButton}`)} />
-                        <EditableButton label={data.secondary_label} url={data.secondary_url} onSave={(label, url) => onUpdate({ secondary_label: label, secondary_url: url })} className={sparkTw(block, "auto_15", `rounded-full border px-6 py-3.5 text-sm font-bold backdrop-blur transition ${secondaryButton}`)} />
+            <div className={sparkTw(block, "wrapper", `relative z-20 mx-auto flex w-full max-w-7xl items-center px-6 py-0 sm:px-10 lg:px-14 ${split ? "lg:min-h-[640px]" : ""}`)} style={{minHeight: split ? "640px" : "var(--cosmic-hero-fold-height, calc(100svh - 80px))"}}>
+                <div className={sparkTw(block, "content", "max-w-3xl")}>
+                    <EditableText value={data.eyebrow} className={sparkTw(block, "eyebrow", `text-xs font-bold uppercase tracking-[0.32em] ${isLight ? theme.sub : "text-white/70"}`)} onSave={(value) => onUpdate({ eyebrow: value })} />
+                    <EditableText value={data.heading} cosmicType="h1" className={sparkTw(block, "heading", `mt-6 block text-4xl font-semibold leading-[0.98] tracking-[-0.045em] sm:text-5xl lg:text-6xl xl:text-7xl ${copyText}`)} onSave={(value) => onUpdate({ heading: value })} />
+                    <EditableText value={data.text} className={sparkTw(block, "description", `mt-7 block max-w-2xl text-base leading-8 sm:text-lg ${copySub}`)} onSave={(value) => onUpdate({ text: value })} />
+                    <div className={sparkTw(block, "actions", "mt-9 flex flex-wrap gap-3")}>
+                        <EditableButton label={data.primary_label} url={data.primary_url} onSave={(label, url) => onUpdate({ primary_label: label, primary_url: url })} className={sparkTw(block, "primary_button", `rounded-full px-6 py-3.5 text-sm font-bold transition ${primaryButton}`)} />
+                        <EditableButton label={data.secondary_label} url={data.secondary_url} onSave={(label, url) => onUpdate({ secondary_label: label, secondary_url: url })} className={sparkTw(block, "secondary_button", `rounded-full border px-6 py-3.5 text-sm font-bold backdrop-blur transition ${secondaryButton}`)} />
                     </div>
                     {isTimed && images.length > 1 && (
-                        <div className={sparkTw(block, "auto_16", "mt-10 flex items-center gap-2")} aria-label="Slide progress">
-                            {images.map((_, index) => <span key={index} className={sparkTw(block, "auto_17", `h-1 rounded-full transition-all duration-500 ${index === active ? (isLight ? "w-12 bg-slate-700" : "w-12 bg-white") : (isLight ? "w-5 bg-slate-400/50" : "w-5 bg-white/30")}`)} />)}
+                        <div className={sparkTw(block, "progress", "mt-10 flex items-center gap-2")} aria-label="Slide progress">
+                            {images.map((_, index) => <span key={index} className={`${sparkTwPath(block, ["images", index], "dot", "h-1 rounded-full transition-all duration-500")} ${index === active ? (isLight ? "w-12 bg-slate-700" : "w-12 bg-white") : (isLight ? "w-5 bg-slate-400/50" : "w-5 bg-white/30")}`.trim()} />)}
                         </div>
                     )}
                 </div>
             </div>
-            {split && <div className={sparkTw(block, "auto_18", "relative min-h-[560px] lg:min-h-[720px]")}>{media}</div>}
+            {split && <div className={sparkTw(block, "split_media", "relative min-h-[560px] lg:min-h-[720px]")}>{media}</div>}
             {usesGallery ? <EditableImageGallery ref={galleryRef} websiteId={websiteId} images={images} maxItems={3} title={`${schemaDef.title} images`} onSave={updateGalleryImages} /> : null}
         </section>
     );

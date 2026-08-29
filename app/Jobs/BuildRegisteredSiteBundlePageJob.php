@@ -35,7 +35,7 @@ final class BuildRegisteredSiteBundlePageJob implements ShouldQueue
         public string $refundReference,
     ) {
         $this->onConnection('database');
-        $this->onQueue((string) config('cosmic-queue.queues.ai_builds', 'ai-builds'));
+        $this->onQueue((string) config('cosmic-queue.queues.ai_builds', 'ai'));
         $this->afterCommit();
     }
 

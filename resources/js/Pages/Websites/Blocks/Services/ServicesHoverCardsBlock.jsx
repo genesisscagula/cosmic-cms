@@ -3,7 +3,7 @@ import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
 import { RepeatableControls, RepeatableRemoveButton } from "../Shared/RepeatableControls";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
 
 export const ServicesHoverCardsSchema = {
     type: "services_hover_cards",
@@ -54,17 +54,17 @@ export function ServicesHoverCardsBlock({ block, onUpdate, globalTheme }) {
             </div>
 
             <div className={sparkTw(block, "wrapper_4", "mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-3")}>
-                {cards.map((word, cardIndex) => <article key={word} data-cosmic-services-hover-card="true" style={{ "--cosmic-hover-card-bg": hoverBackground, "--cosmic-hover-card-fg": hoverForeground }} className={sparkTw(block, "card", `group relative min-h-[300px] overflow-hidden rounded-[1.75rem] border p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl sm:p-7 ${border} ${card}`)}>
+                {cards.map((word, cardIndex) => <article key={word} data-cosmic-services-hover-card="true" style={{ "--cosmic-hover-card-bg": hoverBackground, "--cosmic-hover-card-fg": hoverForeground }} className={sparkTwItem(block, "cards", cardIndex, "card", `group relative min-h-[300px] overflow-hidden rounded-[1.75rem] border p-6 shadow-sm transition duration-300 hover:-translate-y-1 hover:shadow-xl sm:p-7 ${border} ${card}`)}>
                     <RepeatableRemoveButton hoverScope="card" overlay label="Remove service card" disabled={cardCount<=1} onRemove={()=>{const all=["one","two","three","four","five","six"];const fields=["number","title","summary","text","link"];const patch={service_count:cardCount-1};for(let x=cardIndex;x<cardCount-1;x++){fields.forEach(f=>patch[`card_${all[x]}_${f}`]=data[`card_${all[x+1]}_${f}`]??"");}onUpdate(patch)}}/>
-                    <div className={sparkTw(block, "wrapper_5", "flex items-start justify-between gap-4")}>
-                        <EditableText value={data[`card_${word}_number`]} className={sparkTw(block, "text_4", `text-xs font-black tracking-[.2em] ${muted}`)} onSave={save(`card_${word}_number`)} />
-                        <span className={sparkTw(block, "label", `flex h-10 w-10 items-center justify-center rounded-full border text-lg transition group-hover:rotate-45 ${border}`)}>↗</span>
+                    <div className={sparkTwItem(block, "cards", cardIndex, "header", "flex items-start justify-between gap-4")}>
+                        <EditableText value={data[`card_${word}_number`]} className={sparkTwItem(block, "cards", cardIndex, "number", `text-xs font-black tracking-[.2em] ${muted}`)} onSave={save(`card_${word}_number`)} />
+                        <span className={sparkTwItem(block, "cards", cardIndex, "icon", `flex h-10 w-10 items-center justify-center rounded-full border text-lg transition group-hover:rotate-45 ${border}`)}>↗</span>
                     </div>
-                    <div className={sparkTw(block, "wrapper_6", "mt-14")}>
-                        <EditableText value={data[`card_${word}_title`]} className={sparkTw(block, "text_5", "block text-2xl font-semibold tracking-[-.03em]")} onSave={save(`card_${word}_title`)} />
-                        <EditableText value={data[`card_${word}_summary`]} className={sparkTw(block, "text_6", `mt-3 block text-sm font-semibold ${muted}`)} onSave={save(`card_${word}_summary`)} />
-                        <EditableText value={data[`card_${word}_text`]} isTextArea className={sparkTw(block, "text_7", "mt-5 block translate-y-3 text-sm leading-6 opacity-75 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100")} onSave={save(`card_${word}_text`)} />
-                        <EditableText value={data[`card_${word}_link`]} className={sparkTw(block, "text_8", "mt-7 block text-xs font-black uppercase tracking-[.16em] opacity-70 group-hover:opacity-100")} onSave={save(`card_${word}_link`)} />
+                    <div className={sparkTwItem(block, "cards", cardIndex, "content", "mt-14")}>
+                        <EditableText value={data[`card_${word}_title`]} className={sparkTwItem(block, "cards", cardIndex, "title", "block text-2xl font-semibold tracking-[-.03em]")} onSave={save(`card_${word}_title`)} />
+                        <EditableText value={data[`card_${word}_summary`]} className={sparkTwItem(block, "cards", cardIndex, "summary", `mt-3 block text-sm font-semibold ${muted}`)} onSave={save(`card_${word}_summary`)} />
+                        <EditableText value={data[`card_${word}_text`]} isTextArea className={sparkTwItem(block, "cards", cardIndex, "desc", "mt-5 block translate-y-3 text-sm leading-6 opacity-75 transition duration-300 group-hover:translate-y-0 group-hover:opacity-100")} onSave={save(`card_${word}_text`)} />
+                        <EditableText value={data[`card_${word}_link`]} className={sparkTwItem(block, "cards", cardIndex, "cta", "mt-7 block text-xs font-black uppercase tracking-[.16em] opacity-70 group-hover:opacity-100")} onSave={save(`card_${word}_link`)} />
                     </div>
                 </article>)}
             </div>

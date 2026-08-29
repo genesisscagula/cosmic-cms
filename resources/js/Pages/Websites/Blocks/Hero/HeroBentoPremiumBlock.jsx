@@ -4,7 +4,7 @@ import { EditableImage } from "../Shared/EditableImage";
 import { EditableText } from "../Shared/EditableText";
 import { getHeroThemeState } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
 
 export const HeroBentoPremiumSchema = {
     type: "hero_bento_premium",
@@ -61,7 +61,7 @@ export function HeroBentoPremiumBlock({ block, blockIndex, onUpdate, globalTheme
                             <EditableButton label={data.secondary_label} url={data.secondary_url} className={sparkTw(block, "b10_1", `inline-flex min-h-[50px] items-center justify-center rounded-full border px-7 font-bold ${isPrimary ? 'border-white/25 text-white' : `${theme.border} ${theme.text}`}`)} onSave={(secondary_label,secondary_url)=>onUpdate({secondary_label,secondary_url})}/>
                         </div>
                         <div className={sparkTw(block, "wrapper_6", "mt-10 grid gap-3 sm:grid-cols-3")}>
-                            {["card_one_label","card_two_label","card_three_label"].map((key)=><div key={key} className={sparkTw(block, "b10_2", `rounded-2xl border px-4 py-4 text-sm font-semibold ${isPrimary ? 'border-white/20 bg-white/10 text-white' : `${theme.border} ${theme.bg} ${theme.text}`}`)}><EditableText value={data[key]} onSave={(v)=>onUpdate({[key]:v})}/></div>)}
+                            {["card_one_label","card_two_label","card_three_label"].map((key, index)=><div key={key} className={sparkTwItem(block, "proof_cards", index, "card", sparkTw(block, "b10_2", `rounded-2xl border px-4 py-4 text-sm font-semibold ${isPrimary ? 'border-white/20 bg-white/10 text-white' : `${theme.border} ${theme.bg} ${theme.text}`}`))}><EditableText value={data[key]} className={sparkTwItem(block, "proof_cards", index, "label", "")} onSave={(v)=>onUpdate({[key]:v})}/></div>)}
                         </div>
                     </div>
 

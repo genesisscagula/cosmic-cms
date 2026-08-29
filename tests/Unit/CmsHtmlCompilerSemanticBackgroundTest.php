@@ -19,7 +19,9 @@ class CmsHtmlCompilerSemanticBackgroundTest extends TestCase
 
         $this->assertSame(['primary', 'white', 'surface'], array_slice($matches[1], 0, 3));
         $this->assertStringContainsString('--cosmic-bg-white:#FEFEFD', $html);
-        $this->assertStringContainsString('--cosmic-bg-surface:#EAEFF3', $html);
+        // #F1F5F9 is the canonical neutral surface shared by the Builder
+        // preview shell and the static compiler fallback contract.
+        $this->assertStringContainsString('--cosmic-bg-surface:#F1F5F9', $html);
     }
 
     public function test_legacy_gradient_cta_uses_plain_semantic_surface(): void

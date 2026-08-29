@@ -5,7 +5,7 @@ import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { getHeroThemeState, resolveHeroThemeRequest } from "../../../../theme/heroTheme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
 
 export const HeroSaasDashboardSchema = {
     type: "hero_saas_dashboard",
@@ -76,19 +76,19 @@ export function HeroSaasDashboardBlock({ block, onUpdate, globalTheme }) {
                     <div className={sparkTw(block, "wrapper_8", `grid gap-0 lg:grid-cols-[240px_minmax(0,1fr)] ${theme.surface}`)}>
                         <aside className={sparkTw(block, "wrapper_9", `hidden border-r p-5 lg:block ${theme.border}`)}>
                             <div className={sparkTw(block, "wrapper_10", `rounded-xl px-3 py-2 text-xs font-semibold ${primaryTheme.card || primaryTheme.bg} ${primaryTheme.text}`)}>Overview</div>
-                            {["Projects","Analytics","Customers","Automations"].map((label)=><div key={label} className={sparkTw(block, "wrapper_11", `mt-2 rounded-xl px-3 py-2 text-xs ${theme.sub}`)}>{label}</div>)}
+                            {["Projects","Analytics","Customers","Automations"].map((label, index)=><div key={label} className={sparkTwItem(block, "nav_items", index, "item", sparkTw(block, "wrapper_11", `mt-2 rounded-xl px-3 py-2 text-xs ${theme.sub}`))}>{label}</div>)}
                         </aside>
                         <div className={sparkTw(block, "wrapper_12", "p-5 sm:p-7")}>
                             <div className={sparkTw(block, "wrapper_13", "grid gap-4 md:grid-cols-3")}>
-                                {metrics.map(([valueKey,labelKey])=><div key={valueKey} className={sparkTw(block, "wrapper_14", `rounded-2xl border p-5 ${theme.border} ${theme.bg}`)}>
-                                    <EditableText value={data[valueKey]} className={sparkTw(block, "text_6", `block text-3xl font-semibold tracking-tight ${theme.text}`)} onSave={(v)=>onUpdate({[valueKey]:v})}/>
-                                    <EditableText value={data[labelKey]} className={sparkTw(block, "text_7", `mt-2 block text-xs font-medium ${theme.sub}`)} onSave={(v)=>onUpdate({[labelKey]:v})}/>
+                                {metrics.map(([valueKey,labelKey], index)=><div key={valueKey} className={sparkTwItem(block, "metrics", index, "card", sparkTw(block, "wrapper_14", `rounded-2xl border p-5 ${theme.border} ${theme.bg}`))}>
+                                    <EditableText value={data[valueKey]} className={sparkTwItem(block, "metrics", index, "value", sparkTw(block, "text_6", `block text-3xl font-semibold tracking-tight ${theme.text}`))} onSave={(v)=>onUpdate({[valueKey]:v})}/>
+                                    <EditableText value={data[labelKey]} className={sparkTwItem(block, "metrics", index, "label", sparkTw(block, "text_7", `mt-2 block text-xs font-medium ${theme.sub}`))} onSave={(v)=>onUpdate({[labelKey]:v})}/>
                                 </div>)}
                             </div>
                             <div className={sparkTw(block, "wrapper_15", `mt-4 rounded-2xl border p-5 ${theme.border} ${theme.bg}`)}>
                                 <EditableText value={data.chart_label} className={sparkTw(block, "text_8", `block text-sm font-semibold ${theme.text}`)} onSave={(chart_label)=>onUpdate({chart_label})}/>
                                 <div className={sparkTw(block, "wrapper_16", "mt-7 flex h-40 items-end gap-2 sm:gap-3")}>
-                                    {[38,58,48,72,66,88,78,96,84,100].map((height,index)=><div key={index} className={sparkTw(block, "wrapper_17", `flex-1 rounded-t-lg ${primaryTheme.bg}`)} style={{height:`${height}%`,opacity:.42 + index*.045}} />)}
+                                    {[38,58,48,72,66,88,78,96,84,100].map((height,index)=><div key={index} className={sparkTwItem(block, "chart_bars", index, "bar", sparkTw(block, "wrapper_17", `flex-1 rounded-t-lg ${primaryTheme.bg}`))} style={{height:`${height}%`,opacity:.42 + index*.045}} />)}
                                 </div>
                             </div>
                         </div>
@@ -98,7 +98,7 @@ export function HeroSaasDashboardBlock({ block, onUpdate, globalTheme }) {
                 <div className={sparkTw(block, "wrapper_18", `mt-8 border-t pt-7 text-center ${theme.border}`)}>
                     <p className={sparkTw(block, "body", `text-[11px] font-bold uppercase tracking-[.26em] ${theme.sub}`)}>Trusted by teams building what comes next</p>
                     <div className={sparkTw(block, "wrapper_19", "mt-5 grid grid-cols-2 gap-4 sm:grid-cols-4")}>
-                        {["logo_one","logo_two","logo_three","logo_four"].map((key)=><EditableText key={key} value={data[key]} className={sparkTw(block, "text_9", `text-xs font-bold tracking-[.16em] ${theme.sub}`)} onSave={(v)=>onUpdate({[key]:v})}/>) }
+                        {["logo_one","logo_two","logo_three","logo_four"].map((key, index)=><EditableText key={key} value={data[key]} className={sparkTwItem(block, "logos", index, "label", sparkTw(block, "text_9", `text-xs font-bold tracking-[.16em] ${theme.sub}`))} onSave={(v)=>onUpdate({[key]:v})}/>) }
                     </div>
                 </div>
             </div>

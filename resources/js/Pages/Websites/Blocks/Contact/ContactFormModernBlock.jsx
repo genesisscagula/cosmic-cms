@@ -3,7 +3,7 @@ import { createPortal } from "react-dom";
 import { EditableText } from "../Shared/EditableText";
 import { getEffectiveTheme } from "../../../../theme/Theme";
 import { colorFamilies } from "../../../../theme/colorFamilies";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem, sparkTwPath } from "../Shared/sparkTailwindRuntime";
 
 const FIELD_TYPES = ["text", "email", "tel", "textarea", "select", "radio", "checkbox", "date"];
 
@@ -61,29 +61,29 @@ export const ContactFormModernSchema = {
     },
 };
 
-export function FormField({ block, field, inputClass, theme, nativeColorScheme, accentColor }) {
-    const label = <span>{field.label}{field.required ? <span className={sparkTw(block, "auto_1", "ml-1 text-rose-400")}>*</span> : null}</span>;
+export function FormField({ block, field, fieldIndex, inputClass, theme, nativeColorScheme, accentColor }) {
+    const label = <span>{field.label}{field.required ? <span className={sparkTwItem(block, "fields", fieldIndex, "required", "ml-1 text-rose-400")}>*</span> : null}</span>;
     const options = field.options.length ? field.options : ["Option one", "Option two"];
 
     if (field.type === "textarea") {
-        return <label className={sparkTw(block, "auto_2", `block text-sm font-semibold ${theme.text}`)}>{label}<textarea style={{ "--tw-ring-color": accentColor }} className={sparkTw(block, "auto_3", `mt-2 min-h-32 w-full resize-y rounded-xl border px-4 py-3 text-sm outline-none transition focus:ring-2 ${inputClass}`)} placeholder={field.placeholder} required={field.required} /></label>;
+        return <label className={sparkTwItem(block, "fields", fieldIndex, "label", `block text-sm font-semibold ${theme.text}`)}>{label}<textarea style={{ "--tw-ring-color": accentColor }} className={sparkTwItem(block, "fields", fieldIndex, "textarea", `mt-2 min-h-32 w-full resize-y rounded-xl border px-4 py-3 text-sm outline-none transition focus:ring-2 ${inputClass}`)} placeholder={field.placeholder} required={field.required} /></label>;
     }
     if (field.type === "select") {
         const optionStyle = nativeColorScheme === "dark"
             ? { backgroundColor: "#0f172a", color: "#f8fafc" }
             : { backgroundColor: "#ffffff", color: "#0f172a" };
-        return <label className={sparkTw(block, "auto_4", `block text-sm font-semibold ${theme.text}`)}>{label}<select style={{ colorScheme: nativeColorScheme, "--tw-ring-color": accentColor }} className={sparkTw(block, "auto_5", `mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 ${inputClass}`)} defaultValue="" required={field.required}><option value="" disabled style={optionStyle}>{field.placeholder || "Select an option"}</option>{options.map((option) => <option style={optionStyle} key={option}>{option}</option>)}</select></label>;
+        return <label className={sparkTwItem(block, "fields", fieldIndex, "label", `block text-sm font-semibold ${theme.text}`)}>{label}<select style={{ colorScheme: nativeColorScheme, "--tw-ring-color": accentColor }} className={sparkTwItem(block, "fields", fieldIndex, "select", `mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 ${inputClass}`)} defaultValue="" required={field.required}><option value="" disabled style={optionStyle}>{field.placeholder || "Select an option"}</option>{options.map((option) => <option style={optionStyle} key={option}>{option}</option>)}</select></label>;
     }
     if (field.type === "radio") {
-        return <fieldset className={sparkTw(block, "auto_6", `text-sm font-semibold ${theme.text}`)}><legend>{label}</legend><div className={sparkTw(block, "auto_7", "mt-3 flex flex-wrap gap-3")}>{options.map((option) => <label className={sparkTw(block, "auto_8", `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${theme.border}`)} key={option}><input style={{ accentColor }} type="radio" name={field.name} required={field.required} />{option}</label>)}</div></fieldset>;
+        return <fieldset className={sparkTwItem(block, "fields", fieldIndex, "fieldset", `text-sm font-semibold ${theme.text}`)}><legend>{label}</legend><div className={sparkTwItem(block, "fields", fieldIndex, "options", "mt-3 flex flex-wrap gap-3")}>{options.map((option, optionIndex) => <label className={sparkTwPath(block, ["fields", fieldIndex, "options", optionIndex], "option", `inline-flex items-center gap-2 rounded-lg border px-3 py-2 text-sm font-medium ${theme.border}`)} key={option}><input style={{ accentColor }} type="radio" name={field.name} required={field.required} />{option}</label>)}</div></fieldset>;
     }
     if (field.type === "checkbox") {
         if (field.options.length) {
-            return <fieldset className={sparkTw(block, "auto_9", `text-sm font-semibold ${theme.text}`)}><legend>{label}{field.required ? <span className={sparkTw(block, "auto_10", "ml-1 text-rose-400")}>*</span> : null}</legend><div className={sparkTw(block, "auto_11", "mt-3 space-y-2")}>{field.options.map((option) => <label className={sparkTw(block, "auto_12", `flex items-center gap-2 text-sm font-medium ${theme.sub}`)} key={option}><input style={{ accentColor }} className={sparkTw(block, "auto_13", "h-4 w-4 rounded border-slate-400")} type="checkbox" />{option}</label>)}</div></fieldset>;
+            return <fieldset className={sparkTwItem(block, "fields", fieldIndex, "fieldset", `text-sm font-semibold ${theme.text}`)}><legend>{label}{field.required ? <span className={sparkTwItem(block, "fields", fieldIndex, "required", "ml-1 text-rose-400")}>*</span> : null}</legend><div className={sparkTwItem(block, "fields", fieldIndex, "options", "mt-3 space-y-2")}>{field.options.map((option, optionIndex) => <label className={sparkTwPath(block, ["fields", fieldIndex, "options", optionIndex], "option", `flex items-center gap-2 text-sm font-medium ${theme.sub}`)} key={option}><input style={{ accentColor }} className={sparkTwItem(block, "fields", fieldIndex, "checkbox", "h-4 w-4 rounded border-slate-400")} type="checkbox" />{option}</label>)}</div></fieldset>;
         }
-        return <label className={sparkTw(block, "auto_14", `flex items-start gap-3 text-sm font-medium ${theme.text}`)}><input style={{ accentColor }} className={sparkTw(block, "auto_15", "mt-1 h-4 w-4 rounded border-slate-400")} type="checkbox" required={field.required} /><span>{field.label}{field.required ? <span className={sparkTw(block, "auto_16", "ml-1 text-rose-400")}>*</span> : null}</span></label>;
+        return <label className={sparkTwItem(block, "fields", fieldIndex, "label", `flex items-start gap-3 text-sm font-medium ${theme.text}`)}><input style={{ accentColor }} className={sparkTwItem(block, "fields", fieldIndex, "checkbox", "mt-1 h-4 w-4 rounded border-slate-400")} type="checkbox" required={field.required} /><span>{field.label}{field.required ? <span className={sparkTwItem(block, "fields", fieldIndex, "required", "ml-1 text-rose-400")}>*</span> : null}</span></label>;
     }
-    return <label className={sparkTw(block, "auto_17", `block text-sm font-semibold ${theme.text}`)}>{label}<input type={field.type} style={field.type === "date" ? { colorScheme: nativeColorScheme, "--tw-ring-color": accentColor } : { "--tw-ring-color": accentColor }} className={sparkTw(block, "auto_18", `mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 ${inputClass}`)} placeholder={field.placeholder} required={field.required} /></label>;
+    return <label className={sparkTwItem(block, "fields", fieldIndex, "label", `block text-sm font-semibold ${theme.text}`)}>{label}<input type={field.type} style={field.type === "date" ? { colorScheme: nativeColorScheme, "--tw-ring-color": accentColor } : { "--tw-ring-color": accentColor }} className={sparkTwItem(block, "fields", fieldIndex, "input", `mt-2 h-12 w-full rounded-xl border px-4 text-sm outline-none transition focus:ring-2 ${inputClass}`)} placeholder={field.placeholder} required={field.required} /></label>;
 }
 
 export function FormFieldsEditor({ fields, onSave, onClose }) {
@@ -130,7 +130,7 @@ export function ContactFormModernBlock({ block, onUpdate, globalTheme }) {
                 >
                     <span aria-hidden="true" className={sparkTw(block, "auto_37", "text-[13px] leading-none")}>✎</span>
                     <span>Edit fields</span>
-                </button></div><div className={sparkTw(block, "auto_38", "space-y-5")}>{fields.map((field) => <FormField block={block} key={field.id} field={field} inputClass={inputClass} theme={theme} nativeColorScheme={nativeColorScheme} accentColor={accentColor} />)}</div><button type="submit" className={sparkTw(block, "auto_39", `mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 text-sm font-bold transition hover:opacity-90 ${buttonStyle}`)}><EditableText value={data.submit_label} className={sparkTw(block, "auto_40", "block")} onSave={(submit_label) => onUpdate({ submit_label })} /></button><p className={sparkTw(block, "auto_41", `mt-3 text-center text-xs ${theme.sub}`)}>We'll use your details only to respond to your inquiry.</p></form>
+                </button></div><div className={sparkTw(block, "auto_38", "space-y-5")}>{fields.map((field, fieldIndex) => <FormField block={block} key={field.id} field={field} fieldIndex={fieldIndex} inputClass={inputClass} theme={theme} nativeColorScheme={nativeColorScheme} accentColor={accentColor} />)}</div><button type="submit" className={sparkTw(block, "auto_39", `mt-6 inline-flex min-h-12 w-full items-center justify-center rounded-xl px-6 text-sm font-bold transition hover:opacity-90 ${buttonStyle}`)}><EditableText value={data.submit_label} className={sparkTw(block, "auto_40", "block")} onSave={(submit_label) => onUpdate({ submit_label })} /></button><p className={sparkTw(block, "auto_41", `mt-3 text-center text-xs ${theme.sub}`)}>We'll use your details only to respond to your inquiry.</p></form>
         </div>{editingFields ? <FormFieldsEditor fields={fields} onSave={(nextFields) => onUpdate({ fields: nextFields })} onClose={() => setEditingFields(false)} /> : null}
     </section>;
 }

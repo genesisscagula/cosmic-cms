@@ -67,7 +67,7 @@ const IndustrySection=({block,variant,family})=>{
     .b4-gallery .b4-grid,.b4-progress .b4-grid{grid-template-columns:repeat(12,minmax(0,1fr));grid-auto-rows:7rem}
     .b4-gallery .b4-card,.b4-progress .b4-card{grid-column:span 5;grid-row:span 3}
     .b4-gallery .b4-card:nth-child(2),.b4-progress .b4-card:nth-child(2){grid-column:span 7;grid-row:span 3}
-    .b4-gallery .b4-img,.b4-progress .b4-img{position:absolute;inset:0;height:100%;opacity:.42}
+    .b4-gallery .b4-img,.b4-progress .b4-img{position:absolute;inset:0;height:100%;opacity:1}
     .b4-gallery .b4-copy,.b4-progress .b4-copy{position:relative;z-index:2}
 
     .b4-reservation .b4-grid,.b4-services .b4-grid,.b4-pathways .b4-grid,.b4-facility .b4-grid,.b4-neighborhoods .b4-grid,.b4-itinerary .b4-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
@@ -77,7 +77,10 @@ const IndustrySection=({block,variant,family})=>{
     .b4-reservation .b4-copy,.b4-facility .b4-copy{position:absolute;z-index:2;left:0;right:0;bottom:0;color:white}
     .b4-reservation .b4-text,.b4-facility .b4-text,.b4-reservation .b4-label,.b4-facility .b4-label{color:rgba(255,255,255,.72)}
 
-        .b4-gallery .b4-copy,.b4-progress .b4-copy{display:flex;min-height:100%;flex-direction:column;justify-content:flex-end;padding:1.75rem;background:linear-gradient(to top,color-mix(in srgb,var(--b4-surface,var(--cosmic-bg-primary-surface,#30475E)) 88%,transparent),transparent 78%)}
+        .b4-gallery .b4-copy,.b4-progress .b4-copy{display:flex;min-height:100%;flex-direction:column;justify-content:flex-end;padding:1.75rem;background:linear-gradient(to top,rgba(255,255,255,.98) 0%,rgba(255,255,255,.92) 24%,rgba(255,255,255,.68) 43%,rgba(255,255,255,.24) 58%,rgba(255,255,255,0) 74%)}
+    .b4-gallery .b4-copy,.b4-progress .b4-copy{color:#172033}
+    .b4-gallery .b4-label,.b4-progress .b4-label{color:#64748b}
+    .b4-gallery .b4-text,.b4-progress .b4-text{color:#475569}
 @media(max-width:900px){.b4-story .b4-card:first-child,.b4-capabilities .b4-card:first-child,.b4-featured .b4-card:first-child,.b4-agent .b4-card:first-child,.b4-destination .b4-card:first-child{grid-row:auto;height:auto}.b4-story .b4-card:first-child .b4-img,.b4-capabilities .b4-card:first-child .b4-img,.b4-featured .b4-card:first-child .b4-img,.b4-agent .b4-card:first-child .b4-img,.b4-destination .b4-card:first-child .b4-img{flex:none}.cosmic-b4{padding:5rem 1.25rem}.cosmic-b4 .b4-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}.b4-gallery .b4-grid,.b4-progress .b4-grid{grid-auto-rows:auto}.b4-gallery .b4-card,.b4-progress .b4-card{grid-column:auto;grid-row:auto;min-height:21rem}}
     @media(max-width:640px){.cosmic-b4{padding:4rem 1rem}.cosmic-b4 .b4-heading{font-size:clamp(2.2rem,12vw,3.4rem)}.cosmic-b4 .b4-grid{grid-template-columns:1fr!important}}
    

@@ -26,11 +26,16 @@ class SavedSparkController extends Controller
             'name' => ['required', 'string', 'max:140'],
             'spark_type' => ['required', 'string', 'max:140'],
             'payload' => ['required', 'array'],
+            'source' => ['nullable', 'string', 'in:manual,luna'],
         ]);
 
         $payload = $data['payload'];
         unset($payload['_renderKey']);
         $payload['type'] = $data['spark_type'];
+        $payload['_saved_spark_meta'] = array_merge(
+            is_array($payload['_saved_spark_meta'] ?? null) ? $payload['_saved_spark_meta'] : [],
+            ['source' => $data['source'] ?? 'manual']
+        );
 
         $spark = SavedSpark::create([
             'user_id' => $request->user()->id,
@@ -76,6 +81,7 @@ class SavedSparkController extends Controller
             'name' => $spark->name,
             'spark_type' => $spark->spark_type,
             'payload' => $spark->payload ?: [],
+            'source' => (string) data_get($spark->payload ?: [], '_saved_spark_meta.source', 'manual'),
             'updated_at' => optional($spark->updated_at)->toIso8601String(),
         ];
     }

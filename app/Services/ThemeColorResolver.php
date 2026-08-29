@@ -74,10 +74,10 @@ final class ThemeColorResolver
         $page = $white;
         $dark = $this->hex($raw, ['dark'], '#0F172A');
 
-        $onPrimary = $this->contrast->readableForeground($primary, $this->nullableHex($raw, ['on_primary', 'onPrimary', 'button_text', 'buttonText', 'text']));
-        $onSecondary = $this->contrast->readableForeground($secondary, $this->nullableHex($raw, ['on_secondary', 'onSecondary', 'text']));
-        $onAccent = $this->contrast->readableForeground($accent, $this->nullableHex($raw, ['on_accent', 'onAccent']));
-        $onSurface = $this->contrast->readableForeground($contentSurface, $this->nullableHex($raw, ['surface_text', 'surfaceText', 'body']));
+        $onPrimary = $this->contrast->readableForeground($primary, $this->nullableHex($raw, ['on_primary', 'onPrimary', 'primary_text', 'primaryText', 'background_text', 'backgroundText', 'button_text', 'buttonText']));
+        $onSecondary = $this->contrast->readableForeground($secondary, $this->nullableHex($raw, ['on_secondary', 'onSecondary', 'secondary_text', 'secondaryText']));
+        $onAccent = $this->contrast->readableForeground($accent, $this->nullableHex($raw, ['on_accent', 'onAccent', 'accent_text', 'accentText']));
+        $onSurface = $this->contrast->readableForeground($contentSurface, $this->nullableHex($raw, ['surface_text', 'surfaceText', 'body', 'text']));
         $heading = $this->contrast->ensureContrast($this->hex($raw, ['heading'], $primary), $contentSurface);
         $body = $this->contrast->ensureContrast($this->hex($raw, ['body', 'surface_text', 'surfaceText'], $onSurface), $contentSurface);
         $muted = $this->contrast->ensureContrast(
@@ -89,7 +89,7 @@ final class ThemeColorResolver
         $primaryHover = $this->hex($raw, ['primary_hover', 'primaryHover', 'buttonHover'], $this->contrast->mix('#000000', $primary, 0.12));
         $primarySoft = $this->hex($raw, ['primary_soft', 'primarySoft'], $this->contrast->mix($primary, $contentSurface, 0.12));
         $buttonPrimary = $this->hex($raw, ['button_primary', 'buttonPrimary'], $primary);
-        $buttonPrimaryText = $this->contrast->readableForeground($buttonPrimary, $this->nullableHex($raw, ['button_text', 'buttonText', 'on_primary', 'onPrimary']));
+        $buttonPrimaryText = $this->contrast->readableForeground($buttonPrimary, $this->nullableHex($raw, ['button_text', 'buttonText', 'primary_text', 'primaryText', 'on_primary', 'onPrimary']));
         $buttonSecondary = $this->hex($raw, ['button_secondary', 'buttonSecondary'], $surfaceAlt);
         $buttonSecondaryText = $this->contrast->readableForeground($buttonSecondary, $this->nullableHex($raw, ['button_secondary_text', 'buttonSecondaryText', 'heading']));
 
@@ -128,7 +128,7 @@ final class ThemeColorResolver
             'on_secondary' => $onSecondary,
             'on_accent' => $onAccent,
             'on_surface' => $onSurface,
-            'on_dark' => $this->contrast->readableForeground($dark, $this->nullableHex($raw, ['on_dark', 'onDark', 'text'])),
+            'on_dark' => $this->contrast->readableForeground($dark, $this->nullableHex($raw, ['on_dark', 'onDark'])),
             'button_primary' => $buttonPrimary,
             'button_text' => $buttonPrimaryText,
             'button_secondary' => $buttonSecondary,
@@ -196,7 +196,8 @@ final class ThemeColorResolver
         foreach ([
             'sourceColor' => 'source_color', 'primaryHover' => 'primary_hover', 'primarySoft' => 'primary_soft',
             'brandSurface' => 'brand_surface', 'surfaceMuted' => 'surface_alt', 'surfaceText' => 'body',
-            'borderStrong' => 'border_strong', 'onPrimary' => 'on_primary', 'onSecondary' => 'on_secondary',
+            'borderStrong' => 'border_strong', 'primaryText' => 'on_primary', 'secondaryText' => 'on_secondary',
+            'accentText' => 'on_accent', 'backgroundText' => 'on_primary', 'onPrimary' => 'on_primary', 'onSecondary' => 'on_secondary',
             'onAccent' => 'on_accent', 'onSurface' => 'on_surface', 'onDark' => 'on_dark',
             'buttonPrimary' => 'button_primary', 'buttonText' => 'button_text',
             'buttonSecondary' => 'button_secondary', 'buttonSecondaryText' => 'button_secondary_text',

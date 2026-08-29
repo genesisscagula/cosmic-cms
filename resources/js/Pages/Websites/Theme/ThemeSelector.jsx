@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 import ThemeModal from "./ThemeModal";
 import themeMetadata from "./ThemeMetadata";
@@ -14,9 +14,25 @@ export default function ThemeSelector({
     brandMatchNeeded = false,
     onMatchBrandToLogo = null,
     brandMatchBusy = false,
+    onOpenSession = null,
+    onCancelSession = null,
+    onApplySession = null,
+    onAskLuna = null,
+    onThemeLunaIntent = null,
+    onGenerateCustomTheme = null,
+    lunaBusy = false,
 }) {
 
     const [open, setOpen] = useState(false);
+    const [draftTheme, setDraftTheme] = useState(value);
+    const [draftGeneratedTheme, setDraftGeneratedTheme] = useState(null);
+
+    useEffect(() => {
+        if (!open) {
+            setDraftTheme(value);
+            setDraftGeneratedTheme(null);
+        }
+    }, [value, open]);
 
     const customThemeMetadata = customTheme ? {
         id: 'my-brand',
@@ -30,7 +46,12 @@ export default function ThemeSelector({
         <>
             <button
                 type="button"
-                onClick={() => setOpen(true)}
+                onClick={() => {
+                    setDraftTheme(value);
+                    setDraftGeneratedTheme(null);
+                    onOpenSession?.();
+                    setOpen(true);
+                }}
                 aria-label={`Choose theme: ${currentTheme?.name || value}`}
                 className={compact
                     ? "flex h-10 w-40 items-center justify-between gap-2 rounded-lg border border-slate-300 bg-slate-100 px-3 text-left transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400"
@@ -69,9 +90,14 @@ export default function ThemeSelector({
 
             <ThemeModal
                 open={open}
-                onClose={() => setOpen(false)}
-                selectedTheme={value}
-                onSelect={onChange}
+                onClose={() => { onCancelSession?.(); setOpen(false); }}
+                onApply={() => {
+                    onApplySession?.({ selectedTheme: draftTheme, generatedTheme: draftGeneratedTheme });
+                    setOpen(false);
+                }}
+                selectedTheme={draftTheme}
+                onSelect={(theme) => { setDraftGeneratedTheme(null); setDraftTheme(theme); }}
+                onSelectGeneratedTheme={(theme) => { setDraftGeneratedTheme(theme); setDraftTheme(theme?.key || 'luna-generated'); }}
                 themeAccess={themeAccess}
                 signupUrl={signupUrl}
                 customTheme={customTheme}
@@ -79,6 +105,10 @@ export default function ThemeSelector({
                 brandMatchNeeded={brandMatchNeeded}
                 onMatchBrandToLogo={onMatchBrandToLogo}
                 brandMatchBusy={brandMatchBusy}
+                onAskLuna={onAskLuna}
+                onThemeLunaIntent={onThemeLunaIntent}
+                onGenerateCustomTheme={onGenerateCustomTheme}
+                lunaBusy={lunaBusy}
             />
 
         </>

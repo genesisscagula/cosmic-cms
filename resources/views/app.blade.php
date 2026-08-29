@@ -29,7 +29,7 @@
         <!-- Fonts -->
         <link rel="dns-prefetch" href="//fonts.bunny.net">
         <link rel="preconnect" href="https://fonts.bunny.net" crossorigin>
-        <link href="https://fonts.bunny.net/css?family=manrope:400,500,600,700,800&display=swap" rel="stylesheet" />
+        <link href="https://fonts.bunny.net/css?family=manrope:300,400,500,600,700,800,900&family=inter:300,400,500,600,700,800,900&family=plus-jakarta-sans:300,400,500,600,700,800&family=dm-sans:300,400,500,600,700,800&family=outfit:300,400,500,600,700,800&family=sora:300,400,500,600,700,800&family=urbanist:300,400,500,600,700,800&family=source-sans-3:300,400,500,600,700,800,900&family=work-sans:300,400,500,600,700,800&family=nunito-sans:300,400,500,600,700,800&family=ibm-plex-sans:300,400,500,600,700&family=playfair-display:400,500,600,700,800&family=cormorant-garamond:400,500,600,700&family=libre-baskerville:400,700&family=lora:400,500,600,700&display=swap" rel="stylesheet" />
 
         <!-- Apply the saved appearance before CSS/React paint to prevent flashes. -->
         <script>
@@ -66,13 +66,22 @@
             })();
         </script>
 
+        {{-- Batch 10: Luna can persist valid Tailwind utilities that were not present at Vite build time.
+             Load Tailwind's browser runtime only inside the visual Builder so a saved schema patch
+             renders immediately and matches Preview/Export/Live. Public/dashboard pages keep the
+             normal compiled app.css path. --}}
+        @if (request()->routeIs('pages.builder'))
+            <link rel="preconnect" href="https://cdn.tailwindcss.com" crossorigin>
+            <script src="https://cdn.tailwindcss.com"></script>
+        @endif
+
         <!-- Scripts: app.jsx is the only Vite entry. Inertia resolves pages lazily. -->
         @routes
         @viteReactRefresh
         @vite('resources/js/app.jsx')
         @inertiaHead
     </head>
-    <body class="font-sans antialiased">
+    <body class="font-sans">
         @inertia
     </body>
 </html>

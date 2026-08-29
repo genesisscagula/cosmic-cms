@@ -38,7 +38,7 @@ final class AuditLunaNestedRouter extends Command
             ],
             'Whole-page reference composer' => [
                 app_path('Services/LunaAiFlexSparkService.php'),
-                ['generatePageFromReference(', 'sol_reference_page_v1', 'registered_catalog', 'page_plan'],
+                ['generatePageFromReference(', 'sol_reference_page_ai_flex_dna_v2', 'registered_catalog', 'page_plan'],
             ],
             'API 4 current-page Spark selector' => [
                 app_path('Services/LunaIntentGateway.php'),
@@ -46,7 +46,7 @@ final class AuditLunaNestedRouter extends Command
             ],
             'API 5 full Spark schema editor' => [
                 app_path('Services/LunaSparkSchemaEditorService.php'),
-                ['FULL EDITABLE SPARK SCHEMA', 'FULL CURRENT TAILWIND SCHEMA', 'Return the COMPLETE editable object'],
+                ['FULL EDITABLE SPARK SCHEMA', 'FULL CURRENT TAILWIND SCHEMA', 'Return JSON only using MINIMAL PATCHES:', 'tailwind_patch', 'editable_patch'],
             ],
             'API 5 deterministic diff guards' => [
                 app_path('Services/LunaSparkSchemaEditorService.php'),

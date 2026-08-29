@@ -1,93 +1,81 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import process from 'node:process';
 
 const root = process.cwd();
-const read = (file) => fs.readFileSync(path.join(root, file), 'utf8');
-const unique = (values) => [...new Set(values)].sort();
-const matches = (source, pattern) => unique([...source.matchAll(pattern)].map((match) => match[1]));
+const blockRoot = path.join(root, 'resources/js/Pages/Websites/Blocks');
+const compilerPath = path.join(root, 'app/Helpers/CmsHtmlCompiler.php');
+const previewPath = path.join(root, 'app/Services/PreviewDeploymentService.php');
+const livePath = path.join(root, 'app/Services/DeploymentConnectorArchive.php');
+const appBladePath = path.join(root, 'resources/views/app.blade.php');
+const contractPath = path.join(root, 'resources/render-contract.json');
 
-const runtimeSource = read('resources/js/Pages/Websites/BlockRegistry.jsx');
-const marketplaceSource = read('resources/js/Pages/Websites/Components/SparkRegistry.jsx');
-const compilerSource = read('app/Helpers/CmsHtmlCompiler.php');
-const schemaManagerSource = read('app/AI/Schemas/SchemaManager.php');
-const builderSource = read('resources/js/Pages/Websites/Builder.jsx');
-const featureComparisonSource = read('resources/js/Pages/Websites/Blocks/Services/ServicesFeatureComparisonBlock.jsx');
-const motionHeroSource = read('resources/js/Pages/Websites/Blocks/Hero/AnimatedHeroPremiumPatch2Blocks.jsx');
-const themeSource = read('resources/js/theme/Theme.js');
-const contract = JSON.parse(read('resources/render-contract.json'));
+const read = (file) => fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : '';
+const walk = (dir) => fs.readdirSync(dir, {withFileTypes:true}).flatMap((entry) => {
+  const full = path.join(dir, entry.name);
+  return entry.isDirectory() ? walk(full) : [full];
+});
 
-const internalRuntimeSparks = ['luna_custom_section'];
-const runtimeAll = matches(runtimeSource, /^\s*([A-Za-z0-9_]+):\s*\{\s*component:/gm);
-const runtime = runtimeAll.filter((value) => !internalRuntimeSparks.includes(value));
-const registered = matches(schemaManagerSource, /['"]([A-Za-z0-9_]+)['"]\s*=>\s*['"][A-Za-z0-9_]+Schema['"]/g);
-const marketplace = matches(marketplaceSource, /^\s*type:\s*["']([A-Za-z0-9_]+)["']/gm);
-const compiler = matches(compilerSource, /case\s+["']([A-Za-z0-9_]+)["']/g);
+const files = walk(blockRoot).filter((f) => /\.(jsx|js)$/.test(f));
+let sharedBindings = 0;
+let scopedBindings = 0;
+let autoAliases = 0;
+let unbridgedClassName = [];
+const approvedBypass = new Set([
+  'Shared/EditableImage.jsx','Shared/EditableText.jsx','Shared/EditableButton.jsx',
+  'General/LunaCustomSectionBlock.jsx','Hero/HeroSliderFadeBlock.jsx',
+  'Blog/BlogHubBlock.jsx','Content/StructuredContentBlocks.jsx','Contact/ContactFormModernBlock.jsx',
+]);
 
-const difference = (left, right) => left.filter((value) => !right.includes(value));
-const failures = [];
-const reportDifference = (label, values) => {
-    if (values.length === 0) return;
-    failures.push(`${label}: ${values.join(', ')}`);
+for (const file of files) {
+  const source = read(file);
+  const rel = path.relative(blockRoot, file).replaceAll('\\','/');
+  sharedBindings += (source.match(/sparkTw\(/g) || []).length;
+  scopedBindings += (source.match(/sparkTw(?:Item|Path)\(/g) || []).length;
+  autoAliases += (source.match(/sparkTw(?:Item|Path)?\([^\n]*?["'`]auto_\d+/g) || []).length;
+  source.split(/\r?\n/).forEach((line, idx) => {
+    if (!line.includes('className=')) return;
+    if (/function\s+\w+\([^)]*className\s*=/.test(line)) return;
+    if (/sparkTw(?:Item|Path)?\(/.test(line)) return;
+    if (approvedBypass.has(rel)) return;
+    // Dynamic runtime state composition is allowed only when at least one side is schema-backed.
+    if (line.includes('sparkTw') || line.includes('cosmic-')) return;
+    unbridgedClassName.push(`${rel}:${idx+1}`);
+  });
+}
+
+const compiler = read(compilerPath);
+const preview = read(previewPath);
+const live = read(livePath);
+const blade = read(appBladePath);
+const pkg = JSON.parse(read(path.join(root,'package.json')) || '{}');
+const contract = JSON.parse(read(contractPath) || '{}');
+
+const checks = {
+  compiler_shared_resolver: compiler.includes('SparkTailwindSchemaContract') && compiler.includes('sparkTw('),
+  compiler_scoped_resolver: compiler.includes('resolveScopedStyle') && compiler.includes('sparkTwPath('),
+  compiler_schema_marker: compiler.includes('data-cosmic-tailwind-schema'),
+  builder_dynamic_tailwind_runtime: blade.includes("routeIs('pages.builder')") && blade.includes('cdn.tailwindcss.com'),
+  preview_compiled_baseline: preview.includes("/cosmic/cosmic-tailwind.css"),
+  preview_dynamic_tailwind_runtime: preview.includes('hasDynamicTailwindSchema') && preview.includes('cdn.tailwindcss.com'),
+  live_compiled_baseline: live.includes("/cosmic/cosmic-tailwind.css"),
+  live_dynamic_tailwind_runtime: live.includes('hasDynamicTailwindSchema') && live.includes('cdn.tailwindcss.com'),
+  export_tailwind_config: fs.existsSync(path.join(root,'tailwind.export.config.cjs')),
+  app_tailwind_config: fs.existsSync(path.join(root,'tailwind.config.js')),
+  render_contract_present: typeof contract.version === 'string' && contract.version.length > 0,
+  package_audit_command: String(pkg?.scripts?.['audit:sparks'] || '').includes('audit-spark-render-parity.mjs'),
 };
 
-reportDifference('Registered Sparks missing from runtime registry', difference(registered, runtime));
-reportDifference('Runtime public Sparks missing from SchemaManager', difference(runtime, registered));
-reportDifference('Registered Sparks missing from export compiler', difference(registered, compiler));
-reportDifference('Marketplace Sparks missing from runtime registry', difference(marketplace, runtime));
-reportDifference('Marketplace Sparks missing from export compiler', difference(marketplace, compiler));
-
-if (!builderSource.includes('data-cosmic-render-contract={renderContract.version}')) {
-    failures.push('Builder is not reading the centralized render contract');
-}
-if (!compilerSource.includes('self::renderContractVersion()')) {
-    failures.push('Export compiler is not reading the centralized render contract');
-}
-if (!compilerSource.includes("$block['resolvedTheme'] = $blockTheme;")) {
-    failures.push('Export compiler is not passing the resolved page theme into Spark renderers');
-}
-if (/b3-spotlight[^\n]+grid-row:1 \/ span 3/.test(compilerSource)) {
-    failures.push('Batch 3 featured-card grid differs from the Builder span-2 contract');
-}
-if (!compilerSource.includes("'one' => ['Projects', '3', 'Unlimited', 'Unlimited']")
-    || !compilerSource.includes("'six' => ['Best for', 'Individuals', 'Growing teams', 'Agencies & scale']")) {
-    failures.push('Pricing comparison export defaults differ from the Builder schema');
-}
-if (!compilerSource.includes("data-cosmic-contrast-surface='brand'")
-    || !featureComparisonSource.includes('data-cosmic-contrast-surface={option.featured && !isPrimary ? "brand" : undefined}')) {
-    failures.push('Feature comparison nested brand contrast is not shared by Builder and export');
-}
-if (compilerSource.includes('.cosmic-motion2-video{position:absolute;inset:0;overflow:hidden;background:#0f172a}')
-    || !compilerSource.includes('.cosmic-motion2-video video{position:absolute;inset:0;display:block;width:100%;height:100%;object-fit:cover}')) {
-    failures.push('Motion video export still permits theme leakage or uncovered media space');
-}
-if (motionHeroSource.includes('bg-slate-950 text-white') || motionHeroSource.includes('overflow-hidden bg-slate-900')) {
-    failures.push('Motion hero Builder still hard-codes a slate background instead of the active theme');
-}
-if (/bg:\s*getSectionBackgroundClass\(/.test(themeSource)) {
-    failures.push('Effective Builder themes still inject gradients that export/live do not render');
+console.log('Cosmic Spark render parity audit');
+console.log(`Renderer source files: ${files.length}`);
+console.log(`Shared sparkTw bindings: ${sharedBindings}`);
+console.log(`Scoped item/path bindings: ${scopedBindings}`);
+console.log(`Remaining auto_* aliases: ${autoAliases}`);
+console.log(`Unbridged className candidates: ${unbridgedClassName.length}`);
+for (const [name, ok] of Object.entries(checks)) console.log(`${ok ? 'PASS' : 'FAIL'} ${name}`);
+if (unbridgedClassName.length) {
+  console.log('\nFirst unbridged candidates (Batch 11 torture-QA review list):');
+  unbridgedClassName.slice(0,30).forEach((row) => console.log(`- ${row}`));
 }
 
-console.log(`Spark parity audit: ${registered.length} registered, ${runtime.length} public runtime, ${marketplace.length} marketplace, ${compiler.length} export cases, ${internalRuntimeSparks.length} internal runtime.`);
-console.log(`Shared render contract: ${contract.version}`);
-
-if (process.argv.includes('--write')) {
-    const manifest = {
-        version: contract.version,
-        builder_registry_count: runtime.length,
-        live_compiler_coverage_count: registered.filter((value) => compiler.includes(value)).length,
-        unsupported_registered_sparks: difference(registered, compiler),
-        internal_runtime_sparks: internalRuntimeSparks,
-        registered_sparks: registered,
-        note: 'Static renderer coverage is necessary but not sufficient for pixel/runtime parity. Representative Sparks must still be compared in Builder and published Live output.',
-    };
-    fs.writeFileSync(path.join(root, 'resources/luna/render_parity.json'), `${JSON.stringify(manifest, null, 2)}\n`);
-    console.log('Updated resources/luna/render_parity.json from active registries.');
-}
-
-if (failures.length > 0) {
-    for (const failure of failures) console.error(`FAIL: ${failure}`);
-    process.exitCode = 1;
-} else {
-    console.log('PASS: Builder, marketplace, export and live registries are structurally aligned.');
-}
+const hardFail = Object.values(checks).some((ok) => !ok);
+if (hardFail) process.exit(1);

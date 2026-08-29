@@ -12,7 +12,7 @@ export default function WebsiteCard({ website, viewMode = "grid", onEdit, onDupl
     return (
         <article className={`group relative rounded-2xl border border-white/10 bg-white/[0.035] p-4 transition duration-200 hover:-translate-y-0.5 hover:border-violet-400/35 hover:bg-white/[0.055] hover:shadow-xl hover:shadow-black/20 focus-within:border-violet-400/55 ${menuOpen ? "z-30" : "z-0"}`}>
             <div className={compact ? "flex flex-col gap-4 lg:flex-row lg:items-center" : ""}>
-                <div className="flex min-w-0 flex-1 items-start gap-3">
+                <div className={`flex min-w-0 flex-1 items-start gap-3 ${compact ? '' : (website.previewReady && website.previewUrl ? 'pr-[246px]' : 'pr-[154px]')}`}>
                     {website.logoUrl ? <img src={website.logoUrl} alt="" className="h-10 w-10 shrink-0 rounded-xl object-cover" /> : <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${website.accent} text-base font-bold text-white shadow-lg shadow-black/20`}>{website.name.charAt(0)}</div>}
                     <div className="min-w-0 flex-1 pt-0.5">
                         <div className="flex flex-wrap items-center gap-2"><h2 className="truncate font-semibold tracking-tight text-white">{website.name}</h2><span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${statusStyles[website.status] || statusStyles.Draft}`}>{website.status}</span></div>
@@ -31,7 +31,13 @@ export default function WebsiteCard({ website, viewMode = "grid", onEdit, onDupl
                 <div className={`${compact ? "flex shrink-0 items-center gap-1" : "absolute right-4 top-4 flex shrink-0 items-center gap-1"}`}>
                     {website.previewReady && website.previewUrl && <a href={website.previewUrl} target="_blank" rel="noreferrer" className="inline-flex h-8 items-center justify-center rounded-lg border border-white/10 bg-white/[0.04] px-3 text-xs font-semibold text-slate-200 transition hover:border-violet-400/35 hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">Preview ↗</a>}
                     <button type="button" onClick={() => onEdit(website)} className="rounded-lg bg-white px-3 py-1.5 text-xs font-semibold text-slate-950 transition hover:bg-slate-200 focus:outline-none focus:ring-2 focus:ring-violet-400">Open Builder</button>
-                    <button type="button" aria-label={`More actions for ${website.name}`} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)} className="flex h-8 w-8 items-center justify-center rounded-lg pr-[3px] leading-none tracking-[-0.3em] text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">•••</button>
+                    <button type="button" aria-label={`More actions for ${website.name}`} aria-expanded={menuOpen} onClick={() => setMenuOpen((open) => !open)} className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/10 hover:text-white focus:outline-none focus:ring-2 focus:ring-violet-400">
+                        <svg viewBox="0 0 24 24" aria-hidden="true" className="h-5 w-5" fill="currentColor">
+                            <circle cx="5" cy="12" r="1.8" />
+                            <circle cx="12" cy="12" r="1.8" />
+                            <circle cx="19" cy="12" r="1.8" />
+                        </svg>
+                    </button>
                 </div>
             </div>
 

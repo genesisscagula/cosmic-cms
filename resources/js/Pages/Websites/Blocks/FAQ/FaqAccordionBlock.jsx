@@ -2,7 +2,7 @@ import { useState } from "react";
 import { EditableText } from "../Shared/EditableText";
 import { getSectionSurfaceThemes } from "../../../../theme/Theme";
 import { RepeatableControls, RepeatableRemoveButton, cloneLast, removeAt } from "../Shared/RepeatableControls";
-import { sparkTw } from "../Shared/sparkTailwindRuntime";
+import { sparkTw, sparkTwItem } from "../Shared/sparkTailwindRuntime";
 
 export const FaqAccordionSchema = {
     type: "faq_accordion",
@@ -55,12 +55,12 @@ export function FaqAccordionBlock({ block, onUpdate, globalTheme }) {
                 <div className={sparkTw(block, "auto_7", `overflow-hidden rounded-2xl border ${cardTheme.border} ${cardTheme.card}`)}>
                     {data.faqs.map((faq, index) => {
                         const isOpen = openIndex === index;
-                        return <article key={index} className={sparkTw(block, "auto_8", `group relative border-b last:border-b-0 ${cardTheme.border}`)}>
-                            <div className={sparkTw(block, "auto_9", "flex items-start gap-4 p-5 pr-16 sm:p-6 sm:pr-16")}>
-                                <EditableText value={faq.question} className={sparkTw(block, "auto_10", `flex-1 text-base font-semibold ${cardTheme.text}`)} onSave={(question) => updateFaq(index, "question", question)} />
-                                <button type="button" aria-label={isOpen ? "Collapse answer" : "Expand answer"} aria-expanded={isOpen} onClick={() => setOpenIndex(isOpen ? -1 : index)} className={sparkTw(block, "auto_11", `mr-1 mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border text-lg transition ${cardTheme.border} ${cardTheme.text}`)}>{isOpen ? "−" : "+"}</button>
+                        return <article key={index} className={sparkTwItem(block, "faqs", index, "item", `group relative border-b last:border-b-0 ${cardTheme.border}`)}>
+                            <div className={sparkTwItem(block, "faqs", index, "trigger", "flex items-start gap-4 p-5 pr-16 sm:p-6 sm:pr-16")}>
+                                <EditableText value={faq.question} className={sparkTwItem(block, "faqs", index, "question", `flex-1 text-base font-semibold ${cardTheme.text}`)} onSave={(question) => updateFaq(index, "question", question)} />
+                                <button type="button" aria-label={isOpen ? "Collapse answer" : "Expand answer"} aria-expanded={isOpen} onClick={() => setOpenIndex(isOpen ? -1 : index)} className={sparkTwItem(block, "faqs", index, "toggle", `mr-1 mt-0.5 grid h-8 w-8 shrink-0 place-items-center rounded-full border text-lg transition ${cardTheme.border} ${cardTheme.text}`)}>{isOpen ? "−" : "+"}</button>
                             </div>
-                            {isOpen && <div className={sparkTw(block, "auto_12", "px-5 pb-5 sm:px-6 sm:pb-6")}><EditableText value={faq.answer} isTextArea className={sparkTw(block, "auto_13", `block text-sm leading-6 ${cardTheme.sub}`)} onSave={(answer) => updateFaq(index, "answer", answer)} /></div>}
+                            {isOpen && <div className={sparkTwItem(block, "faqs", index, "answer_wrap", "px-5 pb-5 sm:px-6 sm:pb-6")}><EditableText value={faq.answer} isTextArea className={sparkTwItem(block, "faqs", index, "answer", `block text-sm leading-6 ${cardTheme.sub}`)} onSave={(answer) => updateFaq(index, "answer", answer)} /></div>}
                             <RepeatableRemoveButton hoverScope="card"
                                 overlay
                                 onRemove={() => onUpdate({ faqs: removeAt(data.faqs, index, 1) })}

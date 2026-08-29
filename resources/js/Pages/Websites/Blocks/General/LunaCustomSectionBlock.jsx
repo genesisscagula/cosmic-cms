@@ -67,8 +67,58 @@ function primitiveStyle(node,s){
  if(x.align)base.alignItems=aligns[x.align]||x.align;if(x.justify)base.justifyContent=just[x.justify]||x.justify;
  return base
 }
-function AiFlexElement({node,s,block,indexPath='0'}){if(!node||!node.type)return null;const st=primitiveStyle(node,s),children=Array.isArray(node.children)?node.children:[];const childEls=children.map((c,i)=><AiFlexElement key={`${indexPath}-${i}`} node={c} s={s} block={block} indexPath={`${indexPath}-${i}`}/>);switch(node.type){case'group':case'row':case'column':case'grid':case'stack':case'card':return <div className={`cosmic-flex-el cosmic-flex-${node.type}`} style={st}>{childEls}</div>;case'heading':return <h2 className="cosmic-flex-el cosmic-flex-heading" style={{margin:0,color:s.heading,...st}}>{node.text}</h2>;case'text':return <p className="cosmic-flex-el cosmic-flex-text" style={{margin:0,color:s.body,...st}}>{node.text}</p>;case'button':return <a className="cosmic-flex-el cosmic-flex-button inline-flex items-center justify-center no-underline" href={node.url||'#'} style={{padding:'12px 22px',borderRadius:s.buttonRadius,background:s.accent,color:s.heading,fontWeight:700,...st}}>{node.label||node.text||'Learn more'}</a>;case'image':return <img className="cosmic-flex-el cosmic-flex-image block w-full" src={node.src||''} alt={node.alt||''} style={{borderRadius:s.imageRadius,objectFit:'cover',...st}}/>;case'icon':return <span className="cosmic-flex-el cosmic-flex-icon inline-flex" style={st}><CosmicIcon name={node.icon} color={st.color||s.accent} size={num(node.style?.font_size,30)}/></span>;case'badge':return <span className="cosmic-flex-el cosmic-flex-badge inline-flex w-fit items-center" style={{padding:'7px 12px',borderRadius:999,background:s.cardBg,color:s.heading,fontWeight:700,...st}}>{node.label||node.text}</span>;case'list':return <ul className="cosmic-flex-el cosmic-flex-list" style={{margin:0,paddingLeft:22,...st}}>{(node.items||[]).map((it,i)=><li key={i}>{typeof it==='object'?(it.text||it.label||it.value):it}</li>)}</ul>;case'divider':return <hr className="cosmic-flex-el cosmic-flex-divider w-full" style={{border:0,borderTop:`${num(node.style?.border_width,1)}px solid ${flexColor(node.style?.border_color,'rgba(15,23,42,.12)')}`,...st}}/>;case'stat':return <div className="cosmic-flex-el cosmic-flex-stat" style={st}><strong style={{display:'block',fontSize:node.style?.font_size?undefined:'2rem',color:s.heading}}>{node.value}</strong>{node.label?<span style={{color:s.body}}>{node.label}</span>:null}</div>;case'spacer':return <div className="cosmic-flex-el cosmic-flex-spacer" aria-hidden="true" style={{height:`${Math.max(0,num(node.style?.min_height,24))}px`,...st}}/>;case'form':return <div className="cosmic-flex-el cosmic-flex-form-wrap" style={st}><AiFlexForm node={node} s={s}/></div>;default:return null}}
-function AiFlexElements({elements,s,block}){if(!Array.isArray(elements)||!elements.length)return null;return <div className="cosmic-flex-elements relative z-10 mx-auto w-full" style={{maxWidth:s.maxWidth}}>{elements.map((node,i)=><AiFlexElement key={node.key||i} node={node} s={s} block={block} indexPath={String(i)}/>)}</div>}
+const aiFlexNodeId=(node,fallback='')=>String(node?._cosmic_id||node?.key||fallback||'');
+const aiFlexPath=(segments)=>segments.map(String).join('.');
+function AiFlexElement({node,s,block,storagePath,logicalPath,role='extra'}){
+ if(!node||!node.type)return null;
+ const st=primitiveStyle(node,s),children=Array.isArray(node.children)?node.children:[];
+ const itemIndex=Number(storagePath?.[storagePath.length-1]);
+ const collectionPath=aiFlexPath((storagePath||[]).slice(0,-1));
+ const logicalCollectionPath=aiFlexPath((logicalPath||[]).slice(0,-1));
+ const stableId=aiFlexNodeId(node,`${role}_${Number.isInteger(itemIndex)?itemIndex:0}`);
+ const collectionName=role==='row'?'rows':role==='column'?'columns':'extras';
+ const targetType=node.type==='heading'?'heading':node.type==='button'?'button':node.type==='image'?'image':node.type==='video'?'video':node.type==='badge'?'label':node.type==='row'?'row':node.type==='column'?'column':node.type==='card'?'card':'text';
+ const fieldKey=node.type==='heading'||node.type==='text'?'text':node.type==='button'?(node.label!=null?'label':'text'):node.type==='image'||node.type==='video'?'src':node.type==='badge'?(node.label!=null?'label':'text'):node.type==='stat'?'value':'';
+ const fieldPath=fieldKey?aiFlexPath([...(storagePath||[]),fieldKey]):'';
+ const attrs={
+  'data-cosmic-ai-flex-role':role,
+  'data-cosmic-ai-flex-collection':collectionName,
+  'data-cosmic-ai-flex-collection-path':collectionPath,
+  'data-cosmic-ai-flex-logical-collection-path':logicalCollectionPath,
+  'data-cosmic-ai-flex-logical-path':aiFlexPath(logicalPath||[]),
+  'data-cosmic-ai-flex-item-index':Number.isInteger(itemIndex)?itemIndex:undefined,
+  'data-cosmic-ai-flex-stable-id':stableId||undefined,
+  'data-cosmic-field-path':fieldPath||undefined,
+  'data-luna-target':targetType,
+ };
+ const nextRole=role==='row'?'column':'extra';
+ const childEls=children.map((c,i)=>{
+  const nextStorage=[...(storagePath||[]),'children',i];
+  const nextLogical=role==='row'
+   ? [...(logicalPath||[]),'columns',i]
+   : role==='column'
+    ? [...(logicalPath||[]),'extras',i]
+    : [...(logicalPath||[]),'children',i];
+  return <AiFlexElement key={aiFlexNodeId(c,`${stableId}-${i}`)} node={c} s={s} block={block} storagePath={nextStorage} logicalPath={nextLogical} role={nextRole}/>;
+ });
+ switch(node.type){
+  case'group':case'row':case'column':case'grid':case'stack':case'card':return <div {...attrs} className={`cosmic-flex-el cosmic-flex-${node.type}`} style={st}>{childEls}</div>;
+  case'heading':return <h2 {...attrs} className="cosmic-flex-el cosmic-flex-heading" style={{margin:0,color:s.heading,...st}}>{node.text}</h2>;
+  case'text':return <p {...attrs} className="cosmic-flex-el cosmic-flex-text" style={{margin:0,color:s.body,...st}}>{node.text}</p>;
+  case'button':return <a {...attrs} className="cosmic-flex-el cosmic-flex-button inline-flex items-center justify-center no-underline" href={node.url||'#'} style={{padding:'12px 22px',borderRadius:s.buttonRadius,background:s.accent,color:s.heading,fontWeight:700,...st}}>{node.label||node.text||'Learn more'}</a>;
+  case'image':return node.src?<img {...attrs} className="cosmic-flex-el cosmic-flex-image block w-full" src={node.src} alt={node.alt||''} style={{borderRadius:s.imageRadius,objectFit:'cover',...st}}/>:<div {...attrs} className="cosmic-flex-el cosmic-flex-image min-h-24 w-full bg-black/5" style={{borderRadius:s.imageRadius,...st}}/>;
+  case'video':return node.src?<video {...attrs} className="cosmic-flex-el cosmic-flex-video block w-full" src={node.src} poster={node.poster||undefined} controls={node.controls!==false} autoPlay={Boolean(node.autoplay)} muted={node.muted!==false} loop={Boolean(node.loop)} playsInline={node.plays_inline!==false} style={{borderRadius:s.imageRadius,objectFit:'cover',...st}}/>:<div {...attrs} className="cosmic-flex-el cosmic-flex-video min-h-24 w-full bg-black/5" style={{borderRadius:s.imageRadius,...st}}/>;
+  case'icon':return <span {...attrs} className="cosmic-flex-el cosmic-flex-icon inline-flex" style={st}><CosmicIcon name={node.icon} color={st.color||s.accent} size={num(node.style?.font_size,30)}/></span>;
+  case'badge':return <span {...attrs} className="cosmic-flex-el cosmic-flex-badge inline-flex w-fit items-center" style={{padding:'7px 12px',borderRadius:999,background:s.cardBg,color:s.heading,fontWeight:700,...st}}>{node.label||node.text}</span>;
+  case'list':return <ul {...attrs} className="cosmic-flex-el cosmic-flex-list" style={{margin:0,paddingLeft:22,...st}}>{(node.items||[]).map((it,i)=><li key={i}>{typeof it==='object'?(it.text||it.label||it.value):it}</li>)}</ul>;
+  case'divider':return <hr {...attrs} className="cosmic-flex-el cosmic-flex-divider w-full" style={{border:0,borderTop:`${num(node.style?.border_width,1)}px solid ${flexColor(node.style?.border_color,'rgba(15,23,42,.12)')}`,...st}}/>;
+  case'stat':return <div {...attrs} className="cosmic-flex-el cosmic-flex-stat" style={st}><strong style={{display:'block',fontSize:node.style?.font_size?undefined:'2rem',color:s.heading}}>{node.value}</strong>{node.label?<span style={{color:s.body}}>{node.label}</span>:null}</div>;
+  case'spacer':return <div {...attrs} className="cosmic-flex-el cosmic-flex-spacer" aria-hidden="true" style={{height:`${Math.max(0,num(node.style?.min_height,24))}px`,...st}}/>;
+  case'form':return <div {...attrs} className="cosmic-flex-el cosmic-flex-form-wrap" style={st}><AiFlexForm node={node} s={s}/></div>;
+  default:return null;
+ }
+}
+function AiFlexElements({elements,s,block}){if(!Array.isArray(elements)||!elements.length)return null;return <div className="cosmic-flex-elements relative z-10 mx-auto w-full" data-cosmic-ai-flex-structure="rows-columns-extras" style={{maxWidth:s.maxWidth}}>{elements.map((node,i)=><AiFlexElement key={aiFlexNodeId(node,`row-${i}`)} node={node} s={s} block={block} storagePath={['elements',i]} logicalPath={['rows',i]} role="row"/>)}</div>}
 
 
 function AccentHeading({block,style,onUpdate}){

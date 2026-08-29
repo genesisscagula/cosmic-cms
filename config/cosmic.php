@@ -14,4 +14,9 @@ return [
 
     // Shared website used by the public /start trial flow. Configure this per environment.
     'trial_website_id' => (int) env('TRIAL_WEBSITE_ID', 1),
+
+    // Keep AI-heavy inner-page work off the initial trial request. Home is
+    // completed before Builder hand-off; each remaining page is claimed and
+    // released to the AI queue after this spacing interval.
+    'trial_inner_page_delay_minutes' => max(0, (int) env('TRIAL_INNER_PAGE_DELAY_MINUTES', 2)),
 ];
