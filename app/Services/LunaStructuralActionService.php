@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Support\AiFlexComponentRegistry;
 use App\Support\AiFlexStructureContract;
 use App\Support\SparkExtrasContract;
 use Illuminate\Support\Str;
@@ -26,7 +27,7 @@ final class LunaStructuralActionService
 
     private const AI_FLEX_EXTRA_TYPES = [
         'group','grid','stack','card','heading','text','button','image','video',
-        'icon','badge','list','divider','stat','spacer','form',
+        'icon','badge','list','divider','stat','spacer','form','background_image','background_video','overlay','slider','slide','button_group','media_group',
     ];
 
     private const AI_FLEX_STYLE_KEYS = [
@@ -434,10 +435,10 @@ final class LunaStructuralActionService
         $merged = array_replace($data, $raw);
         unset($merged['data']);
         $type = Str::lower(trim((string) ($merged['type'] ?? $fallbackType)));
-        if (! in_array($type, self::AI_FLEX_EXTRA_TYPES, true)) return null;
+        if (! in_array($type, self::AI_FLEX_EXTRA_TYPES, true) || ! AiFlexComponentRegistry::isRendererReady($type)) return null;
 
         $out = ['type'=>$type];
-        foreach (['_cosmic_id','text','label','url','src','poster','alt','icon','value'] as $key) {
+        foreach (['_cosmic_id','text','label','url','src','poster','alt','image_query','icon','value'] as $key) {
             if (! array_key_exists($key, $merged)) continue;
             $value = trim(str_replace("\0", '', (string) $merged[$key]));
             if (in_array($key, ['url','src','poster'], true) && ! $this->safeUrl($value, $key !== 'url')) $value = '';
@@ -451,7 +452,24 @@ final class LunaStructuralActionService
         }
         if ($type === 'list' && is_array($merged['items'] ?? null)) $out['items'] = array_slice(array_values($merged['items']), 0, 24);
         if ($type === 'form' && is_array($merged['fields'] ?? null)) $out['fields'] = array_slice(array_values($merged['fields']), 0, 20);
-        if (in_array($type, ['group','grid','stack','card'], true)) $out['children'] = [];
+        if (in_array($type, ['group','grid','stack','card','background_image','background_video','overlay','slider','slide','button_group','media_group'], true)) $out['children'] = is_array($merged['children'] ?? null) ? array_slice(array_values($merged['children']), 0, 40) : [];
+        if ($type === 'background_video') { $out['controls']=false; $out['autoplay']=$merged['autoplay'] ?? true; $out['muted']=$merged['muted'] ?? true; $out['loop']=$merged['loop'] ?? true; $out['plays_inline']=$merged['plays_inline'] ?? true; }
+        if (in_array($type, ['button_group','media_group'], true) && is_array($out['children'] ?? null)) {
+            $allowedChildren = AiFlexComponentRegistry::allowedChildren($type);
+            $out['children'] = array_values(array_filter($out['children'], static fn ($child): bool => is_array($child) && in_array(Str::lower(trim((string) ($child['type'] ?? ''))), $allowedChildren, true)));
+            $out['children'] = array_slice($out['children'], 0, 12);
+        }
+        if ($type === 'slider') {
+            $out['autoplay'] = array_key_exists('autoplay', $merged) ? (bool) $merged['autoplay'] : true;
+            $out['interval'] = max(2000, min(15000, (int) ($merged['interval'] ?? 5000)));
+            $out['loop'] = array_key_exists('loop', $merged) ? (bool) $merged['loop'] : true;
+            $out['show_arrows'] = array_key_exists('show_arrows', $merged) ? (bool) $merged['show_arrows'] : true;
+            $out['show_dots'] = array_key_exists('show_dots', $merged) ? (bool) $merged['show_dots'] : true;
+            $out['show_counter'] = array_key_exists('show_counter', $merged) ? (bool) $merged['show_counter'] : false;
+            $out['transition'] = in_array((string) ($merged['transition'] ?? 'fade'), ['fade','slide'], true) ? (string) $merged['transition'] : 'fade';
+            $out['children'] = array_values(array_filter($out['children'], static fn ($child): bool => is_array($child) && (($child['type'] ?? '') === 'slide')));
+            $out['children'] = array_slice($out['children'], 0, 8);
+        }
         if (! isset($out['_cosmic_id'])) $out['_cosmic_id'] = 'extra_'.Str::uuid()->toString();
         return $out;
     }

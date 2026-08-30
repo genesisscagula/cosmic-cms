@@ -65,12 +65,19 @@ export const createAiFlexRow = () => ({
 export const createAiFlexColumn = (width = 100) => makeColumn([], width);
 
 export const createAiFlexExtra = (type = 'text') => {
-    const safe = ['heading','text','button','image','icon','badge','list','divider','stat','spacer','form','video','group','grid','stack','card'].includes(String(type)) ? String(type) : 'text';
+    const safe = ['heading','text','button','image','icon','badge','list','divider','stat','spacer','form','video','group','grid','stack','card','background_image','background_video','overlay','slider','slide','button_group','media_group'].includes(String(type)) ? String(type) : 'text';
     const base = { type: safe, [COSMIC_ITEM_ID_KEY]: freshId('extra') };
     if (safe === 'heading') return { ...base, text: 'New heading' };
     if (safe === 'button') return { ...base, label: 'Learn more', url: '#' };
     if (safe === 'image') return { ...base, src: '', alt: '' };
     if (safe === 'video') return { ...base, src: '', poster: '', controls: true };
+    if (safe === 'background_image') return { ...base, src: '', alt: '', style: { min_height: 420, object_fit: 'cover', object_position: 'center' }, children: [] };
+    if (safe === 'background_video') return { ...base, src: '', poster: '', controls: false, autoplay: true, muted: true, loop: true, plays_inline: true, style: { min_height: 420, object_fit: 'cover', object_position: 'center' }, children: [] };
+    if (safe === 'overlay') return { ...base, style: { background: '#0f172a', opacity: 0.48, padding: 32 }, children: [] };
+    if (safe === 'slider') return { ...base, autoplay: true, interval: 5000, loop: true, show_arrows: true, show_dots: true, show_counter: false, transition: 'fade', style: { min_height: 420, overflow: 'hidden' }, children: [{ type: 'slide', [COSMIC_ITEM_ID_KEY]: freshId('extra'), children: [] }, { type: 'slide', [COSMIC_ITEM_ID_KEY]: freshId('extra'), children: [] }] };
+    if (safe === 'slide') return { ...base, style: { min_height: 420 }, children: [] };
+    if (safe === 'button_group') return { ...base, style: { gap: 12, justify: 'start', align: 'center' }, children: [{ type: 'button', [COSMIC_ITEM_ID_KEY]: freshId('extra'), label: 'Learn more', url: '#' }] };
+    if (safe === 'media_group') return { ...base, style: { columns: 2, gap: 16, tablet_columns: 2, mobile_columns: 1 }, children: [{ type: 'image', [COSMIC_ITEM_ID_KEY]: freshId('extra'), src: '', alt: '' }, { type: 'image', [COSMIC_ITEM_ID_KEY]: freshId('extra'), src: '', alt: '' }] };
     if (['group','grid','stack','card'].includes(safe)) return { ...base, children: [] };
     return { ...base, text: 'Add your content here.' };
 };

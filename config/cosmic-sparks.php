@@ -46,7 +46,7 @@ return [
     'overrides' => [
         // Metadata is derived automatically from every Spark key. Add only special
         // semantic aliases here when a Spark's name cannot fully describe its use.
-        'hero_slider_premium' => [
+        'hero_slider_fade' => [
             'aliases' => ['hero slider','banner slider','homepage carousel','rotating hero'],
             'media' => 'slider',
             'position_fit' => ['top'],

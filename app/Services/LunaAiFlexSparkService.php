@@ -2,6 +2,9 @@
 
 namespace App\Services;
 
+use App\Support\AiFlexComponentRegistry;
+use App\Support\AiFlexComposerGuide;
+use App\Support\AiFlexLayoutRecipeRegistry;
 use App\Support\AiFlexStructureContract;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
@@ -51,7 +54,7 @@ Create ONE structured AI Flex section using the existing luna_custom_section ren
 The user's current Cosmic theme is authoritative. A screenshot/reference, when mentioned, is composition inspiration only: borrow hierarchy/layout ideas but preserve the active site's palette, typography, button language, surfaces and brand character unless the user explicitly asks to change the theme.
 Allowed block keys: type,custom_spark_key,custom_spark_saved,semantic_type,source_type,category,layout,alignment,media_position,density,accent_shape,section_mood,eyebrow,heading,heading_accent_text,text,primary_label,primary_url,secondary_label,secondary_url,image_url,image_query,items,elements,theme,visual_style,review,form,ai_flex.
 Required: type="luna_custom_section", custom_spark_saved=false, theme="auto". semantic_type is the logical section role (hero, services, testimonials, faq, contact, pricing, cta, content, etc.). When replacing a source section, preserve/inherit its logical role.
-AI FLEX UNIVERSAL ELEMENTS (v5): Prefer an `elements` tree whenever the requested/reference composition cannot be faithfully represented by the legacy heading/text/items fields. CANONICAL STRUCTURE: `elements[]` is the Rows repeater. Every root element MUST be type=row. Every row.children[] is the Columns repeater and MUST contain only type=column nodes. Every column.children[] is the Extras repeater and may contain safe content/container elements. Do not place primitives directly at root or directly under a row. Allowed element types: group,row,column,grid,stack,card,heading,text,button,image,video,icon,badge,list,divider,stat,spacer,form. Nest containers safely (max depth 5). A form element is structured only: type=form, optional title/note/button_label/success_message/columns/button_alignment, and fields[]. Allowed field controls: text,email,tel,number,date,time,textarea,select,checkbox,radio,hidden. Each field may use name,label,placeholder,type,required,width,options,min,max,step,value,autocomplete. Never emit form HTML, scripts, endpoints, event handlers, raw CSS or Tailwind. Each non-form element may use only structured fields: type,key,text,label,url,src,alt,icon,value,items,children and a structured style object. Video elements may additionally use poster,controls,autoplay,muted,loop,plays_inline. Never emit className, HTML, CSS, JSX, JavaScript or Tailwind. Allowed style keys: gap,columns,width,max_width,min_height,padding,padding_x,padding_y,radius,background,color,border_color,border_width,shadow,align,justify,text_align,font_size,font_weight,line_height,aspect_ratio,object_fit,object_position,opacity,position,top,right,bottom,left,z_index,overflow,order,grow,basis,self_align,tablet_width,mobile_width,tablet_columns,mobile_columns,tablet_gap,mobile_gap,tablet_padding,mobile_padding,tablet_order,mobile_order,tablet_position,mobile_position,tablet_min_height,mobile_min_height. Use responsive geometry intentionally: desktop may use asymmetric columns, controlled absolute/floating cards, overlap and off-axis media; tablet/mobile must collapse safely without horizontal overflow. Use semantic colors primary,surface,surface_alt,white,on_primary,on_surface,on_dark,accent or explicit HEX.
+AI FLEX UNIVERSAL ELEMENTS (v5): Prefer an `elements` tree whenever the requested/reference composition cannot be faithfully represented by the legacy heading/text/items fields. CANONICAL STRUCTURE: `elements[]` is the Rows repeater. Every root element MUST be type=row. Every row.children[] is the Columns repeater and MUST contain only type=column nodes. Every column.children[] is the Extras repeater and may contain safe content/container elements. Do not place primitives directly at root or directly under a row. Allowed element types: group,row,column,grid,stack,card,background_image,background_video,overlay,slider,slide,button_group,media_group,heading,text,button,image,video,icon,badge,list,divider,stat,spacer,form. Nest containers safely (max depth 8). A form element is structured only: type=form, optional title/note/button_label/success_message/columns/button_alignment, and fields[]. Allowed field controls: text,email,tel,number,date,time,textarea,select,checkbox,radio,hidden. Each field may use name,label,placeholder,type,required,width,options,min,max,step,value,autocomplete. Never emit form HTML, scripts, endpoints, event handlers, raw CSS or Tailwind. Each non-form element may use only structured fields: type,key,text,label,url,src,alt,image_query,icon,value,items,children and a structured style object. Video/background_video elements may additionally use poster,controls,autoplay,muted,loop,plays_inline. slider is a composable interactive container and MUST contain only slide children; slide may contain arbitrary safe AI Flex children. button_group is an action container and MUST contain only button children; use it for paired or grouped CTAs instead of placing unrelated buttons loosely. media_group is a media composition container and MUST contain only image/video children; use style.columns/gap and responsive column settings to create galleries, paired media, or editorial media clusters. slider may use autoplay,interval,loop,show_arrows,show_dots,show_counter,transition. Prefer 3-5 slides and transition=fade unless the request calls for another behavior. background_image and background_video are composable containers: their children render above the media. overlay is a composable container whose style.background and style.opacity create a non-inheriting visual overlay behind its children. For full-bleed media compositions, place background_image/background_video inside a full-width column and nest overlay/content within it. Never emit className, HTML, CSS, JSX, JavaScript or Tailwind. Allowed style keys: gap,columns,width,max_width,min_height,padding,padding_x,padding_y,radius,background,color,border_color,border_width,shadow,align,justify,text_align,font_size,font_weight,line_height,aspect_ratio,object_fit,object_position,opacity,position,top,right,bottom,left,z_index,overflow,order,grow,basis,self_align,tablet_width,mobile_width,tablet_columns,mobile_columns,tablet_gap,mobile_gap,tablet_padding,mobile_padding,tablet_order,mobile_order,tablet_position,mobile_position,tablet_min_height,mobile_min_height. Use responsive geometry intentionally: desktop may use asymmetric columns, controlled absolute/floating cards, overlap and off-axis media; tablet/mobile must collapse safely without horizontal overflow. Use semantic colors primary,surface,surface_alt,white,on_primary,on_surface,on_dark,accent or explicit HEX.
 COSMIC SPACING BASELINE: unless the user explicitly requests tighter or wider spacing, use a 1280px content max-width, section padding 80px vertical / 48px horizontal on desktop, 60px vertical on tablet, and 44px vertical / 22px horizontal on mobile. Use 32px between primary columns, 24px on tablet, and 20px on mobile. Use 24px between repeated cards and 16-20px between related copy elements. Do not place headings, copy, buttons, or media flush against section edges.
 Allowed layout: editorial,split,feature-grid,card-grid,media-led,stacked,centered.
 Allowed alignment: left,center,right. Allowed media_position: left,right,background,top,none.
@@ -60,11 +63,16 @@ ai_flex is metadata only: {"version":1,"source":"sol","reference_mode":"composit
 Always set ai_flex.spark_name to a concise, distinctive reusable library name based on the generated composition (for example "Midnight Services Grid" or "Editorial Testimonial Split"). Do not ask the user to name it.
 visual_style may use only renderer-supported scalar design values; prefer theme inheritance and restrained values. Do not invent remote image URLs. Preserve useful source content when replacing a section.
 PROMPT;
+        $system .= "\nAI FLEX COMPONENT REGISTRY (authoritative): ".AiFlexComponentRegistry::promptInventory().". Use only renderer-ready registered component types. Reserved primitives are not valid output until activated.";
+        $system .= "\nAI FLEX LAYOUT LEGO REGISTRY (geometry only; never Spark lookup): ".AiFlexLayoutRecipeRegistry::promptInventory().".";
+        $composerPlan = AiFlexComposerGuide::forRequest($request);
+        $system .= "\n".AiFlexComposerGuide::prompt($composerPlan);
         $payload = [
             'request' => $request,
             'active_theme' => $theme,
             'page_context' => $pageContext,
             'source_section' => $source,
+            'composer_plan' => $composerPlan,
         ];
         $endpoint = rtrim((string)(config('openai.base_uri') ?: 'https://api.openai.com/v1'), '/').'/chat/completions';
         $messages = [
@@ -77,12 +85,18 @@ PROMPT;
         // Try Sol in strict JSON mode first, retry Sol without response_format, and
         // finally use Terra only as an availability fallback. The chosen model is
         // recorded in ai_flex metadata and logs so QA can prove which department ran.
+        $fastComposer = (bool) ($pageContext['fast_composer'] ?? false);
         $attempts = [
             ['model'=>$this->models->sol(), 'json_mode'=>true,  'department'=>'sol'],
-            ['model'=>$this->models->sol(), 'json_mode'=>false, 'department'=>'sol_retry'],
         ];
-        if ($this->models->terra() !== $this->models->sol()) {
-            $attempts[] = ['model'=>$this->models->terra(), 'json_mode'=>true, 'department'=>'terra_fallback'];
+        // Start Blank's fast lane must stay fast: if the strict Sol attempt fails,
+        // generateStaged() immediately falls back to the safer two-pass pipeline.
+        // Other AI Flex entry points retain compatibility retries.
+        if (! $fastComposer) {
+            $attempts[] = ['model'=>$this->models->sol(), 'json_mode'=>false, 'department'=>'sol_retry'];
+            if ($this->models->terra() !== $this->models->sol()) {
+                $attempts[] = ['model'=>$this->models->terra(), 'json_mode'=>true, 'department'=>'terra_fallback'];
+            }
         }
 
         $lastError = null;
@@ -91,7 +105,11 @@ PROMPT;
                 $body = ['model'=>$attempt['model'], 'messages'=>$messages];
                 if ($attempt['json_mode']) $body['response_format'] = ['type'=>'json_object'];
 
-                $response = Http::withToken($apiKey)->connectTimeout(30)->timeout(150)
+                $connectTimeout = $fastComposer ? 15 : 30;
+                $requestTimeout = $fastComposer
+                    ? max(30, min(120, (int) config('openai.ai_flex_fast_timeout', 75)))
+                    : 150;
+                $response = Http::withToken($apiKey)->connectTimeout($connectTimeout)->timeout($requestTimeout)
                     ->post($endpoint, $body)->throw()->json();
                 $content = (string)data_get($response,'choices.0.message.content','');
                 $decoded = json_decode($content, true);
@@ -100,6 +118,12 @@ PROMPT;
 
                 $validated = $this->validate($block, $source);
                 $validated = $this->applyCompositionPolish($validated, $request, $source);
+                $validated = $this->applyLayoutRecipeGeometry($validated, $composerPlan);
+                $validated = $this->applyComposerIntentContracts($validated, $composerPlan);
+                $validated = $this->stampComposerMetadata($validated, $composerPlan);
+                $this->assertComposerPlanSatisfied($validated, $composerPlan);
+                $this->assertComposerQuantitiesSatisfied($validated, $composerPlan);
+                $this->assertLayoutRecipeSatisfied($validated, $composerPlan);
                 $validated['ai_flex']['model'] = (string)$attempt['model'];
                 $validated['ai_flex']['department'] = (string)$attempt['department'];
                 Log::debug('[AiFlex] generated', [
@@ -120,33 +144,64 @@ PROMPT;
     }
 
     /**
-     * Start Blank uses two mutation passes after API 1 has classified the turn.
-     * Pass one owns geometry; pass two may only supply content inside that
-     * validated geometry. This prevents copy generation from flattening an
-     * explicitly requested split/asymmetric composition.
+     * Start Blank is fast-path first. The Composer Guide + component registry now
+     * own enough structure constraints that a successful request should require
+     * only one model generation. The older structure -> content pipeline remains
+     * as a safety fallback when the fast result fails validation/composer checks.
      */
     public function generateStaged(string $request, array $theme = [], array $pageContext = []): array
     {
+        try {
+            $completed = $this->generate(
+                "FAST COMPOSER PASS. Build the complete responsive section in one pass using only trusted AI Flex components. Honor explicit layout geometry, slider/media controls, CTA grouping, responsive behavior, and useful prompt-specific content. Do not split structure and content into separate drafts.\n\nUSER REQUEST:\n{$request}",
+                $theme,
+                array_merge($pageContext, [
+                    'generation_stage' => 'fast_composer',
+                    'fast_composer' => true,
+                ]),
+                [],
+            );
+
+            $completed = $this->enforceExplicitSplitRequest($completed, $request);
+            $semantic = Str::lower(trim((string) ($completed['semantic_type'] ?? $completed['category'] ?? 'content'))) ?: 'content';
+            $completed = $this->hydrateReferenceMedia($completed, $request, $semantic, 0);
+            $completed['ai_flex'] = array_merge(is_array($completed['ai_flex'] ?? null) ? $completed['ai_flex'] : [], [
+                'pipeline' => 'fast_composer_v1',
+                'structure_locked' => false,
+                'stages' => ['intent', 'compose'],
+                'fallback_used' => false,
+            ]);
+
+            return $this->validate($completed);
+        } catch (\Throwable $fastError) {
+            Log::warning('[AiFlex] fast composer fell back to staged generation', [
+                'error' => $fastError->getMessage(),
+            ]);
+        }
+
         $structure = $this->generate(
-            "STRUCTURE PASS ONLY. Build the exact responsive section composition requested below. Prioritize explicit row/column count, widths, order, media side, alignment, and requested controls. Use short neutral placeholders for content.\n\nUSER REQUEST:\n{$request}",
+            "STRUCTURE FALLBACK PASS ONLY. Build the exact responsive section composition requested below. Prioritize explicit row/column count, widths, order, media side, alignment, and requested controls. Use short neutral placeholders for content.\n\nUSER REQUEST:\n{$request}",
             $theme,
-            array_merge($pageContext, ['generation_stage' => 'structure']),
+            array_merge($pageContext, ['generation_stage' => 'structure_fallback', 'fast_composer_fallback' => true]),
             [],
         );
 
         $contentCandidate = $this->generate(
-            "CONTENT PASS. Fill the supplied validated section structure with useful, prompt-specific copy and media intent. Preserve its element types, nesting, column geometry, responsive order, layout, and media position exactly. Do not flatten, remove, reorder, or add structural nodes.\n\nUSER REQUEST:\n{$request}",
+            "CONTENT FALLBACK PASS. Fill the supplied validated section structure with useful, prompt-specific copy and media intent. Preserve its element types, nesting, column geometry, responsive order, layout, and media position exactly. Do not flatten, remove, reorder, or add structural nodes.\n\nUSER REQUEST:\n{$request}",
             $theme,
-            array_merge($pageContext, ['generation_stage' => 'content', 'structure_locked' => true]),
+            array_merge($pageContext, ['generation_stage' => 'content_fallback', 'structure_locked' => true, 'fast_composer_fallback' => true]),
             $structure,
         );
 
         $completed = $this->mergeStagedContent($structure, $contentCandidate);
         $completed = $this->enforceExplicitSplitRequest($completed, $request);
+        $semantic = Str::lower(trim((string) ($completed['semantic_type'] ?? $completed['category'] ?? 'content'))) ?: 'content';
+        $completed = $this->hydrateReferenceMedia($completed, $request, $semantic, 0);
         $completed['ai_flex'] = array_merge(is_array($completed['ai_flex'] ?? null) ? $completed['ai_flex'] : [], [
-            'pipeline' => 'intent_structure_content',
+            'pipeline' => 'intent_structure_content_fallback',
             'structure_locked' => true,
             'stages' => ['intent', 'structure', 'content'],
+            'fallback_used' => true,
         ]);
 
         return $this->validate($completed, $structure);
@@ -226,7 +281,7 @@ PROMPT;
 
     private function mergeElementContent(array $structureNodes, array $contentNodes): array
     {
-        $editable = ['text','label','url','src','alt','icon','value','items','title','note','button_label','success_message','fields'];
+        $editable = ['text','label','url','src','alt','image_query','poster','icon','value','items','title','note','button_label','success_message','fields'];
         foreach ($structureNodes as $index => $node) {
             if (! is_array($node)) continue;
             $candidate = is_array($contentNodes[$index] ?? null) ? $contentNodes[$index] : [];
@@ -259,6 +314,7 @@ columns must contain 1-4 objects shaped as {"title":"...","items":[{"label":"...
 Use only the exact labels and URLs supplied in available_navigation. Do not invent pages, routes, email addresses, phone numbers, street addresses, social profiles, legal claims, awards, guarantees, or business facts.
 Group the available pages into useful prompt-aware menus and include every supplied page exactly once. Keep headings, tagline, and CTA short. Prefer the supplied Contact page for the primary CTA when present.
 PROMPT;
+        $system .= "\nAI FLEX COMPONENT REGISTRY (authoritative): ".AiFlexComponentRegistry::promptInventory().". Use only renderer-ready registered component types. Reserved primitives are not valid output until activated.";
         $payload = [
             'request' => $request,
             'site_context' => $siteContext,
@@ -342,10 +398,14 @@ If reference_mode=layout_and_theme, you may infer visual colors/style from the s
 When replacing a source section, preserve its semantic role and useful current copy/CTA meaning unless the user explicitly asks to replace content.
 Allowed block keys: type,custom_spark_key,custom_spark_saved,semantic_type,source_type,category,layout,alignment,media_position,density,accent_shape,section_mood,eyebrow,heading,heading_accent_text,text,primary_label,primary_url,secondary_label,secondary_url,image_url,image_query,items,elements,theme,visual_style,review,form,ai_flex.
 Allowed layout: editorial,split,feature-grid,card-grid,media-led,stacked,centered. media_position: left,right,background,top,none. alignment: left,center,right.
-For custom screenshot UI, use elements with the Universal Elements v5 responsive layout contract. Root elements are rows; row.children are columns; column.children are extras. Preserve asymmetric geometry, deliberate overlap, floating cards and non-equal columns when visible. Use tablet/mobile style keys so those layouts collapse safely. Responsive geometry style keys include position,top,right,bottom,left,z_index,overflow,order,grow,basis,self_align,tablet_width,mobile_width,tablet_columns,mobile_columns,tablet_gap,mobile_gap,tablet_padding,mobile_padding,tablet_order,mobile_order,tablet_position,mobile_position,tablet_min_height,mobile_min_height. Absolute/floating desktop elements should normally become relative on tablet/mobile. Allowed element types: group,row,column,grid,stack,card,heading,text,button,image,video,icon,badge,list,divider,stat,spacer,form. A form element may contain title,note,button_label,success_message,columns,button_alignment,fields. Fields may be text,email,tel,number,date,time,textarea,select,checkbox,radio,hidden with name,label,placeholder,required,width,options,min,max,step,value,autocomplete. Never emit form HTML, endpoints, scripts, event handlers or raw CSS.
+For custom screenshot UI, use elements with the Universal Elements v5 responsive layout contract. Root elements are rows; row.children are columns; column.children are extras. Preserve asymmetric geometry, deliberate overlap, floating cards and non-equal columns when visible. Use tablet/mobile style keys so those layouts collapse safely. Responsive geometry style keys include position,top,right,bottom,left,z_index,overflow,order,grow,basis,self_align,tablet_width,mobile_width,tablet_columns,mobile_columns,tablet_gap,mobile_gap,tablet_padding,mobile_padding,tablet_order,mobile_order,tablet_position,mobile_position,tablet_min_height,mobile_min_height. Absolute/floating desktop elements should normally become relative on tablet/mobile. Allowed element types: group,row,column,grid,stack,card,background_image,background_video,overlay,slider,slide,button_group,media_group,heading,text,button,image,video,icon,badge,list,divider,stat,spacer,form. A form element may contain title,note,button_label,success_message,columns,button_alignment,fields. Fields may be text,email,tel,number,date,time,textarea,select,checkbox,radio,hidden with name,label,placeholder,required,width,options,min,max,step,value,autocomplete. Never emit form HTML, endpoints, scripts, event handlers or raw CSS.
 Never invent a remote image URL. image_url must remain empty unless a source section already has a usable image URL.
 ai_flex metadata must identify source=sol, reference_mode, theme_policy and a short intent.
 PROMPT;
+        $composerPlan = AiFlexComposerGuide::forRequest($request);
+        $system .= "\nAI FLEX COMPONENT REGISTRY (authoritative): ".AiFlexComponentRegistry::promptInventory().". Use only renderer-ready registered component types.";
+        $system .= "\nAI FLEX LAYOUT LEGO REGISTRY (geometry only; never Spark lookup): ".AiFlexLayoutRecipeRegistry::promptInventory().".";
+        $system .= "\n".AiFlexComposerGuide::prompt($composerPlan);
         $payload = [
             'request'=>$request,
             'reference_mode'=>$referenceMode,
@@ -354,6 +414,7 @@ PROMPT;
             'active_theme'=>$theme,
             'page_context'=>$pageContext,
             'source_section'=>$source,
+            'composer_plan'=>$composerPlan,
         ];
         $messages = [
             ['role'=>'system','content'=>$system],
@@ -381,6 +442,12 @@ PROMPT;
                 if(trim((string)($raw['image_url']??''))==='' && trim((string)($source['image_url']??''))!=='') $raw['image_url']=$source['image_url'];
                 $block=$this->validate($raw,$source);
                 $block=$this->applyCompositionPolish($block,$request,$source);
+                $block=$this->applyLayoutRecipeGeometry($block,$composerPlan);
+                $block=$this->applyComposerIntentContracts($block,$composerPlan);
+                $block=$this->stampComposerMetadata($block,$composerPlan);
+                $this->assertComposerPlanSatisfied($block, $composerPlan);
+                $this->assertComposerQuantitiesSatisfied($block, $composerPlan);
+                $this->assertLayoutRecipeSatisfied($block, $composerPlan);
                 $block['ai_flex']['reference_mode']=$referenceMode;
                 $block['ai_flex']['theme_policy']=$themePolicy;
                 $block['ai_flex']['model']=(string)$attempt['model'];
@@ -622,7 +689,7 @@ PROMPT;
             $walk = function (array $nodes) use (&$walk, &$imageOrdinal, $industry, $role, $sectionIndex): array {
                 foreach ($nodes as &$node) {
                     if (! is_array($node)) continue;
-                    if (($node['type'] ?? '') === 'image') {
+                    if (in_array(($node['type'] ?? ''), ['image','background_image'], true)) {
                         $query = trim((string) ($node['image_query'] ?? ''));
                         if ($query !== '' && trim((string) ($node['src'] ?? '')) === '') {
                             $imageOrdinal++;
@@ -643,6 +710,226 @@ PROMPT;
         }
 
         return $block;
+    }
+
+    /** @param array<string,mixed> $plan */
+    private function applyComposerIntentContracts(array $block, array $plan): array
+    {
+        $requestedSlides = (int) ($plan['requested_slide_count'] ?? 0);
+        $controls = is_array($plan['slider_controls'] ?? null) ? $plan['slider_controls'] : [];
+        if ($requestedSlides <= 0 && $controls === []) return $block;
+
+        $walk = function (array $nodes) use (&$walk, $controls): array {
+            foreach ($nodes as &$node) {
+                if (! is_array($node)) continue;
+                if (($node['type'] ?? null) === 'slider') {
+                    foreach (['show_arrows','show_dots','show_counter'] as $key) {
+                        // Explicit true requests are deterministic engine settings. False
+                        // means "not explicitly requested", so Luna may keep a sensible default.
+                        if (($controls[$key] ?? false) === true) $node[$key] = true;
+                    }
+                }
+                if (is_array($node['children'] ?? null)) $node['children'] = $walk($node['children']);
+            }
+            unset($node);
+            return $nodes;
+        };
+        if (is_array($block['elements'] ?? null)) $block['elements'] = $walk($block['elements']);
+        return $block;
+    }
+
+    /** @param array<string,mixed> $plan */
+    private function assertComposerQuantitiesSatisfied(array $block, array $plan): void
+    {
+        $requestedSlides = (int) ($plan['requested_slide_count'] ?? 0);
+        if ($requestedSlides <= 0) return;
+        $found = null;
+        $walk = function (array $nodes) use (&$walk, &$found): void {
+            foreach ($nodes as $node) {
+                if (! is_array($node) || $found !== null) continue;
+                if (($node['type'] ?? null) === 'slider') {
+                    $found = count(array_filter((array) ($node['children'] ?? []), static fn ($child): bool => is_array($child) && ($child['type'] ?? null) === 'slide'));
+                    return;
+                }
+                if (is_array($node['children'] ?? null)) $walk($node['children']);
+            }
+        };
+        $walk(is_array($block['elements'] ?? null) ? $block['elements'] : []);
+        if ($found !== $requestedSlides) {
+            throw new \RuntimeException('AI Flex composer returned '.(int) ($found ?? 0).' slides; requested '.$requestedSlides.'.');
+        }
+    }
+
+    /** @param array<string,mixed> $plan */
+    private function assertComposerPlanSatisfied(array $block, array $plan): void
+    {
+        $required = array_values(array_filter((array) ($plan['required_components'] ?? []), 'is_string'));
+        if ($required === []) return;
+
+        $present = [];
+        $walk = function (array $nodes) use (&$walk, &$present): void {
+            foreach ($nodes as $node) {
+                if (! is_array($node)) continue;
+                $type = Str::lower(trim((string) ($node['type'] ?? '')));
+                if ($type !== '') $present[$type] = true;
+                if (is_array($node['children'] ?? null)) $walk($node['children']);
+            }
+        };
+        $walk(is_array($block['elements'] ?? null) ? $block['elements'] : []);
+
+        $missing = array_values(array_filter($required, static fn (string $type): bool => ! isset($present[$type])));
+        if ($missing !== []) {
+            throw new \RuntimeException('AI Flex composer omitted required trusted primitives: '.implode(', ', $missing));
+        }
+    }
+
+    /** @param array<string,mixed> $plan */
+    private function stampComposerMetadata(array $block, array $plan): array
+    {
+        $meta = is_array($block['ai_flex'] ?? null) ? $block['ai_flex'] : [];
+        if (trim((string) ($meta['composition_profile'] ?? '')) === '') {
+            $meta['composition_profile'] = (string) ($plan['profile'] ?? AiFlexComposerGuide::PROFILE);
+        }
+        $meta['composer_version'] = (int) ($plan['version'] ?? AiFlexComposerGuide::VERSION);
+        $meta['composer_recipe'] = substr((string) ($plan['recipe'] ?? ''), 0, 180);
+        $layoutRecipe = is_array($plan['layout_recipe'] ?? null) ? $plan['layout_recipe'] : null;
+        $requestedSlides = (int) ($plan['requested_slide_count'] ?? 0);
+        if ($requestedSlides > 0) $meta['requested_slide_count'] = $requestedSlides;
+        if (is_array($plan['slider_controls'] ?? null) && array_filter($plan['slider_controls'])) {
+            $meta['requested_slider_controls'] = array_keys(array_filter($plan['slider_controls']));
+        }
+        if ($layoutRecipe) {
+            $meta['layout_recipe'] = substr((string) ($layoutRecipe['key'] ?? ''), 0, 80);
+            $meta['layout_recipe_version'] = AiFlexLayoutRecipeRegistry::VERSION;
+            $meta['layout_recipe_contract'] = AiFlexLayoutRecipeRegistry::CONTRACT;
+        }
+        $block['ai_flex'] = $meta;
+        return $block;
+    }
+
+    /** @param array<string,mixed> $plan */
+    private function applyLayoutRecipeGeometry(array $block, array $plan): array
+    {
+        $recipe = is_array($plan['layout_recipe'] ?? null) ? $plan['layout_recipe'] : null;
+        if (! $recipe || ! is_array($block['elements'] ?? null)) return $block;
+
+        $key = (string) ($recipe['key'] ?? '');
+        $kind = (string) ($recipe['kind'] ?? '');
+        $elements = $block['elements'];
+
+        if ($kind === 'row') {
+            $wanted = array_values((array) ($recipe['desktop_widths'] ?? []));
+            $targetRow = null;
+            foreach ($elements as $i => $root) {
+                if (($root['type'] ?? null) === 'row' && is_array($root['children'] ?? null) && count($root['children']) >= max(1, count($wanted))) {
+                    $targetRow = $i; break;
+                }
+            }
+            if ($targetRow !== null) {
+                $row = $elements[$targetRow];
+                $row['style'] = is_array($row['style'] ?? null) ? $row['style'] : [];
+                $row['style']['gap'] = (int) ($row['style']['gap'] ?? 32);
+                $row['style']['tablet_gap'] = (int) ($row['style']['tablet_gap'] ?? 24);
+                $row['style']['mobile_gap'] = (int) ($row['style']['mobile_gap'] ?? 20);
+                $row['style']['align'] = (string) ($row['style']['align'] ?? 'stretch');
+
+                if ($wanted !== []) {
+                    // Width percentages plus flex gap must fit inside 100%. Preserve the
+                    // requested ratio while reserving a small gap budget for desktop.
+                    $n = count($wanted);
+                    $usable = $n === 2 ? 96.0 : ($n === 3 ? 94.0 : ($n >= 4 ? 92.0 : 100.0));
+                    $sum = max(0.001, array_sum(array_map('floatval', $wanted)));
+                    foreach ($wanted as $idx => $ratio) {
+                        if (! isset($row['children'][$idx]) || ! is_array($row['children'][$idx])) continue;
+                        $col = $row['children'][$idx];
+                        $col['style'] = is_array($col['style'] ?? null) ? $col['style'] : [];
+                        $col['style']['width'] = round($usable * ((float) $ratio / $sum), 3);
+                        $col['style']['tablet_width'] = 100;
+                        $col['style']['mobile_width'] = 100;
+                        $row['children'][$idx] = $col;
+                    }
+                }
+
+                if (in_array($key, ['single_centered','content_narrow'], true) && isset($row['children'][0])) {
+                    $row['style']['justify'] = 'center';
+                    $col = $row['children'][0];
+                    $col['style'] = is_array($col['style'] ?? null) ? $col['style'] : [];
+                    $col['style']['width'] = 100;
+                    $col['style']['max_width'] = $key === 'content_narrow' ? 760 : 960;
+                    $col['style']['align'] = (string) ($col['style']['align'] ?? 'center');
+                    $row['children'][0] = $col;
+                }
+
+                $elements[$targetRow] = $row;
+            }
+        }
+
+        if ($kind === 'grid') {
+            $applyGrid = function (array $nodes) use (&$applyGrid, $recipe): array {
+                foreach ($nodes as &$node) {
+                    if (! is_array($node)) continue;
+                    if (($node['type'] ?? null) === 'grid') {
+                        $node['style'] = is_array($node['style'] ?? null) ? $node['style'] : [];
+                        $node['style']['columns'] = (int) ($recipe['desktop_columns'] ?? 2);
+                        $node['style']['tablet_columns'] = (int) ($recipe['tablet_columns'] ?? 2);
+                        $node['style']['mobile_columns'] = (int) ($recipe['mobile_columns'] ?? 1);
+                        $node['style']['gap'] = (int) ($node['style']['gap'] ?? 24);
+                        return $nodes;
+                    }
+                    if (is_array($node['children'] ?? null)) $node['children'] = $applyGrid($node['children']);
+                }
+                unset($node);
+                return $nodes;
+            };
+            $elements = $applyGrid($elements);
+        }
+
+        // Featured bento recipes use the row split above and encourage the dense side
+        // to stay a deterministic 2-column grid when Luna supplied one.
+        if (in_array($key, ['bento_featured_left','bento_featured_right'], true)) {
+            $applyFirstGrid = function (array $nodes) use (&$applyFirstGrid): array {
+                foreach ($nodes as &$node) {
+                    if (! is_array($node)) continue;
+                    if (($node['type'] ?? null) === 'grid') {
+                        $node['style'] = is_array($node['style'] ?? null) ? $node['style'] : [];
+                        $node['style']['columns'] = 2;
+                        $node['style']['tablet_columns'] = 2;
+                        $node['style']['mobile_columns'] = 1;
+                        $node['style']['gap'] = (int) ($node['style']['gap'] ?? 20);
+                        return $nodes;
+                    }
+                    if (is_array($node['children'] ?? null)) $node['children'] = $applyFirstGrid($node['children']);
+                }
+                unset($node);
+                return $nodes;
+            };
+            $elements = $applyFirstGrid($elements);
+        }
+
+        $block['elements'] = $elements;
+        return $block;
+    }
+
+    /** @param array<string,mixed> $plan */
+    private function assertLayoutRecipeSatisfied(array $block, array $plan): void
+    {
+        $recipe = is_array($plan['layout_recipe'] ?? null) ? $plan['layout_recipe'] : null;
+        if (! $recipe) return;
+        $kind = (string) ($recipe['kind'] ?? '');
+        $wanted = count((array) ($recipe['desktop_widths'] ?? []));
+        $hasRequiredShape = false;
+        $walk = function (array $nodes) use (&$walk, &$hasRequiredShape, $kind, $wanted): void {
+            foreach ($nodes as $node) {
+                if (! is_array($node) || $hasRequiredShape) continue;
+                if ($kind === 'grid' && ($node['type'] ?? null) === 'grid') $hasRequiredShape = true;
+                if ($kind === 'row' && ($node['type'] ?? null) === 'row' && count((array) ($node['children'] ?? [])) >= max(1, $wanted)) $hasRequiredShape = true;
+                if (is_array($node['children'] ?? null)) $walk($node['children']);
+            }
+        };
+        $walk(is_array($block['elements'] ?? null) ? $block['elements'] : []);
+        if (! $hasRequiredShape) {
+            throw new \RuntimeException('AI Flex composer omitted required layout Lego geometry: '.(string) ($recipe['key'] ?? 'unknown'));
+        }
     }
 
     private function applyCompositionPolish(array $block, string $request, array $source = []): array
@@ -674,10 +961,10 @@ PROMPT;
 
     private function sanitizeElements(array $elements, int $depth = 0, int &$budget = 0): array
     {
-        if ($depth > 5 || $budget >= 80) return [];
-        $allowedTypes = ['group','row','column','grid','stack','card','heading','text','button','image','video','icon','badge','list','divider','stat','spacer','form'];
-        $containerTypes = ['group','row','column','grid','stack','card'];
-        $allowedStyle = ['gap','columns','width','max_width','min_height','padding','padding_x','padding_y','radius','background','color','border_color','border_width','shadow','align','justify','text_align','font_size','font_weight','line_height','aspect_ratio','object_fit','object_position','opacity','position','top','right','bottom','left','z_index','overflow','order','grow','basis','self_align','tablet_width','mobile_width','tablet_columns','mobile_columns','tablet_gap','mobile_gap','tablet_padding','mobile_padding','tablet_order','mobile_order','tablet_position','mobile_position','tablet_min_height','mobile_min_height'];
+        if ($depth > 8 || $budget >= 80) return [];
+        $allowedTypes = AiFlexComponentRegistry::rendererReadyTypes();
+        $containerTypes = AiFlexComponentRegistry::containerTypes();
+        $allowedStyle = AiFlexComponentRegistry::styleKeys();
         $out = [];
         foreach (array_slice($elements, 0, 40) as $raw) {
             if (!is_array($raw) || $budget >= 80) continue;
@@ -685,15 +972,27 @@ PROMPT;
             if (!in_array($type, $allowedTypes, true)) continue;
             $budget++;
             $node = ['type'=>$type];
-            foreach (['_cosmic_id','key','text','label','url','src','poster','alt','icon','value'] as $key) {
+            foreach (['_cosmic_id','key','text','label','url','src','poster','alt','image_query','icon','value'] as $key) {
                 if (isset($raw[$key]) && is_scalar($raw[$key])) $node[$key] = mb_substr((string)$raw[$key], 0, $key === 'text' ? 4000 : 500);
             }
-            if ($type === 'video') {
-                $node['controls'] = array_key_exists('controls', $raw) ? (bool) $raw['controls'] : true;
-                $node['autoplay'] = !empty($raw['autoplay']);
+            if (in_array($type, ['video','background_video'], true)) {
+                $node['controls'] = $type === 'background_video' ? false : (array_key_exists('controls', $raw) ? (bool) $raw['controls'] : true);
+                $node['autoplay'] = $type === 'background_video' ? (array_key_exists('autoplay', $raw) ? (bool) $raw['autoplay'] : true) : !empty($raw['autoplay']);
                 $node['muted'] = array_key_exists('muted', $raw) ? (bool) $raw['muted'] : true;
-                $node['loop'] = !empty($raw['loop']);
+                // Browsers generally block unmuted autoplay. Background video is decorative/media-layer
+                // content, so an autoplaying background must always be muted for Builder/export parity.
+                if ($type === 'background_video' && $node['autoplay']) $node['muted'] = true;
+                $node['loop'] = $type === 'background_video' ? (array_key_exists('loop', $raw) ? (bool) $raw['loop'] : true) : !empty($raw['loop']);
                 $node['plays_inline'] = array_key_exists('plays_inline', $raw) ? (bool) $raw['plays_inline'] : true;
+            }
+            if ($type === 'slider') {
+                $node['autoplay'] = array_key_exists('autoplay', $raw) ? (bool) $raw['autoplay'] : true;
+                $node['interval'] = max(2000, min(15000, (int) ($raw['interval'] ?? 5000)));
+                $node['loop'] = array_key_exists('loop', $raw) ? (bool) $raw['loop'] : true;
+                $node['show_arrows'] = array_key_exists('show_arrows', $raw) ? (bool) $raw['show_arrows'] : true;
+                $node['show_dots'] = array_key_exists('show_dots', $raw) ? (bool) $raw['show_dots'] : true;
+                $node['show_counter'] = array_key_exists('show_counter', $raw) ? (bool) $raw['show_counter'] : false;
+                $node['transition'] = in_array((string) ($raw['transition'] ?? 'fade'), ['fade','slide'], true) ? (string) $raw['transition'] : 'fade';
             }
             if (isset($raw['items']) && is_array($raw['items'])) {
                 $node['items'] = collect($raw['items'])->take(20)->map(function ($item) {
@@ -752,7 +1051,18 @@ PROMPT;
                 if(isset($ranges[$key])) $cleanStyle[$key]=max($ranges[$key][0],min($ranges[$key][1],$num));
             }
             if ($cleanStyle) $node['style']=$cleanStyle;
-            if (in_array($type,$containerTypes,true)) $node['children']=$this->sanitizeElements(is_array($raw['children']??null)?$raw['children']:[], $depth+1, $budget);
+            if (in_array($type,$containerTypes,true)) {
+                $rawChildren = is_array($raw['children'] ?? null) ? $raw['children'] : [];
+                $allowedChildren = AiFlexComponentRegistry::allowedChildren($type);
+                if ($allowedChildren !== [] && ! in_array('*', $allowedChildren, true)) {
+                    $rawChildren = array_values(array_filter($rawChildren, static function ($child) use ($allowedChildren): bool {
+                        return is_array($child) && in_array(Str::lower(trim((string) ($child['type'] ?? ''))), $allowedChildren, true);
+                    }));
+                }
+                $node['children']=$this->sanitizeElements($rawChildren, $depth+1, $budget);
+                if ($type === 'slider') $node['children'] = array_slice($node['children'], 0, 8);
+                if (in_array($type, ['button_group','media_group'], true)) $node['children'] = array_slice($node['children'], 0, 12);
+            }
             $out[]=$node;
         }
         return $out;
@@ -813,7 +1123,14 @@ PROMPT;
         }
         unset($row);
         if ($block['elements'] !== []) $block['elements'] = AiFlexStructureContract::canonicalizeElements($block['elements']);
-        $block['ai_flex'] = array_merge(['version'=>1,'source'=>'sol','reference_mode'=>'composition_only','theme_policy'=>'inherit'], is_array($block['ai_flex'] ?? null) ? array_intersect_key($block['ai_flex'],array_flip(['version','source','reference_mode','theme_policy','intent','spark_name','model','department','composition_profile','structure_contract','structure_version','structure_storage','pipeline','structure_locked','stages'])) : []);
+        $block['ai_flex'] = array_merge([
+            'version'=>1,
+            'source'=>'sol',
+            'reference_mode'=>'composition_only',
+            'theme_policy'=>'inherit',
+            'component_contract'=>AiFlexComponentRegistry::CONTRACT,
+            'component_version'=>AiFlexComponentRegistry::VERSION,
+        ], is_array($block['ai_flex'] ?? null) ? array_intersect_key($block['ai_flex'],array_flip(['version','source','reference_mode','theme_policy','intent','spark_name','model','department','composition_profile','structure_contract','structure_version','structure_storage','component_contract','component_version','pipeline','structure_locked','stages','composer_version','composer_recipe','layout_recipe','layout_recipe_version','layout_recipe_contract','requested_slide_count','requested_slider_controls'])) : []);
         if ($block['elements'] !== []) {
             $block['ai_flex']['structure_contract'] = AiFlexStructureContract::CONTRACT;
             $block['ai_flex']['structure_version'] = AiFlexStructureContract::VERSION;

@@ -2168,6 +2168,7 @@ PROMPT;
         LunaInspectService $inspectService,
         LunaSiteAdminActionService $siteAdminActions,
         \App\Services\LunaAiFlexSparkService $aiFlex,
+        \App\Services\LunaSparkSelectionPlannerService $sparkSelectionPlanner,
         \App\Services\LunaFullPageComposerService $fullPageComposer
     ) {
         // A whole-page Luna build intentionally runs several bounded provider
@@ -3397,7 +3398,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 }
             }
             $branchPlan=$sparkBranch==='custom_spark'?null:$this->lunaSparkStructuralBranchPlan(
-                $sparkBranch,$prompt,$blocks,$usable,$nestedSparkTarget,$targetIndex
+                $sparkBranch,$prompt,$blocks,$usable,$nestedSparkTarget,$targetIndex,$sparkSelectionPlanner
             );
             if(is_array($branchPlan)){
                 $ops=$branchPlan['operations'];
@@ -3869,7 +3870,8 @@ For the compatible premium Services family (services_bento_premium, services_edi
         array $blocks,
         array $usable,
         mixed $sparkTarget,
-        int $fallbackTargetIndex
+        int $fallbackTargetIndex,
+        \App\Services\LunaSparkSelectionPlannerService $sparkSelectionPlanner
     ): ?array {
         if(!in_array($branch,['change_spark','add_spark','remove_spark','reorder_spark'],true)) return null;
 
@@ -3916,19 +3918,26 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'meta'=>['branch'=>$branch,'status'=>'target_missing'],
             ];
             $currentKey=(string)($blocks[$targetIndex]['type']??'');
-            $candidate=$this->lunaRegisteredSparkCandidate($prompt,$usable,$currentKey,$blocks[$targetIndex]);
-            if(!$candidate) return [
+            $selection=$sparkSelectionPlanner->plan($prompt,'change_spark',[
+                'current_spark_key'=>$currentKey,
+                'semantic_type'=>SparkCatalog::find($currentKey)['semantic_type']??null,
+            ]);
+            $candidate=is_array($selection['selected_spark']??null)?$selection['selected_spark']:null;
+            if(!$candidate || empty($candidate['key'])) return [
                 'operations'=>[], 'scope'=>'section', 'target_index'=>$targetIndex,
-                'meta'=>['branch'=>$branch,'status'=>'replacement_unresolved','current_key'=>$currentKey],
+                'meta'=>['branch'=>$branch,'status'=>'replacement_unresolved','current_key'=>$currentKey,'selection'=>$selection],
             ];
+            $customPlan=is_array($selection['customization_plan']??null)?$selection['customization_plan']:[];
             return [
                 'operations'=>[array_filter([
                     'action'=>'replace',
                     'index'=>$targetIndex,
                     'spark_key'=>$candidate['key'],
-                    'instruction'=>'Preserve compatible content, links, imagery, item meaning and CTA intent from the current section while changing only the registered Spark presentation.',
+                    'instruction'=>$this->lunaSparkCustomizationInstruction($prompt,$customPlan,true),
                     'preserve_content'=>true,
                     'redesign_from'=>$currentKey?:null,
+                    'luna_spark_plan'=>$selection,
+                    'luna_capability_guard'=>$selection['capability_guard']??null,
                 ],fn($v)=>$v!==null)],
                 'scope'=>'section',
                 'target_index'=>$targetIndex,
@@ -3937,24 +3946,33 @@ For the compatible premium Services family (services_bento_premium, services_edi
                     'current_key'=>$currentKey,
                     'replacement_key'=>$candidate['key'],
                     'replacement_category'=>$candidate['category']??null,
+                    'selection_source'=>$selection['selection_source']??null,
+                    'selection_confidence'=>$selection['confidence']??null,
+                    'alternate_spark_ids'=>$selection['alternate_spark_ids']??[],
+                    'customization_plan'=>$customPlan,
+                    'execution_hint'=>$selection['execution_hint']??'local',
                 ],
             ];
         }
 
         // add_spark: choose a registered Spark by semantic purpose, then resolve
         // insertion position deterministically from the page and the user's words.
-        $candidate=$this->lunaRegisteredSparkCandidate($prompt,$usable,'',[]);
-        if(!$candidate) return [
+        $selection=$sparkSelectionPlanner->plan($prompt,'add_spark');
+        $candidate=is_array($selection['selected_spark']??null)?$selection['selected_spark']:null;
+        if(!$candidate || empty($candidate['key'])) return [
             'operations'=>[], 'scope'=>'page', 'target_index'=>$fallbackTargetIndex,
-            'meta'=>['branch'=>$branch,'status'=>'candidate_unresolved'],
+            'meta'=>['branch'=>$branch,'status'=>'candidate_unresolved','selection'=>$selection],
         ];
         [$anchor,$action,$positionMeta]=$this->lunaSparkInsertPosition($prompt,$blocks,$fallbackTargetIndex);
+        $customPlan=is_array($selection['customization_plan']??null)?$selection['customization_plan']:[];
         return [
             'operations'=>[[
                 'action'=>$action,
                 'index'=>$anchor,
                 'spark_key'=>$candidate['key'],
-                'instruction'=>'Generate content that matches the website/page context and the requested section purpose. Keep the current brand and avoid duplicating nearby copy.',
+                'instruction'=>$this->lunaSparkCustomizationInstruction($prompt,$customPlan,false),
+                'luna_spark_plan'=>$selection,
+                'luna_capability_guard'=>$selection['capability_guard']??null,
             ]],
             'scope'=>'page',
             'target_index'=>$anchor,
@@ -3962,8 +3980,32 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'branch'=>$branch,
                 'spark_key'=>$candidate['key'],
                 'category'=>$candidate['category']??null,
+                'selection_source'=>$selection['selection_source']??null,
+                'selection_confidence'=>$selection['confidence']??null,
+                'alternate_spark_ids'=>$selection['alternate_spark_ids']??[],
+                'customization_plan'=>$customPlan,
+                'execution_hint'=>$selection['execution_hint']??'local',
             ],$positionMeta),
         ];
+    }
+
+    /** Convert Luna's bounded plan into the existing operation instruction field. */
+    private function lunaSparkCustomizationInstruction(string $prompt,array $plan,bool $preserveCurrent): string
+    {
+        $parts=[];
+        foreach(['content','media','visual','structure'] as $bucket){
+            $items=array_values(array_filter(array_map(fn($v)=>trim(is_scalar($v)?(string)$v:''),(array)($plan[$bucket]??[]))));
+            if($items!==[]) $parts[]=strtoupper($bucket).': '.implode('; ',array_slice($items,0,8));
+        }
+        $base=$preserveCurrent
+            ? 'Preserve compatible existing content, links, imagery, item meaning and CTA intent while changing only the registered Spark presentation unless the user explicitly requested otherwise.'
+            : 'Generate/fill content for the selected registered Spark using the website/page context, current brand and the user request. Avoid duplicating nearby copy.';
+        $requestLine='USER REQUEST: '.trim($prompt);
+        return trim($base."
+".$requestLine.($parts!==[]?"
+LUNA CUSTOMIZATION PLAN:
+".implode("
+",$parts):''));
     }
 
     /** Pick a registered Spark while keeping section purpose/category stable. */
@@ -4775,6 +4817,8 @@ For the compatible premium Services family (services_bento_premium, services_edi
         CreditService $credits,
         \App\Services\LunaSparkSchemaEditorService $sparkSchemaEditor,
         \App\Services\LunaAiFlexSparkService $aiFlex,
+        \App\Services\LunaSparkSelectionPlannerService $sparkSelectionPlanner,
+        LunaCategoryPageService $lunaPages,
         LunaSmartSparkEditingService $smartSparkEditing,
         LunaSectionImageService $sectionImages,
     ) {
@@ -4841,14 +4885,17 @@ For the compatible premium Services family (services_bento_premium, services_edi
             ]);
         }
 
-        $redesignAiFlex = $blankLunaAiFlex || (bool) preg_match(
-            '/\b(?:redesign|rebuild|reimagine|from\s+scratch|custom\s+(?:design|layout)|unique\s+(?:design|layout)|completely\s+(?:different|new))\b/i',
+        // Batch 5: proven registered Sparks are the default redesign lane.
+        // AI Flex remains isolated to Start Blank with Luna only.
+        $premadeRedesignIntent = ! $blankLunaAiFlex && (bool) preg_match(
+            '/\b(?:redesign|rebuild|reimagine|change\s+(?:the\s+)?layout|another\s+layout|different\s+layout|custom\s+(?:design|layout)|unique\s+(?:design|layout)|make\s+(?:this|it)\s+more\s+(?:premium|modern|editorial|luxury|creative))\b/i',
             $prompt,
         );
+        $redesignAiFlex = $blankLunaAiFlex;
         $imageInsertionIntent = $sectionImages->isInsertionIntent($prompt);
         $imageMode = $imageInsertionIntent ? $sectionImages->mode($prompt) : null;
         $imageGenerationCost = $imageMode === 'generate' ? AiImageController::COST : 0;
-        $plannedAction = $redesignAiFlex ? 'replace' : 'edit';
+        $plannedAction = ($redesignAiFlex || $premadeRedesignIntent) ? 'replace' : 'edit';
         $pricing = $lunaPricing->estimate($prompt, [['action' => $plannedAction, 'index' => $targetIndex]], 'section');
         $creditCost = (int) ($pricing['credits'] ?? 5);
         $requiredCredits = $creditCost + $imageGenerationCost;
@@ -4863,6 +4910,79 @@ For the compatible premium Services family (services_bento_premium, services_edi
                 'image_generation_cost' => $imageGenerationCost,
                 'requires_credits' => true,
             ], 422);
+        }
+
+        if ($premadeRedesignIntent) {
+            try {
+                $selection = $sparkSelectionPlanner->plan($prompt, 'change_spark', [
+                    'current_spark_key' => $sparkType,
+                    'semantic_type' => SparkCatalog::find($sparkType)['semantic_type'] ?? null,
+                ]);
+                $selectedKey = trim((string) ($selection['selected_spark_id'] ?? ''));
+                if ($selectedKey !== '' && $selectedKey !== $sparkType && SparkCatalog::find($selectedKey)) {
+                    $customPlan = is_array($selection['customization_plan'] ?? null) ? $selection['customization_plan'] : [];
+                    $guard = is_array($selection['capability_guard'] ?? null) ? $selection['capability_guard'] : [];
+                    $guardJson = json_encode([
+                        'modules' => $guard['capability_manifest']['modules'] ?? [],
+                        'operations' => $guard['capability_manifest']['operations'] ?? [],
+                        'guardrails' => $guard['capability_manifest']['guardrails'] ?? [],
+                    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    $migration = json_encode(array_intersect_key($current, array_flip([
+                        'heading','title','eyebrow','text','description','body','subheading',
+                        'primary_label','primary_url','secondary_label','secondary_url','cta_label','cta_url',
+                        'items','cards','services','features','steps','slides','images','image_url','video_url','theme',
+                    ])), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+                    $instruction = $this->lunaSparkCustomizationInstruction($prompt, $customPlan, true);
+                    $generationPrompt = "LUNA POPUP REGISTERED-SPARK REDESIGN:
+Build exactly one {$selectedKey} Spark.
+{$instruction}"
+                        . ($guardJson ? "
+COSMIC CAPABILITY GUARD: {$guardJson}" : '')
+                        . "
+Preserve/adapt compatible content from the current section:
+{$migration}";
+                    $generated = $lunaPages->generate($generationPrompt, [$selectedKey]);
+                    $replacement = is_array($generated[0] ?? null) ? $generated[0] : null;
+                    if (is_array($replacement)) {
+                        $replacement['type'] = $selectedKey;
+                        $replacement = $this->lunaPreserveCompatibleSparkContent($current, $replacement);
+                        $blocks[$targetIndex] = $replacement;
+                        if ($creditCost > 0 && $user) {
+                            $credits->consume($user, $creditCost, 'Luna popup registered Spark redesign', $website, 'luna-popup-spark-'.Str::uuid(), [
+                                'category' => 'ai', 'spark_type' => $selectedKey, 'target_index' => $targetIndex,
+                            ]);
+                        }
+                        return response()->json([
+                            'mode' => 'update',
+                            'reply' => 'I matched your request to a proven Spark, customized it, and placed the result in the popup preview.',
+                            'blocks' => $blocks,
+                            'applied_operations' => [[
+                                'action' => 'registered_spark_redesign', 'index' => $targetIndex,
+                                'from_type' => $sparkType, 'spark_type' => $selectedKey, 'verified' => true,
+                            ]],
+                            'spark_selection' => [
+                                'selected_spark_id' => $selectedKey,
+                                'alternate_spark_ids' => array_values((array) ($selection['alternate_spark_ids'] ?? [])),
+                                'confidence' => $selection['confidence'] ?? null,
+                                'selection_source' => $selection['selection_source'] ?? null,
+                                'execution_hint' => $selection['execution_hint'] ?? null,
+                            ],
+                            'credit_cost' => $creditCost,
+                            'credit_balance' => $user ? $credits->balance($user) : null,
+                            'popup_api' => true,
+                            'popup_action' => 'registered_spark_redesign',
+                            'verified_diff' => true,
+                        ]);
+                    }
+                }
+            } catch (\Throwable $exception) {
+                Log::warning('[LunaPopup] registered Spark redesign failed; keeping current Spark', [
+                    'website_id' => $website->id, 'target_index' => $targetIndex, 'spark_type' => $sparkType,
+                    'error' => $exception->getMessage(),
+                ]);
+            }
+            // If matching/generation fails, keep the known-good current Spark and
+            // continue into its schema editor instead of falling back to arbitrary AI Flex.
         }
 
         if ($redesignAiFlex) {
@@ -5211,6 +5331,7 @@ For the compatible premium Services family (services_bento_premium, services_edi
         \App\Services\LunaPublishActionService $publishActions,
         \App\Services\LunaContentCommerceActionService $contentCommerceActions,
         \App\Services\LunaAiFlexSparkService $aiFlex,
+        \App\Services\LunaSparkSelectionPlannerService $sparkSelectionPlanner,
         \App\Services\LunaFullPageComposerService $fullPageComposer
     ) {
         // Whole-page generation is a multi-stage operation and can legitimately
@@ -7887,8 +8008,17 @@ PROMPT;
                     : '{}';
                 $instruction=trim((string)($operation['instruction']??''));
                 $groundedMediaPrompt=$this->lunaGroundedMediaPrompt((string)$validated['prompt'],$nextBlocks,$siteMemory,is_array($reference)?$reference:[]);
+                $capabilityGuard=is_array($operation['luna_capability_guard']??null)?$operation['luna_capability_guard']:null;
+                $capabilityGuardJson=$capabilityGuard?json_encode([
+                    'spark_type'=>$capabilityGuard['spark_type']??$sparkKey,
+                    'modules'=>$capabilityGuard['capability_manifest']['modules']??[],
+                    'operations'=>$capabilityGuard['capability_manifest']['operations']??[],
+                    'guardrails'=>$capabilityGuard['capability_manifest']['guardrails']??[],
+                    'rejected_items'=>$capabilityGuard['rejected_items']??[],
+                ],JSON_UNESCAPED_SLASHES|JSON_UNESCAPED_UNICODE):null;
                 $generationPrompt=$groundedMediaPrompt."\n\nLUNA ORCHESTRATION:\nBuild exactly one {$sparkKey} Spark."
                     .($instruction!==''?"\nInstruction: {$instruction}":'')
+                    .($capabilityGuardJson?"\nCOSMIC CAPABILITY GUARD (authoritative): {$capabilityGuardJson}\nDo not add unsupported schema structure or arbitrary nesting.":'')
                     ."\nPreserve/adapt useful content from this source block when relevant:\n{$migration}";
 
                 try {

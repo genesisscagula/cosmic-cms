@@ -12,6 +12,100 @@ import { createSparkTailwindRuntime } from "../Blocks/Shared/sparkTailwindRuntim
 import { colorFamilies, installCustomBrandTheme } from "../../../theme/colorFamilies";
 import { useAppearance } from "../../../Appearance/AppearanceContext";
 
+const SECTION_TYPE_META = {
+    "Hero": { tone: "violet", icon: "sparkles" },
+    "Services": { tone: "blue", icon: "grid" },
+    "Features": { tone: "indigo", icon: "diamond" },
+    "Proof": { tone: "emerald", icon: "shield" },
+    "Testimonials": { tone: "fuchsia", icon: "quote" },
+    "Pricing": { tone: "orange", icon: "tag" },
+    "Team": { tone: "purple", icon: "users" },
+    "FAQ": { tone: "teal", icon: "question" },
+    "Contact": { tone: "sky", icon: "mail" },
+    "Case Studies": { tone: "amber", icon: "folder" },
+    "Posts / Updates": { tone: "rose", icon: "document" },
+    "Events": { tone: "cyan", icon: "calendar" },
+    "Careers": { tone: "lime", icon: "briefcase" },
+    "Mini Heroes": { tone: "violet", icon: "star" },
+    "Other": { tone: "slate", icon: "grid" },
+};
+
+function SectionTypeIcon({ icon = "sparkles" }) {
+    const common = {
+        viewBox: "0 0 24 24",
+        fill: "none",
+        stroke: "currentColor",
+        strokeWidth: 1.9,
+        strokeLinecap: "round",
+        strokeLinejoin: "round",
+        "aria-hidden": "true",
+    };
+
+    if (icon === "grid") return <svg {...common}><rect x="4" y="4" width="6" height="6" rx="1.5"/><rect x="14" y="4" width="6" height="6" rx="1.5"/><rect x="4" y="14" width="6" height="6" rx="1.5"/><rect x="14" y="14" width="6" height="6" rx="1.5"/></svg>;
+    if (icon === "diamond") return <svg {...common}><path d="m12 3 8 9-8 9-8-9 8-9Z"/><path d="m12 8 3.5 4-3.5 4-3.5-4 3.5-4Z"/></svg>;
+    if (icon === "shield") return <svg {...common}><path d="M12 3 19 6v5c0 4.6-2.8 8.1-7 10-4.2-1.9-7-5.4-7-10V6l7-3Z"/><path d="m9 12 2 2 4-4"/></svg>;
+    if (icon === "quote") return <svg {...common}><path d="M9.5 11H5.8A3.8 3.8 0 0 0 2 14.8V18h7.5v-7Z"/><path d="M22 11h-3.7a3.8 3.8 0 0 0-3.8 3.8V18H22v-7Z"/><path d="M5.8 11c0-2.5 1-4.4 3-5.8"/><path d="M18.3 11c0-2.5 1-4.4 3-5.8"/></svg>;
+    if (icon === "tag") return <svg {...common}><path d="M20 13 13 20l-9-9V4h7l9 9Z"/><circle cx="8.5" cy="8.5" r="1.25"/></svg>;
+    if (icon === "users") return <svg {...common}><path d="M16 20v-1.7c0-2-1.8-3.8-4-3.8H7c-2.2 0-4 1.8-4 3.8V20"/><circle cx="9.5" cy="7.5" r="3.5"/><path d="M17 11a3 3 0 1 0-2.4-4.8"/><path d="M17.5 14.8c2 .3 3.5 1.8 3.5 3.5V20"/></svg>;
+    if (icon === "question") return <svg {...common}><circle cx="12" cy="12" r="9"/><path d="M9.8 9a2.4 2.4 0 1 1 3.7 2c-1 .6-1.5 1-1.5 2"/><path d="M12 17h.01"/></svg>;
+    if (icon === "mail") return <svg {...common}><rect x="3" y="5" width="18" height="14" rx="2.5"/><path d="m4.5 7 7.5 6 7.5-6"/></svg>;
+    if (icon === "folder") return <svg {...common}><path d="M3 7.5A2.5 2.5 0 0 1 5.5 5H10l2 2h6.5A2.5 2.5 0 0 1 21 9.5v7A2.5 2.5 0 0 1 18.5 19h-13A2.5 2.5 0 0 1 3 16.5v-9Z"/></svg>;
+    if (icon === "document") return <svg {...common}><path d="M6 3h8l4 4v14H6V3Z"/><path d="M14 3v5h4"/><path d="M9 12h6M9 16h6"/></svg>;
+    if (icon === "calendar") return <svg {...common}><rect x="3" y="5" width="18" height="16" rx="2.5"/><path d="M8 3v4M16 3v4M3 10h18"/><path d="M8 14h2M14 14h2M8 17h2"/></svg>;
+    if (icon === "briefcase") return <svg {...common}><rect x="3" y="7" width="18" height="13" rx="2.5"/><path d="M9 7V5h6v2M3 12h18M10 12v2h4v-2"/></svg>;
+    if (icon === "star") return <svg {...common}><path d="m12 3 2.3 5.3L20 10.5l-5.7 2.2L12 18l-2.3-5.3L4 10.5l5.7-2.2L12 3Z"/></svg>;
+    return <svg {...common}><path d="m12 3 2 5 5 2-5 2-2 5-2-5-5-2 5-2 2-5Z"/><path d="m18.5 15 .9 2.1 2.1.9-2.1.9-.9 2.1-.9-2.1-2.1-.9 2.1-.9.9-2.1Z"/></svg>;
+}
+
+function LunaAddSectionVisual() {
+    return (
+        <div className="cosmic-add-section-luna-visual" aria-hidden="true">
+            <span className="cosmic-add-section-luna-orbit cosmic-add-section-luna-orbit--one" />
+            <span className="cosmic-add-section-luna-orbit cosmic-add-section-luna-orbit--two" />
+            <span className="cosmic-add-section-luna-mini-spark cosmic-add-section-luna-mini-spark--one">✦</span>
+            <span className="cosmic-add-section-luna-mini-spark cosmic-add-section-luna-mini-spark--two">✦</span>
+            <svg className="cosmic-add-section-luna-illustration" viewBox="0 0 260 190" fill="none">
+                <defs>
+                    <linearGradient id="cosmic-luna-orb" x1="79" y1="57" x2="180" y2="150" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#C4B5FD" />
+                        <stop offset="0.52" stopColor="#8B5CF6" />
+                        <stop offset="1" stopColor="#6D28D9" />
+                    </linearGradient>
+                    <linearGradient id="cosmic-luna-ring" x1="67" y1="78" x2="190" y2="133" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#DDD6FE" />
+                        <stop offset="0.55" stopColor="#8B5CF6" />
+                        <stop offset="1" stopColor="#A855F7" />
+                    </linearGradient>
+                    <linearGradient id="cosmic-luna-bubble" x1="165" y1="24" x2="220" y2="74" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#A78BFA" />
+                        <stop offset="1" stopColor="#7C3AED" />
+                    </linearGradient>
+                    <filter id="cosmic-luna-shadow" x="34" y="34" width="190" height="150" filterUnits="userSpaceOnUse">
+                        <feDropShadow dx="0" dy="14" stdDeviation="13" floodColor="#7C3AED" floodOpacity="0.20" />
+                    </filter>
+                </defs>
+                <ellipse cx="128" cy="156" rx="51" ry="10" fill="#7C3AED" opacity="0.08" />
+                <g filter="url(#cosmic-luna-shadow)">
+                    <path d="M70 107c14-28 41-45 72-43 30 2 55 21 66 49-20 17-47 26-76 24-27-2-49-12-62-30Z" fill="url(#cosmic-luna-ring)" opacity="0.96" />
+                    <circle cx="137" cy="104" r="43" fill="url(#cosmic-luna-orb)" />
+                    <circle cx="137" cy="104" r="31" fill="#FAFAFF" />
+                    <ellipse cx="124" cy="105" rx="4.2" ry="6.5" fill="#2E2357" />
+                    <ellipse cx="151" cy="105" rx="4.2" ry="6.5" fill="#2E2357" />
+                    <path d="M130 120c5 4 10 4 15 0" stroke="#8B5CF6" strokeWidth="2.5" strokeLinecap="round" />
+                    <circle cx="116" cy="114" r="4" fill="#F0ABFC" opacity="0.28" />
+                    <circle cx="159" cy="114" r="4" fill="#F0ABFC" opacity="0.28" />
+                </g>
+                <g className="cosmic-add-section-luna-bubble">
+                    <path d="M171 34c0-7 6-13 13-13h43c7 0 13 6 13 13v25c0 7-6 13-13 13h-24l-12 10 2-10h-9c-7 0-13-6-13-13V34Z" fill="url(#cosmic-luna-bubble)" />
+                    <circle cx="191" cy="47" r="3.2" fill="white" />
+                    <circle cx="205" cy="47" r="3.2" fill="white" />
+                    <circle cx="219" cy="47" r="3.2" fill="white" />
+                </g>
+            </svg>
+        </div>
+    );
+}
+
 const categoryFor = (type) => {
     if (type.startsWith("mini_hero_")) return "Mini Heroes";
     if (type.startsWith("hero_") || type === "image_cta_banner") return "Hero";
@@ -751,90 +845,107 @@ export default function AddSectionModal({
             data-appearance={appDark ? 'dark' : 'light'}
             onPointerEnter={() => setPopupActive(true)}
             onPointerLeave={() => setPopupActive(false)}
-            className={`cosmic-add-spark-modal cosmic-native-text-layer relative z-10 flex max-h-[92vh] w-full max-w-[1500px] flex-col overflow-hidden rounded-2xl border shadow-2xl ${appDark ? 'border-white/10 bg-[#111116] text-white shadow-black/70' : 'border-slate-200 bg-white text-slate-950 shadow-slate-950/20'} ${popupActive ? 'is-active' : ''}`}
+            className={`cosmic-add-spark-modal cosmic-native-text-layer cosmic-add-section-premium-shell relative z-10 flex max-h-[92vh] w-full max-w-[1560px] flex-col overflow-hidden rounded-[26px] border shadow-2xl ${appDark ? 'border-white/10 bg-[#111116] text-white shadow-black/70' : 'border-slate-200 bg-white text-slate-950 shadow-slate-950/20'} ${popupActive ? 'is-active' : ''}`}
         >
             <button type="button" onClick={onClose} className={`absolute right-4 top-4 z-30 grid h-10 w-10 place-items-center rounded-xl border text-sm shadow-sm transition ${appDark ? 'border-white/10 bg-[#18181d] text-slate-300 hover:bg-white/10 hover:text-white' : 'border-slate-200 bg-white text-slate-500 hover:bg-slate-50 hover:text-slate-900'}`} aria-label="Close Add Section">✕</button>
             {pickerStage === "categories" ? (
-                <div className={`cosmic-add-section-library grid min-h-[620px] flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_320px] ${appDark ? 'bg-[#111116] text-white' : 'bg-white text-slate-950'}`}>
-                    <div className="min-w-0 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8">
-                        <div className="flex items-start justify-between gap-4 pr-12">
-                            <div>
-                                <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-violet-600">{modalContextLabel}</p>
-                                <h2 className="mt-1 text-2xl font-semibold tracking-tight">Choose a section type</h2>
-                                <p className={`mt-1.5 max-w-2xl text-sm leading-6 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Pick a section type, or start blank with Luna for a brand-new AI Flex section. Blank Luna sections skip the preset picker and open directly in the Section Editor.</p>
-                                {insertionHint ? <p className={`mt-2 text-xs font-semibold ${appDark ? 'text-violet-300' : 'text-violet-700'}`}>{insertionHint}</p> : null}
+                <div className={`cosmic-add-section-library grid min-h-[640px] flex-1 grid-cols-1 overflow-hidden lg:grid-cols-[minmax(0,1fr)_340px] ${appDark ? 'bg-[#111116] text-white' : 'bg-white text-slate-950'}`}>
+                    <div className="cosmic-add-section-main min-w-0 overflow-y-auto px-6 py-6 sm:px-8 sm:py-8 lg:px-9 lg:py-9">
+                        <div className="cosmic-add-section-heading flex items-start justify-between gap-4 pr-12">
+                            <div className="min-w-0">
+                                <p className="cosmic-add-section-eyebrow text-[10px] font-bold uppercase tracking-[0.22em] text-violet-600">{modalContextLabel}</p>
+                                <h2 className="mt-2 text-[clamp(1.65rem,2vw,2.15rem)] font-semibold tracking-[-0.035em]">Choose a section type</h2>
+                                <p className={`cosmic-add-section-intro mt-2 max-w-3xl text-sm leading-6 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Pick a section type, or start blank with Luna for a brand-new AI Flex section. Blank Luna sections skip the preset picker and open directly in the Section Editor.</p>
+                                {insertionHint ? <p className={`cosmic-add-section-insertion-hint mt-2 text-xs font-semibold ${appDark ? 'text-violet-300' : 'text-violet-700'}`}>{insertionHint}</p> : null}
                             </div>
+                            <div className="cosmic-add-section-heading-art" aria-hidden="true"><span /><span /><span>✦</span></div>
                         </div>
 
                         {loading && catalog.length === 0 ? (
-                            <div className={`mt-8 grid min-h-[420px] place-items-center rounded-2xl border border-dashed ${appDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-slate-50'}`}>
+                            <div className={`mt-8 grid min-h-[420px] place-items-center rounded-2xl border border-dashed ${appDark ? 'border-white/10 bg-white/[0.02]' : 'border-slate-200 bg-white/70'}`}>
                                 <div className="text-center"><div className="mx-auto h-10 w-10 animate-spin rounded-full border-4 border-violet-200 border-t-violet-600" /><p className="mt-4 text-sm font-semibold">Preparing section types…</p></div>
                             </div>
                         ) : (
-                            <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+                            <div className="cosmic-section-type-grid mt-8 grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
                                 <button
                                     type="button"
                                     onClick={startBlankWithLuna}
-                                    className={`group min-h-40 rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg ${appDark ? 'border-violet-400/35 bg-gradient-to-br from-violet-500/10 to-indigo-500/5 hover:border-violet-300' : 'border-violet-200 bg-gradient-to-br from-violet-50 to-indigo-50 shadow-sm hover:border-violet-400'}`}
+                                    className="group cosmic-section-type-card cosmic-section-type-card--luna min-h-40 text-left"
+                                    data-card-kind="luna-blank"
+                                    data-tone="violet"
                                 >
-                                    <div className={`grid h-10 w-10 place-items-center rounded-xl text-lg font-bold ${appDark ? 'bg-violet-400/15 text-violet-200' : 'bg-violet-600 text-white'}`}>✦</div>
-                                    <div className="mt-8 flex items-end justify-between gap-3">
-                                        <div>
-                                            <div className="text-base font-semibold">Start Blank with Luna</div>
-                                            <div className={`mt-1 text-xs leading-5 ${appDark ? 'text-violet-200/70' : 'text-violet-700'}`}>Build a new AI Flex section from scratch</div>
+                                    <div className="cosmic-section-type-icon"><SectionTypeIcon icon="sparkles" /></div>
+                                    <div className="cosmic-section-type-card__footer">
+                                        <div className="min-w-0">
+                                            <div className="cosmic-section-type-title">Start Blank with Luna</div>
+                                            <div className="cosmic-section-type-meta cosmic-section-type-meta--accent">Build a new AI Flex section from scratch</div>
                                         </div>
-                                        <span className="text-lg text-violet-500 transition group-hover:translate-x-1" aria-hidden="true">→</span>
+                                        <span className="cosmic-section-type-arrow" aria-hidden="true">→</span>
                                     </div>
                                 </button>
                                 <button
                                     type="button"
                                     onClick={() => onOpenLunaSparks?.()}
                                     disabled={!onOpenLunaSparks}
-                                    className={`group min-h-40 rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:shadow-lg disabled:cursor-not-allowed disabled:opacity-50 ${appDark ? 'border-fuchsia-400/25 bg-white/[0.035] hover:border-fuchsia-300' : 'border-fuchsia-200 bg-white shadow-sm hover:border-fuchsia-400'}`}
+                                    className="group cosmic-section-type-card min-h-40 text-left disabled:cursor-not-allowed disabled:opacity-50"
+                                    data-card-kind="luna-sparks"
+                                    data-tone="fuchsia"
                                 >
-                                    <div className={`grid h-10 w-10 place-items-center rounded-xl text-lg font-bold ${appDark ? 'bg-fuchsia-400/10 text-fuchsia-300' : 'bg-fuchsia-50 text-fuchsia-700'}`}>▣</div>
-                                    <div className="mt-8 flex items-end justify-between gap-3">
-                                        <div>
-                                            <div className="text-base font-semibold">Luna Sparks ✦</div>
-                                            <div className={`mt-1 text-xs ${appDark ? 'text-slate-500' : 'text-slate-500'}`}>{Number(lunaSparksCount || 0)} saved Luna Spark{Number(lunaSparksCount || 0) === 1 ? '' : 's'}</div>
+                                    <div className="cosmic-section-type-icon"><SectionTypeIcon icon="diamond" /></div>
+                                    <div className="cosmic-section-type-card__footer">
+                                        <div className="min-w-0">
+                                            <div className="cosmic-section-type-title">Luna Sparks ✦</div>
+                                            <div className="cosmic-section-type-meta">{Number(lunaSparksCount || 0)} saved Luna Spark{Number(lunaSparksCount || 0) === 1 ? '' : 's'}</div>
                                         </div>
-                                        <span className="text-lg text-fuchsia-500 transition group-hover:translate-x-1" aria-hidden="true">→</span>
+                                        <span className="cosmic-section-type-arrow" aria-hidden="true">→</span>
                                     </div>
                                 </button>
-                                {categoryCards.map((item) => (
-                                    <button
-                                        key={item.name}
-                                        type="button"
-                                        onClick={() => chooseCategory(item.name)}
-                                        className={`group min-h-40 rounded-2xl border p-5 text-left transition hover:-translate-y-0.5 hover:border-violet-400 hover:shadow-lg ${appDark ? 'border-white/10 bg-white/[0.035]' : 'border-slate-200 bg-white shadow-sm'}`}
-                                    >
-                                        <div className={`grid h-10 w-10 place-items-center rounded-xl text-lg font-bold ${appDark ? 'bg-violet-400/10 text-violet-300' : 'bg-violet-50 text-violet-700'}`}>✦</div>
-                                        <div className="mt-8 flex items-end justify-between gap-3">
-                                            <div><div className="text-base font-semibold">{item.name}</div><div className={`mt-1 text-xs ${appDark ? 'text-slate-500' : 'text-slate-500'}`}>{item.count} Spark{item.count === 1 ? '' : 's'}</div></div>
-                                            <span className="text-lg text-violet-500 transition group-hover:translate-x-1" aria-hidden="true">→</span>
-                                        </div>
-                                    </button>
-                                ))}
+                                {categoryCards.map((item) => {
+                                    const meta = SECTION_TYPE_META[item.name] || SECTION_TYPE_META.Other;
+                                    return (
+                                        <button
+                                            key={item.name}
+                                            type="button"
+                                            onClick={() => chooseCategory(item.name)}
+                                            className="group cosmic-section-type-card min-h-40 text-left"
+                                            data-card-kind="category"
+                                            data-tone={meta.tone}
+                                        >
+                                            <div className="cosmic-section-type-icon"><SectionTypeIcon icon={meta.icon} /></div>
+                                            <div className="cosmic-section-type-card__footer">
+                                                <div className="min-w-0">
+                                                    <div className="cosmic-section-type-title">{item.name}</div>
+                                                    <div className="cosmic-section-type-meta">{item.count} Spark{item.count === 1 ? '' : 's'}</div>
+                                                </div>
+                                                <span className="cosmic-section-type-arrow" aria-hidden="true">→</span>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
                             </div>
                         )}
                     </div>
 
-                    <aside className={`flex min-h-0 flex-col border-t p-5 lg:border-l lg:border-t-0 ${appDark ? 'border-white/10 bg-[#0d0d12]' : 'border-slate-200 bg-slate-50'}`}>
-                        <div>
-                            <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-500">✦ Luna · {isContextualInsert ? modalContextLabel : 'Add Section'}</p>
-                            <h3 className="mt-2 text-base font-semibold">Need help choosing?</h3>
-                            <p className={`mt-1 text-xs leading-5 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Describe the section you want. Luna will rank matching Sparks without changing the Builder.</p>
+                    <aside className={`cosmic-add-section-luna-panel flex min-h-0 flex-col border-t p-6 lg:border-l lg:border-t-0 ${appDark ? 'border-white/10 bg-[#0d0d12]' : 'border-slate-200 bg-slate-50'}`}>
+                        <div className="cosmic-add-section-luna-copy">
+                            <p className="cosmic-add-section-luna-eyebrow text-[10px] font-black uppercase tracking-[0.18em] text-violet-500">✦ Luna · {isContextualInsert ? modalContextLabel : 'Add Section'}</p>
+                            <h3 className="mt-3 text-lg font-semibold tracking-tight">Need help choosing?</h3>
+                            <p className={`cosmic-add-section-luna-description mt-2 text-xs leading-5 ${appDark ? 'text-slate-400' : 'text-slate-600'}`}>Describe the section you want. Luna will rank matching Sparks without changing the Builder.</p>
                         </div>
-                        <div className="mt-auto pt-6">
+                        <LunaAddSectionVisual />
+                        <div className="cosmic-add-section-luna-actions mt-auto pt-8">
                             <textarea
                                 value={query}
                                 onChange={(event) => { setQuery(event.target.value); if (aiResults) clearAiSearch(); }}
                                 rows={5}
                                 placeholder="e.g. Add a premium services section with four cards"
-                                className={`w-full resize-none rounded-xl border px-3.5 py-3 text-sm outline-none transition focus:border-violet-400 ${appDark ? 'border-white/10 bg-black/20 text-white placeholder:text-slate-600' : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`}
+                                className={`cosmic-add-section-luna-input w-full resize-none rounded-2xl border px-4 py-3.5 text-sm outline-none transition ${appDark ? 'border-white/10 bg-black/20 text-white placeholder:text-slate-600' : 'border-slate-300 bg-white text-slate-900 placeholder:text-slate-400'}`}
                             />
-                            <button type="button" disabled={trialMode || aiSearchBusy || query.trim().length < 2} onClick={runAiSearch} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-violet-600 px-4 py-2.5 text-sm font-bold text-white hover:bg-violet-500 disabled:cursor-not-allowed disabled:opacity-40"><span aria-hidden="true">✦</span>{aiSearchBusy ? 'Searching…' : 'Ask Luna'}</button>
-                            <div className={`mt-4 rounded-xl border px-3 py-3 text-xs leading-5 ${appDark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}><b className={appDark ? 'text-slate-200' : 'text-slate-800'}>Whole page?</b><br/>Use the whole-page Luna chat when you want Luna to plan multiple sections together.</div>
+                            <button type="button" disabled={trialMode || aiSearchBusy || query.trim().length < 2} onClick={runAiSearch} className="cosmic-add-section-luna-button mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl px-4 py-3 text-sm font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"><span aria-hidden="true">✦</span>{aiSearchBusy ? 'Searching…' : 'Ask Luna'}</button>
+                            <div className={`cosmic-add-section-whole-page mt-4 flex items-start gap-3 rounded-2xl border px-3.5 py-3.5 text-xs leading-5 ${appDark ? 'border-white/10 bg-white/[0.03] text-slate-400' : 'border-slate-200 bg-white text-slate-600'}`}>
+                                <span className="cosmic-add-section-whole-page__icon" aria-hidden="true"><SectionTypeIcon icon="grid" /></span>
+                                <div><b className={appDark ? 'text-slate-200' : 'text-slate-800'}>Whole page?</b><br/>Use the whole-page Luna chat when you want Luna to plan multiple sections together.</div>
+                            </div>
                         </div>
                     </aside>
                 </div>

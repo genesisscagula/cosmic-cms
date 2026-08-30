@@ -1,0 +1,44 @@
+<?php
+require_once __DIR__.'/../app/Support/AiFlexComponentRegistry.php';
+use App\Support\AiFlexComponentRegistry;
+$checks=[];$assert=static function(bool $ok,string $label)use(&$checks):void{$checks[]=[$ok,$label];};
+$ready=AiFlexComponentRegistry::rendererReadyTypes();
+foreach(['slider','slide'] as $type){$assert(in_array($type,$ready,true),"$type is renderer-ready");$assert(in_array($type,AiFlexComponentRegistry::containerTypes(),true),"$type is a container");}
+$assert(AiFlexComponentRegistry::allowedChildren('slider')===['slide'],'slider accepts slide children only');
+foreach(['autoplay','interval','loop','show_arrows','show_dots','show_counter','transition'] as $key)$assert(in_array($key,AiFlexComponentRegistry::scalarKeys('slider'),true),"slider scalar $key registered");
+$assert(str_contains(AiFlexComponentRegistry::promptInventory(),'slider children=slide'),'Luna inventory exposes slider hierarchy');
+$assert(str_contains(AiFlexComponentRegistry::promptInventory(),'slide children=*'),'Luna inventory exposes slide composition');
+$assert(AiFlexComponentRegistry::isRendererReady('button_group'),'Batch 4 button_group is renderer-ready');
+$assert(AiFlexComponentRegistry::isRendererReady('media_group'),'Batch 4 media_group is renderer-ready');
+$service=file_get_contents(__DIR__.'/../app/Services/LunaAiFlexSparkService.php')?:'';
+$react=file_get_contents(__DIR__.'/../resources/js/Pages/Websites/Blocks/General/LunaCustomSectionBlock.jsx')?:'';
+$compiler=file_get_contents(__DIR__.'/../app/Helpers/CmsHtmlCompiler.php')?:'';
+$structure=file_get_contents(__DIR__.'/../resources/js/Pages/Websites/Blocks/Shared/aiFlexStructureContract.js')?:'';
+$structural=file_get_contents(__DIR__.'/../app/Services/LunaStructuralActionService.php')?:'';
+$editor=file_get_contents(__DIR__.'/../app/Services/LunaSparkSchemaEditorService.php')?:'';
+$assert(str_contains($service,"\$type === 'slider'"),'validator has slider-specific sanitization');
+$assert(str_contains($service,"max(2000, min(15000"),'slider interval is bounded');
+$assert(str_contains($service,"['fade','slide']"),'slider transition is allowlisted');
+$assert(str_contains($service,'AiFlexComponentRegistry::allowedChildren($type)'),'slider children use the canonical registry child filter');
+$assert(str_contains($service,'slider is a composable interactive container'),'Luna prompt teaches slider semantics');
+$assert(str_contains($service,'MUST contain only slide children'),'Luna prompt teaches strict hierarchy');
+$assert(str_contains($service,'if ($depth > 8 || $budget >= 80)'),'validator depth supports rich nested slides while retaining budget cap');
+$assert(str_contains($compiler,"if(\$depth>8)return ''"),'publish renderer depth matches validated slider nesting');
+foreach(['cosmic-flex-slider','cosmic-flex-slide'] as $marker){$assert(str_contains($react,$marker),"Builder renderer has $marker");$assert(str_contains($compiler,$marker),"publish compiler has $marker");}
+foreach(['show_arrows','show_dots','show_counter','autoplay','interval','loop'] as $prop)$assert(str_contains($react,$prop),"Builder slider honors $prop");
+$assert(str_contains($react,"prefers-reduced-motion: reduce"),'Builder autoplay respects reduced motion');
+$assert(str_contains($react,'onTouchStart'),'Builder supports swipe start');
+$assert(str_contains($react,'onTouchEnd'),'Builder supports swipe end');
+$assert(str_contains($compiler,'data-ai-flex-slider'),'publish renderer emits slider hook');
+$assert(str_contains($compiler,'data-ai-flex-prev'),'publish renderer emits previous control');
+$assert(str_contains($compiler,'data-ai-flex-next'),'publish renderer emits next control');
+$assert(str_contains($compiler,'data-ai-flex-dot'),'publish renderer emits dots');
+$assert(str_contains($compiler,"prefers-reduced-motion: reduce"),'published autoplay respects reduced motion');
+$assert(str_contains($compiler,"pointerdown"),'published slider supports swipe/pointer start');
+$assert(str_contains($compiler,"pointerup"),'published slider supports swipe/pointer end');
+$assert(str_contains($structure,"safe === 'slider'"),'client factory provides slider defaults');
+$assert(str_contains($structure,"safe === 'slide'"),'client factory provides slide defaults');
+$assert(str_contains($structure,"'slider','slide'"),'client factory allowlist includes slider primitives');
+$assert(str_contains($structural,"'slider','slide'"),'structural executor accepts slider primitives');
+$assert(str_contains($editor,'slider,slide'),'contextual Luna editor knows slider primitives');
+$failed=array_values(array_filter($checks,static fn(array $c):bool=>!$c[0]));foreach($checks as[$ok,$label])echo($ok?'[PASS] ':'[FAIL] ').$label.PHP_EOL;echo PHP_EOL.count($checks).' checks, '.count($failed).' failed.'.PHP_EOL;exit($failed===[]?0:1);

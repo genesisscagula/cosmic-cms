@@ -3385,6 +3385,48 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         setEditSession((current)=>current?.open ? {...current,lastValid:{...cloneBuilderEditValue(currentPopupEditState()),blocks:cloneBuilderEditValue(blocks)}} : current);
     };
 
+    const previewLunaAlternateSpark = (sparkId) => {
+        if (!editSession?.open || editSession.scope !== 'section' || !Number.isInteger(editSession.blockIndex)) return;
+        const type = String(sparkId || '').trim();
+        if (!type) return;
+        const popupState = currentPopupEditState();
+        const index = editSession.blockIndex;
+        const currentBlock = popupState.blocks?.[index];
+        if (!currentBlock || String(currentBlock.type || '') === type) return;
+
+        const base = lunaBuildBlockFromType(type);
+        if (!base) return;
+        const contentMemory = cloneBuilderEditValue(currentBlock._spark_content_memory || {});
+        contentMemory[currentBlock.type] = sparkContentSnapshot(currentBlock);
+        let replacement = preserveCompatibleSparkContent(currentBlock, cloneBuilderEditValue(base));
+        if (contentMemory[type]) replacement = preserveCompatibleSparkContent(contentMemory[type], replacement);
+
+        const blocks = [...(popupState.blocks || [])];
+        blocks[index] = {
+            ...replacement,
+            type,
+            theme: currentBlock.theme || replacement.theme || 'auto',
+            field_extras: cloneBuilderEditValue(currentBlock.field_extras || replacement.field_extras || {}),
+            _spark_content_memory: contentMemory,
+            _spark_capability_manifest: sparkCapabilityManifest(replacement),
+            _renderKey: createRenderKey(),
+        };
+        setPopupDraftBlocks(blocks);
+        const catalogItem = (sparkCatalog || []).find((spark)=>String(spark?.key || '') === type);
+        const selectedTitle = String(catalogItem?.name || BlockRegistry?.[type]?.schema?.title || type.replaceAll('_',' '));
+        setEditSession((current)=>current?.open ? {
+            ...current,
+            label: selectedTitle,
+            lunaCustomized: true,
+            lunaSparkSelection: {
+                ...(current.lunaSparkSelection || {}),
+                selectedId: type,
+                selectedTitle,
+            },
+            lastValid: {...cloneBuilderEditValue(currentPopupEditState()), blocks:cloneBuilderEditValue(blocks)},
+        } : current);
+    };
+
     const unlockLayoutSpark = async (layout) => {
         if (!layout?.type || layout.owned || layoutBusyKey) return;
 
@@ -3886,16 +3928,19 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
         } finally { setSavedSparksBusy(false); }
     };
 
-    const saveAppliedLunaSpark = async (block) => {
-        if (!block || block.type !== 'luna_custom_section') return null;
+    const saveAppliedLunaSpark = async (block, preferredName = '') => {
+        if (!block || !String(block.type || '').trim()) return null;
         const aiName = String(block?.ai_flex?.spark_name || '').trim();
-        const fallbackName = String(block.heading || block.title || 'Luna Spark').trim();
+        const fallbackName = String(preferredName || block.heading || block.title || BlockRegistry?.[block.type]?.schema?.title || 'Luna Spark').trim();
         const name = (aiName || fallbackName || 'Luna Spark').slice(0, 140);
         const payload = cloneBuilderEditValue(block);
         delete payload._renderKey;
+        delete payload._spark_content_memory;
+        delete payload._spark_capability_manifest;
+        delete payload._spark_overflow_preserved;
         const { data: response } = await axios.post('/saved-sparks', {
             name,
-            spark_type: 'luna_custom_section',
+            spark_type: String(block.type),
             payload,
             source: 'luna',
         });
@@ -4265,11 +4310,15 @@ export default function Builder({ page, website, previewUrl: initialPreviewUrl =
                 setData('global_footer', cloneBuilderEditValue(draft.global_footer || {}));
             }
         }
-        if (creatingSection && session.creationSource === 'blank_luna') {
+        if (creatingSection && (session.creationSource === 'blank_luna' || session.lunaCustomized)) {
             const appliedBlock = draft.blocks?.[session.blockIndex];
-            if (appliedBlock?.type === 'luna_custom_section' && appliedBlock?.ai_flex?.generated) {
+            const shouldSaveLunaCopy = Boolean(appliedBlock && (
+                (appliedBlock?.type === 'luna_custom_section' && appliedBlock?.ai_flex?.generated)
+                || session.lunaCustomized
+            ));
+            if (shouldSaveLunaCopy) {
                 try {
-                    await saveAppliedLunaSpark(appliedBlock);
+                    await saveAppliedLunaSpark(appliedBlock, session?.lunaSparkSelection?.selectedTitle || session.label);
                 } catch (error) {
                     showCosmicNotification({
                         title: 'Section added, Luna Spark not saved',
@@ -5953,6 +6002,33 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
             // Let Axios/browser generate the multipart boundary so Laravel receives
             // the actual reference image bytes reliably.
             const { data: response } = await axios.post(lunaEndpoint, form);
+            if (lunaAssistantSurface === 'contextual_popup' && editSession?.open) {
+                const directSelection = response?.spark_selection && typeof response.spark_selection === 'object' ? response.spark_selection : {};
+                const branchMeta = response?.canonical_intent?.routing?.branch_meta || {};
+                const selectedId = String(directSelection?.selected_spark_id || branchMeta?.replacement_key || branchMeta?.spark_key || '').trim();
+                const alternateSource = Array.isArray(directSelection?.alternate_spark_ids) ? directSelection.alternate_spark_ids : branchMeta?.alternate_spark_ids;
+                const alternateIds = Array.isArray(alternateSource)
+                    ? alternateSource.map((id)=>String(id || '').trim()).filter(Boolean).slice(0,3)
+                    : [];
+                const selectedCatalog = selectedId ? (sparkCatalog || []).find((spark)=>String(spark?.key || '') === selectedId) : null;
+                const selectedTitle = selectedId
+                    ? String(selectedCatalog?.name || BlockRegistry?.[selectedId]?.schema?.title || selectedId.replaceAll('_',' '))
+                    : '';
+                setEditSession((current)=>current?.open ? {
+                    ...current,
+                    lunaCustomized: Boolean((Array.isArray(response?.applied_operations) && response.applied_operations.length > 0) || current.lunaCustomized),
+                    ...(selectedId || alternateIds.length ? {
+                        lunaSparkSelection: {
+                            selectedId: selectedId || current?.lunaSparkSelection?.selectedId || '',
+                            selectedTitle: selectedTitle || current?.lunaSparkSelection?.selectedTitle || '',
+                            alternateIds,
+                            confidence: String(directSelection?.confidence || branchMeta?.selection_confidence || ''),
+                            source: String(directSelection?.selection_source || branchMeta?.selection_source || ''),
+                            originalPrompt: prompt,
+                        },
+                    } : {}),
+                } : current);
+            }
             if (referenceImageForRequest && !['reference_place','reference_replace_confirm'].includes(response.mode)) lunaPendingReferenceImageRef.current = null;
             if (response.mode === 'reference_replace_confirm') {
                 setLunaStatus('Waiting for confirmation');
@@ -6662,9 +6738,28 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                 {String(editSession.target?.type||'').toLowerCase()==='card' ? <div className="mt-5 rounded-xl border border-slate-200 bg-white p-4 text-sm leading-6 text-slate-600">Select the card heading, text, button, or image for a direct content edit. Use the Section editor when you want to change the whole layout.</div> : null}
                                 {editSession.scope === 'section' && Number.isInteger(editSession.blockIndex) ? (()=>{
                                     const activeBlock=editSessionDraft?.blocks?.[editSession.blockIndex] || editSession.original?.blocks?.[editSession.blockIndex];
-                                    const layouts=getCompatibleLayouts(activeBlock?.type, activeBlock).sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
+                                    const isBlankLunaDraft = editSession?.creationSource === 'blank_luna';
+                                    const lunaSelection = editSession?.lunaSparkSelection || null;
+                                    const lunaAlternateIds = Array.isArray(lunaSelection?.alternateIds) ? lunaSelection.alternateIds : [];
+                                    const lunaLayoutChoices = [lunaSelection?.selectedId, ...lunaAlternateIds]
+                                        .map((id)=>String(id || '').trim()).filter(Boolean)
+                                        .filter((id,index,array)=>array.indexOf(id)===index)
+                                        .map((id)=>{
+                                            const catalogItem=(sparkCatalog||[]).find((spark)=>String(spark?.key||'')===id);
+                                            return {id,title:String(catalogItem?.name || BlockRegistry?.[id]?.schema?.title || id.replaceAll('_',' '))};
+                                        });
+                                    const layouts=isBlankLunaDraft ? [] : getCompatibleLayouts(activeBlock?.type, activeBlock).sort((a,b)=>String(a.title||'').localeCompare(String(b.title||'')));
                                     const backgroundMedia=findSectionBackgroundImageSlot(activeBlock);
                                     return <div className="space-y-3">
+                                        {!isBlankLunaDraft && lunaLayoutChoices.length > 1 ? <div className={`rounded-2xl border p-3 ${appDark?'border-violet-400/20 bg-violet-400/[0.06]':'border-violet-200 bg-violet-50/70'}`}>
+                                            <div className="flex flex-wrap items-center justify-between gap-2">
+                                                <div><p className={`text-[11px] font-black uppercase tracking-[.14em] ${appDark?'text-violet-300':'text-violet-700'}`}>Try another layout</p><p className={`mt-1 text-xs ${appDark?'text-slate-400':'text-slate-600'}`}>Compare Luna's strongest matches. Compatible copy, media and repeaters stay in the popup draft.</p></div>
+                                                {lunaSelection?.confidence ? <span className={`rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide ${appDark?'border-white/10 text-slate-300':'border-violet-200 bg-white text-violet-700'}`}>{lunaSelection.confidence} match</span> : null}
+                                            </div>
+                                            <div className="mt-3 flex gap-2 overflow-x-auto pb-1">
+                                                {lunaLayoutChoices.map((choice)=>{const active=String(activeBlock?.type||'')===choice.id;return <button key={choice.id} type="button" onClick={()=>previewLunaAlternateSpark(choice.id)} aria-pressed={active} className={`shrink-0 rounded-xl border px-3 py-2 text-xs font-bold transition ${active?'border-violet-600 bg-violet-600 text-white shadow-sm':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50'}`}>{choice.title}</button>})}
+                                            </div>
+                                        </div> : null}
                                         {backgroundMedia ? <div className={`flex flex-wrap items-center justify-between gap-3 rounded-xl border px-3 py-2.5 ${appDark?'border-slate-700 bg-slate-900':'border-slate-200 bg-slate-50'}`}>
                                             <div className="flex min-w-0 items-center gap-3">
                                                 <div className="h-11 w-16 shrink-0 overflow-hidden rounded-lg border border-slate-200 bg-white"><img src={backgroundMedia.url} alt="Current section background" className="h-full w-full object-cover"/></div>
@@ -6672,14 +6767,14 @@ const sendPageAiRequest = async (directPrompt = null, confirmed = false, pending
                                             </div>
                                             {!trialMode ? <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-authored-background-image');setLunaMediaLibraryKind('image');setLunaMediaLibraryOpen(true);}} className={`rounded-xl border px-3 py-2 text-xs font-semibold ${appDark?'border-slate-700 bg-slate-950 text-slate-200 hover:border-violet-500':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50'}`}>Media Library</button> : <button type="button" onClick={()=>{setLunaMediaLibraryPurpose('section-authored-background-image');lunaImageUploadRef.current?.click?.();}} className="rounded-xl border border-slate-300 bg-white px-3 py-2 text-xs font-semibold text-slate-700">Upload image</button>}
                                         </div> : null}
-                                        {sparkCatalogLoading && !sparkCatalogLoaded ? <div className="rounded-xl border border-dashed border-slate-200 p-3 text-xs text-slate-500">Loading related layouts…</div> : null}
-                                        <div className="space-y-2">
+                                        {!isBlankLunaDraft && sparkCatalogLoading && !sparkCatalogLoaded ? <div className="rounded-xl border border-dashed border-slate-200 p-3 text-xs text-slate-500">Loading related layouts…</div> : null}
+                                        {!isBlankLunaDraft ? <div className="space-y-2">
                                             <div className={`${sectionSparkLayoutsExpanded?'flex flex-wrap':'flex flex-nowrap overflow-hidden'} gap-2.5`}>
                                                 {layouts.map(layout=>{const active=isCurrentLayout(activeBlock,layout);return <button key={`${layout.kind}:${layout.id}`} type="button" onClick={()=>previewSectionSparkLayout(editSession.blockIndex,layout)} aria-pressed={active} className={`shrink-0 rounded-lg border px-3 py-2.5 text-left text-[13px] font-semibold leading-5 transition ${active?'border-violet-600 bg-violet-100 text-violet-900 shadow-sm ring-1 ring-violet-200':'border-slate-300 bg-white text-slate-800 shadow-sm hover:border-violet-400 hover:bg-violet-50'}`} style={{color:active?'#4c1d95':'#1e293b',WebkitTextFillColor:active?'#4c1d95':'#1e293b'}}><span className="block">{layout.title}</span></button>})}
                                                 {!layouts.length && !sparkCatalogLoading ? <div className="rounded-xl border border-dashed border-slate-200 p-3 text-xs text-slate-500">No related Spark layouts are registered for this section family yet.</div> : null}
                                             </div>
                                             {layouts.length > 1 ? <button type="button" onClick={()=>setSectionSparkLayoutsExpanded(value=>!value)} aria-expanded={sectionSparkLayoutsExpanded} className={`cosmic-section-layout-toggle inline-flex items-center gap-1 rounded-lg border px-3 py-1.5 text-xs font-semibold transition ${appDark?'border-slate-700 bg-slate-900 text-slate-300 hover:border-violet-500 hover:text-white':'border-slate-300 bg-white text-slate-700 hover:border-violet-400 hover:bg-violet-50 hover:text-violet-800'}`}>{sectionSparkLayoutsExpanded?'Show Less':'Show More'}<span aria-hidden="true">{sectionSparkLayoutsExpanded?'↑':'↓'}</span></button> : null}
-                                        </div>
+                                        </div> : null}
                                         <div data-popup-section-preview="true" className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
                                             <div className="bg-white">
                                                 <div className="pointer-events-none min-w-0" aria-label="Section working preview">

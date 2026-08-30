@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\AI\Clients\OpenAIClient;
-use App\AI\Registries\SparkPlannerRegistry;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Str;
 use RuntimeException;
@@ -11,8 +10,10 @@ use Throwable;
 
 class AiLibrarySearchService
 {
-    public function __construct(private readonly OpenAIClient $openAI)
-    {
+    public function __construct(
+        private readonly OpenAIClient $openAI,
+        private readonly SparkIntentMatcherService $sparkMatcher,
+    ) {
     }
 
     public function search(string $type, string $prompt, int $limit = 8): array
@@ -28,11 +29,16 @@ class AiLibrarySearchService
         }
 
         $limit = max(1, min($limit, 12));
-        $cacheKey = 'ai-library-search:v1:'.sha1($type.'|'.Str::lower($prompt).'|'.$limit);
+        $cacheKey = 'ai-library-search:v2:'.sha1($type.'|'.Str::lower($prompt).'|'.$limit);
 
         return Cache::remember($cacheKey, now()->addMinutes(20), function () use ($type, $prompt, $limit) {
-            $catalog = $type === 'templates' ? $this->templateCatalog() : $this->sparkCatalog();
-            $shortlist = $this->localShortlist($catalog, $prompt, 28);
+            if ($type === 'sparks') {
+                // Batch 2: scan the entire registered Spark catalog locally first.
+                // Luna only receives the compact deterministic shortlist below.
+                $shortlist = $this->sparkMatcher->shortlistForAi($prompt, 28);
+            } else {
+                $shortlist = $this->localShortlist($this->templateCatalog(), $prompt, 28);
+            }
 
             if ($shortlist === []) {
                 return [];
@@ -47,8 +53,8 @@ class AiLibrarySearchService
                     static fn (array $item): array => [
                         'id' => $item['id'],
                         'name' => $item['name'],
-                        'score' => $item['_score'] ?? 0,
-                        'reason' => 'Matched by Cosmic local search.',
+                        'score' => $item['score'] ?? $item['_score'] ?? 0,
+                        'reason' => (string) ($item['reason'] ?? 'Matched by Cosmic local search.'),
                     ],
                     $shortlist
                 ), 0, $limit);
@@ -78,16 +84,14 @@ class AiLibrarySearchService
 
     private function sparkCatalog(): array
     {
+        // Kept for backwards-compatible internal diagnostics. Production Spark
+        // matching uses SparkIntentMatcherService::shortlistForAi().
         return array_map(static fn (array $spark): array => [
-            'id' => (string) ($spark['slug'] ?? ''),
-            'name' => Str::headline((string) ($spark['slug'] ?? '')),
+            'id' => (string) ($spark['key'] ?? ''),
+            'name' => (string) ($spark['name'] ?? $spark['key'] ?? ''),
             'description' => (string) ($spark['description'] ?? ''),
-            'terms' => array_values(array_filter([
-                (string) ($spark['category'] ?? ''),
-                str_replace('_', ' ', (string) ($spark['slug'] ?? '')),
-                (string) ($spark['description'] ?? ''),
-            ])),
-        ], SparkPlannerRegistry::all());
+            'terms' => (array) ($spark['search_terms'] ?? []),
+        ], SparkCatalog::all());
     }
 
     private function localShortlist(array $catalog, string $prompt, int $max): array
@@ -134,12 +138,22 @@ class AiLibrarySearchService
     private function rankWithAi(string $type, string $prompt, array $shortlist, int $limit): array
     {
         $allowed = array_column($shortlist, 'id');
-        $payload = array_map(static fn (array $item): array => [
+        $payload = array_map(static fn (array $item): array => array_filter([
             'id' => $item['id'],
             'name' => $item['name'],
             'description' => $item['description'],
-            'terms' => array_slice($item['terms'], 0, 24),
-        ], $shortlist);
+            'semantic_type' => $item['semantic_type'] ?? null,
+            'media' => $item['media'] ?? null,
+            'layout' => $item['layout'] ?? null,
+            'style_traits' => $item['style_traits'] ?? null,
+            'visual_traits' => $item['visual_traits'] ?? null,
+            'industry_fit' => $item['industry_fit'] ?? null,
+            'intent' => $item['intent'] ?? null,
+            'capabilities' => isset($item['capabilities']) ? array_slice((array) $item['capabilities'], 0, 16) : null,
+            'local_score' => $item['score'] ?? $item['_score'] ?? null,
+            'confidence' => $item['confidence'] ?? null,
+            'terms' => array_slice((array) ($item['terms'] ?? []), 0, 24),
+        ], static fn ($value): bool => $value !== null && $value !== [] && $value !== ''), $shortlist);
 
         $system = <<<PROMPT
 You are Luna's Cosmic Library Search ranker.
@@ -185,7 +199,7 @@ PROMPT;
             $results[$id] = [
                 'id' => $id,
                 'name' => $item['name'],
-                'score' => $item['_score'] ?? 0,
+                'score' => $item['score'] ?? $item['_score'] ?? 0,
                 'reason' => trim((string) ($row['reason'] ?? 'Recommended by Luna.')),
             ];
             if (count($results) >= $limit) {

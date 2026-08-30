@@ -33,7 +33,10 @@ const TemplateMiniPreview = memo(function TemplateMiniPreview({ template, websit
     const blocks = useMemo(() => buildBlocks(template, true).slice(0, 3), [template]);
 
     return (
-        <div className="h-52 overflow-hidden rounded-xl bg-white text-slate-900">
+        <div
+            className="cosmic-preview-isolation h-52 overflow-hidden rounded-xl bg-white text-slate-900"
+            data-cosmic-preview-isolation="true"
+        >
             <div className="origin-top-left w-[400%]" style={{ transform: 'scale(.25)' }}>
                 {blocks.map((block, index) => {
                     const Component = BlockRegistry[block.type]?.component;
@@ -691,7 +694,8 @@ export default function PageTemplatesModal({
 
                         <div className="cosmic-template-preview-scroll min-h-0 flex-1 overflow-y-auto">
                             <div
-                                className="cosmic-template-readonly-preview w-full"
+                                className="cosmic-template-readonly-preview cosmic-preview-isolation w-full"
+                                data-cosmic-preview-isolation="true"
                                 data-cosmic-readonly-preview="true"
                                 onClickCapture={(event) => {
                                     const target = event.target;
